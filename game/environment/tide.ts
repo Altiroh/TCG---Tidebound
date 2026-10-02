@@ -78,16 +78,51 @@ export function tickTide(
  * l'orientation affichée dit l'inverse à ce moment précis.
  */
 export function forceTideTransition(
-  env: Pick<EnvironmentState, "tideState" | "tideOrientation" | "pendingTideModifiers">,
+  env: Pick<EnvironmentState, "tideState" | "tideRemainingTurns" | "tideOrientation" | "tideIntensity" | "pendingTideModifiers">,
   direction: "avancer" | "reculer"
 ): TickTideResult {
   const forcedOrientation: TideOrientation = direction === "avancer" ? "montante" : "descendante";
   const newState = advanceTideState(env.tideState, forcedOrientation);
+  // Déjà à la borne (reculer depuis Calme, avancer depuis les Abysses) : la
+  // Marée « ne peut pas reculer au-delà de Calme » — il ne se passe rien.
+  // Ni durée remise à neuf, ni orientation touchée (Bouée de Rappel).
+  if (newState === env.tideState) {
+    return {
+      tideState: env.tideState,
+      tideRemainingTurns: env.tideRemainingTurns,
+      tideOrientation: env.tideOrientation,
+      tideIntensity: env.tideIntensity,
+      pendingTideModifiers: env.pendingTideModifiers,
+      stateChanged: false,
+    };
+  }
   const newOrientation = naturalOrientationFor(newState, env.tideOrientation);
   return {
     tideState: newState,
     tideRemainingTurns: RULES.TIDE_STATE_DURATION[newState],
     tideOrientation: newOrientation,
+    tideIntensity: RULES.TIDE_BASE_INTENSITY,
+    pendingTideModifiers: env.pendingTideModifiers,
+    stateChanged: newState !== env.tideState,
+  };
+}
+
+/**
+ * La Marée actuelle PREND FIN maintenant (Régulateur de Courant : « si cette
+ * réduction la fait prendre fin, passez immédiatement à la Marée
+ * suivante ») : passage à l'état suivant selon l'orientation, exactement
+ * comme un décompte arrivé à 0 dans `tickTide` — mais sans consulter ni
+ * consommer un « Maintien » en attente, qui porte sur le décompte de début
+ * de tour et non sur une fin imposée par une carte.
+ */
+export function endCurrentTideState(
+  env: Pick<EnvironmentState, "tideState" | "tideOrientation" | "pendingTideModifiers">
+): TickTideResult {
+  const newState = advanceTideState(env.tideState, env.tideOrientation);
+  return {
+    tideState: newState,
+    tideRemainingTurns: RULES.TIDE_STATE_DURATION[newState],
+    tideOrientation: naturalOrientationFor(newState, env.tideOrientation),
     tideIntensity: RULES.TIDE_BASE_INTENSITY,
     pendingTideModifiers: env.pendingTideModifiers,
     stateChanged: newState !== env.tideState,
@@ -110,13 +145,17 @@ export function forceTideTransition(
  * (`processForcedTideTransitions`).
  */
 export function forceTideJumpToAbysses(
-  env: Pick<EnvironmentState, "tideState" | "tideOrientation" | "pendingTideModifiers">,
+  env: Pick<EnvironmentState, "tideState" | "tideRemainingTurns" | "tideOrientation" | "pendingTideModifiers">,
   options?: { extraDurationTurns?: number; forceOrientation?: TideOrientation }
 ): TickTideResult {
   const orientation = options?.forceOrientation ?? naturalOrientationFor("abysses", env.tideOrientation);
+  // Déjà en Abysses : « forcez la Marée en Abysses » ne remet pas la durée à
+  // neuf, et « augmentez de 1 tour sa durée RESTANTE » part de ce qui reste
+  // (Sept Brasses Plus Bas).
+  const base = env.tideState === "abysses" ? env.tideRemainingTurns : RULES.TIDE_STATE_DURATION.abysses;
   return {
     tideState: "abysses",
-    tideRemainingTurns: RULES.TIDE_STATE_DURATION.abysses + (options?.extraDurationTurns ?? 0),
+    tideRemainingTurns: base + (options?.extraDurationTurns ?? 0),
     tideOrientation: orientation,
     tideIntensity: RULES.TIDE_BASE_INTENSITY,
     pendingTideModifiers: env.pendingTideModifiers,

@@ -313,7 +313,11 @@ export const CORE_SET: CardDefinition[] = [
         trigger: "onIncomingDirectAttack",
         mode: "optional",
         oncePerTurnKey: "cylindreContrecoup",
-        condition: { selfVisible: true },
+        // « des dégâts directs D'UNE ATTAQUE » : un tir de Navire n'est pas
+        // l'attaque d'une unité — il ne déclenche pas le Cylindre (et
+        // « autant de dégâts », qui lit la Puissance de l'attaquant, n'y
+        // vaudrait rien).
+        condition: { selfVisible: true, attackFromUnit: true },
         description: "Annulez les dégâts directs et infligez-les à un permanent adverse, puis détruisez cette carte.",
         effects: [
           { type: "cancelIncomingAttack", target: { kind: "controllerPlayer" } },
@@ -522,7 +526,15 @@ export const CORE_SET: CardDefinition[] = [
         mode: "optional",
         oncePerTurnKey: "guetteurMefiant",
         cost: { reason: 1 },
-        effects: [{ type: "damage", target: { kind: "chosenUnit" }, amount: { kind: "flat", value: 2 } }],
+        // « une UNITÉ de votre choix » : Marin ou Créature, sur l'un ou
+        // l'autre plateau — jamais une Structure ni un Équipement.
+        effects: [
+          {
+            type: "damage",
+            target: { kind: "chosenUnit", among: { unitsOnly: true, sameController: false } },
+            amount: { kind: "flat", value: 2 },
+          },
+        ],
         description: "La première fois à chaque tour qu'une carte est jouée : dépensez 1 Raison pour infliger 2 dégâts à une unité.",
       },
     ],
@@ -603,17 +615,21 @@ export const CORE_SET: CardDefinition[] = [
       "Durée : 4 tours. Visible pendant Houle uniquement. Chaque fois qu'elle devient visible, vous pouvez défausser 1 " +
       "carte. Si vous le faites, piochez 1 carte.",
     // Réaction facultative à sa propre apparition (`STRUCTURE_REVEALED`).
-    // Fidélité partielle : la carte défaussée est la plus ancienne de la
-    // main, pas choisie. Pioche AVANT défausse (même résultat) pour que la
-    // garde "au moins 1 carte en main" lise la main d'avant l'échange.
+    // Dans l'ordre du texte : le joueur DÉSIGNE la carte à défausser (choix
+    // `handDiscard`), PUIS pioche — la séquence reprend après le choix
+    // (`resolveEffectSequence`). Pioche d'abord, il pourrait défausser la
+    // carte qu'il vient de voir : un filtrage que le texte ne donne pas.
+    // Main vide : rien à défausser, la capacité ne se propose pas — et la
+    // pioche, liée par « si vous le faites », n'a pas lieu non plus.
     abilities: [
       {
         trigger: "onBecomeVisible",
         mode: "optional",
+        condition: { controllerHandAtLeast: 1 },
         description: "Vous pouvez défausser 1 carte. Si vous le faites, piochez 1 carte.",
         effects: [
-          { type: "draw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 }, conditionControllerHandAtLeast: 1 },
-          { type: "discard", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 }, conditionControllerHandAtLeast: 2 },
+          { type: "discard", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
+          { type: "draw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
         ],
       },
     ],
@@ -695,21 +711,29 @@ export const CORE_SET: CardDefinition[] = [
     ],
     // Aura, pas un modificateur posé : le bonus disparaît avec l'Équipement.
     equipGrantsBuff: { healthAmount: 1 },
-    // Le porteur part (détruit, Sabordé — qui déclenche aussi `onDeath` —
-    // ou expiré) : l'Équipement est encore sur le plateau à cet instant
-    // (`destroyOrphanedEquipment` ne le retire qu'ensuite), il peut donc
-    // suivre son porteur via `triggeredBy.equippedUnit`.
+    // « Quitte le board », par toutes les portes : détruite, Sabordée (qui
+    // déclenche aussi `onDeath`), expirée, ou renvoyée en main. L'Équipement
+    // est encore sur le plateau à cet instant (`destroyOrphanedEquipment` ne
+    // le retire qu'ensuite), il peut donc suivre son porteur via
+    // `triggeredBy.equippedUnit` — qui suffit à l'identifier, d'où
+    // `sameController: false` (une Structure adverse équipée compte aussi).
     abilities: [
       {
         trigger: "onDeath",
-        triggeredBy: { equippedUnit: true },
+        triggeredBy: { equippedUnit: true, sameController: false },
         description: "Quand la Structure équipée quitte le board : piochez 1 carte.",
         effects: [{ type: "draw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } }],
       },
       {
         trigger: "onExpire",
-        triggeredBy: { equippedUnit: true },
+        triggeredBy: { equippedUnit: true, sameController: false },
         description: "Quand la Structure équipée expire : piochez 1 carte.",
+        effects: [{ type: "draw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } }],
+      },
+      {
+        trigger: "onReturnedToHand",
+        triggeredBy: { equippedUnit: true, sameController: false },
+        description: "Quand la Structure équipée est renvoyée en main : piochez 1 carte.",
         effects: [{ type: "draw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } }],
       },
     ],
@@ -957,6 +981,9 @@ export const CORE_SET: CardDefinition[] = [
         mode: "optional",
         cost: { reason: 1 },
         choiceGroup: "lanterneChoix",
+        // À 1 tour restant, la réduction ne ferait rien (plancher à 1) :
+        // l'option ne se propose pas, la Raison n'est pas payée pour rien.
+        condition: { tideRemainingTurnsAtLeast: 2 },
         description: "Vous pouvez dépenser 1 Raison : réduisez de 1 tour la durée de la Marée actuelle.",
         effects: [{ type: "tideReduceDuration", target: { kind: "allPlayers" }, amount: { kind: "flat", value: 1 } }],
       },
@@ -1063,7 +1090,7 @@ export const CORE_SET: CardDefinition[] = [
     attack: 3,
     health: 2,
     text: "Lorsqu'il attaque une Structure, il gagne +1 Puissance pour ce combat.",
-    bonusDamageVsTargetType: { type: "structure", amount: 1 },
+    bonusPowerVsTargetType: { type: "structure", amount: 1 },
   },
   {
     id: "bernard-lermite-dacier",
@@ -1111,9 +1138,10 @@ export const CORE_SET: CardDefinition[] = [
     equipTargetTypes: ["marin"],
     text: "Équipez un Marin. Lorsqu'il attaque une Structure, il gagne +1 Puissance.",
     // Bug corrigé au passage : l'Équipement ne s'attachait jamais (onPlayEffects absent), rendant
-    // `bonusDamageVsTargetType` ci-dessous inerte en pratique (jamais d'`attachedToInstanceId` à trouver).
+    // bonus ci-dessous inerte en pratique (jamais d'`attachedToInstanceId` à trouver).
     onPlayEffects: [{ type: "attachEquipment", target: { kind: "chosenUnit" } }],
-    bonusDamageVsTargetType: { type: "structure", amount: 1 },
+    // « +1 Puissance », pas « +1 dégât » : compté dans la Puissance déclarée.
+    bonusPowerVsTargetType: { type: "structure", amount: 1 },
   },
   {
     id: "kit-de-calfatage",
@@ -1356,17 +1384,14 @@ export const CORE_SET: CardDefinition[] = [
       {
         trigger: "onSaborde",
         description: "Sabordage : uniquement pendant Houle ou Tempête, avancez immédiatement la Marée d'un état, puis perdez 1 Raison.",
+        // « Uniquement pendant Houle ou Tempête » porte sur toute la
+        // capacité : lue AVANT le premier effet (`condition.tideStateIn`).
+        // Puis dans l'ordre du texte : l'avancée, PUIS la perte — qui se lit
+        // donc dans la Marée d'arrivée (un bouclier actif en Tempête la réduit).
+        condition: { tideStateIn: ["houle", "tempete"] },
         effects: [
-          // La perte de Raison DOIT être vérifiée avant l'avancée (sinon
-          // `tideForceAdvance` aurait déjà changé l'état de Marée que ce
-          // second effet vérifie, faussant la condition).
-          {
-            type: "reasonLoss",
-            target: { kind: "controllerPlayer" },
-            amount: { kind: "flat", value: 1 },
-            conditionTideStateIn: ["houle", "tempete"],
-          },
-          { type: "tideForceAdvance", target: { kind: "allPlayers" }, conditionTideStateIn: ["houle", "tempete"] },
+          { type: "tideForceAdvance", target: { kind: "allPlayers" } },
+          { type: "reasonLoss", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
         ],
       },
     ],
@@ -2885,9 +2910,10 @@ export const CORE_SET: CardDefinition[] = [
   // primitive nouvelle en dehors de `condition.controllerHandAtLeast` — tout
   // le reste se dit avec ce que le moteur portait déjà.
   //
-  // Le « piochez puis défaussez » du lot s'appuie sur l'effet `discard`
-  // existant, qui prend en TÊTE de main : le texte ne dit jamais « de votre
-  // choix », et c'est déjà ainsi que Le Masque Fendu se comporte.
+  // Le « piochez puis défaussez » du lot s'appuie sur l'effet `discard` :
+  // c'est le JOUEUR qui désigne la carte défaussée (choix `handDiscard`), et
+  // la suite du texte reprend une fois sa réponse donnée
+  // (`resolveEffectSequence`) — le moteur ne choisit jamais à sa place.
   // ======================================================================
   {
     id: "mousse-des-quarts",
@@ -3355,7 +3381,10 @@ export const CORE_SET: CardDefinition[] = [
     keywords: ["pied-marin"],
     // Le contournement de Garde est un champ de données, pas un mot-clé
     // accordé : il ne vaut que pour CET attaquant, pendant Tempête.
-    bonusDamageInTideState: { tideStateIn: ["tempete"], amount: 1 },
+    // « +1 Puissance » est une vraie Puissance (affichée, en riposte, lue par
+    // les conditions) : affinité de Marée 4 → 5 en Tempête, et non un bonus
+    // de dégâts à l'attaque seulement.
+    tideAffinity: { tempete: { attack: 5 } },
     bypassesGardeTideStateIn: ["tempete"],
     text: "Pied marin. Pendant Tempête, il gagne +1 Puissance et ignore Garde.",
   },

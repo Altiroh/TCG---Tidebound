@@ -1,4 +1,6 @@
 import type { GameEvent } from "@/game/events/types";
+import { eligibleCandidatesFor } from "@/game/reactions/reactionWindow";
+import { consumeDeclinedOncePerTurnReactions } from "@/game/triggers/triggerBus";
 import { assertGameActive, assertPlayerInGame, combine } from "@/game/rules/validation";
 import type { GameState } from "@/game/state/types";
 import type { ActionResult, PassReactionAction } from "@/game/actions/types";
@@ -28,6 +30,10 @@ export function passReaction(state: GameState, action: PassReactionAction): Acti
   if (!validation.ok) return { ok: false, error: validation.error };
 
   const pending = state.pendingReaction!;
+  // « La première fois à chaque tour … vous pouvez » : refuser consomme
+  // l'occasion du tour (`consumeDeclinedOncePerTurnReactions`).
+  const declined = eligibleCandidatesFor(state, pending.events, action.playerId, pending.turnNumber, pending.usedCandidateKeys);
+  const afterDecline = consumeDeclinedOncePerTurnReactions(state, declined, pending.turnNumber);
   const events: GameEvent[] = [
     { type: "REACTION_PASSED", turnNumber: pending.turnNumber, timestamp: Date.now(), playerId: action.playerId },
   ];
@@ -47,5 +53,5 @@ export function passReaction(state: GameState, action: PassReactionAction): Acti
     });
   }
 
-  return { ok: true, state: { ...state, pendingReaction: nextPending }, events };
+  return { ok: true, state: { ...afterDecline, pendingReaction: nextPending }, events };
 }

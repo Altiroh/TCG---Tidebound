@@ -397,6 +397,16 @@ export interface GameState {
   pendingChoice?: PendingChoice;
 
   /**
+   * Choix qui attendent leur tour derrière `pendingChoice` : un texte qui
+   * pose une question alors qu'une autre est déjà ouverte (deux Anomalies Le
+   * Fond Vous Regarde au même début de tour, Horloge de Marée Sabordée
+   * pendant un choix) ne doit ni écraser la question en cours, ni répondre à
+   * la place du joueur. `dispatch` ouvre le premier de la file dès que
+   * `pendingChoice` se libère.
+   */
+  pendingChoiceQueue?: PendingChoice[];
+
+  /**
    * Attaque DÉCLARÉE mais pas encore résolue, suspendue le temps que le
    * défenseur réponde à sa fenêtre d'interception (grammaire des pièges,
    * 21/09/2026).

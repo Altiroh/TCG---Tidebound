@@ -335,8 +335,8 @@ function check(def: CardDefinition): Violation[] {
     if (!re.test(text)) continue;
     // « À son arrivée » peut aussi se réaliser par `onPlayEffects` (pose depuis la main) ou `summon` (invocation).
     const byPlay = label === "« À son arrivée »" && (def.onPlayEffects?.length ?? 0) > 0;
-    // Les champs de données (bonusDamageVsTargetType, selfDamageOnDirectAttack…) couvrent certains « lorsqu'il attaque ».
-    const byField = Object.keys(def).some((k) => /Attack|Damage|WhileVisible|Substitute|Shield|Survives|Garde|TideState/.test(k));
+    // Les champs de données (bonusDamageVsTargetType, bonusPowerVsTargetType, selfDamageOnDirectAttack…) couvrent certains « lorsqu'il attaque ».
+    const byField = Object.keys(def).some((k) => /Attack|Damage|Power|WhileVisible|Substitute|Shield|Survives|Garde|TideState/.test(k));
     if (!hasTrigger(def, ...wanted) && !byPlay && !byField) push("trigger", `${label} sans déclencheur ${wanted.join("/")}`);
   }
 

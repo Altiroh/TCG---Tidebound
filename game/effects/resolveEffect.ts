@@ -13,7 +13,7 @@ import { canBeEquipTarget, getCardDefinition } from "@/game/cards/sets/core";
 import { countArchetypeUnits } from "@/game/cards/archetypes";
 import { auraContextOf, computeEffectiveStats } from "@/game/cards/stats";
 import { getShipDefinition } from "@/game/environment/shipData";
-import { forceTideJumpToAbysses, forceTideTransition, tickTide } from "@/game/environment/tide";
+import { endCurrentTideState, forceTideJumpToAbysses, forceTideTransition } from "@/game/environment/tide";
 import { applyForcedTideTransition } from "@/game/environment/tideTransition";
 import { recordGraveyardArrival } from "@/game/state/discard";
 import type { TideStateName } from "@/game/environment/types";
@@ -28,7 +28,7 @@ import {
   applyOpponentRemovalShield,
   consumeEquippedEffectDamageShield,
   consumeReasonLossShield,
-  consumeStructureResistanceRestoreShield,
+  restoreStructureResistanceAfterLoss,
 } from "@/game/state/shields";
 import {
   findCardInstance,
@@ -773,14 +773,6 @@ export function resolveEffect(
         nextState = effectShield.state;
         let reduction = effectShield.reduction;
         events.push(...effectShield.events);
-        // Bouclier "1ère fois par tour" de Wood Vy : restauration après coup
-        // sur une Structure alliée — équivalent net à une réduction
-        // supplémentaire, cf. commentaire de `consumeStructureResistanceRestoreShield`.
-        if (getCardDefinition(unit.cardId).type === "structure") {
-          const restoreShield = consumeStructureResistanceRestoreShield(nextState, ownerId, context.turnNumber);
-          nextState = restoreShield.state;
-          reduction += restoreShield.restore;
-        }
         // Vieille-Selle : « 3 dégâts ou plus d'une seule source » se lit sur
         // le coup tel qu'il arrive, avant toute autre réduction.
         const peau = getCardDefinition(unit.cardId).reduceLargeDamageTaken;
@@ -808,6 +800,10 @@ export function resolveEffect(
           sourcePlayerId: context.controllerId,
           origin: originOf(context),
         });
+        // Wood Vy : la Structure a perdu de la Résistance, elle en récupère 1.
+        const rendu = restoreStructureResistanceAfterLoss(nextState, ownerId, unit.instanceId, finalAmount, context.turnNumber);
+        nextState = rendu.state;
+        events.push(...rendu.events);
       }
 
       for (const player of resolvePlayerTargets(state, effect, context)) {
@@ -1284,7 +1280,9 @@ export function resolveEffect(
       // orientation changent ; les effets du nouvel état s'appliquent au
       // prochain tick de début de tour).
       if (effect.type === "tideReduceDuration" && effect.advanceTideOnZero && rawRemaining <= 0) {
-        const tick = tickTide({ ...nextState.environment, tideRemainingTurns: 1 });
+        // La Marée prend fin : on passe à la suivante même si un « Maintien »
+        // attend le prochain décompte (`endCurrentTideState`).
+        const tick = endCurrentTideState(nextState.environment);
         events.push({
           ...base,
           type: "TIDE_ADVANCED",

@@ -1,4 +1,6 @@
-import { handBreakCost } from "@/game/rules/objectBreak";
+import { consumeObjectBreakTax, handBreakCost, objectBreakTax } from "@/game/rules/objectBreak";
+
+export { objectBreakTax };
 import { getCardDefinition } from "@/game/cards/sets/core";
 import type { EffectContext } from "@/game/effects/resolveEffect";
 import { resolveEffect } from "@/game/effects/resolveEffect";
@@ -13,7 +15,6 @@ import {
 import { eligibleBreakTargets } from "@/game/effects/chosenTargets";
 import { ouvrirFenetrePour } from "@/game/reactions/reactionWindow";
 import { validateGraveyardChoice } from "@/game/effects/graveyardChoices";
-import { markOncePerTurnUsed, oncePerTurnAvailable } from "@/game/state/oncePerTurn";
 import type { EffectDefinition } from "@/game/effects/types";
 import type { GameEvent } from "@/game/events/types";
 import {
@@ -27,7 +28,7 @@ import {
   assertPlayerInGame,
   combine,
 } from "@/game/rules/validation";
-import { isVisibleDuringTide, type CardDefinition, type CardInstance } from "@/game/cards/types";
+import type { CardDefinition } from "@/game/cards/types";
 import { payReasonCost, reasonCostAfterShield } from "@/game/state/shields";
 import { getPlayer, type GameState, type PlayerId, type PlayerState } from "@/game/state/types";
 import { recordGraveyardArrival } from "@/game/state/discard";
@@ -233,31 +234,6 @@ export function resumeObjectBreakEffects(
   );
 }
 
-/** Clé `oncePerTurnFlags` de la taxe de Bris adverse (Cloche d'Alerte). */
-const OBJECT_BREAK_TAX_KEY = "objectBreakTax";
-
-/**
- * Taxe de Bris adverse (Cloche d'Alerte, `taxOpponentObjectBreakOncePerTurnWhileVisible`)
- * que `playerId` devrait payer en Brisant un Objet maintenant : montant et
- * carte qui la porte (montant 0 si aucune carte visible et encore armée).
- */
-export function objectBreakTax(
-  state: GameState,
-  playerId: PlayerId,
-  turnNumber: number
-): { amount: number; blocksIfUnpayable: boolean; holder?: { unit: CardInstance; ownerId: PlayerId } } {
-  const opponent = state.players.find((p) => p.id !== playerId);
-  if (!opponent) return { amount: 0, blocksIfUnpayable: false };
-  for (const unit of opponent.board) {
-    const def = getCardDefinition(unit.cardId);
-    const tax = def.taxOpponentObjectBreakOncePerTurnWhileVisible;
-    if (tax === undefined || !isVisibleDuringTide(def, state.environment.tideState)) continue;
-    if (!oncePerTurnAvailable(unit, OBJECT_BREAK_TAX_KEY, turnNumber)) continue;
-    return { amount: tax.amount, blocksIfUnpayable: tax.blocksIfUnpayable === true, holder: { unit, ownerId: opponent.id } };
-  }
-  return { amount: 0, blocksIfUnpayable: false };
-}
-
 /**
  * Raison que coûterait réellement le Bris depuis la main de cet Objet
  * maintenant (bouclier compris) et la Raison qui en résulterait — pour
@@ -447,17 +423,7 @@ export function breakObject(state: GameState, action: BreakObjectAction): Action
   // Taxe adverse (Cloche d'Alerte) : consommée pour le tour et ajoutée au
   // coût du Bris — depuis la main comme depuis le plateau (sinon gratuit).
   const tax = objectBreakTax(nextState, player.id, state.turnNumber);
-  if (tax.holder) {
-    const { unit: holder, ownerId } = tax.holder;
-    nextState = {
-      ...nextState,
-      players: nextState.players.map((p) =>
-        p.id === ownerId
-          ? { ...p, board: p.board.map((u) => (u.instanceId === holder.instanceId ? markOncePerTurnUsed(u, OBJECT_BREAK_TAX_KEY, state.turnNumber) : u)) }
-          : p
-      ) as [PlayerState, PlayerState],
-    };
-  }
+  nextState = consumeObjectBreakTax(nextState, tax, state.turnNumber);
   const breakCost = (action.fromHand ? handBreakCost(def) : 0) + tax.amount;
   if (breakCost > 0) {
     const payment = payReasonCost(nextState, player.id, breakCost, state.turnNumber);

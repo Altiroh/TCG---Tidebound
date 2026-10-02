@@ -20,7 +20,7 @@ import {
 import { applyBlueSignal } from "@/game/rules/chromaticSignals";
 import {
   consumeDirectShipDamageShield,
-  consumeStructureResistanceRestoreShield,
+  restoreStructureResistanceAfterLoss,
   loseReason,
 } from "@/game/state/shields";
 import { getOpponent, getPlayer, type GameState, type PlayerState } from "@/game/state/types";
@@ -34,10 +34,10 @@ function effectiveAttack(unit: CardInstance, state: GameState): number {
 }
 
 /**
- * Bonus de dégâts (attaquant lui-même + un Équipement qui lui serait
- * attaché) quand la cible de l'attaque est du type visé — ex: Barracuda/
- * Poisson-Scie Gris "+1 contre une Structure", Corde de Remorquage "+1 à
- * l'unité équipée contre une Structure". Ne s'applique qu'aux attaques
+ * Bonus de DÉGÂTS (attaquant lui-même + un Équipement qui lui serait
+ * attaché) quand la cible de l'attaque est du type visé — ex: Poisson-Scie
+ * Gris « 1 dégât supplémentaire à cette Structure ». Un « +1 Puissance »
+ * passe, lui, par `bonusPowerVsTarget`. Ne s'applique qu'aux attaques
  * ciblant une unité (pas une attaque directe du Navire, qui n'a pas de
  * carte-cible) et n'entre jamais dans le calcul de la riposte.
  */
@@ -55,6 +55,33 @@ function bonusDamageAgainst(attacker: CardInstance, defenderType: string, state:
     }
   }
   return bonus;
+}
+
+/**
+ * « +N Puissance pour ce combat » quand la cible déclarée est du type visé
+ * (`bonusPowerVsTargetType`, attaquant + Équipement attaché) — compté dans
+ * la Puissance DÉCLARÉE (Barracuda des Hauts-Fonds, Corde de Remorquage).
+ * 0 pour une attaque directe ou une cible introuvable.
+ */
+function bonusPowerVsTarget(attacker: CardInstance, defenderInstanceId: string | undefined, state: GameState): number {
+  if (!defenderInstanceId) return 0;
+  const cible = state.players.flatMap((p) => p.board).find((u) => u.instanceId === defenderInstanceId);
+  if (!cible) return 0;
+  const type = getCardDefinition(cible.cardId).type;
+  let bonus = 0;
+  const attackerDef = getCardDefinition(attacker.cardId);
+  if (attackerDef.bonusPowerVsTargetType?.type === type) bonus += attackerDef.bonusPowerVsTargetType.amount;
+  for (const unit of [...state.players[0].board, ...state.players[1].board]) {
+    if (unit.attachedToInstanceId !== attacker.instanceId) continue;
+    const equipDef = getCardDefinition(unit.cardId);
+    if (equipDef.bonusPowerVsTargetType?.type === type) bonus += equipDef.bonusPowerVsTargetType.amount;
+  }
+  return bonus;
+}
+
+/** Puissance DÉCLARÉE d'une attaque : Puissance effective + bonus de Marée + bonus contre le type de la cible. */
+function declaredAttackPower(attacker: CardInstance, defenderInstanceId: string | undefined, state: GameState): number {
+  return effectiveAttack(attacker, state) + bonusDamageInTideState(attacker, state) + bonusPowerVsTarget(attacker, defenderInstanceId, state);
 }
 
 /**
@@ -177,7 +204,7 @@ function controllerReasonLossAfterAttack(attacker: CardInstance, state: GameStat
   return total;
 }
 
-/** Applique des dégâts de COMBAT à une unité, en respectant, si c'est une Structure, la restauration "1ère fois par tour" de Wood Vy — retourne le montant réellement marqué (peut être 0 si totalement absorbé). Utilisé aussi bien pour les dégâts au défenseur que pour la riposte à l'attaquant : "elle subit des dégâts" ne distingue pas les deux rôles. */
+/** Applique des dégâts de COMBAT à une unité (réduction de Vieille-Selle comprise) — retourne le montant réellement marqué (peut être 0 si totalement absorbé). Utilisé aussi bien pour les dégâts au défenseur que pour la riposte à l'attaquant : "elle subit des dégâts" ne distingue pas les deux rôles. La restauration de Wood Vy se fait APRÈS, une fois le coup consigné (`restoreStructureResistanceAfterLoss`). */
 function applyCombatDamageToUnit(
   state: GameState,
   ownerId: string,
@@ -186,19 +213,14 @@ function applyCombatDamageToUnit(
   turnNumber: number
 ): { state: GameState; amountApplied: number } {
   if (amount <= 0) return { state, amountApplied: 0 };
-  let nextState = state;
+  const nextState = state;
   let reduction = 0;
-  if (getCardDefinition(unit.cardId).type === "structure") {
-    const restoreShield = consumeStructureResistanceRestoreShield(nextState, ownerId, turnNumber);
-    nextState = restoreShield.state;
-    reduction += restoreShield.restore;
-  }
   // Vieille-Selle : un coup de 3 ou plus, d'une seule source, perd 1.
   const peau = getCardDefinition(unit.cardId).reduceLargeDamageTaken;
   if (peau && amount >= peau.atLeast) reduction += peau.amount;
   const finalAmount = Math.max(0, amount - reduction);
   if (finalAmount <= 0) return { state: nextState, amountApplied: 0 };
-  nextState = {
+  const marked: GameState = {
     ...nextState,
     players: nextState.players.map((p) =>
       p.id === ownerId
@@ -213,7 +235,7 @@ function applyCombatDamageToUnit(
         : p
     ) as [PlayerState, PlayerState],
   };
-  return { state: nextState, amountApplied: finalAmount };
+  return { state: marked, amountApplied: finalAmount };
 }
 
 function validate(state: GameState, action: AttackAction) {
@@ -300,7 +322,7 @@ function suspendrePourInterception(
       playerId: action.playerId,
       attackerInstanceId: action.attackerInstanceId,
       defenderInstanceId: action.defenderInstanceId,
-      attackerPower: effectiveAttack(attaquant, state) + bonusDamageInTideState(attaquant, state),
+      attackerPower: declaredAttackPower(attaquant, action.defenderInstanceId, state),
     },
   };
 
@@ -381,7 +403,7 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
   // pu amputer (`modifyAttackerPower`), et la recalculer ici effacerait sa
   // réduction. Hors interception, elle se calcule normalement.
   const declaredPower =
-    etat.pendingAttack?.attackerPower ?? effectiveAttack(declaredAttacker, etat) + bonusDamageInTideState(declaredAttacker, etat);
+    etat.pendingAttack?.attackerPower ?? declaredAttackPower(declaredAttacker, action.defenderInstanceId, etat);
   const powerBeforeAttackTriggers = effectiveAttack(declaredAttacker, etat);
   const events: GameEvent[] = [...evenementsDeclaration];
   const base = { turnNumber: etat.turnNumber, timestamp: Date.now() };
@@ -616,6 +638,9 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
         combat: "strike",
         cause: "combat",
       });
+      const rendu = restoreStructureResistanceAfterLoss(nextState, opponent.id, defenderUnit.instanceId, defenderDamageResult.amountApplied, etat.turnNumber);
+      nextState = rendu.state;
+      events.push(...rendu.events);
 
       const damagedTrigger = processTrigger(
         nextState,
@@ -646,6 +671,9 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
           combat: "retaliation",
           cause: "combat",
         });
+        const rendu = restoreStructureResistanceAfterLoss(nextState, attackerPlayer.id, attackerUnit.instanceId, attackerDamageResult.amountApplied, etat.turnNumber);
+        nextState = rendu.state;
+        events.push(...rendu.events);
 
         const attackerDamagedTrigger = processTrigger(
           nextState,

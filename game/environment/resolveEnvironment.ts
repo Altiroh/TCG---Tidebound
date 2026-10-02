@@ -19,6 +19,7 @@ import {
   consumeEquippedEffectDamageShield,
   consumeReasonLossShield,
   consumeTideShipDamageShield,
+  restoreStructureResistanceAfterLoss,
 } from "@/game/state/shields";
 import { getPlayer, type GameState, type PlayerId, type PlayerState } from "@/game/state/types";
 import { applyAbyssesEntryOrExit, clearHouleSickness, isSick } from "@/game/environment/tideTransition";
@@ -210,7 +211,18 @@ function applyTideStructureDamage(
     }),
   })) as [PlayerState, PlayerState];
 
-  return { state: { ...state, players }, events };
+  // Wood Vy : une Structure alliée qui perd de la Résistance à la Marée en
+  // récupère 1, comme sous un coup d'effet ou de combat.
+  let nextState: GameState = { ...state, players };
+  for (const player of state.players) {
+    for (const unit of player.board) {
+      if (!touchee(unit)) continue;
+      const rendu = restoreStructureResistanceAfterLoss(nextState, player.id, unit.instanceId, amount, turnNumber);
+      nextState = rendu.state;
+      events.push(...rendu.events);
+    }
+  }
+  return { state: nextState, events };
 }
 
 /**

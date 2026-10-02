@@ -27,28 +27,23 @@ function allAnomalyInstances(state: GameState): Array<{ owner: PlayerState; unit
 /**
  * "Le Fond Vous Regarde" : au début de CHAQUE tour, force un choix pour le
  * joueur qui DEVIENT actif — cf. `CardDefinition.anomalyForceChoiceAtStartOfTurn`.
- * S'il existe plusieurs Anomalies éligibles à la fois (deux exemplaires, ou
- * Standard + Abyssale simultanément — rare mais possible avec `maxCopies`),
- * seule la PREMIÈRE trouvée ouvre un choix ce tour-ci : ce sous-système ne
- * modélise qu'un choix à la fois en attente, pas une file — simplification
- * assumée plutôt qu'une vraie file de choix pour un cas limite.
+ * CHAQUE Anomalie éligible impose son propre choix (deux exemplaires, ou
+ * Standard + Abyssale) : un choix par carte, dans l'ordre du plateau. Le
+ * premier s'ouvre, les suivants attendent dans `pendingChoiceQueue`.
  */
-export function findAnomalyForcedChoice(
-  state: GameState,
-  activePlayerId: PlayerId,
-  turnNumber: number
-): PendingChoice | undefined {
+export function findAnomalyForcedChoices(state: GameState, activePlayerId: PlayerId, turnNumber: number): PendingChoice[] {
+  const choices: PendingChoice[] = [];
   for (const { unit, def } of allAnomalyInstances(state)) {
     const spec = def.anomalyForceChoiceAtStartOfTurn;
     if (!spec) continue;
-    return {
+    choices.push({
       kind: "reasonOrAnchor",
       playerId: activePlayerId,
       sourceInstanceId: unit.instanceId,
       reasonLossAmount: spec.reasonLossAmount,
       anchorDamageAmount: spec.anchorDamageAmount,
       turnNumber,
-    };
+    });
   }
-  return undefined;
+  return choices;
 }

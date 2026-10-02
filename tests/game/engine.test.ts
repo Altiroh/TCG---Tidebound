@@ -2382,7 +2382,7 @@ describe("engine.dispatch - La Gueule Sous la Mer : saut direct en Abysses + ver
     if (!withMousse.ok) return;
     expect(withMousse.state.players[0].reason).toBe(2); // 3 (après la Gueule et Équipage à bout) - 1 (coût) + 0 (gain verrouillé)
 
-    // Fin du tour de p1 (verrou consommé, pas de régénération), puis fin du tour de p2 (p1 redevient actif : le verrou est levé).
+    // Fin du tour de p1, puis fin du tour de p2 (p1 redevient actif : le verrou est levé).
     const p2Turn = dispatch(withMousse.state, { type: "endTurn", playerId: "p1" });
     expect(p2Turn.ok).toBe(true);
     if (!p2Turn.ok) return;
@@ -2393,7 +2393,9 @@ describe("engine.dispatch - La Gueule Sous la Mer : saut direct en Abysses + ver
     expect(p1Turn.ok).toBe(true);
     if (!p1Turn.ok) return;
     expect(p1Turn.state.players[0].statusFlags).not.toContain("noReasonGainUntilNextTurn");
-    expect(p1Turn.state.players[0].reason).toBe(2); // régénération bloquée PRÉCISÉMENT à ce tour-ci (le verrou vient d'expirer, pas de +1 rétroactif)
+    // Lecture LITTÉRALE : le verrou tombe « au début » de ce tour, avant la
+    // récupération naturelle de l'entame — qui a donc lieu (+2 au 2e tour de p1).
+    expect(p1Turn.state.players[0].reason).toBe(4);
   });
 });
 
