@@ -3,12 +3,17 @@ import { getShipDefinition } from "@/game/environment/shipData";
 import { reasonAfterLoss } from "@/game/state/reason";
 import type { TideStateName } from "@/game/environment/types";
 import { getCardDefinition } from "@/game/cards/sets/core";
-import { hasResistance, isVisibleDuringTide, STATUS_MALADE, UNIT_CARD_TYPES } from "@/game/cards/types";
+import { hasResistance, STATUS_MALADE, UNIT_CARD_TYPES } from "@/game/cards/types";
 import type { CardInstance } from "@/game/cards/types";
 import { RULES } from "@/game/rules/constants";
 import { nextInt } from "@/game/rng";
 import type { GameEvent } from "@/game/events/types";
-import { processGraveyardEntryTriggers, processTrigger } from "@/game/triggers/triggerBus";
+import {
+  processGraveyardEntryTriggers,
+  processTideStateChange,
+  processTrigger,
+  revealStructuresOnTideChange,
+} from "@/game/triggers/triggerBus";
 import { discardFromHandState, recordGraveyardArrival } from "@/game/state/discard";
 import {
   consumeEquippedEffectDamageShield,
@@ -425,17 +430,9 @@ export function appliquerMareeAnnoncee(
   events.push(...turnEffects.events);
 
   if (tick.stateChanged) {
-    const trigger = processTrigger(nextState, { trigger: "onTideStateEntered", tideState: tick.tideState }, turnNumber);
-    nextState = trigger.state;
-    events.push(...trigger.events);
-
-    const exitTrigger = processTrigger(
-      nextState,
-      { trigger: "onTideStateExited", tideState: previousTideState },
-      turnNumber
-    );
-    nextState = exitTrigger.state;
-    events.push(...exitTrigger.events);
+    const change = processTideStateChange(nextState, previousTideState, tick.tideState, turnNumber);
+    nextState = change.state;
+    events.push(...change.events);
   }
 
   // --- Expiration des permanents à durée limitée (Structures/Objets) -----
@@ -493,24 +490,9 @@ export function appliquerMareeAnnoncee(
   // --- "Devient visible" : Structures passant d'invisible à visible ------
   // Ne dépend que d'une transition d'état de Marée (`visibleDuringTide`).
   if (tick.stateChanged) {
-    for (const playerId of nextState.players.map((p) => p.id)) {
-      const player = nextState.players.find((p) => p.id === playerId)!;
-      for (const unit of player.board) {
-        const def = getCardDefinition(unit.cardId);
-        if (!def.visibleDuringTide) continue;
-        const wasVisible = isVisibleDuringTide(def, previousTideState);
-        const isVisible = isVisibleDuringTide(def, tick.tideState);
-        if (wasVisible || !isVisible) continue;
-        events.push({ turnNumber, timestamp: Date.now(), type: "STRUCTURE_REVEALED", playerId, instanceId: unit.instanceId, cardId: unit.cardId });
-        const becomeVisibleTrigger = processTrigger(
-          nextState,
-          { trigger: "onBecomeVisible", playerId, cardId: unit.cardId, sourceInstanceId: unit.instanceId },
-          turnNumber
-        );
-        nextState = becomeVisibleTrigger.state;
-        events.push(...becomeVisibleTrigger.events);
-      }
-    }
+    const reveal = revealStructuresOnTideChange(nextState, previousTideState, tick.tideState, turnNumber);
+    nextState = reveal.state;
+    events.push(...reveal.events);
   }
 
   return { state: nextState, events };

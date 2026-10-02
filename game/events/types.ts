@@ -328,6 +328,16 @@ export interface TideAdvancedEvent extends BaseGameEvent {
   /** Sens de la prochaine transition après ce tick (cadrage 2026-09-10). */
   tideOrientation: "montante" | "descendante";
   stateChanged: boolean;
+  /**
+   * Transition FORCÉE par un effet de carte (Compas, Bouée, Régulateur,
+   * Sept Brasses…), et non le tick de début de tour. `dispatch` en déduit
+   * les mêmes déclencheurs qu'une transition naturelle (`onTideStateEntered`,
+   * `onTideStateExited`, Structures qui deviennent visibles —
+   * `processForcedTideTransitions`), sans rejouer les effets de tour.
+   */
+  forced?: boolean;
+  /** État quitté — renseigné pour une transition forcée. */
+  previousTideState?: "calme" | "houle" | "tempete" | "abysses";
 }
 
 /**

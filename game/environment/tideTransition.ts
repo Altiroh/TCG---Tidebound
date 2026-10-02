@@ -4,7 +4,7 @@ import { STATUS_MALADE } from "@/game/cards/types";
 import type { CardInstance } from "@/game/cards/types";
 import { RULES } from "@/game/rules/constants";
 import type { GameEvent } from "@/game/events/types";
-import { reasonAfterLoss } from "@/game/state/reason";
+import { loseReason } from "@/game/state/shields";
 import type { GameState, PlayerState } from "@/game/state/types";
 
 /**
@@ -63,10 +63,18 @@ export function applyAbyssesEntryOrExit(
   const base = { turnNumber, timestamp: Date.now() };
 
   if (newTideState === "abysses" && previousTideState !== "abysses") {
-    const players = state.players.map((player) => {
+    // Perte de Raison propre au Navire (`extraReason`) : une perte comme une
+    // autre, qui passe par le bouclier de perte de Raison du joueur (Vieux
+    // Loup de Mer, Seconde au Visage Pâle). La Raison max réduite, elle,
+    // n'est pas une perte : c'est un plafond, appliqué ensuite.
+    let shielded = state;
+    for (const player of state.players) {
+      shielded = loseReason(shielded, player.id, computeAbyssesEntryLoss(player).extraReason, turnNumber).state;
+    }
+    const players = shielded.players.map((player) => {
       const loss = computeAbyssesEntryLoss(player);
       const reasonMax = Math.max(0, player.reasonMax - RULES.ABYSSES_REASON_MAX_PENALTY);
-      const reason = Math.min(reasonAfterLoss({ reason: player.reason }, loss.extraReason), reasonMax);
+      const reason = Math.min(player.reason, reasonMax);
       return { ...player, anchor: player.anchor - loss.anchor, reasonMax, reason };
     }) as [PlayerState, PlayerState];
 
@@ -82,7 +90,7 @@ export function applyAbyssesEntryOrExit(
       }
     }
 
-    return { state: { ...state, players }, events };
+    return { state: { ...shielded, players }, events };
   }
 
   if (previousTideState === "abysses" && newTideState !== "abysses") {

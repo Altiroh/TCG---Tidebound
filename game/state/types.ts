@@ -167,6 +167,12 @@ export interface GraveyardArrival {
   /** D'où venait la carte — « depuis votre main » est une condition à part entière. */
   fromZone: "hand" | "board" | "deck";
   /**
+   * Départ du plateau par DESTRUCTION (`processDeaths`) : sa cause, Sabordage
+   * compris (`"scuttle"`). Absente pour un Bris, une expiration ou un
+   * Équipement d'abord retiré autrement — ce ne sont pas des destructions.
+   */
+  destructionCause?: import("@/game/cards/types").DestructionCause;
+  /**
    * Arrivée survenue pendant l'entame du tour de son propriétaire, AVANT que
    * ses capacités de début de tour ne se déclenchent (effets de Marée). Sa
    * capacité « depuis votre dernier tour » l'a donc déjà vue à ce tour-là :

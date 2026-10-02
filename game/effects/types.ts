@@ -924,8 +924,17 @@ export interface EffectDefinition {
   conditionGraveyardArrival?: {
     subtype?: string;
     cardIds?: string[];
-    /** Restreint à une provenance : `"hand"` (défausse) ou `"board"` (destruction). Absent = d'où qu'elle vienne. */
+    /** Restreint à une provenance : `"hand"` (défausse) ou `"board"` (départ du plateau). Absent = d'où qu'elle vienne. */
     fromZone?: "hand" | "board" | "deck";
+    /** « une UNITÉ Un Dead » : ne compte que les cartes de ces types (un Objet brisé, un Équipement ou une Structure de la famille n'en sont pas). */
+    cardTypes?: import("@/game/cards/types").CardType[];
+    /**
+     * « a été DÉTRUITE » : ne compte que les départs du plateau dus à l'une de
+     * ces causes (`GraveyardArrival.destructionCause`). Un Bris, une
+     * expiration ou un Sabordage (`"scuttle"`, si absent de la liste) ne sont
+     * pas des destructions.
+     */
+    destroyedBy?: import("@/game/cards/types").DestructionCause[];
     since: "thisTurn" | "lastOwnTurn";
   };
 

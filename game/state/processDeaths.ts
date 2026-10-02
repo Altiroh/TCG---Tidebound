@@ -6,7 +6,7 @@ import type { GameEvent } from "@/game/events/types";
 import { collectReactionCandidates, processTrigger } from "@/game/triggers/triggerBus";
 import { leaveChromaticShard } from "@/game/rules/chromaticShards";
 import type { DestructionCause } from "@/game/cards/types";
-import { reasonAfterLoss } from "@/game/state/reason";
+import { loseReason } from "@/game/state/shields";
 import { recordGraveyardArrival } from "@/game/state/discard";
 import { markOncePerTurnUsed, oncePerTurnAvailable } from "@/game/state/oncePerTurn";
 import type { GameState, PlayerState } from "@/game/state/types";
@@ -109,7 +109,7 @@ function applyDestructionSubstitute(
     .map((u) => (u.instanceId === unit.instanceId ? savedUnit : u));
   const graveyard = [
     ...player.graveyard,
-    { ...substitute, damageMarked: 0, modifiers: [], graveyardCause: "destroyed" as const },
+    { ...substitute, damageMarked: 0, modifiers: [], graveyardCause: "destroyed" as const, destructionCause: "effect" as const },
   ];
 
   const nextState: GameState = {
@@ -229,13 +229,20 @@ function destroyOrphanedEquipment(state: GameState, turnNumber: number): { state
       players: next.players.map((p) =>
         p.id === player.id
           ? orphans.reduce<PlayerState>(
-              (acc, u) => recordGraveyardArrival(acc, { cardId: u.cardId, turnNumber, fromZone: "board" }),
+              (acc, u) => recordGraveyardArrival(acc, { cardId: u.cardId, turnNumber, fromZone: "board", destructionCause: "effect" }),
               {
                 ...p,
                 board: current.board.filter((u) => !orphanIds.has(u.instanceId)),
                 graveyard: [
                   ...current.graveyard,
-                  ...orphans.map((u) => ({ ...u, damageMarked: 0, modifiers: [], attachedToInstanceId: undefined, graveyardCause: "destroyed" as const })),
+                  ...orphans.map((u) => ({
+                    ...u,
+                    damageMarked: 0,
+                    modifiers: [],
+                    attachedToInstanceId: undefined,
+                    graveyardCause: "destroyed" as const,
+                    destructionCause: "effect" as const,
+                  })),
                 ],
               }
             )
@@ -393,13 +400,18 @@ export function processDeaths(
       // (ex: Chaîne de Fer Noir) : son contrôleur perd de la Raison quand
       // l'unité qu'il équipe meurt — lu AVANT le filtrage du board, tant
       // que l'Équipement (toujours attaché à `unit`) y est encore présent.
-      const equipReasonLoss = player.board
-        .filter((u) => u.attachedToInstanceId === unit.instanceId)
-        .reduce((sum, equip) => sum + (getCardDefinition(equip.cardId).controllerReasonLossOnOwnDestruction ?? 0), 0);
+      //
+      // « Si elle est DÉTRUITE » : un Sabordage n'en est pas une (cf.
+      // `DestructionCause`), il ne coûte donc rien.
+      const scuttled = unit.pendingRemoval === "scuttled";
+      const equipReasonLoss = scuttled
+        ? 0
+        : player.board
+            .filter((u) => u.attachedToInstanceId === unit.instanceId)
+            .reduce((sum, equip) => sum + (getCardDefinition(equip.cardId).controllerReasonLossOnOwnDestruction ?? 0), 0);
 
       const board = player.board.filter((u) => u.instanceId !== unit.instanceId);
 
-      const scuttled = unit.pendingRemoval === "scuttled";
       const cause = destructionCauseOf(
         unit,
         computeEffectiveStats(unit, tideState, {
@@ -425,19 +437,24 @@ export function processDeaths(
       // cette inscription, « une carte Un Dead a rejoint votre Cimetière ce
       // tour » (Lot 13) ne verrait que les défausses, et un Un Dead tué au
       // combat ne compterait pas — ce que son texte ne dit nulle part.
+      // La cause est inscrite avec l'arrivée : « une unité Un Dead a été
+      // DÉTRUITE ce tour » ne doit compter ni un Sabordage ni un Bris.
       const updatedPlayer = recordGraveyardArrival(
-        {
-          ...player,
-          board,
-          graveyard,
-          reason: reasonAfterLoss(player, equipReasonLoss),
-        },
-        { cardId: unit.cardId, turnNumber, fromZone: "board" }
+        { ...player, board, graveyard },
+        { cardId: unit.cardId, turnNumber, fromZone: "board", destructionCause: cause }
       );
       next = {
         ...next,
         players: next.players.map((p) => (p.id === player.id ? updatedPlayer : p)) as [PlayerState, PlayerState],
       };
+      // Perte de Raison de l'Équipement (Chaîne de Fer Noir) : par le chemin
+      // commun, bouclier de perte de Raison compris.
+      let equipReasonLost = 0;
+      if (equipReasonLoss > 0) {
+        const perte = loseReason(next, player.id, equipReasonLoss, turnNumber);
+        next = perte.state;
+        equipReasonLost = perte.lost;
+      }
       // Le Sabordage est un fait distinct, que des cartes et des quêtes
       // observent : il précède la destruction, comme dans `saborder.ts`.
       if (scuttled) {
@@ -450,8 +467,8 @@ export function processDeaths(
         turnNumber,
         timestamp: Date.now(),
       });
-      if (equipReasonLoss > 0) {
-        events.push({ type: "REASON_CHANGED", playerId: player.id, delta: -equipReasonLoss, turnNumber, timestamp: Date.now() });
+      if (equipReasonLost > 0) {
+        events.push({ type: "REASON_CHANGED", playerId: player.id, delta: -equipReasonLost, turnNumber, timestamp: Date.now() });
       }
 
       if (scuttled) {

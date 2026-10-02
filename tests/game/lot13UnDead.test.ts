@@ -334,12 +334,22 @@ describe("Lot 13 — l'attrition", () => {
     });
     const avant = state.players.find((p) => p.id === "p2")!.anchor;
 
-    // Le Sabordage est la voie la plus courte jusqu'à une mort, sans passer
-    // par le combat — et il déclenche `onDeath` comme n'importe quelle
-    // destruction.
+    // « Quand elle est DÉTRUITE » : un Sabordage n'en est pas une (cause
+    // `scuttle`), le Navire adverse ne bouge pas.
     const saborde = dispatch(state, { type: "saborder", playerId: "p1", instanceId: copain.instanceId });
     ok(saborde);
-    expect(saborde.state.players.find((p) => p.id === "p2")!.anchor).toBe(avant - 1);
+    expect(saborde.state.players.find((p) => p.id === "p2")!.anchor).toBe(avant);
+
+    // Détruite par un effet : elle cogne.
+    const condamnee = {
+      ...state,
+      players: state.players.map((p) =>
+        p.id === "p1" ? { ...p, board: p.board.map((u) => ({ ...u, pendingRemoval: "destroyed" as const })) } : p
+      ) as typeof state.players,
+    };
+    const detruite = dispatch(condamnee, { type: "advancePhase", playerId: "p1" });
+    ok(detruite);
+    expect(detruite.state.players.find((p) => p.id === "p2")!.anchor).toBe(avant - 1);
   });
 
   it("Encore cinq minutes se sauve du COMBAT, quelle que soit la Marée — mais pas d'un effet", () => {
@@ -398,7 +408,9 @@ describe("Lot 13 — choisir une carte du Cimetière ailleurs que sur un Bris", 
   });
 
   it("Tu viens jouer ? ne réduit le coût que si un Un Dead a été DÉTRUIT ce tour", () => {
-    function pose(arrivals: { cardId: string; turnNumber: number; fromZone: "hand" | "board" | "deck" }[]) {
+    function pose(
+      arrivals: { cardId: string; turnNumber: number; fromZone: "hand" | "board" | "deck"; destructionCause?: "combat" | "effect" | "tide" | "scuttle" }[]
+    ) {
       const tuViensJouer = instance("tu-viens-jouer", "p1");
       const ptitBout = instance("ptit-bout", "p1");
       const state = testGameState({
@@ -420,7 +432,12 @@ describe("Lot 13 — choisir une carte du Cimetière ailleurs que sur un Bris", 
     // Défaussé ce tour : ce n'est pas « détruite », le texte ne paie pas.
     expect(pose([{ cardId: "ptit-bout", turnNumber: 1, fromZone: "hand" }])).toHaveLength(0);
     // Détruit ce tour : la réduction est posée.
-    expect(pose([{ cardId: "ptit-bout", turnNumber: 1, fromZone: "board" }])).toHaveLength(1);
+    expect(pose([{ cardId: "ptit-bout", turnNumber: 1, fromZone: "board", destructionCause: "combat" }])).toHaveLength(1);
+    // Sabordé : un Sabordage n'est pas une destruction (« a été détruite »).
+    expect(pose([{ cardId: "ptit-bout", turnNumber: 1, fromZone: "board", destructionCause: "scuttle" }])).toHaveLength(0);
+    // Un Objet Un Dead brisé quitte aussi le plateau, mais ce n'est ni une
+    // UNITÉ ni une destruction.
+    expect(pose([{ cardId: "la-petite-chanson", turnNumber: 1, fromZone: "board" }])).toHaveLength(0);
   });
 
   it("une destruction s'inscrit au journal des arrivées, comme une défausse", () => {
@@ -433,7 +450,9 @@ describe("Lot 13 — choisir une carte du Cimetière ailleurs que sur un Bris", 
     const saborde = dispatch(state, { type: "saborder", playerId: "p1", instanceId: copain.instanceId });
     ok(saborde);
     const arrivals = saborde.state.players.find((p) => p.id === "p1")!.graveyardArrivals ?? [];
-    expect(arrivals).toContainEqual({ cardId: "le-copain-du-dessous", turnNumber: 1, fromZone: "board" });
+    // La cause est inscrite avec l'arrivée : un Sabordage reste une arrivée
+    // au Cimetière, mais pas une destruction.
+    expect(arrivals).toContainEqual({ cardId: "le-copain-du-dessous", turnNumber: 1, fromZone: "board", destructionCause: "scuttle" });
   });
 
   it("Tu m'avais promis se propose en réaction, et attend une carte du Cimetière", () => {

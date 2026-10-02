@@ -16,7 +16,7 @@ import { processTrigger } from "@/game/triggers/triggerBus";
 import { eligibleCandidatesFor } from "@/game/reactions/reactionWindow";
 import { assertUnitCanAttack, hasEffectiveKeyword, hasKeywordInContext, KEYWORD_PIED_MARIN } from "@/game/rules/validation";
 import type { GameState } from "@/game/state/types";
-import { activateReactionFor, instance, testEnvironment, testGameState, testPlayer } from "./testHelpers";
+import { activateReactionFor, instance, pendingCandidates, testEnvironment, testGameState, testPlayer } from "./testHelpers";
 
 const STRUCTURE = "le-trone-de-bouchon"; // Structure toujours visible, sans capacité
 const OBJET = "cartes-des-courants"; // Objet coût 2, sans cible ni Raison en jeu
@@ -287,20 +287,24 @@ describe("Levier de Lest — Sabordage conjoint d'une Structure", () => {
     expect(result.events.some((e) => e.type === "SABORDED" && e.instanceId === structure.instanceId)).toBe(true);
   });
 
-  it("le Sabordage forcé réveille les observateurs (Mécanicien aux Mains Noires)", () => {
+  it("le Sabordage forcé réveille les observateurs « détruite ou Sabordée », pas ceux de « détruite »", () => {
     const levier = instance("levier-de-lest", "p1");
     const structure = instance(STRUCTURE, "p1");
     const kept = instance(STRUCTURE, "p1");
     const mecanicien = instance("mecanicien-aux-mains-noires", "p1");
-    const state = testGameState({ players: [testPlayer("p1", { board: [levier, structure, kept, mecanicien], reason: 5 }), testPlayer("p2")] });
+    const bernard = instance("bernard-lermite-dacier", "p1");
+    const state = testGameState({
+      players: [testPlayer("p1", { board: [levier, structure, kept, mecanicien, bernard], reason: 5 }), testPlayer("p2")],
+    });
     const broken = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: levier.instanceId, targetInstanceId: structure.instanceId });
     ok(broken);
     expect(player(broken.state, "p1").reason).toBe(6); // +1 du Levier
-    // Le Mécanicien PROPOSE son renfort : le Sabordage forcé ouvre bien sa fenêtre.
-    const result = activateReactionFor(broken.state, "mecanicien-aux-mains-noires", kept.instanceId);
-    ok(result);
-    const survivor = board(result.state, "p1").find((u) => u.instanceId === kept.instanceId)!;
-    expect(computeEffectiveStats(survivor, result.state.environment.tideState).health).toBe(5);
+    // Bernard (« détruite OU SABORDÉE ») voit le Sabordage : +1 Puissance.
+    const lermite = board(broken.state, "p1").find((u) => u.instanceId === bernard.instanceId)!;
+    expect(lermite.modifiers.reduce((s, m) => s + m.attack, 0)).toBe(1);
+    // Le Mécanicien (« est DÉTRUITE ») ne se propose pas : un Sabordage n'est
+    // pas une destruction (revue B2, décision appliquée le 02/10/2026).
+    expect(pendingCandidates(broken.state).some((c) => c.cardId === "mecanicien-aux-mains-noires")).toBe(false);
   });
 });
 
@@ -416,9 +420,20 @@ describe("Théâtre Englouti et Cra-Poiscail — écarts relevés le 17/09/2026"
     const state = testGameState({
       players: [testPlayer("p1", { board: [pulcinella] }), testPlayer("p2", { board: [marin, creature] })],
     });
-    // Pulcinella meurt d'une action du joueur : c'est `dispatch` qui ouvre
-    // la fenêtre, et la cible est désignée depuis le cimetière.
-    const dead = dispatch({ ...state, phase: "mainPhase" }, { type: "saborder", playerId: "p1", instanceId: pulcinella.instanceId });
+    // Pulcinella est DÉTRUIT (un Sabordage n'en serait pas une) : c'est
+    // `dispatch` qui ouvre la fenêtre, et la cible est désignée depuis le
+    // cimetière.
+    const sabordage = dispatch({ ...state, phase: "mainPhase" }, { type: "saborder", playerId: "p1", instanceId: pulcinella.instanceId });
+    ok(sabordage);
+    expect(sabordage.state.pendingReaction).toBeUndefined();
+    const condamne = {
+      ...state,
+      phase: "mainPhase" as const,
+      players: state.players.map((p) =>
+        p.id === "p1" ? { ...p, board: p.board.map((u) => ({ ...u, pendingRemoval: "destroyed" as const })) } : p
+      ) as typeof state.players,
+    };
+    const dead = dispatch(condamne, { type: "advancePhase", playerId: "p1" });
     ok(dead);
     expect(board(dead.state, "p1")).toHaveLength(0);
     const result = activateReactionFor(dead.state, "pulcinella-gonfle", creature.instanceId);

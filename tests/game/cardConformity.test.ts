@@ -42,7 +42,11 @@ type RuleId =
   /** Anomalie à résolution immédiate : part au Cimetière (`permanent: false`). */
   | "anomalie-ephemere"
   /** « Signal Rouge » annoncé par le texte, porté par l'identité chromatique (Lot 15). */
-  | "signal";
+  | "signal"
+  /** « unité <famille> » : le filtre de famille se limite aux Marins et Créatures. */
+  | "unite-famille"
+  /** « est détruite » sans « ou Sabordée » : un Sabordage ne déclenche pas. */
+  | "detruite";
 
 /**
  * Écarts assumés, avec leur motif. La clé est `${cardId}:${rule}`.
@@ -217,6 +221,59 @@ function check(def: CardDefinition): Violation[] {
   for (const [index, ability] of abilities.entries()) {
     if (!OBSERVER_ONLY.includes(ability.trigger) || ability.triggeredBy) continue;
     push("observateur", `capacité #${index} (${ability.trigger}) : un déclencheur d'observateur sans triggeredBy ne se déclenche jamais`);
+  }
+
+  // --- « unité <famille> » vs « carte <famille> » ---------------------------
+  // Nomenclature Notion : « une unité Cra-Poiscail » = un Marin ou une
+  // Créature de la famille ; « une carte Cra-Poiscail » = tout type. Un
+  // filtre de famille (archétype ou sous-type) posé sur une carte dont le
+  // texte ne parle que d'UNITÉS de cette famille doit donc se limiter aux
+  // unités : sinon une Structure, un Équipement ou un Objet de la famille
+  // déclenche, est désigné ou consomme une réduction (revue B3, causes A/B).
+  // Une carte qui cite à la fois « unité X » et « carte X » est vérifiée par
+  // son test de comportement, la règle ne sait pas attribuer chaque filtre.
+  const UNIT_TYPES = ["marin", "creature"];
+  const unitsOnlyTypes = (types?: readonly string[]) => Boolean(types && types.length > 0 && types.every((t) => UNIT_TYPES.includes(t)));
+  for (const famille of ["Cra-Poiscail", "Marionnette", "Un Dead"]) {
+    if (!new RegExp(`unit[ée]s? ${famille}`, "i").test(text) || new RegExp(`cartes? ${famille}`, "i").test(text)) continue;
+    for (const [index, ability] of abilities.entries()) {
+      const tb = ability.triggeredBy;
+      if (tb && (tb.archetype || tb.subtype) && !unitsOnlyTypes(tb.cardTypes)) {
+        push("unite-famille", `capacité #${index} : « unité ${famille} » mais triggeredBy ne restreint pas aux unités (cardTypes)`);
+      }
+    }
+    for (const effect of effects) {
+      const among = effect.target.kind === "chosenUnit" ? effect.target.among : undefined;
+      // Le filtre d'archétype implique déjà les unités (`eligibleChosenUnits`) ; le sous-type, non.
+      if (among?.subtype && !among.unitsOnly && !unitsOnlyTypes(among.cardTypes)) {
+        push("unite-famille", `cible « unité ${famille} » sans \`unitsOnly\``);
+      }
+      // « la prochaine UNITÉ X que vous jouez » — une gratuité sur « une autre
+      // X » sans plus (Changement de rôle !) n'est pas concernée.
+      const reductionSurUnite = new RegExp(`prochaine unit[ée] ${famille}`, "i").test(text);
+      if (reductionSurUnite && effect.type === "discountNextCards" && effect.filter?.subtype && !unitsOnlyTypes(effect.filter.cardTypes)) {
+        push("unite-famille", `réduction sur « unité ${famille} » sans cardTypes unités`);
+      }
+      const arrival = effect.conditionGraveyardArrival;
+      if (arrival?.subtype && arrival.fromZone === "board" && !unitsOnlyTypes(arrival.cardTypes)) {
+        push("unite-famille", `« une unité ${famille} a été détruite » sans cardTypes unités`);
+      }
+    }
+  }
+
+  // --- « détruite » n'est pas « Sabordée » -----------------------------------
+  // `DestructionCause` : un Sabordage est un coût consenti, jamais une
+  // destruction subie. Les textes qui veulent les deux le disent (« détruite
+  // ou Sabordée », Bernard l'Ermite, Charpentière de Veille) ; les autres
+  // déclarent les causes retenues (`destroyedBy`, sans "scuttle").
+  if (/d[ée]trui|destruction/i.test(text) && !/ou Sabord[ée]/i.test(text)) {
+    for (const [index, ability] of abilities.entries()) {
+      if (ability.trigger !== "onDeath") continue;
+      const causes = ability.triggeredBy ? ability.triggeredBy.destroyedBy : ability.condition?.destroyedBy;
+      if (!causes || causes.includes("scuttle")) {
+        push("detruite", `capacité #${index} (onDeath) : « détruite » sans destroyedBy qui écarte le Sabordage`);
+      }
+    }
   }
 
   // --- Sabordage / Bris ----------------------------------------------------

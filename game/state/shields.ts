@@ -89,6 +89,40 @@ export function reasonCostAfterShield(state: GameState, playerId: PlayerId, cost
 }
 
 /**
+ * PERTE DE RAISON subie par `playerId`, quelle qu'en soit la source : le
+ * SEUL chemin par lequel le moteur retire de la Raison. Il consomme d'abord
+ * le bouclier « la première fois à chaque tour que vous perdez de la
+ * Raison, réduisez cette perte de 1 » (Vieux Loup de Mer, Seconde au Visage
+ * Pâle) — que le texte applique « toute source confondue » : effet, coût,
+ * Marée, attaque adverse, Équipement, choc d'entrée des Abysses.
+ *
+ * Plusieurs sites appelaient `reasonAfterLoss` en direct et contournaient
+ * ainsi le bouclier (perte infligée par une attaque, perte après une
+ * attaque, Équipement à la mort de son porteur, entrée en Abysses). Une
+ * perte nulle ne consomme rien. `lost` : ce qui a réellement été perdu.
+ */
+export function loseReason(
+  state: GameState,
+  playerId: PlayerId,
+  amount: number,
+  turnNumber: number
+): { state: GameState; lost: number } {
+  if (amount <= 0) return { state, lost: 0 };
+  const shield = consumeReasonLossShield(state, playerId, turnNumber);
+  const lost = Math.max(0, amount - shield.reduction);
+  const player = getPlayer(shield.state, playerId);
+  return {
+    state: {
+      ...shield.state,
+      players: shield.state.players.map((p) =>
+        p.id === playerId ? { ...player, reason: reasonAfterLoss(player, lost) } : p
+      ) as [PlayerState, PlayerState],
+    },
+    lost,
+  };
+}
+
+/**
  * Paie un coût en Raison en consommant le bouclier de perte de Raison s'il
  * est disponible. Un coût nul ne consomme rien (le bouclier reste pour une
  * vraie perte plus tard dans le tour).
@@ -99,19 +133,8 @@ export function payReasonCost(
   cost: number,
   turnNumber: number
 ): { state: GameState; paid: number } {
-  if (cost <= 0) return { state, paid: 0 };
-  const shield = consumeReasonLossShield(state, playerId, turnNumber);
-  const paid = Math.max(0, cost - shield.reduction);
-  const player = getPlayer(shield.state, playerId);
-  return {
-    state: {
-      ...shield.state,
-      players: shield.state.players.map((p) =>
-        p.id === playerId ? { ...player, reason: reasonAfterLoss(player, paid) } : p
-      ) as [PlayerState, PlayerState],
-    },
-    paid,
-  };
+  const loss = loseReason(state, playerId, cost, turnNumber);
+  return { state: loss.state, paid: loss.lost };
 }
 
 /** Réduction de dégâts de Marée au Navire disponible (Brise-Vague de Fortune, Tempête uniquement) — 0 si aucun bouclier éligible. */
@@ -215,9 +238,12 @@ export function consumeEquippedEffectDamageShield(
     {
       ...player,
       board: player.board.filter((u) => u.instanceId !== equipment.instanceId),
-      graveyard: [...player.graveyard, { ...equipment, damageMarked: 0, modifiers: [], graveyardCause: "destroyed" as const }],
+      graveyard: [
+        ...player.graveyard,
+        { ...equipment, damageMarked: 0, modifiers: [], graveyardCause: "destroyed" as const, destructionCause: "effect" as const },
+      ],
     },
-    { cardId: equipment.cardId, turnNumber, fromZone: "board" }
+    { cardId: equipment.cardId, turnNumber, fromZone: "board", destructionCause: "effect" }
   );
 
   return {

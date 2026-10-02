@@ -6,6 +6,7 @@ import { candidateKey, deriveReactionTriggerEvents, eligibleCandidatesFor, recom
 import {
   processGraveyardEntryTriggers,
   processGraveyardRecoveryTriggers,
+  processReturnedToHandTriggers,
   processSummonEnterTriggers,
   resolveReaction,
 } from "@/game/triggers/triggerBus";
@@ -154,6 +155,13 @@ export function activateReaction(state: GameState, action: ActivateReactionActio
   const arrivals = processSummonEnterTriggers(nextState, resolution.events, pending.turnNumber);
   nextState = arrivals.state;
   events.push(...arrivals.events);
+
+  // Ce qu'elle vient de renvoyer en main (Arlecchino, Le Régisseur Sans
+  // Visage) : Le Théâtre Englouti et les Régisseurs doivent le voir, comme
+  // un renvoi fait par un Bris ou par une capacité automatique.
+  const returned = processReturnedToHandTriggers(nextState, resolution.events, pending.turnNumber);
+  nextState = returned.state;
+  events.push(...returned.events);
 
   // Et ce qu'elle vient de repêcher ou de défausser : une réaction n'est pas
   // une voie à part, ses gestes réveillent les mêmes déclencheurs.

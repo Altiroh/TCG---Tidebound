@@ -136,12 +136,14 @@ describe("Brise-Vague de Fortune : un seul usage pour toute la partie", () => {
 describe("un effet proposé peut être refusé", () => {
   it("une réaction facultative : passer ferme la fenêtre sans rien appliquer", () => {
     const mecanicien = instance("mecanicien-aux-mains-noires", "p1");
-    const structure = instance("le-trone-de-bouchon", "p1");
+    // La Structure est DÉTRUITE par un effet (un Sabordage ne réveillerait
+    // pas le Mécanicien, dont le texte dit « est détruite »).
+    const structure = instance("le-trone-de-bouchon", "p1", { pendingRemoval: "destroyed" });
     const autre = instance("le-role-dequipage", "p1", { turnsRemaining: 4 });
     const state = testGameState({
       players: [testPlayer("p1", { board: [mecanicien, structure, autre], reason: 4 }), testPlayer("p2")],
     });
-    const saborded = dispatch(state, { type: "saborder", playerId: "p1", instanceId: structure.instanceId });
+    const saborded = dispatch(state, { type: "advancePhase", playerId: "p1" });
     ok(saborded);
     expect(pendingCandidates(saborded.state).some((c) => c.cardId === "mecanicien-aux-mains-noires")).toBe(true);
     const reasonAvant = player(saborded.state, "p1").reason;

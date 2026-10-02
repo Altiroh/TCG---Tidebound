@@ -48,10 +48,22 @@ describe("Veillée — des gains qui restent", () => {
         testPlayer("p2", { shipId: "le-goliath", deck: pioche(10, "p2") }),
       ],
     });
+    // « est DÉTRUITE » : un Sabordage n'en est pas une, Papa ne bouge pas.
     const sabordage = dispatch(state, { type: "saborder", playerId: "p1", instanceId: ptitBout.instanceId });
     if (!sabordage.ok) throw new Error(sabordage.error);
-    expect(puissance(sabordage.state, "p1", papa.instanceId)).toBe(1);
-    expect(puissance(finDeTour(sabordage.state), "p1", papa.instanceId)).toBe(1);
+    expect(puissance(sabordage.state, "p1", papa.instanceId)).toBe(0);
+
+    // Une vraie destruction (par un effet) : +1 Puissance, conservée.
+    const condamne = {
+      ...state,
+      players: state.players.map((p) =>
+        p.id === "p1" ? { ...p, board: p.board.map((u) => (u.instanceId === ptitBout.instanceId ? { ...u, pendingRemoval: "destroyed" as const } : u)) } : p
+      ) as typeof state.players,
+    };
+    const detruit = dispatch(condamne, { type: "advancePhase", playerId: "p1" });
+    if (!detruit.ok) throw new Error(detruit.error);
+    expect(puissance(detruit.state, "p1", papa.instanceId)).toBe(1);
+    expect(puissance(finDeTour(detruit.state), "p1", papa.instanceId)).toBe(1);
   });
 
   it("Encore cinq minutes : elle tient au combat et gagne +1 Puissance, conservée", () => {

@@ -11,7 +11,7 @@ import {
   processSummonEnterTriggers,
   processTrigger,
 } from "@/game/triggers/triggerBus";
-import { isEligibleChosenUnit } from "@/game/effects/chosenTargets";
+import { eligibleBreakTargets } from "@/game/effects/chosenTargets";
 import { validateGraveyardChoice } from "@/game/effects/graveyardChoices";
 import { markOncePerTurnUsed, oncePerTurnAvailable } from "@/game/state/oncePerTurn";
 import type { EffectDefinition } from "@/game/effects/types";
@@ -402,7 +402,11 @@ function validate(state: GameState, action: BreakObjectAction) {
     // silencieusement ignorée par `resolveEffect`.
     const legal = (def.onBreakEffects ?? [])
       .filter((e) => e.target.kind === "chosenUnit")
-      .every((e) => isEligibleChosenUnit(state, e.target, action.playerId, action.targetInstanceId!, action.instanceId));
+      .every((e) =>
+        eligibleBreakTargets(state, e.target, action.playerId, action.instanceId).some(
+          (c) => c.unit.instanceId === action.targetInstanceId
+        )
+      );
     if (!legal) return { ok: false as const, error: "Cette carte n'est pas une cible valide pour ce Bris." };
   }
 

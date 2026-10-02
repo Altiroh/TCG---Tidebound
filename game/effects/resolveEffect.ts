@@ -219,6 +219,8 @@ export function hasGraveyardArrival(
     if (condition.fromZone && entry.fromZone !== condition.fromZone) return false;
     if (condition.cardIds && !condition.cardIds.includes(entry.cardId)) return false;
     if (condition.subtype && getCardDefinition(entry.cardId).subtype !== condition.subtype) return false;
+    if (condition.cardTypes && !condition.cardTypes.includes(getCardDefinition(entry.cardId).type)) return false;
+    if (condition.destroyedBy && !(entry.destructionCause && condition.destroyedBy.includes(entry.destructionCause))) return false;
     return true;
   });
 }
@@ -1294,6 +1296,8 @@ export function resolveEffect(
           tideState: tick.tideState,
           tideOrientation: tick.tideOrientation,
           stateChanged: tick.stateChanged,
+          forced: true,
+          previousTideState: nextState.environment.tideState,
         });
         return withForcedTransition(
           {
@@ -1364,11 +1368,12 @@ export function resolveEffect(
 
     case "tideForceAdvance":
     case "tideForceRetreat": {
-      // Simplification assumée : contrairement au tick de début de tour
-      // (`resolveTideTurnStep`), cette transition forcée ne déclenche pas
-      // `onTideStateEntered` ni les vérifications "devient visible". Le choc
-      // d'entrée/sortie (Abysses, Houle), lui, s'applique bien — cf.
-      // `withForcedTransition`.
+      // Le choc d'entrée/sortie (Abysses, Houle) s'applique ici même — cf.
+      // `withForcedTransition`. Les déclencheurs d'une transition
+      // (`onTideStateEntered`/`onTideStateExited`, Structures qui deviennent
+      // visibles) ne peuvent pas partir d'ici (`resolveEffect` n'appelle pas
+      // le bus) : l'événement est marqué `forced` et `dispatch` les réveille
+      // (`processForcedTideTransitions`), comme au tick de début de tour.
       const tick = forceTideTransition(state.environment, effect.type === "tideForceAdvance" ? "avancer" : "reculer");
       events.push({
         ...base,
@@ -1377,6 +1382,8 @@ export function resolveEffect(
         tideState: tick.tideState,
         tideOrientation: tick.tideOrientation,
         stateChanged: tick.stateChanged,
+        forced: true,
+        previousTideState: state.environment.tideState,
       });
       return withForcedTransition(
         {
@@ -1452,6 +1459,8 @@ export function resolveEffect(
         tideState: tick.tideState,
         tideOrientation: tick.tideOrientation,
         stateChanged: tick.stateChanged,
+        forced: true,
+        previousTideState: state.environment.tideState,
       });
       return withForcedTransition(
         {

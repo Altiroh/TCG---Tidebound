@@ -75,7 +75,11 @@ export function legalTargetsFor(state: GameState, viewerId: PlayerId, targeting:
     }
     case "break": {
       const card = [...viewer.hand, ...viewer.board].find((c) => c.instanceId === targeting.sourceInstanceId);
-      return card ? chosenAmong(state, getCardDefinition(card.cardId).onBreakEffects ?? [], viewerId, card.instanceId) : null;
+      if (!card) return null;
+      // L'Objet brisé quitte le plateau avant ses effets : jamais sa propre cible.
+      const among = chosenAmong(state, getCardDefinition(card.cardId).onBreakEffects ?? [], viewerId, card.instanceId);
+      if (among) among.delete(card.instanceId);
+      return among;
     }
     case "ability": {
       const card = viewer.board.find((c) => c.instanceId === targeting.sourceInstanceId);

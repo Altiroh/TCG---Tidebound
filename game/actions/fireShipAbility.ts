@@ -79,7 +79,9 @@ export function fireShipAbility(state: GameState, action: FireShipAbilityAction)
   if (!action.targetInstanceId && !state.pendingAttack) {
     const defenseur = state.players.find((p) => p.id !== player.id)!;
     const triggerEvents: TriggerEvent[] = [
-      { trigger: "onIncomingDirectAttack", playerId: defenseur.id, sourceInstanceId: player.id },
+      // `fromShipShot` : un texte qui nomme une UNITÉ attaquante ne s'ouvre
+      // pas sur un tir (`condition.attackFromUnit`).
+      { trigger: "onIncomingDirectAttack", playerId: defenseur.id, sourceInstanceId: player.id, fromShipShot: true },
     ];
     const candidats = collectReactionCandidates(state, triggerEvents, defenseur.id, state.turnNumber);
     if (candidats.length > 0) {

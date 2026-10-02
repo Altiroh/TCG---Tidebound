@@ -79,11 +79,15 @@ export function deriveReactionTriggerEvents(state: GameState, events: GameEvent[
         // relit dans le cimetière, où `processDeaths` vient de le poser.
         const found = findCardInstance(state, event.instanceId);
         if (!found) break;
+        // Sa CAUSE aussi, relue au même endroit : sans elle, « est détruite »
+        // (`destroyedBy`) ne matcherait jamais dans une fenêtre de réaction,
+        // et un Sabordage passerait pour une destruction.
         derived.push({
           trigger: "onDeath",
           playerId: found.owner.id,
           cardId: found.card.cardId,
           sourceInstanceId: event.instanceId,
+          destructionCause: found.card.destructionCause,
         });
         break;
       }

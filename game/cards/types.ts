@@ -107,7 +107,9 @@ export interface TriggerSourceFilter {
   /**
    * `onDeath` seulement : ne réagit qu'aux destructions de cette CAUSE
    * (ex: « au combat »). Absent = toutes les destructions, Sabordage
-   * compris — le comportement historique.
+   * compris — le comportement historique, réservé aux textes qui disent
+   * « détruite ou Sabordée ». Un texte qui dit seulement « détruite »
+   * déclare `["combat", "effect", "tide"]` (vérifié par la conformité).
    */
   destroyedBy?: DestructionCause[];
   /**
@@ -247,6 +249,30 @@ export interface TriggeredAbility {
      * Dérive), sans dupliquer la même carte.
      */
     attackerPowerAtLeast?: number;
+    /**
+     * « lorsqu'une UNITÉ adverse attaque directement / inflige des dégâts
+     * directs » : la fenêtre d'interception ne s'ouvre pas sur un TIR DE
+     * NAVIRE (`TriggerEvent.fromShipShot`). Sans elle, `onIncomingDirectAttack`
+     * couvre aussi les tirs — c'est voulu pour « votre Navire devrait subir
+     * des dégâts directs » (arbitrage du 21/09/2026), pas pour un texte qui
+     * nomme une unité attaquante.
+     */
+    attackFromUnit?: boolean;
+    /**
+     * « lorsqu'une de VOS UNITÉS est ciblée par une attaque » : l'attaque en
+     * cours (`pendingAttack`) vise une unité que le contrôleur de la
+     * capacité contrôle — pas son Navire (attaque directe), pas une
+     * Structure.
+     */
+    attackTargetIsOwnUnit?: boolean;
+    /**
+     * `onDeath` PERSONNEL (« quand il est détruit », « à sa destruction ») :
+     * ne se déclenche que pour ces CAUSES de départ. Pendant, pour la carte
+     * elle-même, de `TriggerSourceFilter.destroyedBy` : « détruite » n'est
+     * pas « Sabordée » (`["combat", "effect", "tide"]`), un texte qui veut
+     * les deux le dit (« détruite ou Sabordée »).
+     */
+    destroyedBy?: DestructionCause[];
     tideState?: TideStateName;
     tideStateIn?: TideStateName[];
     controlsAnyCardIds?: string[];
@@ -338,6 +364,10 @@ export interface TriggeredAbility {
        * pour une destruction. Absent = d'où qu'elle vienne.
        */
       fromZone?: "hand" | "board" | "deck";
+      /** « une UNITÉ Un Dead » : ne compte que les cartes de ces types. */
+      cardTypes?: CardType[];
+      /** « a été DÉTRUITE » : ne compte que les départs du plateau de ces causes (un Sabordage, un Bris ou une expiration n'en est pas une). */
+      destroyedBy?: DestructionCause[];
       since: "thisTurn" | "lastOwnTurn";
     };
     /**
@@ -901,9 +931,21 @@ export interface CardDefinition {
   selfDamageOnDirectAttack?: number;
 
   /**
+   * Variante de `selfDamageOnDirectAttack` pour « lorsqu'il INFLIGE des
+   * dégâts directs au Navire adverse » (Requin Balafré) : ne s'applique que
+   * si la coque a réellement subi des dégâts (> 0) — pas après une
+   * interception, un Contrecoup, un bouclier ou un plafond qui ramène le
+   * coup à 0. « S'il attaque directement » (Harpon de Pont) garde
+   * `selfDamageOnDirectAttack`, qui se paie dans tous les cas.
+   */
+  selfDamageOnDirectDamageDealt?: number;
+
+  /**
    * Pour une unité ATTAQUANTE (ou l'Équipement qui l'équipe) : l'adversaire
-   * perd cette Raison en plus quand elle inflige des dégâts DIRECTS à son
-   * Navire (ex: Anguille des Profondeurs, Bat-Marin Abyssal). `tideStateIn`
+   * perd cette Raison en plus quand elle INFLIGE des dégâts DIRECTS à son
+   * Navire (ex: Anguille des Profondeurs, Bat-Marin Abyssal) — seulement si
+   * la coque a réellement subi des dégâts (> 0), et sous réserve du bouclier
+   * de perte de Raison du défenseur. `tideStateIn`
    * restreint l'effet à ces états de Marée (souvent Abysses) ; absent =
    * toujours actif.
    */
@@ -921,9 +963,11 @@ export interface CardDefinition {
 
   /**
    * Pour un Équipement UNIQUEMENT : son contrôleur perd cette Raison quand
-   * l'unité qu'il équipe MEURT au combat (ex: Chaîne de Fer Noir, "Si elle
-   * est détruite, perdez 1 Raison"). Ne couvre que la mort par dégâts
-   * (`processDeaths`), pas une destruction par effet de carte.
+   * l'unité qu'il équipe est DÉTRUITE — combat, effet ou Marée, tout départ
+   * réglé par `processDeaths` (ex: Chaîne de Fer Noir, "Si elle est
+   * détruite, perdez 1 Raison"). Jamais quand elle est Sabordée : un
+   * Sabordage n'est pas une destruction. La perte passe par le bouclier de
+   * perte de Raison (`loseReason`).
    */
   controllerReasonLossOnOwnDestruction?: number;
 

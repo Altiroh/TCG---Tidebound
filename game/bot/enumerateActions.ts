@@ -8,7 +8,7 @@ import {
   graveyardChoicesForPlay,
 } from "@/game/effects/graveyardChoices";
 import type { PlayerAction } from "@/game/actions/types";
-import { eligibleChosenUnits } from "@/game/effects/chosenTargets";
+import { eligibleBreakTargets, eligibleChosenUnits } from "@/game/effects/chosenTargets";
 import { findAssemblage } from "@/game/rules/chromatic";
 import { eligibleCandidatesFor } from "@/game/reactions/reactionWindow";
 import { canUnitAttack } from "@/game/rules/validation";
@@ -32,7 +32,7 @@ function breakVariants(
   if (targeted) {
     // Seules les cibles LÉGALES au regard du filtre de l'effet (ex: Levier
     // de Lest, "une Structure que vous contrôlez") — le moteur refuse le reste.
-    return eligibleChosenUnits(state, targeted.target, playerId, instanceId).map(({ unit }) => ({ ...base, targetInstanceId: unit.instanceId }));
+    return eligibleBreakTargets(state, targeted.target, playerId, instanceId).map(({ unit }) => ({ ...base, targetInstanceId: unit.instanceId }));
   }
   const choices = graveyardChoicesForBreak(state, playerId, def);
   if (choices.length > 0) return choices.map((card) => ({ ...base, chosenGraveyardInstanceId: card.instanceId }));

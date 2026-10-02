@@ -44,7 +44,18 @@ describe("observateurs de Structures — Mécanicien aux Mains Noires, Treuil Ro
     const state = testGameState({
       players: [testPlayer("p1", { board: [mecanicien, lost, kept] }), testPlayer("p2")],
     });
-    const saborded = dispatch(state, { type: "saborder", playerId: "p1", instanceId: lost.instanceId });
+    // « est DÉTRUITE » : un Sabordage ne l'ouvre pas…
+    const sabordee = dispatch(state, { type: "saborder", playerId: "p1", instanceId: lost.instanceId });
+    ok(sabordee);
+    expect(pendingCandidates(sabordee.state).some((c) => c.cardId === "mecanicien-aux-mains-noires")).toBe(false);
+    // …une destruction par un effet, si.
+    const condamnee = {
+      ...state,
+      players: state.players.map((p) =>
+        p.id === "p1" ? { ...p, board: p.board.map((u) => (u.instanceId === lost.instanceId ? { ...u, pendingRemoval: "destroyed" as const } : u)) } : p
+      ) as typeof state.players,
+    };
+    const saborded = dispatch(condamnee, { type: "advancePhase", playerId: "p1" });
     ok(saborded);
     const candidate = pendingCandidates(saborded.state).find((c) => c.cardId === "mecanicien-aux-mains-noires");
     expect(candidate?.needsTarget).toBe(true);

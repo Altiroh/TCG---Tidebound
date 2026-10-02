@@ -102,10 +102,12 @@ export function forceTideTransition(
  * `extraDurationTurns` (optionnel) s'ajoute à la durée d'entrée par défaut
  * de l'Abysses ; `forceOrientation` (optionnel) fixe l'orientation
  * résultante au lieu de la déduire naturellement (`naturalOrientationFor`).
- * Comme `forceTideTransition`, ne déclenche NI le choc d'entrée dans
- * l'Abysses NI `onTideStateEntered`/`onBecomeVisible` — seuls l'état, la
- * durée et l'orientation changent (même limitation documentée, cf.
- * commentaire de `forceTideTransition` ci-dessus).
+ * Comme `forceTideTransition`, fonction PURE : seuls l'état, la durée et
+ * l'orientation changent ici. Le choc d'entrée dans les Abysses est appliqué
+ * par l'effet appelant (`withForcedTransition`, `resolveEffect.ts`), et les
+ * déclencheurs de transition (`onTideStateEntered`/`onTideStateExited`,
+ * Structures qui deviennent visibles) par `dispatch`
+ * (`processForcedTideTransitions`).
  */
 export function forceTideJumpToAbysses(
   env: Pick<EnvironmentState, "tideState" | "tideOrientation" | "pendingTideModifiers">,

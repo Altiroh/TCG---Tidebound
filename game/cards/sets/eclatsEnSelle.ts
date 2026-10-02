@@ -871,6 +871,8 @@ const CAVALERIE_LOT: CardDefinition[] = [
       {
         trigger: "onIncomingDirectAttack",
         mode: "optional",
+        // « une UNITÉ adverse déclare une attaque » : pas un tir de Navire.
+        condition: { attackFromUnit: true },
         description: "Brisez Pas un Pas de Plus : une de vos unités gagne Garde jusqu'à la fin du tour.",
         effects: [
           {
@@ -1148,6 +1150,8 @@ const SENTINELLES: CardDefinition[] = [
       },
       {
         trigger: "onDeath",
+        // « Quand il est DÉTRUIT » : un Sabordage n'en est pas un.
+        condition: { destroyedBy: ["combat", "effect", "tide"] },
         description: "La pierre lui survit : un Éclat Chromatique de sa couleur.",
         effects: [{ type: "summon", target: { kind: "controllerPlayer" }, chromaticShardOf: "self" }],
       },

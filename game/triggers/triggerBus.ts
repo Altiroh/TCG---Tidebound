@@ -13,6 +13,7 @@ import { chromaticColorsOf } from "@/game/rules/chromatic";
 import { payReasonCost } from "@/game/state/shields";
 import { handBreakCost, isBreakReaction } from "@/game/rules/objectBreak";
 import type { GameState, PlayerId, PlayerState } from "@/game/state/types";
+import type { TideStateName } from "@/game/environment/types";
 import type { PendingReactionCandidate, TriggerEvent } from "@/game/triggers/types";
 
 interface TriggeredWork {
@@ -117,6 +118,14 @@ function matchesControlCondition(
   // carte portant les deux textes proposerait les deux en même temps.
   const seuil = ability.condition?.attackerPowerAtLeast;
   if (seuil !== undefined && (state.pendingAttack?.attackerPower ?? 0) < seuil) return false;
+  // « lorsqu'une de VOS UNITÉS est ciblée par une attaque » : ni une attaque
+  // directe contre le Navire, ni une attaque contre une Structure.
+  if (ability.condition?.attackTargetIsOwnUnit) {
+    const cible = state.pendingAttack?.defenderInstanceId;
+    const trouvee = cible ? findBoardUnit(state, cible) : undefined;
+    if (!trouvee || trouvee.playerId !== controllerId) return false;
+    if (!UNIT_CARD_TYPES.includes(getCardDefinition(trouvee.unit.cardId).type)) return false;
+  }
   if (ability.condition?.selfHidden) {
     const holder = sourceInstanceId ? findBoardUnit(state, sourceInstanceId) : undefined;
     if (!holder || isVisibleDuringTide(getCardDefinition(holder.unit.cardId), state.environment.tideState)) return false;
@@ -401,6 +410,11 @@ function collectTriggeredWork(
       // Capacité personnelle uniquement : `triggeredBy` désigne une AUTRE
       // carte, elle est traitée par `collectObserverWork` juste après.
       if (ability.trigger !== event.trigger || !matchesMode(ability) || ability.triggeredBy) return;
+      // « Quand il est DÉTRUIT » : la cause de départ que le texte accepte
+      // (un Sabordage n'est pas une destruction). Sans cause portée par
+      // l'événement, la condition ne matche pas.
+      const causes = ability.condition?.destroyedBy;
+      if (causes && !(event.destructionCause && causes.includes(event.destructionCause))) return;
       result.push(work(ability, abilityIndex, def.id, event.playerId!, event.sourceInstanceId!, turnNumber));
     });
     result.push(...collectObserverWork(state, event, turnNumber, mode));
@@ -447,6 +461,8 @@ function collectTriggeredWork(
       (def.abilities ?? []).forEach((ability, abilityIndex) => {
         if (ability.trigger !== event.trigger || !matchesMode(ability)) return;
         if (blocqueParMasquage(state, unit, ability)) return;
+        // « lorsqu'une UNITÉ adverse attaque » : un tir de Navire n'en est pas une.
+        if (ability.condition?.attackFromUnit && event.fromShipShot) return;
         if (ability.oncePerTurnKey && !oncePerTurnAvailable(unit, ability.oncePerTurnKey, turnNumber)) return;
         result.push(work(ability, abilityIndex, def.id, defenseur.id, unit.instanceId, turnNumber, event.sourceInstanceId));
       });
@@ -827,6 +843,91 @@ export function processGraveyardRecoveryTriggers(
     produced.push(...result.events);
   }
 
+  return { state: nextState, events: produced };
+}
+
+/**
+ * Déclencheurs d'un CHANGEMENT D'ÉTAT de Marée : `onTideStateEntered` pour
+ * l'état atteint, puis `onTideStateExited` pour l'état quitté. Point commun
+ * du tick de début de tour (`appliquerMareeAnnoncee`) et des transitions
+ * forcées par une carte (`processForcedTideTransitions`) : une Marée qui
+ * change est une Marée qui change, qui que ce soit qui l'ait poussée.
+ */
+export function processTideStateChange(
+  state: GameState,
+  previousTideState: TideStateName,
+  tideState: TideStateName,
+  turnNumber: number
+): { state: GameState; events: GameEvent[] } {
+  const entered = processTrigger(state, { trigger: "onTideStateEntered", tideState }, turnNumber);
+  const exited = processTrigger(entered.state, { trigger: "onTideStateExited", tideState: previousTideState }, turnNumber);
+  return { state: exited.state, events: [...entered.events, ...exited.events] };
+}
+
+/**
+ * Structures qui DEVIENNENT VISIBLES parce que la Marée est passée de
+ * `previousTideState` à `tideState` (`visibleDuringTide`) : `STRUCTURE_REVEALED`
+ * puis `onBecomeVisible`. Même partage que `processTideStateChange`.
+ */
+export function revealStructuresOnTideChange(
+  state: GameState,
+  previousTideState: TideStateName,
+  tideState: TideStateName,
+  turnNumber: number
+): { state: GameState; events: GameEvent[] } {
+  let nextState = state;
+  const events: GameEvent[] = [];
+  for (const playerId of nextState.players.map((p) => p.id)) {
+    const player = nextState.players.find((p) => p.id === playerId)!;
+    for (const unit of player.board) {
+      const def = getCardDefinition(unit.cardId);
+      if (!def.visibleDuringTide) continue;
+      const wasVisible = isVisibleDuringTide(def, previousTideState);
+      const isVisible = isVisibleDuringTide(def, tideState);
+      if (wasVisible || !isVisible) continue;
+      events.push({ turnNumber, timestamp: Date.now(), type: "STRUCTURE_REVEALED", playerId, instanceId: unit.instanceId, cardId: unit.cardId });
+      const becomeVisible = processTrigger(
+        nextState,
+        { trigger: "onBecomeVisible", playerId, cardId: unit.cardId, sourceInstanceId: unit.instanceId },
+        turnNumber
+      );
+      nextState = becomeVisible.state;
+      events.push(...becomeVisible.events);
+    }
+  }
+  return { state: nextState, events };
+}
+
+/**
+ * Transitions de Marée FORCÉES par un effet de carte (`TIDE_ADVANCED` marqué
+ * `forced`, Compas, Bouée, Régulateur de Courant, Sept Brasses…) : elles
+ * réveillent les MÊMES déclencheurs qu'une transition naturelle — entrée,
+ * sortie, Structures qui deviennent visibles. Avant, seul le tick de début
+ * de tour le faisait (« simplification assumée ») : la Sonde des Courants
+ * Perdus ou le Contremaître des Amarres ne voyaient jamais une Marée
+ * poussée par une carte.
+ *
+ * Ce qui N'EST PAS rejoué : le choc d'entrée/sortie des Abysses et la
+ * levée du MALADE, déjà appliqués par l'effet lui-même
+ * (`applyForcedTideTransition`), ni les effets DE TOUR du nouvel état, qui
+ * attendent le prochain tick comme avant. Appelée par `dispatch`, seul
+ * endroit que traversent toutes les actions (pose, Bris, Sabordage,
+ * réaction, capacité de Navire).
+ */
+export function processForcedTideTransitions(
+  state: GameState,
+  events: readonly GameEvent[],
+  turnNumber: number
+): { state: GameState; events: GameEvent[] } {
+  let nextState = state;
+  const produced: GameEvent[] = [];
+  for (const event of events) {
+    if (event.type !== "TIDE_ADVANCED" || !event.forced || !event.stateChanged || !event.previousTideState) continue;
+    const change = processTideStateChange(nextState, event.previousTideState, event.tideState, turnNumber);
+    const reveal = revealStructuresOnTideChange(change.state, event.previousTideState, event.tideState, turnNumber);
+    nextState = reveal.state;
+    produced.push(...change.events, ...reveal.events);
+  }
   return { state: nextState, events: produced };
 }
 

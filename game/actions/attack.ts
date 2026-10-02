@@ -5,7 +5,6 @@ import { getShipDefinition } from "@/game/environment/shipData";
 import { isVisibleDuringTide, UNIT_CARD_TYPES } from "@/game/cards/types";
 import { collectReactionCandidates } from "@/game/triggers/triggerBus";
 import type { TriggerEvent } from "@/game/triggers/types";
-import { reasonAfterLoss } from "@/game/state/reason";
 import type { GameEvent } from "@/game/events/types";
 import { processTrigger } from "@/game/triggers/triggerBus";
 import {
@@ -22,6 +21,7 @@ import { applyBlueSignal } from "@/game/rules/chromaticSignals";
 import {
   consumeDirectShipDamageShield,
   consumeStructureResistanceRestoreShield,
+  loseReason,
 } from "@/game/state/shields";
 import { getOpponent, getPlayer, type GameState, type PlayerState } from "@/game/state/types";
 import { recordGraveyardArrival } from "@/game/state/discard";
@@ -116,12 +116,22 @@ function consumePendingBonusVsKeyword(
   };
 }
 
-/** Somme `selfDamageOnDirectAttack` de l'attaquant et de tout Équipement qui lui serait attaché (ex: Requin Balafré, Harpon de Pont). */
+/** Somme `selfDamageOnDirectAttack` de l'attaquant et de tout Équipement qui lui serait attaché (ex: Harpon de Pont — « s'il attaque directement »). */
 function selfDamageOnDirectAttack(attacker: CardInstance, state: GameState): number {
   let total = getCardDefinition(attacker.cardId).selfDamageOnDirectAttack ?? 0;
   for (const unit of [...state.players[0].board, ...state.players[1].board]) {
     if (unit.attachedToInstanceId !== attacker.instanceId) continue;
     total += getCardDefinition(unit.cardId).selfDamageOnDirectAttack ?? 0;
+  }
+  return total;
+}
+
+/** Somme `selfDamageOnDirectDamageDealt` de l'attaquant et de tout Équipement attaché (ex: Requin Balafré) — à n'appliquer que si la coque a vraiment été touchée. */
+function selfDamageOnDirectDamageDealt(attacker: CardInstance, state: GameState): number {
+  let total = getCardDefinition(attacker.cardId).selfDamageOnDirectDamageDealt ?? 0;
+  for (const unit of [...state.players[0].board, ...state.players[1].board]) {
+    if (unit.attachedToInstanceId !== attacker.instanceId) continue;
+    total += getCardDefinition(unit.cardId).selfDamageOnDirectDamageDealt ?? 0;
   }
   return total;
 }
@@ -531,19 +541,22 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
       });
     }
 
-    const reasonLoss = opponentReasonLossOnDirectAttack(attackerUnit, nextState);
+    // « Lorsqu'elle INFLIGE des dégâts directs » (Anguille des Profondeurs,
+    // Bat-Marin Abyssal) : seulement si la coque a vraiment été touchée. Une
+    // interception, un Contrecoup, un bouclier ou un plafond qui ramène le
+    // coup à 0 n'inflige rien — et la perte passe par le bouclier de perte
+    // de Raison du défenseur, comme toute autre.
+    const reasonLoss = directDamage > 0 ? opponentReasonLossOnDirectAttack(attackerUnit, nextState) : 0;
     if (reasonLoss > 0) {
-      const opponentAfterDamage = getPlayer(nextState, opponent.id);
-      events.push({ ...base, type: "REASON_CHANGED", playerId: opponent.id, delta: -reasonLoss });
-      nextState = {
-        ...nextState,
-        players: nextState.players.map((p) =>
-          p.id === opponent.id ? { ...p, reason: reasonAfterLoss(opponentAfterDamage, reasonLoss) } : p
-        ) as [PlayerState, PlayerState],
-      };
+      const perte = loseReason(nextState, opponent.id, reasonLoss, etat.turnNumber);
+      nextState = perte.state;
+      if (perte.lost > 0) events.push({ ...base, type: "REASON_CHANGED", playerId: opponent.id, delta: -perte.lost });
     }
 
-    const recoil = selfDamageOnDirectAttack(attackerUnit, nextState);
+    // « S'il attaque directement » (Harpon de Pont) se paie dans tous les
+    // cas ; « lorsqu'il INFLIGE des dégâts directs » (Requin Balafré),
+    // seulement si la coque a été touchée.
+    const recoil = selfDamageOnDirectAttack(attackerUnit, nextState) + (directDamage > 0 ? selfDamageOnDirectDamageDealt(attackerUnit, nextState) : 0);
     if (recoil > 0) {
       nextState = {
         ...nextState,
@@ -678,14 +691,10 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
 
   const postAttackReasonLoss = controllerReasonLossAfterAttack(attackerUnit, nextState);
   if (postAttackReasonLoss > 0) {
-    const attackerControllerAfter = getPlayer(nextState, attackerPlayer.id);
-    events.push({ ...base, type: "REASON_CHANGED", playerId: attackerPlayer.id, delta: -postAttackReasonLoss });
-    nextState = {
-      ...nextState,
-      players: nextState.players.map((p) =>
-        p.id === attackerPlayer.id ? { ...p, reason: reasonAfterLoss(attackerControllerAfter, postAttackReasonLoss) } : p
-      ) as [PlayerState, PlayerState],
-    };
+    // Une perte de Raison comme une autre : le bouclier de son contrôleur s'applique.
+    const perte = loseReason(nextState, attackerPlayer.id, postAttackReasonLoss, etat.turnNumber);
+    nextState = perte.state;
+    if (perte.lost > 0) events.push({ ...base, type: "REASON_CHANGED", playerId: attackerPlayer.id, delta: -perte.lost });
   }
 
   return { ok: true, state: nextState, events };

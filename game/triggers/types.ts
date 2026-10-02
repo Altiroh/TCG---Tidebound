@@ -73,6 +73,13 @@ export interface TriggerEvent {
   discardByEffect?: boolean;
   /** `onCardPutIntoGraveyard` : d'où vient la carte — défaussée de la main, ou meulée depuis la pioche. */
   fromZone?: "hand" | "deck";
+  /**
+   * `onIncomingDirectAttack` : les dégâts directs viennent d'un TIR DE
+   * NAVIRE (`fireShipAbility`), pas d'une unité qui attaque. Lu par
+   * `condition.attackFromUnit` — « lorsqu'une UNITÉ adverse attaque / inflige
+   * des dégâts directs » ne s'ouvre pas sur un tir.
+   */
+  fromShipShot?: boolean;
 }
 
 /**

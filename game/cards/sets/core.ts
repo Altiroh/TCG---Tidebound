@@ -327,7 +327,8 @@ export const CORE_SET: CardDefinition[] = [
         trigger: "onIncomingDirectAttack",
         mode: "optional",
         hiddenReaction: true,
-        condition: { selfHidden: true },
+        // « lorsqu'une UNITÉ adverse attaque directement » : pas un tir de Navire.
+        condition: { selfHidden: true, attackFromUnit: true },
         description: "Révélez Cylindre flottant : annulez les dégâts et infligez-les au Navire adverse, puis détruisez cette carte.",
         effects: [
           { type: "cancelIncomingAttack", target: { kind: "controllerPlayer" } },
@@ -841,7 +842,7 @@ export const CORE_SET: CardDefinition[] = [
     attack: 4,
     health: 2,
     text: "Lorsqu'il inflige des dégâts directs au Navire adverse, il subit 1 dégât.",
-    selfDamageOnDirectAttack: 1,
+    selfDamageOnDirectDamageDealt: 1,
   },
   {
     // Version STANDARD (Notion "Catalogue de cartes", Lot 04, confirmée coexister avec une variante ABYSSALE
@@ -1205,7 +1206,7 @@ export const CORE_SET: CardDefinition[] = [
       {
         trigger: "onDeath",
         mode: "optional",
-        triggeredBy: { cardTypes: ["structure"] },
+        triggeredBy: { cardTypes: ["structure"], destroyedBy: ["combat", "effect", "tide"] },
         oncePerTurnKey: "mecanicienRepare",
         description: "Quand une de vos Structures est détruite : une autre de vos Structures gagne +1 Résistance. Une fois par tour.",
         effects: [
@@ -1617,6 +1618,8 @@ export const CORE_SET: CardDefinition[] = [
     abilities: [
       {
         trigger: "onDeath",
+        // « Quand il est DÉTRUIT » : un Sabordage n'en est pas un.
+        condition: { destroyedBy: ["combat", "effect", "tide"] },
         description: "Détruit : invoquez 1 Péon Cra-Poiscail.",
         effects: [{ type: "summon", target: { kind: "controllerPlayer" }, cardId: "peon-cra-poiscail" }],
       },
@@ -1727,7 +1730,7 @@ export const CORE_SET: CardDefinition[] = [
         trigger: "onEnterPlay",
         // Elle-même est un Cra-Poiscail, mais une Structure n'"arrive" pas
         // pour se renforcer elle-même : `excludeSelf` par défaut suffit.
-        triggeredBy: { archetype: "cra-poiscail" },
+        triggeredBy: { archetype: "cra-poiscail", cardTypes: ["marin", "creature"] },
         oncePerTurnKey: "flaqueAllyEnter",
         description: "Un Cra-Poiscail arrive : il gagne +1 Résistance.",
         effects: [
@@ -1785,7 +1788,7 @@ export const CORE_SET: CardDefinition[] = [
     abilities: [
       {
         trigger: "onEnterPlay",
-        triggeredBy: { archetype: "cra-poiscail" },
+        triggeredBy: { archetype: "cra-poiscail", cardTypes: ["marin", "creature"] },
         oncePerTurnKey: "bavardAllyEnter",
         description: "Un autre Cra-Poiscail arrive : il gagne +1 Puissance jusqu'à la fin du tour.",
         // "il gagne" = le Cra-Poiscail QUI ARRIVE, pas le Bavard — même
@@ -1814,7 +1817,7 @@ export const CORE_SET: CardDefinition[] = [
     abilities: [
       {
         trigger: "onEnterPlay",
-        triggeredBy: { archetype: "cra-poiscail" },
+        triggeredBy: { archetype: "cra-poiscail", cardTypes: ["marin", "creature"] },
         oncePerTurnKey: "chefDeBancAllyEnter",
         description: "Un autre Cra-Poiscail arrive : il gagne +1 / +1, conservé.",
         effects: [
@@ -1907,7 +1910,7 @@ export const CORE_SET: CardDefinition[] = [
     abilities: [
       {
         trigger: "onEnterPlay",
-        triggeredBy: { archetype: "cra-poiscail" },
+        triggeredBy: { archetype: "cra-poiscail", cardTypes: ["marin", "creature"] },
         oncePerTurnKey: "slipAllyEnter",
         description: "Un autre Cra-Poiscail arrive : le porteur gagne +1 Puissance jusqu'à la fin du tour.",
         effects: [{ type: "buff", target: { kind: "equippedUnit" }, attackAmount: { kind: "flat", value: 1 }, permanent: false }],
@@ -2007,12 +2010,14 @@ export const CORE_SET: CardDefinition[] = [
     text:
       "Pendant 2 tours, la première fois à chaque tour qu'une unité Cra-Poiscail que vous contrôlez est détruite, " +
       "invoquez 1 Péon Cra-Poiscail 1 / 1.",
-    // « un Cra-Poiscail » sans « autre » : elle compte aussi sa propre
-    // destruction (décision du 17/09/2026).
+    // « une UNITÉ Cra-Poiscail » : une Structure, un Équipement ou un Objet
+    // de la famille qui part ne compte pas — et l'Anomalie elle-même non
+    // plus (ce n'est pas une unité, et elle a déjà quitté le plateau quand
+    // les observateurs sont balayés).
     abilities: [
       {
         trigger: "onDeath",
-        triggeredBy: { archetype: "cra-poiscail", excludeSelf: false },
+        triggeredBy: { archetype: "cra-poiscail", cardTypes: ["marin", "creature"], destroyedBy: ["combat", "effect", "tide"] },
         oncePerTurnKey: "grandeMigrationAllyDeath",
         description: "Un de vos Cra-Poiscail est détruit : invoquez 1 Péon Cra-Poiscail.",
         effects: [{ type: "summon", target: { kind: "controllerPlayer" }, cardId: "peon-cra-poiscail" }],
@@ -2077,7 +2082,7 @@ export const CORE_SET: CardDefinition[] = [
     abilities: [
       {
         trigger: "onDeath",
-        triggeredBy: { archetype: "cra-poiscail" },
+        triggeredBy: { archetype: "cra-poiscail", cardTypes: ["marin", "creature"], destroyedBy: ["combat", "effect", "tide"] },
         oncePerTurnKey: "bourreauAllyDeath",
         description: "Un autre Cra-Poiscail est détruit : +1 Puissance jusqu'à la fin du tour.",
         effects: [{ type: "buff", target: { kind: "self" }, attackAmount: { kind: "flat", value: 1 }, permanent: false }],
@@ -2139,7 +2144,7 @@ export const CORE_SET: CardDefinition[] = [
     abilities: [
       {
         trigger: "onPowerGained",
-        triggeredBy: { archetype: "cra-poiscail" },
+        triggeredBy: { archetype: "cra-poiscail", cardTypes: ["marin", "creature"] },
         oncePerTurnKey: "grandReveAllyPowerGain",
         description: "Un autre Cra-Poiscail gagne de la Puissance : +1 Puissance, conservée.",
         effects: [{ type: "buff", target: { kind: "self" }, attackAmount: { kind: "flat", value: 1 }, permanent: true }],
@@ -2210,7 +2215,7 @@ export const CORE_SET: CardDefinition[] = [
       {
         trigger: "onEnterPlay",
         // "que vous INVOQUEZ" : une carte posée depuis la main ne compte pas.
-        triggeredBy: { archetype: "cra-poiscail", onlySummoned: true },
+        triggeredBy: { archetype: "cra-poiscail", onlySummoned: true, cardTypes: ["marin", "creature"] },
         oncePerTurnKey: "banniereSummon",
         description: "Vous invoquez un Cra-Poiscail : il gagne +1 Puissance jusqu'à la fin du tour.",
         effects: [{ type: "buff", target: { kind: "triggerSource" }, attackAmount: { kind: "flat", value: 1 }, permanent: false }],
@@ -2346,7 +2351,7 @@ export const CORE_SET: CardDefinition[] = [
     abilities: [
       {
         trigger: "onPowerGained",
-        triggeredBy: { archetype: "cra-poiscail" },
+        triggeredBy: { archetype: "cra-poiscail", cardTypes: ["marin", "creature"] },
         oncePerTurnKey: "grandReveAbyssalAllyPowerGain",
         description: "Un autre Cra-Poiscail gagne de la Puissance : +2 Puissance et Pied marin jusqu'à la fin du tour.",
         // Pied marin = peut attaquer dès le tour de son arrivée (`KEYWORD_PIED_MARIN`).
@@ -2438,6 +2443,8 @@ export const CORE_SET: CardDefinition[] = [
       },
       {
         trigger: "onDeath",
+        // « Quand il est DÉTRUIT » : un Sabordage n'en est pas un.
+        condition: { destroyedBy: ["combat", "effect", "tide"] },
         mode: "optional",
         description: "Détruit : 1 dégât à une créature ennemie.",
         // La cible est désignée par le joueur, depuis le cimetière : Pulcinella
@@ -2471,7 +2478,7 @@ export const CORE_SET: CardDefinition[] = [
         mode: "optional",
         description: "Renvoyez une autre Marionnette alliée en main : il gagne +2 Puissance jusqu'à la fin du tour.",
         effects: [
-          { type: "moveZone", toZone: "hand", target: { kind: "chosenUnit", among: { subtype: MARIONNETTE, excludeSource: true } } },
+          { type: "moveZone", toZone: "hand", target: { kind: "chosenUnit", among: { subtype: MARIONNETTE, unitsOnly: true, excludeSource: true } } },
           { type: "buff", target: { kind: "self" }, attackAmount: { kind: "flat", value: 2 }, permanent: false },
         ],
       },
@@ -2489,7 +2496,7 @@ export const CORE_SET: CardDefinition[] = [
       "Brisez cet Objet : renvoyez une unité Marionnette que vous contrôlez dans votre main, puis piochez 1 carte " +
       "et défaussez 1 carte.",
     onBreakEffects: [
-      { type: "moveZone", toZone: "hand", target: { kind: "chosenUnit", among: { subtype: MARIONNETTE } } },
+      { type: "moveZone", toZone: "hand", target: { kind: "chosenUnit", among: { subtype: MARIONNETTE, unitsOnly: true } } },
       { type: "draw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
       { type: "discard", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
     ],
@@ -2518,7 +2525,7 @@ export const CORE_SET: CardDefinition[] = [
         oncePerTurnKey: "colombinaRepeat",
         description: "Répète l'effet d'arrivée d'une autre Marionnette alliée.",
         effects: [
-          { type: "repeatEnterEffects", target: { kind: "chosenUnit", among: { subtype: MARIONNETTE, excludeSource: true } } },
+          { type: "repeatEnterEffects", target: { kind: "chosenUnit", among: { subtype: MARIONNETTE, unitsOnly: true, excludeSource: true } } },
         ],
       },
     ],
@@ -2653,7 +2660,7 @@ export const CORE_SET: CardDefinition[] = [
     abilities: [
       {
         trigger: "onEnterPlay",
-        triggeredBy: { subtype: MARIONNETTE },
+        triggeredBy: { subtype: MARIONNETTE, cardTypes: ["marin", "creature"] },
         oncePerTurnKey: "regisseurRecall",
         mode: "optional",
         description: "Renvoyez une Marionnette de coût 2 ou moins en main : elle coûte 1 de moins à rejouer ce tour.",
@@ -2663,9 +2670,9 @@ export const CORE_SET: CardDefinition[] = [
           {
             type: "moveZone",
             toZone: "hand",
-            target: { kind: "chosenUnit", among: { subtype: MARIONNETTE, excludeSource: true, maxCost: 2 } },
+            target: { kind: "chosenUnit", among: { subtype: MARIONNETTE, unitsOnly: true, excludeSource: true, maxCost: 2 } },
           },
-          { type: "discountNextCards", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 }, filter: { subtype: MARIONNETTE } },
+          { type: "discountNextCards", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 }, filter: { subtype: MARIONNETTE, cardTypes: ["marin", "creature"] } },
         ],
       },
     ],
@@ -2702,7 +2709,7 @@ export const CORE_SET: CardDefinition[] = [
     abilities: [
       {
         trigger: "onReturnedToHand",
-        triggeredBy: { subtype: MARIONNETTE, excludeSelf: false },
+        triggeredBy: { subtype: MARIONNETTE, cardTypes: ["marin", "creature"], excludeSelf: false },
         oncePerTurnKey: "theatreRecall",
         description: "Première Marionnette revenue en main du tour : récupérez 1 Raison.",
         effects: [{ type: "reasonGain", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } }],
@@ -2730,7 +2737,7 @@ export const CORE_SET: CardDefinition[] = [
       "Changement de rôle ! peut être Brisée par tour.",
     breakOncePerTurnByName: true,
     onBreakEffects: [
-      { type: "moveZone", toZone: "hand", target: { kind: "chosenUnit", among: { subtype: MARIONNETTE } } },
+      { type: "moveZone", toZone: "hand", target: { kind: "chosenUnit", among: { subtype: MARIONNETTE, unitsOnly: true } } },
       {
         type: "discountNextCards",
         target: { kind: "controllerPlayer" },
@@ -2803,7 +2810,7 @@ export const CORE_SET: CardDefinition[] = [
         mode: "optional",
         description: "Renvoyez une autre Marionnette alliée en main : il gagne +2 / +2 et la prochaine coûte 2 de moins ce tour.",
         effects: [
-          { type: "moveZone", toZone: "hand", target: { kind: "chosenUnit", among: { subtype: MARIONNETTE, excludeSource: true } } },
+          { type: "moveZone", toZone: "hand", target: { kind: "chosenUnit", among: { subtype: MARIONNETTE, unitsOnly: true, excludeSource: true } } },
           {
             type: "buff",
             target: { kind: "self" },
@@ -2834,18 +2841,18 @@ export const CORE_SET: CardDefinition[] = [
     abilities: [
       {
         trigger: "onEnterPlay",
-        triggeredBy: { subtype: MARIONNETTE },
+        triggeredBy: { subtype: MARIONNETTE, cardTypes: ["marin", "creature"] },
         oncePerTurnKey: "regisseurAbyssalEcho",
         description: "Première autre Marionnette du tour : son effet d'arrivée se répète.",
         effects: [{ type: "repeatEnterEffects", target: { kind: "triggerSource" } }],
       },
       {
         trigger: "onReturnedToHand",
-        triggeredBy: { subtype: MARIONNETTE, excludeSelf: false },
+        triggeredBy: { subtype: MARIONNETTE, cardTypes: ["marin", "creature"], excludeSelf: false },
         oncePerTurnKey: "regisseurAbyssalRecall",
         description: "Première Marionnette revenue en main du tour : la prochaine coûte 1 de moins.",
         effects: [
-          { type: "discountNextCards", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 }, filter: { subtype: MARIONNETTE } },
+          { type: "discountNextCards", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 }, filter: { subtype: MARIONNETTE, cardTypes: ["marin", "creature"] } },
         ],
       },
     ],
@@ -3479,7 +3486,7 @@ export const CORE_SET: CardDefinition[] = [
     abilities: [
       {
         trigger: "onDeath",
-        triggeredBy: { archetype: "cra-poiscail" },
+        triggeredBy: { archetype: "cra-poiscail", cardTypes: ["marin", "creature"], destroyedBy: ["combat", "effect", "tide"] },
         oncePerTurnKey: "tasDeBoisRenfort",
         description: "Un de vos Cra-Poiscail tombe : +1 Résistance, définitivement.",
         effects: [
@@ -3513,7 +3520,7 @@ export const CORE_SET: CardDefinition[] = [
     abilities: [
       {
         trigger: "onReturnedToHand",
-        triggeredBy: { subtype: MARIONNETTE },
+        triggeredBy: { subtype: MARIONNETTE, cardTypes: ["marin", "creature"] },
         oncePerTurnKey: "primaFiltre",
         description: "Une autre Marionnette revient en main : piochez 1 carte puis défaussez 1 carte.",
         effects: [
@@ -3540,7 +3547,7 @@ export const CORE_SET: CardDefinition[] = [
     abilities: [
       {
         trigger: "onReturnedToHand",
-        triggeredBy: { subtype: MARIONNETTE },
+        triggeredBy: { subtype: MARIONNETTE, cardTypes: ["marin", "creature"] },
         oncePerTurnKey: "primaFiltre",
         description: "Une autre Marionnette revient en main : piochez 1 carte et récupérez 1 Raison.",
         effects: [
@@ -3563,6 +3570,8 @@ export const CORE_SET: CardDefinition[] = [
     abilities: [
       {
         trigger: "onDeath",
+        // « Quand il est DÉTRUIT » : un Sabordage n'en est pas un.
+        condition: { destroyedBy: ["combat", "effect", "tide"] },
         description: "Il est détruit : récupérez 1 Ancrage.",
         effects: [{ type: "heal", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } }],
       },
@@ -3773,7 +3782,7 @@ export const CORE_SET: CardDefinition[] = [
     abilities: [
       {
         trigger: "onDeath",
-        triggeredBy: { equippedUnit: true },
+        triggeredBy: { equippedUnit: true, destroyedBy: ["combat", "effect", "tide"] },
         description: "Le porteur meurt : piochez 1 carte puis défaussez 1 carte.",
         effects: [
           { type: "draw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
@@ -3852,7 +3861,7 @@ export const CORE_SET: CardDefinition[] = [
     abilities: [
       {
         trigger: "onDeath",
-        triggeredBy: { subtype: UN_DEAD, cardTypes: ["marin", "creature"] },
+        triggeredBy: { subtype: UN_DEAD, cardTypes: ["marin", "creature"], destroyedBy: ["combat", "effect", "tide"] },
         oncePerTurnKey: "papaAllieDetruit",
         description: "Un autre Un Dead meurt : +1 Puissance, conservée.",
         effects: [{ type: "buff", target: { kind: "self" }, attackAmount: { kind: "flat", value: 1 }, healthAmount: { kind: "flat", value: 0 }, permanent: true }],
@@ -3993,6 +4002,8 @@ export const CORE_SET: CardDefinition[] = [
     abilities: [
       {
         trigger: "onDeath",
+        // « Quand il est DÉTRUIT » : un Sabordage n'en est pas un.
+        condition: { destroyedBy: ["combat", "effect", "tide"] },
         description: "Détruite : 1 dégât au Navire adverse.",
         effects: [{ type: "damage", target: { kind: "opponentPlayer" }, amount: { kind: "flat", value: 1 } }],
       },
@@ -4019,7 +4030,7 @@ export const CORE_SET: CardDefinition[] = [
       {
         trigger: "onDeath",
         mode: "optional",
-        triggeredBy: { subtype: UN_DEAD, cardTypes: ["marin", "creature"] },
+        triggeredBy: { subtype: UN_DEAD, cardTypes: ["marin", "creature"], destroyedBy: ["combat", "effect", "tide"] },
         oncePerTurnKey: "tuMavaisPromis",
         description: "Un autre Un Dead meurt : repêchez une unité Un Dead de coût 1.",
         effects: [
@@ -4095,7 +4106,7 @@ export const CORE_SET: CardDefinition[] = [
     abilities: [
       {
         trigger: "onDeath",
-        triggeredBy: { cardTypes: ["marin", "creature"] },
+        triggeredBy: { cardTypes: ["marin", "creature"], destroyedBy: ["combat", "effect", "tide"] },
         oncePerTurnKey: "tableUniteDetruite",
         description: "Une de vos unités meurt : piochez 1 carte puis défaussez 1 carte.",
         effects: [
@@ -4127,7 +4138,9 @@ export const CORE_SET: CardDefinition[] = [
     // celle qui vient de remonter.
     //
     // `fromZone: "board"` : « DÉTRUITE ce tour », pas défaussée — la nuance
-    // compte pour une famille qui fait les deux.
+    // compte pour une famille qui fait les deux. Et une UNITÉ détruite : ni
+    // un Objet brisé, ni un Équipement, ni un Sabordage (`cardTypes`,
+    // `destroyedBy`).
     onPlayEffects: [
       {
         type: "moveGraveyardCardToHand",
@@ -4139,7 +4152,13 @@ export const CORE_SET: CardDefinition[] = [
         target: { kind: "controllerPlayer" },
         amount: { kind: "flat", value: 1 },
         filter: { subtype: UN_DEAD, cardTypes: ["marin", "creature"], maxCost: 2 },
-        conditionGraveyardArrival: { subtype: UN_DEAD, fromZone: "board", since: "thisTurn" },
+        conditionGraveyardArrival: {
+          subtype: UN_DEAD,
+          fromZone: "board",
+          cardTypes: ["marin", "creature"],
+          destroyedBy: ["combat", "effect", "tide"],
+          since: "thisTurn",
+        },
       },
     ],
   },
@@ -4165,7 +4184,7 @@ export const CORE_SET: CardDefinition[] = [
     abilities: [
       {
         trigger: "onDeath",
-        triggeredBy: { subtype: UN_DEAD },
+        triggeredBy: { subtype: UN_DEAD, destroyedBy: ["combat", "effect", "tide"] },
         oncePerTurnKey: "tousEnsemble",
         description: "Un autre Un Dead meurt : 1 dégât au Navire adverse.",
         effects: [{ type: "damage", target: { kind: "opponentPlayer" }, amount: { kind: "flat", value: 1 } }],
@@ -4865,6 +4884,8 @@ export const CORE_SET: CardDefinition[] = [
       {
         trigger: "onUnitAttackDeclared",
         mode: "optional",
+        // « une de vos UNITÉS est ciblée » : ni une attaque directe, ni une Structure attaquée.
+        condition: { attackTargetIsOwnUnit: true },
         description: "Brisez Corde de Rappel : l'unité visée rentre dans votre main.",
         effects: [
           { type: "moveZone", toZone: "hand", target: { kind: "attackTarget" } },
@@ -4892,6 +4913,8 @@ export const CORE_SET: CardDefinition[] = [
         // coque, sans rien changer à ce qu'elle rend.
         trigger: "onIncomingDirectAttack",
         mode: "optional",
+        // « une UNITÉ adverse inflige » : pas un tir de Navire.
+        condition: { attackFromUnit: true },
         description: "Brisez Contre-Harpon : 2 dégâts à l'unité qui frappe votre coque.",
         effects: [
           { type: "damage", target: { kind: "pendingAttacker" }, amount: { kind: "flat", value: 2 } },
