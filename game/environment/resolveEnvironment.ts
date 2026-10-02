@@ -462,7 +462,7 @@ export function appliquerMareeAnnoncee(
         ? [...player.graveyard, ...expiring.map((u) => ({ ...u, damageMarked: 0, modifiers: [], graveyardCause: "expired" as const }))]
         : player.graveyard;
     const withArrivals = expiring.reduce<PlayerState>(
-      (acc, u) => recordGraveyardArrival(acc, { cardId: u.cardId, turnNumber, fromZone: "board" }),
+      (acc, u) => recordGraveyardArrival(acc, { cardId: u.cardId, instanceId: u.instanceId, turnNumber, fromZone: "board" }),
       { ...player, board, graveyard }
     );
     nextState = {

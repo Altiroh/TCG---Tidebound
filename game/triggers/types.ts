@@ -47,6 +47,12 @@ export interface TriggerEvent {
   tideState?: import("@/game/environment/types").TideStateName;
   /** `onEnterPlay` : la carte arrive par INVOCATION et non par une pose depuis la main (ex: un Péon). */
   fromSummon?: boolean;
+  /**
+   * `onEnterPlay` : ce n'est pas une arrivée mais l'effet d'arrivée d'une
+   * carte DÉJÀ en jeu qui est rejoué (`ENTER_EFFECTS_REPEATED`). Lu par
+   * `triggeredBy.onlyPlayed` / `excludeRepeatedArrival`.
+   */
+  repeatedArrival?: boolean;
   /** `onDiscarded` / `onCardDiscardedFromHand` : propriétaire de la carte défaussée. */
   discardedOwnerId?: string;
   /**

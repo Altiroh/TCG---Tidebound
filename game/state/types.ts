@@ -162,6 +162,12 @@ export interface PlayerState {
 /** Une arrivée au Cimetière, telle que la lisent les conditions du Lot 13. */
 export interface GraveyardArrival {
   cardId: string;
+  /**
+   * Exemplaire arrivé, quand la voie le connaît (Bris, défausse,
+   * destruction…). Lu par `conditionGraveyardArrival.excludeSource` : la
+   * carte dont l'effet pose la question ne remplit pas sa propre condition.
+   */
+  instanceId?: string;
   /** Tour de table de l'arrivée. */
   turnNumber: number;
   /** D'où venait la carte — « depuis votre main » est une condition à part entière. */
@@ -256,6 +262,14 @@ export interface CostDiscount {
    * Marionnette » exclut celle que l'effet vient de renvoyer en main.
    */
   excludeInstanceIds?: string[];
+  /**
+   * Seuls ces exemplaires en profitent — « remettez-la dans votre main […]
+   * ELLE coûte 1 de moins » vise la carte repêchée, pas n'importe quelle
+   * carte du même profil (Tu viens jouer ?).
+   */
+  onlyInstanceIds?: string[];
+  /** Ne s'applique qu'aux cartes de coût IMPRIMÉ inférieur ou égal (`filter.maxCost` de l'effet). */
+  maxCost?: number;
 }
 
 /**

@@ -309,7 +309,7 @@ export function playCard(state: GameState, action: PlayCardAction): ActionResult
       ],
     };
     for (const carte of partantes) {
-      apres = recordGraveyardArrival(apres, { cardId: carte.cardId, turnNumber: state.turnNumber, fromZone: "board" });
+      apres = recordGraveyardArrival(apres, { cardId: carte.cardId, instanceId: carte.instanceId, turnNumber: state.turnNumber, fromZone: "board" });
       events.push({ ...base, type: "CARD_MOVED", instanceId: carte.instanceId, cardId: carte.cardId, ownerId: player.id, fromZone: "board", toZone: "graveyard" });
     }
     nextState = { ...nextState, players: nextState.players.map((p) => (p.id === player.id ? apres : p)) as [PlayerState, PlayerState] };
@@ -386,7 +386,7 @@ export function playCard(state: GameState, action: PlayCardAction): ActionResult
       ...nextState,
       players: nextState.players.map((p) => (p.id === owner.id ? { ...owner, board } : p)) as [PlayerState, PlayerState],
     };
-    events.push({ ...base, type: "SUMMON", playerId: player.id, instanceId: boardUnit.instanceId, cardId: def.id });
+    events.push({ ...base, type: "SUMMON", playerId: player.id, instanceId: boardUnit.instanceId, cardId: def.id, played: true });
   } else {
     // Équipement consommable (`permanent: false`) : part directement au
     // cimetière après résolution. Aucune autre carte ne prend cette voie —
@@ -398,7 +398,7 @@ export function playCard(state: GameState, action: PlayCardAction): ActionResult
         p.id === owner.id
           ? recordGraveyardArrival(
               { ...owner, graveyard: [...owner.graveyard, instance] },
-              { cardId: instance.cardId, turnNumber: state.turnNumber, fromZone: "hand" }
+              { cardId: instance.cardId, instanceId: instance.instanceId, turnNumber: state.turnNumber, fromZone: "hand" }
             )
           : p
       ) as [PlayerState, PlayerState],

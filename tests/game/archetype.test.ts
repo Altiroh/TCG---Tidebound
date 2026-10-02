@@ -103,7 +103,7 @@ describe("archétype Cra-Poiscail — invocation de Péons", () => {
     expect(board.length).toBeLessThanOrEqual(6);
   });
 
-  it("laisse les Péons de « Fesses en Avant ! » attaquer le tour même (Ruée)", () => {
+  it("laisse les Péons de « Fesses en Avant ! » attaquer le tour même (Pied marin)", () => {
     const anomalie = instance("fesses-en-avant", "p1");
     const state = testGameState({
       players: [testPlayer("p1", { hand: [anomalie], reason: 10 }), testPlayer("p2")],

@@ -214,7 +214,7 @@ export function breakReactiveObjectFromHand(
       hand: player.hand.filter((c) => c.instanceId !== instanceId),
       graveyard: [...player.graveyard, { ...card, damageMarked: 0, modifiers: [] }],
     },
-    { cardId: card.cardId, turnNumber, fromZone: "hand" }
+    { cardId: card.cardId, instanceId: card.instanceId, turnNumber, fromZone: "hand" }
   );
   const base = { turnNumber, timestamp: Date.now() };
   return {
@@ -460,7 +460,7 @@ export function breakObject(state: GameState, action: BreakObjectAction): Action
       graveyard: [...player.graveyard, { ...unit, damageMarked: 0, modifiers: [] }],
       objectsBrokenThisTurn: { turnNumber: state.turnNumber, names: [...objectsBrokenThisTurn(player, state.turnNumber), def.name] },
     },
-    { cardId: unit.cardId, turnNumber: state.turnNumber, fromZone }
+    { cardId: unit.cardId, instanceId: unit.instanceId, turnNumber: state.turnNumber, fromZone }
   );
 
   let nextState: GameState = {

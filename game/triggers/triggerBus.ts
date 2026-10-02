@@ -313,6 +313,10 @@ function matchesTriggerSource(
     return false;
   }
   if (filter.onlySummoned && !event.fromSummon) return false;
+  // « que vous JOUEZ » : ni une invocation, ni une arrivée rejouée.
+  if (filter.onlyPlayed && (event.fromSummon || event.repeatedArrival)) return false;
+  // « répétez son effet d'arrivée » n'est pas une arrivée en jeu.
+  if (filter.excludeRepeatedArrival && event.repeatedArrival) return false;
   // « depuis votre main » : la provenance du Bris écarte la capacité avant
   // tout marquage « une fois par tour » (cf. `TriggerSourceFilter.fromHand`).
   if (filter.fromHand !== undefined && filter.fromHand !== Boolean(event.fromHand)) return false;
@@ -680,7 +684,9 @@ export function processSummonEnterTriggers(
   for (const event of events) {
     // Une arrivée REJOUÉE (`ENTER_EFFECTS_REPEATED`, Colombina) rallume les
     // mêmes capacités qu'une invocation — sans être une invocation : les
-    // filtres « seulement invoqué » ne la voient pas.
+    // filtres « seulement invoqué » ne la voient pas, et elle est marquée
+    // comme rejouée pour ceux qui ne la tiennent pas pour une arrivée
+    // (`onlyPlayed`, `excludeRepeatedArrival`).
     if (event.type !== "SUMMON" && event.type !== "ENTER_EFFECTS_REPEATED") continue;
     const result = processTrigger(
       nextState,
@@ -689,7 +695,7 @@ export function processSummonEnterTriggers(
         playerId: event.playerId,
         cardId: event.cardId,
         sourceInstanceId: event.instanceId,
-        fromSummon: event.type === "SUMMON",
+        ...(event.type === "SUMMON" ? (event.played ? {} : { fromSummon: true }) : { repeatedArrival: true }),
       },
       turnNumber,
       depth

@@ -1936,9 +1936,9 @@ export const CORE_SET: CardDefinition[] = [
     // Aura, pas un modificateur posé : le bonus disparaît avec l'Équipement.
     equipGrantsBuff: { healthAmount: 1 },
     // "Dégâts d'un effet" = la Marée et le texte d'une carte, jamais le
-    // combat (arbitrage du 2026-09-14). Le porteur garde le +1 Résistance
-    // après la destruction du Casque : convention du moteur pour tout
-    // Équipement qui quitte le plateau, pas une exception d'ici.
+    // combat (arbitrage du 2026-09-14). Le +1 Résistance étant une aura
+    // (`equipGrantsBuff`), le porteur le PERD avec la destruction du Casque,
+    // comme pour tout Équipement qui quitte le plateau.
     reduceEquippedEffectDamageThenDestroy: 1,
   },
   {
@@ -2638,6 +2638,10 @@ export const CORE_SET: CardDefinition[] = [
             attackAmount: { kind: "flat", value: 2 },
             healthAmount: { kind: "flat", value: 2 },
             duration: "untilYourNextTurn",
+            // « jusqu'à VOTRE prochain tour » : celui du lanceur, pas celui
+            // du propriétaire de l'unité visée — sans quoi le malus tombait
+            // dès l'entame du tour adverse.
+            expiresOnControllersTurn: true,
           },
         ],
       },
@@ -2660,17 +2664,24 @@ export const CORE_SET: CardDefinition[] = [
     abilities: [
       {
         trigger: "onEnterPlay",
-        triggeredBy: { subtype: MARIONNETTE, cardTypes: ["marin", "creature"] },
+        // « arrive en jeu » : une arrivée rejouée n'en est pas une.
+        triggeredBy: { subtype: MARIONNETTE, cardTypes: ["marin", "creature"], excludeRepeatedArrival: true },
         oncePerTurnKey: "regisseurRecall",
         mode: "optional",
-        description: "Renvoyez une Marionnette de coût 2 ou moins en main : elle coûte 1 de moins à rejouer ce tour.",
+        description: "Renvoyez une autre Marionnette de coût 2 ou moins en main : la prochaine coûte 1 de moins ce tour.",
         // Le plafond de coût 2 empêche les boucles de valeur avec Colombina
         // ou Il Dottore (audit du 15 septembre).
+        // « une AUTRE unité Marionnette » : autre que le Régisseur
+        // (`excludeSource`) ET autre que celle qui vient d'arriver
+        // (`excludeTriggerSource`) — le texte oppose les deux.
         effects: [
           {
             type: "moveZone",
             toZone: "hand",
-            target: { kind: "chosenUnit", among: { subtype: MARIONNETTE, unitsOnly: true, excludeSource: true, maxCost: 2 } },
+            target: {
+              kind: "chosenUnit",
+              among: { subtype: MARIONNETTE, unitsOnly: true, excludeSource: true, excludeTriggerSource: true, maxCost: 2 },
+            },
           },
           { type: "discountNextCards", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 }, filter: { subtype: MARIONNETTE, cardTypes: ["marin", "creature"] } },
         ],
@@ -2775,10 +2786,15 @@ export const CORE_SET: CardDefinition[] = [
     text:
       "Pendant 2 tours, la première carte Marionnette que vous jouez à chacun de vos tours déclenche une seconde " +
       "fois son effet d'arrivée.",
+    // « que vous JOUEZ » : une carte posée depuis la main (`onlyPlayed`) — ni
+    // un Péon invoqué, ni une arrivée rejouée par Colombina ou le Régisseur,
+    // qui brûlaient sinon l'usage du tour. Le Rideau ne se compte pas
+    // lui-même (`excludeSelf` par défaut) : sa pose n'a aucun effet d'arrivée
+    // à rejouer, et la compter consommait le premier de ses deux tours.
     abilities: [
       {
         trigger: "onEnterPlay",
-        triggeredBy: { subtype: MARIONNETTE, excludeSelf: false },
+        triggeredBy: { subtype: MARIONNETTE, onlyPlayed: true },
         oncePerTurnKey: "rideauEncore",
         description: "Première Marionnette du tour : son effet d'arrivée se déclenche une seconde fois.",
         effects: [{ type: "repeatEnterEffects", target: { kind: "triggerSource" } }],
@@ -2841,7 +2857,10 @@ export const CORE_SET: CardDefinition[] = [
     abilities: [
       {
         trigger: "onEnterPlay",
-        triggeredBy: { subtype: MARIONNETTE, cardTypes: ["marin", "creature"] },
+        // Une arrivée REJOUÉE n'est pas une arrivée : sans
+        // `excludeRepeatedArrival`, la répétition d'une autre carte (Colombina,
+        // Le Rideau) brûlait l'usage du tour.
+        triggeredBy: { subtype: MARIONNETTE, cardTypes: ["marin", "creature"], excludeRepeatedArrival: true },
         oncePerTurnKey: "regisseurAbyssalEcho",
         description: "Première autre Marionnette du tour : son effet d'arrivée se répète.",
         effects: [{ type: "repeatEnterEffects", target: { kind: "triggerSource" } }],
@@ -3761,6 +3780,9 @@ export const CORE_SET: CardDefinition[] = [
       {
         trigger: "onCardPutIntoGraveyard",
         triggeredBy: {},
+        // « La première fois PENDANT VOTRE TOUR » : une défausse imposée
+        // pendant le tour adverse ne compte pas (et ne brûle pas l'usage).
+        condition: { duringOwnTurn: true },
         oncePerTurnKey: "cacheCacheDefausse",
         description: "Une de vos cartes rejoint le Cimetière (main ou pioche) : +1 Puissance, conservée.",
         effects: [{ type: "buff", target: { kind: "self" }, attackAmount: { kind: "flat", value: 1 }, healthAmount: { kind: "flat", value: 0 }, permanent: true }],
@@ -3840,7 +3862,10 @@ export const CORE_SET: CardDefinition[] = [
         type: "draw",
         target: { kind: "controllerPlayer" },
         amount: { kind: "flat", value: 1 },
-        conditionGraveyardArrival: { subtype: UN_DEAD, since: "thisTurn" },
+        // `excludeSource` : Le Goûter, lui-même Un Dead, rejoint le Cimetière
+        // en se brisant, AVANT ses effets — il ne remplit pas sa propre
+        // condition (il piochait sinon 2 cartes à chaque Bris).
+        conditionGraveyardArrival: { subtype: UN_DEAD, since: "thisTurn", excludeSource: true },
       },
     ],
   },
@@ -3941,24 +3966,26 @@ export const CORE_SET: CardDefinition[] = [
     text:
       "À son arrivée, vous pouvez défausser 1 carte. Si vous le faites, piochez 1 carte et elle gagne " +
       "+1 Résistance jusqu'à votre prochain tour.",
-    // Pioche AVANT défausse, comme Épave à Fleur d'Eau : la garde « au moins
-    // 1 carte en main » lit ainsi la main d'AVANT l'échange, et « si vous le
-    // faites » ne se paie pas main vide. Le bonus vient en dernier, donc
-    // après la réponse du joueur à la défausse.
+    // Défausse PUIS pioche, dans l'ordre du texte : la défausse est le prix,
+    // payé avant de voir la carte piochée. « Si vous le faites » est tenu
+    // par la condition de CAPACITÉ (au moins 1 carte en main) : la capacité
+    // n'est proposée que si la défausse est possible, et une fois activée la
+    // défausse (au choix du joueur) a forcément lieu — la pioche et le bonus
+    // suivent sans autre garde.
     abilities: [
       {
         trigger: "onEnterPlay",
         mode: "optional",
+        condition: { controllerHandAtLeast: 1 },
         description: "Défaussez 1 carte : piochez 1 carte et +1 Résistance jusqu'à votre prochain tour.",
         effects: [
-          { type: "draw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 }, conditionControllerHandAtLeast: 1 },
-          { type: "discard", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 }, conditionControllerHandAtLeast: 2 },
+          { type: "discard", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
+          { type: "draw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
           {
             type: "buff",
             target: { kind: "self" },
             healthAmount: { kind: "flat", value: 1 },
             duration: "untilYourNextTurn",
-            conditionControllerHandAtLeast: 1,
           },
         ],
       },
@@ -4131,11 +4158,10 @@ export const CORE_SET: CardDefinition[] = [
       "À son arrivée, choisissez une unité Un Dead de coût 2 ou moins dans votre Cimetière. Remettez-la dans " +
       "votre main. Si une unité Un Dead a été détruite ce tour, elle coûte 1 Raison de moins à jouer ce tour, " +
       "minimum 1.",
-    // La réduction porte sur la carte qu'on vient de repêcher. Le moteur
-    // l'exprime comme « la prochaine carte de ce profil jouée ce tour »
-    // (`discountNextCards`, un seul usage) : le filtre reprend celui de la
-    // récupération, donc la seule carte que le joueur puisse viser est bien
-    // celle qui vient de remonter.
+    // La réduction porte sur la carte qu'on vient de repêcher, et sur elle
+    // seule (`discountOnlyRecoveredCard`) : une autre unité Un Dead déjà en
+    // main n'en profite pas, et rien n'est posé si rien n'a été repêché. Le
+    // filtre (coût 2 ou moins compris) reprend celui de la récupération.
     //
     // `fromZone: "board"` : « DÉTRUITE ce tour », pas défaussée — la nuance
     // compte pour une famille qui fait les deux. Et une UNITÉ détruite : ni
@@ -4152,6 +4178,7 @@ export const CORE_SET: CardDefinition[] = [
         target: { kind: "controllerPlayer" },
         amount: { kind: "flat", value: 1 },
         filter: { subtype: UN_DEAD, cardTypes: ["marin", "creature"], maxCost: 2 },
+        discountOnlyRecoveredCard: true,
         conditionGraveyardArrival: {
           subtype: UN_DEAD,
           fromZone: "board",

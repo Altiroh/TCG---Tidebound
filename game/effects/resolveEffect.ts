@@ -139,6 +139,9 @@ export function discountApplies(
 ): boolean {
   if (!discount.persistent && discount.uses <= 0) return false;
   if (instanceId !== undefined && discount.excludeInstanceIds?.includes(instanceId)) return false;
+  // « ELLE coûte 1 de moins » : seule la carte désignée en profite.
+  if (discount.onlyInstanceIds && !(instanceId !== undefined && discount.onlyInstanceIds.includes(instanceId))) return false;
+  if (discount.maxCost !== undefined && def.cost > discount.maxCost) return false;
   if (turnNumber > discount.expiresAfterTurn) return false;
   if (discount.subtype && def.subtype !== discount.subtype) return false;
   if (discount.cardTypes && !discount.cardTypes.includes(def.type)) return false;
@@ -201,7 +204,9 @@ function matchesCardTypeFilter(filter: EffectDefinition["filter"], cardType: str
 export function hasGraveyardArrival(
   state: GameState,
   controllerId: PlayerId,
-  condition: NonNullable<EffectDefinition["conditionGraveyardArrival"]>
+  condition: NonNullable<EffectDefinition["conditionGraveyardArrival"]>,
+  /** Carte source de l'effet — écartée par `condition.excludeSource`. */
+  sourceInstanceId?: string
 ): boolean {
   const controller = state.players.find((p) => p.id === controllerId);
   // « ce tour » = le tour de table courant ; « depuis votre dernier tour »
@@ -216,6 +221,7 @@ export function hasGraveyardArrival(
     } else if (entry.turnNumber < lastOwnTurn || (entry.turnNumber === lastOwnTurn && entry.beforeOwnTurnStart)) {
       return false;
     }
+    if (condition.excludeSource && sourceInstanceId !== undefined && entry.instanceId === sourceInstanceId) return false;
     if (condition.fromZone && entry.fromZone !== condition.fromZone) return false;
     if (condition.cardIds && !condition.cardIds.includes(entry.cardId)) return false;
     if (condition.subtype && getCardDefinition(entry.cardId).subtype !== condition.subtype) return false;
@@ -738,7 +744,7 @@ export function resolveEffect(
     if (effect.conditionEquippedUnitAttackedThisTurn && !holder.hasAttackedThisTurn) return { state, events };
   }
   if (effect.conditionGraveyardArrival) {
-    if (!hasGraveyardArrival(state, context.controllerId, effect.conditionGraveyardArrival)) return { state, events };
+    if (!hasGraveyardArrival(state, context.controllerId, effect.conditionGraveyardArrival, context.sourceInstanceId)) return { state, events };
   }
   if (effect.conditionControllerHandAtMost !== undefined) {
     if (getPlayer(state, context.controllerId).hand.length > effect.conditionControllerHandAtMost) return { state, events };
@@ -1046,7 +1052,7 @@ export function resolveEffect(
           ownerId: player.id,
           damageMarked: 0,
           modifiers: [],
-          // Ruée (`rush`) : le corps invoqué peut attaquer le tour même.
+          // Pied marin (`rush`) : le corps invoqué peut attaquer le tour même.
           summoningSick: !effect.rush,
           hasAttackedThisTurn: false,
           ...(illustrationVariant !== undefined ? { illustrationVariant } : {}),
@@ -1057,9 +1063,29 @@ export function resolveEffect(
         events.push({ ...base, type: "SUMMON", playerId: player.id, instanceId: token.instanceId, cardId: token.cardId });
       }
 
+      // « Ils gagnent Pied marin jusqu'à la fin du tour » : le mot-clé est
+      // aussi POSÉ (modificateur de fin de tour), pas seulement le mal
+      // d'invocation levé — sans quoi rien ne l'affichait sur la carte.
+      const withPiedMarin = effect.rush
+        ? summoned.map((token) => ({
+            ...token,
+            modifiers: [
+              ...token.modifiers,
+              {
+                id: `mod_pied_marin_${token.instanceId}`,
+                source: summonCardId,
+                attack: 0,
+                health: 0,
+                duration: "endOfTurn" as StatModifierDuration,
+                keywords: ["pied-marin"], // `KEYWORD_PIED_MARIN` (game/rules/validation.ts)
+              },
+            ],
+          }))
+        : summoned;
+
       // Bonus accordé aux corps qui viennent d'arriver (ex: Le Grand Saut).
       const buffed = effect.summonBuff
-        ? summoned.map((token) => ({
+        ? withPiedMarin.map((token) => ({
             ...token,
             modifiers: [
               ...token.modifiers,
@@ -1072,7 +1098,7 @@ export function resolveEffect(
               },
             ],
           }))
-        : summoned;
+        : withPiedMarin;
 
       const board = [...player.board, ...buffed];
       return { state: { ...replacePlayer(state, { ...player, board }), rngState }, events };
@@ -1616,6 +1642,12 @@ export function resolveEffect(
       const chosen = effect.filter?.excludeChosenTarget ? context.chosenTargetInstanceId : undefined;
 
       const player = getPlayer(state, context.controllerId);
+      // « remettez-la dans votre main […] ELLE coûte 1 de moins » : la carte
+      // repêchée, et elle seule — encore faut-il qu'elle soit arrivée en main.
+      const recovered = effect.discountOnlyRecoveredCard ? context.chosenGraveyardInstanceId : undefined;
+      if (effect.discountOnlyRecoveredCard && !(recovered && player.hand.some((c) => c.instanceId === recovered))) {
+        return { state, events };
+      }
       const discount: CostDiscount = {
         amount: reduction,
         uses: Math.max(1, effect.uses ?? 1),
@@ -1629,6 +1661,8 @@ export function resolveEffect(
         ...(effect.arrivalDamage ? { arrivalDamage: effect.arrivalDamage, grantedBy: context.controllerId } : {}),
         ...(effect.free ? { free: true } : {}),
         ...(chosen ? { excludeInstanceIds: [chosen, recalledInstanceId(chosen, state.turnNumber)] } : {}),
+        ...(recovered ? { onlyInstanceIds: [recovered] } : {}),
+        ...(effect.filter?.maxCost !== undefined ? { maxCost: effect.filter.maxCost } : {}),
       };
 
       return {

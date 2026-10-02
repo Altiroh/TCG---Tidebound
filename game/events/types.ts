@@ -153,6 +153,12 @@ export interface SummonEvent extends BaseGameEvent {
   playerId: PlayerId;
   instanceId: string;
   cardId: string;
+  /**
+   * Le permanent a été JOUÉ depuis la main (`playCard`), pas invoqué par un
+   * effet. Absent = invocation (un Péon). Relu par la fenêtre de réaction
+   * pour « que vous jouez » / « que vous invoquez ».
+   */
+  played?: boolean;
 }
 
 /**

@@ -21,13 +21,29 @@ export function deriveReactionTriggerEvents(state: GameState, events: GameEvent[
       case "PLAY_CARD":
         derived.push({ trigger: "onCardPlayed", playerId: event.playerId, cardId: event.cardId, sourceInstanceId: event.instanceId });
         break;
+      // Même provenance que le déclenchement automatique : jouée depuis la
+      // main, ou invoquée (« que vous jouez » / « que vous invoquez »).
       case "SUMMON":
-        derived.push({ trigger: "onEnterPlay", playerId: event.playerId, cardId: event.cardId, sourceInstanceId: event.instanceId });
+        derived.push({
+          trigger: "onEnterPlay",
+          playerId: event.playerId,
+          cardId: event.cardId,
+          sourceInstanceId: event.instanceId,
+          ...(event.played ? {} : { fromSummon: true }),
+        });
         break;
       // Une arrivée REJOUÉE (Colombina) rouvre aussi les capacités
       // facultatives d'arrivée de la carte visée : c'est tout l'intérêt.
+      // Marquée comme telle : ce n'est pas une arrivée pour les observateurs
+      // qui le précisent (`excludeRepeatedArrival`, `onlyPlayed`).
       case "ENTER_EFFECTS_REPEATED":
-        derived.push({ trigger: "onEnterPlay", playerId: event.playerId, cardId: event.cardId, sourceInstanceId: event.instanceId });
+        derived.push({
+          trigger: "onEnterPlay",
+          playerId: event.playerId,
+          cardId: event.cardId,
+          sourceInstanceId: event.instanceId,
+          repeatedArrival: true,
+        });
         break;
       case "ATTACK": {
         // Même contenu que le déclenchement automatique (`attack.ts`) :

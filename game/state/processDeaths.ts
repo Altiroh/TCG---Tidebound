@@ -229,7 +229,7 @@ function destroyOrphanedEquipment(state: GameState, turnNumber: number): { state
       players: next.players.map((p) =>
         p.id === player.id
           ? orphans.reduce<PlayerState>(
-              (acc, u) => recordGraveyardArrival(acc, { cardId: u.cardId, turnNumber, fromZone: "board", destructionCause: "effect" }),
+              (acc, u) => recordGraveyardArrival(acc, { cardId: u.cardId, instanceId: u.instanceId, turnNumber, fromZone: "board", destructionCause: "effect" }),
               {
                 ...p,
                 board: current.board.filter((u) => !orphanIds.has(u.instanceId)),
@@ -441,7 +441,7 @@ export function processDeaths(
       // DÉTRUITE ce tour » ne doit compter ni un Sabordage ni un Bris.
       const updatedPlayer = recordGraveyardArrival(
         { ...player, board, graveyard },
-        { cardId: unit.cardId, turnNumber, fromZone: "board", destructionCause: cause }
+        { cardId: unit.cardId, instanceId: unit.instanceId, turnNumber, fromZone: "board", destructionCause: cause }
       );
       next = {
         ...next,

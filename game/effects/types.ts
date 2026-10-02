@@ -553,7 +553,9 @@ export interface EffectDefinition {
    * capables d'attaquer le tour même — c'est le mot-clé **Pied marin**
    * (ex: Fesses en Avant !). Le texte l'accorde "jusqu'à la fin du tour",
    * mais sur un corps qui vient d'arriver son seul effet réel est
-   * exactement celui-ci.
+   * exactement celui-ci. Le mot-clé est en outre posé jusqu'à la fin du
+   * tour (modificateur `keywords: ["pied-marin"]`), pour que l'interface
+   * l'affiche.
    */
   rush?: boolean;
 
@@ -803,6 +805,15 @@ export interface EffectDefinition {
    */
   free?: boolean;
   /**
+   * `discountNextCards` : la réduction ne vaut QUE pour la carte que le
+   * joueur vient de repêcher au Cimetière (`EffectContext.chosenGraveyardInstanceId`,
+   * effet `moveGraveyardCardToHand` qui précède) — « remettez-la dans votre
+   * main […] ELLE coûte 1 de moins » (Tu viens jouer ?). Si cette carte
+   * n'est pas dans la main du contrôleur au moment de l'effet, aucune
+   * réduction n'est posée.
+   */
+  discountOnlyRecoveredCard?: boolean;
+  /**
    * `pickUnits` : les unités désignées doivent être de couleurs
    * chromatiques différentes (Les Couleurs Répondent).
    */
@@ -935,6 +946,14 @@ export interface EffectDefinition {
      * pas des destructions.
      */
     destroyedBy?: import("@/game/cards/types").DestructionCause[];
+    /**
+     * N'écoute pas l'arrivée de la carte SOURCE de l'effet
+     * (`EffectContext.sourceInstanceId`) : un Objet brisé rejoint le
+     * Cimetière AVANT que ses effets ne se résolvent, et sans ce filtre il
+     * remplirait lui-même « si une carte Un Dead a rejoint votre Cimetière
+     * ce tour » (Le Goûter).
+     */
+    excludeSource?: boolean;
     since: "thisTurn" | "lastOwnTurn";
   };
 

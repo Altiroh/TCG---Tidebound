@@ -83,10 +83,16 @@ describe("bot — rappel puis rejeu", () => {
    * pour une arrivée qui ne rapporte presque rien dans cette position, et
    * perd le Masque ; posé, il reste disponible pour un meilleur moment.
    * « Moyen » sait toujours faire l'enchaînement (test précédent).
+   *
+   * 02/10/2026 : la mesure a changé avec la carte. Le malus d'Il Dottore
+   * (« jusqu'à VOTRE prochain tour ») tombait jusque-là dès l'entame du tour
+   * adverse — il ne couvrait donc jamais la riposte. Corrigé, il la couvre :
+   * l'arrivée rejouée paie désormais, et « difficile » rappelle le Dottore
+   * avec le Masque brisé depuis la main.
    */
-  it("« difficile » garde le Masque plutôt qu'un rappel qui ne paie pas", () => {
-    const { state, masqueId } = theatreApresCombat();
-    expect(searchBestAction(state, "p1")).toMatchObject({ type: "playCard", instanceId: masqueId });
+  it("« difficile » rappelle le Dottore : son malus couvre maintenant la riposte adverse", () => {
+    const { state, dottoreId, masqueId } = theatreApresCombat();
+    expect(searchBestAction(state, "p1")).toMatchObject({ type: "breakObject", instanceId: masqueId, targetInstanceId: dottoreId });
   });
 
   it("ne rappelle pas AVANT le combat une unité qui peut encore attaquer", () => {

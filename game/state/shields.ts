@@ -212,10 +212,10 @@ export function consumeStructureResistanceRestoreShield(
  * le combat (arbitrage du 2026-09-14). Les appelants sont donc les seuls
  * juges : ce sont eux qui savent d'où vient le dégât.
  *
- * Le bonus que l'Équipement avait accordé au porteur (ici +1 Résistance)
- * reste posé après sa destruction : c'est la convention du moteur pour
- * tout Équipement qui quitte le plateau (cf. `processDeaths.ts`, Plaque
- * de Fortune), pas une exception de cette carte.
+ * Le bonus que l'Équipement accordait au porteur (ici +1 Résistance) est
+ * une aura (`equipGrantsBuff`, relue en direct par `stats.ts`) : il
+ * disparaît avec la destruction de l'Équipement, comme pour tout
+ * Équipement qui quitte le plateau.
  */
 export function consumeEquippedEffectDamageShield(
   state: GameState,

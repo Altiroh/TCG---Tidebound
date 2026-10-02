@@ -452,7 +452,13 @@ describe("Lot 13 — choisir une carte du Cimetière ailleurs que sur un Bris", 
     const arrivals = saborde.state.players.find((p) => p.id === "p1")!.graveyardArrivals ?? [];
     // La cause est inscrite avec l'arrivée : un Sabordage reste une arrivée
     // au Cimetière, mais pas une destruction.
-    expect(arrivals).toContainEqual({ cardId: "le-copain-du-dessous", turnNumber: 1, fromZone: "board", destructionCause: "scuttle" });
+    expect(arrivals).toContainEqual({
+      cardId: "le-copain-du-dessous",
+      instanceId: copain.instanceId,
+      turnNumber: 1,
+      fromZone: "board",
+      destructionCause: "scuttle",
+    });
   });
 
   it("Tu m'avais promis se propose en réaction, et attend une carte du Cimetière", () => {

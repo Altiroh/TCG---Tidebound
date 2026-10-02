@@ -97,6 +97,23 @@ export interface TriggerSourceFilter {
   /** Ne réagit qu'aux cartes INVOQUÉES, pas à celles posées depuis la main (ex: Bannière en Vieille Chaussette, "que vous invoquez"). */
   onlySummoned?: boolean;
   /**
+   * `onEnterPlay` seulement : ne réagit qu'aux cartes JOUÉES — posées depuis
+   * la main par leur contrôleur (« la première carte Marionnette que vous
+   * JOUEZ », Le Rideau se Lève). Écarte une invocation (un Péon n'est pas
+   * joué) comme une arrivée REJOUÉE (`repeatEnterEffects`). Pendant de
+   * `onlySummoned`.
+   */
+  onlyPlayed?: boolean;
+  /**
+   * `onEnterPlay` seulement : une arrivée REJOUÉE (`repeatEnterEffects` —
+   * Colombina, Le Régisseur des Profondeurs, Le Rideau se Lève) n'est pas
+   * une arrivée en jeu. Sans ce filtre, « répétez son effet d'arrivée »
+   * réveille les observateurs de « … arrive en jeu » comme si la carte
+   * venait d'arriver une seconde fois. Les invocations, elles, restent des
+   * arrivées.
+   */
+  excludeRepeatedArrival?: boolean;
+  /**
    * Pour un Équipement : ne réagit qu'à ce qui arrive au permanent qu'il
    * équipe — "La première fois à chaque tour QU'IL attaque" (ex:
    * Fourchette du Grand Étang). L'Équipement n'attaque pas lui-même :

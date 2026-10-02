@@ -119,7 +119,7 @@ export function discardFromHandState(
     graveyard: [...player.graveyard, ...taken.map((card) => ({ ...card, graveyardCause: "discarded" as const }))],
   };
   for (const card of taken) {
-    next = recordGraveyardArrival(next, { cardId: card.cardId, turnNumber: base.turnNumber, fromZone: "hand" });
+    next = recordGraveyardArrival(next, { cardId: card.cardId, instanceId: card.instanceId, turnNumber: base.turnNumber, fromZone: "hand" });
   }
 
   return { player: next, events, discarded: taken };
