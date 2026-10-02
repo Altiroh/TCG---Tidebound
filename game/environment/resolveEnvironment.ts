@@ -458,11 +458,20 @@ export function appliquerMareeAnnoncee(
   // Le décompte a donc lieu au début du tour de son propriétaire, et
   // `resolveTideTurnStep` est appelée juste après le passage de main : le
   // joueur actif est celui qui commence. Ni mort ni Sabordage.
-  for (const player of nextState.players.filter((p) => p.id === nextState.activePlayerId)) {
-    const expiring = player.board.filter((u) => u.turnsRemaining !== undefined && u.turnsRemaining <= 1);
+  //
+  // Seule exception au « tour du contrôleur » : un permanent marqué
+  // `expiresAtNextTurnStart` (Anomalie dont les choix imposés sont épuisés,
+  // cf. `anomalyForceChoiceAtStartOfTurn.times`) part à l'entame du tour
+  // suivant, quel que soit le joueur qui commence.
+  for (const player of nextState.players) {
+    const isActive = player.id === nextState.activePlayerId;
+    const expiring = player.board.filter(
+      (u) => u.expiresAtNextTurnStart || (isActive && u.turnsRemaining !== undefined && u.turnsRemaining <= 1)
+    );
+    if (!isActive && expiring.length === 0) continue;
     const board = player.board
       .filter((u) => !expiring.some((e) => e.instanceId === u.instanceId))
-      .map((u) => (u.turnsRemaining !== undefined ? { ...u, turnsRemaining: u.turnsRemaining - 1 } : u));
+      .map((u) => (isActive && u.turnsRemaining !== undefined ? { ...u, turnsRemaining: u.turnsRemaining - 1 } : u));
 
     // Le décompte (nouveau `board`) doit toujours être appliqué, même
     // quand rien n'expire ce tour-ci — un `continue` prématuré ici

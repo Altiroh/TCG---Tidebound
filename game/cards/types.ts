@@ -1219,7 +1219,19 @@ export interface CardDefinition {
    * `game/actions/resolveChoice.ts`, jamais deviné automatiquement — un
    * vrai choix de joueur.
    */
-  anomalyForceChoiceAtStartOfTurn?: { reasonLossAmount: number; anchorDamageAmount: number };
+  anomalyForceChoiceAtStartOfTurn?: {
+    reasonLossAmount: number;
+    anchorDamageAmount: number;
+    /**
+     * Nombre de choix imposés au total (« pendant 2 tours » = les 2 tours
+     * qui suivent la pose, décision du 02/10/2026). Le dernier imposé,
+     * l'Anomalie quitte le jeu à l'entame du tour suivant
+     * (`CardInstance.expiresAtNextTurnStart`) au lieu d'attendre la fin de
+     * sa `durationTurns`. Sans valeur : un choix à chaque tour tant
+     * qu'elle reste en jeu.
+     */
+    times?: number;
+  };
 
   /**
    * Capacité activable manuellement par son contrôleur, une fois par tour,
@@ -1442,6 +1454,10 @@ export interface CardInstance {
    * n'a pas de durée limitée.
    */
   turnsRemaining?: number;
+  /** Choix déjà imposés par une Anomalie à choix forcé (`anomalyForceChoiceAtStartOfTurn.times`). */
+  forcedChoicesImposed?: number;
+  /** Quitte le jeu (expiration) à l'entame du tour suivant, quel que soit le joueur actif. */
+  expiresAtNextTurnStart?: boolean;
 
   /**
    * Cette Structure a été RÉVÉLÉE en activant une Réaction cachée alors

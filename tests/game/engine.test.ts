@@ -2462,6 +2462,33 @@ describe("engine.dispatch - Le Fond Vous Regarde : choix forcé au début de cha
     expect(p1Turn.state.pendingChoice?.playerId).toBe("p1");
   });
 
+  it("« pendant 2 tours » : deux choix imposés en tout, puis l'Anomalie quitte le jeu à l'entame du tour suivant", () => {
+    const fondVousRegarde = instance("le-fond-vous-regarde", "p1", { turnsRemaining: 2 });
+    const pioche = (owner: string) => Array.from({ length: 5 }, () => instance("marin-des-jetees", owner));
+    let state = testGameState({
+      players: [
+        testPlayer("p1", { board: [fondVousRegarde], deck: pioche("p1"), reason: 10, anchor: 20 }),
+        testPlayer("p2", { deck: pioche("p2"), reason: 10, anchor: 20 }),
+      ],
+    });
+    const passerEtChoisir = (playerId: string) => {
+      const fin = dispatch(state, { type: "endTurn", playerId });
+      if (!fin.ok) throw new Error(fin.error);
+      state = fin.state;
+      if (!state.pendingChoice) return false;
+      const choix = dispatch(state, { type: "resolveChoice", playerId: state.pendingChoice.playerId, choice: "reasonLoss" });
+      if (!choix.ok) throw new Error(choix.error);
+      state = choix.state;
+      return true;
+    };
+
+    expect(passerEtChoisir("p1")).toBe(true); // 1er choix, pour p2
+    expect(passerEtChoisir("p2")).toBe(true); // 2e choix, pour p1
+    expect(passerEtChoisir("p1")).toBe(false); // plus de 3e choix
+    expect(state.players[0].board.some((u) => u.instanceId === fondVousRegarde.instanceId)).toBe(false);
+    expect(state.players[0].graveyard.some((c) => c.instanceId === fondVousRegarde.instanceId)).toBe(true);
+  });
+
   it("l'autre branche inflige des dégâts d'Ancrage au lieu d'une perte de Raison", () => {
     const fondVousRegarde = instance("le-fond-vous-regarde", "p1");
     const fillerP2 = instance("marin-des-jetees", "p2");

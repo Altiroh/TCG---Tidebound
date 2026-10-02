@@ -36,6 +36,7 @@ export function findAnomalyForcedChoices(state: GameState, activePlayerId: Playe
   for (const { unit, def } of allAnomalyInstances(state)) {
     const spec = def.anomalyForceChoiceAtStartOfTurn;
     if (!spec) continue;
+    if (spec.times !== undefined && (unit.forcedChoicesImposed ?? 0) >= spec.times) continue;
     choices.push({
       kind: "reasonOrAnchor",
       playerId: activePlayerId,
@@ -46,4 +47,26 @@ export function findAnomalyForcedChoices(state: GameState, activePlayerId: Playe
     });
   }
   return choices;
+}
+
+/**
+ * Compte les choix que `choices` vient d'imposer, sur chaque Anomalie
+ * source ; celle qui atteint son plafond (`times`) est marquée pour partir
+ * à l'entame du tour suivant.
+ */
+export function recordForcedChoicesImposed(state: GameState, choices: readonly PendingChoice[]): GameState {
+  const sources = new Set(choices.flatMap((c) => ("sourceInstanceId" in c ? [c.sourceInstanceId] : [])));
+  if (sources.size === 0) return state;
+  return {
+    ...state,
+    players: state.players.map((p) => ({
+      ...p,
+      board: p.board.map((u) => {
+        if (!sources.has(u.instanceId)) return u;
+        const times = getCardDefinition(u.cardId).anomalyForceChoiceAtStartOfTurn?.times;
+        const imposed = (u.forcedChoicesImposed ?? 0) + 1;
+        return { ...u, forcedChoicesImposed: imposed, ...(times !== undefined && imposed >= times ? { expiresAtNextTurnStart: true } : {}) };
+      }),
+    })) as [PlayerState, PlayerState],
+  };
 }

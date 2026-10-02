@@ -1325,7 +1325,7 @@ export const CORE_SET: CardDefinition[] = [
     maxCopies: 2,
     durationTurns: 2,
     text: "Pendant 2 tours, au début de chaque tour, le joueur actif choisit : perdre 1 Raison, ou infliger 1 dégât d'Ancrage à son propre Navire.",
-    anomalyForceChoiceAtStartOfTurn: { reasonLossAmount: 1, anchorDamageAmount: 1 },
+    anomalyForceChoiceAtStartOfTurn: { reasonLossAmount: 1, anchorDamageAmount: 1, times: 2 },
   },
   {
     // Variante ABYSSALE distincte (coexiste avec la Standard ci-dessus) — anciennement seule entrée sous
@@ -1339,7 +1339,7 @@ export const CORE_SET: CardDefinition[] = [
     maxCopies: 1,
     durationTurns: 2,
     text: "Pendant 2 tours, au début de chaque tour, le joueur actif choisit : perdre 2 Raison, ou infliger 2 dégâts d'Ancrage à son propre Navire.",
-    anomalyForceChoiceAtStartOfTurn: { reasonLossAmount: 2, anchorDamageAmount: 2 },
+    anomalyForceChoiceAtStartOfTurn: { reasonLossAmount: 2, anchorDamageAmount: 2, times: 2 },
   },
 
   // ======================================================================

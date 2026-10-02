@@ -7,7 +7,7 @@ import { processTrigger } from "@/game/triggers/triggerBus";
 import { markArrivalsBeforeTurnStart, pruneGraveyardArrivals } from "@/game/state/discard";
 import { RULES } from "@/game/rules/constants";
 import { assertGameActive, assertIsActivePlayer, assertPlayerInGame, combine } from "@/game/rules/validation";
-import { findAnomalyForcedChoices } from "@/game/state/anomalies";
+import { findAnomalyForcedChoices, recordForcedChoicesImposed } from "@/game/state/anomalies";
 import { ouvrirFenetrePour } from "@/game/reactions/reactionWindow";
 import type { TriggerEvent } from "@/game/triggers/types";
 import { getOpponent, STATUS_NO_REASON_GAIN, type GameState, type PlayerId, type PlayerState } from "@/game/state/types";
@@ -452,6 +452,7 @@ export function entameDeTour(state: GameState, eventsAvant: GameEvent[] = []): A
   // défaussez ») n'est pas écrasée : les choix forcés prennent la file.
   const forcedChoices = findAnomalyForcedChoices(nextState, refreshedPlayer.id, newTurnNumber);
   if (forcedChoices.length > 0) {
+    nextState = recordForcedChoicesImposed(nextState, forcedChoices);
     const file = nextState.pendingChoice ? forcedChoices : forcedChoices.slice(1);
     nextState = {
       ...nextState,
