@@ -4,7 +4,6 @@ import type { EffectContext } from "@/game/effects/resolveEffect";
 import { resolveEffect } from "@/game/effects/resolveEffect";
 import { resolveEffectSequence } from "@/game/effects/resolveSequence";
 import {
-  collectReactionCandidates,
   processGraveyardEntryTriggers,
   processGraveyardRecoveryTriggers,
   processReturnedToHandTriggers,
@@ -12,6 +11,7 @@ import {
   processTrigger,
 } from "@/game/triggers/triggerBus";
 import { eligibleBreakTargets } from "@/game/effects/chosenTargets";
+import { ouvrirFenetrePour } from "@/game/reactions/reactionWindow";
 import { validateGraveyardChoice } from "@/game/effects/graveyardChoices";
 import { markOncePerTurnUsed, oncePerTurnAvailable } from "@/game/state/oncePerTurn";
 import type { EffectDefinition } from "@/game/effects/types";
@@ -19,6 +19,7 @@ import type { GameEvent } from "@/game/events/types";
 import {
   assertCanPayCost,
   assertCardInHand,
+  assertPlayableCondition,
   assertGameActive,
   assertInMainPhase,
   assertIsActivePlayer,
@@ -54,40 +55,6 @@ const REACTION_ONLY_TARGETS: ReadonlySet<string> = new Set(["pendingAttacker", "
 export function breaksOnlyInReaction(def: CardDefinition): boolean {
   return (def.onBreakEffects ?? []).some((effect) => REACTION_ONLY_TARGETS.has(effect.target.kind));
 }
-
-/**
- * Un adversaire peut-il ANNULER l'effet de ce Bris (Fausse Cargaison) ?
- *
- * On ne suspend que si la réponse est oui. La question se pose en termes
- * STRUCTURELS — une capacité éligible dont l'un des effets est
- * `cancelObjectEffect` — et jamais en nommant une carte : le jour où une
- * deuxième carte annule un Bris, elle marchera sans une ligne de plus.
- */
-function peutAnnulerLeBris(
-  state: GameState,
-  briseurId: PlayerId,
-  instanceId: string,
-  cardId: string,
-  fromHand: boolean,
-  turnNumber: number
-): boolean {
-  const evenement = {
-    trigger: "onObjectBroken" as const,
-    playerId: briseurId,
-    cardId,
-    sourceInstanceId: instanceId,
-    fromHand,
-  };
-  return state.players.some((joueur) => {
-    if (joueur.id === briseurId) return false;
-    return collectReactionCandidates(state, [evenement], joueur.id, turnNumber).some((candidat) =>
-      (getCardDefinition(candidat.cardId).abilities?.[candidat.abilityIndex]?.effects ?? []).some(
-        (effet) => effet.type === "cancelObjectEffect"
-      )
-    );
-  });
-}
-
 
 /**
  * Ce qui suit un Bris une fois l'Objet parti : ses propres effets, les
@@ -331,7 +298,8 @@ export function previewBreakReason(
   // la dette. Une Cloche d'Alerte adverse, elle, peut rendre le Bris
   // impossible — l'aperçu doit le dire AVANT que le joueur ne tente.
   const reactionOnly = breaksOnlyInReaction(def);
-  const allowed = !reactionOnly && (!tax.blocksIfUnpayable || player.reason >= cost);
+  const jouable = !fromHand || assertPlayableCondition(state, playerId, def).ok;
+  const allowed = !reactionOnly && jouable && (!tax.blocksIfUnpayable || player.reason >= cost);
   return { cost, reasonAfter: player.reason - cost, allowed, reactionOnly };
 }
 
@@ -365,6 +333,11 @@ function validate(state: GameState, action: BreakObjectAction) {
       reasonCostAfterShield(state, action.playerId, handBreakCost(def), state.turnNumber)
     );
     if (!costCheck.ok) return costCheck;
+    // « Jouable uniquement si… » (On Flotte Encore) : Briser depuis la main
+    // est une autre façon de JOUER la carte — la condition s'y applique
+    // comme à la pose, sans quoi le Bris contournait ce que la pose refuse.
+    const playable = assertPlayableCondition(state, action.playerId, def);
+    if (!playable.ok) return playable;
   }
 
   if (breaksOnlyInReaction(def)) {
@@ -517,22 +490,37 @@ export function breakObject(state: GameState, action: BreakObjectAction): Action
   // sans cette garde, tous les Bris du jeu changeraient de rythme pour une
   // seule carte, et le moment où « la première fois que vous Brisez un
   // Objet » se déclenche bougerait sous les pieds des cartes existantes.
-  if (peutAnnulerLeBris(nextState, player.id, unit.instanceId, def.id, action.fromHand === true, state.turnNumber)) {
+  //
+  // La fenêtre s'ouvre ICI, avec le Bris en suspens : la laisser à la fin de
+  // `dispatch` revenait à reprendre le Bris AVANT de demander quoi que ce
+  // soit — l'annulation arrivait trop tard et ne trouvait plus rien
+  // (revue du 02/10/2026). Tant que le Bris est suspendu, seules les
+  // capacités qui l'ANNULENT y sont proposées (`collectReactionCandidates`) :
+  // ce qui réagit au Bris lui-même attend sa reprise, comme d'habitude.
+  // La question se pose en termes STRUCTURELS — une capacité éligible dont
+  // un effet est `cancelObjectEffect` — jamais en nommant une carte.
+  const suspendu: GameState = {
+    ...nextState,
+    pendingObjectBreak: {
+      playerId: player.id,
+      instanceId: unit.instanceId,
+      cardId: def.id,
+      brokenFromHand: action.fromHand === true,
+      ...(action.targetInstanceId ? { chosenTargetInstanceId: action.targetInstanceId } : {}),
+      ...(action.chosenGraveyardInstanceId ? { chosenGraveyardInstanceId: action.chosenGraveyardInstanceId } : {}),
+      turnNumber: state.turnNumber,
+    },
+  };
+  const fenetre = ouvrirFenetrePour(
+    suspendu,
+    [{ trigger: "onObjectBroken", playerId: player.id, cardId: def.id, sourceInstanceId: unit.instanceId, fromHand: action.fromHand === true }],
+    state.turnNumber
+  );
+  if (fenetre) {
     return {
       ok: true,
-      state: {
-        ...nextState,
-        pendingObjectBreak: {
-          playerId: player.id,
-          instanceId: unit.instanceId,
-          cardId: def.id,
-          brokenFromHand: action.fromHand === true,
-          ...(action.targetInstanceId ? { chosenTargetInstanceId: action.targetInstanceId } : {}),
-          ...(action.chosenGraveyardInstanceId ? { chosenGraveyardInstanceId: action.chosenGraveyardInstanceId } : {}),
-          turnNumber: state.turnNumber,
-        },
-      },
-      events,
+      state: { ...suspendu, pendingReaction: fenetre },
+      events: [...events, { ...base, type: "REACTION_WINDOW_OPENED", playerId: fenetre.awaitingPlayerId }],
     };
   }
 

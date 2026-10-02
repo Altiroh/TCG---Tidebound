@@ -25,6 +25,7 @@ import { reasonAfterLoss, reasonCeiling } from "@/game/state/reason";
 import { markOncePerTurnUsed, oncePerTurnAvailable } from "@/game/state/oncePerTurn";
 import { chromaticColorsOf, chromaticShardCardId } from "@/game/rules/chromatic";
 import {
+  applyOpponentRemovalShield,
   consumeEquippedEffectDamageShield,
   consumeReasonLossShield,
   consumeStructureResistanceRestoreShield,
@@ -585,40 +586,6 @@ function chosenTargetSurvives(state: GameState, context: EffectContext): boolean
   return !stats.destroyedByTide && unit.damageMarked < stats.health;
 }
 
-/** Clé `oncePerTurnFlags` du remplacement de Bête de Halage (`opponentRemovalShieldOncePerTurn`). */
-const REMOVAL_SHIELD_KEY = "opponentRemovalShield";
-
-/**
- * Bête de Halage : « la première fois à chaque tour qu'elle devrait être
- * renvoyée en main, déplacée ou détruite par un effet adverse, … lui retirer
- * 1 Résistance à la place ». Retourne l'état où le remplacement a eu lieu,
- * ou `undefined` si la carte n'en a pas (ou l'a déjà utilisé ce tour).
- */
-function applyOpponentRemovalShield(
-  state: GameState,
-  ownerId: PlayerId,
-  unit: CardInstance,
-  turnNumber: number,
-  base: { turnNumber: number; timestamp: number }
-): EffectResolution | undefined {
-  const shield = getCardDefinition(unit.cardId).opponentRemovalShieldOncePerTurn;
-  if (!shield || !oncePerTurnAvailable(unit, REMOVAL_SHIELD_KEY, turnNumber)) return undefined;
-  const malus: StatModifier = {
-    id: `mod_${Math.random().toString(36).slice(2, 8)}`,
-    source: unit.cardId,
-    attack: 0,
-    health: -shield.healthLoss,
-    duration: "permanent",
-  };
-  const next = replaceUnit(state, ownerId, unit.instanceId, (u) =>
-    markOncePerTurnUsed({ ...u, modifiers: [...u.modifiers, malus] }, REMOVAL_SHIELD_KEY, turnNumber)
-  );
-  return {
-    state: next,
-    events: [{ ...base, type: "DEBUFF_APPLIED", targetInstanceId: unit.instanceId, attack: 0, health: -shield.healthLoss }],
-  };
-}
-
 /**
  * Harnais de Retenue : « la première fois que l'unité équipée devrait être
  * renvoyée en main par un effet adverse, détruisez cet Équipement à la
@@ -827,6 +794,9 @@ export function resolveEffect(
           // Retenue pour la mort : une unité qui meurt n'a plus de source à
           // interroger (cf. `DestructionCause`).
           lastDamageCause: "effect" as const,
+          // L'auteur du coup : « détruite par un effet ADVERSE » (Bête de
+          // Halage) se lit à la mort, quand l'effet est déjà loin.
+          lastDamageBy: context.controllerId,
           lastDamageTurn: context.turnNumber,
         }));
         events.push({
@@ -980,7 +950,7 @@ export function resolveEffect(
         // Bête de Halage : une destruction décidée par un effet ADVERSE se
         // remplace par une perte de Résistance, une fois par tour.
         if (removal === "destroyed" && ownerId !== context.controllerId) {
-          const remplace = applyOpponentRemovalShield(nextState, ownerId, unit, context.turnNumber, base);
+          const remplace = applyOpponentRemovalShield(nextState, ownerId, unit.instanceId, context.turnNumber);
           if (remplace) {
             nextState = remplace.state;
             events.push(...remplace.events);
@@ -1564,7 +1534,7 @@ export function resolveEffect(
             nextState = harnais;
             continue;
           }
-          const remplace = applyOpponentRemovalShield(nextState, ownerId, unit, context.turnNumber, base);
+          const remplace = applyOpponentRemovalShield(nextState, ownerId, unit.instanceId, context.turnNumber);
           if (remplace) {
             nextState = remplace.state;
             events.push(...remplace.events);
@@ -1576,7 +1546,7 @@ export function resolveEffect(
         // une unité dans la main de son propriétaire », Lot 14). Avant le
         // Lot 14 aucun texte ne visait une carte adverse ; le renvoi était
         // donc simplement refusé pour elles, ce qui aurait silencieusement
-        // annulé Par-dessus Bord ! et Panique sur le Pont.
+        // annulé Par-dessus Bord !.
         const moved = returnPermanentToHand(nextState, ownerId, unit.instanceId);
         nextState = moved.state;
         events.push(...moved.events);
@@ -1751,6 +1721,7 @@ export function resolveEffect(
           pendingChoice: {
             kind: "keepUnits",
             playerId: controleur.id,
+            controllerId: controleur.id,
             remainingPlayerIds: [adversaire.id],
             keep: garde,
             kept: [],
@@ -1766,8 +1737,11 @@ export function resolveEffect(
       const budget = amountValue(effect.amount, state, context.controllerId);
       const player = resolveSinglePlayerTarget(state, effect, context) ?? getPlayer(state, context.controllerId);
       // Rien à réparer, ou rien à répartir : on ne pose pas une question
-      // sans réponse utile.
-      if (budget <= 0 || !player.board.some((u) => u.damageMarked > 0)) return { state, events };
+      // sans réponse utile. « Répartie entre les UNITÉS » : une Structure
+      // blessée n'entre pas dans la répartition (cf. `resolveChoice`).
+      if (budget <= 0 || !player.board.some((u) => u.damageMarked > 0 && UNIT_CARD_TYPES.includes(getCardDefinition(u.cardId).type))) {
+        return { state, events };
+      }
       return {
         state: {
           ...state,

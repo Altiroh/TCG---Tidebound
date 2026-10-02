@@ -258,3 +258,47 @@ export function consumeEquippedEffectDamageShield(
     events: [{ type: "DESTROY", instanceId: equipment.instanceId, reason: "effect", turnNumber, timestamp: Date.now() }],
   };
 }
+
+/** Clé `oncePerTurnFlags` du remplacement de Bête de Halage (`opponentRemovalShieldOncePerTurn`). */
+export const OPPONENT_REMOVAL_SHIELD_KEY = "opponentRemovalShield";
+
+/**
+ * Bête de Halage : « la première fois à chaque tour qu'elle devrait être
+ * renvoyée en main, déplacée ou détruite par un effet adverse, … lui retirer
+ * 1 Résistance à la place ». Pose le malus permanent et marque l'usage du
+ * tour ; retourne `undefined` si la carte n'a pas ce remplacement (ou l'a
+ * déjà utilisé ce tour). Partagé par la résolution d'effets (destruction,
+ * renvoi en main) et par la passe de morts (dégâts d'un effet adverse,
+ * destruction posée hors d'un effet `destroy`).
+ */
+export function applyOpponentRemovalShield(
+  state: GameState,
+  ownerId: PlayerId,
+  instanceId: string,
+  turnNumber: number
+): { state: GameState; events: GameEvent[] } | undefined {
+  const owner = getPlayer(state, ownerId);
+  const unit = owner.board.find((u) => u.instanceId === instanceId);
+  if (!unit) return undefined;
+  const shield = getCardDefinition(unit.cardId).opponentRemovalShieldOncePerTurn;
+  if (!shield || !oncePerTurnAvailable(unit, OPPONENT_REMOVAL_SHIELD_KEY, turnNumber)) return undefined;
+  const malus = {
+    id: `mod_${Math.random().toString(36).slice(2, 8)}`,
+    source: unit.cardId,
+    attack: 0,
+    health: -shield.healthLoss,
+    duration: "permanent" as const,
+  };
+  const remplacee = markOncePerTurnUsed({ ...unit, modifiers: [...unit.modifiers, malus] }, OPPONENT_REMOVAL_SHIELD_KEY, turnNumber);
+  return {
+    state: {
+      ...state,
+      players: state.players.map((p) =>
+        p.id === ownerId ? { ...p, board: p.board.map((u) => (u.instanceId === instanceId ? remplacee : u)) } : p
+      ) as [PlayerState, PlayerState],
+    },
+    events: [
+      { turnNumber, timestamp: Date.now(), type: "DEBUFF_APPLIED", targetInstanceId: instanceId, attack: 0, health: -shield.healthLoss },
+    ],
+  };
+}

@@ -183,8 +183,8 @@ export type EffectType =
   | "handToDeckBottomThenDraw"
   /**
    * « empêchez cette destruction : elle reste en jeu avec N Résistance »
-   * (Lot 14 — Filet de Sauvetage, Cloison Étanche, Bouclier d'Écume,
-   * Planche de Fortune).
+   * (Lot 14 — Filet de Sauvetage, Cloison Étanche, Bouclier d'Écume ;
+   * Lot 15 — Porte-Éclats).
    *
    * Ramène les dégâts marqués juste assez bas pour que la cible survive au
    * contrôle de morts en cours, en lui laissant exactement `amount` de
@@ -249,7 +249,8 @@ export type EffectType =
   | "cancelObjectEffect"
   /**
    * « Renvoyez jusqu'à N unités […] » : désigne PLUSIEURS cibles, là où
-   * `chosenUnit` n'en désigne qu'une (Panique sur le Pont, Lot 14).
+   * `chosenUnit` n'en désigne qu'une (Trinquer Trop Fort, Les Couleurs
+   * Répondent, Lot 15).
    *
    * Ne fait rien lui-même : il recense les cibles légales avec `target` et
    * `filter`, et pose la question (`PickUnitsChoice`). Les effets appliqués
@@ -907,7 +908,7 @@ export interface EffectDefinition {
   conditionOpponentUnitsMoreThanController?: boolean;
 
   /**
-   * « si l'adversaire contrôle au moins N unités » (Panique sur le Pont,
+   * « si l'adversaire contrôle au moins N unités » (Le Brise-Ligne,
    * Lot 14) — la même porte anti-swarm que sur une capacité, ici posée sur
    * un effet de POSE, qui n'a pas de capacité où l'accrocher.
    */

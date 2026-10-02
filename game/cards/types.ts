@@ -99,7 +99,8 @@ export interface TriggerSourceFilter {
   /**
    * `onEnterPlay` seulement : ne réagit qu'aux cartes JOUÉES — posées depuis
    * la main par leur contrôleur (« la première carte Marionnette que vous
-   * JOUEZ », Le Rideau se Lève). Écarte une invocation (un Péon n'est pas
+   * JOUEZ », Le Rideau se Lève ; « la première unité adverse JOUÉE chaque
+   * tour », Chaîne de Travers ; Barils de Poudre ; Poste Chromatique). Écarte une invocation (un Péon n'est pas
    * joué) comme une arrivée REJOUÉE (`repeatEnterEffects`). Pendant de
    * `onlySummoned`.
    */
@@ -159,6 +160,13 @@ export interface TriggerSourceFilter {
    * « que vous piochez puis défaussez par un effet de carte »).
    */
   discardByEffect?: boolean;
+  /**
+   * `onCardDiscardedFromHand` seulement : la défausse SUIT une pioche du
+   * même joueur dans la même suite d'effets — « que vous piochez PUIS
+   * défaussez par un effet de carte » (Oracle d'Améthyste). Une défausse
+   * seule, ou imposée sans pioche préalable, ne compte pas.
+   */
+  discardAfterDraw?: boolean;
 }
 
 /** Une capacité déclenchée : "quand X se produit, résous ces effets". */
@@ -354,6 +362,23 @@ export interface TriggeredAbility {
      */
     opponentAttacksThisTurnAtLeast?: number;
     /**
+     * « la PREMIÈRE unité adverse qui attaque chaque tour » (Cale Inondable,
+     * effet visible) : au plus N attaques adverses ce tour, celle en cours
+     * comprise — `1` = seulement la première. Même compte que
+     * `opponentAttacksThisTurnAtLeast`. Sans elle, une première attaque qui
+     * ne remplit pas une autre condition laissait l'usage du tour à la
+     * suivante, qui n'est plus « la première ».
+     */
+    opponentAttacksThisTurnAtMost?: number;
+    /**
+     * « la première unité adverse jouée APRÈS LA TROISIÈME chaque tour »
+     * (Barils de Poudre) : l'adversaire a JOUÉ au moins N unités pendant ce
+     * tour, celle qui arrive comprise (`PlayerState.unitsPlayedThisTurn`,
+     * compté avant ses déclencheurs d'arrivée). Un compte des POSES, pas
+     * du plateau : à associer à `triggeredBy.onlyPlayed`.
+     */
+    opponentUnitsPlayedThisTurnAtLeast?: number;
+    /**
      * « si elle est visible » : la carte porteuse doit être visible dans la
      * Marée courante (ex: Filet à la Dérive). Indispensable pour une
      * capacité facultative — sans elle, une Structure cachée se proposerait
@@ -394,6 +419,12 @@ export interface TriggeredAbility {
      * le tour adverse.
      */
     duringOwnTurn?: boolean;
+    /**
+     * « pendant le tour adverse » (Bouclier d'Écume) : complément de
+     * `duringOwnTurn` — la capacité ne se déclenche que si son contrôleur
+     * n'est PAS le joueur actif.
+     */
+    duringOpponentTurn?: boolean;
     /**
      * « si vous contrôlez au moins N autres unités » (Le Déserteur Gris) :
      * compte les UNITÉS du contrôleur, la porteuse exclue.
@@ -588,6 +619,9 @@ export interface CardDefinition {
    * À distinguer d'une `condition` de capacité, qui laisse la carte se
    * poser mais son effet sans objet. Ici le texte dit « jouable
    * uniquement si », donc c'est la POSE elle-même qui est refusée.
+   *
+   * Un Objet Brisé DEPUIS LA MAIN est joué lui aussi : la même condition
+   * refuse ce Bris (`breakObject`), sans quoi il contournait la pose.
    */
   playableOnlyIf?: {
     /**
@@ -1359,6 +1393,17 @@ export interface CardInstance {
   arrivedByAssemblage?: boolean;
 
   /**
+   * Couleurs chromatiques que son contrôleur contrôlait JUSTE AVANT de la
+   * jouer (`playCard`, photo prise avant l'Assemblage). Lue par
+   * `condition.triggerSourceBringsNewChromaticColor` — « une couleur que
+   * vous ne contrôliez pas encore » : sans cette photo, les Sentinelles
+   * d'un Assemblage, déjà parties quand la condition est lue, faisaient
+   * passer les couleurs du Géant pour nouvelles. Absente sur une carte
+   * invoquée par un effet : elle n'a pas été JOUÉE.
+   */
+  couleursAvantArrivee?: ChromaticColor[];
+
+  /**
    * Index (1-based) de la variante d'illustration tirée à la création, pour
    * une carte à `illustrationVariants` (Péon Cra-Poiscail). Tiré avec le
    * RNG DÉTERMINISTE de la partie et stocké sur l'instance : le visuel doit
@@ -1397,6 +1442,13 @@ export interface CardInstance {
    * à interroger, il faut donc l'avoir retenue.
    */
   lastDamageCause?: Exclude<DestructionCause, "scuttle">;
+
+  /**
+   * Joueur dont l'EFFET a marqué les derniers dégâts (`lastDamageCause:
+   * "effect"` seulement ; effacé par un coup de combat ou de Marée). Lu à la
+   * mort : « détruite par un effet ADVERSE » (Bête de Halage).
+   */
+  lastDamageBy?: string;
 
   /**
    * Tour de table où les derniers dégâts ont été marqués. Posé au même

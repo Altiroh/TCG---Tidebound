@@ -260,6 +260,8 @@ export interface CardMovedEvent extends BaseGameEvent {
    * en fin de tour (`false`). Absent sur les autres déplacements.
    */
   discardByEffect?: boolean;
+  /** Défausse d'effet qui SUIT une pioche du même joueur dans la même suite d'effets (`HandDiscardChoice.afterDraw`). */
+  discardAfterDraw?: boolean;
 }
 
 /**

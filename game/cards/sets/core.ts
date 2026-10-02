@@ -4333,17 +4333,19 @@ export const CORE_SET: CardDefinition[] = [
     maxCopies: 2,
     visibleDuringTide: ["tempete", "abysses"],
     text:
-      "Durée : 3 tours. Visible pendant Tempête et Abysses. La première fois à chaque tour qu'une unité adverse " +
-      "arrive alors que l'adversaire contrôle au moins 4 unités, elle subit 1 dégât. Réaction cachée : lorsqu'une " +
-      "unité adverse arrive alors que l'adversaire en contrôle au moins 4, infligez 2 dégâts à toutes les unités " +
-      "adverses. Détruisez ensuite Barils de Poudre.",
+      "Durée : 3 tours. Visible pendant Tempête et Abysses. La première unité adverse jouée après la troisième " +
+      "chaque tour subit 1 dégât. Réaction cachée : lorsqu'une unité adverse arrive alors que l'adversaire en " +
+      "contrôle au moins 4, infligez 2 dégâts à toutes les unités adverses. Détruisez ensuite Barils de Poudre.",
     abilities: [
       {
+        // Texte Notion (revue du 02/10/2026) : un compte des unités JOUÉES
+        // ce tour par l'adversaire, pas de celles qu'il contrôle — un
+        // plateau déjà plein ne déclenche rien, la quatrième pose du tour oui.
         trigger: "onEnterPlay",
-        triggeredBy: { cardTypes: ["marin", "creature"], opponentOnly: true },
+        triggeredBy: { cardTypes: ["marin", "creature"], opponentOnly: true, onlyPlayed: true },
         oncePerTurnKey: "barilsDePoudre",
-        condition: { selfVisible: true, opponentUnitsAtLeast: 4 },
-        description: "Une quatrième unité adverse arrive : elle subit 1 dégât.",
+        condition: { selfVisible: true, opponentUnitsPlayedThisTurnAtLeast: 4 },
+        description: "La quatrième unité adverse jouée ce tour subit 1 dégât.",
         effects: [{ type: "damage", target: { kind: "triggerSource" }, amount: { kind: "flat", value: 1 } }],
       },
       {
@@ -4448,7 +4450,9 @@ export const CORE_SET: CardDefinition[] = [
       {
         trigger: "onUnitAttackDeclared",
         oncePerTurnKey: "caleInondable",
-        condition: { selfVisible: true, opponentUnitsMoreThanController: true },
+        // « la PREMIÈRE unité adverse qui attaque chaque tour » : la première
+        // attaque seulement, même si la comparaison des plateaux l'écarte.
+        condition: { selfVisible: true, opponentUnitsMoreThanController: true, opponentAttacksThisTurnAtMost: 1 },
         description: "L'adversaire a plus de corps : son attaquant perd 1 Puissance.",
         effects: [{ type: "modifyAttackerPower", target: { kind: "self" }, amount: { kind: "flat", value: 1 } }],
       },
@@ -4489,7 +4493,8 @@ export const CORE_SET: CardDefinition[] = [
     abilities: [
       {
         trigger: "onEnterPlay",
-        triggeredBy: { cardTypes: ["marin", "creature"], opponentOnly: true },
+        // « JOUÉE » : une unité invoquée par un effet n'en est pas une.
+        triggeredBy: { cardTypes: ["marin", "creature"], opponentOnly: true, onlyPlayed: true },
         oncePerTurnKey: "chaineDeTravers",
         condition: { selfVisible: true },
         description: "La première unité adverse du tour perd 1 Puissance.",
@@ -4865,6 +4870,7 @@ export const CORE_SET: CardDefinition[] = [
         trigger: "onPermanentWouldBeDestroyed",
         triggeredBy: { cardTypes: ["marin", "creature"] },
         mode: "optional",
+        condition: { duringOpponentTurn: true },
         description: "Brisez Bouclier d'Écume : votre unité reste en jeu avec 1 Résistance.",
         effects: [
           { type: "surviveWithHealth", target: { kind: "triggerSource" }, amount: { kind: "flat", value: 1 } },
@@ -5102,8 +5108,10 @@ export const CORE_SET: CardDefinition[] = [
     text:
       "Brisez cet Objet : récupérez 4 Ancrage. Jouable uniquement si vous avez perdu au moins la moitié de votre " +
       "Ancrage initial.",
-    // La condition porte sur la POSE, pas sur le Bris : une carte qu'on ne
-    // peut pas jouer reste en main, et rien n'est dépensé.
+    // La condition porte sur la POSE comme sur le Bris DEPUIS LA MAIN (autre
+    // façon de jouer la carte, `breakObject`) : une carte qu'on ne peut pas
+    // jouer reste en main, et rien n'est dépensé. Une fois posée, son Bris
+    // depuis le plateau n'est plus conditionné — elle a déjà été jouée.
     playableOnlyIf: { controllerAnchorAtMostRatioOfStart: 0.5 },
     onBreakEffects: [
       { type: "heal", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 4 } },
@@ -5158,7 +5166,7 @@ export const CORE_SET: CardDefinition[] = [
     attack: 5,
     health: 6,
     maxCopies: 2,
-    text: "À son arrivée, si l'adversaire contrôle au moins 4 unités, infligez 1 dégât à toutes ses unités.",
+    text: "À son arrivée, si l'adversaire contrôle au moins 4 unités, infligez 1 dégât à toutes les unités adverses.",
     onPlayEffects: [
       {
         type: "damage",

@@ -4,7 +4,7 @@ import { UNIT_CARD_TYPES } from "@/game/cards/types";
 import { chromaticColorsOf } from "@/game/rules/chromatic";
 import { resolveEffectSequence } from "@/game/effects/resolveSequence";
 import { discardFromHand } from "@/game/state/discard";
-import { processGraveyardEntryTriggers, processGraveyardRecoveryTriggers } from "@/game/triggers/triggerBus";
+import { processGraveyardEntryTriggers, processGraveyardRecoveryTriggers, processTrigger } from "@/game/triggers/triggerBus";
 import { finirTour } from "@/game/actions/endTurn";
 import type { GameEvent } from "@/game/events/types";
 import { assertGameActive, assertPlayerInGame, combine } from "@/game/rules/validation";
@@ -85,6 +85,29 @@ export function resolveChoice(state: GameState, action: ResolveChoiceAction): Ac
     const applied = resolveEffectSequence(nextState, choice.effects, { ...choice.context, chosenColor: color });
     nextState = applied.state;
     events.push(...applied.events);
+    // La carte qui vient de RECEVOIR sa couleur (Émissaire de Quartz) : ce
+    // qui guettait la couleur d'une arrivée (Poste Chromatique) ne pouvait
+    // pas la voir avant la réponse — elle n'existait pas encore.
+    const porteuse = choice.context.sourceInstanceId
+      ? nextState.players
+          .flatMap((p) => p.board.map((u) => ({ u, p })))
+          .find(({ u }) => u.instanceId === choice.context.sourceInstanceId)
+      : undefined;
+    if (porteuse && chromaticColorsOf(porteuse.u, porteuse.p.board).includes(color)) {
+      const vu = processTrigger(
+        nextState,
+        {
+          trigger: "onChromaticColorChosen",
+          playerId: porteuse.p.id,
+          cardId: porteuse.u.cardId,
+          sourceInstanceId: porteuse.u.instanceId,
+          fromSummon: porteuse.u.couleursAvantArrivee === undefined,
+        },
+        choice.turnNumber
+      );
+      nextState = vu.state;
+      events.push(...vu.events);
+    }
     return { ok: true, state: nextState, events };
   }
 
@@ -154,6 +177,14 @@ export function resolveChoice(state: GameState, action: ResolveChoiceAction): Ac
     }
 
     for (const instanceId of designees) {
+      // « est ciblée par un effet adverse » (Signal Violet) : désigner une
+      // unité adverse ici, c'est la cibler, comme le fait un `chosenUnit`
+      // (`resolveEffect`). Sans cet événement, Trinquer Trop Fort visant
+      // votre Sentinelle ne réveillait pas la Veilleuse de l'Ombre.
+      const proprietaire = nextState.players.find((p) => p.board.some((u) => u.instanceId === instanceId));
+      if (proprietaire && proprietaire.id !== choice.controllerId) {
+        events.push({ ...base, type: "UNIT_TARGETED", instanceId, byPlayerId: choice.controllerId });
+      }
       // Chaque cible est traitée l'une après l'autre, et les effets y
       // visent `triggerSource` : c'est la cible en cours.
       const applique = resolveEffectSequence(nextState, choice.effects, {
@@ -210,7 +241,7 @@ export function resolveChoice(state: GameState, action: ResolveChoiceAction): Ac
         ...p,
         board: p.board.map((u) =>
           UNIT_CARD_TYPES.includes(getCardDefinition(u.cardId).type) && !epargnees.has(u.instanceId)
-            ? { ...u, pendingRemoval: "destroyed" as const }
+            ? { ...u, pendingRemoval: "destroyed" as const, ...(choice.controllerId ? { pendingRemovalBy: choice.controllerId } : {}) }
             : u
         ),
       })) as [PlayerState, PlayerState],
@@ -240,6 +271,16 @@ export function resolveChoice(state: GameState, action: ResolveChoiceAction): Ac
     const player = getPlayer(nextState, choice.playerId);
     if (repartition.some((part) => !player.board.some((u) => u.instanceId === part.instanceId))) {
       return { ok: false, error: "Cette unité n'est pas sur votre plateau." };
+    }
+    // « répartie entre les UNITÉS que vous contrôlez » (Trousse du Bord,
+    // Chirurgien du Bord) : une Structure ou un Équipement blessé n'en est pas.
+    if (
+      repartition.some((part) => {
+        const carte = player.board.find((u) => u.instanceId === part.instanceId)!;
+        return !UNIT_CARD_TYPES.includes(getCardDefinition(carte.cardId).type);
+      })
+    ) {
+      return { ok: false, error: "Seule une unité peut recevoir une part de ce soin." };
     }
 
     const parts = new Map(repartition.map((part) => [part.instanceId, part.amount]));
@@ -384,7 +425,7 @@ export function resolveChoice(state: GameState, action: ResolveChoiceAction): Ac
     // Une défausse CHOISIE vient toujours d'un effet de carte : c'est ce qui
     // la distingue de la limite de main (Oracle d'Améthyste, Lot 15).
     const defausses = discarded.events.map((event) =>
-      event.type === "CARD_MOVED" ? { ...event, discardByEffect: true } : event
+      event.type === "CARD_MOVED" ? { ...event, discardByEffect: true, ...(choice.afterDraw ? { discardAfterDraw: true } : {}) } : event
     );
     discarded.events.splice(0, discarded.events.length, ...defausses);
     events.push(...discarded.events);

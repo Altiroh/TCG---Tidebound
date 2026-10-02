@@ -375,6 +375,16 @@ export interface GameState {
   reactionsEnAttente?: TriggerEvent[];
 
   /**
+   * Signaux VIOLETS déclenchés pendant qu'une question attendait sa réponse
+   * (Lot 15 — « piochez 1 carte puis défaussez-en 1 »). La défausse du
+   * Signal aurait écrasé la question posée ; l'occurrence n'est pas perdue
+   * pour autant : ses émetteurs sont marqués (c'était bien « la première
+   * fois ce tour »), et la pioche-défausse se résout dès que la table se
+   * libère (`processChromaticSignals`).
+   */
+  signauxVioletsEnAttente?: Array<{ playerId: PlayerId; count: number; sourceInstanceId: string }>;
+
+  /**
    * Choix forcé en attente pour `playerId` (Notion "Choix de joueur en
    * cours de résolution", ex: Le Fond Vous Regarde — "au début de chaque
    * tour, le joueur actif choisit : perdre X Raison, ou infliger X dégâts
@@ -592,6 +602,13 @@ export interface AbilityOptionChoice {
 export interface HandDiscardChoice {
   kind: "handDiscard";
   playerId: PlayerId;
+  /**
+   * Ce même joueur vient de PIOCHER par un effet de la même suite :
+   * « piochez 1 carte puis défaussez-en 1 » (Vigie aux Fissures, Signal
+   * Violet). Posé par `resolveEffectSequence`, relayé jusqu'aux
+   * déclencheurs de défausse (`TriggerSourceFilter.discardAfterDraw`).
+   */
+  afterDraw?: boolean;
   /** Nombre de cartes à défausser — déjà borné à la taille de la main. */
   count: number;
   /**
@@ -644,7 +661,7 @@ export interface HandDiscardChoice {
 /**
  * « Regardez les N premières cartes de votre pioche. Ajoutez-en une à votre
  * main. Placez les autres sous votre pioche. » (Lot 14 — Faire l'Inventaire,
- * Journal de Bord, Fouille de la Cale).
+ * Fouille de la Cale ; Lot 15 — Appel des Sentinelles).
  *
  * Les cartes regardées sont SORTIES de la pioche au moment où la question
  * est posée, et vivent ici jusqu'à la réponse : sans ça, une pioche qui se
@@ -722,13 +739,15 @@ export interface KeepUnitsChoice {
   keep: number;
   /** Unités déjà mises de côté, tous joueurs confondus. */
   kept: string[];
+  /** Joueur qui a joué la carte : l'auteur des destructions (Bête de Halage, « par un effet adverse »). */
+  controllerId?: PlayerId;
   sourceInstanceId?: string;
   turnNumber: number;
 }
 
 /**
- * « Renvoyez JUSQU'À 2 unités de coût 3 ou moins qu'il contrôle dans sa
- * main » (Panique sur le Pont, Lot 14).
+ * « Choisissez JUSQU'À N unités » (Trinquer Trop Fort, Les Couleurs
+ * Répondent, Lot 15).
  *
  * `chosenUnit` ne désigne qu'UNE cible : un texte qui en vise plusieurs
  * n'avait aucune façon de se dire. Ce choix-ci porte la liste des cibles

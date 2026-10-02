@@ -173,16 +173,43 @@ function matchesControlCondition(
     if (unites(adversaire?.board) <= unites(moi?.board)) return false;
   }
   const seuilAttaques = ability.condition?.opponentAttacksThisTurnAtLeast;
-  if (seuilAttaques !== undefined) {
+  if (seuilAttaques !== undefined && attaquesAdversesDuTour(state, controllerId) < seuilAttaques) return false;
+  const seuilPoses = ability.condition?.opponentUnitsPlayedThisTurnAtLeast;
+  if (seuilPoses !== undefined) {
     const adversaire = state.players.find((p) => p.id !== controllerId);
-    if ((adversaire?.attacksDeclaredThisTurn ?? 0) < seuilAttaques) return false;
+    if ((adversaire?.unitsPlayedThisTurn ?? 0) < seuilPoses) return false;
   }
+  const plafondAttaques = ability.condition?.opponentAttacksThisTurnAtMost;
+  if (plafondAttaques !== undefined && attaquesAdversesDuTour(state, controllerId) > plafondAttaques) return false;
   const arrival = ability.condition?.graveyardArrival;
   if (arrival && !hasGraveyardArrival(state, controllerId, arrival)) return false;
   const required = ability.condition?.controlsAnyCardIds;
   if (!required) return true;
   const controller = state.players.find((p) => p.id === controllerId);
   return Boolean(controller?.board.some((unit) => required.includes(unit.cardId)));
+}
+
+/**
+ * Attaques déclarées par l'adversaire de `controllerId` pendant ce tour de
+ * table, CELLE EN COURS COMPRISE (`opponentAttacksThisTurnAtLeast/AtMost`).
+ *
+ * `attacksDeclaredThisTurn` n'est incrémenté qu'à la RÉSOLUTION de
+ * l'attaque (`attack.ts`), après la fenêtre d'interception ouverte à sa
+ * déclaration : lu tel quel, il valait 2 à la troisième attaque, et Cale
+ * Inondable ne se proposait qu'à la quatrième. Une attaque adverse
+ * suspendue (`pendingAttack`) dont l'attaquant n'est pas encore marqué
+ * « a attaqué » n'est pas encore comptée : on l'ajoute.
+ */
+function attaquesAdversesDuTour(state: GameState, controllerId: PlayerId): number {
+  const adversaire = state.players.find((p) => p.id !== controllerId);
+  if (!adversaire) return 0;
+  const dejaComptees = adversaire.attacksDeclaredThisTurn ?? 0;
+  const enCours = state.pendingAttack;
+  if (!enCours || enCours.kind === "tirDeNavire" || enCours.playerId !== adversaire.id || !enCours.attackerInstanceId) {
+    return dejaComptees;
+  }
+  const attaquant = adversaire.board.find((u) => u.instanceId === enCours.attackerInstanceId);
+  return attaquant && !attaquant.hasAttackedThisTurn ? dejaComptees + 1 : dejaComptees;
 }
 
 /**
@@ -200,6 +227,8 @@ function matchesLot15Condition(
   if (!condition) return true;
   // « pendant votre tour » / « pendant chacun de vos tours ».
   if (condition.duringOwnTurn && state.activePlayerId !== controllerId) return false;
+  // « pendant le tour adverse » (Bouclier d'Écume).
+  if (condition.duringOpponentTurn && state.activePlayerId === controllerId) return false;
   const moi = state.players.find((p) => p.id === controllerId);
   const adversaire = state.players.find((p) => p.id !== controllerId);
   // « si vous contrôlez au moins N AUTRES unités » (Le Déserteur Gris).
@@ -222,11 +251,17 @@ function matchesLot15Condition(
     const arrivee = triggerSourceInstanceId ? findBoardUnit(state, triggerSourceInstanceId) : undefined;
     if (!arrivee || !moi) return false;
     const siennes = chromaticColorsOf(arrivee.unit, moi.board);
+    // La photo prise à la pose fait foi (`CardInstance.couleursAvantArrivee`) :
+    // un Assemblage a déjà retiré ses Sentinelles quand on lit la condition.
+    // À défaut, le plateau actuel, la déclencheuse exclue.
     const dejaLa = new Set(
-      moi.board.filter((u) => u.instanceId !== arrivee.unit.instanceId).flatMap((u) => chromaticColorsOf(u, moi.board))
+      arrivee.unit.couleursAvantArrivee ??
+        moi.board.filter((u) => u.instanceId !== arrivee.unit.instanceId).flatMap((u) => chromaticColorsOf(u, moi.board))
     );
-    for (const claim of moi.claimedChromaticColors ?? []) {
-      if (state.turnNumber <= claim.expiresAfterTurn) dejaLa.add(claim.color);
+    if (!arrivee.unit.couleursAvantArrivee) {
+      for (const claim of moi.claimedChromaticColors ?? []) {
+        if (state.turnNumber <= claim.expiresAfterTurn) dejaLa.add(claim.color);
+      }
     }
     if (!siennes.some((color) => !dejaLa.has(color))) return false;
   }
@@ -347,6 +382,8 @@ function matchesTriggerSource(
   }
   // « par un effet de carte » : la limite de main en fin de tour n'en est pas un.
   if (filter.discardByEffect && !event.discardByEffect) return false;
+  // « piochez PUIS défaussez » : la défausse suit une pioche du même effet.
+  if (filter.discardAfterDraw && !event.discardAfterDraw) return false;
   return true;
 }
 
@@ -800,6 +837,7 @@ export function processGraveyardEntryTriggers(
           discardedOwnerId: event.ownerId,
           fromZone,
           ...(event.discardByEffect ? { discardByEffect: true } : {}),
+          ...(event.discardAfterDraw ? { discardAfterDraw: true } : {}),
         },
         turnNumber,
         depth
@@ -1108,6 +1146,14 @@ function collectReactionCandidatesOnBoard(
       }
       const key = `${item.context.sourceInstanceId}:${item.abilityIndex}`;
       if (seen.has(key)) continue;
+
+      // Bris SUSPENDU (Fausse Cargaison) : sa fenêtre n'appelle que ce qui
+      // l'annule — ce qui réagit au Bris lui-même se propose à sa reprise,
+      // pas deux fois. Et une annulation ne se propose que s'il reste un
+      // Bris à annuler : hors de cette fenêtre, elle ne ferait rien.
+      const annule = item.effects.some((effect) => effect.type === "cancelObjectEffect");
+      if (annule && !(state.pendingObjectBreak && !state.pendingObjectBreak.cancelled)) continue;
+      if (state.pendingObjectBreak && event.trigger === "onObjectBroken" && !annule) continue;
 
       // Le coût en Raison d'une réaction ne l'écarte jamais : sans plancher
       // de Déraison, la réaction se propose et se paie en creusant la dette.

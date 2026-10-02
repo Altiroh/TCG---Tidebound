@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getCardDefinition, type GameState, type PlayerId } from "@/game";
+import { getCardDefinition, UNIT_CARD_TYPES, type GameState, type PlayerId } from "@/game";
 import type { ChoiceBannerAction } from "@/features/match/ChoiceBanner";
 
 /** Ce que le plateau doit savoir pendant une répartition de soins. */
@@ -37,7 +37,8 @@ export function useHealAllocation(state: GameState, viewerId: PlayerId, submit: 
   const board = state.players.find((p) => p.id === viewerId)?.board ?? [];
   const spent = Object.values(parts).reduce((sum, n) => sum + n, 0);
   const left = active.budget - spent;
-  const wounded = board.filter((unit) => unit.damageMarked > 0);
+  // Les UNITÉS blessées seulement : une Structure n'entre pas dans la répartition.
+  const wounded = board.filter((unit) => unit.damageMarked > 0 && UNIT_CARD_TYPES.includes(getCardDefinition(unit.cardId).type));
   const eligible = new Set(wounded.filter((unit) => left > 0 && (parts[unit.instanceId] ?? 0) < unit.damageMarked).map((unit) => unit.instanceId));
 
   const allocation = (): Allocation =>

@@ -30,13 +30,21 @@ export function resolveEffectSequence(
 ): { state: GameState; events: GameEvent[] } {
   let nextState = state;
   const events: GameEvent[] = [];
+  // Joueurs qui ont PIOCHÉ par un effet de cette même suite : leur défausse
+  // qui suit est un « piochez puis défaussez » (Oracle d'Améthyste).
+  const ontPioche = new Set<string>();
 
   for (let i = 0; i < effects.length; i += 1) {
     const result = resolveEffect(nextState, effects[i]!, context);
     nextState = result.state;
     events.push(...result.events);
+    for (const event of result.events) if (event.type === "DRAW_CARD") ontPioche.add(event.playerId);
 
-    const choice = nextState.pendingChoice;
+    let choice = nextState.pendingChoice;
+    if (choice?.kind === "handDiscard" && !choice.continuation && !choice.afterDraw && ontPioche.has(choice.playerId)) {
+      choice = { ...choice, afterDraw: true };
+      nextState = { ...nextState, pendingChoice: choice };
+    }
     // `continuation` déjà posée : le choix vient d'une séquence PLUS
     // ANCIENNE qu'on est en train de reprendre, ce n'est pas à celle-ci de
     // la réécrire.

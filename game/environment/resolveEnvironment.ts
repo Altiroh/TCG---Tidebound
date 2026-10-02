@@ -156,7 +156,7 @@ function applyHouleSickness(state: GameState, turnNumber: number): { state: Game
               ...p,
               board: p.board.map((u) =>
                 u.instanceId === instanceId
-                  ? { ...u, damageMarked: u.damageMarked + amount, lastDamageCause: "tide" as const, lastDamageTurn: turnNumber }
+                  ? { ...u, damageMarked: u.damageMarked + amount, lastDamageCause: "tide" as const, lastDamageBy: undefined, lastDamageTurn: turnNumber }
                   : u
               ),
             }
@@ -206,7 +206,7 @@ function applyTideStructureDamage(
     board: player.board.map((unit) => {
       if (!touchee(unit)) return unit;
       events.push({ ...base, type: "DAMAGE", targetInstanceId: unit.instanceId, amount });
-      return { ...unit, damageMarked: unit.damageMarked + amount, lastDamageCause: "tide" as const, lastDamageTurn: turnNumber };
+      return { ...unit, damageMarked: unit.damageMarked + amount, lastDamageCause: "tide" as const, lastDamageBy: undefined, lastDamageTurn: turnNumber };
     }),
   })) as [PlayerState, PlayerState];
 

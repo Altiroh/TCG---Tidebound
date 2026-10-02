@@ -952,7 +952,12 @@ const SENTINELLES: CardDefinition[] = [
         effects: [
           {
             type: "buff",
-            target: { kind: "chosenUnit", among: { archetype: "sentinelle-chromatique", otherChromaticColorThanSource: true } },
+            // « une Sentinelle » sans « que vous contrôlez » : des deux camps
+            // (CLAUDE.md, règle Cartes §2).
+            target: {
+              kind: "chosenUnit",
+              among: { archetype: "sentinelle-chromatique", otherChromaticColorThanSource: true, sameController: false },
+            },
             attackAmount: { kind: "flat", value: 2 },
             healthAmount: { kind: "flat", value: 0 },
             duration: "endOfTurn",
@@ -1108,8 +1113,10 @@ const SENTINELLES: CardDefinition[] = [
     abilities: [
       {
         trigger: "onCardDiscardedFromHand",
-        // La défausse d'un effet de carte, jamais la limite de main.
-        triggeredBy: { discardByEffect: true },
+        // « piochez PUIS défaussez par un effet de carte » : une défausse
+        // d'effet qui suit une pioche du même effet (Vigie, Signal Violet…),
+        // jamais la limite de main ni une défausse seule.
+        triggeredBy: { discardByEffect: true, discardAfterDraw: true },
         condition: { duringOwnTurn: true },
         oncePerTurnKey: "oracleDamethyste",
         description: "Les pierres parlent : +2 Puissance jusqu'à la fin du tour.",
@@ -1246,17 +1253,19 @@ const SENTINELLES: CardDefinition[] = [
       {
         trigger: "onSaborde",
         mode: "optional",
-        description: "Détruisez un de vos Éclats : la Sentinelle équipée émet son Signal jusqu'à votre prochain tour.",
+        description: "Détruisez un Éclat Chromatique : la Sentinelle équipée émet son Signal jusqu'à votre prochain tour.",
+        // « un Éclat Chromatique » sans « que vous contrôlez » : le vôtre ou
+        // celui de l'adversaire (Héraut, Transfert le précisent ; pas lui).
         effects: [
           {
             type: "chromaticModify",
-            target: { kind: "chosenUnit", among: { subtype: ECLAT } },
+            target: { kind: "chosenUnit", among: { subtype: ECLAT, sameController: false } },
             chromaticRecipient: "equippedUnit",
             chromaticEmits: true,
             chromaticEmitOnly: true,
             duration: "untilYourNextTurn",
           },
-          { type: "destroy", target: { kind: "chosenUnit", among: { subtype: ECLAT } } },
+          { type: "destroy", target: { kind: "chosenUnit", among: { subtype: ECLAT, sameController: false } } },
         ],
       },
     ],
@@ -1337,24 +1346,29 @@ const SENTINELLES: CardDefinition[] = [
     text:
       "Durée : 4 tours. La première fois pendant chacun de vos tours que vous jouez une Sentinelle d'une couleur " +
       "que vous ne contrôliez pas encore, elle gagne +1 Résistance jusqu'à votre prochain tour.",
-    abilities: [
-      {
-        trigger: "onEnterPlay",
-        triggeredBy: { archetype: "sentinelle-chromatique", cardTypes: [...UNITES] },
-        condition: { duringOwnTurn: true, triggerSourceBringsNewChromaticColor: true },
-        oncePerTurnKey: "posteChromatique",
-        description: "Une couleur nouvelle : +1 Résistance jusqu'à votre prochain tour.",
-        effects: [
-          {
-            type: "buff",
-            target: { kind: "triggerSource" },
-            attackAmount: { kind: "flat", value: 0 },
-            healthAmount: { kind: "flat", value: 1 },
-            duration: "untilYourNextTurn",
-          },
-        ],
-      },
-    ],
+    // Deux moments pour un seul texte : la couleur d'une Sentinelle JOUÉE
+    // se lit à son arrivée — ou, si elle la choisit en arrivant (Émissaire
+    // de Quartz), une fois ce choix fait. Même clé « une fois par tour ».
+    // « que vous JOUEZ » : une Sentinelle invoquée n'en est pas une. Les
+    // couleurs « que vous ne contrôliez pas encore » se comparent à la
+    // photo prise avant la pose (`couleursAvantArrivee`) : un Géant
+    // Assemblé n'apporte pas les couleurs de ses quatre Sentinelles.
+    abilities: (["onEnterPlay", "onChromaticColorChosen"] as const).map((trigger) => ({
+      trigger,
+      triggeredBy: { archetype: "sentinelle-chromatique" as const, cardTypes: [...UNITES], onlyPlayed: true },
+      condition: { duringOwnTurn: true, triggerSourceBringsNewChromaticColor: true },
+      oncePerTurnKey: "posteChromatique",
+      description: "Une couleur nouvelle : +1 Résistance jusqu'à votre prochain tour.",
+      effects: [
+        {
+          type: "buff" as const,
+          target: { kind: "triggerSource" as const },
+          attackAmount: { kind: "flat" as const, value: 0 },
+          healthAmount: { kind: "flat" as const, value: 1 },
+          duration: "untilYourNextTurn" as const,
+        },
+      ],
+    })),
   },
   {
     id: "synchronisation",
@@ -1368,7 +1382,9 @@ const SENTINELLES: CardDefinition[] = [
     onBreakEffects: [
       {
         type: "chromaticModify",
-        target: { kind: "chosenUnit", among: { archetype: "sentinelle-chromatique" } },
+        // « une Sentinelle Chromatique » : des deux camps, le texte ne dit
+        // pas « que vous contrôlez ».
+        target: { kind: "chosenUnit", among: { archetype: "sentinelle-chromatique", sameController: false } },
         chromaticBenefitsOwn: true,
         duration: "endOfTurn",
       },
@@ -1389,8 +1405,10 @@ const SENTINELLES: CardDefinition[] = [
       "+1 Résistance jusqu'à votre prochain tour.",
     onPlayEffects: [
       {
+        // « jusqu'à 3 Sentinelles Chromatiques » : des deux camps, le texte
+        // ne restreint pas au vôtre.
         type: "pickUnits",
-        target: { kind: "allAllyUnits" },
+        target: { kind: "allUnits" },
         filter: { archetype: "sentinelle-chromatique" },
         uses: 3,
         distinctChromaticColors: true,
@@ -1401,6 +1419,8 @@ const SENTINELLES: CardDefinition[] = [
             attackAmount: { kind: "flat", value: 1 },
             healthAmount: { kind: "flat", value: 1 },
             duration: "untilYourNextTurn",
+            // « jusqu'à VOTRE prochain tour », même posé sur une Sentinelle adverse.
+            expiresOnControllersTurn: true,
           },
         ],
       },
