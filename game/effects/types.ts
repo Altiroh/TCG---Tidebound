@@ -34,7 +34,7 @@ export type EffectType =
    *
    * Sert à FAIRE PAYER un gain sur la durée d'une carte plutôt que sur une
    * ressource : « vous pouvez réduire sa durée de 1 tour : récupérez
-   * 1 Raison » (Gardien du Sondeur). C'est un coût réel — la Structure
+   * 1 Raison ». C'est un coût réel — la Structure
    * quitte le plateau plus tôt — mais qui ne touche ni la Raison ni
    * l'Ancrage, donc utilisable par une carte dont le but est justement d'en
    * rendre.
@@ -74,7 +74,7 @@ export type EffectType =
   | "reduceIncomingDamage"
   /**
    * Retire `amount` de Puissance à l'attaquant POUR CETTE ATTAQUE (Filet à
-   * la Dérive, Le Filet qui Respire), sans jamais descendre sous 0.
+   * la Dérive), sans jamais descendre sous 0.
    *
    * Agit sur la Puissance DÉCLARÉE, celle que porte l'attaque suspendue :
    * l'effet vaut donc aussi bien pour un combat entre unités que pour une
@@ -115,31 +115,16 @@ export type EffectType =
   | "tideAmplifyNext"
   /** Inverse l'orientation courante de la Marée (Montante ↔ Descendante). */
   | "tideInvertOrientation"
-  /** Fixe l'orientation de la Marée à `forceTideOrientation` (ex: Veilleuse des Profondeurs, "forcez son orientation à devenir descendante"). Sans effet si elle l'est déjà. */
+  /** Fixe l'orientation de la Marée à `forceTideOrientation` ("forcez son orientation à devenir descendante"). Sans effet si elle l'est déjà. */
   | "tideSetOrientation"
   /** Force une transition IMMÉDIATE d'un état vers les Abysses (jamais via le décompte normal). */
   | "tideForceAdvance"
   /** Force une transition IMMÉDIATE d'un état vers Calme (jamais via le décompte normal). */
   | "tideForceRetreat"
   | "ignoreNextTideDamage"
-  /**
-   * Reporte à la FIN DU TOUR EN COURS les effets de la Marée qui vient
-   * d'être annoncée (Ancre de Dérive). N'a de sens que dans une capacité
-   * `onTideAnnounced` : hors de cette fenêtre il n'y a pas de Marée en
-   * attente, et l'effet est silencieusement sans objet.
-   *
-   * Ce qui est reporté, ce sont les effets de TOUR de la Marée — dégâts de
-   * Tempête, choc d'entrée/sortie des Abysses, maladie de la Houle — pas
-   * l'état lui-même : la Marée a bien changé, et les capacités
-   * `onTideStateEntered` se déclenchent à l'heure. Le report se règle dans
-   * `endTurn` via `EnvironmentState.deferredTideEffects`.
-   */
-  | "deferTideEffects"
   // --- Lecture de main (purement informatif, cf. `HandCardRevealedEvent`) -
-  /** Révèle `amount` cartes aléatoires DISTINCTES de la main de la cible — aucun autre effet sur l'état (ex: Guetteur de Brume, La Bouée qui Regardait). */
+  /** Révèle `amount` cartes aléatoires DISTINCTES de la main de la cible — aucun autre effet sur l'état. */
   | "revealRandomHandCards"
-  /** Révèle une carte aléatoire de CHAQUE joueur puis inflige `amount` de perte de Raison à celui dont la carte révélée coûte le plus cher (égalité, ou un joueur sans carte en main = personne, ex: Cloche Immergée). */
-  | "reasonLossToHigherRevealedHandCard"
   /** Renvoie en main la carte de la défausse choisie par le joueur (`EffectContext.chosenGraveyardInstanceId`), filtrée par `EffectDefinition.filter` (ex: Grappin de Récupération). */
   | "moveGraveyardCardToHand"
   /** Force une entrée DIRECTE dans les Abysses, en ignorant tout état intermédiaire (ex: La Gueule Sous la Mer, Sept Brasses Plus Bas — Lot 08, "Grandes Anomalies"). `amount` (optionnel) ajoute ce nombre de tours à la durée d'entrée par défaut ; `forceTideOrientation` (optionnel) fixe l'orientation résultante. */
@@ -825,8 +810,8 @@ export interface EffectDefinition {
   /**
    * Restreint la résolution de CET effet au cas où la carte SOURCE
    * (`context.sourceInstanceId`) est actuellement visible selon son propre
-   * `visibleDuringTide` (ex: Bouée de Dérive, capacité de début de tour
-   * "si elle est visible"). Une carte sans `visibleDuringTide` est toujours
+   * `visibleDuringTide` (ex: capacité de début de tour "si elle est
+   * visible"). Une carte sans `visibleDuringTide` est toujours
    * visible. Distinct de `onBecomeVisible`, qui ne se déclenche que sur une
    * TRANSITION d'invisible à visible — ceci vérifie l'état courant à chaque
    * résolution, utile pour une capacité récurrente (ex: `startOfTurn`).

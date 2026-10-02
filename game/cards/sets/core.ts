@@ -155,31 +155,6 @@ export const CORE_SET: CardDefinition[] = [
     reduceOwnReasonLossOncePerTurn: { amount: 1 },
   },
   {
-    id: "plongeur-des-epaves",
-    name: "Plongeur des Épaves",
-    type: "marin",
-    cost: 2,
-    attack: 2,
-    health: 2,
-    maxCopies: 2,
-    text:
-      "La première fois à chaque tour qu'une Structure que vous contrôlez est détruite ou Sabordée, vous pouvez " +
-      "récupérer 1 Raison.",
-    // « vous pouvez » : proposé, jamais imposé. Le Sabordage déclenche
-    // toujours `onDeath` en plus de `onSaborde` (cf. `saborder.ts`) — un
-    // seul déclencheur couvre les deux cas du texte.
-    abilities: [
-      {
-        trigger: "onDeath",
-        mode: "optional",
-        triggeredBy: { cardTypes: ["structure"], sameController: false },
-        oncePerTurnKey: "plongeurRecupere",
-        description: "Quand une Structure (des deux camps) est détruite ou Sabordée : récupérez 1 Raison. Une fois par tour.",
-        effects: [{ type: "reasonGain", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } }],
-      },
-    ],
-  },
-  {
     id: "murene-aveugle",
     name: "Murène Aveugle",
     type: "creature",
@@ -362,22 +337,6 @@ export const CORE_SET: CardDefinition[] = [
       },
     ],
   },
-  {
-    id: "quelque-chose-sous-la-coque",
-    name: "Quelque Chose Sous la Coque",
-    type: "anomalie",
-    cost: 4,
-    // Valeur de Résistance absente du cadrage Notion pour cette famille de cartes (texte muet sur ce point,
-    // comme pour les Structures) : fixée ici par cohérence avec des permanents de coût comparable, PLUTÔT
-    // que de laisser `health` undefined — `computeEffectiveStats` retombe alors sur 0, ce qui ferait mourir
-    // l'Anomalie instantanément dès le premier `processDeaths` après sa pose (0 dégât marqué >= 0 PV). À
-    // ajuster si un vrai chiffrage Notion existe pour ce lot.
-    health: 3,
-    maxCopies: 2,
-    durationTurns: 2,
-    text: "Pendant 2 tours, chaque joueur perd 1 Raison la première fois qu'il joue une carte pendant son tour.",
-    anomalyReasonLossOnFirstCardPlayedPerTurn: 1,
-  },
 
   // ======================================================================
   // LOT 02 — Contrôle, environnement et permanents déclenchés
@@ -407,64 +366,6 @@ export const CORE_SET: CardDefinition[] = [
     // Raison ne couvre pas le total — c'est la seule entorse au « pas de
     // plancher de Déraison », portée par la carte (cf. `objectBreakTax`).
     taxOpponentObjectBreakOncePerTurnWhileVisible: { amount: 1, blocksIfUnpayable: true },
-  },
-  {
-    id: "ancre-de-derive",
-    name: "Ancre de Dérive",
-    type: "structure",
-    cost: 2,
-    health: 3,
-    durationTurns: 3,
-    visibleDuringTide: ["houle", "tempete"],
-    maxCopies: 2,
-    // « Même fonction visible/cachée, mais lorsqu'elle est cachée
-    // l'adversaire ne sait pas que vous disposez de cette sécurité »
-    // (Notion, « Cartes à reprendre »). Seule carte de la première vague
-    // dont les deux textes font exactement la même chose : ce qui change
-    // n'est pas l'effet, c'est l'information.
-    text:
-      "Durée : 3 tours. Visible pendant Houle et Tempête. Lorsqu'une nouvelle Marée est annoncée, vous pouvez " +
-      "Saborder cette carte : les effets de cette Marée ne s'appliquent qu'à la fin du tour en cours. Réaction " +
-      "cachée : lorsqu'une nouvelle Marée est annoncée, vous pouvez révéler puis Saborder Ancre de Dérive : les " +
-      "effets de cette Marée ne s'appliquent qu'à la fin du tour en cours.",
-    abilities: [
-      {
-        // « Vous pouvez » : fenêtre COMPLÈTE à l'annonce (arbitrage du
-        // 21/09/2026). Jusqu'ici le report était appliqué d'office dès que
-        // la carte était en jeu et visible — le moteur décidait à la place
-        // du joueur, et Saborder son Ancre pour rien lui était imposé.
-        //
-        // À l'annonce, la Marée courante est DÉJÀ la nouvelle : « visible »
-        // se lit donc dans l'état annoncé, et c'est bien ce que promet
-        // « Visible pendant Houle et Tempête ».
-        trigger: "onTideAnnounced",
-        mode: "optional",
-        condition: { selfVisible: true },
-        description:
-          "Sabordez l'Ancre de Dérive : les effets de la Marée qui vient d'être annoncée attendent la fin du tour en cours.",
-        // Le Sabordage est le COÛT, et il vient en premier : `deferTideEffects`
-        // ne touche pas au plateau, l'ordre n'a donc rien à rattraper.
-        effects: [
-          { type: "saborde", target: { kind: "self" } },
-          { type: "deferTideEffects", target: { kind: "self" } },
-        ],
-      },
-      {
-        // Même effet, depuis Calme ou Abysses — où l'adversaire ne voit
-        // qu'un Slot occupé. Il pousse la Marée en croyant passer, et
-        // l'Ancre se découvre pour lui reprendre son tempo.
-        trigger: "onTideAnnounced",
-        mode: "optional",
-        hiddenReaction: true,
-        condition: { selfHidden: true },
-        description:
-          "Révélez puis Sabordez l'Ancre de Dérive : les effets de la Marée qui vient d'être annoncée attendent la fin du tour en cours.",
-        effects: [
-          { type: "saborde", target: { kind: "self" } },
-          { type: "deferTideEffects", target: { kind: "self" } },
-        ],
-      },
-    ],
   },
   {
     // --- ANTI-SWARM, première paire (21/09/2026) ------------------------
@@ -660,18 +561,6 @@ export const CORE_SET: CardDefinition[] = [
     ],
   },
   {
-    id: "guetteur-de-brume",
-    name: "Guetteur de Brume",
-    type: "marin",
-    cost: 2,
-    attack: 1,
-    health: 3,
-    text:
-      "La première fois à chaque tour que l'adversaire active une réaction pendant votre tour, révélez 1 carte " +
-      "aléatoire de sa main.",
-    revealOpponentHandOnReactionOncePerTurn: { amount: 1 },
-  },
-  {
     id: "matelot-du-sans-nom",
     name: "Matelot du Sans-Nom",
     type: "marin",
@@ -702,33 +591,6 @@ export const CORE_SET: CardDefinition[] = [
     conditionalKeywordSuppressions: [{ keyword: "garde", tideStateIn: ["calme"] }],
   },
   {
-    id: "bouee-de-derive",
-    name: "Bouée de Dérive",
-    type: "structure",
-    cost: 1,
-    health: 2,
-    durationTurns: 3,
-    visibleDuringTide: ["calme", "houle"],
-    text:
-      "Durée : 3 tours. Visible pendant Calme et Houle. À votre début de tour, si elle est visible et que la " +
-      "Marée est descendante, récupérez 1 Raison.",
-    abilities: [
-      {
-        trigger: "startOfTurn",
-        description: "À votre début de tour, si elle est visible et que la Marée est descendante, récupérez 1 Raison.",
-        effects: [
-          {
-            type: "reasonGain",
-            target: { kind: "controllerPlayer" },
-            amount: { kind: "flat", value: 1 },
-            conditionOrientationIs: "descendante",
-            conditionSelfVisible: true,
-          },
-        ],
-      },
-    ],
-  },
-  {
     id: "epave-a-fleur-deau",
     name: "Épave à Fleur d'Eau",
     type: "structure",
@@ -756,17 +618,6 @@ export const CORE_SET: CardDefinition[] = [
     ],
   },
   {
-    id: "le-chant-sous-la-ligne",
-    name: "Le Chant Sous la Ligne",
-    type: "anomalie",
-    cost: 4,
-    health: 3, // cf. commentaire sur Quelque Chose Sous la Coque : valeur absente du cadrage, fixée par cohérence.
-    maxCopies: 2,
-    durationTurns: 2,
-    text: "Pendant 2 tours, chaque fois qu'un joueur récupère de la Raison, il en récupère 1 de moins, minimum 0.",
-    anomalyReduceAllReasonGains: 1,
-  },
-  {
     id: "plaque-de-fortune",
     name: "Plaque de Fortune",
     type: "equipement",
@@ -787,24 +638,6 @@ export const CORE_SET: CardDefinition[] = [
   // LOT 03 — Abysses, visibilité et contrôle de Marée
   // ======================================================================
   {
-    id: "cartographe-du-large",
-    name: "Cartographe du Large",
-    type: "marin",
-    cost: 2,
-    attack: 1,
-    health: 3,
-    text: "À son arrivée, vous pouvez inverser l'orientation de la Marée. Si vous le faites, perdez 1 Raison.",
-    abilities: [
-      {
-        trigger: "onEnterPlay",
-        mode: "optional",
-        cost: { reason: 1 },
-        description: "Vous pouvez dépenser 1 Raison : inversez l'orientation de la Marée.",
-        effects: [{ type: "tideInvertOrientation", target: { kind: "allPlayers" } }],
-      },
-    ],
-  },
-  {
     id: "matelot-insomniaque",
     name: "Matelot Insomniaque",
     type: "marin",
@@ -813,45 +646,6 @@ export const CORE_SET: CardDefinition[] = [
     health: 3,
     text: "Tant que votre Raison est inférieure ou égale à 4, il gagne +1 Puissance.",
     selfBuffWhileControllerReasonAtMost: { reasonAtMost: 4, attackAmount: 1 },
-  },
-  {
-    id: "gardien-du-sondeur",
-    name: "Gardien du Sondeur",
-    type: "marin",
-    cost: 3,
-    maxCopies: 2,
-    attack: 2,
-    health: 4,
-    // Le gain se PAIE depuis le 21/09/2026 (passe de stabilisation). Avec la
-    // récupération naturelle ramenée à 1 Raison par tour, un "+1 Raison une
-    // fois par tour" DOUBLE le revenu de son contrôleur, pour un coût unique
-    // de 3 — et un deck à Structures fait tourner plusieurs fenêtres de
-    // visibilité par cycle de Marée, donc le gain était récurrent et gratuit.
-    //
-    // Le prix est pris sur la DURÉE de la Structure qui déclenche, pas sur
-    // une ressource : la carte reste un moteur de Raison (son identité), mais
-    // chaque point rendu avance la fin d'une de ses Structures. "Vous pouvez"
-    // → `mode: "optional"` : personne n'est forcé de sacrifier du temps de
-    // Structure, et le joueur peut refuser la fenêtre.
-    text:
-      "La première fois à chaque tour qu'une Structure que vous contrôlez devient visible, vous pouvez " +
-      "réduire sa durée de 1 tour : récupérez 1 Raison.",
-    abilities: [
-      {
-        trigger: "onBecomeVisible",
-        triggeredBy: { cardTypes: ["structure"] },
-        mode: "optional",
-        oncePerTurnKey: "sondeurVisible",
-        description:
-          "La première fois par tour qu'une de vos Structures devient visible : vous pouvez réduire sa durée de 1 tour pour récupérer 1 Raison.",
-        // Le coût d'abord, le gain ensuite — l'ordre du texte, et celui qui
-        // se lit dans le journal.
-        effects: [
-          { type: "durationLoss", target: { kind: "triggerSource" }, amount: { kind: "flat", value: 1 } },
-          { type: "reasonGain", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
-        ],
-      },
-    ],
   },
   {
     id: "raie-des-fosses",
@@ -969,32 +763,6 @@ export const CORE_SET: CardDefinition[] = [
     ],
   },
   {
-    id: "epave-engloutie",
-    name: "Épave Engloutie",
-    type: "structure",
-    cost: 3,
-    health: 4,
-    durationTurns: 5,
-    visibleDuringTide: ["abysses"],
-    maxCopies: 2,
-    text:
-      "Durée : 5 tours. Visible pendant Abysses. Lorsqu'elle devient visible, récupérez 2 Raison. Lorsqu'elle " +
-      "quitte Abysses sans avoir été détruite, Sabordez-la.",
-    abilities: [
-      {
-        trigger: "onBecomeVisible",
-        description: "Lorsqu'elle devient visible, récupérez 2 Raison.",
-        effects: [{ type: "reasonGain", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 2 } }],
-      },
-      {
-        trigger: "onTideStateExited",
-        condition: { tideState: "abysses" },
-        description: "Lorsque la Marée quitte les Abysses : Sabordez-la.",
-        effects: [{ type: "saborde", target: { kind: "self" } }],
-      },
-    ],
-  },
-  {
     id: "balise-des-profondeurs",
     name: "Balise des Profondeurs",
     type: "structure",
@@ -1018,17 +786,6 @@ export const CORE_SET: CardDefinition[] = [
       },
     ],
   },
-  {
-    id: "les-voix-dans-le-sillage",
-    name: "Les Voix dans le Sillage",
-    type: "anomalie",
-    cost: 5,
-    health: 4, // cf. commentaire sur Quelque Chose Sous la Coque : valeur absente du cadrage, fixée par cohérence.
-    maxCopies: 2,
-    durationTurns: 2,
-    text: "Pendant 2 tours, chaque joueur perd 1 Raison la première fois qu'un de ses permanents quitte le board.",
-    anomalyReasonLossOnFirstPermanentLeavingPerTurn: 1,
-  },
 
   // ======================================================================
   // LOT 04 — Pression, horreur et cartes de rupture
@@ -1043,17 +800,6 @@ export const CORE_SET: CardDefinition[] = [
     text: "Lorsqu'il attaque pendant Tempête, il gagne +1 Puissance pour ce combat. Après l'attaque, perdez 1 Raison.",
     bonusDamageInTideState: { tideStateIn: ["tempete"], amount: 1 },
     controllerReasonLossAfterAttack: 1,
-  },
-  {
-    id: "capitaine-sans-sommeil",
-    name: "Capitaine Sans Sommeil",
-    type: "marin",
-    cost: 4,
-    maxCopies: 2,
-    attack: 3,
-    health: 5,
-    text: "Tant que votre Raison est à 3 ou moins, les autres Marins que vous contrôlez gagnent +1 Résistance.",
-    auraBuffOtherUnitsWhileControllerReasonAtMost: { reasonAtMost: 3, targetType: "marin", healthAmount: 1 },
   },
   {
     // Renommée "L'Homme Revenu de la Fosse" → "Revenante de la Fosse" (Notion "Catalogue de cartes", Lot 04)
@@ -1258,87 +1004,6 @@ export const CORE_SET: CardDefinition[] = [
       },
     ],
   },
-  {
-    id: "ponton-aux-cloches",
-    name: "Ponton aux Cloches",
-    type: "structure",
-    cost: 3,
-    health: 3,
-    durationTurns: 4,
-    visibleDuringTide: ["houle", "tempete"],
-    text: "Durée : 4 tours. Visible pendant Houle et Tempête. Chaque fois qu'il devient visible, chaque joueur perd 1 Raison.",
-    abilities: [
-      {
-        trigger: "onBecomeVisible",
-        description: "Lorsqu'il devient visible, chaque joueur perd 1 Raison.",
-        effects: [{ type: "reasonLoss", target: { kind: "allPlayers" }, amount: { kind: "flat", value: 1 } }],
-      },
-    ],
-  },
-  {
-    id: "la-bouee-qui-regardait",
-    name: "La Bouée qui Regardait",
-    type: "structure",
-    subtype: "objet-flottant",
-    cost: 4,
-    health: 3,
-    durationTurns: 5,
-    visibleDuringTide: ["tempete", "abysses"],
-    text:
-      "Durée : 5 tours. Visible pendant Tempête et Abysses. Chaque fois qu'elle devient visible, révélez 1 carte aléatoire " +
-      "de la main adverse. Si la Marée est en Abysses, révélez-en 2 à la place.",
-    abilities: [
-      {
-        trigger: "onBecomeVisible",
-        description: "Regardez une carte aléatoire de la main adverse (2 en Abysses).",
-        effects: [
-          { type: "revealRandomHandCards", target: { kind: "opponentPlayer" }, amount: { kind: "flat", value: 1 } },
-          {
-            type: "revealRandomHandCards",
-            target: { kind: "opponentPlayer" },
-            amount: { kind: "flat", value: 1 },
-            conditionTideStateIn: ["abysses"],
-          },
-        ],
-      },
-    ],
-    // NOTE : `onBecomeVisible` ne se déclenche que sur la transition
-    // invisible → visible (`game/environment/resolveEnvironment.ts`), qui,
-    // en progression normale (un état à la fois), passe TOUJOURS par
-    // Tempête avant d'atteindre l'Abysses — la branche "2 cartes" ci-dessus
-    // n'est donc atteignable aujourd'hui que si un futur effet fait entrer
-    // directement dans l'Abysses depuis un état invisible (ex: un saut de
-    // Marée multi-états façon Lot 08, "La Gueule Sous la Mer"). Comportement
-    // correct tel qu'écrit, simplement pas encore démontrable en jeu normal.
-  },
-  {
-    // Version STANDARD (Notion "Catalogue de cartes", Lot 04) — coexiste avec la variante ABYSSALE ci-dessous.
-    id: "ils-sont-sous-nous",
-    name: "Ils Sont Sous Nous",
-    type: "anomalie",
-    cost: 5,
-    health: 4, // cf. commentaire sur Quelque Chose Sous la Coque : valeur absente du cadrage, fixée par cohérence.
-    maxCopies: 2,
-    durationTurns: 2,
-    text: "Pendant 2 tours, la première fois à chaque tour qu'un joueur joue un permanent, ce joueur perd 1 Raison.",
-    anomalyReasonLossOnFirstPermanentPlayedPerTurn: { amount: 1 },
-  },
-  {
-    // Variante ABYSSALE distincte (coexiste avec la Standard ci-dessus) — anciennement seule entrée sous
-    // l'id de base, maintenant scindée pour correspondre au catalogue verrouillé.
-    id: "ils-sont-sous-nous-abyssal",
-    name: "Ils Sont Sous Nous",
-    type: "anomalie",
-    variant: "abyssale",
-    cost: 6,
-    health: 5, // cf. commentaire sur Quelque Chose Sous la Coque : valeur absente du cadrage, fixée par cohérence.
-    maxCopies: 1,
-    durationTurns: 2,
-    text:
-      "Pendant 2 tours, la première fois à chaque tour qu'un joueur joue un permanent, ce joueur perd 1 Raison. " +
-      "Si ce permanent est une Créature, il perd 1 Raison supplémentaire.",
-    anomalyReasonLossOnFirstPermanentPlayedPerTurn: { amount: 1, bonusIfCreature: 1 },
-  },
 
   // ======================================================================
   // LOT 05 — Fondations, anti-Structure et recyclage
@@ -1460,44 +1125,6 @@ export const CORE_SET: CardDefinition[] = [
     ],
   },
   {
-    id: "radeau-de-fortune",
-    name: "Radeau de Fortune",
-    type: "structure",
-    subtype: "objet-flottant",
-    cost: 1,
-    health: 2,
-    durationTurns: 3,
-    visibleDuringTide: ["calme", "houle"],
-    text:
-      "Durée : 3 tours. Visible pendant Calme et Houle. Lorsqu'il quitte le board sans avoir été détruit, récupérez " +
-      "1 Ancrage.",
-    abilities: [
-      {
-        trigger: "onExpire",
-        description: "Lorsqu'il expire (sans avoir été détruit), récupérez 1 Ancrage.",
-        effects: [{ type: "heal", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } }],
-      },
-      {
-        trigger: "onSaborde",
-        description: "Lorsqu'il est Sabordé (sans avoir été détruit), récupérez 1 Ancrage.",
-        effects: [{ type: "heal", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } }],
-      },
-    ],
-  },
-  {
-    id: "epaves-accrochees",
-    name: "Épaves Accrochées",
-    type: "structure",
-    cost: 2,
-    health: 3,
-    durationTurns: 4,
-    visibleDuringTide: ["houle", "tempete"],
-    text:
-      "Durée : 4 tours. Visible pendant Houle et Tempête. Lorsqu'une autre Structure que vous contrôlez est " +
-      "détruite, cette carte gagne +1 Résistance. Maximum +2.",
-    buffSelfOnOtherOwnStructureDestroyed: { healthAmount: 1, maxStacks: 2 },
-  },
-  {
     id: "levier-de-lest",
     name: "Levier de Lest",
     type: "objet",
@@ -1545,34 +1172,6 @@ export const CORE_SET: CardDefinition[] = [
       "Tant que vous êtes en Tempête ou Abysses, la première fois à chaque tour que vous devriez perdre de la " +
       "Raison, réduisez cette perte de 1.",
     reduceOwnReasonLossOncePerTurn: { amount: 1, tideStateIn: ["tempete", "abysses"] },
-  },
-  {
-    // Id historique conservé (référencé par `public.cards`, collections et decks) : la carte a été renommée
-    // "Veilleuse" pour la parité (Notion "Catalogue de cartes", Lot 06).
-    id: "veilleur-des-profondeurs",
-    name: "Veilleuse des Profondeurs",
-    type: "marin",
-    cost: 4,
-    attack: 3,
-    health: 4,
-    text:
-      "À son arrivée, si la Marée est en Abysses, forcez son orientation à devenir descendante. Sinon, vous " +
-      "pouvez réduire de 1 tour la durée de la Marée actuelle.",
-    abilities: [
-      {
-        trigger: "onEnterPlay",
-        condition: { tideStateIn: ["abysses"] },
-        description: "À son arrivée, si la Marée est en Abysses : son orientation devient descendante.",
-        effects: [{ type: "tideSetOrientation", target: { kind: "allPlayers" }, forceTideOrientation: "descendante" }],
-      },
-      {
-        trigger: "onEnterPlay",
-        mode: "optional",
-        condition: { tideStateIn: ["calme", "houle", "tempete"] },
-        description: "À son arrivée, hors Abysses : vous pouvez réduire de 1 tour la durée de la Marée actuelle.",
-        effects: [{ type: "tideReduceDuration", target: { kind: "allPlayers" }, amount: { kind: "flat", value: 1 } }],
-      },
-    ],
   },
   {
     id: "mecanicien-aux-mains-noires",
@@ -1624,64 +1223,6 @@ export const CORE_SET: CardDefinition[] = [
     ],
   },
   {
-    id: "baleine-aux-cicatrices-blanches",
-    name: "Baleine aux Cicatrices Blanches",
-    type: "creature",
-    cost: 5,
-    attack: 5,
-    health: 6,
-    text: "La première fois à chaque tour qu'elle subit des dégâts, réduisez-les de 1.",
-    reduceOwnDamageTakenOncePerTurn: 1,
-  },
-  {
-    // Version STANDARD (Notion "Catalogue de cartes", Lot 06) — coexiste avec la variante ABYSSALE ci-dessous.
-    id: "loeil-sous-la-mer",
-    name: "L'Œil Sous la Mer",
-    type: "creature",
-    cost: 5,
-    attack: 4,
-    health: 6,
-    requiresTideState: ["abysses"],
-    text: "Ne peut être jouée que pendant Abysses. À son arrivée, chaque joueur perd 1 Raison.",
-    onPlayEffects: [{ type: "reasonLoss", target: { kind: "allPlayers" }, amount: { kind: "flat", value: 1 } }],
-  },
-  {
-    // Variante ABYSSALE distincte (coexiste avec la Standard ci-dessus) — anciennement seule entrée sous
-    // l'id de base, maintenant scindée pour correspondre au catalogue verrouillé.
-    id: "loeil-sous-la-mer-abyssal",
-    name: "L'Œil Sous la Mer",
-    type: "creature",
-    variant: "abyssale",
-    cost: 6,
-    attack: 5,
-    health: 7,
-    maxCopies: 1,
-    requiresTideState: ["abysses"],
-    text: "Ne peut être jouée que pendant Abysses. À son arrivée, chaque joueur perd 2 Raison.",
-    onPlayEffects: [{ type: "reasonLoss", target: { kind: "allPlayers" }, amount: { kind: "flat", value: 2 } }],
-  },
-  {
-    id: "masque-de-plongee-fissure",
-    name: "Masque de Plongée Fissuré",
-    type: "equipement",
-    permanent: true,
-    cost: 2,
-    health: 2,
-    text: "Équipez un Marin. Pendant Abysses, il gagne +2 Résistance. À chaque sortie des Abysses, son contrôleur perd 1 Raison.",
-    equipTargetTypes: ["marin"],
-    onPlayEffects: [{ type: "attachEquipment", target: { kind: "chosenUnit" } }],
-    abilities: [
-      {
-        trigger: "onTideStateExited",
-        condition: { tideState: "abysses" },
-        description: "À chaque sortie des Abysses, son contrôleur perd 1 Raison.",
-        effects: [{ type: "reasonLoss", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } }],
-      },
-    ],
-    // Bug corrigé au passage : l'Équipement ne s'attachait jamais (onPlayEffects absent).
-    equipGrantsBuffWhileTideStateIn: { tideStateIn: ["abysses"], healthAmount: 2 },
-  },
-  {
     id: "chaine-de-fer-noir",
     name: "Chaîne de Fer Noir",
     type: "equipement",
@@ -1711,68 +1252,17 @@ export const CORE_SET: CardDefinition[] = [
     capDirectShipDamageWhileVisible: 4,
   },
   {
-    id: "cloche-immergee",
-    name: "Cloche Immergée",
-    type: "structure",
-    cost: 4,
-    maxCopies: 2,
-    health: 4,
-    durationTurns: 5,
-    visibleDuringTide: ["tempete", "abysses"],
-    text:
-      "Durée : 5 tours. Visible pendant Tempête et Abysses. Chaque fois qu'elle devient visible, chaque joueur révèle une " +
-      "carte aléatoire de sa main. Le joueur ayant révélé la carte au coût le plus élevé perd 1 Raison. En cas " +
-      "d'égalité, personne ne perd de Raison.",
-    abilities: [
-      {
-        trigger: "onBecomeVisible",
-        description: "Chaque joueur révèle une carte aléatoire de sa main ; le coût le plus élevé perd 1 Raison (égalité = personne).",
-        effects: [{ type: "reasonLossToHigherRevealedHandCard", target: { kind: "allPlayers" }, amount: { kind: "flat", value: 1 } }],
-      },
-    ],
-  },
-  {
-    id: "le-filet-qui-respire",
-    name: "Le Filet qui Respire",
-    type: "structure",
-    subtype: "objet-flottant",
-    cost: 3,
-    health: 3,
-    durationTurns: 4,
-    visibleDuringTide: ["tempete", "abysses"],
-    // Rework du 21/09/2026 : se distingue du Filet à la Dérive par un SEUIL.
-    // L'un freine le swarm (toute unité, −1), l'autre les grosses menaces
-    // (Puissance ≥ 4, −2). Sans ce seuil, les deux cartes feraient doublon.
-    text:
-      "Durée : 4 tours. Visible pendant Tempête et Abysses. La première fois à chaque tour qu'une unité adverse " +
-      "attaque, elle perd 2 Puissance pour cette attaque si sa Puissance est supérieure ou égale à 4. Réaction " +
-      "cachée : lorsqu'une unité adverse de Puissance 4 ou plus attaque, vous pouvez révéler Le Filet qui " +
-      "Respire : elle perd 3 Puissance pour cette attaque.",
-    abilities: [
-      {
-        trigger: "onUnitAttackDeclared",
-        oncePerTurnKey: "filetRespireAffaiblit",
-        condition: { selfVisible: true, attackerPowerAtLeast: 4 },
-        description: "La première fois à chaque tour qu'une unité adverse de Puissance 4 ou plus attaque : elle perd 2 Puissance.",
-        effects: [{ type: "modifyAttackerPower", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 2 } }],
-      },
-      {
-        trigger: "onUnitAttackDeclared",
-        mode: "optional",
-        hiddenReaction: true,
-        condition: { selfHidden: true, attackerPowerAtLeast: 4 },
-        description: "Révélez Le Filet qui Respire : l'unité qui attaque perd 3 Puissance pour cette attaque.",
-        effects: [{ type: "modifyAttackerPower", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 3 } }],
-      },
-    ],
-  },
-  {
     // Version STANDARD (Notion "Catalogue de cartes", Lot 06) — coexiste avec la variante ABYSSALE ci-dessous.
     id: "le-fond-vous-regarde",
     name: "Le Fond Vous Regarde",
     type: "anomalie",
     cost: 5,
-    health: 4, // cf. commentaire sur Quelque Chose Sous la Coque : valeur absente du cadrage, fixée par cohérence.
+    // Valeur de Résistance absente du cadrage Notion pour cette famille de cartes (texte muet sur ce point,
+    // comme pour les Structures) : fixée ici par cohérence avec des permanents de coût comparable, PLUTÔT
+    // que de laisser `health` undefined — `computeEffectiveStats` retombe alors sur 0, ce qui ferait mourir
+    // l'Anomalie instantanément dès le premier `processDeaths` après sa pose (0 dégât marqué >= 0 PV). À
+    // ajuster si un vrai chiffrage Notion existe pour ce lot.
+    health: 4,
     maxCopies: 2,
     durationTurns: 2,
     text: "Pendant 2 tours, au début de chaque tour, le joueur actif choisit : perdre 1 Raison, ou infliger 1 dégât d'Ancrage à son propre Navire.",
@@ -1786,7 +1276,7 @@ export const CORE_SET: CardDefinition[] = [
     type: "anomalie",
     variant: "abyssale",
     cost: 7,
-    health: 5, // cf. commentaire sur Quelque Chose Sous la Coque : valeur absente du cadrage, fixée par cohérence.
+    health: 5, // cf. commentaire sur la version Standard : valeur absente du cadrage, fixée par cohérence.
     maxCopies: 1,
     durationTurns: 2,
     text: "Pendant 2 tours, au début de chaque tour, le joueur actif choisit : perdre 2 Raison, ou infliger 2 dégâts d'Ancrage à son propre Navire.",
@@ -1916,20 +1406,6 @@ export const CORE_SET: CardDefinition[] = [
     },
   },
   {
-    id: "ancre-de-tempete",
-    name: "Ancre de Tempête",
-    type: "structure",
-    cost: 3,
-    maxCopies: 2,
-    health: 4,
-    durationTurns: 4,
-    visibleDuringTide: ["houle", "tempete"],
-    text:
-      "Durée : 4 tours. Visible pendant Houle et Tempête. Tant qu'elle est visible, la première réduction de " +
-      "durée de Marée que vous provoquez chaque tour est augmentée de 1.",
-    amplifyTideReductionOncePerTurnWhileVisible: 1,
-  },
-  {
     // Version STANDARD (Notion "Catalogue de cartes", Lot 07) — coexiste avec la variante ABYSSALE ci-dessous.
     id: "cloche-du-grand-fond",
     name: "Cloche du Grand Fond",
@@ -1952,60 +1428,6 @@ export const CORE_SET: CardDefinition[] = [
         effects: [{ type: "tideExtendDuration", target: { kind: "allPlayers" }, amount: { kind: "flat", value: 1 } }],
       },
     ],
-  },
-  {
-    // Variante ABYSSALE distincte (coexiste avec la Standard ci-dessus) — anciennement seule entrée sous
-    // l'id de base, maintenant scindée pour correspondre au catalogue verrouillé.
-    id: "cloche-du-grand-fond-abyssal",
-    name: "Cloche du Grand Fond",
-    type: "structure",
-    variant: "abyssale",
-    cost: 4,
-    maxCopies: 2,
-    health: 3,
-    durationTurns: 4,
-    visibleDuringTide: ["tempete", "abysses"],
-    text:
-      "Durée : 4 tours. Visible pendant Tempête et Abysses. À chaque entrée en Abysses, vous pouvez perdre 2 " +
-      "Raison. Si vous le faites, augmentez de 1 tour la durée des Abysses.",
-    abilities: [
-      {
-        trigger: "onTideStateEntered",
-        condition: { tideState: "abysses" },
-        mode: "optional",
-        cost: { reason: 2 },
-        description: "Vous pouvez dépenser 2 Raison : augmentez la durée des Abysses de 1 tour.",
-        effects: [{ type: "tideExtendDuration", target: { kind: "allPlayers" }, amount: { kind: "flat", value: 1 } }],
-      },
-    ],
-  },
-  {
-    // Version STANDARD (Notion "Catalogue de cartes", Lot 07) — coexiste avec la variante ABYSSALE ci-dessous.
-    id: "la-mer-reclame-davantage",
-    name: "La Mer Réclame Davantage",
-    type: "anomalie",
-    cost: 5,
-    health: 4, // cf. commentaire sur Quelque Chose Sous la Coque : valeur absente du cadrage, fixée par cohérence.
-    maxCopies: 2,
-    durationTurns: 2,
-    text: "Pendant 2 tours, chaque fois qu'une Marée change, elle entre avec 1 tour de durée en moins, minimum 1.",
-    anomalyReduceTideEntryDuration: { amount: 1 },
-  },
-  {
-    // Variante ABYSSALE distincte (coexiste avec la Standard ci-dessus) — anciennement seule entrée sous
-    // l'id de base, maintenant scindée pour correspondre au catalogue verrouillé.
-    id: "la-mer-reclame-davantage-abyssal",
-    name: "La Mer Réclame Davantage",
-    type: "anomalie",
-    variant: "abyssale",
-    cost: 6,
-    health: 5, // cf. commentaire sur Quelque Chose Sous la Coque : valeur absente du cadrage, fixée par cohérence.
-    maxCopies: 1,
-    durationTurns: 2,
-    text:
-      "Pendant 2 tours, chaque fois qu'une Marée change, elle entre avec 1 tour de durée en moins, minimum 1. " +
-      "Chaque changement de Marée inflige aussi 1 dégât d'Ancrage à chaque Navire.",
-    anomalyReduceTideEntryDuration: { amount: 1, anchorDamagePerShip: 1 },
   },
 
   // ======================================================================
@@ -2531,7 +1953,7 @@ export const CORE_SET: CardDefinition[] = [
     setCode: CRA_POISCAIL_BOOSTER_2,
     cost: 4,
     // Résistance absente du cadrage Notion pour les Anomalies, comme pour
-    // "Quelque Chose Sous la Coque" : fixée par cohérence avec les
+    // "Le Fond Vous Regarde" : fixée par cohérence avec les
     // permanents de coût comparable plutôt que laissée à 0, ce qui la
     // ferait mourir au premier `processDeaths`.
     health: 3,

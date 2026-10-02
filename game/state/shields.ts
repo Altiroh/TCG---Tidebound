@@ -164,23 +164,6 @@ export function consumeDirectShipDamageShield(
   };
 }
 
-/** Réduction de dégâts subis par UNE UNITÉ disponible sur son propre plateau (Baleine aux Cicatrices Blanches, "elle subit des dégâts") — 0 si aucun bouclier éligible sur CETTE instance précisément. */
-export function consumeOwnDamageTakenShield(
-  state: GameState,
-  ownerId: PlayerId,
-  unitInstanceId: string,
-  turnNumber: number
-): { state: GameState; reduction: number } {
-  const player = state.players.find((p) => p.id === ownerId);
-  const unit = player?.board.find((u) => u.instanceId === unitInstanceId);
-  if (!unit) return { state, reduction: 0 };
-  const def = getCardDefinition(unit.cardId);
-  const shield = def.reduceOwnDamageTakenOncePerTurn;
-  if (!shield || !isVisibleDuringTide(def, state.environment.tideState)) return { state, reduction: 0 };
-  if (!oncePerTurnAvailable(unit, "ownDamageTakenShield", turnNumber)) return { state, reduction: 0 };
-  return { state: consumeShield(state, ownerId, unit, "ownDamageTakenShield", turnNumber), reduction: shield };
-}
-
 /** Restauration "1ère fois par tour" de Résistance perdue par une Structure alliée (Wood Vy) — 0 si aucune carte éligible sur le plateau de `ownerId`. */
 export function consumeStructureResistanceRestoreShield(
   state: GameState,
@@ -192,20 +175,6 @@ export function consumeStructureResistanceRestoreShield(
   return {
     state: consumeShield(state, ownerId, match.unit, "structureResistanceRestoreShield", turnNumber),
     restore: match.spec!,
-  };
-}
-
-/** Nombre de cartes à révéler de la main d'un adversaire ayant activé une réaction pendant le tour de `observerId`, "1ère fois par tour" (Guetteur de Brume) — 0 si aucune carte éligible sur le plateau de `observerId`. */
-export function consumeOpponentReactionRevealShield(
-  state: GameState,
-  observerId: PlayerId,
-  turnNumber: number
-): { state: GameState; amount: number } {
-  const match = findAvailableShield(state, observerId, turnNumber, "opponentReactionRevealShield", (def) => def.revealOpponentHandOnReactionOncePerTurn?.amount);
-  if (!match) return { state, amount: 0 };
-  return {
-    state: consumeShield(state, observerId, match.unit, "opponentReactionRevealShield", turnNumber),
-    amount: match.spec,
   };
 }
 

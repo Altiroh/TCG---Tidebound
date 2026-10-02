@@ -43,8 +43,7 @@ export const RULES = {
    *
    * Ce plafond ne fait plus RIEN monter : la Raison persiste d'un tour à
    * l'autre et ne gagne que `REASON_RECOVERY_CURVE` par tour. Il ne mord
-   * donc que sur les gains VENANT DES CARTES (Thermos du Dernier Quart,
-   * Gardien du Sondeur…) — c'est exactement son rôle : empêcher un deck de
+   * donc que sur les gains VENANT DES CARTES (Thermos du Dernier Quart…) — c'est exactement son rôle : empêcher un deck de
    * rampe de sauter la courbe, sans freiner le joueur qui joue normalement.
    *
    * Courbe volontairement LENTE (demande du 21/09 : « ça va trop vite »).

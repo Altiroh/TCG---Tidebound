@@ -451,8 +451,8 @@ export interface ReactionPassedEvent extends BaseGameEvent {
 }
 
 /**
- * Une carte de la main de `ownerId` a été révélée (ex: Guetteur de Brume,
- * La Bouée qui Regardait, Cloche Immergée) — purement informatif : ne
+ * Une carte de la main de `ownerId` a été révélée (effet
+ * `revealRandomHandCards`) — purement informatif : ne
  * déplace ni ne modifie la carte elle-même, jamais suffisant à lui seul
  * pour reconstituer l'état (l'UI décide qui a le droit de voir `cardId`).
  */

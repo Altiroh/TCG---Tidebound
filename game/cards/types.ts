@@ -86,7 +86,7 @@ export interface TriggerSourceFilter {
   cardIds?: string[];
   /** Ou porte ce SOUS-TYPE (ex: "marionnette" — Lot 11, qui raisonne en sous-type et non en archétype). */
   subtype?: string;
-  /** Ou est de l'un de ces TYPES de carte (ex: "quand une Structure est détruite" — Plongeur des Épaves, Mécanicien aux Mains Noires). */
+  /** Ou est de l'un de ces TYPES de carte (ex: "quand une Structure est détruite" — Mécanicien aux Mains Noires). */
   cardTypes?: CardType[];
   /** Le déclencheur doit être contrôlé par le contrôleur de la capacité. Défaut : `true`. */
   sameController?: boolean;
@@ -197,7 +197,7 @@ export interface TriggeredAbility {
    *
    *  - `"revelee"` — défaut. La révélation est définitive : la carte reste
    *    en jeu, connue, et sa moitié VISIBLE prend le relais si elle en a
-   *    une (Filet à la Dérive, Le Filet qui Respire).
+   *    une (Filet à la Dérive).
    *  - `"remasquable"` — la révélation ne vaut que pour cette résolution.
    *    Dès qu'elle est refermée, `CardInstance.revealed` retombe, donc la
    *    Marée peut de nouveau la masquer, la projection joueur la cache de
@@ -225,7 +225,7 @@ export interface TriggeredAbility {
    *
    * `tideState` : pour `onTideStateEntered`/`onTideStateExited`, ne se
    * déclenche que pour cet état. `tideStateIn` : pour TOUT déclencheur, la
-   * Marée doit être dans l'un de ces états (ex: Veilleuse des Profondeurs).
+   * Marée doit être dans l'un de ces états.
    * `controlsAnyCardIds` : le contrôleur doit avoir au moins une de ces
    * cartes en jeu (ex: La Quête du Grand Nénuphar, « alors que vous
    * contrôlez un Destrier du Grand Étang »).
@@ -243,8 +243,8 @@ export interface TriggeredAbility {
      * « si sa Puissance est supérieure ou égale à N » : seuil sur la
      * Puissance DÉCLARÉE de l'attaquant (`pendingAttack.attackerPower`).
      * N'a de sens que sur un déclencheur d'interception. Sert à distinguer
-     * une défense anti-grosse-menace (Le Filet qui Respire) d'une défense
-     * anti-swarm (Filet à la Dérive), sans dupliquer la même carte.
+     * une défense anti-grosse-menace d'une défense anti-swarm (Filet à la
+     * Dérive), sans dupliquer la même carte.
      */
     attackerPowerAtLeast?: number;
     tideState?: TideStateName;
@@ -720,14 +720,6 @@ export interface CardDefinition {
   };
 
   /**
-   * "La première réduction de durée de Marée que vous provoquez chaque
-   * tour est augmentée de N", tant que la carte est visible (ex: Ancre de
-   * Tempête). Lu dans `resolveEffect` (`tideReduceDuration`) sur le
-   * plateau du contrôleur de l'effet, une fois par tour.
-   */
-  amplifyTideReductionOncePerTurnWhileVisible?: number;
-
-  /**
    * Contrecoup (Cylindre flottant) : tant que la carte est visible, la
    * première attaque directe contre le Navire de son contrôleur est
    * ANNULÉE, `reflectedFraction` des dégâts annulés (arrondi au supérieur)
@@ -927,14 +919,6 @@ export interface CardDefinition {
    */
   controllerReasonLossOnOwnDestruction?: number;
 
-  /**
-   * Cette carte gagne un bonus de Résistance PERMANENT chaque fois qu'une
-   * AUTRE Structure du même contrôleur est détruite (ex: Épaves
-   * Accrochées, "+1 Résistance. Maximum +2"), plafonné à `maxStacks`
-   * applications. Vérifié dans `processDeaths` ; ne réagit jamais à sa
-   * propre destruction ni à celle d'un permanent d'un autre type.
-   */
-  buffSelfOnOtherOwnStructureDestroyed?: { healthAmount: number; maxStacks: number };
 
   /**
    * Pour une unité ATTAQUANTE : dégâts supplémentaires infligés (cible
@@ -970,8 +954,6 @@ export interface CardDefinition {
   capDirectShipDamageWhileVisible?: number;
 
 
-  /** Réduit les dégâts subis par CETTE unité elle-même, au combat (ex: Baleine aux Cicatrices Blanches). */
-  reduceOwnDamageTakenOncePerTurn?: number;
 
   /** Restaure cette Résistance à une Structure alliée la première fois qu'elle en perd, ce tour-ci (ex: Wood Vy). */
   restoreResistanceOnAllyStructureLossOncePerTurn?: number;
@@ -1047,13 +1029,6 @@ export interface CardDefinition {
     requiresArchetypeCountAtLeast?: number;
   };
 
-  /**
-   * Aura : bonus accordé aux AUTRES unités du type `targetType` du même
-   * contrôleur (jamais à elle-même), tant que la Raison de son contrôleur
-   * est ≤ ce seuil (ex: Capitaine Sans Sommeil, "+1 Résistance aux autres
-   * Marins tant que Raison ≤ 3").
-   */
-  auraBuffOtherUnitsWhileControllerReasonAtMost?: { reasonAtMost: number; targetType: CardType; attackAmount?: number; healthAmount?: number };
 
   /**
    * Aura par TYPE DE CARTE sur le plateau du contrôleur (Lot 14) :
@@ -1090,7 +1065,7 @@ export interface CardDefinition {
   /**
    * Pour un Équipement UNIQUEMENT : bonus accordé à l'unité qu'il équipe
    * tant que la Marée est dans l'un de ces états (ex: Lampe de Pont Rouge
-   * en Houle/Tempête, Masque de Plongée Fissuré en Abysses).
+   * en Houle/Tempête).
    */
   equipGrantsBuffWhileTideStateIn?: { tideStateIn: TideStateName[]; attackAmount?: number; healthAmount?: number };
 
@@ -1105,38 +1080,10 @@ export interface CardDefinition {
    */
   equipGrantsBuff?: { attackAmount?: number; healthAmount?: number };
 
-  /**
-   * La première fois par tour que l'ADVERSAIRE de son contrôleur active une
-   * réaction PENDANT le tour de son contrôleur (seul moyen, dans ce moteur,
-   * pour un joueur non-actif de "déclencher un effet" pendant le tour de
-   * l'autre), révèle `amount` cartes aléatoires de la main de cet adversaire
-   * (ex: Guetteur de Brume). Consommé via `game/state/shields.ts` +
-   * `CardInstance.oncePerTurnFlags`, câblé directement dans
-   * `game/triggers/triggerBus.ts` (`resolveReaction`) plutôt que via le
-   * système `abilities`/`TriggerType` : ce n'est pas une réaction à un
-   * `TriggerEvent` mais à l'ACTE MÊME d'activer une réaction.
-   */
-  revealOpponentHandOnReactionOncePerTurn?: { amount: number };
-
   // --- Anomalies globales temporaires (`type: "anomalie"`, permanents à
   // durée limitée via `durationTurns` comme une Structure) : cf.
   // `game/state/anomalies.ts` — règles SYMÉTRIQUES qui affectent n'importe
   // quel joueur concerné, pas seulement le contrôleur de l'Anomalie. -----
-
-  /** Chaque joueur perd ce montant de Raison la 1ère fois PAR TOUR qu'il joue une carte (ex: Quelque Chose Sous la Coque). */
-  anomalyReasonLossOnFirstCardPlayedPerTurn?: number;
-
-  /** Chaque joueur perd ce montant de Raison la 1ère fois PAR TOUR qu'un de ses permanents quitte le plateau — mort, Sabordage ou expiration (ex: Les Voix dans le Sillage). */
-  anomalyReasonLossOnFirstPermanentLeavingPerTurn?: number;
-
-  /** Chaque joueur perd ce montant de Raison la 1ère fois PAR TOUR qu'il joue un permanent ; `bonusIfCreature` s'ajoute si ce permanent est une Créature (ex: Ils Sont Sous Nous). */
-  anomalyReasonLossOnFirstPermanentPlayedPerTurn?: { amount: number; bonusIfCreature?: number };
-
-  /** Réduit de ce montant (jamais sous 0) TOUT gain de Raison, à chaque fois — pas de limite par tour (ex: Le Chant Sous la Ligne). */
-  anomalyReduceAllReasonGains?: number;
-
-  /** À chaque changement d'état de Marée, réduit sa durée d'entrée de ce montant (minimum 1) ; `anchorDamagePerShip` inflige en plus ce montant de dégâts d'Ancrage à CHAQUE Navire (ex: La Mer Réclame Davantage). */
-  anomalyReduceTideEntryDuration?: { amount: number; anchorDamagePerShip?: number };
 
   /**
    * Force, au début de CHAQUE tour (déclenché par `startOfTurn`, quel que
@@ -1145,8 +1092,7 @@ export interface CardDefinition {
    * `anchorDamageAmount` dégâts d'Ancrage à son propre Navire (ex: Le Fond
    * Vous Regarde). Résolu via `GameState.pendingChoice` +
    * `game/actions/resolveChoice.ts`, jamais deviné automatiquement — un
-   * vrai choix de joueur, contrairement aux autres champs `anomalyXxx` de
-   * cette section qui s'appliquent sans décision.
+   * vrai choix de joueur.
    */
   anomalyForceChoiceAtStartOfTurn?: { reasonLossAmount: number; anchorDamageAmount: number };
 
@@ -1421,7 +1367,7 @@ export interface CardInstance {
 
   /**
    * Suivi générique des capacités "la première fois PAR TOUR que..." (ex:
-   * Vieux Loup de Mer, Baleine aux Cicatrices Blanches, Cage de Flottaison).
+   * Vieux Loup de Mer, Cage de Flottaison).
    * Clé = identifiant du mécanisme (ex: "reasonLossShield"), valeur =
    * `turnNumber` de la dernière activation. Une capacité est "encore
    * disponible ce tour-ci" quand `oncePerTurnFlags[clé] !== state.turnNumber`

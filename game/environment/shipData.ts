@@ -12,8 +12,8 @@ import type { ShipDefinition } from "@/game/environment/types";
  * NOTE — toutes les capacités activables sont désormais CÂBLÉES. La
  * fréquence "une fois par PARTIE" a sa primitive générique
  * (`activationsPerGame`, `game/state/oncePerGame.ts`), et la fenêtre
- * "après l'annonce d'une Marée" réutilise celle que le moteur ouvrait déjà
- * pour l'Ancre de Dérive (`activationWindow`). `capacityText` — le champ
+ * "après l'annonce d'une Marée" réutilise la fenêtre d'annonce de Marée
+ * du moteur (`activationWindow`). `capacityText` — le champ
  * "texte seul, rien n'est appliqué" — n'a plus d'occupant.
  *
  * Restent en texte seul certains PASSIFS qui demanderaient de distinguer

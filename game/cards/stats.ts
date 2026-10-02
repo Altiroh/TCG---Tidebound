@@ -16,10 +16,9 @@ export interface EffectiveStats {
 
 /**
  * Contexte de plateau nécessaire pour calculer les auras/stats dynamiques
- * (Bernard-l'Ermite d'Acier, Matelot Insomniaque, Capitaine Sans Sommeil,
- * Lampe de Pont Rouge, Masque de Plongée Fissuré) : uniquement le plateau et
- * la Raison du CONTRÔLEUR de l'unité évaluée — ces mécanismes ne portent
- * jamais sur le plateau adverse. Optionnel : un appelant qui ne le fournit
+ * (Bernard-l'Ermite d'Acier, Matelot Insomniaque, Lampe de Pont Rouge) :
+ * uniquement le plateau et la Raison du CONTRÔLEUR de l'unité évaluée — ces
+ * mécanismes ne portent jamais sur le plateau adverse. Optionnel : un appelant qui ne le fournit
  * pas obtient les stats "de base" (modificateurs + Marée), sans les auras —
  * utile pour les affichages qui n'ont pas facilement accès au plateau complet.
  */
@@ -226,11 +225,7 @@ export function collectAuraContributions(
       add(typeAura);
     }
 
-    // Capitaine Sans Sommeil : aura conditionnée à la Raison, par type de carte.
-    const reasonAura = sourceDef.auraBuffOtherUnitsWhileControllerReasonAtMost;
-    if (reasonAura && reasonAura.targetType === def.type && controllerReason <= reasonAura.reasonAtMost) add(reasonAura);
-
-    // Lampe de Pont Rouge / Masque de Plongée Fissuré : bonus d'Équipement conditionnel à la Marée.
+    // Lampe de Pont Rouge : bonus d'Équipement conditionnel à la Marée.
     if (source.attachedToInstanceId === unit.instanceId) {
       const equipBuff = sourceDef.equipGrantsBuffWhileTideStateIn;
       if (equipBuff && equipBuff.tideStateIn.includes(tideState)) add(equipBuff);

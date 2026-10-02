@@ -16,8 +16,8 @@ export type TriggerType =
   | "endOfTurn"
   | "onCardPlayed" // n'importe quelle carte est jouée par n'importe qui
   | "onTideStateEntered" // la Marée vient d'entrer dans un nouvel état
-  | "onTideStateExited" // la Marée vient de QUITTER un état (ex: Masque de Plongée Fissuré, "à chaque sortie des Abysses")
-  | "onTideAnnounced" // une nouvelle Marée vient d'être ANNONCÉE : son état est committé, ses effets de tour ne sont PAS encore appliqués (Ancre de Dérive). Fenêtre strictement antérieure à `onTideStateEntered`.
+  | "onTideStateExited" // la Marée vient de QUITTER un état (ex: "à chaque sortie des Abysses")
+  | "onTideAnnounced" // une nouvelle Marée vient d'être ANNONCÉE : son état est committé, ses effets de tour ne sont PAS encore appliqués (capacités de Navire `activationWindow: "tideAnnounced"`). Fenêtre strictement antérieure à `onTideStateEntered`.
   | "onBecomeVisible" // une Structure devient visible pour l'adversaire (entrée dans un de ses `visibleDuringTide`)
   | "onExpire" // une Structure/Objet à durée limitée quitte le board par expiration (ni mort, ni Sabordage)
   | "onObjectBroken" // le contrôleur vient de Briser un Objet (depuis le board OU depuis sa main)
@@ -28,7 +28,7 @@ export type TriggerType =
   | "onCardRecoveredFromGraveyard" // une carte remonte du Cimetière vers la main : déclencheur d'OBSERVATEUR (Lot 13 — Maman revient)
   | "onIncomingDirectAttack" // le Navire du contrôleur va subir des dégâts directs d'une attaque — fenêtre d'INTERCEPTION, ouverte AVANT tout calcul de dégâts (pièges : Cylindre flottant, Caisses Arrimées, Cage de Flottaison)
   | "onCombatVsGarde" // une unité du contrôleur (`sourceInstanceId`) va COMBATTRE une unité adverse ayant Garde — qu'elle attaque la Garde ou que la Garde l'attaque. Ouverte à la déclaration de l'attaque, dans la fenêtre d'interception, pour le camp concerné (Lot 15 — Ouvrez la Ligne !)
-  | "onUnitAttackDeclared" // une unité ADVERSE vient de déclarer une attaque, quelle qu'en soit la cible — même fenêtre, mais ouverte aussi sur un combat entre unités (Filet à la Dérive, Le Filet qui Respire)
+  | "onUnitAttackDeclared" // une unité ADVERSE vient de déclarer une attaque, quelle qu'en soit la cible — même fenêtre, mais ouverte aussi sur un combat entre unités (Filet à la Dérive)
   | "onBecomeOnlyCreature" // la carte vient de DEVENIR la seule Créature du plateau de son contrôleur (ex: Méduse des Lanternes) — détecté par photo avant/après chaque action (`processLoneCreatureChanges`)
   | "onPermanentWouldBeDestroyed" // un permanent est sur le point de partir au Cimetière — fenêtre de SAUVETAGE, ouverte AVANT que `processDeaths` ne l'emporte (Lot 14 : Filet de Sauvetage, Cloison Étanche, Bouclier d'Écume, Planche de Fortune)
   | "onSurvivedDamage" // une unité a subi des dégâts ET est toujours en jeu une fois les morts réglées (Lot 15 — Équipage de Verre) : personnel, ou observateur avec `triggeredBy`

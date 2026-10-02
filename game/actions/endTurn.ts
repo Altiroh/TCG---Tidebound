@@ -1,5 +1,5 @@
 import { getCardDefinition } from "@/game/cards/sets/core";
-import { annoncerMaree, applyTideTurnEffects, appliquerMareeAnnoncee } from "@/game/environment/resolveEnvironment";
+import { annoncerMaree, appliquerMareeAnnoncee } from "@/game/environment/resolveEnvironment";
 import { getShipDefinition } from "@/game/environment/shipData";
 import { deraisonAnchorDamage, deraisonDebt, naturalReasonRecovery, reasonCeiling, startingReasonCap } from "@/game/state/reason";
 import type { GameEvent } from "@/game/events/types";
@@ -60,16 +60,6 @@ export function endTurn(state: GameState, action: EndTurnAction): ActionResult {
   let nextState = endOfTurnTrigger.state;
   events.push({ ...base, type: "END_TURN", playerId: action.playerId });
   events.push(...endOfTurnTrigger.events);
-
-  // --- Effets de Marée reportés (Ancre de Dérive) : "ne s'appliquent qu'à
-  // la fin du tour en cours" — c'est maintenant.
-  const deferred = nextState.environment.deferredTideEffects;
-  if (deferred) {
-    nextState = { ...nextState, environment: { ...nextState.environment, deferredTideEffects: undefined } };
-    const applied = applyTideTurnEffects(nextState, deferred.previousTideState, deferred.tideState, deferred.intensity, state.turnNumber);
-    nextState = applied.state;
-    events.push(...applied.events);
-  }
 
   // Le tour se termine : les bonus "jusqu'à la fin du tour" tombent, sur
   // les DEUX plateaux (une carte peut en donner à l'adversaire) et avant
@@ -217,15 +207,14 @@ export function finirTour(state: GameState, endingPlayerId: PlayerId, eventsAvan
     phase: "mainPhase",
   };
 
-  // --- 1. ANNONCE de la Marée (décompte, progression, orientation, Anomalies) ---
+  // --- 1. ANNONCE de la Marée (décompte, progression, orientation) ---
   // L'état est committé, ses effets de TOUR ne sont pas encore appliqués :
-  // entre les deux, la fenêtre `onTideAnnounced` (Ancre de Dérive).
+  // entre les deux, la fenêtre `onTideAnnounced` (capacités de Navire).
   const annonce = annoncerMaree(nextState, newTurnNumber);
   nextState = annonce.state;
   events.push(...annonce.events);
 
-  // La Marée en attente est posée AVANT la fenêtre : c'est elle que
-  // l'effet `deferTideEffects` vient marquer, et c'est elle qui dit à
+  // La Marée en attente est posée AVANT la fenêtre : c'est elle qui dit à
   // `dispatch` que l'entame n'est pas finie.
   nextState = {
     ...nextState,
@@ -299,7 +288,7 @@ export function entameDeTour(state: GameState, eventsAvant: GameEvent[] = []): A
   const newBase = { turnNumber: newTurnNumber, timestamp: Date.now() };
   const nextPlayer = state.players.find((p) => p.id === pending.playerId)!;
 
-  // --- 2. Effets de la Marée annoncée, reportés ou non selon la fenêtre --
+  // --- 2. Effets de la Marée annoncée ------------------------------------
   const applique = appliquerMareeAnnoncee(
     { ...state, pendingTideStep: undefined },
     newTurnNumber,
@@ -308,8 +297,7 @@ export function entameDeTour(state: GameState, eventsAvant: GameEvent[] = []): A
       tideState: pending.tideState,
       intensity: pending.intensity,
       stateChanged: pending.stateChanged,
-    },
-    Boolean(pending.deferred)
+    }
   );
   let nextState = applique.state;
   events.push(...applique.events);

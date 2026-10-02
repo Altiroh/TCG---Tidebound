@@ -21,7 +21,6 @@ import {
 import { applyBlueSignal } from "@/game/rules/chromaticSignals";
 import {
   consumeDirectShipDamageShield,
-  consumeOwnDamageTakenShield,
   consumeStructureResistanceRestoreShield,
 } from "@/game/state/shields";
 import { getOpponent, getPlayer, type GameState, type PlayerState } from "@/game/state/types";
@@ -168,7 +167,7 @@ function controllerReasonLossAfterAttack(attacker: CardInstance, state: GameStat
   return total;
 }
 
-/** Applique des dégâts de COMBAT à une unité, en respectant son propre bouclier "1ère fois par tour" (Baleine aux Cicatrices Blanches) et, si c'est une Structure, la restauration de Wood Vy — retourne le montant réellement marqué (peut être 0 si totalement absorbé). Utilisé aussi bien pour les dégâts au défenseur que pour la riposte à l'attaquant : "elle subit des dégâts" ne distingue pas les deux rôles. */
+/** Applique des dégâts de COMBAT à une unité, en respectant, si c'est une Structure, la restauration "1ère fois par tour" de Wood Vy — retourne le montant réellement marqué (peut être 0 si totalement absorbé). Utilisé aussi bien pour les dégâts au défenseur que pour la riposte à l'attaquant : "elle subit des dégâts" ne distingue pas les deux rôles. */
 function applyCombatDamageToUnit(
   state: GameState,
   ownerId: string,
@@ -177,9 +176,8 @@ function applyCombatDamageToUnit(
   turnNumber: number
 ): { state: GameState; amountApplied: number } {
   if (amount <= 0) return { state, amountApplied: 0 };
-  const selfShield = consumeOwnDamageTakenShield(state, ownerId, unit.instanceId, turnNumber);
-  let nextState = selfShield.state;
-  let reduction = selfShield.reduction;
+  let nextState = state;
+  let reduction = 0;
   if (getCardDefinition(unit.cardId).type === "structure") {
     const restoreShield = consumeStructureResistanceRestoreShield(nextState, ownerId, turnNumber);
     nextState = restoreShield.state;
@@ -298,7 +296,7 @@ function suspendrePourInterception(
 
   // 1. Les défenses AUTOMATIQUES du défenseur s'appliquent d'abord : un texte
   //    sans « vous pouvez » ne se propose pas, il agit (Filet à la Dérive
-  //    visible, Le Filet qui Respire visible).
+  //    visible).
   const evenements: GameEvent[] = [];
   for (const triggerEvent of triggerEvents) {
     const auto = processTrigger(declaree, triggerEvent, state.turnNumber);
@@ -504,7 +502,7 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
       events.push({ ...base, type: "CARD_MOVED", instanceId: contrecoup.instanceId, fromZone: "board", toZone: "graveyard" });
 
       // Elle quitte le board sans être détruite : `onExpire`, comme une durée
-      // qui s'achève (Radeau de Fortune lit le même déclencheur).
+      // qui s'achève.
       const contrecoupTrigger = processTrigger(
         nextState,
         { trigger: "onExpire", playerId: opponent.id, cardId: contrecoup.cardId, sourceInstanceId: contrecoup.instanceId },
@@ -592,9 +590,8 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
     nextState = contreMotCle.state;
     const totalAttackerDamage = attackerDamage + bonusDamageAgainst(attackerUnit, defenderType, nextState) + contreMotCle.bonus;
 
-    // Dégâts au défenseur, réduits par son propre bouclier "1ère fois par
-    // tour" (Baleine aux Cicatrices Blanches) et, si c'est une Structure,
-    // par la restauration de Résistance de Wood Vy.
+    // Dégâts au défenseur, réduits, si c'est une Structure, par la
+    // restauration de Résistance de Wood Vy.
     const defenderDamageResult = applyCombatDamageToUnit(nextState, opponent.id, defenderUnit, totalAttackerDamage, etat.turnNumber);
     nextState = defenderDamageResult.state;
     if (defenderDamageResult.amountApplied > 0) {

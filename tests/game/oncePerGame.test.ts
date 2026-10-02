@@ -69,10 +69,9 @@ describe("primitive « une fois par partie »", () => {
 describe("Le Brise-Lames — Tenir la ligne", () => {
   /** Une Structure du Brise-Lames que la Marée détruit dès qu'elle atteint les Abysses. */
   function withDoomedStructure(): { state: GameState; structureId: string } {
-    // `la-bouee-qui-regardait` n'est pas détruite par la Marée : on simule
-    // la destruction environnementale par des dégâts de Marée mortels, la
-    // seule autre voie que le moteur impute à la Marée.
-    const structure = { ...instance("epaves-accrochees", "p1"), damageMarked: 0, lastDamageCause: "tide" as const };
+    // On simule la destruction environnementale par des dégâts de Marée
+    // mortels, la voie que le moteur impute à la Marée.
+    const structure = { ...instance("le-role-dequipage", "p1"), damageMarked: 0, lastDamageCause: "tide" as const };
     return {
       structureId: structure.instanceId,
       state: testGameState({

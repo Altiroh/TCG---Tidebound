@@ -54,8 +54,7 @@ function shouldDie(
   if (isProtectedFromDestruction(controller, unit, destructionCauseOf(unit, stats.destroyedByTide), turnNumber)) {
     return false;
   }
-  // Un départ déjà décidé (effet `destroy`/`saborde`, action Saborder,
-  // Ancre de Dérive) ne dépend d'aucune arithmétique de Résistance : une
+  // Un départ déjà décidé (effet `destroy`/`saborde`, action Saborder) ne dépend d'aucune arithmétique de Résistance : une
   // Anomalie sans Résistance doit pouvoir partir comme une Créature.
   if (unit.pendingRemoval) return true;
   // Sans Résistance (un Objet), l'arithmétique des dégâts ne s'applique
@@ -398,27 +397,7 @@ export function processDeaths(
         .filter((u) => u.attachedToInstanceId === unit.instanceId)
         .reduce((sum, equip) => sum + (getCardDefinition(equip.cardId).controllerReasonLossOnOwnDestruction ?? 0), 0);
 
-      const boardWithoutUnit = player.board.filter((u) => u.instanceId !== unit.instanceId);
-
-      // Autres Structures du même contrôleur portant `buffSelfOnOtherOwnStructureDestroyed`
-      // (ex: Épaves Accrochées) : +Résistance permanente, plafonnée à `maxStacks`
-      // (compté via les modificateurs déjà posés par CETTE carte, `source` = son propre cardId).
-      const dyingIsStructure = getCardDefinition(unit.cardId).type === "structure";
-      const board = dyingIsStructure
-        ? boardWithoutUnit.map((other) => {
-            const buff = getCardDefinition(other.cardId).buffSelfOnOtherOwnStructureDestroyed;
-            if (!buff) return other;
-            const stacksSoFar = other.modifiers.filter((m) => m.source === other.cardId).length;
-            if (stacksSoFar >= buff.maxStacks) return other;
-            return {
-              ...other,
-              modifiers: [
-                ...other.modifiers,
-                { id: `mod_${Math.random().toString(36).slice(2, 8)}`, source: other.cardId, attack: 0, health: buff.healthAmount, duration: "permanent" as const },
-              ],
-            };
-          })
-        : boardWithoutUnit;
+      const board = player.board.filter((u) => u.instanceId !== unit.instanceId);
 
       const scuttled = unit.pendingRemoval === "scuttled";
       const cause = destructionCauseOf(

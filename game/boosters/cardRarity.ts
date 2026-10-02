@@ -44,7 +44,6 @@ const AUDITED_RARITY: Record<string, CardRarity> = {
   "cartes-des-courants": "common",
   "marin-aux-yeux-rouges": "common",
   "matelot-du-sans-nom": "common",
-  "bouee-de-derive": "common",
   "epave-a-fleur-deau": "common",
   "matelot-insomniaque": "common",
   "poisson-aux-dents-de-verre": "common",
@@ -58,33 +57,23 @@ const AUDITED_RARITY: Record<string, CardRarity> = {
   "barracuda-des-hauts-fonds": "common",
   "bernard-lermite-dacier": "common",
   "corde-de-remorquage": "common",
-  "radeau-de-fortune": "common",
   "meduse-des-lanternes": "common",
 
   // --- Peu communes -----------------------------------------------------
-  "plongeur-des-epaves": "uncommon",
   "chose-des-hauts-fonds": "uncommon",
   "thermos-du-dernier-quart": "uncommon",
   "cloche-dalerte": "uncommon",
-  "ancre-de-derive": "uncommon",
-  "guetteur-de-brume": "uncommon",
   "anguille-des-profondeurs": "uncommon",
   "crabe-de-fer": "uncommon",
   "plaque-de-fortune": "uncommon",
-  "cartographe-du-large": "uncommon",
-  "gardien-du-sondeur": "uncommon",
   "lanterne-aux-verres-noirs": "uncommon",
   "cage-de-flottaison": "uncommon",
-  "ponton-aux-cloches": "uncommon",
   "contremaitre-des-amarres": "uncommon",
   "poisson-scie-gris": "uncommon",
   "kit-de-calfatage": "uncommon",
-  "epaves-accrochees": "uncommon",
   "levier-de-lest": "uncommon",
   "grappin-de-recuperation": "uncommon",
   "mecanicien-aux-mains-noires": "uncommon",
-  "masque-de-plongee-fissure": "uncommon",
-  "le-filet-qui-respire": "uncommon",
   "regulateur-de-courant": "uncommon",
   "sondeur-des-mauvaises-eaux": "uncommon",
 
@@ -96,27 +85,17 @@ const AUDITED_RARITY: Record<string, CardRarity> = {
   // lisible, donc commune.
   "la-nasse-trop-pleine": "rare",
   "le-role-dequipage": "common",
-  "quelque-chose-sous-la-coque": "rare",
-  "le-chant-sous-la-ligne": "rare",
   "raie-des-fosses": "rare",
   "la-chose-qui-remonte": "rare",
-  "epave-engloutie": "rare",
   "balise-des-profondeurs": "rare",
-  "les-voix-dans-le-sillage": "rare",
-  "capitaine-sans-sommeil": "rare",
   "masse-sombre": "rare",
   "treuil-a-chair": "rare",
-  "la-bouee-qui-regardait": "rare",
   "second-au-visage-pale": "rare",
-  "veilleur-des-profondeurs": "rare",
-  "baleine-aux-cicatrices-blanches": "rare",
   "chaine-de-fer-noir": "rare",
   "carcasse-renversee": "rare",
-  "cloche-immergee": "rare",
   "compas-aux-aiguilles-noires": "rare",
   "bouee-de-rappel": "rare",
   "horloge-de-maree": "rare",
-  "ancre-de-tempete": "rare",
 
   /*
    * --- Le haut du catalogue -------------------------------------------
@@ -151,17 +130,15 @@ const AUDITED_RARITY: Record<string, CardRarity> = {
   // Versions STANDARD de paires scindées : leur variante `-abyssal` tient
   // le haut du panier, elles prennent le palier juste en dessous.
   "ce-qui-suit-le-navire": "epic",
-  "ils-sont-sous-nous": "epic",
-  "loeil-sous-la-mer": "epic",
   "le-fond-vous-regarde": "epic",
   "cloche-du-grand-fond": "epic",
-  "la-mer-reclame-davantage": "epic",
 
 
   /*
    * Cartes postérieures à l'audit, arbitrées par le design le 2026-09-12.
    * Raisonnement conservé pour la prochaine passe d'audit :
-   *  - `guetteur-mefiant` : Marin utilitaire voisin de `guetteur-de-brume`.
+   *  - `guetteur-mefiant` : Marin utilitaire voisin de Guetteur de Brume
+   *    (retiré du catalogue le 02/10/2026).
    *  - `si-raie-ponce` : Créature 3/4 pour 4 avec bascule de Raison selon
    *    l'orientation — registre des Créatures Peu communes.
    *  - `bat-marin` : contourne Garde sur DEUX états de Marée là où

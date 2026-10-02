@@ -51,7 +51,7 @@ interface CardTileProps {
    * Plateau du CONTRÔLEUR de cette carte (+ sa Raison, + l'orientation de
    * Marée). Sans lui, la carte n'affiche que sa valeur propre : tous les
    * bonus venus d'une autre carte — Porte-Étendard, Trône de Bouchon,
-   * Destrier, Capitaine Sans Sommeil — restent invisibles alors que le
+   * Destrier — restent invisibles alors que le
    * combat, lui, les compte. À fournir dès que la carte est EN JEU.
    */
   auraContext?: AuraContext;

@@ -286,8 +286,8 @@ describe("Il Dottore des Noyés — un camp par mode", () => {
   function arrival() {
     const dottore = instance("il-dottore-des-noyes", "p1");
     const ally = instance("pulcinella-gonfle", "p1");
-    // Une ennemie assez solide pour survivre au -2 / -2 (5 / 6) : on mesure le malus, pas une mort.
-    const enemy = instance("baleine-aux-cicatrices-blanches", "p2");
+    // Une ennemie assez solide pour survivre au -2 / -2 (5 / 5) : on mesure le malus, pas une mort.
+    const enemy = instance("la-chose-qui-remonte", "p2");
     const state = testGameState({
       players: [testPlayer("p1", { hand: [dottore], board: [ally], reason: 10 }), testPlayer("p2", { board: [enemy] })],
     });
@@ -326,7 +326,7 @@ describe("Il Dottore des Noyés — un camp par mode", () => {
     const colombina = instance("colombina-aux-cent-visages", "p1");
     const dottore = instance("il-dottore-des-noyes", "p1");
     const ally = instance("pulcinella-gonfle", "p1");
-    const enemy = instance("baleine-aux-cicatrices-blanches", "p2");
+    const enemy = instance("la-chose-qui-remonte", "p2");
     const state = testGameState({
       players: [testPlayer("p1", { hand: [colombina], board: [dottore, ally], reason: 10 }), testPlayer("p2", { board: [enemy] })],
     });

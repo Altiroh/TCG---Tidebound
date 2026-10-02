@@ -71,8 +71,8 @@ export function deriveReactionTriggerEvents(state: GameState, events: GameEvent[
       }
       // Une mort ouvre une fenêtre comme le reste : la carte morte peut
       // proposer sa propre réaction depuis le cimetière (Pulcinella
-      // Gonflé), et ses observateurs encore en jeu la leur (Plongeur des
-      // Épaves, Mécanicien aux Mains Noires). Décision du 17/09/2026 :
+      // Gonflé), et ses observateurs encore en jeu la leur (Mécanicien aux
+      // Mains Noires). Décision du 17/09/2026 :
       // « jamais automatique, le joueur choisit ».
       case "DESTROY": {
         // L'identité du défunt n'est pas portée par l'événement : on la

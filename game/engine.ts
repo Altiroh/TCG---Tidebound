@@ -124,9 +124,9 @@ export function dispatch(state: GameState, action: PlayerAction): ActionResult {
   // --- REPRISE D'UNE ENTAME DE TOUR SUSPENDUE ---------------------------
   //
   // Même geste, à l'autre bout du tour : `endTurn` s'arrête à l'ANNONCE de
-  // la Marée quand une Ancre de Dérive a quelque chose à proposer. Dès que
-  // la fenêtre se referme, l'entame reprend là où elle s'était arrêtée —
-  // effets de la Marée (reportés ou non), expirations, Raison, pioche.
+  // la Marée quand une capacité a quelque chose à proposer. Dès que la
+  // fenêtre se referme, l'entame reprend là où elle s'était arrêtée —
+  // effets de la Marée, expirations, Raison, pioche.
   //
   // Contrairement à une attaque, rien n'est rejoué : `entameDeTour` est la
   // SUITE, pas une répétition, et `pendingTideStep` porte tout ce qu'il lui

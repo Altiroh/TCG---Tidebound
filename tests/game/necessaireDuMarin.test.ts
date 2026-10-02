@@ -237,7 +237,7 @@ describe("Filet de Sauvetage : un buff de Résistance, jamais un soin", () => {
 
   it("l'aura ne touche que les unités, pas les Structures du même plateau", () => {
     const filet = instance("filet-de-sauvetage", "p1", { turnsRemaining: 3 });
-    const structure = instance("epaves-accrochees", "p1", { turnsRemaining: 4 });
+    const structure = instance("le-role-dequipage", "p1", { turnsRemaining: 4 });
     const state = testGameState({
       environment: testEnvironment({ tideState: "tempete" }),
       players: [
@@ -251,7 +251,7 @@ describe("Filet de Sauvetage : un buff de Résistance, jamais un soin", () => {
       controllerReason: joueur.reason,
       tideOrientation: state.environment.tideOrientation,
     });
-    expect(stats.health).toBe(getCardDefinition("epaves-accrochees").health);
+    expect(stats.health).toBe(getCardDefinition("le-role-dequipage").health);
   });
 });
 

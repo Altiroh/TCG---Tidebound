@@ -356,8 +356,7 @@ export interface GameState {
   pendingAttack?: PendingAttack;
 
   /**
-   * Entame de tour suspendue à l'ANNONCE de la Marée (Ancre de Dérive,
-   * 21/09/2026). La nouvelle Marée est committée et annoncée, mais ses
+   * Entame de tour suspendue à l'ANNONCE de la Marée (21/09/2026). La nouvelle Marée est committée et annoncée, mais ses
    * effets de tour ne sont pas encore appliqués : la fenêtre
    * `onTideAnnounced` est ouverte et le joueur décide.
    *
@@ -458,10 +457,7 @@ export interface TurnTimerState {
  * Entame de tour suspendue le temps de la fenêtre `onTideAnnounced`.
  *
  * Porte tout ce qu'il faut pour reprendre : de QUI c'est le tour, et la
- * Marée annoncée, dont les effets n'ont pas encore été appliqués. Le seul
- * champ que la fenêtre peut changer est `deferred` — l'effet générique
- * `deferTideEffects` le lève, et l'entame reportera alors ces effets à la
- * fin du tour au lieu de les appliquer tout de suite.
+ * Marée annoncée, dont les effets n'ont pas encore été appliqués.
  */
 export interface PendingTideStep {
   /** Joueur dont le tour commence : celui pour qui l'entame doit reprendre. */
@@ -473,8 +469,6 @@ export interface PendingTideStep {
   intensity: number;
   /** La Marée vient-elle de CHANGER d'état, ou ne fait-elle que décompter ? */
   stateChanged: boolean;
-  /** Levé par `deferTideEffects` : les effets de cette Marée attendront la fin du tour. */
-  deferred?: boolean;
 }
 
 /**

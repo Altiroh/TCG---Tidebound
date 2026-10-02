@@ -29,9 +29,11 @@ describe("pools de boosters", () => {
     // 61 à l'origine, 63 depuis les deux Structures anti-swarm du
     // 21/09/2026 (La Nasse Trop Pleine, Le Rôle d'Équipage) : elles tiennent
     // du même socle « fondamentaux de Structures » que B1 enseigne déjà.
-    expect(BOOSTER_POOLS[BOOSTER_DEFAUT]).toHaveLength(63);
-    expect(BOOSTER_POOLS[BOOSTER_POISSONS_PAS_FRAIS]).toHaveLength(65);
-    expect(BOOSTER_POOLS[BOOSTER_ETRANGETE_SOUS_MARINE]).toHaveLength(64);
+    // Passe de nettoyage du 02/10/2026 : 28 cartes retirées du catalogue,
+    // sans remplaçant — B1 63 → 57, B2 65 → 54, B3 64 → 53.
+    expect(BOOSTER_POOLS[BOOSTER_DEFAUT]).toHaveLength(57);
+    expect(BOOSTER_POOLS[BOOSTER_POISSONS_PAS_FRAIS]).toHaveLength(54);
+    expect(BOOSTER_POOLS[BOOSTER_ETRANGETE_SOUS_MARINE]).toHaveLength(53);
   });
 
   it("n'a que trois cartes passerelles ENTRE LES TROIS PREMIERS boosters, exactement celles que le cadrage nomme", () => {

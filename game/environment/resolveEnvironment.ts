@@ -10,10 +10,8 @@ import { nextInt } from "@/game/rng";
 import type { GameEvent } from "@/game/events/types";
 import { processDiscardedFromHandTriggers, processTrigger } from "@/game/triggers/triggerBus";
 import { discardFromHandState, recordGraveyardArrival } from "@/game/state/discard";
-import { applyTideChangeAnomalies } from "@/game/state/anomalies";
 import {
   consumeEquippedEffectDamageShield,
-  consumeOwnDamageTakenShield,
   consumeReasonLossShield,
   consumeTideShipDamageShield,
 } from "@/game/state/shields";
@@ -210,15 +208,12 @@ function applyHouleSickness(state: GameState, turnNumber: number): { state: Game
   );
 
   for (const { playerId, instanceId } of sickPairs) {
-    // Bouclier propre à l'unité (Baleine aux Cicatrices Blanches) PUIS
-    // bouclier d'Équipement (Casque-Coquille) : les deux interceptent un
-    // dégât d'effet, et le dégât de MALADE en est un.
-    const ownShield = consumeOwnDamageTakenShield(damaged, playerId, instanceId, turnNumber);
-    damaged = ownShield.state;
+    // Bouclier d'Équipement (Casque-Coquille) : il intercepte un dégât
+    // d'effet, et le dégât de MALADE en est un.
     const shield = consumeEquippedEffectDamageShield(damaged, playerId, instanceId, turnNumber);
     damaged = shield.state;
     events.push(...shield.events);
-    const amount = Math.max(0, RULES.HOULE_SICKNESS_DAMAGE - ownShield.reduction - shield.reduction);
+    const amount = Math.max(0, RULES.HOULE_SICKNESS_DAMAGE - shield.reduction);
     if (amount === 0) continue;
     events.push({ ...base, type: "DAMAGE", targetInstanceId: instanceId, amount });
     damaged = {
@@ -311,9 +306,7 @@ function applyTideStructureDamage(
  * Effets DE TOUR d'un état de Marée, pour les deux joueurs : dégâts
  * d'Ancrage/Raison (boucliers de Navire compris), dégâts aux Structures,
  * choc d'entrée/sortie des Abysses, maladie de la Houle. Appelé par
- * `resolveTideTurnStep` au tick — ou, quand une Ancre de Dérive les a
- * reportés, par `endTurn` à la fin du tour en cours
- * (`EnvironmentState.deferredTideEffects`).
+ * `appliquerMareeAnnoncee` au tick.
  */
 export function applyTideTurnEffects(
   state: GameState,
@@ -440,22 +433,17 @@ export interface AnnonceDeMaree {
 /**
  * PREMIÈRE moitié de l'étape de Marée : l'ANNONCE (étapes 4-5 de la
  * structure de tour). Décompte la durée restante, avance éventuellement
- * vers l'état suivant, applique les Anomalies de changement — et s'arrête
- * là. L'état de Marée est committé et `TIDE_ADVANCED` est émis, mais AUCUN
- * effet de tour n'est encore appliqué.
+ * vers l'état suivant — et s'arrête là. L'état de Marée est committé et
+ * `TIDE_ADVANCED` est émis, mais AUCUN effet de tour n'est encore appliqué.
  *
- * Cette coupure existe pour l'Ancre de Dérive (21/09/2026) : entre
- * l'annonce et l'application, une fenêtre `onTideAnnounced` laisse le
- * joueur décider s'il Saborde sa carte pour repousser ces effets. « Le
- * joueur décide, jamais le moteur » — avant cette passe, le report était
- * appliqué d'office dès que la carte était en jeu.
+ * Entre l'annonce et l'application, une fenêtre `onTideAnnounced` laisse
+ * les joueurs réagir (capacités de Navire « après l'annonce d'une Marée »).
  */
 export function annoncerMaree(
   state: GameState,
   turnNumber: number
 ): { state: GameState; events: GameEvent[]; annonce: AnnonceDeMaree } {
   const events: GameEvent[] = [];
-  const base = { turnNumber, timestamp: Date.now() };
   const previousTideState = state.environment.tideState;
 
   // La Marée ne PROGRESSE (décompte de durée + avancée d'état) qu'une fois
@@ -481,19 +469,12 @@ export function annoncerMaree(
   const { amplified, modifiers: modifiersAfterAmplify } = consumeAmplify(tick.pendingTideModifiers);
   const intensity = amplified ? tick.tideIntensity * 2 : tick.tideIntensity;
 
-  // "La Mer Réclame Davantage" : uniquement sur un vrai CHANGEMENT d'état
-  // (`tick.stateChanged`), jamais sur un simple décompte dans le même état —
-  // lue AVANT que le nouvel état ne soit committé ci-dessous.
-  const tideAnomaly = tick.stateChanged
-    ? applyTideChangeAnomalies(state, tick.tideRemainingTurns)
-    : { tideRemainingTurns: tick.tideRemainingTurns, anchorDamagePerShip: 0 };
-
   let nextState: GameState = {
     ...state,
     environment: {
       ...state.environment,
       tideState: tick.tideState,
-      tideRemainingTurns: tideAnomaly.tideRemainingTurns,
+      tideRemainingTurns: tick.tideRemainingTurns,
       tideOrientation: tick.tideOrientation,
       tideIntensity: tick.tideIntensity,
       pendingTideModifiers: modifiersAfterAmplify,
@@ -504,25 +485,11 @@ export function annoncerMaree(
     type: "TIDE_ADVANCED",
     turnNumber,
     timestamp: Date.now(),
-    remainingTurns: tideAnomaly.tideRemainingTurns,
+    remainingTurns: tick.tideRemainingTurns,
     tideState: tick.tideState,
     tideOrientation: tick.tideOrientation,
     stateChanged: tick.stateChanged,
   });
-
-  if (tideAnomaly.anchorDamagePerShip > 0) {
-    nextState = {
-      ...nextState,
-      players: nextState.players.map((p) => ({ ...p, anchor: p.anchor - tideAnomaly.anchorDamagePerShip })) as [
-        PlayerState,
-        PlayerState
-      ],
-    };
-    for (const p of nextState.players) {
-      // `nextState` porte déjà la perte : `p.anchor` est l'Ancrage d'après.
-      events.push({ ...base, type: "DAMAGE", targetPlayerId: p.id, amount: tideAnomaly.anchorDamagePerShip, targetAnchorAfter: p.anchor });
-    }
-  }
 
   return {
     state: nextState,
@@ -535,17 +502,11 @@ export function annoncerMaree(
  * SECONDE moitié de l'étape de Marée (étapes 6-7) : les effets de tour de
  * la Marée annoncée, les capacités d'entrée/sortie d'état, l'expiration des
  * permanents à durée limitée, et les Structures qui deviennent visibles.
- *
- * `reportee` vient de la fenêtre `onTideAnnounced` : quand elle est levée
- * (effet `deferTideEffects`), les effets de TOUR attendent la fin du tour
- * en cours — l'état de Marée, lui, a bel et bien changé, et les capacités
- * `onTideStateEntered` se déclenchent à l'heure.
  */
 export function appliquerMareeAnnoncee(
   state: GameState,
   turnNumber: number,
-  annonce: AnnonceDeMaree,
-  reportee: boolean
+  annonce: AnnonceDeMaree
 ): { state: GameState; events: GameEvent[] } {
   const events: GameEvent[] = [];
   const base = { turnNumber, timestamp: Date.now() };
@@ -553,16 +514,9 @@ export function appliquerMareeAnnoncee(
   const tick = { tideState, stateChanged: annonce.stateChanged };
   let nextState = state;
 
-  if (reportee) {
-    nextState = {
-      ...nextState,
-      environment: { ...nextState.environment, deferredTideEffects: { previousTideState, tideState, intensity } },
-    };
-  } else {
-    const turnEffects = applyTideTurnEffects(nextState, previousTideState, tideState, intensity, turnNumber);
-    nextState = turnEffects.state;
-    events.push(...turnEffects.events);
-  }
+  const turnEffects = applyTideTurnEffects(nextState, previousTideState, tideState, intensity, turnNumber);
+  nextState = turnEffects.state;
+  events.push(...turnEffects.events);
 
   if (tick.stateChanged) {
     const trigger = processTrigger(nextState, { trigger: "onTideStateEntered", tideState: tick.tideState }, turnNumber);
@@ -667,7 +621,7 @@ export function resolveTideTurnStep(
   turnNumber: number
 ): { state: GameState; events: GameEvent[] } {
   const annonce = annoncerMaree(state, turnNumber);
-  const applique = appliquerMareeAnnoncee(annonce.state, turnNumber, annonce.annonce, false);
+  const applique = appliquerMareeAnnoncee(annonce.state, turnNumber, annonce.annonce);
   return { state: applique.state, events: [...annonce.events, ...applique.events] };
 }
 

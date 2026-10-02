@@ -470,7 +470,7 @@ export function playCard(state: GameState, action: PlayCardAction): ActionResult
   // « Lorsqu'elle devient visible » : une Structure posée pendant un état où
   // elle est DÉJÀ visible apparaît à cet instant — sans quoi son effet
   // n'existerait qu'au prochain changement de Marée, et poser la carte au
-  // bon moment la punirait (Épave Engloutie jouée pendant les Abysses).
+  // bon moment la punirait.
   if (def.visibleDuringTide && isVisibleDuringTide(def, nextState.environment.tideState)) {
     events.push({
       ...base,

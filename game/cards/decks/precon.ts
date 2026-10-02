@@ -259,13 +259,11 @@ export const DECK_MINEURS_DE_FOND: DeckList = {
     // Les pièges historiques, qui rendent le bluff crédible.
     ...repeat("filet-a-la-derive", 3),
     ...repeat("cloche-dalerte", 2),
-    ...repeat("ancre-de-derive", 2),
     // Lot 14 : chercher le piège qui manque, et sauver celui qui tombe.
     ...repeat("journal-de-bord", 3),
     ...repeat("planche-de-fortune", 2),
     ...repeat("charge-de-demolition", 2),
     // Assez de corps pour ne pas perdre en attendant.
-    ...repeat("guetteur-de-brume", 3),
     ...repeat("crabe-de-fer", 3),
     ...repeat("matelot-du-sans-nom", 3),
   ],
@@ -342,24 +340,19 @@ export const DECK_DESCENTE_AUX_ABYSSES: DeckList = {
     "Contrôle de Marée : fabriquer soi-même l'environnement, et y être chez soi quand l'adversaire n'y survit plus.",
   cardIds: [
     // Ceux qui lisent et poussent la Marée.
-    ...repeat("cartographe-du-large", 3),
     ...repeat("anguille-des-profondeurs", 3),
     ...repeat("raie-des-fosses", 2),
     ...repeat("sondeur-des-mauvaises-eaux", 2),
-    ...repeat("gardien-du-sondeur", 2),
     // Les instruments : durée, intensité, orientation.
     ...repeat("regulateur-de-courant", 3),
     ...repeat("balise-des-profondeurs", 2),
     ...repeat("compas-aux-aiguilles-noires", 2),
-    ...repeat("ancre-de-tempete", 2),
     ...repeat("horloge-de-maree", 1),
     ...repeat("cloche-du-grand-fond", 1),
-    ...repeat("epave-engloutie", 1),
     // Le forçage, et ce qui vit en bas.
     ...repeat("la-gueule-sous-la-mer", 1),
     ...repeat("sept-brasses-plus-bas", 1),
     ...repeat("ce-que-la-maree-rend", 2),
-    ...repeat("loeil-sous-la-mer", 3),
     ...repeat("la-chose-qui-remonte", 2),
     // La récompense de la descente, reprise de Sous la Ligne : ce que
     // personne d'autre ne peut se permettre de payer aussi tôt.
@@ -406,7 +399,6 @@ export const DECK_EPAVISTES: DeckList = {
     "Recyclage : une Structure détruite ou Sabordée n'est pas une perte, c'est la ressource que le deck attendait.",
   cardIds: [
     // Ceux qui vivent de ce qui casse.
-    ...repeat("plongeur-des-epaves", 2),
     ...repeat("charpentier-des-epaves", 3),
     ...repeat("mecanicien-aux-mains-noires", 2),
     ...repeat("charpentiere-de-veille", 2),
@@ -415,9 +407,7 @@ export const DECK_EPAVISTES: DeckList = {
     ...repeat("matelot-du-sans-nom", 2),
     // Les Structures à faire disparaître.
     ...repeat("caisses-arrimees", 3),
-    ...repeat("epaves-accrochees", 3),
     ...repeat("tas-de-bouts-de-bois", 3),
-    ...repeat("radeau-de-fortune", 3),
     ...repeat("caisse-des-dernieres-planches", 3),
     ...repeat("atelier-de-calfatage", 2),
     // Les outils du démontage.
@@ -468,23 +458,16 @@ export const DECK_A_BOUT_DE_RAISON: DeckList = {
     // Ceux qui font payer.
     ...repeat("marin-aux-yeux-rouges", 3),
     ...repeat("marin-aux-yeux-rouges-abyssal", 1),
-    ...repeat("ponton-aux-cloches", 3),
     ...repeat("anguille-des-profondeurs", 3),
-    ...repeat("cloche-immergee", 2),
-    ...repeat("le-chant-sous-la-ligne", 1),
     // Les Anomalies, qui imposent un choix dont aucune branche n'est bonne.
     // Une seule de chaque : à 5 Raison, ce deck n'en joue pas deux.
     ...repeat("le-fond-vous-regarde", 1),
-    ...repeat("la-mer-reclame-davantage", 1),
     // Ce qui rend la Raison que le plan dépense, et ce qui la convertit.
     ...repeat("mousse-du-premier-quart", 3),
     ...repeat("murene-aveugle", 3),
     ...repeat("requin-balafre", 3),
     // Ce qui regarde la main d'en face pour savoir où appuyer.
-    ...repeat("guetteur-de-brume", 3),
-    ...repeat("la-bouee-qui-regardait", 1),
     ...repeat("matelot-insomniaque", 3),
-    ...repeat("cartographe-du-large", 2),
     // Lot 14 : taxer, retarder, renvoyer.
     ...repeat("fausse-cargaison", 2),
     ...repeat("chaine-de-travers", 2),
@@ -599,7 +582,6 @@ export const DECK_CHASSE_AU_GROS: DeckList = {
     ...repeat("pont-mine", 2),
     // Ce qui reste debout quand l'échange est fini.
     ...repeat("ce-qui-suit-le-navire", 3),
-    ...repeat("baleine-aux-cicatrices-blanches", 2),
     ...repeat("le-brise-ligne", 2),
     ...repeat("lamiral-sans-pavillon", 1),
     ...repeat("chaine-de-fer-noir", 1),

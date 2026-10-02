@@ -352,7 +352,7 @@ describe("progression d'une partie terminée", () => {
   it("compte les Créatures à faible coût à part", () => {
     const state = finishedState([
       { ...base, type: "PLAY_CARD", playerId: "p1", instanceId: "a", cardId: "tetard-fesse" },
-      { ...base, type: "PLAY_CARD", playerId: "p1", instanceId: "b", cardId: "baleine-aux-cicatrices-blanches" },
+      { ...base, type: "PLAY_CARD", playerId: "p1", instanceId: "b", cardId: "la-chose-qui-remonte" },
     ]);
     const progress = computeMatchQuestProgress({ state, playerId: "p1", vsBot: true, won: false });
     expect(progress.play_creatures).toBe(2);
@@ -485,7 +485,7 @@ describe("objectifs d'identité Tidebound (audit du 24/09)", () => {
         { ...base, type: "SUMMON", playerId: "p1", instanceId: "t1", cardId: "tetard-fesse" },
         { ...base, type: "HEAL", targetPlayerId: "p1", amount: 3 },
         { ...base, type: "HEAL", targetPlayerId: "p2", amount: 5 },
-        { ...base, type: "PLAY_CARD", playerId: "p1", instanceId: "a1", cardId: "quelque-chose-sous-la-coque" },
+        { ...base, type: "PLAY_CARD", playerId: "p1", instanceId: "a1", cardId: "le-tournoi-du-grand-etang" },
         { ...base, type: "PLAY_CARD", playerId: "p1", instanceId: "b1", cardId: "la-chose-qui-remonte" },
       ] as GameEvent[]),
       playerId: "p1",

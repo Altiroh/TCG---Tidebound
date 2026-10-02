@@ -3,15 +3,14 @@ import { computeEffectiveStats } from "@/game/cards/stats";
 import { isVisibleDuringTide, UNIT_CARD_TYPES, type CardInstance, type TriggeredAbility, type TriggerSourceFilter } from "@/game/cards/types";
 import type { EffectDefinition } from "@/game/effects/types";
 import type { EffectContext } from "@/game/effects/resolveEffect";
-import { hasGraveyardArrival, resolveEffect, revealRandomHandCards } from "@/game/effects/resolveEffect";
+import { hasGraveyardArrival, resolveEffect } from "@/game/effects/resolveEffect";
 import { resolveEffectSequence } from "@/game/effects/resolveSequence";
 import type { GameEvent } from "@/game/events/types";
-import { applyCardPlayedAnomalies, applyPermanentLeftAnomalies } from "@/game/state/anomalies";
 import { chosenTargetRequirement, eligibleChosenUnits } from "@/game/effects/chosenTargets";
 import { graveyardChoicesFor } from "@/game/effects/graveyardChoices";
 import { markOncePerTurnUsed, oncePerTurnAvailable } from "@/game/state/oncePerTurn";
 import { chromaticColorsOf } from "@/game/rules/chromatic";
-import { consumeOpponentReactionRevealShield, payReasonCost } from "@/game/state/shields";
+import { payReasonCost } from "@/game/state/shields";
 import type { GameState, PlayerId, PlayerState } from "@/game/state/types";
 import type { PendingReactionCandidate, TriggerEvent } from "@/game/triggers/types";
 
@@ -125,7 +124,7 @@ function matchesControlCondition(
     // mais elle ne peut plus se « révéler » une seconde fois.
     //
     // Sans cette garde, un piège qui RESTE en jeu après s'être révélé — Filet
-    // à la Dérive, Le Filet qui Respire — reproposait sa réaction à CHAQUE
+    // à la Dérive — reproposait sa réaction à CHAQUE
     // attaque, indéfiniment : 43 fenêtres de réaction par partie, mesurées.
     // Ceux qui se détruisent ou se Sabordent ne montraient pas le problème.
     if (holder.unit.revealed) return false;
@@ -938,23 +937,6 @@ export function processTrigger(
     events.push(...recovered.events);
   }
 
-  // Anomalies globales temporaires (`game/state/anomalies.ts`) : centralisées
-  // ICI plutôt que sur chaque site d'appel (playCard.ts / processDeaths.ts /
-  // saborder.ts / resolveEnvironment.ts) puisque `processTrigger` est déjà
-  // le point de passage unique pour ces trois `TriggerType`. Le Sabordage
-  // déclenche toujours `onDeath` EN PLUS de `onSaborde` (cf. `TriggerType`),
-  // donc ne réagir qu'à `onDeath`/`onExpire` ici évite de compter deux fois
-  // le départ d'un même permanent sabordé.
-  if (event.trigger === "onCardPlayed" && event.playerId && event.cardId) {
-    const anomaly = applyCardPlayedAnomalies(nextState, event.playerId, getCardDefinition(event.cardId).type, turnNumber);
-    nextState = anomaly.state;
-    events.push(...anomaly.events);
-  } else if ((event.trigger === "onDeath" || event.trigger === "onExpire") && event.playerId) {
-    const anomaly = applyPermanentLeftAnomalies(nextState, event.playerId, turnNumber);
-    nextState = anomaly.state;
-    events.push(...anomaly.events);
-  }
-
   return { state: nextState, events };
 }
 
@@ -1117,23 +1099,6 @@ export function resolveReaction(
     playerId: candidate.controllerId,
     sourceInstanceId: candidate.sourceInstanceId,
   });
-
-  // Guetteur de Brume (et cartes similaires) : "la première fois par tour
-  // que l'adversaire déclenche un effet pendant votre tour, regardez une
-  // carte de sa main" — activer une réaction est, dans ce moteur, le SEUL
-  // moyen pour un joueur non-actif de déclencher un effet pendant le tour
-  // de l'autre. Ne concerne que le joueur ACTIF (celui dont c'est le tour) :
-  // s'il active lui-même une de ses propres réactions, ce n'est pas
-  // "l'adversaire" qui a agi.
-  if (candidate.controllerId !== state.activePlayerId) {
-    const reveal = consumeOpponentReactionRevealShield(nextState, state.activePlayerId, turnNumber);
-    nextState = reveal.state;
-    if (reveal.amount > 0) {
-      const revealResult = revealRandomHandCards(nextState, candidate.controllerId, reveal.amount, turnNumber);
-      nextState = revealResult.state;
-      events.push(...revealResult.events);
-    }
-  }
 
   return { state: nextState, events };
 }

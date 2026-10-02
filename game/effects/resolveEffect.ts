@@ -18,13 +18,11 @@ import { isEligibleChosenUnit } from "@/game/effects/chosenTargets";
 import type { EffectAmount, EffectDefinition } from "@/game/effects/types";
 import type { EffectOrigin, GameEvent } from "@/game/events/types";
 import { nextInt, type RngState } from "@/game/rng";
-import { reduceReasonGain } from "@/game/state/anomalies";
 import { reasonAfterLoss, reasonCeiling } from "@/game/state/reason";
 import { markOncePerTurnUsed, oncePerTurnAvailable } from "@/game/state/oncePerTurn";
 import { chromaticColorsOf, chromaticShardCardId } from "@/game/rules/chromatic";
 import {
   consumeEquippedEffectDamageShield,
-  consumeOwnDamageTakenShield,
   consumeReasonLossShield,
   consumeStructureResistanceRestoreShield,
 } from "@/game/state/shields";
@@ -235,11 +233,8 @@ function amountValue(
 /**
  * Révèle jusqu'à `amount` cartes aléatoires DISTINCTES de la main de
  * `targetPlayerId` (moins si sa main en contient moins) : émet un
- * `HAND_CARD_REVEALED` par carte, sans autre effet sur l'état (ex: Guetteur
- * de Brume, La Bouée qui Regardait). Factorisé pour être appelable aussi
- * bien depuis `case "revealRandomHandCards"` que directement depuis
- * `game/triggers/triggerBus.ts` (Guetteur de Brume, hors du pipeline
- * d'effets habituel — cf. commentaire sur place).
+ * `HAND_CARD_REVEALED` par carte, sans autre effet sur l'état. Appelée par
+ * `case "revealRandomHandCards"`.
  */
 export function revealRandomHandCards(
   state: GameState,
@@ -624,9 +619,6 @@ function originOf(context: EffectContext): EffectOrigin {
     : { playerId: context.controllerId };
 }
 
-/** Clé `oncePerTurnFlags` de l'amplification de réduction de Marée (`amplifyTideReductionOncePerTurnWhileVisible`). */
-const AMPLIFY_TIDE_REDUCTION_KEY = "amplifyTideReduction";
-
 /** Résout un effet unique et retourne le nouvel état + les événements produits. */
 export function resolveEffect(
   state: GameState,
@@ -752,20 +744,16 @@ export function resolveEffect(
         // sélecteurs de masse (`allEnemyUnits`, `allUnits`, `random*Unit`)
         // balaient tout le board, Objets compris.
         if (!hasResistance(getCardDefinition(unit.cardId))) continue;
-        // Boucliers "1ère fois par tour" (Baleine aux Cicatrices Blanches :
-        // réduction directe ; Wood Vy : restauration après coup sur une
-        // Structure alliée — équivalent net à une réduction supplémentaire,
-        // cf. commentaire de `consumeStructureResistanceRestoreShield`).
-        const selfShield = consumeOwnDamageTakenShield(nextState, ownerId, unit.instanceId, context.turnNumber);
-        nextState = selfShield.state;
-        let reduction = selfShield.reduction;
         // Casque-Coquille : ces dégâts-ci viennent bien d'un effet de
         // carte, pas d'un combat — l'Équipement les absorbe une fois puis
         // se détruit.
         const effectShield = consumeEquippedEffectDamageShield(nextState, ownerId, unit.instanceId, context.turnNumber);
         nextState = effectShield.state;
-        reduction += effectShield.reduction;
+        let reduction = effectShield.reduction;
         events.push(...effectShield.events);
+        // Bouclier "1ère fois par tour" de Wood Vy : restauration après coup
+        // sur une Structure alliée — équivalent net à une réduction
+        // supplémentaire, cf. commentaire de `consumeStructureResistanceRestoreShield`.
         if (getCardDefinition(unit.cardId).type === "structure") {
           const restoreShield = consumeStructureResistanceRestoreShield(nextState, ownerId, context.turnNumber);
           nextState = restoreShield.state;
@@ -1098,16 +1086,14 @@ export function resolveEffect(
     }
 
     case "reasonGain": {
-      const rawAmount = amountValue(effect.amount, state, context.controllerId);
+      const amount = amountValue(effect.amount, state, context.controllerId);
       const targets = resolvePlayerTargets(state, effect, context);
       const players = targets.length > 0 ? targets : [getPlayer(state, context.controllerId)];
       let nextState = state;
       for (const target of players) {
         const player = getPlayer(nextState, target.id);
-        // "La Gueule Sous la Mer" : verrou total, prioritaire sur toute réduction.
+        // "La Gueule Sous la Mer" : verrou total sur tout gain de Raison.
         if (player.statusFlags.includes(STATUS_NO_REASON_GAIN)) continue;
-        // "Le Chant Sous la Ligne" : réduit TOUT gain de Raison tant qu'elle est en jeu.
-        const amount = reduceReasonGain(nextState, rawAmount);
         if (amount <= 0) continue;
         // `source: "card"` : récupérée GRÂCE À UNE CARTE (Survivant de la
         // Mousse), par opposition à la régénération de début de tour.
@@ -1132,13 +1118,6 @@ export function resolveEffect(
         nextState = replacePlayer(nextState, { ...player, reason: reasonAfterLoss(player, finalAmount) });
       }
       return { state: nextState, events };
-    }
-
-    case "deferTideEffects": {
-      // Hors fenêtre `onTideAnnounced`, aucune Marée n'attend : sans objet
-      // plutôt qu'une erreur, comme les autres effets de fenêtre.
-      if (!state.pendingTideStep) return { state, events };
-      return { state: { ...state, pendingTideStep: { ...state.pendingTideStep, deferred: true } }, events };
     }
 
     case "cancelIncomingAttack": {
@@ -1233,28 +1212,8 @@ export function resolveEffect(
 
     case "tideReduceDuration":
     case "tideExtendDuration": {
-      let amount = amountValue(effect.amount, state, context.controllerId) || 1;
-      let nextState = state;
-      if (effect.type === "tideReduceDuration") {
-        // "La première réduction de durée que vous provoquez chaque tour est
-        // augmentée de N" (Ancre de Tempête, visible) : lue sur le plateau du
-        // contrôleur de l'effet, consommée pour le tour.
-        const controller = getPlayer(state, context.controllerId);
-        const amplifier = controller.board.find((u) => {
-          const def = getCardDefinition(u.cardId);
-          return (
-            def.amplifyTideReductionOncePerTurnWhileVisible !== undefined &&
-            isVisibleDuringTide(def, state.environment.tideState) &&
-            oncePerTurnAvailable(u, AMPLIFY_TIDE_REDUCTION_KEY, context.turnNumber)
-          );
-        });
-        if (amplifier) {
-          amount += getCardDefinition(amplifier.cardId).amplifyTideReductionOncePerTurnWhileVisible ?? 0;
-          nextState = replaceUnit(nextState, controller.id, amplifier.instanceId, (u) =>
-            markOncePerTurnUsed(u, AMPLIFY_TIDE_REDUCTION_KEY, context.turnNumber)
-          );
-        }
-      }
+      const amount = amountValue(effect.amount, state, context.controllerId) || 1;
+      const nextState = state;
       const delta = effect.type === "tideReduceDuration" ? -amount : amount;
       const rawRemaining = nextState.environment.tideRemainingTurns + delta;
       // Régulateur de Courant (`advanceTideOnZero`) : la réduction qui fait
@@ -1408,36 +1367,6 @@ export function resolveEffect(
         const result = revealRandomHandCards(nextState, target.id, amount, context.turnNumber);
         nextState = result.state;
         events.push(...result.events);
-      }
-      return { state: nextState, events };
-    }
-
-    case "reasonLossToHigherRevealedHandCard": {
-      const amount = amountValue(effect.amount, state, context.controllerId) || 1;
-      let nextState = state;
-      let rngState = nextState.rngState;
-      const revealed: Array<{ playerId: PlayerId; cost: number }> = [];
-
-      for (const player of nextState.players) {
-        if (player.hand.length === 0) continue;
-        const draw = nextInt(rngState, player.hand.length);
-        rngState = draw.nextState;
-        const card = player.hand[draw.value]!;
-        events.push({ ...base, type: "HAND_CARD_REVEALED", ownerId: player.id, instanceId: card.instanceId, cardId: card.cardId });
-        revealed.push({ playerId: player.id, cost: getCardDefinition(card.cardId).cost });
-      }
-      nextState = { ...nextState, rngState };
-
-      if (revealed.length === 2 && revealed[0]!.cost !== revealed[1]!.cost) {
-        const loser = revealed[0]!.cost > revealed[1]!.cost ? revealed[0]! : revealed[1]!;
-        const shield = consumeReasonLossShield(nextState, loser.playerId, context.turnNumber);
-        nextState = shield.state;
-        const finalAmount = Math.max(0, amount - shield.reduction);
-        if (finalAmount > 0) {
-          const loserPlayer = getPlayer(nextState, loser.playerId);
-          events.push({ ...base, type: "REASON_CHANGED", playerId: loserPlayer.id, delta: -finalAmount });
-          nextState = replacePlayer(nextState, { ...loserPlayer, reason: reasonAfterLoss(loserPlayer, finalAmount) });
-        }
       }
       return { state: nextState, events };
     }
