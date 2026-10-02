@@ -226,7 +226,9 @@ export function dispatch(state: GameState, action: PlayerAction): ActionResult {
   if (!deaths.state.pendingDestruction) {
     survieJugee = true;
     const tour = deaths.state.turnNumber;
-    const signaux = processChromaticSignals(deaths.state, result.events, tour);
+    // Les effets des déclenchements de la passe de morts (une capacité
+    // `onDeath` qui désigne une Sentinelle adverse) comptent aussi.
+    const signaux = processChromaticSignals(deaths.state, [...result.events, ...deaths.events], tour);
     const survies = processSurvivedDamage(signaux.state, [...coupsReportes, ...result.events, ...deaths.events], tour);
     const raison = processReasonGained(survies.state, [...result.events, ...signaux.events, ...survies.events], tour);
     const produits = [...signaux.events, ...survies.events, ...raison.events];

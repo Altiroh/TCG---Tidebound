@@ -13,7 +13,8 @@ interface PickUnitsPromptProps {
 }
 
 /**
- * « Renvoyez jusqu'à N unités […] » (Panique sur le Pont, Lot 14).
+ * « Choisissez jusqu'à N unités […] » (Trinquer Trop Fort, Les Couleurs
+ * Répondent, Lot 15).
  *
  * `chosenUnit` ne désigne qu'une cible, et la désignation se fait alors en
  * pointant directement sur le plateau. Dès qu'un texte en vise PLUSIEURS, il

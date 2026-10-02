@@ -22,7 +22,10 @@ export function deriveReactionTriggerEvents(state: GameState, events: GameEvent[
         derived.push({ trigger: "onCardPlayed", playerId: event.playerId, cardId: event.cardId, sourceInstanceId: event.instanceId });
         break;
       case "SUMMON":
-        derived.push({ trigger: "onEnterPlay", playerId: event.playerId, cardId: event.cardId, sourceInstanceId: event.instanceId });
+        // `fromSummon` comme pour le déclenchement automatique
+        // (`processSummonEnterTriggers`) : « jouée » (`excludeSummoned`) et
+        // « invoquée » (`onlySummoned`) se lisent pareil dans la fenêtre.
+        derived.push({ trigger: "onEnterPlay", playerId: event.playerId, cardId: event.cardId, sourceInstanceId: event.instanceId, fromSummon: true });
         break;
       // Une arrivée REJOUÉE (Colombina) rouvre aussi les capacités
       // facultatives d'arrivée de la carte visée : c'est tout l'intérêt.

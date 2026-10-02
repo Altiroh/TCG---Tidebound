@@ -6,7 +6,7 @@ import type { GameEvent } from "@/game/events/types";
 import { collectReactionCandidates, processTrigger } from "@/game/triggers/triggerBus";
 import { leaveChromaticShard } from "@/game/rules/chromaticShards";
 import type { DestructionCause } from "@/game/cards/types";
-import { loseReason } from "@/game/state/shields";
+import { applyOpponentRemovalShield, loseReason } from "@/game/state/shields";
 import { recordGraveyardArrival } from "@/game/state/discard";
 import { markOncePerTurnUsed, oncePerTurnAvailable } from "@/game/state/oncePerTurn";
 import type { GameState, PlayerState } from "@/game/state/types";
@@ -150,6 +150,55 @@ export function destructionCauseOf(
 }
 
 const SURVIVES_LETHAL_KEY = "survivesLethal";
+
+/**
+ * Remplacement « par un effet adverse » (`opponentRemovalShieldOncePerTurn`)
+ * vu depuis la passe de morts : l'unité part sous un EFFET (dégâts ou
+ * destruction) dont l'auteur n'est pas son propriétaire. Le malus de
+ * Résistance est posé (`applyOpponentRemovalShield`), puis ses dégâts sont
+ * ramenés juste sous sa nouvelle Résistance pour qu'elle reste en jeu.
+ * `undefined` si rien ne s'applique (Marée, combat, effet allié, usage
+ * du tour déjà pris).
+ */
+function remplacementParBeteDeHalage(
+  state: GameState,
+  turnNumber: number,
+  owner: PlayerState,
+  unit: CardInstance
+): { state: GameState; events: GameEvent[] } | undefined {
+  if (!getCardDefinition(unit.cardId).opponentRemovalShieldOncePerTurn) return undefined;
+  const contexte = {
+    controllerBoard: owner.board,
+    controllerReason: owner.reason,
+    tideOrientation: state.environment.tideOrientation,
+  };
+  const avant = computeEffectiveStats(unit, state.environment.tideState, contexte);
+  if (destructionCauseOf(unit, avant.destroyedByTide) !== "effect") return undefined;
+  const auteur = unit.pendingRemoval === "destroyed" ? unit.pendingRemovalBy : unit.lastDamageBy;
+  if (!auteur || auteur === owner.id) return undefined;
+  const remplace = applyOpponentRemovalShield(state, owner.id, unit.instanceId, turnNumber);
+  if (!remplace) return undefined;
+  const proprietaire = remplace.state.players.find((p) => p.id === owner.id)!;
+  const malusee = proprietaire.board.find((u) => u.instanceId === unit.instanceId)!;
+  const apres = computeEffectiveStats(malusee, state.environment.tideState, { ...contexte, controllerBoard: proprietaire.board });
+  // Plus de Résistance du tout : le remplacement ne peut pas la garder en jeu.
+  if (apres.health < 1) return undefined;
+  const gardee: CardInstance = {
+    ...malusee,
+    pendingRemoval: undefined,
+    pendingRemovalBy: undefined,
+    damageMarked: Math.min(malusee.damageMarked, apres.health - 1),
+  };
+  return {
+    state: {
+      ...remplace.state,
+      players: remplace.state.players.map((p) =>
+        p.id === owner.id ? { ...p, board: p.board.map((u) => (u.instanceId === unit.instanceId ? gardee : u)) } : p
+      ) as [PlayerState, PlayerState],
+    },
+    events: remplace.events,
+  };
+}
 
 /**
  * "Il reste à 1 Résistance à la place" (`survivesLethalOncePerTurn`) :
@@ -332,6 +381,17 @@ export function processDeaths(
         const result = applyDestructionSubstitute(current, turnNumber, player.id, unit, substitute);
         current = result.state;
         events.push(...result.events);
+        continue;
+      }
+      // Bête de Halage : « détruite par un effet ADVERSE » couvre aussi les
+      // DÉGÂTS d'un effet adverse (la cause qu'en retient le moteur,
+      // `destructionCauseOf`) et une destruction posée hors d'un effet
+      // `destroy` (Chacun sa Place). Elle perd 1 Résistance à la place, et
+      // reste en jeu : ses dégâts redescendent juste sous sa Résistance.
+      const remplacee = remplacementParBeteDeHalage(current, turnNumber, player, unit);
+      if (remplacee) {
+        current = remplacee.state;
+        events.push(...remplacee.events);
         continue;
       }
       // "Il reste à 1 Résistance à la place" (Revenante de la Fosse).

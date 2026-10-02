@@ -25,7 +25,7 @@ import {
 } from "@/game/rules/validation";
 import { payReasonCost, reasonCostAfterShield } from "@/game/state/shields";
 import { recordGraveyardArrival } from "@/game/state/discard";
-import { assemblageError, findAssemblage } from "@/game/rules/chromatic";
+import { assemblageError, controlledChromaticColors, findAssemblage } from "@/game/rules/chromatic";
 import { getPlayer, MIN_DISCOUNTED_COST, type GameState, type PlayerId, type PlayerState } from "@/game/state/types";
 import type { ActionResult, PlayCardAction } from "@/game/actions/types";
 
@@ -296,6 +296,9 @@ export function playCard(state: GameState, action: PlayCardAction): ActionResult
   // destruction » —, et leurs Équipements orphelins partent au prochain
   // passage de `processDeaths`, comme ceux de toute unité qui quitte le jeu.
   const assemblage = action.assemblage && def.chromaticAssemblage ? action.assemblage : undefined;
+  // « une couleur que vous ne contrôliez pas ENCORE » (Poste Chromatique) :
+  // photo AVANT l'Assemblage, qui retire des couleurs du plateau.
+  const couleursAvantArrivee = controlledChromaticColors(player, state.turnNumber);
   if (assemblage) {
     const retirees = new Set(assemblage.map((part) => part.instanceId));
     const owner = getPlayer(nextState, player.id);
@@ -361,6 +364,7 @@ export function playCard(state: GameState, action: PlayCardAction): ActionResult
       damageMarked: 0,
       modifiers: [],
       turnsRemaining: def.durationTurns,
+      couleursAvantArrivee,
       // « considéré comme ayant les quatre couleurs utilisées pour son
       // Assemblage. Il émet … les Signaux correspondant à ces couleurs. »
       ...(assemblage

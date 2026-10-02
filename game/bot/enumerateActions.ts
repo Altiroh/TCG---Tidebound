@@ -119,7 +119,7 @@ export function enumerateCandidateActions(state: GameState, playerId: PlayerId):
     // répartitions ferait exploser la recherche pour un gain marginal.
     if (state.pendingChoice.kind === "healAllocation") {
       const choice = state.pendingChoice;
-      const blessees = player.board.filter((u) => u.damageMarked > 0);
+      const blessees = player.board.filter((u) => u.damageMarked > 0 && UNIT_CARD_TYPES.includes(getCardDefinition(u.cardId).type));
       return [
         ...blessees.map((unit) => ({
           type: "resolveChoice" as const,

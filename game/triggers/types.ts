@@ -31,8 +31,9 @@ export type TriggerType =
   | "onCombatVsGarde" // une unité du contrôleur (`sourceInstanceId`) va COMBATTRE une unité adverse ayant Garde — qu'elle attaque la Garde ou que la Garde l'attaque. Ouverte à la déclaration de l'attaque, dans la fenêtre d'interception, pour le camp concerné (Lot 15 — Ouvrez la Ligne !)
   | "onUnitAttackDeclared" // une unité ADVERSE vient de déclarer une attaque, quelle qu'en soit la cible — même fenêtre, mais ouverte aussi sur un combat entre unités (Filet à la Dérive)
   | "onBecomeOnlyCreature" // la carte vient de DEVENIR la seule Créature du plateau de son contrôleur (ex: Méduse des Lanternes) — détecté par photo avant/après chaque action (`processLoneCreatureChanges`)
-  | "onPermanentWouldBeDestroyed" // un permanent est sur le point de partir au Cimetière — fenêtre de SAUVETAGE, ouverte AVANT que `processDeaths` ne l'emporte (Lot 14 : Filet de Sauvetage, Cloison Étanche, Bouclier d'Écume, Planche de Fortune)
+  | "onPermanentWouldBeDestroyed" // un permanent est sur le point de partir au Cimetière — fenêtre de SAUVETAGE, ouverte AVANT que `processDeaths` ne l'emporte (Lot 14 : Filet de Sauvetage, Cloison Étanche, Bouclier d'Écume)
   | "onSurvivedDamage" // une unité a subi des dégâts ET est toujours en jeu une fois les morts réglées (Lot 15 — Équipage de Verre) : personnel, ou observateur avec `triggeredBy`
+  | "onChromaticColorChosen" // une carte EN JEU vient de recevoir la couleur choisie pour elle par une question (« À son arrivée, choisissez sa couleur » — Émissaire de Quartz) : personnel ou observateur ; `fromSummon` vaut vrai si elle n'a pas été JOUÉE (Lot 15 — Poste Chromatique)
   | "onReasonGained" // le contrôleur vient de récupérer de la Raison GRÂCE À UNE CARTE — jamais la régénération de début de tour (Lot 15 — Survivant de la Mousse)
   | "onCondition"; // condition arbitraire évaluée par un `ConditionExpression`
 
@@ -71,6 +72,8 @@ export interface TriggerEvent {
   damage?: Array<{ cause?: import("@/game/cards/types").DestructionCause; byPlayerId?: string }>;
   /** `onCardDiscardedFromHand` : la défausse vient d'un effet de carte, pas de la limite de main. */
   discardByEffect?: boolean;
+  /** `onCardDiscardedFromHand` : cette défausse d'effet suit une pioche du même joueur dans la même suite d'effets. */
+  discardAfterDraw?: boolean;
   /** `onCardPutIntoGraveyard` : d'où vient la carte — défaussée de la main, ou meulée depuis la pioche. */
   fromZone?: "hand" | "deck";
   /**
