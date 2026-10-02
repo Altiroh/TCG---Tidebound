@@ -29,14 +29,22 @@ function openedHiddenWindow(state: GameState): boolean {
   return Boolean(state.pendingReaction || state.pendingChoice || state.pendingDestruction);
 }
 
+const GRAINES = [1, 102_947];
+
 describe("predictView", () => {
   it("affiche, pour chaque coup prédit, exactement ce que le serveur renverra", () => {
     let predictedCount = 0;
     let phaseChangesPredicted = 0;
     let hiddenWindows = 0;
-    for (let deckIndex = 0; deckIndex < PLAYABLE_DECKS.length - 1; deckIndex++) {
+    // Graines FIXES : sans elles, chaque exécution battait d'autres decks et
+    // le test passait ou non selon le tirage. La seconde amène « Dernier
+    // Jour en Mer » sur un « Pont Miné » encore masqué (Structure cachée
+    // détruite : son identité n'est connue que du serveur).
+    const parties = GRAINES.flatMap((graine) => PLAYABLE_DECKS.slice(1).map((_, deckIndex) => [graine, deckIndex] as const));
+    for (const [graine, deckIndex] of parties) {
       let state = createGameState({
         gameId: `predict-${deckIndex}`,
+        seed: graine + deckIndex,
         player1: { id: "p1", deck: PLAYABLE_DECKS[deckIndex]! },
         player2: { id: "p2", deck: PLAYABLE_DECKS[deckIndex + 1]! },
       });

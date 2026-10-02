@@ -25,7 +25,8 @@ const PREDICTABLE: ReadonlySet<PlayerAction["type"]> = new Set(["playCard", "sab
  * ÉCARTÉE dès qu'elle touche à ce que la vue ne contient pas :
  *   - un tirage aléatoire (la vue n'a pas la graine) ;
  *   - une pioche ou une carte révélée (la vue n'a pas les decks) ;
- *   - une carte masquée impliquée ;
+ *   - une carte masquée impliquée, par son identité OU par son instance
+ *     (Structure masquée ciblée ou détruite) ;
  *   - une fenêtre de réaction ou un choix qui s'ouvre (c'est au serveur de
  *     dire qui répond) ;
  *   - un changement de Marée.
@@ -47,8 +48,17 @@ export function predictView(view: GameState, action: PlayerAction): GameState | 
     if (next.rngState !== view.rngState) return null;
     if (next.pendingReaction || next.pendingChoice) return null;
     const newEvents = next.eventLog.slice(view.eventLog.length);
+    // Une Structure masquée de la vue garde son `instanceId` (on peut la
+    // cibler) mais pas son identité. Un événement qui la NOMME par son
+    // instance — détruite, ciblée, renvoyée — ne porte pas toujours de
+    // `cardId` (`DESTROY`) : sans ce relevé, la prédiction l'enverrait au
+    // Cimetière toujours masquée, alors que le serveur l'y montre révélée.
+    const maskedIds = new Set(
+      view.players.flatMap((player) => player.board.filter((unit) => unit.cardId === HIDDEN_CARD_ID).map((unit) => unit.instanceId))
+    );
     const touchesHidden = newEvents.some(
       (event) =>
+        Object.values(event).some((value) => typeof value === "string" && maskedIds.has(value)) ||
         event.type === "DRAW_CARD" ||
         event.type === "HAND_CARD_REVEALED" ||
         // Un changement de Marée déclenche des effets d'environnement que la

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FakeDatabase, createFakeClient } from "./fakeSupabase";
 
 /**
@@ -53,6 +53,7 @@ const { RULES } = await import("@/game/rules/constants");
 const { PLAYABLE_DECKS } = await import("@/game");
 const { ABANDONED_MATCH_XP, MIN_REWARDED_MATCH_MS, SAME_OPPONENT_DAILY_REWARDED_MATCHES } = await import("@/game/progression");
 const { cardRows, questRows, boosterPoolCardRows } = await import("@/scripts/seedRows");
+const { createSeededRandom } = await import("@/game/rng");
 
 /**
  * Données de référence : le catalogue de cartes, de quêtes et les pools de
@@ -97,6 +98,29 @@ beforeEach(() => {
   vi.spyOn(console, "error").mockImplementation(() => {});
   vi.spyOn(console, "warn").mockImplementation(() => {});
 });
+
+afterEach(() => {
+  vi.useRealTimers();
+  vi.restoreAllMocks();
+});
+
+/**
+ * ALÉA MAÎTRISÉ. Deux choses décident de ce qu'une partie fait avancer :
+ *   - la DATE : les quêtes du joueur sont tirées par (joueur, jour UTC,
+ *     semaine UTC) — `selectQuestsForPeriod` ; selon le jour, elles
+ *     comptent toute partie terminée (« Prendre le large ») ou seulement
+ *     une victoire, des Objets joués, de l'Ancrage récupéré… ;
+ *   - le TIRAGE : graine de la partie (`createSeed`) et choix du bot
+ *     (`Math.random`) décident de l'issue.
+ * Laissées à l'horloge et au hasard, une partie perdue un jour sans quête
+ * « jouer N parties » ne faisait avancer aucune quête. On fige donc le
+ * jour (le 1er octobre 2026 tire « Prendre le large », 3 parties) et le
+ * générateur : la boucle est la même à chaque exécution.
+ */
+function maitriserAlea(seed: number): void {
+  vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-10-01T12:00:00Z") });
+  vi.spyOn(Math, "random").mockImplementation(createSeededRandom(seed));
+}
 
 /** Les deux premières listes du catalogue : de quoi asseoir deux joueurs. */
 const DECK = PLAYABLE_DECKS[0]!;
@@ -144,6 +168,7 @@ async function playToTheEnd(matchId: string, userId: string, limit = 400, { aged
 
 describe("boucle complète — partie contre bot, arbitrée côté serveur", () => {
   it("connexion → deck → partie → fin → récompenses → XP → quêtes → collection", async () => {
+    maitriserAlea(1);
     // --- lancement ------------------------------------------------------
     const started = await startBotMatch(DECK.id, OTHER_DECK.id, "facile");
     expect(started.error).toBeUndefined();
