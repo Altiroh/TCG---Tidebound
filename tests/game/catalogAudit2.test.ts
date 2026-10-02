@@ -427,6 +427,36 @@ describe("Théâtre Englouti et Cra-Poiscail — écarts relevés le 17/09/2026"
     expect(board(result.state, "p2").find((u) => u.instanceId === creature.instanceId)!.damageMarked).toBe(1);
   });
 
+  it("Pulcinella Gonflé : à son ARRIVÉE aussi, le joueur désigne une Créature ennemie — ou refuse", () => {
+    const pulcinella = instance("pulcinella-gonfle", "p1");
+    const marin = instance("marin-des-jetees", "p2");
+    const creature = instance("requin-balafre", "p2");
+    const state = testGameState({
+      phase: "mainPhase",
+      players: [testPlayer("p1", { hand: [pulcinella], reason: 10 }), testPlayer("p2", { board: [marin, creature] })],
+    });
+
+    const posed = dispatch(state, { type: "playCard", playerId: "p1", instanceId: pulcinella.instanceId });
+    ok(posed);
+    // La fenêtre s'ouvre pour le joueur : le moteur ne choisit pas la cible à sa place.
+    expect(posed.state.pendingReaction?.awaitingPlayerId).toBe("p1");
+    expect(board(posed.state, "p2").every((u) => u.damageMarked === 0)).toBe(true);
+
+    const result = activateReactionFor(posed.state, "pulcinella-gonfle", creature.instanceId);
+    ok(result);
+    expect(board(result.state, "p2").find((u) => u.instanceId === creature.instanceId)!.damageMarked).toBe(1);
+    expect(board(result.state, "p2").find((u) => u.instanceId === marin.instanceId)!.damageMarked).toBe(0);
+
+    // Un Marin n'est pas une cible recevable.
+    expect(activateReactionFor(posed.state, "pulcinella-gonfle", marin.instanceId).ok).toBe(false);
+
+    // « Vous pouvez » : passer la fenêtre ne blesse personne.
+    const passed = dispatch(posed.state, { type: "passReaction", playerId: "p1" });
+    ok(passed);
+    expect(board(passed.state, "p2").every((u) => u.damageMarked === 0)).toBe(true);
+    expect(board(passed.state, "p1").some((u) => u.instanceId === pulcinella.instanceId)).toBe(true);
+  });
+
   it("Rappel du Public : ne propose que des Marionnettes du Cimetière, et refuse une autre carte", () => {
     const rappel = instance("rappel-du-public", "p1");
     const marionnette = instance("pulcinella-gonfle", "p1");

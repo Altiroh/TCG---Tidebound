@@ -54,7 +54,9 @@ describe("combat et Garde", () => {
     const state = table({ board: [monture] }, { board: [rempart] }, { phase: "combatPhase" });
     const r = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: monture.instanceId, defenderInstanceId: rempart.instanceId });
     ok(r);
-    expect(unite(r.state, rempart.instanceId)!.damageMarked).toBe(3);
+    // 2 de base, +1 d'élan (« chaque fois qu'elle attaque », Standard Verrier
+    // du 01/10/2026, avant le choc), +1 de brèche contre la Garde.
+    expect(unite(r.state, rempart.instanceId)!.damageMarked).toBe(4);
   });
 
   it("Bête de Percée retire Garde à une unité adverse jusqu'à la fin du tour", () => {
@@ -80,12 +82,13 @@ describe("combat et Garde", () => {
     state = { ...b.state, phase: "combatPhase" };
     const a = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: attaquant.instanceId });
     ok(a);
-    expect(joueur(a.state, "p2").anchor).toBe(joueur(state, "p2").anchor - 2);
+    // 2 de base, +1 d'élan : la Monture prend de l'élan à chaque attaque.
+    expect(joueur(a.state, "p2").anchor).toBe(joueur(state, "p2").anchor - 3);
   });
 
   it("Ouvrez la Ligne ! : votre unité attaque une Garde — la fenêtre s'ouvre pour VOUS, +2 pour ce combat", () => {
-    // 3 Puissance — pas seul sur le plateau, sinon +1 (Destrier du Ressac).
-    const attaquant = instance("destrier-du-ressac", "p1");
+    // 3 Puissance, sans effet : le test porte sur l'Objet, pas sur l'attaquant.
+    const attaquant = instance("matelot-du-sans-nom", "p1");
     const objet = instance("ouvrez-la-ligne", "p1");
     const rempart = instance("le-dernier-rempart", "p2"); // Garde
     const state = table({ board: [attaquant, instance("matelot-fele", "p1"), objet] }, { board: [rempart] }, { phase: "combatPhase" });
@@ -104,11 +107,12 @@ describe("combat et Garde", () => {
     expect(r.state.pendingReaction).toBeUndefined();
     expect(unite(r.state, rempart.instanceId)!.damageMarked).toBe(5);
     expect(unite(r.state, objet.instanceId)).toBeUndefined();
-    expect(unite(r.state, attaquant.instanceId)!.modifiers.some((m) => m.nextCombatBonusVsKeyword)).toBe(false);
+    // Le bonus est dépensé — que l'attaquant ait survécu à la riposte ou non.
+    expect(unite(r.state, attaquant.instanceId)?.modifiers.some((m) => m.nextCombatBonusVsKeyword) ?? false).toBe(false);
   });
 
   it("Ouvrez la Ligne ! : refusée, la cible reçoit l'attaque sans bonus — et c'est bien l'unité visée qui encaisse", () => {
-    const attaquant = instance("destrier-du-ressac", "p1");
+    const attaquant = instance("matelot-du-sans-nom", "p1"); // 3 Puissance, sans effet
     const objet = instance("ouvrez-la-ligne", "p1");
     const rempart = instance("le-dernier-rempart", "p2");
     const state = table({ board: [attaquant, instance("matelot-fele", "p1"), objet] }, { board: [rempart] }, { phase: "combatPhase" });
@@ -269,10 +273,26 @@ describe("Bêtes et conditions", () => {
     expect(joueur(enterre.state, "p2").deck.map((c) => c.instanceId)).toEqual([dessous.instanceId, dessus.instanceId]);
   });
 
-  it("Destrier du Ressac a +1 Puissance seul, et le perd dès qu'un allié arrive", () => {
-    const destrier = instance("destrier-du-ressac", "p1");
-    expect(stats(table({ board: [destrier] }), destrier.instanceId).attack).toBe(4);
-    expect(stats(table({ board: [destrier, instance("matelot-fele", "p1")] }), destrier.instanceId).attack).toBe(3);
+  it("Destrier du Ressac prend de l'élan : +1 Puissance conservée à chaque attaque, seul ou non", () => {
+    const destrier = instance("destrier-du-ressac", "p1"); // 3 Puissance
+    const cible = instance("le-dernier-rempart", "p2");
+    const state = table({ board: [destrier, instance("matelot-fele", "p1")] }, { board: [cible] }, { phase: "combatPhase" });
+    expect(stats(state, destrier.instanceId).attack).toBe(3);
+    const a = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: destrier.instanceId, defenderInstanceId: cible.instanceId });
+    ok(a);
+    expect(unite(a.state, cible.instanceId)!.damageMarked).toBe(4);
+    const fin = dispatch(passerTout(a.state), { type: "endTurn", playerId: "p1" });
+    ok(fin);
+    expect(stats(fin.state, destrier.instanceId).attack).toBe(4);
+  });
+
+  it("Mufle au Fanion grandit quand il survit à des dégâts, et garde ce gain", () => {
+    const mufle = instance("mufle-au-fanion", "p2"); // 4 / 6
+    const attaquant = instance("matelot-du-sans-nom", "p1"); // 3 Puissance
+    const state = table({ board: [attaquant] }, { board: [mufle] }, { phase: "combatPhase" });
+    const a = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: attaquant.instanceId, defenderInstanceId: mufle.instanceId });
+    ok(a);
+    expect(stats(a.state, mufle.instanceId).attack).toBe(5);
   });
 
   it("Chargeur des Écueils a Pied marin s'il arrive en retard d'unités — lui-même non compté", () => {

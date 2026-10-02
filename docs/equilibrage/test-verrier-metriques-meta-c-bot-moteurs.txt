@@ -1,0 +1,33 @@
+| Deck | WR | Densité fonctionnelle | Cartes mortes (<40 % jouées) | Poids morts (Δ ≤ −8) | Mains sans ≤2 | Dégâts/partie | Unités posées | Raison laissée |
+|---|---|---|---|---|---|---|---|---|
+| Chasse au Gros [blessures bon marché] +cartes | 66 % | 24/40 (60 %) | 3 | 8 | 10 % | 18.1 | 5.5 | 0.1 |
+| Arsenal de Pont [Bris payant] | 64 % | 22/40 (55 %) | 0 | 2 | 2 % | 18.1 | 5.2 | 0.9 |
+| Descente aux Abysses [descendre et rester] +cartes | 55 % | 19/40 (48 %) | 5 | 3 | 25 % | 15.7 | 7.4 | 0.3 |
+| Chevaliers du Grand Étang [CH1 Seau au lieu de Tournoi/Fourchette] | 54 % | 19/40 (48 %) | 2 | 2 | 1 % | 16.5 | 8.3 | 0.9 |
+| À bout de Raison [drain concentré] +cartes +moteur | 53 % | 23/40 (57 %) | 5 | 4 | 5 % | 14.8 | 6.6 | 0.3 |
+| La Forteresse [F1 murs sans soins] +moteur | 53 % | 17/40 (43 %) | 0 | 21 | 14 % | 16.4 | 5.6 | 0.8 |
+| Après la Tempête [balai qui rapporte] | 51 % | 18/40 (45 %) | 3 | 0 | 38 % | 15.5 | 5.2 | 0.4 |
+| Le Théâtre Englouti [TH2 Errant rappels payants] +cartes | 49 % | 24/40 (60 %) | 1 | 3 | 5 % | 15.2 | 7.4 | 0.2 |
+| Le Grand Banc [GB1 Pied marin sans Bavard] | 45 % | 27/40 (68 %) | 0 | 2 | 0 % | 15.0 | 10.7 | 0.7 |
+| Sentinelles Chromatiques [SC1 Courlis 4 Slots] | 45 % | 9/40 (23 %) | 9 | 0 | 2 % | 14.8 | 7.6 | 2.7 |
+| Mineurs de Fond [pièges qui tirent] +cartes | 43 % | 21/40 (53 %) | 0 | 10 | 3 % | 13.9 | 5.9 | 0.6 |
+| Équipage de Verre [précon, étalon] | 41 % | 22/40 (55 %) | 6 | 5 | 2 % | 14.6 | 6.1 | 0.1 |
+| Cavalerie [peu mais lourdes] +moteur | 40 % | 18/40 (45 %) | 2 | 2 | 13 % | 15.0 | 5.3 | 0.0 |
+| La Veillée [circuit fermé] +cartes | 37 % | 22/40 (55 %) | 4 | 3 | 2 % | 13.0 | 7.5 | 0.1 |
+| Épavistes [recyclage] +cartes | 36 % | 25/40 (63 %) | 3 | 1 | 0 % | 12.7 | 6.0 | 0.2 |
+
+- **Chasse au Gros [blessures bon marché] +cartes** — mortes : Harpon à Ressort ×2 (40 %), Qu'on en Finisse ×1 (26 %) · poids morts : Matelot du Sans-Nom ×2 (Δ -12), Baleine aux Cicatrices Blanches ×2 (Δ -11), Vieux Harponneur ×2 (Δ -8), Par-dessus Bord ! ×2 (Δ -11)
+- **Arsenal de Pont [Bris payant]** — mortes : aucune · poids morts : Choppe ! ×2 (Δ -12)
+- **Descente aux Abysses [descendre et rester] +cartes** — mortes : Lanterne aux Verres Noirs ×3 (32 %), Revenante de la Fosse ×1 (36 %), L'Œil Sous la Mer ×1 (24 %) · poids morts : Si, Raie Ponce ×3 (Δ -8)
+- **Chevaliers du Grand Étang [CH1 Seau au lieu de Tournoi/Fourchette]** — mortes : La Quête du Grand Nénuphar ×2 (36 %) · poids morts : Slip de Guerre Cra-Poiscail ×2 (Δ -13)
+- **À bout de Raison [drain concentré] +cartes +moteur** — mortes : Chaîne de Travers ×2 (30 %), Ponton aux Cloches ×3 (24 %) · poids morts : Chaîne de Travers ×2 (Δ -12), Capitaine du Dernier Retour ×2 (Δ -14)
+- **La Forteresse [F1 murs sans soins] +moteur** — mortes : aucune · poids morts : Mouette du Brise-Lames ×3 (Δ -13), Brise-Vague de Fortune ×3 (Δ -10), Cage de Flottaison ×2 (Δ -17), Carcasse Renversée ×2 (Δ -9), Barge de Réparation ×2 (Δ -16), Dernière Barricade ×2 (Δ -15), Cale Inondable ×2 (Δ -18), Signal de Détresse ×2 (Δ -13), Cloison Étanche ×2 (Δ -11), Caisses Arrimées ×1 (Δ -9)
+- **Après la Tempête [balai qui rapporte]** — mortes : Trousse du Bord ×1 (29 %), Chirurgien du Bord ×2 (32 %) · poids morts : aucun
+- **Le Théâtre Englouti [TH2 Errant rappels payants] +cartes** — mortes : Le Théâtre Englouti ×1 (27 %) · poids morts : Arlecchino des Profondeurs ×3 (Δ -12)
+- **Le Grand Banc [GB1 Pied marin sans Bavard]** — mortes : aucune · poids morts : Têtard-Fesse ×2 (Δ -12)
+- **Sentinelles Chromatiques [SC1 Courlis 4 Slots]** — mortes : Stratège de l'Azur ×2 (26 %), Veilleuse de l'Ombre ×1 (30 %), Le Géant Chromatique ×1 (33 %), Le Géant Chromatique ×1 (35 %), Appel des Sentinelles ×3 (35 %), Formation Prismatique ×1 (17 %) · poids morts : aucun
+- **Mineurs de Fond [pièges qui tirent] +cartes** — mortes : aucune · poids morts : Dernière Barricade ×2 (Δ -18), Pont Miné ×2 (Δ -13), Caisses Arrimées ×3 (Δ -14), Matelot du Sans-Nom ×3 (Δ -10)
+- **Équipage de Verre [précon, étalon]** — mortes : Trinquer Trop Fort ×1 (39 %), Bandages Humides ×1 (39 %), Pont de Verre ×1 (24 %), Chirurgien du Bord ×2 (26 %), Jusqu'à ce que ça casse ×1 (0 %) · poids morts : Vigie aux Fissures ×2 (Δ -16), Encore Debout ? ×1 (Δ -9), Chirurgien du Bord ×2 (Δ -11)
+- **Cavalerie [peu mais lourdes] +moteur** — mortes : Un Peu de Répit ×2 (13 %) · poids morts : Destrier du Ressac ×2 (Δ -16)
+- **La Veillée [circuit fermé] +cartes** — mortes : lab-puits-aux-souvenirs ×2 (23 %), La Marelle ×2 (38 %) · poids morts : Le Goûter ×3 (Δ -9)
+- **Épavistes [recyclage] +cartes** — mortes : Clous de Récupération ×1 (19 %), Treuil Rouillé ×2 (39 %) · poids morts : Caisse des Dernières Planches ×1 (Δ -9)

@@ -1,6 +1,5 @@
 import { enumerateCandidateActions } from "@/game/bot/enumerateActions";
-import { evaluateState } from "@/game/bot/evaluateState";
-import { searchBestAction } from "@/game/bot/searchTurn";
+import { scoreAction, searchBestAction } from "@/game/bot/searchTurn";
 import type { BotDifficulty } from "@/game/bot/types";
 import { dispatch } from "@/game/engine";
 import type { PlayerAction } from "@/game/actions/types";
@@ -23,7 +22,8 @@ function scoreCandidates(state: GameState, playerId: PlayerId): ScoredAction[] {
   for (const action of enumerateCandidateActions(state, playerId)) {
     const result = dispatch(state, action);
     if (!result.ok) continue;
-    scored.push({ action, score: evaluateState(result.state, playerId) });
+    // Un rappel se note avec son rejeu (`scoreAction`), le reste sur la position laissée.
+    scored.push({ action, score: scoreAction(state, action, result, playerId) });
   }
   return scored;
 }
@@ -59,20 +59,6 @@ export function chooseBotAction(
   difficulty: BotDifficulty,
   random: () => number = Math.random
 ): PlayerAction {
-  let scored = scoreCandidates(state, playerId);
-  if (scored.length === 0) return { type: "endTurn", playerId };
-
-  scored.sort((a, b) => b.score - a.score);
-
-  // En Phase de combat, la marge d'erreur ne doit pas faire passer le tour quand une attaque vaut au moins
-  // autant : sinon, en "moyen", le bot tirait souvent "Fin de tour" au hasard et n'attaquait presque jamais
-  // (retour de test du 13/09 — ~0,4 attaque par tour contre ~0,8 en "facile").
-  if (state.phase === "combatPhase") {
-    const endTurnScore = scored.find((s) => s.action.type === "endTurn")?.score ?? -Infinity;
-    const worthwhileAttacks = scored.filter((s) => s.action.type === "attack" && s.score >= endTurnScore);
-    if (worthwhileAttacks.length > 0) scored = worthwhileAttacks;
-  }
-
   if (difficulty === "difficile") {
     // « Difficile » ne se décide PAS coup par coup : il explore son tour
     // jusqu'au bout et note la position après la riposte de l'adversaire
@@ -83,9 +69,29 @@ export function chooseBotAction(
     //
     // Aucun hasard ici, contrairement aux deux autres difficultés : un
     // adversaire implacable ne se trompe jamais par accident.
+    //
+    // La note coup par coup (`scoreCandidates`) n'est calculée qu'en repli :
+    // la faire AVANT la recherche, c'était un `dispatch` par coup légal jeté
+    // aussitôt — du temps de réflexion perdu à chaque action du bot.
     const searched = searchBestAction(state, playerId);
     if (searched) return searched;
-    return scored[0]!.action;
+    const fallback = scoreCandidates(state, playerId).sort((a, b) => b.score - a.score)[0];
+    return fallback?.action ?? { type: "endTurn", playerId };
+  }
+
+  let scored = scoreCandidates(state, playerId);
+  if (scored.length === 0) return { type: "endTurn", playerId };
+
+  scored.sort((a, b) => b.score - a.score);
+
+  // En Phase de combat, la marge d'erreur ne doit pas faire passer le tour quand une attaque vaut au moins
+  // autant : sinon, en "moyen", le bot tirait souvent "Fin de tour" au hasard et n'attaquait presque jamais
+  // (retour de test du 13/09 — ~0,4 attaque par tour contre ~0,8 en "facile").
+  if (state.phase === "combatPhase") {
+    // Quitter le combat, c'est passer en Phase principale 2 (`advancePhase`).
+    const endTurnScore = scored.find((s) => s.action.type === "advancePhase" || s.action.type === "endTurn")?.score ?? -Infinity;
+    const worthwhileAttacks = scored.filter((s) => s.action.type === "attack" && s.score >= endTurnScore);
+    if (worthwhileAttacks.length > 0) scored = worthwhileAttacks;
   }
 
   /*
@@ -111,8 +117,16 @@ export function chooseBotAction(
     // La bourde reste une bourde PLAUSIBLE : on pioche dans une fourchette
     // partant du meilleur coup, jamais dans le pire coup absolu — un bot
     // qui se saborde sans raison n'est pas « facile », il est cassé.
-    const window = Math.max(2, Math.ceil(scored.length * mistakeDepth));
-    return pickRandom(scored.slice(0, Math.min(window, scored.length)), random).action;
+    //
+    // Un Sabordage n'est jamais une bourde : détruire sa propre carte ne se
+    // fait pas par inadvertance. Il reste jouable quand c'est le MEILLEUR
+    // coup, jamais tiré au sort. Sans cette règle, la Phase principale 2 —
+    // où il ne reste souvent que « fin de tour » et des Sabordages —
+    // transformait chaque erreur en Amiral sacrifié (relevé du 29/09/2026 :
+    // Sabordages multipliés par trois dès que le bot y est entré).
+    const plausible = scored.filter((s, i) => i === 0 || s.action.type !== "saborder");
+    const window = Math.max(2, Math.ceil(plausible.length * mistakeDepth));
+    return pickRandom(plausible.slice(0, Math.min(window, plausible.length)), random).action;
   }
 
   return scored[0]!.action;

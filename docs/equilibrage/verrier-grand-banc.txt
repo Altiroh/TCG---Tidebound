@@ -1,0 +1,474 @@
+
+# Labo — 1860 parties, bot moyen, 60 par paire, 126 s
+
+## Classement
+
+| Deck | WR | 1er | durée | dégâts/partie (combat·effet·navire·tour) | soin | unités+invoc | Raison laissée | dette | inactif≥2 T1-4 | main sans ≤2 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Arsenal de Pont [Bris payant] | **70.0%** | 66.7% | 7.1 | 19.3·0.0·1.8·1.5 | 1.8 | 5.3+0.0 | 0.9 | 1.3 | 1.7% | 1.7% |
+| Chasse au Gros [blessures bon marché] | **64.2%** | 65.0% | 4.9 | 22.3·0.0·0.6·0.7 | 0.0 | 5.1+0.0 | 0.0 | 3.1 | 0.0% | 8.3% |
+| Sentinelles Chromatiques [SC1 Courlis 4 Slots] | **64.2%** | 55.0% | 4.7 | 21.8·0.0·0.0·0.0 | 0.0 | 5.2+1.6 | 1.1 | 2.1 | 7.5% | 1.7% |
+| La Forteresse [F1 murs sans soins] | **63.3%** | 55.0% | 6.8 | 19.4·0.2·0.0·1.6 | 1.0 | 5.1+0.0 | 0.6 | 1.8 | 0.0% | 10.0% |
+| Après la Tempête [balai qui rapporte] | **55.0%** | 65.0% | 5.0 | 21.5·0.0·0.0·0.0 | 0.3 | 5.2+0.0 | 0.0 | 3.4 | 0.0% | 40.0% |
+| Le Grand Banc [V2 + Têtard qui revient] | **52.6%** | 54.8% | 5.2 | 14.7·0.0·0.0·1.9 | 0.0 | 6.7+4.4 | 0.7 | 1.7 | 0.5% | 0.0% |
+| Le Grand Banc [V1 gains conservés] | **50.6%** | 52.7% | 5.2 | 14.2·0.0·0.0·2.0 | 0.0 | 6.7+4.2 | 0.6 | 1.7 | 0.4% | 0.0% |
+| Le Grand Banc [GB1 Pied marin sans Bavard] | **45.8%** | 48.3% | 5.0 | 18.9·0.0·0.0·0.8 | 0.0 | 6.8+3.9 | 0.4 | 1.7 | 0.0% | 0.0% |
+| Cavalerie [peu mais lourdes] | **45.0%** | 48.3% | 4.2 | 20.5·0.0·0.4·0.1 | 0.8 | 5.0+0.0 | 0.0 | 3.4 | 0.0% | 10.0% |
+| Mineurs de Fond [pièges qui tirent] | **44.2%** | 33.3% | 6.9 | 15.6·0.0·0.0·1.6 | 1.8 | 6.1+0.0 | 0.5 | 1.4 | 0.0% | 0.0% |
+| Chevaliers du Grand Étang [CH1 Seau au lieu de Tournoi/Fourchette] | **42.5%** | 40.0% | 4.8 | 18.5·0.0·0.0·1.3 | 0.3 | 6.0+2.0 | 0.7 | 1.2 | 4.2% | 0.0% |
+| Descente aux Abysses [descendre et rester] | **40.0%** | 53.3% | 4.7 | 17.1·0.0·0.0·1.2 | 0.0 | 6.6+0.0 | 0.2 | 1.7 | 0.0% | 21.7% |
+| À bout de Raison [drain concentré] | **38.3%** | 48.3% | 4.4 | 16.9·0.0·0.0·1.3 | 0.0 | 6.5+0.0 | 0.2 | 2.1 | 3.3% | 10.0% |
+| Équipage de Verre [précon, étalon] | **37.5%** | 41.7% | 4.5 | 17.1·0.0·0.7·0.4 | 0.0 | 5.7+0.0 | 0.1 | 2.8 | 0.0% | 1.7% |
+| Le Théâtre Englouti [TH2 Errant rappels payants] | **35.8%** | 53.3% | 4.5 | 16.1·0.0·0.0·1.1 | 0.3 | 7.1+0.0 | 0.1 | 1.9 | 0.0% | 6.7% |
+| Épavistes [recyclage] | **34.2%** | 38.3% | 5.8 | 13.8·0.0·1.1·1.3 | 3.9 | 6.0+0.0 | 0.2 | 1.6 | 0.8% | 1.7% |
+| La Veillée [actuelle] | **32.5%** | 31.7% | 4.9 | 14.2·0.8·0.0·0.8 | 4.5 | 7.3+0.0 | 0.1 | 2.5 | 0.8% | 0.0% |
+
+## Matrice (ligne contre colonne)
+
+| | Arsenal de | Chasse au  | Sentinelle | La Fortere | Après la T | Le Grand B | Le Grand B | Le Grand B | Cavalerie  | Mineurs de | Chevaliers | Descente a | À bout de  | Équipage d | Le Théâtre | Épavistes  | La Veillée |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Arsenal de Pont [B | · |  |  |  |  | 68 | 72 |  |  |  |  |  |  |  |  |  |  |
+| Chasse au Gros [bl |  | · |  |  |  | 63 | 65 |  |  |  |  |  |  |  |  |  |  |
+| Sentinelles Chroma |  |  | · |  |  | 63 | 65 |  |  |  |  |  |  |  |  |  |  |
+| La Forteresse [F1  |  |  |  | · |  | 65 | 62 |  |  |  |  |  |  |  |  |  |  |
+| Après la Tempête [ |  |  |  |  | · | 53 | 57 |  |  |  |  |  |  |  |  |  |  |
+| Le Grand Banc [V2  | 32 | 35 | 37 | 35 | 47 | · | 50 | 55 | 55 | 55 | 58 | 63 | 58 | 65 | 63 | 67 | 67 |
+| Le Grand Banc [V1  | 28 | 30 | 35 | 38 | 43 | 48 | · | 53 | 55 | 53 | 57 | 57 | 57 | 57 | 65 | 65 | 68 |
+| Le Grand Banc [GB1 |  |  |  |  |  | 45 | 47 | · |  |  |  |  |  |  |  |  |  |
+| Cavalerie [peu mai |  |  |  |  |  | 45 | 45 |  | · |  |  |  |  |  |  |  |  |
+| Mineurs de Fond [p |  |  |  |  |  | 43 | 45 |  |  | · |  |  |  |  |  |  |  |
+| Chevaliers du Gran |  |  |  |  |  | 42 | 43 |  |  |  | · |  |  |  |  |  |  |
+| Descente aux Abyss |  |  |  |  |  | 37 | 43 |  |  |  |  | · |  |  |  |  |  |
+| À bout de Raison [ |  |  |  |  |  | 37 | 40 |  |  |  |  |  | · |  |  |  |  |
+| Équipage de Verre  |  |  |  |  |  | 33 | 42 |  |  |  |  |  |  | · |  |  |  |
+| Le Théâtre Englout |  |  |  |  |  | 37 | 35 |  |  |  |  |  |  |  | · |  |  |
+| Épavistes [recycla |  |  |  |  |  | 33 | 35 |  |  |  |  |  |  |  |  | · |  |
+| La Veillée [actuel |  |  |  |  |  | 33 | 32 |  |  |  |  |  |  |  |  |  | · |
+
+### Arsenal de Pont [Bris payant] — 70.0% (la-verriere) · 1-2:18 3-4:22 5:0 6+:0 · unités 16, objet 24
+Meilleurs : Le Grand Banc [V1 gains conservés] 71.7%, Le Grand Banc [V2 + Têtard qui revient] 68.3% · Pires : Le Grand Banc [V1 gains conservés] 71.7%, Le Grand Banc [V2 + Têtard qui revient] 68.3%
+Coup final (victoires) : combat 81.0%, tour 4.8%, navire 9.5% · soi-même 2.4 · Déraison subie 9.3 · main pauvre (≤1 carte ≤3) 3.3%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Cra-Poiscail Médecin (3) | 1 | 0.3 | 0.3 | 94.9% | 100.0% | 0.8 | 4 | 97 | 57 | 41 |
+| Il Capitano Naufragé (4) | 2 | 0.8 | 0.7 | 90.3% | 92.3% | 5.1 | 15 | 78 | 55 | 22 |
+| Cra-Poiscail Médecin (2) | 2 | 0.7 | 0.6 | 77.9% | 100.0% | 0.9 | 6 | 79 | 59 | 20 |
+| Journal de Bord Détrempé (2) | 2 | 0.8 | 0.7 | 92.6% | 100.0% | 0.0 | 0 | 77 | 59 | 18 |
+| Contre-Harpon (4) | 2 | 0.6 | 0.3 | 51.9% | 88.1% | 0.0 | 0 | 79 | 61 | 18 |
+| Chose des Hauts-Fonds (4) | 3 | 1.1 | 1.1 | 96.2% | 90.2% | 5.1 | 14 | 74 | 58 | 16 |
+| Lettre Jamais Ouverte (1) | 3 | 1.3 | 1.0 | 76.5% | 100.0% | 0.0 | 0 | 74 | 58 | 16 |
+| Cormoran de Fer (3) | 3 | 1.2 | 1.0 | 89.3% | 65.5% | 3.5 | 7 | 73 | 61 | 12 |
+| Harpon à Ressort (4) | 2 | 0.8 | 0.6 | 69.7% | 89.7% | 0.0 | 0 | 73 | 63 | 10 |
+| Pantalone Sans-Sou (3) | 3 | 1.2 | 1.0 | 80.3% | 100.0% | 2.6 | 10 | 71 | 67 | 4 |
+| Signal de Détresse (4) | 1 | 0.5 | 0.3 | 65.6% | 90.3% | 0.0 | 0 | 70 | 69 | 1 |
+| Éclat de Bouteille (1) | 3 | 1.2 | 0.9 | 82.0% | 100.0% | 0.0 | 0 | 70 | 70 | 1 |
+| Bouclier d'Écume (4) | 1 | 0.3 | 0.3 | 76.2% | 96.6% | 0.0 | 0 | 69 | 71 | -1 |
+| Corde de Rappel (4) | 1 | 0.4 | 0.2 | 60.0% | 92.9% | 0.0 | 0 | 69 | 71 | -2 |
+| Marin des Jetées (1) | 2 | 0.7 | 0.7 | 92.9% | 66.7% | 1.4 | 12 | 68 | 73 | -5 |
+| Choppe ! (1) | 2 | 0.8 | 0.5 | 67.4% | 80.0% | 0.0 | 0 | 68 | 74 | -6 |
+| Coup de Harpon (4) | 3 | 1.3 | 1.3 | 98.0% | 97.6% | 0.0 | 0 | 68 | 76 | -8 |
+| Thermos du Dernier Quart (2) | 2 | 0.8 | 0.7 | 87.0% | — | 0.0 | 0 | 67 | 76 | -9 |
+| Rations du Matin Gris (2) | 2 | 0.8 | 0.5 | 71.4% | 97.6% | 0.0 | 0 | 65 | 76 | -11 |
+
+### Chasse au Gros [blessures bon marché] — 64.2% (le-goliath) · 1-2:12 3-4:22 5:5 6+:1 · unités 25, objet 12, anomalie 3
+Meilleurs : Le Grand Banc [V1 gains conservés] 65.0%, Le Grand Banc [V2 + Têtard qui revient] 63.3% · Pires : Le Grand Banc [V1 gains conservés] 65.0%, Le Grand Banc [V2 + Têtard qui revient] 63.3%
+Coup final (victoires) : combat 81.8%, tour 10.4%, navire 6.5% · soi-même 0.9 · Déraison subie 15.3 · main pauvre (≤1 carte ≤3) 1.7%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Canonnier Fêlé (3) | 3 | 0.7 | 0.6 | 97.4% | 100.0% | 4.5 | 11 | 77 | 52 | 25 |
+| Harpon à Ressort (4) | 2 | 0.6 | 0.2 | 31.9% | 100.0% | 0.0 | 0 | 74 | 54 | 20 |
+| Crabe de Fer (3) | 3 | 0.8 | 0.7 | 86.8% | 100.0% | 1.5 | 10 | 70 | 54 | 16 |
+| Éclat de Bouteille (1) | 3 | 0.8 | 0.7 | 96.7% | 100.0% | 0.0 | 0 | 70 | 56 | 14 |
+| Guetteur Méfiant (2) | 3 | 0.8 | 0.7 | 86.3% | 100.0% | 2.4 | 5 | 67 | 59 | 9 |
+| Poisson aux Dents de Verre (2) | 2 | 0.5 | 0.4 | 81.7% | 100.0% | 1.3 | 6 | 67 | 63 | 4 |
+| Chose des Hauts-Fonds (4) | 2 | 0.6 | 0.6 | 91.7% | 100.0% | 3.0 | 5 | 65 | 63 | 2 |
+| Encore Debout ? (2) | 2 | 0.6 | 0.4 | 68.7% | 100.0% | 0.0 | 0 | 64 | 64 | 0 |
+| Qu'on en Finisse (5) | 1 | 0.2 | 0.0 | 9.1% | 100.0% | 0.0 | 0 | 64 | 64 | -1 |
+| Harponneur du Dernier Quai (3) | 2 | 0.4 | 0.3 | 73.9% | 100.0% | 1.2 | 7 | 64 | 64 | -1 |
+| Baleine aux Cicatrices Blanches (5) | 2 | 0.4 | 0.3 | 82.0% | 100.0% | 1.5 | 5 | 63 | 65 | -2 |
+| Coup de Harpon (4) | 3 | 0.7 | 0.7 | 94.1% | 100.0% | 0.0 | 0 | 63 | 66 | -3 |
+| L'Amiral sans Pavillon (7) | 1 | 0.3 | 0.2 | 87.5% | 100.0% | 2.5 | 0 | 59 | 66 | -7 |
+| Trinquer Trop Fort (2) | 2 | 0.5 | 0.3 | 50.0% | 100.0% | 0.0 | 0 | 58 | 70 | -12 |
+| Vieux Harponneur (5) | 2 | 0.6 | 0.4 | 72.5% | 100.0% | 1.5 | 1 | 58 | 71 | -12 |
+| Matelot du Sans-Nom (3) | 2 | 0.5 | 0.4 | 87.7% | 100.0% | 1.4 | 9 | 57 | 70 | -13 |
+| Par-dessus Bord ! (3) | 2 | 0.4 | 0.3 | 91.3% | 100.0% | 0.0 | 0 | 53 | 70 | -17 |
+| Ce Qui Suit le Navire (4) | 3 | 0.9 | 0.5 | 54.8% | 100.0% | 1.7 | 4 | 56 | 79 | -22 |
+
+### Sentinelles Chromatiques [SC1 Courlis 4 Slots] — 64.2% (le-courlis) · 1-2:20 3-4:17 5:0 6+:3 · unités 28, objet 11, anomalie 1
+Meilleurs : Le Grand Banc [V1 gains conservés] 65.0%, Le Grand Banc [V2 + Têtard qui revient] 63.3% · Pires : Le Grand Banc [V1 gains conservés] 65.0%, Le Grand Banc [V2 + Têtard qui revient] 63.3%
+Coup final (victoires) : combat 97.4% · soi-même 0.0 · Déraison subie 10.2 · main pauvre (≤1 carte ≤3) 1.7%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Rempart du Soleil (4) | 3 | 1.0 | 0.8 | 84.9% | 79.7% | 5.1 | 10 | 76 | 41 | 34 |
+| Survivant de la Mousse (3) | 2 | 0.6 | 0.4 | 63.2% | 58.3% | 2.2 | 4 | 78 | 49 | 29 |
+| Le Géant Chromatique (8) | 1 | 0.3 | 0.1 | 26.5% | 95.9% | 0.4 | 1 | 76 | 59 | 17 |
+| Héros de la Flamme (2) | 3 | 0.8 | 0.7 | 78.0% | 16.0% | 1.9 | 11 | 70 | 53 | 17 |
+| Briseur du Brasier (4) | 3 | 0.9 | 0.7 | 73.6% | 77.3% | 2.8 | 10 | 69 | 53 | 16 |
+| Coup de Harpon (4) | 1 | 0.4 | 0.4 | 95.7% | 100.0% | 0.0 | 0 | 70 | 60 | 10 |
+| Émissaire de Quartz (3) | 2 | 0.6 | 0.5 | 83.3% | 66.7% | 2.5 | 3 | 68 | 61 | 7 |
+| Porteur de Jade (2) | 2 | 0.5 | 0.4 | 76.7% | 64.9% | 1.4 | 10 | 67 | 62 | 5 |
+| Appel des Sentinelles (2) | 3 | 0.8 | 0.3 | 37.0% | 76.2% | 0.0 | 0 | 65 | 62 | 3 |
+| Le Géant Chromatique (9) | 1 | 0.4 | 0.1 | 19.6% | 98.1% | 0.8 | 0 | 65 | 64 | 2 |
+| Stratège de l'Azur (4) | 2 | 0.4 | 0.2 | 41.7% | 92.0% | 0.5 | 3 | 64 | 64 | 0 |
+| Veilleuse de l'Ombre (3) | 1 | 0.3 | 0.1 | 43.8% | 83.8% | 0.3 | 4 | 63 | 65 | -2 |
+| Gardienne de l'Éclat (2) | 3 | 0.8 | 0.6 | 82.4% | 83.3% | 1.5 | 10 | 63 | 65 | -2 |
+| Rations du Matin Gris (2) | 3 | 1.0 | 0.5 | 50.0% | 87.7% | 0.0 | 0 | 63 | 66 | -3 |
+| Journal de Bord Détrempé (2) | 2 | 0.4 | 0.4 | 90.0% | 97.7% | 0.0 | 0 | 63 | 65 | -3 |
+| Éclat de Bouteille (1) | 2 | 0.4 | 0.3 | 90.7% | 100.0% | 0.0 | 0 | 59 | 66 | -7 |
+| Tacticien de l'Écume (2) | 2 | 0.5 | 0.3 | 60.7% | 56.3% | 0.8 | 4 | 59 | 68 | -9 |
+| Formation Prismatique (6) | 1 | 0.3 | 0.1 | 26.7% | 87.8% | 0.0 | 0 | 57 | 67 | -10 |
+| Oracle d'Améthyste (4) | 3 | 1.0 | 0.4 | 45.2% | 88.9% | 1.7 | 5 | 60 | 73 | -13 |
+
+### La Forteresse [F1 murs sans soins] — 63.3% (le-brise-lames) · 1-2:11 3-4:26 5:0 6+:3 · unités 18, structure 18, objet 4
+Meilleurs : Le Grand Banc [V2 + Têtard qui revient] 65.0%, Le Grand Banc [V1 gains conservés] 61.7% · Pires : Le Grand Banc [V2 + Têtard qui revient] 65.0%, Le Grand Banc [V1 gains conservés] 61.7%
+Coup final (victoires) : combat 93.4%, tour 2.6% · soi-même 0.6 · Déraison subie 13.5 · main pauvre (≤1 carte ≤3) 1.7%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| L'Amiral sans Pavillon (7) | 1 | 0.2 | 0.2 | 100.0% | 100.0% | 3.6 | 17 | 93 | 55 | 38 |
+| Le Dernier Rempart (6) | 2 | 0.6 | 0.5 | 95.6% | 100.0% | 3.9 | 10 | 81 | 47 | 34 |
+| Carape Hus (3) | 3 | 1.0 | 1.0 | 97.5% | 95.2% | 3.2 | 16 | 74 | 43 | 31 |
+| Chose des Hauts-Fonds (4) | 3 | 0.8 | 0.8 | 97.0% | 100.0% | 3.6 | 7 | 67 | 58 | 9 |
+| Signal de Détresse (4) | 2 | 0.7 | 0.4 | 66.7% | 96.1% | 0.0 | 0 | 67 | 60 | 7 |
+| Cormoran de Fer (3) | 3 | 0.9 | 0.9 | 98.1% | 100.0% | 2.1 | 8 | 65 | 59 | 6 |
+| Barge de Réparation (3) | 2 | 0.6 | 0.4 | 73.1% | 97.5% | 0.0 | 0 | 66 | 61 | 5 |
+| Cage de Flottaison (3) | 2 | 0.5 | 0.4 | 85.2% | 96.5% | 0.0 | 0 | 65 | 62 | 4 |
+| Dernière Barricade (3) | 2 | 0.6 | 0.4 | 66.2% | 97.4% | 0.0 | 0 | 61 | 67 | -6 |
+| Mouette du Brise-Lames (2) | 3 | 0.8 | 0.8 | 98.0% | 75.0% | 0.8 | 3 | 60 | 68 | -8 |
+| Harpon à Ressort (4) | 2 | 0.7 | 0.4 | 65.0% | 94.0% | 0.0 | 0 | 59 | 69 | -9 |
+| Crabe de Fer (3) | 3 | 0.9 | 0.9 | 99.0% | 100.0% | 2.1 | 10 | 60 | 70 | -10 |
+| Caisses Arrimées (1) | 1 | 0.3 | 0.3 | 100.0% | 76.9% | 0.0 | 0 | 53 | 68 | -15 |
+| Brise-Vague de Fortune (2) | 3 | 1.0 | 0.8 | 81.9% | 97.5% | 0.0 | 0 | 59 | 74 | -15 |
+| Cylindre flottant (2) | 2 | 0.4 | 0.3 | 60.4% | 94.8% | 0.0 | 0 | 53 | 70 | -17 |
+| Cloison Étanche (2) | 2 | 0.7 | 0.6 | 91.4% | 98.3% | 0.0 | 0 | 55 | 74 | -20 |
+| Carcasse Renversée (3) | 2 | 0.7 | 0.7 | 94.1% | 100.0% | 0.0 | 0 | 54 | 76 | -22 |
+| Cale Inondable (3) | 2 | 0.6 | 0.4 | 65.2% | 99.0% | 0.0 | 0 | 50 | 76 | -26 |
+
+### Après la Tempête [balai qui rapporte] — 55.0% (le-courlis) · 1-2:6 3-4:20 5:9 6+:5 · anomalie 6, objet 9, unités 25
+Meilleurs : Le Grand Banc [V1 gains conservés] 56.7%, Le Grand Banc [V2 + Têtard qui revient] 53.3% · Pires : Le Grand Banc [V1 gains conservés] 56.7%, Le Grand Banc [V2 + Têtard qui revient] 53.3%
+Coup final (victoires) : combat 97.0% · soi-même 0.0 · Déraison subie 18.7 · main pauvre (≤1 carte ≤3) 21.7%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Crabe de Fer (3) | 3 | 0.8 | 0.6 | 84.4% | 100.0% | 1.2 | 5 | 74 | 27 | 47 |
+| Chose des Hauts-Fonds (4) | 3 | 0.9 | 0.8 | 92.7% | 100.0% | 4.1 | 14 | 69 | 28 | 41 |
+| Chirurgien du Bord (5) | 2 | 0.7 | 0.2 | 23.8% | 100.0% | 0.3 | 0 | 64 | 44 | 19 |
+| Le Pont est Plein ! (3) | 2 | 0.6 | 0.6 | 91.8% | 100.0% | 0.0 | 0 | 61 | 46 | 15 |
+| Trousse du Bord (4) | 1 | 0.2 | 0.1 | 37.5% | 100.0% | 0.0 | 0 | 67 | 52 | 15 |
+| Matelot du Sans-Nom (3) | 1 | 0.1 | 0.1 | 77.8% | 100.0% | 0.6 | 0 | 67 | 53 | 14 |
+| Vague Scélérate (5) | 2 | 0.5 | 0.3 | 67.7% | 100.0% | 0.0 | 0 | 61 | 49 | 12 |
+| Vigie aux Fissures (2) | 3 | 0.9 | 0.6 | 64.2% | 98.6% | 0.5 | 3 | 60 | 48 | 12 |
+| Léviathan Balafré (8) | 1 | 0.4 | 0.4 | 88.2% | 100.0% | 4.3 | 8 | 61 | 51 | 10 |
+| Faire l'Inventaire (2) | 3 | 0.7 | 0.3 | 43.2% | 99.3% | 0.0 | 0 | 59 | 50 | 9 |
+| L'Amiral sans Pavillon (7) | 1 | 0.3 | 0.3 | 77.5% | 100.0% | 1.9 | 6 | 55 | 55 | 0 |
+| Maître Verrier (4) | 2 | 0.5 | 0.3 | 61.5% | 100.0% | 1.1 | 8 | 54 | 56 | -2 |
+| Baleine aux Cicatrices Blanches (5) | 3 | 0.9 | 0.7 | 70.9% | 100.0% | 3.5 | 9 | 54 | 57 | -3 |
+| Vieux Harponneur (5) | 2 | 0.6 | 0.4 | 74.6% | 100.0% | 1.5 | 6 | 52 | 58 | -5 |
+| Un Peu de Répit (3) | 3 | 0.8 | 0.3 | 36.6% | 99.2% | 0.0 | 0 | 52 | 59 | -7 |
+| Le Large se Fâche (6) | 1 | 0.3 | 0.2 | 61.8% | 100.0% | 0.0 | 0 | 50 | 57 | -7 |
+| Coup de Harpon (4) | 2 | 0.6 | 0.5 | 87.9% | 100.0% | 0.0 | 0 | 50 | 59 | -9 |
+| Carape Hus (3) | 3 | 0.8 | 0.6 | 76.2% | 100.0% | 1.2 | 2 | 51 | 62 | -12 |
+| Dernier Jour en Mer (7) | 1 | 0.3 | 0.2 | 61.3% | 100.0% | 0.0 | 0 | 45 | 58 | -13 |
+| Le Brise-Ligne (6) | 1 | 0.3 | 0.2 | 66.7% | 100.0% | 1.3 | 3 | 43 | 59 | -16 |
+
+### Le Grand Banc [V2 + Têtard qui revient] — 52.6% (le-brise-lames) · 1-2:25 3-4:13 5:2 6+:0 · unités 29, structure 2, objet 5, anomalie 4
+Meilleurs : La Veillée [actuelle] 66.7%, Épavistes [recyclage] 66.7%, Équipage de Verre [précon, étalon] 65.0% · Pires : Chasse au Gros [blessures bon marché] 35.0%, La Forteresse [F1 murs sans soins] 35.0%, Arsenal de Pont [Bris payant] 31.7%
+Coup final (victoires) : tour 15.2%, combat 72.3%, navire 0.4% · soi-même 0.0 · Déraison subie 9.0 · main pauvre (≤1 carte ≤3) 0.0%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Roi Cra-Poiscail (5) | 1 | 0.2 | 0.2 | 93.5% | 83.8% | 0.5 | 13 | 75 | 48 | 27 |
+| Cra-Poiscail Porte-Étendard (3) | 2 | 0.5 | 0.5 | 92.6% | 87.4% | 0.3 | 24 | 59 | 48 | 10 |
+| Faire l'Inventaire (2) | 2 | 0.5 | 0.4 | 72.7% | 93.9% | 0.0 | 0 | 58 | 48 | 10 |
+| Le Grand Saut (5) | 1 | 0.3 | 0.3 | 89.3% | 94.4% | 0.0 | 0 | 57 | 50 | 7 |
+| Cra-Poiscail Chef de Banc (3) | 3 | 0.7 | 0.7 | 89.6% | 97.9% | 0.9 | 29 | 55 | 50 | 6 |
+| Cra-Poiscail Messager (1) | 3 | 0.8 | 0.7 | 84.4% | 86.6% | 1.3 | 8 | 54 | 50 | 4 |
+| Cra-Poiscail des Hautes-Eaux (2) | 3 | 0.8 | 0.7 | 81.5% | 94.1% | 1.0 | 39 | 53 | 52 | 2 |
+| Fesses en Avant ! (3) | 3 | 0.8 | 0.6 | 83.5% | 95.2% | 0.0 | 0 | 53 | 52 | 0 |
+| Le Trône de Bouchon (3) | 2 | 0.6 | 0.6 | 93.0% | 98.2% | 0.0 | 0 | 52 | 53 | -0 |
+| Cra-Poiscail Sauteur (2) | 3 | 0.7 | 0.7 | 87.3% | 92.4% | 0.6 | 22 | 52 | 53 | -1 |
+| P'tite Fesse (1) | 3 | 0.9 | 0.8 | 94.1% | 84.0% | 1.1 | 24 | 52 | 53 | -1 |
+| Banc de Cra-Poiscail (3) | 3 | 0.7 | 0.6 | 86.8% | 96.2% | 1.0 | 23 | 52 | 55 | -3 |
+| Cra-Poiscail Grand-Gueule (2) | 1 | 0.3 | 0.3 | 96.9% | 93.6% | 0.2 | 1 | 47 | 55 | -8 |
+| Le Seau (2) | 3 | 0.8 | 0.8 | 97.4% | 77.3% | 0.0 | 0 | 49 | 58 | -8 |
+| Cra-Poiscail Ramasseur (2) | 3 | 0.8 | 0.7 | 95.8% | 74.1% | 0.9 | 14 | 49 | 58 | -9 |
+| Têtard-Fesse (1) | 2 | 0.5 | 0.4 | 94.2% | 72.3% | 0.3 | 7 | 46 | 57 | -11 |
+| P'tite Fesse, Grand Rêve (2) | 2 | 0.5 | 0.4 | 84.8% | 93.4% | 0.5 | 9 | 45 | 58 | -13 |
+
+### Le Grand Banc [V1 gains conservés] — 50.6% (le-brise-lames) · 1-2:25 3-4:13 5:2 6+:0 · unités 29, structure 2, objet 5, anomalie 4
+Meilleurs : La Veillée [actuelle] 68.3%, Le Théâtre Englouti [TH2 Errant rappels payants] 65.0%, Épavistes [recyclage] 65.0% · Pires : Sentinelles Chromatiques [SC1 Courlis 4 Slots] 35.0%, Chasse au Gros [blessures bon marché] 30.0%, Arsenal de Pont [Bris payant] 28.3%
+Coup final (victoires) : tour 15.8%, combat 74.3%, navire 0.4% · soi-même 0.0 · Déraison subie 8.9 · main pauvre (≤1 carte ≤3) 0.0%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Roi Cra-Poiscail (5) | 1 | 0.2 | 0.2 | 95.2% | 86.2% | 0.4 | 12 | 75 | 45 | 30 |
+| Cra-Poiscail Chef de Banc (3) | 3 | 0.8 | 0.7 | 90.1% | 97.7% | 0.9 | 30 | 56 | 44 | 11 |
+| Cra-Poiscail Porte-Étendard (3) | 2 | 0.5 | 0.5 | 93.8% | 90.6% | 0.3 | 23 | 57 | 46 | 11 |
+| Le Grand Saut (5) | 1 | 0.3 | 0.3 | 90.9% | 93.3% | 0.0 | 0 | 56 | 48 | 8 |
+| Faire l'Inventaire (2) | 2 | 0.5 | 0.4 | 72.4% | 94.1% | 0.0 | 0 | 54 | 48 | 6 |
+| Cra-Poiscail Messager (1) | 3 | 0.8 | 0.7 | 88.3% | 87.8% | 1.3 | 9 | 52 | 48 | 5 |
+| Fesses en Avant ! (3) | 3 | 0.8 | 0.6 | 84.3% | 96.4% | 0.0 | 0 | 51 | 50 | 1 |
+| Le Trône de Bouchon (3) | 2 | 0.6 | 0.6 | 92.9% | 98.6% | 0.0 | 0 | 51 | 50 | 0 |
+| Cra-Poiscail des Hautes-Eaux (2) | 3 | 0.8 | 0.7 | 82.8% | 96.0% | 0.9 | 33 | 50 | 51 | -1 |
+| Cra-Poiscail Sauteur (2) | 3 | 0.7 | 0.6 | 86.6% | 93.1% | 0.5 | 23 | 50 | 51 | -1 |
+| P'tite Fesse (1) | 3 | 0.9 | 0.8 | 94.7% | 88.2% | 1.0 | 15 | 49 | 53 | -4 |
+| Le Seau (2) | 3 | 0.8 | 0.8 | 97.8% | 86.7% | 0.0 | 0 | 48 | 54 | -6 |
+| Banc de Cra-Poiscail (3) | 3 | 0.7 | 0.6 | 87.4% | 97.0% | 1.0 | 24 | 48 | 55 | -7 |
+| Cra-Poiscail Ramasseur (2) | 3 | 0.8 | 0.7 | 95.9% | 71.4% | 0.8 | 15 | 47 | 56 | -9 |
+| Cra-Poiscail Grand-Gueule (2) | 1 | 0.3 | 0.3 | 95.8% | 92.0% | 0.3 | 1 | 43 | 53 | -10 |
+| Têtard-Fesse (1) | 2 | 0.5 | 0.4 | 81.1% | 84.4% | 0.3 | 15 | 43 | 56 | -13 |
+| P'tite Fesse, Grand Rêve (2) | 2 | 0.5 | 0.5 | 87.6% | 94.4% | 0.5 | 7 | 42 | 57 | -15 |
+
+### Le Grand Banc [GB1 Pied marin sans Bavard] — 45.8% (le-brise-lames) · 1-2:25 3-4:13 5:2 6+:0 · unités 29, structure 2, objet 5, anomalie 4
+Meilleurs : Le Grand Banc [V1 gains conservés] 46.7%, Le Grand Banc [V2 + Têtard qui revient] 45.0% · Pires : Le Grand Banc [V1 gains conservés] 46.7%, Le Grand Banc [V2 + Têtard qui revient] 45.0%
+Coup final (victoires) : tour 12.7%, combat 87.3% · soi-même 0.0 · Déraison subie 8.5 · main pauvre (≤1 carte ≤3) 0.0%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Roi Cra-Poiscail (5) | 1 | 0.1 | 0.1 | 100.0% | 100.0% | 0.5 | 0 | 100 | 40 | 60 |
+| Le Seau (2) | 3 | 0.7 | 0.7 | 98.9% | 75.0% | 0.0 | 0 | 61 | 25 | 35 |
+| Cra-Poiscail Porte-Étendard (3) | 2 | 0.6 | 0.6 | 100.0% | 100.0% | 0.3 | 3 | 59 | 30 | 29 |
+| Cra-Poiscail Chef de Banc (3) | 3 | 0.9 | 0.8 | 86.5% | 98.6% | 1.3 | 8 | 56 | 28 | 28 |
+| Le Trône de Bouchon (3) | 2 | 0.4 | 0.4 | 94.3% | 100.0% | 0.0 | 0 | 54 | 41 | 14 |
+| Cra-Poiscail Messager (1) | 3 | 0.8 | 0.8 | 93.8% | 97.4% | 1.9 | 1 | 51 | 38 | 13 |
+| Têtard-Fesse (1) | 2 | 0.5 | 0.5 | 87.7% | 96.9% | 0.6 | 3 | 51 | 41 | 10 |
+| P'tite Fesse, Grand Rêve (2) | 2 | 0.6 | 0.5 | 85.9% | 100.0% | 0.7 | 4 | 50 | 41 | 9 |
+| Fesses en Avant ! (3) | 3 | 0.8 | 0.7 | 82.8% | 100.0% | 0.0 | 0 | 48 | 41 | 7 |
+| Cra-Poiscail des Hautes-Eaux (2) | 3 | 0.9 | 0.8 | 89.4% | 95.2% | 1.3 | 4 | 45 | 48 | -2 |
+| Banc de Cra-Poiscail (3) | 3 | 0.7 | 0.7 | 87.6% | 99.2% | 2.0 | 6 | 44 | 48 | -4 |
+| Faire l'Inventaire (2) | 2 | 0.5 | 0.3 | 66.7% | 100.0% | 0.0 | 0 | 43 | 48 | -5 |
+| Cra-Poiscail Grand-Gueule (2) | 1 | 0.2 | 0.2 | 89.7% | 66.7% | 0.5 | 2 | 41 | 47 | -6 |
+| Le Grand Saut (5) | 1 | 0.3 | 0.2 | 87.5% | 100.0% | 0.0 | 0 | 38 | 49 | -11 |
+| Cra-Poiscail Ramasseur (2) | 3 | 0.7 | 0.7 | 95.3% | 95.5% | 1.3 | 2 | 41 | 53 | -12 |
+| P'tite Fesse (1) | 3 | 0.7 | 0.7 | 100.0% | 100.0% | 0.7 | 6 | 39 | 54 | -15 |
+| Cra-Poiscail Sauteur (2) | 3 | 0.7 | 0.6 | 89.5% | 97.0% | 0.7 | 0 | 39 | 55 | -16 |
+
+### Cavalerie [peu mais lourdes] — 45.0% (le-goliath) · 1-2:11 3-4:20 5:6 6+:3 · unités 28, equipement 3, objet 9
+Meilleurs : Le Grand Banc [V1 gains conservés] 45.0%, Le Grand Banc [V2 + Têtard qui revient] 45.0% · Pires : Le Grand Banc [V1 gains conservés] 45.0%, Le Grand Banc [V2 + Têtard qui revient] 45.0%
+Coup final (victoires) : combat 90.7%, tour 5.6%, navire 3.7% · soi-même 0.0 · Déraison subie 14.7 · main pauvre (≤1 carte ≤3) 18.3%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Bête de Percée (4) | 2 | 0.5 | 0.2 | 44.6% | 100.0% | 0.6 | 6 | 58 | 36 | 22 |
+| Mufle au Fanion (4) | 3 | 0.7 | 0.6 | 88.5% | 100.0% | 3.2 | 10 | 55 | 34 | 21 |
+| Coup de Harpon (4) | 2 | 0.4 | 0.4 | 100.0% | 100.0% | 0.0 | 0 | 57 | 38 | 19 |
+| Monture de Brèche (2) | 3 | 0.7 | 0.7 | 91.8% | 100.0% | 2.2 | 4 | 51 | 37 | 13 |
+| Selle de Guerre (2) | 3 | 0.7 | 0.4 | 56.5% | 100.0% | 0.0 | 0 | 51 | 38 | 13 |
+| Chargeur des Écueils (4) | 3 | 0.7 | 0.4 | 57.3% | 100.0% | 2.9 | 6 | 49 | 38 | 11 |
+| Destrier du Ressac (3) | 2 | 0.4 | 0.4 | 93.8% | 100.0% | 1.6 | 0 | 48 | 44 | 4 |
+| Bête de Halage (2) | 3 | 0.6 | 0.5 | 73.7% | 100.0% | 1.0 | 1 | 47 | 44 | 3 |
+| Pas un Pas de Plus (3) | 2 | 0.6 | 0.6 | 93.2% | 100.0% | 0.0 | 0 | 46 | 44 | 2 |
+| La Bête qu'on n'attend plus (6) | 2 | 0.4 | 0.4 | 88.2% | 100.0% | 2.4 | 6 | 46 | 45 | 1 |
+| Vieille-Selle (5) | 1 | 0.3 | 0.1 | 42.1% | 100.0% | 0.3 | 0 | 45 | 45 | -0 |
+| L'Amiral sans Pavillon (7) | 1 | 0.2 | 0.2 | 96.4% | 100.0% | 1.6 | 4 | 43 | 46 | -3 |
+| Un Peu de Répit (3) | 2 | 0.4 | 0.1 | 17.0% | 100.0% | 0.0 | 0 | 43 | 46 | -4 |
+| Éclaireur à Cornes (3) | 3 | 0.7 | 0.6 | 85.2% | 100.0% | 1.9 | 8 | 42 | 48 | -6 |
+| Débusquer (2) | 2 | 0.5 | 0.3 | 61.4% | 100.0% | 0.0 | 0 | 36 | 52 | -16 |
+| Mange-Fer (5) | 1 | 0.2 | 0.2 | 100.0% | 100.0% | 0.6 | 1 | 30 | 48 | -18 |
+| Réparations d'Urgence (4) | 1 | 0.1 | 0.0 | 28.6% | 100.0% | 0.0 | 0 | 29 | 47 | -19 |
+| Le Déserteur Gris (5) | 3 | 1.1 | 0.6 | 59.8% | 100.0% | 1.8 | 0 | 37 | 56 | -19 |
+| Vieux Harponneur (5) | 1 | 0.3 | 0.1 | 42.5% | 100.0% | 0.4 | 3 | 30 | 53 | -23 |
+
+### Mineurs de Fond [pièges qui tirent] — 44.2% (le-brise-lames) · 1-2:17 3-4:21 5:2 6+:0 · structure 18, equipement 2, objet 1, unités 19
+Meilleurs : Le Grand Banc [V1 gains conservés] 45.0%, Le Grand Banc [V2 + Têtard qui revient] 43.3% · Pires : Le Grand Banc [V1 gains conservés] 45.0%, Le Grand Banc [V2 + Têtard qui revient] 43.3%
+Coup final (victoires) : combat 92.5%, tour 7.5% · soi-même 0.1 · Déraison subie 9.3 · main pauvre (≤1 carte ≤3) 0.0%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Baleine aux Cicatrices Blanches (5) | 2 | 0.5 | 0.5 | 95.0% | 100.0% | 2.4 | 11 | 63 | 29 | 34 |
+| Chose des Hauts-Fonds (4) | 3 | 1.1 | 1.1 | 98.5% | 100.0% | 4.3 | 8 | 53 | 19 | 33 |
+| Crabe de Fer (3) | 3 | 1.0 | 1.0 | 100.0% | 95.0% | 1.2 | 6 | 56 | 23 | 33 |
+| Charpentier des Épaves (3) | 3 | 1.0 | 1.0 | 95.8% | 99.1% | 2.3 | 8 | 50 | 33 | 18 |
+| Cage de Flottaison (3) | 2 | 0.8 | 0.6 | 74.0% | 98.5% | 0.0 | 0 | 49 | 36 | 12 |
+| Caisses Arrimées (1) | 3 | 0.7 | 0.7 | 94.3% | 71.4% | 0.0 | 0 | 49 | 37 | 12 |
+| Cylindre flottant (2) | 2 | 0.6 | 0.3 | 60.9% | 96.0% | 0.0 | 0 | 49 | 39 | 10 |
+| Chaîne de Travers (2) | 2 | 0.6 | 0.5 | 80.5% | 96.2% | 0.0 | 0 | 46 | 43 | 3 |
+| Bernard-l'Ermite d'Acier (1) | 3 | 1.0 | 0.9 | 94.9% | 20.0% | 1.9 | 7 | 44 | 44 | 1 |
+| Filet à la Dérive (2) | 3 | 1.1 | 0.8 | 73.0% | 98.0% | 0.0 | 0 | 44 | 44 | -0 |
+| Charpentière de Veille (2) | 2 | 0.6 | 0.6 | 88.2% | 100.0% | 0.2 | 1 | 43 | 46 | -3 |
+| Pont Miné (3) | 2 | 0.7 | 0.2 | 33.8% | 96.0% | 0.0 | 0 | 41 | 47 | -6 |
+| Treuil Rouillé (1) | 2 | 0.8 | 0.6 | 74.4% | 88.4% | 0.0 | 0 | 40 | 51 | -11 |
+| Matelot du Sans-Nom (3) | 3 | 1.1 | 1.1 | 98.5% | 100.0% | 3.2 | 8 | 41 | 54 | -12 |
+| Dernière Barricade (3) | 2 | 0.6 | 0.4 | 75.4% | 98.7% | 0.0 | 0 | 38 | 51 | -12 |
+| Clous de Récupération (3) | 1 | 0.2 | 0.1 | 46.2% | 85.7% | 0.0 | 0 | 27 | 49 | -22 |
+| Le Filet qui Respire (3) | 2 | 0.7 | 0.4 | 58.2% | 97.3% | 0.0 | 0 | 35 | 57 | -22 |
+
+### Chevaliers du Grand Étang [CH1 Seau au lieu de Tournoi/Fourchette] — 42.5% (lerrant) · 1-2:23 3-4:15 5:2 6+:0 · unités 28, equipement 2, structure 4, anomalie 1, objet 5
+Meilleurs : Le Grand Banc [V1 gains conservés] 43.3%, Le Grand Banc [V2 + Têtard qui revient] 41.7% · Pires : Le Grand Banc [V1 gains conservés] 43.3%, Le Grand Banc [V2 + Têtard qui revient] 41.7%
+Coup final (victoires) : combat 72.5%, tour 17.6% · soi-même 0.0 · Déraison subie 5.6 · main pauvre (≤1 carte ≤3) 0.0%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Cra-Poiscail Porte-Étendard (3) | 2 | 0.6 | 0.6 | 94.5% | 69.2% | 0.6 | 4 | 57 | 26 | 31 |
+| Chevalier Cra-Poiscail (4) | 1 | 0.2 | 0.2 | 88.5% | — | 1.4 | 2 | 65 | 36 | 29 |
+| Roi Cra-Poiscail (5) | 1 | 0.3 | 0.3 | 100.0% | 80.0% | 1.2 | 6 | 62 | 35 | 27 |
+| Banc de Cra-Poiscail (3) | 3 | 0.7 | 0.6 | 83.1% | 88.6% | 2.1 | 5 | 51 | 31 | 19 |
+| Le Grand Saut (5) | 1 | 0.3 | 0.3 | 84.2% | 80.0% | 0.0 | 0 | 55 | 37 | 19 |
+| Cra-Poiscail Médecin (3) | 1 | 0.2 | 0.2 | 88.5% | 72.7% | 0.4 | 0 | 54 | 39 | 14 |
+| P'tite Fesse, Grand Rêve (2) | 2 | 0.4 | 0.3 | 60.0% | 86.5% | 0.1 | 0 | 48 | 39 | 9 |
+| Faire l'Inventaire (2) | 2 | 0.4 | 0.3 | 72.7% | 92.3% | 0.0 | 0 | 48 | 40 | 7 |
+| Chevalier Cra-Poiscail (3) | 2 | 0.5 | 0.4 | 89.8% | 66.7% | 1.3 | 3 | 47 | 40 | 7 |
+| Cra-Poiscail Messager (1) | 3 | 0.8 | 0.7 | 86.0% | 71.4% | 2.0 | 0 | 45 | 38 | 7 |
+| P'tite Fesse, Grand Rêve (3) | 1 | 0.3 | 0.3 | 94.4% | 85.2% | 1.4 | 4 | 42 | 43 | -1 |
+| Écuyer Cra-Poiscail (2) | 3 | 0.8 | 0.6 | 77.2% | 92.9% | 0.6 | 2 | 42 | 43 | -2 |
+| Destrier du Grand Étang (2) | 3 | 0.6 | 0.6 | 98.7% | 75.0% | 1.8 | 4 | 41 | 44 | -4 |
+| Bourreau Cra-Poiscail (3) | 3 | 0.7 | 0.6 | 77.3% | 89.7% | 0.9 | 0 | 40 | 46 | -6 |
+| La Quête du Grand Nénuphar (3) | 2 | 0.4 | 0.2 | 37.7% | 94.0% | 0.0 | 0 | 37 | 45 | -8 |
+| Filet de Sauvetage (2) | 2 | 0.6 | 0.5 | 79.4% | 89.3% | 0.0 | 0 | 38 | 47 | -8 |
+| Le Seau (2) | 3 | 0.8 | 0.7 | 96.7% | 65.5% | 0.0 | 0 | 39 | 48 | -9 |
+| Cra-Poiscail Médecin (2) | 3 | 0.8 | 0.6 | 83.5% | 82.0% | 0.8 | 2 | 36 | 52 | -16 |
+| Slip de Guerre Cra-Poiscail (2) | 2 | 0.5 | 0.3 | 61.7% | 89.1% | 0.0 | 0 | 23 | 59 | -36 |
+
+### Descente aux Abysses [descendre et rester] — 40.0% (lerrant) · 1-2:8 3-4:30 5:2 6+:0 · equipement 3, unités 37
+Meilleurs : Le Grand Banc [V1 gains conservés] 43.3%, Le Grand Banc [V2 + Têtard qui revient] 36.7% · Pires : Le Grand Banc [V1 gains conservés] 43.3%, Le Grand Banc [V2 + Têtard qui revient] 36.7%
+Coup final (victoires) : combat 85.4%, tour 6.3% · soi-même 0.0 · Déraison subie 7.6 · main pauvre (≤1 carte ≤3) 1.7%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Chose des Hauts-Fonds (4) | 3 | 0.5 | 0.5 | 98.5% | 100.0% | 1.4 | 2 | 58 | 25 | 34 |
+| Masse-Sombre (4) | 2 | 0.4 | 0.3 | 78.4% | 97.3% | 1.0 | 1 | 49 | 35 | 14 |
+| Marin aux Yeux Rouges (3) | 2 | 0.6 | 0.6 | 96.0% | 80.0% | 2.0 | 4 | 46 | 33 | 13 |
+| Cartographe du Large (2) | 3 | 0.7 | 0.5 | 72.5% | 98.2% | 0.2 | 3 | 45 | 34 | 11 |
+| Si, Raie Ponce (4) | 3 | 0.6 | 0.5 | 92.8% | 100.0% | 1.9 | 11 | 45 | 35 | 10 |
+| Bat-Marin (3) | 2 | 0.5 | 0.4 | 73.4% | 97.3% | 0.8 | 2 | 43 | 37 | 6 |
+| Seconde au Visage Pâle (3) | 2 | 0.5 | 0.3 | 61.1% | 95.6% | 0.6 | 3 | 43 | 38 | 6 |
+| Albatros de Mauvais Temps (4) | 2 | 0.6 | 0.4 | 67.6% | 98.7% | 2.4 | 6 | 42 | 38 | 3 |
+| Lanterne aux Verres Noirs (2) | 3 | 0.8 | 0.2 | 24.2% | 94.7% | 0.0 | 0 | 41 | 39 | 2 |
+| Bat-Marin (4) | 2 | 0.5 | 0.4 | 74.1% | 100.0% | 1.4 | 0 | 40 | 40 | -1 |
+| Anguille des Profondeurs (3) | 2 | 0.6 | 0.5 | 83.8% | 100.0% | 1.5 | 3 | 39 | 41 | -1 |
+| L'Œil Sous la Mer (5) | 1 | 0.3 | 0.1 | 35.5% | 100.0% | 0.0 | 0 | 39 | 40 | -2 |
+| Poisson-Lanterne (1) | 2 | 0.6 | 0.4 | 67.6% | 94.7% | 0.2 | 2 | 37 | 44 | -7 |
+| Raie des Fosses (3) | 2 | 0.4 | 0.3 | 69.2% | 90.0% | 1.0 | 3 | 35 | 43 | -8 |
+| Revenante de la Fosse (5) | 1 | 0.3 | 0.1 | 26.5% | 100.0% | 0.3 | 0 | 26 | 45 | -19 |
+| Veilleuse des Profondeurs (4) | 3 | 0.7 | 0.4 | 65.0% | 97.0% | 0.5 | 0 | 29 | 50 | -21 |
+| Sondeur des Mauvaises Eaux (3) | 2 | 0.5 | 0.3 | 58.9% | 98.8% | 0.5 | 0 | 26 | 49 | -23 |
+| Masse-Sombre (3) | 3 | 0.7 | 0.7 | 91.9% | 95.7% | 1.4 | 1 | 31 | 54 | -23 |
+
+### À bout de Raison [drain concentré] — 38.3% (lerrant) · 1-2:13 3-4:25 5:2 6+:0 · unités 31, structure 7, anomalie 2
+Meilleurs : Le Grand Banc [V1 gains conservés] 40.0%, Le Grand Banc [V2 + Têtard qui revient] 36.7% · Pires : Le Grand Banc [V1 gains conservés] 40.0%, Le Grand Banc [V2 + Têtard qui revient] 36.7%
+Coup final (victoires) : combat 78.3%, tour 8.7% · soi-même 0.0 · Déraison subie 9.0 · main pauvre (≤1 carte ≤3) 0.0%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Baleine aux Cicatrices Blanches (5) | 2 | 0.6 | 0.5 | 83.3% | 100.0% | 3.0 | 11 | 55 | 21 | 34 |
+| Capitaine Sans Sommeil (4) | 2 | 0.6 | 0.5 | 85.5% | 100.0% | 0.8 | 0 | 52 | 25 | 27 |
+| Matelot Insomniaque (2) | 3 | 0.9 | 0.8 | 93.3% | 88.9% | 3.1 | 6 | 42 | 31 | 11 |
+| Matelot du Sans-Nom (3) | 3 | 0.8 | 0.8 | 91.8% | 95.2% | 1.8 | 5 | 42 | 31 | 11 |
+| Marin aux Yeux Rouges (3) | 3 | 0.7 | 0.6 | 94.9% | 63.6% | 2.5 | 1 | 44 | 33 | 11 |
+| Chaîne de Travers (2) | 2 | 0.4 | 0.2 | 42.6% | 91.4% | 0.0 | 0 | 44 | 35 | 10 |
+| Marin aux Yeux Rouges (2) | 3 | 0.8 | 0.7 | 97.8% | 100.0% | 1.4 | 6 | 42 | 33 | 9 |
+| Anguille des Profondeurs (3) | 3 | 0.6 | 0.4 | 72.1% | 94.3% | 0.6 | 0 | 41 | 35 | 6 |
+| Capitaine du Dernier Retour (4) | 2 | 0.4 | 0.3 | 70.2% | 100.0% | 0.5 | 2 | 42 | 36 | 5 |
+| Vieux Loup de Mer (3) | 2 | 0.4 | 0.3 | 63.5% | 92.1% | 0.3 | 1 | 41 | 36 | 5 |
+| Si, Raie Ponce (4) | 3 | 0.7 | 0.5 | 79.0% | 100.0% | 1.3 | 2 | 39 | 38 | 1 |
+| Requin Balafré (3) | 2 | 0.4 | 0.4 | 94.0% | 87.0% | 0.7 | 0 | 36 | 39 | -3 |
+| Murène Aveugle (2) | 3 | 0.8 | 0.6 | 79.2% | 95.1% | 0.9 | 2 | 37 | 41 | -4 |
+| Ponton aux Cloches (3) | 3 | 0.8 | 0.2 | 27.8% | 95.6% | 0.0 | 0 | 36 | 43 | -7 |
+| Le Rôle d'Équipage (2) | 2 | 0.5 | 0.1 | 31.5% | 91.6% | 0.0 | 0 | 32 | 42 | -10 |
+| Par-dessus Bord ! (3) | 2 | 0.6 | 0.6 | 93.0% | 100.0% | 0.0 | 0 | 30 | 47 | -18 |
+
+### Équipage de Verre [précon, étalon] — 37.5% (la-verriere) · 1-2:18 3-4:14 5:5 6+:3 · unités 30, objet 7, equipement 1, structure 1, anomalie 1
+Meilleurs : Le Grand Banc [V1 gains conservés] 41.7%, Le Grand Banc [V2 + Têtard qui revient] 33.3% · Pires : Le Grand Banc [V1 gains conservés] 41.7%, Le Grand Banc [V2 + Têtard qui revient] 33.3%
+Coup final (victoires) : combat 86.7%, navire 4.4%, tour 4.4% · soi-même 0.0 · Déraison subie 12.7 · main pauvre (≤1 carte ≤3) 3.3%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Matelot Fêlé (1) | 3 | 0.7 | 0.6 | 91.4% | 94.1% | 1.3 | 3 | 47 | 28 | 19 |
+| Éclaireur Ébréché (1) | 3 | 0.7 | 0.7 | 92.0% | 86.7% | 0.8 | 0 | 44 | 28 | 16 |
+| Bretteuse au Bord (4) | 3 | 0.7 | 0.6 | 82.6% | 100.0% | 2.4 | 2 | 43 | 30 | 13 |
+| Pont de Verre (3) | 1 | 0.2 | 0.1 | 35.7% | 100.0% | 0.0 | 0 | 46 | 35 | 12 |
+| Coup de Harpon (4) | 2 | 0.5 | 0.4 | 91.1% | 100.0% | 0.0 | 0 | 44 | 33 | 10 |
+| Canonnier Fêlé (3) | 2 | 0.6 | 0.5 | 92.5% | 87.5% | 2.0 | 2 | 41 | 33 | 8 |
+| La Grande Fissure (5) | 2 | 0.6 | 0.6 | 95.9% | 100.0% | 2.8 | 8 | 41 | 34 | 7 |
+| Jusqu'à ce que ça casse (5) | 1 | 0.1 | 0.0 | 0.0% | 100.0% | 0.0 | 0 | 43 | 37 | 6 |
+| Porte-Éclats (3) | 2 | 0.4 | 0.2 | 43.4% | 100.0% | 0.2 | 0 | 40 | 36 | 5 |
+| L'Amiral sans Pavillon (7) | 1 | 0.3 | 0.2 | 62.5% | 100.0% | 0.5 | 0 | 41 | 36 | 4 |
+| Maître Verrier (4) | 2 | 0.5 | 0.3 | 50.0% | 100.0% | 0.8 | 4 | 40 | 35 | 4 |
+| Le Brise-Ligne (6) | 2 | 0.6 | 0.5 | 83.8% | 100.0% | 2.7 | 7 | 39 | 36 | 3 |
+| Bandages Humides (2) | 1 | 0.3 | 0.1 | 51.6% | 100.0% | 0.0 | 0 | 39 | 37 | 2 |
+| Trinquer Trop Fort (2) | 1 | 0.2 | 0.1 | 29.2% | 100.0% | 0.0 | 0 | 38 | 38 | 0 |
+| Duelliste de Verre (2) | 2 | 0.5 | 0.3 | 76.4% | 93.5% | 1.1 | 4 | 37 | 38 | -1 |
+| Vigie aux Fissures (2) | 2 | 0.4 | 0.3 | 73.5% | 100.0% | 0.3 | 0 | 36 | 39 | -3 |
+| Chirurgien du Bord (5) | 2 | 0.4 | 0.1 | 20.8% | 100.0% | 0.1 | 0 | 35 | 39 | -4 |
+| Éclat de Bouteille (1) | 2 | 0.5 | 0.4 | 91.4% | 100.0% | 0.0 | 0 | 35 | 39 | -4 |
+| Bouclier Fendu (2) | 1 | 0.4 | 0.2 | 56.3% | 100.0% | 0.0 | 0 | 33 | 40 | -7 |
+| Polisseuse des Fêlures (3) | 2 | 0.6 | 0.4 | 64.0% | 100.0% | 0.7 | 3 | 34 | 42 | -7 |
+| Encore Debout ? (2) | 1 | 0.2 | 0.1 | 53.6% | 100.0% | 0.0 | 0 | 29 | 40 | -12 |
+| Verrier de Pont (2) | 2 | 0.5 | 0.5 | 88.9% | 100.0% | 1.6 | 6 | 30 | 43 | -13 |
+
+### Le Théâtre Englouti [TH2 Errant rappels payants] — 35.8% (lerrant) · 1-2:17 3-4:20 5:2 6+:1 · unités 28, objet 8, structure 4
+Meilleurs : Le Grand Banc [V2 + Têtard qui revient] 36.7%, Le Grand Banc [V1 gains conservés] 35.0% · Pires : Le Grand Banc [V2 + Têtard qui revient] 36.7%, Le Grand Banc [V1 gains conservés] 35.0%
+Coup final (victoires) : combat 90.7%, tour 9.3% · soi-même 0.0 · Déraison subie 8.6 · main pauvre (≤1 carte ≤3) 0.0%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Il Dottore des Noyés (4) | 2 | 0.5 | 0.4 | 76.9% | 100.0% | 1.0 | 1 | 53 | 23 | 30 |
+| Pulcinella Gonflé (2) | 3 | 1.3 | 1.2 | 91.2% | 95.7% | 1.3 | 3 | 46 | 17 | 28 |
+| Le Régisseur des Profondeurs (7) | 1 | 0.3 | 0.3 | 100.0% | 100.0% | 2.5 | 6 | 52 | 30 | 21 |
+| Le Théâtre Englouti (4) | 1 | 0.1 | 0.0 | 22.2% | 100.0% | 0.0 | 0 | 50 | 34 | 16 |
+| Le Masque Fendu (2) | 3 | 0.9 | 0.6 | 66.0% | 100.0% | 0.0 | 0 | 41 | 28 | 13 |
+| La Prima Noyée (5) | 1 | 0.4 | 0.3 | 77.1% | 100.0% | 0.9 | 2 | 42 | 32 | 10 |
+| Matelot du Sans-Nom (3) | 3 | 0.8 | 0.7 | 90.7% | 89.7% | 1.4 | 5 | 39 | 30 | 9 |
+| Colombina aux Cent Visages (3) | 2 | 0.7 | 0.6 | 90.6% | 100.0% | 1.4 | 2 | 39 | 31 | 8 |
+| Les Coulisses Inondées (2) | 3 | 1.1 | 0.4 | 40.5% | 98.6% | 0.0 | 0 | 38 | 31 | 8 |
+| Il Capitano Naufragé (4) | 2 | 0.7 | 0.7 | 96.3% | 100.0% | 2.0 | 4 | 38 | 34 | 4 |
+| Changement de rôle ! (2) | 2 | 0.6 | 0.4 | 72.7% | 100.0% | 0.0 | 0 | 37 | 35 | 2 |
+| La Clochette du Rappel (3) | 3 | 0.8 | 0.5 | 58.9% | 100.0% | 0.0 | 0 | 36 | 36 | 0 |
+| Arlecchino des Profondeurs (2) | 3 | 0.8 | 0.6 | 71.3% | 99.0% | 0.9 | 3 | 35 | 36 | -1 |
+| Arlecchino, Celui derrière le Masque (4) | 1 | 0.3 | 0.2 | 90.3% | 100.0% | 0.8 | 2 | 34 | 36 | -2 |
+| Le Régisseur Sans Visage (5) | 1 | 0.3 | 0.2 | 78.1% | 100.0% | 0.5 | 1 | 34 | 36 | -2 |
+| La Prima Noyée (3) | 3 | 0.8 | 0.6 | 72.6% | 96.5% | 0.9 | 3 | 34 | 38 | -3 |
+| Arlequin Raccommodeur (2) | 3 | 0.9 | 0.8 | 86.7% | 100.0% | 1.4 | 3 | 32 | 40 | -7 |
+| Pantalone Sans-Sou (3) | 3 | 0.8 | 0.5 | 71.4% | 98.1% | 1.0 | 4 | 29 | 44 | -16 |
+
+### Épavistes [recyclage] — 34.2% (le-goliath) · 1-2:19 3-4:18 5:3 6+:0 · structure 10, objet 6, equipement 2, unités 22
+Meilleurs : Le Grand Banc [V1 gains conservés] 35.0%, Le Grand Banc [V2 + Têtard qui revient] 33.3% · Pires : Le Grand Banc [V1 gains conservés] 35.0%, Le Grand Banc [V2 + Têtard qui revient] 33.3%
+Coup final (victoires) : combat 82.9%, navire 14.6%, tour 2.4% · soi-même 0.0 · Déraison subie 9.3 · main pauvre (≤1 carte ≤3) 0.0%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Chose des Hauts-Fonds (4) | 3 | 0.9 | 0.9 | 99.0% | 88.9% | 2.4 | 5 | 45 | 11 | 35 |
+| Crabe de Fer (3) | 3 | 1.0 | 0.9 | 95.7% | 100.0% | 0.9 | 2 | 42 | 17 | 25 |
+| Bernard-l'Ermite d'Acier (1) | 3 | 0.9 | 0.8 | 96.2% | 77.8% | 1.3 | 7 | 40 | 21 | 19 |
+| Caisse des Dernières Planches (4) | 1 | 0.2 | 0.1 | 64.3% | 97.6% | 0.0 | 0 | 46 | 30 | 16 |
+| Grappin de Récupération (2) | 2 | 0.5 | 0.3 | 58.2% | 97.3% | 0.0 | 0 | 43 | 28 | 16 |
+| Caisse des Dernières Planches (3) | 2 | 0.5 | 0.3 | 64.1% | 99.5% | 0.0 | 0 | 42 | 27 | 15 |
+| Clous de Récupération (3) | 1 | 0.3 | 0.1 | 16.7% | 97.9% | 0.0 | 0 | 44 | 30 | 15 |
+| Baleine aux Cicatrices Blanches (5) | 3 | 0.7 | 0.7 | 88.6% | 98.8% | 3.8 | 3 | 39 | 27 | 13 |
+| Matelot du Sans-Nom (3) | 3 | 1.0 | 0.9 | 94.8% | 100.0% | 2.5 | 3 | 36 | 28 | 8 |
+| Charpentière de Veille (2) | 2 | 0.7 | 0.6 | 82.0% | 98.5% | 0.3 | 7 | 35 | 33 | 3 |
+| Radeau de Fortune (1) | 2 | 0.6 | 0.5 | 91.5% | 88.9% | 0.0 | 0 | 34 | 34 | -0 |
+| Charpentier des Épaves (3) | 3 | 0.9 | 0.7 | 82.7% | 100.0% | 1.6 | 2 | 33 | 36 | -2 |
+| Caisses Arrimées (1) | 3 | 0.9 | 1.0 | 102.6% | 65.0% | 0.0 | 0 | 33 | 36 | -3 |
+| Levier de Lest (1) | 3 | 0.9 | 0.8 | 83.5% | 94.1% | 0.0 | 0 | 33 | 36 | -3 |
+| Cage de Flottaison (3) | 2 | 0.6 | 0.3 | 55.9% | 99.3% | 0.0 | 0 | 31 | 38 | -7 |
+| Plongeur des Épaves (2) | 2 | 0.5 | 0.5 | 87.3% | 100.0% | 0.7 | 5 | 29 | 38 | -9 |
+| Treuil Rouillé (1) | 2 | 0.8 | 0.3 | 42.6% | 85.2% | 0.0 | 0 | 30 | 41 | -12 |
+
+### La Veillée [actuelle] — 32.5% (la-religieuse) · 1-2:23 3-4:16 5:1 6+:0 · unités 28, equipement 3, objet 6, structure 3
+Meilleurs : Le Grand Banc [V2 + Têtard qui revient] 33.3%, Le Grand Banc [V1 gains conservés] 31.7% · Pires : Le Grand Banc [V2 + Têtard qui revient] 33.3%, Le Grand Banc [V1 gains conservés] 31.7%
+Coup final (victoires) : combat 79.5%, tour 7.7%, effet 7.7% · soi-même 0.0 · Déraison subie 7.8 · main pauvre (≤1 carte ≤3) 0.0%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Le Copain du dessous (3) | 3 | 1.0 | 0.8 | 80.5% | 100.0% | 1.3 | 3 | 41 | 9 | 32 |
+| P'tit Bout (1) | 3 | 0.9 | 0.8 | 89.3% | 84.1% | 0.6 | 1 | 41 | 17 | 23 |
+| Encore cinq minutes (2) | 3 | 0.9 | 0.8 | 90.3% | 100.0% | 2.2 | 9 | 41 | 18 | 23 |
+| La Marelle (3) | 2 | 0.6 | 0.2 | 36.2% | 100.0% | 0.0 | 0 | 42 | 24 | 18 |
+| Cache-Cache (1) | 3 | 0.9 | 0.9 | 108.7% | 72.1% | 1.4 | 0 | 39 | 22 | 17 |
+| Promis, j'attends (2) | 2 | 0.8 | 0.6 | 75.0% | 100.0% | 1.0 | 8 | 38 | 23 | 15 |
+| On avait dit tous ensemble (5) | 1 | 0.3 | 0.2 | 83.9% | 100.0% | 1.2 | 3 | 42 | 29 | 13 |
+| Maman revient (3) | 2 | 0.6 | 0.5 | 88.2% | 100.0% | 0.7 | 2 | 38 | 28 | 9 |
+| La Petite Chanson (2) | 2 | 0.7 | 0.4 | 57.8% | 98.6% | 0.3 | 0 | 36 | 27 | 8 |
+| Le Goûter (2) | 3 | 0.9 | 0.5 | 55.3% | 97.6% | 0.2 | 0 | 34 | 30 | 4 |
+| Tu m'avais promis (3) | 2 | 0.6 | 0.5 | 90.1% | 100.0% | 0.9 | 1 | 33 | 32 | 1 |
+| Journal de Bord Détrempé (2) | 1 | 0.2 | 0.1 | 78.9% | 100.0% | 0.0 | 0 | 32 | 33 | -1 |
+| Maman revient (4) | 1 | 0.3 | 0.3 | 82.9% | 93.8% | 0.6 | 2 | 32 | 33 | -1 |
+| Papa est en mer (2) | 3 | 0.8 | 0.6 | 75.5% | 98.9% | 0.8 | 0 | 32 | 33 | -1 |
+| Doudou (1) | 3 | 0.8 | 0.4 | 52.2% | 92.9% | 0.0 | 0 | 32 | 33 | -2 |
+| Tu viens jouer ? (4) | 2 | 0.8 | 0.7 | 88.9% | 100.0% | 2.3 | 3 | 31 | 35 | -5 |
+| Tout le monde à table (4) | 1 | 0.2 | 0.0 | 7.1% | 99.2% | 0.0 | 0 | 25 | 35 | -10 |
+| On rentre bientôt (3) | 3 | 0.7 | 0.6 | 75.0% | 98.9% | 1.1 | 2 | 28 | 38 | -11 |

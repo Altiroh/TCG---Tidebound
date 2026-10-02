@@ -190,6 +190,7 @@ export function mesurerPartie(deckA: DeckList, deckB: DeckList, seed: number, di
     const tour = avant.turnNumber;
     const jouees = new Set<string>();
 
+    const deraisonEnAttente = new Map<string, number>();
     for (const e of res.events) {
       if (!e) continue;
       if (e.type === "PLAY_CARD") {
@@ -225,7 +226,17 @@ export function mesurerPartie(deckA: DeckList, deckB: DeckList, seed: number, di
         m.deraison += e.debt;
         m.deraisonPic = Math.max(m.deraisonPic, e.debt);
         m.ancrageDeraison += e.anchorDamage;
-        if (e.anchorDamage > 0) m.ancrageParPoste.Déraison = (m.ancrageParPoste.Déraison ?? 0) + e.anchorDamage;
+        if (e.anchorDamage > 0) {
+          m.ancrageParPoste.Déraison = (m.ancrageParPoste.Déraison ?? 0) + e.anchorDamage;
+          deraisonEnAttente.set(e.playerId, e.anchorDamage);
+        }
+      }
+      // Le règlement de la Déraison émet AUSSI le `DAMAGE` sur la coque qui le
+      // matérialise (`endTurn.ts`) : déjà imputé ci-dessus, il était compté
+      // une seconde fois en « Marée » (l'action en cours est `endTurn`).
+      if (e.type === "DAMAGE" && e.targetPlayerId && deraisonEnAttente.get(e.targetPlayerId) === e.amount) {
+        deraisonEnAttente.delete(e.targetPlayerId);
+        continue;
       }
       if (e.type === "DAMAGE" && e.targetPlayerId) {
         const poste = posteDe(action.type);

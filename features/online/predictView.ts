@@ -2,11 +2,16 @@ import { dispatch, HIDDEN_CARD_ID, type GameState, type PlayerAction } from "@/g
 
 /**
  * Coups dont le résultat se prédit sans rien savoir de caché : poser une
- * carte, Saborder. Le reste (attaquer, changer de phase, finir son tour…)
- * ouvre des fenêtres de réaction, fait piocher ou jouer le bot — le serveur
- * seul sait ce qui en sort.
+ * carte, Saborder, passer à la phase suivante. Finir son tour fait piocher :
+ * jamais prédit.
+ *
+ * ATTAQUER N'Y EST PAS, et c'est mesuré (`tests/features/predictView.test.ts`) :
+ * environ une attaque sur dix ouvre une fenêtre de réaction chez l'adversaire
+ * depuis une carte de sa MAIN, que la vue ne montre pas. La prédiction
+ * jouerait le coup, puis la réponse du serveur le rembobinerait — un coup
+ * animé deux fois est pire qu'un coup qui attend l'aller-retour.
  */
-const PREDICTABLE: ReadonlySet<PlayerAction["type"]> = new Set(["playCard", "saborder"]);
+const PREDICTABLE: ReadonlySet<PlayerAction["type"]> = new Set(["playCard", "saborder", "advancePhase"]);
 
 /**
  * AFFICHAGE ANTICIPÉ d'un coup, en attendant la réponse du serveur.
@@ -22,7 +27,12 @@ const PREDICTABLE: ReadonlySet<PlayerAction["type"]> = new Set(["playCard", "sab
  *   - une pioche ou une carte révélée (la vue n'a pas les decks) ;
  *   - une carte masquée impliquée ;
  *   - une fenêtre de réaction ou un choix qui s'ouvre (c'est au serveur de
- *     dire qui répond).
+ *     dire qui répond) ;
+ *   - un changement de Marée.
+ *
+ * Reste une limite qu'aucune prédiction honnête ne lève : une réaction
+ * depuis la MAIN adverse, cachée. Le serveur ouvre alors une fenêtre que la
+ * vue ne voyait pas venir, et sa réponse remplace l'affichage.
  *
  * Ce n'est QUE de l'affichage : rien de prédit ne repart au serveur, et la
  * vue renvoyée par le serveur remplace la prédiction dès qu'elle arrive.
@@ -38,7 +48,14 @@ export function predictView(view: GameState, action: PlayerAction): GameState | 
     if (next.pendingReaction || next.pendingChoice) return null;
     const newEvents = next.eventLog.slice(view.eventLog.length);
     const touchesHidden = newEvents.some(
-      (event) => event.type === "DRAW_CARD" || event.type === "HAND_CARD_REVEALED" || ("cardId" in event && event.cardId === HIDDEN_CARD_ID)
+      (event) =>
+        event.type === "DRAW_CARD" ||
+        event.type === "HAND_CARD_REVEALED" ||
+        // Un changement de Marée déclenche des effets d'environnement que la
+        // vue ne reproduit pas toujours à l'identique (mesuré : dégâts de
+        // Marée divergents sur une pose qui fait avancer la Marée).
+        event.type === "TIDE_ADVANCED" ||
+        ("cardId" in event && event.cardId === HIDDEN_CARD_ID)
     );
     return touchesHidden ? null : next;
   } catch {

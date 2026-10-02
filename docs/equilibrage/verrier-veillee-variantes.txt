@@ -1,0 +1,503 @@
+
+# Labo — 3720 parties, bot moyen, 60 par paire, 183 s
+
+## Classement
+
+| Deck | WR | 1er | durée | dégâts/partie (combat·effet·navire·tour) | soin | unités+invoc | Raison laissée | dette | inactif≥2 T1-4 | main sans ≤2 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Arsenal de Pont [Bris payant] | **72.1%** | 62.5% | 6.2 | 18.9·0.0·2.1·3.4 | 1.5 | 5.0+0.0 | 0.7 | 1.4 | 0.0% | 1.7% |
+| Chasse au Gros [blessures bon marché] +cartes | **69.6%** | 83.3% | 4.6 | 19.1·0.0·0.5·1.8 | 0.0 | 5.1+0.0 | 0.0 | 2.9 | 0.8% | 8.3% |
+| Chevaliers du Grand Étang [CH1 Seau au lieu de Tournoi/Fourchette] | **67.9%** | 75.8% | 4.6 | 20.7·0.0·0.1·3.1 | 0.3 | 6.2+2.0 | 0.6 | 1.3 | 2.5% | 0.0% |
+| À bout de Raison [drain concentré] +cartes +moteur | **66.3%** | 84.2% | 4.3 | 17.4·0.6·0.1·2.5 | 0.0 | 6.6+0.0 | 0.2 | 2.1 | 0.0% | 10.0% |
+| Le Grand Banc [GB1 Pied marin sans Bavard] | **65.4%** | 69.2% | 5.2 | 20.8·0.0·0.0·2.7 | 0.0 | 6.9+3.8 | 0.5 | 1.6 | 1.7% | 0.0% |
+| Le Théâtre Englouti [TH2 Errant rappels payants] +cartes | **64.2%** | 75.8% | 4.9 | 18.4·0.0·0.1·3.4 | 0.9 | 7.8+0.0 | 0.1 | 2.0 | 0.0% | 6.7% |
+| Après la Tempête [balai qui rapporte] | **60.0%** | 70.0% | 5.3 | 20.8·0.0·0.2·0.2 | 0.5 | 5.3+0.0 | 0.2 | 3.1 | 0.0% | 40.0% |
+| Descente aux Abysses [descendre et rester] +cartes | **59.2%** | 68.3% | 4.9 | 19.0·0.0·0.1·3.3 | 0.0 | 7.5+0.0 | 0.1 | 1.7 | 0.4% | 21.7% |
+| La Forteresse [F1 murs sans soins] +moteur | **58.8%** | 54.2% | 7.1 | 18.3·0.3·0.0·4.3 | 0.9 | 5.2+0.0 | 0.6 | 1.7 | 0.0% | 10.0% |
+| Équipage de Verre [précon, étalon] | **49.2%** | 53.3% | 4.8 | 17.5·0.0·1.0·2.0 | 0.0 | 6.2+0.0 | 0.1 | 2.8 | 0.0% | 1.7% |
+| La Veillée [V3 + Cinq minutes] | **49.1%** | 54.9% | 5.3 | 12.9·0.9·0.1·2.2 | 5.0 | 7.9+0.0 | 0.1 | 2.5 | 0.3% | 0.0% |
+| Cavalerie [peu mais lourdes] +moteur | **45.8%** | 67.5% | 4.4 | 18.4·0.0·0.3·1.4 | 0.7 | 5.3+0.0 | 0.0 | 3.4 | 0.0% | 10.0% |
+| La Veillée [V2 + Papa] | **42.4%** | 49.6% | 5.3 | 12.0·0.9·0.1·2.2 | 5.0 | 7.9+0.0 | 0.1 | 2.5 | 0.3% | 0.0% |
+| La Veillée [V1 Cache-Cache] | **40.7%** | 46.5% | 5.4 | 11.7·0.9·0.1·2.2 | 4.8 | 7.8+0.0 | 0.1 | 2.4 | 0.2% | 0.0% |
+| La Veillée [réelle] | **39.7%** | 45.1% | 5.4 | 11.5·0.9·0.1·2.3 | 4.8 | 7.8+0.0 | 0.1 | 2.4 | 0.5% | 0.0% |
+| Sentinelles Chromatiques [SC1 Courlis 4 Slots] | **36.7%** | 36.7% | 5.5 | 18.3·0.0·0.1·0.2 | 0.0 | 4.6+2.6 | 2.3 | 1.5 | 20.8% | 1.7% |
+| Épavistes [recyclage] +cartes | **36.7%** | 38.3% | 6.1 | 13.4·0.4·0.6·3.8 | 3.3 | 6.3+0.0 | 0.2 | 1.6 | 0.0% | 1.7% |
+| Mineurs de Fond [pièges qui tirent] +cartes | **35.8%** | 37.5% | 7.0 | 14.6·0.5·0.0·4.8 | 1.3 | 6.2+0.0 | 0.5 | 1.4 | 0.0% | 0.0% |
+
+## Matrice (ligne contre colonne)
+
+| | Arsenal de | Chasse au  | Chevaliers | À bout de  | Le Grand B | Le Théâtre | Après la T | Descente a | La Fortere | Équipage d | La Veillée | Cavalerie  | La Veillée | La Veillée | La Veillée | Sentinelle | Épavistes  | Mineurs de |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Arsenal de Pont [B | · |  |  |  |  |  |  |  |  |  | 68 |  | 70 | 75 | 75 |  |  |  |
+| Chasse au Gros [bl |  | · |  |  |  |  |  |  |  |  | 63 |  | 72 | 72 | 72 |  |  |  |
+| Chevaliers du Gran |  |  | · |  |  |  |  |  |  |  | 67 |  | 67 | 68 | 70 |  |  |  |
+| À bout de Raison [ |  |  |  | · |  |  |  |  |  |  | 60 |  | 67 | 68 | 70 |  |  |  |
+| Le Grand Banc [GB1 |  |  |  |  | · |  |  |  |  |  | 55 |  | 63 | 70 | 73 |  |  |  |
+| Le Théâtre Englout |  |  |  |  |  | · |  |  |  |  | 60 |  | 65 | 65 | 67 |  |  |  |
+| Après la Tempête [ |  |  |  |  |  |  | · |  |  |  | 55 |  | 55 | 67 | 63 |  |  |  |
+| Descente aux Abyss |  |  |  |  |  |  |  | · |  |  | 52 |  | 62 | 60 | 63 |  |  |  |
+| La Forteresse [F1  |  |  |  |  |  |  |  |  | · |  | 45 |  | 63 | 62 | 65 |  |  |  |
+| Équipage de Verre  |  |  |  |  |  |  |  |  |  | · | 43 |  | 50 | 50 | 53 |  |  |  |
+| La Veillée [V3 + C | 32 | 22 | 33 | 35 | 45 | 40 | 45 | 48 | 53 | 53 | · | 53 | 55 | 57 | 57 | 63 | 70 | 73 |
+| Cavalerie [peu mai |  |  |  |  |  |  |  |  |  |  | 47 | · | 43 | 45 | 48 |  |  |  |
+| La Veillée [V2 + P | 28 | 18 | 32 | 27 | 37 | 35 | 45 | 38 | 35 | 47 | 42 | 53 | · | 53 | 52 | 63 | 58 | 57 |
+| La Veillée [V1 Cac | 25 | 13 | 32 | 25 | 30 | 35 | 33 | 40 | 37 | 43 | 43 | 53 | 47 | · | 48 | 63 | 63 | 60 |
+| La Veillée [réelle | 25 | 13 | 30 | 22 | 27 | 32 | 37 | 37 | 33 | 40 | 43 | 50 | 48 | 52 | · | 63 | 62 | 62 |
+| Sentinelles Chroma |  |  |  |  |  |  |  |  |  |  | 37 |  | 37 | 37 | 37 | · |  |  |
+| Épavistes [recycla |  |  |  |  |  |  |  |  |  |  | 30 |  | 42 | 37 | 38 |  | · |  |
+| Mineurs de Fond [p |  |  |  |  |  |  |  |  |  |  | 23 |  | 42 | 40 | 38 |  |  | · |
+
+### Arsenal de Pont [Bris payant] — 72.1% (la-verriere) · 1-2:18 3-4:22 5:0 6+:0 · unités 16, objet 24
+Meilleurs : La Veillée [réelle] 75.0%, La Veillée [V1 Cache-Cache] 75.0%, La Veillée [V2 + Papa] 70.0% · Pires : La Veillée [V1 Cache-Cache] 75.0%, La Veillée [V2 + Papa] 70.0%, La Veillée [V3 + Cinq minutes] 68.3%
+Coup final (victoires) : combat 74.6%, tour 22.5%, navire 2.9% · soi-même 1.9 · Déraison subie 8.4 · main pauvre (≤1 carte ≤3) 3.3%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Chose des Hauts-Fonds (4) | 3 | 1.1 | 1.1 | 96.3% | 97.8% | 5.9 | 20 | 82 | 48 | 34 |
+| Cormoran de Fer (3) | 3 | 1.1 | 1.0 | 90.0% | 98.0% | 3.3 | 26 | 76 | 62 | 14 |
+| Cra-Poiscail Médecin (3) | 1 | 0.3 | 0.3 | 86.7% | 100.0% | 0.7 | 11 | 77 | 70 | 8 |
+| Lettre Jamais Ouverte (1) | 3 | 1.2 | 0.9 | 75.3% | 97.0% | 0.0 | 0 | 73 | 69 | 5 |
+| Coup de Harpon (4) | 3 | 1.2 | 1.1 | 90.6% | 100.0% | 0.0 | 0 | 73 | 70 | 3 |
+| Harpon à Ressort (4) | 2 | 0.8 | 0.4 | 56.5% | 96.5% | 0.0 | 0 | 73 | 70 | 3 |
+| Il Capitano Naufragé (4) | 2 | 0.7 | 0.6 | 93.7% | 100.0% | 4.8 | 19 | 73 | 71 | 2 |
+| Choppe ! (1) | 2 | 0.7 | 0.6 | 76.4% | 85.7% | 0.0 | 0 | 72 | 71 | 1 |
+| Contre-Harpon (4) | 2 | 0.5 | 0.3 | 52.3% | 91.4% | 0.0 | 0 | 73 | 72 | 1 |
+| Cra-Poiscail Médecin (2) | 2 | 0.7 | 0.5 | 81.5% | 100.0% | 0.9 | 12 | 72 | 72 | 1 |
+| Journal de Bord Détrempé (2) | 2 | 0.8 | 0.7 | 91.3% | 100.0% | 0.0 | 0 | 72 | 73 | -1 |
+| Rations du Matin Gris (2) | 2 | 0.7 | 0.4 | 66.5% | 98.9% | 0.0 | 0 | 71 | 73 | -3 |
+| Éclat de Bouteille (1) | 3 | 1.1 | 0.8 | 76.0% | 97.7% | 0.0 | 0 | 71 | 77 | -7 |
+| Corde de Rappel (4) | 1 | 0.4 | 0.2 | 55.3% | 98.1% | 0.0 | 0 | 66 | 75 | -10 |
+| Signal de Détresse (4) | 1 | 0.4 | 0.3 | 60.6% | 91.2% | 0.0 | 0 | 66 | 77 | -11 |
+| Bouclier d'Écume (4) | 1 | 0.4 | 0.2 | 65.9% | 93.4% | 0.0 | 0 | 64 | 77 | -13 |
+| Marin des Jetées (1) | 2 | 0.7 | 0.7 | 91.3% | 85.7% | 1.1 | 17 | 64 | 81 | -17 |
+| Pantalone Sans-Sou (3) | 3 | 1.1 | 0.9 | 85.3% | 99.4% | 2.3 | 24 | 67 | 86 | -19 |
+| Thermos du Dernier Quart (2) | 2 | 0.8 | 0.7 | 89.3% | 100.0% | 0.0 | 0 | 65 | 85 | -20 |
+
+### Chasse au Gros [blessures bon marché] +cartes — 69.6% (le-goliath) · 1-2:12 3-4:22 5:5 6+:1 · unités 25, objet 12, anomalie 3
+Meilleurs : La Veillée [réelle] 71.7%, La Veillée [V1 Cache-Cache] 71.7%, La Veillée [V2 + Papa] 71.7% · Pires : La Veillée [V1 Cache-Cache] 71.7%, La Veillée [V2 + Papa] 71.7%, La Veillée [V3 + Cinq minutes] 63.3%
+Coup final (victoires) : combat 91.0%, tour 7.8% · soi-même 1.6 · Déraison subie 13.3 · main pauvre (≤1 carte ≤3) 1.7%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Canonnier Fêlé (3) | 3 | 0.6 | 0.6 | 96.8% | 100.0% | 4.5 | 26 | 84 | 54 | 30 |
+| Coup de Harpon (4) | 3 | 0.7 | 0.6 | 85.9% | 100.0% | 0.0 | 0 | 80 | 59 | 20 |
+| Éclat de Bouteille (1) | 3 | 0.7 | 0.6 | 86.0% | 98.8% | 0.0 | 0 | 77 | 61 | 15 |
+| Poisson aux Dents de Verre (2) | 2 | 0.5 | 0.4 | 88.5% | 100.0% | 1.0 | 15 | 78 | 64 | 14 |
+| L'Amiral sans Pavillon (7) | 1 | 0.2 | 0.2 | 80.0% | 100.0% | 1.9 | 13 | 78 | 67 | 11 |
+| Trinquer Trop Fort (2) | 2 | 0.5 | 0.3 | 60.7% | 100.0% | 0.0 | 0 | 73 | 66 | 7 |
+| Crabe de Fer (3) | 3 | 0.8 | 0.7 | 86.2% | 100.0% | 1.5 | 20 | 71 | 67 | 5 |
+| Chose des Hauts-Fonds (4) | 2 | 0.5 | 0.5 | 93.1% | 100.0% | 2.4 | 21 | 71 | 68 | 3 |
+| Encore Debout ? (2) | 2 | 0.6 | 0.4 | 63.6% | 99.6% | 0.0 | 0 | 70 | 69 | 2 |
+| Harpon à Ressort (4) | 2 | 0.6 | 0.1 | 21.5% | 100.0% | 0.0 | 0 | 69 | 70 | -0 |
+| Qu'on en Finisse (5) | 1 | 0.2 | 0.0 | 20.8% | 100.0% | 0.0 | 0 | 66 | 71 | -5 |
+| Guetteur Méfiant (2) | 3 | 0.8 | 0.7 | 94.5% | 100.0% | 2.2 | 22 | 68 | 73 | -5 |
+| Ce Qui Suit le Navire (4) | 3 | 0.9 | 0.5 | 57.1% | 100.0% | 1.5 | 11 | 67 | 74 | -7 |
+| Vieux Harponneur (5) | 2 | 0.6 | 0.4 | 73.3% | 100.0% | 1.0 | 7 | 65 | 75 | -11 |
+| Par-dessus Bord ! (3) | 2 | 0.4 | 0.3 | 90.9% | 100.0% | 0.0 | 0 | 62 | 73 | -11 |
+| Baleine aux Cicatrices Blanches (5) | 2 | 0.4 | 0.3 | 86.3% | 100.0% | 0.9 | 2 | 62 | 74 | -12 |
+| Dépeceur des Quais (3) | 2 | 0.4 | 0.3 | 73.9% | 100.0% | 0.5 | 3 | 61 | 74 | -13 |
+| Matelot du Sans-Nom (3) | 2 | 0.4 | 0.4 | 95.0% | 100.0% | 1.6 | 12 | 55 | 78 | -23 |
+
+### Chevaliers du Grand Étang [CH1 Seau au lieu de Tournoi/Fourchette] — 67.9% (lerrant) · 1-2:23 3-4:15 5:2 6+:0 · unités 28, equipement 2, structure 4, anomalie 1, objet 5
+Meilleurs : La Veillée [réelle] 70.0%, La Veillée [V1 Cache-Cache] 68.3%, La Veillée [V2 + Papa] 66.7% · Pires : La Veillée [V1 Cache-Cache] 68.3%, La Veillée [V2 + Papa] 66.7%, La Veillée [V3 + Cinq minutes] 66.7%
+Coup final (victoires) : combat 86.5%, tour 12.3%, navire 0.6% · soi-même 0.0 · Déraison subie 5.8 · main pauvre (≤1 carte ≤3) 0.0%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Chevalier Cra-Poiscail (4) | 1 | 0.2 | 0.2 | 100.0% | — | 1.6 | 8 | 84 | 63 | 22 |
+| Cra-Poiscail Médecin (3) | 1 | 0.2 | 0.2 | 82.5% | 64.7% | 0.5 | 8 | 82 | 63 | 19 |
+| Cra-Poiscail Porte-Étendard (3) | 2 | 0.6 | 0.6 | 97.1% | 81.8% | 0.7 | 18 | 77 | 58 | 19 |
+| Roi Cra-Poiscail (5) | 1 | 0.3 | 0.3 | 100.0% | 100.0% | 1.1 | 6 | 76 | 65 | 11 |
+| Banc de Cra-Poiscail (3) | 3 | 0.7 | 0.6 | 80.5% | 90.6% | 2.1 | 9 | 72 | 63 | 8 |
+| Chevalier Cra-Poiscail (3) | 2 | 0.5 | 0.5 | 97.3% | 66.7% | 1.5 | 3 | 71 | 66 | 5 |
+| Le Grand Saut (5) | 1 | 0.3 | 0.2 | 85.1% | 40.0% | 0.0 | 0 | 69 | 68 | 1 |
+| Le Seau (2) | 3 | 0.8 | 0.7 | 94.1% | 59.4% | 0.0 | 0 | 67 | 69 | -2 |
+| Filet de Sauvetage (2) | 2 | 0.6 | 0.4 | 74.1% | 87.6% | 0.0 | 0 | 66 | 70 | -4 |
+| Destrier du Grand Étang (2) | 3 | 0.7 | 0.7 | 98.2% | 96.3% | 2.2 | 25 | 65 | 72 | -7 |
+| P'tite Fesse, Grand Rêve (3) | 1 | 0.3 | 0.3 | 94.4% | 86.8% | 1.3 | 0 | 63 | 70 | -8 |
+| Slip de Guerre Cra-Poiscail (2) | 2 | 0.5 | 0.3 | 61.5% | 88.8% | 0.0 | 0 | 62 | 73 | -11 |
+| Écuyer Cra-Poiscail (2) | 3 | 0.7 | 0.6 | 78.0% | 92.6% | 0.9 | 10 | 62 | 77 | -15 |
+| Cra-Poiscail Messager (1) | 3 | 0.8 | 0.7 | 83.7% | 79.9% | 2.0 | 7 | 63 | 78 | -15 |
+| Faire l'Inventaire (2) | 2 | 0.4 | 0.3 | 74.1% | 88.0% | 0.0 | 0 | 57 | 73 | -16 |
+| P'tite Fesse, Grand Rêve (2) | 2 | 0.4 | 0.3 | 68.6% | 92.1% | 0.3 | 1 | 58 | 74 | -17 |
+| Bourreau Cra-Poiscail (3) | 3 | 0.7 | 0.6 | 81.6% | 90.4% | 0.8 | 0 | 60 | 77 | -17 |
+| La Quête du Grand Nénuphar (3) | 2 | 0.5 | 0.2 | 38.7% | 90.0% | 0.0 | 0 | 57 | 75 | -18 |
+| Cra-Poiscail Médecin (2) | 3 | 0.8 | 0.7 | 89.6% | 88.5% | 1.1 | 6 | 61 | 79 | -18 |
+
+### À bout de Raison [drain concentré] +cartes +moteur — 66.3% (lerrant) · 1-2:13 3-4:25 5:2 6+:0 · unités 31, structure 7, anomalie 2
+Meilleurs : La Veillée [réelle] 70.0%, La Veillée [V1 Cache-Cache] 68.3%, La Veillée [V2 + Papa] 66.7% · Pires : La Veillée [V1 Cache-Cache] 68.3%, La Veillée [V2 + Papa] 66.7%, La Veillée [V3 + Cinq minutes] 60.0%
+Coup final (victoires) : tour 11.3%, combat 88.7% · soi-même 0.0 · Déraison subie 8.6 · main pauvre (≤1 carte ≤3) 0.0%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Marin aux Yeux Rouges (3) | 3 | 0.7 | 0.6 | 92.0% | 100.0% | 2.2 | 23 | 75 | 57 | 19 |
+| Matelot du Sans-Nom (3) | 3 | 0.8 | 0.8 | 92.9% | 100.0% | 2.6 | 25 | 71 | 53 | 18 |
+| Baleine aux Cicatrices Blanches (5) | 2 | 0.6 | 0.6 | 95.3% | 100.0% | 3.7 | 27 | 73 | 59 | 14 |
+| Marin aux Yeux Rouges (2) | 3 | 0.8 | 0.7 | 90.8% | 100.0% | 1.7 | 15 | 70 | 60 | 10 |
+| Matelot Insomniaque (2) | 3 | 0.8 | 0.8 | 98.0% | 100.0% | 2.6 | 16 | 70 | 61 | 10 |
+| Capitaine Sans Sommeil (4) | 2 | 0.6 | 0.6 | 93.4% | 100.0% | 1.3 | 6 | 71 | 62 | 9 |
+| Requin Balafré (3) | 2 | 0.5 | 0.4 | 79.3% | 83.7% | 0.4 | 0 | 68 | 65 | 3 |
+| Si, Raie Ponce (4) | 3 | 0.7 | 0.5 | 65.3% | 100.0% | 0.8 | 5 | 67 | 65 | 3 |
+| Anguille des Profondeurs (3) | 3 | 0.6 | 0.4 | 70.3% | 100.0% | 0.4 | 6 | 62 | 70 | -9 |
+| Le Rôle d'Équipage (2) | 2 | 0.4 | 0.2 | 53.5% | 97.8% | 0.0 | 0 | 60 | 70 | -10 |
+| Vieux Loup de Mer (3) | 2 | 0.5 | 0.3 | 55.8% | 100.0% | 0.5 | 3 | 59 | 71 | -12 |
+| Ponton aux Cloches (3) | 3 | 0.8 | 0.1 | 18.2% | 97.3% | 0.0 | 0 | 61 | 74 | -13 |
+| Capitaine du Dernier Retour (4) | 2 | 0.4 | 0.4 | 82.9% | 100.0% | 0.5 | 11 | 58 | 71 | -13 |
+| Murène Aveugle (2) | 3 | 0.8 | 0.7 | 88.8% | 94.3% | 1.3 | 4 | 60 | 76 | -16 |
+| Chaîne de Travers (2) | 2 | 0.4 | 0.2 | 48.0% | 100.0% | 0.0 | 0 | 54 | 74 | -20 |
+| Par-dessus Bord ! (3) | 2 | 0.6 | 0.6 | 97.1% | 100.0% | 0.0 | 0 | 55 | 77 | -22 |
+
+### Le Grand Banc [GB1 Pied marin sans Bavard] — 65.4% (le-brise-lames) · 1-2:25 3-4:13 5:2 6+:0 · unités 29, structure 2, objet 5, anomalie 4
+Meilleurs : La Veillée [réelle] 73.3%, La Veillée [V1 Cache-Cache] 70.0%, La Veillée [V2 + Papa] 63.3% · Pires : La Veillée [V1 Cache-Cache] 70.0%, La Veillée [V2 + Papa] 63.3%, La Veillée [V3 + Cinq minutes] 55.0%
+Coup final (victoires) : combat 77.7%, tour 19.7% · soi-même 0.0 · Déraison subie 8.1 · main pauvre (≤1 carte ≤3) 0.0%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Cra-Poiscail Grand-Gueule (2) | 1 | 0.2 | 0.2 | 98.3% | 100.0% | 0.5 | 0 | 76 | 62 | 14 |
+| Roi Cra-Poiscail (5) | 1 | 0.1 | 0.1 | 90.3% | 100.0% | 0.3 | 3 | 74 | 64 | 10 |
+| Le Seau (2) | 3 | 0.8 | 0.8 | 98.9% | 53.3% | 0.0 | 0 | 69 | 59 | 10 |
+| P'tite Fesse (1) | 3 | 0.7 | 0.7 | 97.1% | 84.4% | 1.4 | 2 | 68 | 62 | 6 |
+| Le Trône de Bouchon (3) | 2 | 0.4 | 0.4 | 100.0% | 100.0% | 0.0 | 0 | 69 | 63 | 6 |
+| Cra-Poiscail Porte-Étendard (3) | 2 | 0.7 | 0.6 | 96.8% | 97.4% | 0.3 | 6 | 68 | 62 | 5 |
+| P'tite Fesse, Grand Rêve (2) | 2 | 0.6 | 0.5 | 79.3% | 97.7% | 0.5 | 4 | 67 | 63 | 4 |
+| Fesses en Avant ! (3) | 3 | 0.9 | 0.6 | 71.3% | 92.5% | 0.0 | 0 | 66 | 63 | 3 |
+| Cra-Poiscail Sauteur (2) | 3 | 0.6 | 0.5 | 82.5% | 91.5% | 0.6 | 3 | 66 | 65 | 2 |
+| Banc de Cra-Poiscail (3) | 3 | 0.8 | 0.7 | 91.1% | 96.5% | 1.7 | 12 | 65 | 65 | 0 |
+| Cra-Poiscail Chef de Banc (3) | 3 | 0.9 | 0.8 | 88.3% | 97.4% | 1.0 | 4 | 65 | 66 | -1 |
+| Cra-Poiscail Ramasseur (2) | 3 | 0.8 | 0.8 | 100.0% | 100.0% | 1.2 | 4 | 64 | 67 | -3 |
+| Cra-Poiscail Messager (1) | 3 | 0.8 | 0.7 | 89.6% | 86.0% | 2.0 | 1 | 63 | 70 | -7 |
+| Faire l'Inventaire (2) | 2 | 0.5 | 0.4 | 71.9% | 94.1% | 0.0 | 0 | 60 | 70 | -10 |
+| Le Grand Saut (5) | 1 | 0.3 | 0.2 | 93.5% | 100.0% | 0.0 | 0 | 58 | 68 | -10 |
+| Cra-Poiscail des Hautes-Eaux (2) | 3 | 0.9 | 0.8 | 85.5% | 97.5% | 1.6 | 13 | 60 | 77 | -17 |
+| Têtard-Fesse (1) | 2 | 0.6 | 0.5 | 91.4% | 89.0% | 0.7 | 10 | 57 | 75 | -17 |
+
+### Le Théâtre Englouti [TH2 Errant rappels payants] +cartes — 64.2% (lerrant) · 1-2:17 3-4:20 5:2 6+:1 · unités 28, objet 8, structure 4
+Meilleurs : La Veillée [réelle] 66.7%, La Veillée [V1 Cache-Cache] 65.0%, La Veillée [V2 + Papa] 65.0% · Pires : La Veillée [V1 Cache-Cache] 65.0%, La Veillée [V2 + Papa] 65.0%, La Veillée [V3 + Cinq minutes] 60.0%
+Coup final (victoires) : tour 11.7%, combat 88.3% · soi-même 0.1 · Déraison subie 9.7 · main pauvre (≤1 carte ≤3) 0.0%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Changement de rôle ! (2) | 2 | 0.5 | 0.5 | 84.7% | 100.0% | 0.0 | 0 | 72 | 57 | 14 |
+| Le Régisseur des Profondeurs (7) | 1 | 0.3 | 0.3 | 93.8% | 100.0% | 2.5 | 12 | 74 | 61 | 13 |
+| Il Dottore des Noyés (4) | 2 | 0.6 | 0.5 | 91.0% | 100.0% | 1.4 | 12 | 69 | 61 | 8 |
+| Il Capitano Naufragé (4) | 2 | 0.7 | 0.7 | 100.0% | 100.0% | 2.9 | 17 | 66 | 62 | 5 |
+| Matelot du Sans-Nom (3) | 3 | 0.9 | 0.8 | 89.9% | 100.0% | 2.4 | 14 | 65 | 62 | 3 |
+| La Clochette du Rappel (3) | 3 | 0.8 | 0.4 | 53.3% | 100.0% | 0.0 | 0 | 65 | 63 | 2 |
+| Pulcinella Gonflé (2) | 3 | 1.2 | 1.1 | 91.8% | 100.0% | 1.8 | 10 | 64 | 64 | 1 |
+| Arlecchino des Profondeurs (2) | 3 | 0.9 | 0.7 | 75.8% | 98.6% | 0.8 | 4 | 64 | 65 | -1 |
+| Arlequin Raccommodeur (2) | 3 | 1.0 | 1.0 | 95.1% | 100.0% | 1.6 | 17 | 63 | 65 | -2 |
+| Pantalone Sans-Sou (3) | 3 | 0.8 | 0.7 | 80.0% | 100.0% | 0.9 | 16 | 63 | 66 | -2 |
+| La Prima Noyée (3) | 3 | 0.8 | 0.6 | 78.3% | 100.0% | 1.2 | 7 | 63 | 66 | -3 |
+| Le Masque Fendu (2) | 3 | 1.0 | 0.7 | 69.3% | 100.0% | 0.0 | 0 | 63 | 67 | -4 |
+| La Prima Noyée (5) | 1 | 0.4 | 0.3 | 75.0% | 100.0% | 0.7 | 1 | 58 | 68 | -11 |
+| Le Théâtre Englouti (4) | 1 | 0.1 | 0.0 | 24.1% | 100.0% | 0.0 | 0 | 54 | 66 | -12 |
+| Le Régisseur Sans Visage (5) | 1 | 0.3 | 0.3 | 100.0% | 100.0% | 0.4 | 4 | 55 | 67 | -12 |
+| Arlecchino, Celui derrière le Masque (4) | 1 | 0.2 | 0.2 | 98.2% | 100.0% | 0.6 | 9 | 54 | 67 | -13 |
+| Colombina aux Cent Visages (3) | 2 | 0.7 | 0.6 | 94.4% | 98.8% | 1.1 | 13 | 58 | 71 | -13 |
+| Les Coulisses Inondées (2) | 3 | 1.4 | 0.7 | 48.3% | 98.3% | 0.0 | 0 | 58 | 76 | -18 |
+
+### Après la Tempête [balai qui rapporte] — 60.0% (le-courlis) · 1-2:6 3-4:20 5:9 6+:5 · anomalie 6, objet 9, unités 25
+Meilleurs : La Veillée [V1 Cache-Cache] 66.7%, La Veillée [réelle] 63.3%, La Veillée [V2 + Papa] 55.0% · Pires : La Veillée [réelle] 63.3%, La Veillée [V2 + Papa] 55.0%, La Veillée [V3 + Cinq minutes] 55.0%
+Coup final (victoires) : combat 94.4%, navire 1.4% · soi-même 0.5 · Déraison subie 18.1 · main pauvre (≤1 carte ≤3) 21.7%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Chose des Hauts-Fonds (4) | 3 | 0.9 | 0.8 | 88.6% | 82.0% | 2.5 | 5 | 72 | 38 | 34 |
+| Baleine aux Cicatrices Blanches (5) | 3 | 1.0 | 0.6 | 65.5% | 98.3% | 4.5 | 39 | 64 | 51 | 14 |
+| Le Large se Fâche (6) | 1 | 0.3 | 0.3 | 83.1% | 97.5% | 0.0 | 0 | 68 | 56 | 11 |
+| Maître Verrier (4) | 2 | 0.6 | 0.3 | 53.0% | 98.0% | 1.3 | 11 | 65 | 55 | 10 |
+| Vieux Harponneur (5) | 2 | 0.6 | 0.5 | 86.0% | 100.0% | 1.9 | 21 | 65 | 55 | 10 |
+| Vague Scélérate (5) | 2 | 0.5 | 0.3 | 65.6% | 100.0% | 0.0 | 0 | 65 | 55 | 10 |
+| Un Peu de Répit (3) | 3 | 0.8 | 0.3 | 35.8% | 98.2% | 0.0 | 0 | 63 | 56 | 7 |
+| Trousse du Bord (4) | 1 | 0.2 | 0.1 | 22.6% | 94.7% | 0.0 | 0 | 64 | 59 | 5 |
+| Faire l'Inventaire (2) | 3 | 0.8 | 0.4 | 53.3% | 100.0% | 0.0 | 0 | 60 | 60 | 1 |
+| Coup de Harpon (4) | 2 | 0.5 | 0.5 | 87.8% | 100.0% | 0.0 | 0 | 60 | 60 | 0 |
+| Chirurgien du Bord (5) | 2 | 0.8 | 0.2 | 23.9% | 100.0% | 0.5 | 4 | 60 | 60 | 0 |
+| Crabe de Fer (3) | 3 | 0.9 | 0.7 | 75.8% | 93.5% | 1.2 | 6 | 59 | 62 | -3 |
+| L'Amiral sans Pavillon (7) | 1 | 0.4 | 0.3 | 86.2% | 100.0% | 2.5 | 13 | 57 | 61 | -4 |
+| Le Pont est Plein ! (3) | 2 | 0.7 | 0.3 | 47.2% | 97.8% | 0.0 | 0 | 58 | 63 | -6 |
+| Matelot du Sans-Nom (3) | 1 | 0.1 | 0.1 | 87.9% | 100.0% | 0.7 | 8 | 55 | 61 | -6 |
+| Léviathan Balafré (8) | 1 | 0.4 | 0.3 | 66.0% | 98.3% | 2.6 | 16 | 56 | 63 | -6 |
+| Le Brise-Ligne (6) | 1 | 0.3 | 0.1 | 51.5% | 100.0% | 0.6 | 6 | 53 | 63 | -10 |
+| Vigie aux Fissures (2) | 3 | 0.9 | 0.6 | 64.8% | 96.7% | 1.0 | 2 | 56 | 67 | -11 |
+| Carape Hus (3) | 3 | 1.0 | 0.7 | 73.4% | 95.3% | 1.5 | 5 | 56 | 69 | -13 |
+| Dernier Jour en Mer (7) | 1 | 0.3 | 0.3 | 93.0% | 100.0% | 0.0 | 0 | 45 | 66 | -21 |
+
+### Descente aux Abysses [descendre et rester] +cartes — 59.2% (lerrant) · 1-2:8 3-4:30 5:2 6+:0 · equipement 3, unités 37
+Meilleurs : La Veillée [réelle] 63.3%, La Veillée [V2 + Papa] 61.7%, La Veillée [V1 Cache-Cache] 60.0% · Pires : La Veillée [V2 + Papa] 61.7%, La Veillée [V1 Cache-Cache] 60.0%, La Veillée [V3 + Cinq minutes] 51.7%
+Coup final (victoires) : combat 84.5%, tour 14.1%, navire 1.4% · soi-même 0.0 · Déraison subie 7.9 · main pauvre (≤1 carte ≤3) 1.7%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Albatros de Mauvais Temps (4) | 2 | 0.6 | 0.5 | 91.0% | 100.0% | 2.9 | 5 | 67 | 50 | 17 |
+| Chose des Hauts-Fonds (4) | 3 | 0.6 | 0.6 | 100.0% | 100.0% | 1.3 | 3 | 66 | 53 | 14 |
+| Masse-Sombre (4) | 2 | 0.5 | 0.4 | 90.0% | 98.6% | 1.1 | 10 | 66 | 55 | 11 |
+| Poisson-Lanterne (1) | 2 | 0.5 | 0.5 | 87.8% | 95.8% | 0.3 | 3 | 63 | 55 | 8 |
+| Si, Raie Ponce (4) | 3 | 0.6 | 0.4 | 74.6% | 99.6% | 0.6 | 10 | 61 | 57 | 4 |
+| Cartographe du Large (2) | 3 | 0.7 | 0.5 | 78.0% | 95.6% | 0.6 | 7 | 61 | 58 | 3 |
+| Marin aux Yeux Rouges (3) | 2 | 0.7 | 0.6 | 97.5% | 100.0% | 2.8 | 20 | 60 | 58 | 2 |
+| Bat-Marin (4) | 2 | 0.5 | 0.4 | 82.6% | 98.9% | 1.3 | 7 | 60 | 59 | 2 |
+| Masse-Sombre (3) | 3 | 0.8 | 0.8 | 97.5% | 97.8% | 1.3 | 15 | 60 | 58 | 2 |
+| Veilleuse des Profondeurs (4) | 3 | 0.7 | 0.5 | 73.0% | 99.3% | 1.5 | 9 | 58 | 60 | -1 |
+| L'Œil Sous la Mer (5) | 1 | 0.3 | 0.0 | 14.7% | 99.0% | 0.0 | 0 | 57 | 60 | -3 |
+| Sondeur des Mauvaises Eaux (3) | 2 | 0.4 | 0.3 | 64.5% | 97.8% | 0.3 | 3 | 57 | 61 | -4 |
+| Revenante de la Fosse (5) | 1 | 0.3 | 0.1 | 41.4% | 98.8% | 0.4 | 2 | 56 | 61 | -5 |
+| Raie des Fosses (3) | 2 | 0.4 | 0.4 | 86.7% | 100.0% | 1.3 | 6 | 52 | 64 | -12 |
+| Bat-Marin (3) | 2 | 0.6 | 0.5 | 89.4% | 90.8% | 1.4 | 9 | 52 | 66 | -14 |
+| Lanterne aux Verres Noirs (2) | 3 | 0.7 | 0.2 | 31.3% | 97.7% | 0.0 | 0 | 51 | 71 | -20 |
+| Seconde au Visage Pâle (3) | 2 | 0.5 | 0.4 | 70.2% | 97.4% | 0.4 | 2 | 47 | 68 | -21 |
+| Anguille des Profondeurs (3) | 2 | 0.6 | 0.5 | 87.0% | 99.0% | 1.6 | 9 | 44 | 74 | -31 |
+
+### La Forteresse [F1 murs sans soins] +moteur — 58.8% (le-brise-lames) · 1-2:11 3-4:26 5:0 6+:3 · unités 18, structure 18, objet 4
+Meilleurs : La Veillée [réelle] 65.0%, La Veillée [V2 + Papa] 63.3%, La Veillée [V1 Cache-Cache] 61.7% · Pires : La Veillée [V2 + Papa] 63.3%, La Veillée [V1 Cache-Cache] 61.7%, La Veillée [V3 + Cinq minutes] 45.0%
+Coup final (victoires) : combat 72.3%, tour 27.7% · soi-même 0.8 · Déraison subie 12.5 · main pauvre (≤1 carte ≤3) 1.7%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Le Dernier Rempart (6) | 2 | 0.6 | 0.6 | 97.9% | 100.0% | 3.5 | 17 | 72 | 45 | 27 |
+| Crabe de Fer (3) | 3 | 0.9 | 0.9 | 99.1% | 97.5% | 1.8 | 15 | 66 | 43 | 22 |
+| L'Amiral sans Pavillon (7) | 1 | 0.2 | 0.2 | 100.0% | 100.0% | 2.5 | 6 | 71 | 55 | 16 |
+| Cormoran de Fer (3) | 3 | 0.9 | 0.9 | 95.9% | 91.7% | 1.9 | 14 | 62 | 52 | 10 |
+| Barge de Réparation (3) | 2 | 0.5 | 0.4 | 76.0% | 97.0% | 0.0 | 0 | 62 | 56 | 6 |
+| Carape Hus (3) | 3 | 1.1 | 1.0 | 96.1% | 96.6% | 3.2 | 29 | 60 | 55 | 6 |
+| Chose des Hauts-Fonds (4) | 3 | 0.8 | 0.8 | 98.5% | 94.4% | 4.0 | 17 | 60 | 57 | 3 |
+| Harpon à Ressort (4) | 2 | 0.7 | 0.5 | 65.7% | 93.6% | 0.1 | 0 | 56 | 63 | -6 |
+| Signal de Détresse (4) | 2 | 0.6 | 0.4 | 64.1% | 96.1% | 0.0 | 0 | 51 | 66 | -15 |
+| Carcasse Renversée (3) | 2 | 0.8 | 0.7 | 93.3% | 98.2% | 0.0 | 0 | 52 | 68 | -17 |
+| Brise-Vague de Fortune (2) | 3 | 1.0 | 0.8 | 86.9% | 100.0% | 0.0 | 0 | 53 | 72 | -19 |
+| Dernière Barricade (3) | 2 | 0.6 | 0.5 | 73.2% | 99.4% | 0.0 | 0 | 50 | 71 | -21 |
+| Mouette du Brise-Lames (2) | 3 | 0.8 | 0.8 | 99.5% | 100.0% | 1.3 | 4 | 49 | 71 | -22 |
+| Cylindre flottant (2) | 2 | 0.5 | 0.4 | 78.3% | 97.6% | 0.0 | 0 | 45 | 68 | -23 |
+| Cage de Flottaison (3) | 2 | 0.5 | 0.5 | 92.7% | 98.7% | 0.0 | 0 | 45 | 70 | -24 |
+| Cale Inondable (3) | 2 | 0.6 | 0.3 | 54.5% | 97.2% | 0.0 | 0 | 46 | 73 | -26 |
+| Caisses Arrimées (1) | 1 | 0.3 | 0.3 | 94.1% | 71.4% | 0.0 | 0 | 40 | 66 | -27 |
+| Cloison Étanche (2) | 2 | 0.6 | 0.6 | 94.8% | 98.4% | 0.0 | 0 | 45 | 74 | -29 |
+
+### Équipage de Verre [précon, étalon] — 49.2% (la-verriere) · 1-2:18 3-4:14 5:5 6+:3 · unités 30, objet 7, equipement 1, structure 1, anomalie 1
+Meilleurs : La Veillée [réelle] 53.3%, La Veillée [V1 Cache-Cache] 50.0%, La Veillée [V2 + Papa] 50.0% · Pires : La Veillée [V1 Cache-Cache] 50.0%, La Veillée [V2 + Papa] 50.0%, La Veillée [V3 + Cinq minutes] 43.3%
+Coup final (victoires) : combat 77.1%, tour 16.1%, navire 5.9% · soi-même 0.3 · Déraison subie 13.2 · main pauvre (≤1 carte ≤3) 3.3%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Bretteuse au Bord (4) | 3 | 0.8 | 0.6 | 80.3% | 100.0% | 2.9 | 8 | 58 | 35 | 23 |
+| Verrier de Pont (2) | 2 | 0.6 | 0.5 | 89.0% | 100.0% | 1.5 | 9 | 61 | 38 | 23 |
+| Matelot Fêlé (1) | 3 | 0.7 | 0.6 | 88.5% | 100.0% | 1.7 | 4 | 57 | 40 | 17 |
+| Bandages Humides (2) | 1 | 0.3 | 0.1 | 37.1% | 100.0% | 0.0 | 0 | 60 | 45 | 15 |
+| Coup de Harpon (4) | 2 | 0.5 | 0.5 | 92.1% | 100.0% | 0.0 | 0 | 56 | 43 | 13 |
+| Duelliste de Verre (2) | 2 | 0.5 | 0.4 | 85.5% | 100.0% | 1.2 | 7 | 56 | 44 | 12 |
+| Trinquer Trop Fort (2) | 1 | 0.2 | 0.1 | 33.3% | 100.0% | 0.0 | 0 | 58 | 47 | 11 |
+| Bouclier Fendu (2) | 1 | 0.4 | 0.2 | 47.8% | 100.0% | 0.0 | 0 | 56 | 45 | 10 |
+| Canonnier Fêlé (3) | 2 | 0.6 | 0.6 | 96.4% | 95.2% | 1.9 | 5 | 53 | 45 | 8 |
+| Porte-Éclats (3) | 2 | 0.5 | 0.2 | 49.1% | 100.0% | 0.4 | 2 | 52 | 47 | 5 |
+| Éclat de Bouteille (1) | 2 | 0.5 | 0.4 | 75.4% | 100.0% | 0.0 | 0 | 49 | 49 | -0 |
+| Éclaireur Ébréché (1) | 3 | 0.8 | 0.7 | 88.9% | 83.3% | 1.4 | 4 | 49 | 50 | -1 |
+| Polisseuse des Fêlures (3) | 2 | 0.7 | 0.4 | 64.0% | 100.0% | 0.7 | 3 | 48 | 52 | -4 |
+| L'Amiral sans Pavillon (7) | 1 | 0.3 | 0.2 | 77.9% | 100.0% | 0.8 | 5 | 44 | 51 | -7 |
+| Maître Verrier (4) | 2 | 0.5 | 0.3 | 67.2% | 100.0% | 1.1 | 11 | 45 | 53 | -8 |
+| Encore Debout ? (2) | 1 | 0.2 | 0.2 | 77.8% | 100.0% | 0.0 | 0 | 43 | 51 | -8 |
+| Chirurgien du Bord (5) | 2 | 0.4 | 0.1 | 27.0% | 100.0% | 0.1 | 0 | 44 | 53 | -9 |
+| La Grande Fissure (5) | 2 | 0.7 | 0.6 | 88.0% | 100.0% | 1.9 | 16 | 45 | 54 | -9 |
+| Le Brise-Ligne (6) | 2 | 0.6 | 0.4 | 78.8% | 100.0% | 1.5 | 9 | 44 | 55 | -11 |
+| Vigie aux Fissures (2) | 2 | 0.4 | 0.3 | 77.4% | 100.0% | 0.5 | 8 | 39 | 56 | -18 |
+| Pont de Verre (3) | 1 | 0.3 | 0.0 | 17.5% | 100.0% | 0.0 | 0 | 33 | 55 | -21 |
+| Jusqu'à ce que ça casse (5) | 1 | 0.1 | 0.0 | 0.0% | 100.0% | 0.0 | 0 | 17 | 54 | -37 |
+
+### La Veillée [V3 + Cinq minutes] — 49.1% (la-religieuse) · 1-2:23 3-4:16 5:1 6+:0 · unités 28, equipement 3, objet 6, structure 3
+Meilleurs : Mineurs de Fond [pièges qui tirent] +cartes 73.3%, Épavistes [recyclage] +cartes 70.0%, Sentinelles Chromatiques [SC1 Courlis 4 Slots] 63.3% · Pires : Chevaliers du Grand Étang [CH1 Seau au lieu de Tournoi/Fourchette] 33.3%, Arsenal de Pont [Bris payant] 31.7%, Chasse au Gros [blessures bon marché] +cartes 21.7%
+Coup final (victoires) : combat 74.7%, effet 8.8%, tour 10.0% · soi-même 0.0 · Déraison subie 8.5 · main pauvre (≤1 carte ≤3) 0.0%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Cache-Cache (1) | 3 | 0.9 | 1.0 | 108.3% | 74.1% | 1.0 | 13 | 57 | 35 | 22 |
+| Encore cinq minutes (2) | 3 | 1.0 | 0.8 | 86.1% | 93.2% | 1.9 | 102 | 55 | 36 | 19 |
+| Papa est en mer (2) | 3 | 0.9 | 0.8 | 87.4% | 95.1% | 0.8 | 23 | 53 | 39 | 14 |
+| On avait dit tous ensemble (5) | 1 | 0.4 | 0.3 | 93.2% | 100.0% | 1.1 | 9 | 55 | 46 | 9 |
+| Maman revient (4) | 1 | 0.2 | 0.2 | 93.9% | 99.0% | 0.4 | 12 | 55 | 47 | 7 |
+| P'tit Bout (1) | 3 | 1.0 | 0.9 | 91.0% | 89.7% | 0.7 | 25 | 51 | 46 | 5 |
+| Promis, j'attends (2) | 2 | 0.7 | 0.6 | 85.4% | 93.7% | 0.9 | 33 | 51 | 47 | 4 |
+| Tout le monde à table (4) | 1 | 0.4 | 0.1 | 28.1% | 99.2% | 0.0 | 1 | 52 | 48 | 4 |
+| Le Goûter (2) | 3 | 0.9 | 0.5 | 56.3% | 99.1% | 0.2 | 4 | 50 | 47 | 3 |
+| Tu viens jouer ? (4) | 2 | 0.7 | 0.6 | 86.5% | 99.6% | 1.6 | 28 | 50 | 48 | 2 |
+| Tu m'avais promis (3) | 2 | 0.6 | 0.5 | 90.3% | 96.3% | 1.1 | 31 | 50 | 48 | 2 |
+| Doudou (1) | 3 | 1.0 | 0.5 | 47.3% | 92.3% | 0.0 | 0 | 50 | 48 | 2 |
+| La Marelle (3) | 2 | 0.5 | 0.2 | 42.9% | 98.8% | 0.0 | 0 | 50 | 48 | 2 |
+| Le Copain du dessous (3) | 3 | 1.0 | 0.8 | 80.3% | 98.1% | 1.2 | 51 | 49 | 48 | 1 |
+| On rentre bientôt (3) | 3 | 1.0 | 0.8 | 72.2% | 98.2% | 1.4 | 38 | 49 | 50 | -1 |
+| Maman revient (3) | 2 | 0.6 | 0.5 | 84.0% | 98.8% | 0.8 | 45 | 48 | 51 | -3 |
+| Journal de Bord Détrempé (2) | 1 | 0.2 | 0.2 | 67.0% | 100.0% | 0.0 | 1 | 47 | 50 | -3 |
+| La Petite Chanson (2) | 2 | 0.6 | 0.3 | 52.4% | 98.2% | 0.2 | 0 | 46 | 52 | -6 |
+
+### Cavalerie [peu mais lourdes] +moteur — 45.8% (le-goliath) · 1-2:11 3-4:20 5:6 6+:3 · unités 28, equipement 3, objet 9
+Meilleurs : La Veillée [réelle] 48.3%, La Veillée [V3 + Cinq minutes] 46.7%, La Veillée [V1 Cache-Cache] 45.0% · Pires : La Veillée [V3 + Cinq minutes] 46.7%, La Veillée [V1 Cache-Cache] 45.0%, La Veillée [V2 + Papa] 43.3%
+Coup final (victoires) : combat 77.3%, tour 14.5%, navire 6.4% · soi-même 0.2 · Déraison subie 15.6 · main pauvre (≤1 carte ≤3) 18.3%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Éclaireur à Cornes (3) | 3 | 0.7 | 0.6 | 95.6% | 100.0% | 2.7 | 11 | 59 | 34 | 25 |
+| Un Peu de Répit (3) | 2 | 0.4 | 0.1 | 12.4% | 100.0% | 0.0 | 0 | 59 | 39 | 20 |
+| La Bête qu'on n'attend plus (6) | 2 | 0.5 | 0.3 | 73.1% | 100.0% | 1.6 | 3 | 54 | 40 | 14 |
+| Selle de Guerre (2) | 3 | 0.7 | 0.6 | 81.8% | 100.0% | 0.0 | 0 | 52 | 39 | 13 |
+| Bête de Halage (2) | 3 | 0.6 | 0.6 | 94.8% | 100.0% | 1.2 | 15 | 52 | 40 | 12 |
+| Mufle au Fanion (4) | 3 | 0.7 | 0.5 | 74.0% | 100.0% | 0.7 | 6 | 48 | 43 | 6 |
+| L'Amiral sans Pavillon (7) | 1 | 0.2 | 0.2 | 96.4% | 100.0% | 1.9 | 11 | 48 | 45 | 3 |
+| Bête de Percée (4) | 2 | 0.5 | 0.2 | 46.0% | 100.0% | 0.6 | 5 | 45 | 46 | -1 |
+| Vieux Harponneur (5) | 1 | 0.3 | 0.2 | 69.0% | 100.0% | 0.5 | 5 | 44 | 47 | -3 |
+| Débusquer (2) | 2 | 0.5 | 0.3 | 55.8% | 99.2% | 0.0 | 0 | 43 | 48 | -5 |
+| Le Déserteur Gris (5) | 3 | 1.0 | 0.6 | 61.4% | 100.0% | 3.1 | 2 | 43 | 50 | -7 |
+| Coup de Harpon (4) | 2 | 0.4 | 0.4 | 97.0% | 100.0% | 0.0 | 0 | 39 | 50 | -11 |
+| Réparations d'Urgence (4) | 1 | 0.1 | 0.1 | 46.4% | 100.0% | 0.0 | 0 | 36 | 47 | -11 |
+| Monture de Brèche (2) | 3 | 0.7 | 0.6 | 85.5% | 100.0% | 1.1 | 8 | 41 | 54 | -14 |
+| Mange-Fer (5) | 1 | 0.2 | 0.2 | 92.5% | 100.0% | 0.9 | 8 | 33 | 49 | -16 |
+| Pas un Pas de Plus (3) | 2 | 0.6 | 0.6 | 93.0% | 100.0% | 0.0 | 0 | 38 | 54 | -17 |
+| Chargeur des Écueils (4) | 3 | 0.7 | 0.6 | 82.7% | 100.0% | 2.8 | 5 | 37 | 58 | -21 |
+| Vieille-Selle (5) | 1 | 0.4 | 0.2 | 47.7% | 100.0% | 0.6 | 1 | 29 | 55 | -26 |
+| Destrier du Ressac (3) | 2 | 0.4 | 0.4 | 91.9% | 100.0% | 0.7 | 5 | 22 | 60 | -38 |
+
+### La Veillée [V2 + Papa] — 42.4% (la-religieuse) · 1-2:23 3-4:16 5:1 6+:0 · unités 28, equipement 3, objet 6, structure 3
+Meilleurs : Sentinelles Chromatiques [SC1 Courlis 4 Slots] 63.3%, Épavistes [recyclage] +cartes 58.3%, Mineurs de Fond [pièges qui tirent] +cartes 56.7% · Pires : Arsenal de Pont [Bris payant] 28.3%, À bout de Raison [drain concentré] +cartes +moteur 26.7%, Chasse au Gros [blessures bon marché] +cartes 18.3%
+Coup final (victoires) : effet 9.3%, combat 73.4%, tour 10.9% · soi-même 0.0 · Déraison subie 8.6 · main pauvre (≤1 carte ≤3) 0.0%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| On avait dit tous ensemble (5) | 1 | 0.4 | 0.3 | 93.8% | 100.0% | 1.1 | 13 | 54 | 36 | 18 |
+| Cache-Cache (1) | 3 | 0.9 | 1.0 | 110.8% | 73.3% | 1.1 | 15 | 48 | 32 | 16 |
+| Encore cinq minutes (2) | 3 | 0.9 | 0.8 | 80.4% | 94.9% | 1.4 | 69 | 45 | 36 | 10 |
+| Maman revient (4) | 1 | 0.2 | 0.2 | 94.4% | 99.0% | 0.4 | 13 | 49 | 40 | 9 |
+| Papa est en mer (2) | 3 | 0.9 | 0.8 | 88.7% | 95.4% | 0.7 | 20 | 45 | 36 | 9 |
+| Tout le monde à table (4) | 1 | 0.4 | 0.1 | 29.3% | 98.9% | 0.0 | 1 | 47 | 39 | 8 |
+| Tu viens jouer ? (4) | 2 | 0.7 | 0.7 | 89.1% | 99.4% | 1.6 | 36 | 45 | 38 | 7 |
+| Le Copain du dessous (3) | 3 | 1.1 | 0.8 | 80.2% | 98.7% | 1.1 | 49 | 43 | 40 | 4 |
+| Le Goûter (2) | 3 | 0.9 | 0.5 | 56.0% | 97.9% | 0.2 | 2 | 44 | 41 | 3 |
+| Tu m'avais promis (3) | 2 | 0.6 | 0.5 | 91.3% | 96.2% | 1.0 | 24 | 44 | 41 | 3 |
+| On rentre bientôt (3) | 3 | 1.0 | 0.8 | 74.8% | 98.6% | 1.3 | 31 | 43 | 40 | 3 |
+| P'tit Bout (1) | 3 | 1.0 | 0.9 | 94.1% | 87.8% | 0.8 | 25 | 43 | 42 | 1 |
+| La Marelle (3) | 2 | 0.5 | 0.2 | 44.6% | 99.4% | 0.0 | 0 | 42 | 43 | -1 |
+| La Petite Chanson (2) | 2 | 0.6 | 0.3 | 53.8% | 98.4% | 0.2 | 1 | 42 | 43 | -1 |
+| Maman revient (3) | 2 | 0.6 | 0.5 | 85.7% | 98.2% | 0.7 | 28 | 42 | 43 | -1 |
+| Doudou (1) | 3 | 1.0 | 0.5 | 47.4% | 93.5% | 0.0 | 0 | 42 | 44 | -2 |
+| Promis, j'attends (2) | 2 | 0.7 | 0.6 | 86.8% | 94.4% | 0.9 | 29 | 41 | 44 | -3 |
+| Journal de Bord Détrempé (2) | 1 | 0.2 | 0.1 | 62.9% | 100.0% | 0.0 | 0 | 40 | 43 | -3 |
+
+### La Veillée [V1 Cache-Cache] — 40.7% (la-religieuse) · 1-2:23 3-4:16 5:1 6+:0 · unités 28, equipement 3, objet 6, structure 3
+Meilleurs : Sentinelles Chromatiques [SC1 Courlis 4 Slots] 63.3%, Épavistes [recyclage] +cartes 63.3%, Mineurs de Fond [pièges qui tirent] +cartes 60.0% · Pires : Arsenal de Pont [Bris payant] 25.0%, À bout de Raison [drain concentré] +cartes +moteur 25.0%, Chasse au Gros [blessures bon marché] +cartes 13.3%
+Coup final (victoires) : effet 8.0%, combat 74.9%, tour 9.4% · soi-même 0.0 · Déraison subie 8.1 · main pauvre (≤1 carte ≤3) 0.0%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Cache-Cache (1) | 3 | 0.9 | 1.0 | 112.9% | 74.4% | 1.2 | 21 | 48 | 28 | 19 |
+| On avait dit tous ensemble (5) | 1 | 0.4 | 0.3 | 93.1% | 100.0% | 1.0 | 15 | 52 | 34 | 18 |
+| Maman revient (4) | 1 | 0.2 | 0.2 | 95.0% | 98.0% | 0.4 | 18 | 49 | 38 | 11 |
+| Encore cinq minutes (2) | 3 | 0.9 | 0.8 | 83.1% | 93.8% | 1.4 | 82 | 43 | 35 | 8 |
+| Papa est en mer (2) | 3 | 0.9 | 0.6 | 69.8% | 95.6% | 0.5 | 20 | 42 | 36 | 6 |
+| La Petite Chanson (2) | 2 | 0.6 | 0.3 | 53.2% | 97.3% | 0.2 | 3 | 43 | 39 | 4 |
+| Tu viens jouer ? (4) | 2 | 0.7 | 0.7 | 89.1% | 99.8% | 1.4 | 18 | 42 | 38 | 4 |
+| Tu m'avais promis (3) | 2 | 0.6 | 0.5 | 90.6% | 96.7% | 1.0 | 22 | 43 | 39 | 4 |
+| Le Copain du dessous (3) | 3 | 1.0 | 0.8 | 80.8% | 98.8% | 1.0 | 34 | 42 | 38 | 4 |
+| Maman revient (3) | 2 | 0.6 | 0.6 | 88.2% | 98.3% | 0.7 | 23 | 42 | 39 | 4 |
+| Promis, j'attends (2) | 2 | 0.7 | 0.6 | 86.8% | 95.6% | 0.9 | 27 | 42 | 39 | 3 |
+| P'tit Bout (1) | 3 | 1.0 | 0.9 | 93.5% | 86.8% | 0.8 | 27 | 42 | 39 | 3 |
+| On rentre bientôt (3) | 3 | 1.0 | 0.7 | 75.0% | 98.9% | 1.2 | 31 | 41 | 39 | 2 |
+| Le Goûter (2) | 3 | 0.9 | 0.5 | 56.0% | 98.2% | 0.2 | 1 | 42 | 40 | 2 |
+| Tout le monde à table (4) | 1 | 0.4 | 0.1 | 28.8% | 99.2% | 0.0 | 1 | 42 | 40 | 2 |
+| Doudou (1) | 3 | 1.0 | 0.5 | 47.7% | 93.1% | 0.0 | 0 | 41 | 40 | 0 |
+| Journal de Bord Détrempé (2) | 1 | 0.2 | 0.1 | 61.0% | 100.0% | 0.0 | 0 | 41 | 41 | 0 |
+| La Marelle (3) | 2 | 0.5 | 0.2 | 43.2% | 99.6% | 0.0 | 0 | 40 | 41 | -0 |
+
+### La Veillée [réelle] — 39.7% (la-religieuse) · 1-2:23 3-4:16 5:1 6+:0 · unités 28, equipement 3, objet 6, structure 3
+Meilleurs : Sentinelles Chromatiques [SC1 Courlis 4 Slots] 63.3%, Épavistes [recyclage] +cartes 61.7%, Mineurs de Fond [pièges qui tirent] +cartes 61.7% · Pires : Arsenal de Pont [Bris payant] 25.0%, À bout de Raison [drain concentré] +cartes +moteur 21.7%, Chasse au Gros [blessures bon marché] +cartes 13.3%
+Coup final (victoires) : effet 7.9%, combat 75.1%, tour 10.4% · soi-même 0.0 · Déraison subie 8.1 · main pauvre (≤1 carte ≤3) 0.0%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Cache-Cache (1) | 3 | 0.9 | 1.0 | 112.2% | 71.1% | 1.1 | 17 | 46 | 29 | 16 |
+| On avait dit tous ensemble (5) | 1 | 0.4 | 0.3 | 92.8% | 100.0% | 1.0 | 12 | 50 | 34 | 16 |
+| Maman revient (4) | 1 | 0.2 | 0.2 | 93.5% | 99.0% | 0.4 | 21 | 46 | 38 | 9 |
+| Encore cinq minutes (2) | 3 | 1.0 | 0.8 | 82.6% | 93.9% | 1.4 | 75 | 42 | 34 | 8 |
+| Papa est en mer (2) | 3 | 0.9 | 0.6 | 72.1% | 95.5% | 0.5 | 20 | 42 | 34 | 7 |
+| La Petite Chanson (2) | 2 | 0.6 | 0.3 | 54.0% | 96.4% | 0.2 | 2 | 43 | 36 | 7 |
+| Promis, j'attends (2) | 2 | 0.7 | 0.6 | 87.0% | 94.1% | 1.0 | 31 | 42 | 36 | 6 |
+| Tu viens jouer ? (4) | 2 | 0.7 | 0.7 | 88.7% | 99.8% | 1.4 | 27 | 42 | 37 | 5 |
+| P'tit Bout (1) | 3 | 1.0 | 0.9 | 94.1% | 84.3% | 0.8 | 24 | 41 | 37 | 5 |
+| Maman revient (3) | 2 | 0.7 | 0.6 | 88.4% | 98.7% | 0.7 | 22 | 42 | 38 | 4 |
+| Tu m'avais promis (3) | 2 | 0.6 | 0.5 | 90.2% | 97.8% | 1.0 | 21 | 42 | 38 | 4 |
+| Tout le monde à table (4) | 1 | 0.4 | 0.1 | 27.6% | 98.7% | 0.0 | 2 | 42 | 38 | 3 |
+| On rentre bientôt (3) | 3 | 1.0 | 0.7 | 75.3% | 98.9% | 1.1 | 31 | 41 | 38 | 3 |
+| Journal de Bord Détrempé (2) | 1 | 0.2 | 0.1 | 62.6% | 100.0% | 0.0 | 0 | 42 | 39 | 3 |
+| Le Copain du dessous (3) | 3 | 1.0 | 0.8 | 81.1% | 99.4% | 1.0 | 29 | 40 | 38 | 2 |
+| Le Goûter (2) | 3 | 0.9 | 0.5 | 56.2% | 98.0% | 0.2 | 1 | 41 | 38 | 2 |
+| Doudou (1) | 3 | 1.0 | 0.5 | 47.3% | 92.2% | 0.0 | 0 | 40 | 39 | 1 |
+| La Marelle (3) | 2 | 0.6 | 0.2 | 44.1% | 99.4% | 0.0 | 0 | 40 | 39 | 1 |
+
+### Sentinelles Chromatiques [SC1 Courlis 4 Slots] — 36.7% (le-courlis) · 1-2:20 3-4:17 5:0 6+:3 · unités 28, objet 11, anomalie 1
+Meilleurs : La Veillée [réelle] 36.7%, La Veillée [V1 Cache-Cache] 36.7%, La Veillée [V2 + Papa] 36.7% · Pires : La Veillée [V1 Cache-Cache] 36.7%, La Veillée [V2 + Papa] 36.7%, La Veillée [V3 + Cinq minutes] 36.7%
+Coup final (victoires) : combat 90.9%, effet 4.5% · soi-même 0.1 · Déraison subie 8.6 · main pauvre (≤1 carte ≤3) 1.7%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Appel des Sentinelles (2) | 3 | 0.9 | 0.3 | 33.6% | 58.7% | 0.0 | 0 | 45 | 20 | 26 |
+| Rempart du Soleil (4) | 3 | 1.0 | 0.8 | 73.7% | 61.0% | 3.1 | 14 | 43 | 23 | 20 |
+| Journal de Bord Détrempé (2) | 2 | 0.5 | 0.5 | 98.2% | 100.0% | 0.0 | 0 | 45 | 30 | 15 |
+| Survivant de la Mousse (3) | 2 | 0.6 | 0.3 | 50.4% | 46.6% | 1.6 | 10 | 41 | 32 | 9 |
+| Briseur du Brasier (4) | 3 | 0.9 | 0.5 | 54.2% | 68.8% | 2.0 | 7 | 38 | 34 | 3 |
+| Héros de la Flamme (2) | 3 | 0.9 | 0.6 | 68.5% | 10.9% | 1.7 | 9 | 37 | 35 | 3 |
+| Veilleuse de l'Ombre (3) | 1 | 0.3 | 0.1 | 31.9% | 57.6% | 0.2 | 0 | 38 | 36 | 1 |
+| Le Géant Chromatique (8) | 1 | 0.3 | 0.1 | 43.8% | 92.3% | 1.1 | 8 | 37 | 37 | 0 |
+| Coup de Harpon (4) | 1 | 0.4 | 0.4 | 96.0% | 100.0% | 0.0 | 0 | 37 | 37 | -0 |
+| Stratège de l'Azur (4) | 2 | 0.5 | 0.1 | 26.1% | 64.8% | 0.6 | 0 | 36 | 38 | -2 |
+| Éclat de Bouteille (1) | 2 | 0.4 | 0.3 | 81.2% | 89.4% | 0.0 | 0 | 35 | 38 | -3 |
+| Porteur de Jade (2) | 2 | 0.5 | 0.3 | 54.5% | 46.8% | 1.3 | 7 | 33 | 40 | -7 |
+| Tacticien de l'Écume (2) | 2 | 0.5 | 0.3 | 59.8% | 29.7% | 1.1 | 7 | 33 | 39 | -7 |
+| Le Géant Chromatique (9) | 1 | 0.4 | 0.1 | 41.9% | 85.6% | 0.9 | 7 | 31 | 40 | -8 |
+| Rations du Matin Gris (2) | 3 | 1.0 | 0.3 | 33.6% | 54.3% | 0.0 | 0 | 34 | 42 | -8 |
+| Émissaire de Quartz (3) | 2 | 0.6 | 0.4 | 70.3% | 34.1% | 1.6 | 2 | 30 | 43 | -12 |
+| Oracle d'Améthyste (4) | 3 | 1.0 | 0.3 | 34.3% | 64.3% | 1.7 | 6 | 33 | 46 | -12 |
+| Gardienne de l'Éclat (2) | 3 | 0.8 | 0.6 | 69.7% | 47.5% | 1.4 | 3 | 30 | 46 | -17 |
+| Formation Prismatique (6) | 1 | 0.3 | 0.0 | 9.6% | 71.6% | 0.0 | 0 | 21 | 44 | -23 |
+
+### Épavistes [recyclage] +cartes — 36.7% (le-goliath) · 1-2:19 3-4:18 5:3 6+:0 · structure 10, objet 6, equipement 2, unités 22
+Meilleurs : La Veillée [V2 + Papa] 41.7%, La Veillée [réelle] 38.3%, La Veillée [V1 Cache-Cache] 36.7% · Pires : La Veillée [réelle] 38.3%, La Veillée [V1 Cache-Cache] 36.7%, La Veillée [V3 + Cinq minutes] 30.0%
+Coup final (victoires) : tour 15.9%, navire 5.7%, combat 78.4% · soi-même 0.0 · Déraison subie 9.6 · main pauvre (≤1 carte ≤3) 0.0%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Chose des Hauts-Fonds (4) | 3 | 1.0 | 1.0 | 98.3% | 100.0% | 2.1 | 5 | 43 | 18 | 25 |
+| Treuil Rouillé (1) | 2 | 0.8 | 0.3 | 36.5% | 87.6% | 0.0 | 0 | 44 | 25 | 18 |
+| Caisses Arrimées (1) | 3 | 0.9 | 1.0 | 105.4% | 91.2% | 0.2 | 0 | 41 | 27 | 13 |
+| Baleine aux Cicatrices Blanches (5) | 3 | 0.7 | 0.6 | 90.5% | 100.0% | 3.0 | 11 | 41 | 30 | 11 |
+| Levier de Lest (1) | 3 | 0.9 | 0.8 | 88.0% | 93.1% | 0.1 | 0 | 40 | 30 | 10 |
+| Matelot du Sans-Nom (3) | 3 | 1.0 | 1.0 | 95.9% | 100.0% | 3.0 | 18 | 39 | 32 | 7 |
+| Grappin de Récupération (2) | 2 | 0.5 | 0.3 | 73.0% | 99.6% | 0.0 | 0 | 40 | 34 | 6 |
+| Bernard-l'Ermite d'Acier (1) | 3 | 0.9 | 0.9 | 97.2% | 81.0% | 1.8 | 9 | 38 | 34 | 4 |
+| Charpentier des Épaves (3) | 3 | 0.9 | 0.7 | 83.2% | 100.0% | 1.5 | 13 | 36 | 38 | -2 |
+| Crabe de Fer (3) | 3 | 1.0 | 1.0 | 97.0% | 100.0% | 1.0 | 5 | 36 | 39 | -3 |
+| Plongeur des Épaves (2) | 2 | 0.6 | 0.5 | 90.4% | 100.0% | 0.5 | 5 | 35 | 38 | -4 |
+| Charpentière de Veille (2) | 2 | 0.7 | 0.7 | 96.6% | 100.0% | 0.5 | 3 | 35 | 39 | -5 |
+| Clous de Récupération (3) | 1 | 0.3 | 0.1 | 24.6% | 99.5% | 0.0 | 0 | 30 | 39 | -10 |
+| Caisse des Dernières Planches (3) | 2 | 0.5 | 0.3 | 56.9% | 99.7% | 0.0 | 0 | 31 | 42 | -11 |
+| Radeau de Fortune (1) | 2 | 0.6 | 0.6 | 97.1% | 97.6% | 0.1 | 0 | 31 | 42 | -11 |
+| Cage de Flottaison (3) | 2 | 0.6 | 0.4 | 69.9% | 100.0% | 0.0 | 0 | 30 | 44 | -14 |
+| Caisse des Dernières Planches (4) | 1 | 0.3 | 0.2 | 75.4% | 100.0% | 0.0 | 0 | 23 | 41 | -18 |
+
+### Mineurs de Fond [pièges qui tirent] +cartes — 35.8% (le-brise-lames) · 1-2:17 3-4:21 5:2 6+:0 · structure 18, equipement 2, objet 1, unités 19
+Meilleurs : La Veillée [V2 + Papa] 41.7%, La Veillée [V1 Cache-Cache] 40.0%, La Veillée [réelle] 38.3% · Pires : La Veillée [V1 Cache-Cache] 40.0%, La Veillée [réelle] 38.3%, La Veillée [V3 + Cinq minutes] 23.3%
+Coup final (victoires) : combat 88.4%, tour 11.6% · soi-même 0.2 · Déraison subie 9.8 · main pauvre (≤1 carte ≤3) 0.0%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Chose des Hauts-Fonds (4) | 3 | 1.1 | 1.1 | 99.3% | 100.0% | 2.0 | 3 | 41 | 16 | 25 |
+| Baleine aux Cicatrices Blanches (5) | 2 | 0.5 | 0.4 | 98.2% | 100.0% | 3.9 | 29 | 48 | 27 | 20 |
+| Crabe de Fer (3) | 3 | 1.0 | 0.9 | 97.4% | 94.3% | 0.9 | 1 | 41 | 24 | 17 |
+| Cylindre flottant (2) | 2 | 0.5 | 0.3 | 60.8% | 98.4% | 0.1 | 0 | 41 | 31 | 10 |
+| Cage de Flottaison (3) | 2 | 0.8 | 0.7 | 84.1% | 100.0% | 0.1 | 0 | 36 | 35 | 1 |
+| Bernard-l'Ermite d'Acier (1) | 3 | 1.0 | 1.0 | 95.0% | 36.4% | 1.7 | 10 | 36 | 35 | 1 |
+| Charpentier des Épaves (3) | 3 | 1.1 | 1.0 | 96.1% | 100.0% | 2.4 | 21 | 36 | 36 | 0 |
+| Charpentière de Veille (2) | 2 | 0.6 | 0.6 | 97.4% | 100.0% | 0.6 | 3 | 36 | 36 | 0 |
+| Chaîne de Travers (2) | 2 | 0.6 | 0.5 | 84.2% | 98.5% | 0.0 | 0 | 34 | 37 | -3 |
+| Clous de Récupération (3) | 1 | 0.2 | 0.1 | 38.9% | 94.0% | 0.0 | 0 | 33 | 37 | -3 |
+| Caisses Arrimées (1) | 3 | 0.7 | 0.7 | 98.3% | 57.1% | 0.1 | 0 | 34 | 39 | -5 |
+| Filet à la Dérive (2) | 3 | 0.9 | 0.7 | 75.1% | 100.0% | 0.1 | 0 | 34 | 40 | -6 |
+| Treuil Rouillé (1) | 2 | 0.8 | 0.6 | 80.7% | 91.5% | 0.0 | 0 | 33 | 41 | -8 |
+| Le Filet qui Respire (3) | 2 | 0.7 | 0.4 | 64.2% | 99.1% | 0.0 | 0 | 33 | 41 | -8 |
+| Matelot du Sans-Nom (3) | 3 | 1.1 | 1.1 | 100.0% | 100.0% | 3.0 | 9 | 33 | 45 | -12 |
+| Dernière Barricade (3) | 2 | 0.5 | 0.4 | 71.7% | 98.7% | 0.0 | 0 | 26 | 45 | -19 |
+| Pont Miné (3) | 2 | 0.6 | 0.3 | 48.7% | 99.8% | 0.0 | 0 | 24 | 48 | -23 |

@@ -210,7 +210,6 @@ const ETRANGETE_SOUS_MARINE: readonly string[] = [
   "le-regisseur-sans-visage", // Le Régisseur Sans Visage
   "la-clochette-du-rappel", // La Clochette du Rappel
   "le-theatre-englouti", // Le Théâtre Englouti
-  "les-coulisses-inondees", // Les Coulisses Inondées
   "changement-de-role", // Changement de rôle !
   "rappel-du-public", // Rappel du Public
   "le-rideau-se-leve", // Le Rideau se Lève
@@ -228,7 +227,6 @@ const ETRANGETE_SOUS_MARINE: readonly string[] = [
   "clous-de-recuperation",
   "etau-du-calfat",
   "sonde-des-courants-perdus",
-  "ce-que-la-maree-rend",
 ];
 
 /**
@@ -328,7 +326,6 @@ const NECESSAIRE_DU_MARIN: readonly string[] = [
   "filet-de-sauvetage",
   "le-pont-est-plein",
   "vague-scelerate",
-  "panique-sur-le-pont",
   "chacun-sa-place",
   "pas-tous-a-la-fois",
   "le-large-se-fache",
@@ -336,13 +333,11 @@ const NECESSAIRE_DU_MARIN: readonly string[] = [
   "mauvaise-main",
   "un-peu-de-repit",
   "dernieres-reserves",
-  "journal-de-bord",
   "fouille-de-la-cale",
   "harpon-a-ressort",
   "bouclier-decume",
   "signal-de-detresse",
   "corde-de-rappel",
-  "planche-de-fortune",
   "contre-harpon",
   "coup-de-harpon",
   "par-dessus-bord",
@@ -437,7 +432,6 @@ const ECLATS_EN_SELLE_POOL: readonly string[] = [
   "pierre-retrouvee",
   "transfert-de-pierre",
   "poste-chromatique",
-  "coffret-aux-cinq-pierres",
   "synchronisation",
   "les-couleurs-repondent",
   "formation-prismatique",

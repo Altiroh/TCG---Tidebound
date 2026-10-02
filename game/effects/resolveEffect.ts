@@ -14,6 +14,9 @@ import { countArchetypeUnits } from "@/game/cards/archetypes";
 import { auraContextOf, computeEffectiveStats } from "@/game/cards/stats";
 import { getShipDefinition } from "@/game/environment/shipData";
 import { forceTideJumpToAbysses, forceTideTransition, tickTide } from "@/game/environment/tide";
+import { applyForcedTideTransition } from "@/game/environment/tideTransition";
+import { recordGraveyardArrival } from "@/game/state/discard";
+import type { TideStateName } from "@/game/environment/types";
 import { isEligibleChosenUnit } from "@/game/effects/chosenTargets";
 import type { EffectAmount, EffectDefinition } from "@/game/effects/types";
 import type { EffectOrigin, GameEvent } from "@/game/events/types";
@@ -51,6 +54,16 @@ import {
  * références pendantes (Équipements attachés, capacités qui suivent une
  * instance) pointer sur une carte qui n'est plus en jeu.
  */
+/**
+ * Identifiant de l'exemplaire NEUF qu'un permanent renvoyé en main y
+ * devient (`returnPermanentToHand`). Exporté pour qu'un effet qui suit le
+ * renvoi puisse désigner cette carte — « une AUTRE Marionnette » — sans
+ * redeviner la convention.
+ */
+export function recalledInstanceId(boardInstanceId: string, turnNumber: number): string {
+  return `${boardInstanceId}:hand:${turnNumber}`;
+}
+
 function returnPermanentToHand(
   state: GameState,
   ownerId: PlayerId,
@@ -61,7 +74,7 @@ function returnPermanentToHand(
   if (!unit) return { state, events: [], returned: null };
 
   const fresh: CardInstance = {
-    instanceId: `${unit.instanceId}:hand:${state.turnNumber}`,
+    instanceId: recalledInstanceId(unit.instanceId, state.turnNumber),
     cardId: unit.cardId,
     ownerId: unit.ownerId,
     damageMarked: 0,
@@ -97,15 +110,35 @@ function returnPermanentToHand(
   return { state: nextState, events, returned: fresh };
 }
 
+/**
+ * Pose l'état de Marée FORCÉ par un effet, puis applique sur-le-champ le
+ * choc de transition (Abysses : Ancrage et Raison max ; sortie de Houle :
+ * MALADE retiré — `game/environment/tideTransition.ts`). Sans lui, une
+ * descente forcée en Abysses n'ôtait pas la Raison max que la sortie
+ * naturelle rendait ensuite.
+ */
+function withForcedTransition(
+  next: GameState,
+  previousTideState: TideStateName,
+  events: GameEvent[],
+  turnNumber: number
+): { state: GameState; events: GameEvent[] } {
+  const transition = applyForcedTideTransition(next, previousTideState, next.environment.tideState, turnNumber);
+  return { state: transition.state, events: [...events, ...transition.events] };
+}
+
 /** Une réduction de coût s'applique-t-elle à cette carte ? */
 export function discountApplies(
   discount: CostDiscount,
   def: CardDefinition,
   turnNumber: number,
   /** Unités déjà posées par le joueur ce tour-ci, celle en cours NON comprise. */
-  unitsPlayedThisTurn = 0
+  unitsPlayedThisTurn = 0,
+  /** Instance de la carte jouée : sert à `excludeInstanceIds` (« une AUTRE Marionnette »). */
+  instanceId?: string
 ): boolean {
   if (!discount.persistent && discount.uses <= 0) return false;
+  if (instanceId !== undefined && discount.excludeInstanceIds?.includes(instanceId)) return false;
   if (turnNumber > discount.expiresAfterTurn) return false;
   if (discount.subtype && def.subtype !== discount.subtype) return false;
   if (discount.cardTypes && !discount.cardTypes.includes(def.type)) return false;
@@ -220,6 +253,16 @@ function amountValue(
     const plateau = amount.of === "opponent" ? getOpponent(state, controllerId) : getPlayer(state, controllerId);
     const unites = plateau.board.filter((u) => UNIT_CARD_TYPES.includes(getCardDefinition(u.cardId).type)).length;
     return Math.max(0, unites - (amount.above ?? 0)) * (amount.per ?? 1);
+  }
+  if (amount.kind === "graveyardCount") {
+    const joueur = amount.of === "opponent" ? getOpponent(state, controllerId) : getPlayer(state, controllerId);
+    const cartes = joueur.graveyard.filter((c) => {
+      const def = getCardDefinition(c.cardId);
+      if (amount.subtype && def.subtype !== amount.subtype) return false;
+      return !amount.cardTypes || amount.cardTypes.includes(def.type);
+    }).length;
+    const brut = Math.floor(cartes / Math.max(1, amount.perCards ?? 1));
+    return amount.max === undefined ? brut : Math.min(amount.max, brut);
   }
   if (amount.kind === "freeSlots") {
     const joueur = getPlayer(state, controllerId);
@@ -643,6 +686,10 @@ export function resolveEffect(
     const controller = getPlayer(state, context.controllerId);
     if (controller.reason > effect.conditionControllerReasonAtMost) return { state, events };
   }
+  if (effect.conditionOpponentReasonAtMost !== undefined) {
+    const opponent = getOpponent(state, context.controllerId);
+    if (opponent.reason > effect.conditionOpponentReasonAtMost) return { state, events };
+  }
   if (effect.conditionBrokenFromHand !== undefined && effect.conditionBrokenFromHand !== Boolean(context.brokenFromHand)) {
     return { state, events };
   }
@@ -864,6 +911,23 @@ export function resolveEffect(
         state: { ...replacePlayer(state, { ...player, deck, hand }), pendingOceanJudgment },
         events,
       };
+    }
+
+    case "mill": {
+      const amount = amountValue(effect.amount, state, context.controllerId);
+      const player = resolveSinglePlayerTarget(state, effect, context) ?? getPlayer(state, context.controllerId);
+      const partent = player.deck.slice(0, Math.max(0, amount));
+      if (partent.length === 0) return { state, events };
+      let milled: PlayerState = {
+        ...player,
+        deck: player.deck.slice(partent.length),
+        graveyard: [...player.graveyard, ...partent],
+      };
+      for (const card of partent) {
+        milled = recordGraveyardArrival(milled, { cardId: card.cardId, turnNumber: context.turnNumber, fromZone: "deck" });
+        events.push({ ...base, type: "CARD_MOVED", instanceId: card.instanceId, fromZone: "deck", toZone: "graveyard", cardId: card.cardId, ownerId: player.id });
+      }
+      return { state: replacePlayer(state, milled), events };
     }
 
     case "discard": {
@@ -1231,8 +1295,8 @@ export function resolveEffect(
           tideOrientation: tick.tideOrientation,
           stateChanged: tick.stateChanged,
         });
-        return {
-          state: {
+        return withForcedTransition(
+          {
             ...nextState,
             environment: {
               ...nextState.environment,
@@ -1243,8 +1307,10 @@ export function resolveEffect(
               pendingTideModifiers: tick.pendingTideModifiers,
             },
           },
+          nextState.environment.tideState,
           events,
-        };
+          context.turnNumber
+        );
       }
       // Sinon, un état ne progresse jamais "immédiatement" via cet effet : la
       // durée reste au minimum à 1, l'avancée réelle se fait via le tick de
@@ -1300,9 +1366,9 @@ export function resolveEffect(
     case "tideForceRetreat": {
       // Simplification assumée : contrairement au tick de début de tour
       // (`resolveTideTurnStep`), cette transition forcée ne déclenche pas
-      // `onTideStateEntered` ni les vérifications "devient visible" — seuls
-      // l'état/la durée/l'orientation changent. À étendre si une carte
-      // future combine forçage ET réaction à l'entrée dans le nouvel état.
+      // `onTideStateEntered` ni les vérifications "devient visible". Le choc
+      // d'entrée/sortie (Abysses, Houle), lui, s'applique bien — cf.
+      // `withForcedTransition`.
       const tick = forceTideTransition(state.environment, effect.type === "tideForceAdvance" ? "avancer" : "reculer");
       events.push({
         ...base,
@@ -1312,8 +1378,8 @@ export function resolveEffect(
         tideOrientation: tick.tideOrientation,
         stateChanged: tick.stateChanged,
       });
-      return {
-        state: {
+      return withForcedTransition(
+        {
           ...state,
           environment: {
             ...state.environment,
@@ -1324,8 +1390,10 @@ export function resolveEffect(
             pendingTideModifiers: tick.pendingTideModifiers,
           },
         },
+        state.environment.tideState,
         events,
-      };
+        context.turnNumber
+      );
     }
 
     case "tideInvertOrientation": {
@@ -1385,8 +1453,8 @@ export function resolveEffect(
         tideOrientation: tick.tideOrientation,
         stateChanged: tick.stateChanged,
       });
-      return {
-        state: {
+      return withForcedTransition(
+        {
           ...state,
           environment: {
             ...state.environment,
@@ -1397,8 +1465,10 @@ export function resolveEffect(
             pendingTideModifiers: tick.pendingTideModifiers,
           },
         },
+        state.environment.tideState,
         events,
-      };
+        context.turnNumber
+      );
     }
 
     case "lockReasonGainUntilNextTurn": {
@@ -1529,8 +1599,12 @@ export function resolveEffect(
     }
 
     case "discountNextCards": {
-      const reduction = amountValue(effect.amount, state, context.controllerId);
-      if (reduction <= 0) return { state, events };
+      const reduction = effect.free ? 0 : amountValue(effect.amount, state, context.controllerId);
+      if (!effect.free && reduction <= 0) return { state, events };
+      // « une AUTRE Marionnette » : la cible désignée par le joueur — et
+      // l'exemplaire qu'elle est devenue si l'effet précédent l'a renvoyée
+      // en main — n'en profite pas.
+      const chosen = effect.filter?.excludeChosenTarget ? context.chosenTargetInstanceId : undefined;
 
       const player = getPlayer(state, context.controllerId);
       const discount: CostDiscount = {
@@ -1544,6 +1618,8 @@ export function resolveEffect(
         // La Mauvaise Réputation : la carte qui en profite « subit 1 dégât »
         // à son arrivée — porté par la réduction, qui sait laquelle c'est.
         ...(effect.arrivalDamage ? { arrivalDamage: effect.arrivalDamage, grantedBy: context.controllerId } : {}),
+        ...(effect.free ? { free: true } : {}),
+        ...(chosen ? { excludeInstanceIds: [chosen, recalledInstanceId(chosen, state.turnNumber)] } : {}),
       };
 
       return {

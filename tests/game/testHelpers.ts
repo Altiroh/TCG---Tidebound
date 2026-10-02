@@ -173,6 +173,7 @@ export const PRECONS_EN_ATTENTE_DE_RECONSTRUCTION: ReadonlySet<string> = new Set
   "epavistes",
   "a-bout-de-raison",
   "chasse-au-gros",
+  "apres-la-tempete",
 ]);
 
 /**

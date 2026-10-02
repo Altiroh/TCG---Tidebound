@@ -227,7 +227,6 @@ const THEATRE_ENGLOUTI_RARITY: Record<string, CardRarity> = {
   "arlecchino-des-profondeurs": "uncommon",
   "pantalone-sans-sou": "uncommon",
   "la-clochette-du-rappel": "uncommon",
-  "les-coulisses-inondees": "uncommon",
   "rappel-du-public": "uncommon",
   "colombina-aux-cent-visages": "rare",
   "il-capitano-naufrage": "rare",
@@ -284,7 +283,6 @@ const RAPIECER_LA_COQUE_RARITY: Record<string, CardRarity> = {
   "trappe-du-souffleur": "rare",
   "barge-de-reparation": "rare",
   "sonde-des-courants-perdus": "rare",
-  "ce-que-la-maree-rend": "rare",
 };
 
 /** Ids dont la rareté n'est pas encore validée par le design. */
@@ -347,7 +345,6 @@ const NECESSAIRE_DU_MARIN_RARITY: Record<string, CardRarity> = {
   // --- Anti-swarm / contrôle --------------------------------------------
   "le-pont-est-plein": "common",
   "vague-scelerate": "rare",
-  "panique-sur-le-pont": "rare",
   "pas-tous-a-la-fois": "rare",
   "chacun-sa-place": "epic",
   "le-large-se-fache": "epic",
@@ -357,14 +354,12 @@ const NECESSAIRE_DU_MARIN_RARITY: Record<string, CardRarity> = {
   "mauvaise-main": "common",
   "un-peu-de-repit": "common",
   "dernieres-reserves": "common",
-  "journal-de-bord": "uncommon",
   "fouille-de-la-cale": "uncommon",
 
   // --- Objets réactifs / défense ----------------------------------------
   "harpon-a-ressort": "uncommon",
   "bouclier-decume": "uncommon",
   "signal-de-detresse": "uncommon",
-  "planche-de-fortune": "uncommon",
   "contre-harpon": "uncommon",
   "corde-de-rappel": "rare",
 
@@ -475,7 +470,6 @@ const ECLATS_EN_SELLE_RARITY: Record<string, CardRarity> = {
   synchronisation: "uncommon",
   "les-couleurs-repondent": "uncommon",
   "bracelet-de-resonance": "rare",
-  "coffret-aux-cinq-pierres": "rare",
   "formation-prismatique": "epic",
   "le-geant-chromatique": "rare",
 };

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { GameState, PlayerAction } from "@/game";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
-import { fetchMatchCosmetics, fetchMatchView, submitMatchAction } from "@/features/online/actions";
+import { advanceBotMatch, fetchMatchCosmetics, fetchMatchView, submitMatchAction } from "@/features/online/actions";
 import { OnlineBoard } from "@/features/online/OnlineBoard";
 import { MatchCosmeticsProvider, type PlayerCosmetics } from "@/features/cosmetics/MatchCosmeticsProvider";
 import type { MatchRow } from "@/features/matches/matchStore";
@@ -15,9 +15,10 @@ import { createChannelRecoveryTracker, useResyncOnReturn } from "@/features/onli
 /**
  * Pause entre deux états successifs renvoyés par le serveur pour le tour du
  * bot — même rythme que la partie locale (`MatchBoard`), assez long pour voir
- * chaque pioche/pose/attaque se jouer avant l'action suivante.
+ * chaque pioche/pose/attaque se jouer avant l'action suivante. Longtemps
+ * 1,1 s : un tour du bot se regardait plus qu'il ne se jouait.
  */
-const BOT_FRAME_DELAY_MS = 1100;
+const BOT_FRAME_DELAY_MS = 550;
 
 /** Intervalle des relances tant qu'une échéance passée n'a pas encore été constatée par le serveur. */
 const DEADLINE_RETRY_MS = 5_000;
@@ -225,7 +226,7 @@ export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: On
         break;
       }
 
-      const { match: updated, frames } = result.data;
+      const { match: updated, frames, botToMove } = result.data;
       const views = unpackFrames(frames);
       shownVersion.current = updated.state_version;
       setMatch(updated);
@@ -235,23 +236,33 @@ export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: On
       // serveur maintenant le ferait disparaître un instant. Sa propre
       // réponse fera foi.
       const nextIsPredicted = queue.current[0]?.predicted ?? false;
-      if (first && !(nextIsPredicted && botFrames.length === 0)) showView(first);
+      if (first && !(nextIsPredicted && botFrames.length === 0 && !botToMove)) showView(first);
 
-      if (botFrames.length > 0) {
-        // Tour du bot : rejoue chaque état intermédiaire avec un délai. La
-        // promesse ne se résout qu'à la fin du rejeu, pour que l'activation
-        // enchaînée de plusieurs réactions n'envoie jamais la suivante
-        // pendant le rejeu.
-        await new Promise<void>((resolve) => {
-          botFrames.forEach((frame, index) => {
-            const timer = setTimeout(() => {
-              showView(frame);
-              if (index === botFrames.length - 1) resolve();
-            }, BOT_FRAME_DELAY_MS * (index + 1));
-            timers.current.push(timer);
-          });
-        });
+      // Tour du bot : chaque état intermédiaire est rejoué à son rythme
+      // (`paceFrames`). Les tranches suivantes (`advanceBotMatch`) sont
+      // demandées PENDANT ce rejeu : le bot réfléchit à la suite pendant
+      // qu'on regarde ce qu'il vient de jouer. La promesse du coup ne se
+      // résout qu'à la fin du rejeu, pour que l'activation enchaînée de
+      // plusieurs réactions n'envoie jamais la suivante pendant celui-ci.
+      const replay = paceFrames();
+      replay.enqueue(botFrames);
+      let botStillToMove = botToMove;
+      while (botStillToMove) {
+        const slice = await advanceBotMatch(matchId).catch(() => ({ ok: false as const, error: "Le bot n'a pas pu jouer, réessaie.", data: undefined }));
+        if (!slice.ok || !slice.data) {
+          // La lecture de la table termine le tour du bot côté serveur
+          // (`settleExpiredDeadlines`) : on montre ce qui est arrivé, puis l'état final.
+          await replay.finished();
+          setError(slice.error ?? "Le bot n'a pas pu jouer.");
+          await refresh();
+          break;
+        }
+        shownVersion.current = slice.data.match.state_version;
+        setMatch(slice.data.match);
+        replay.enqueue(unpackFrames(slice.data.frames));
+        botStillToMove = slice.data.botToMove;
       }
+      await replay.finished();
 
       item.resolve();
     }
@@ -262,6 +273,34 @@ export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: On
       resyncAfterBusy.current = false;
       await refresh();
     }
+  }
+
+  /**
+   * Rejeu cadencé des états du bot : chacun s'affiche au plus tôt
+   * `BOT_FRAME_DELAY_MS` après le précédent. Une tranche arrivée en retard
+   * s'affiche dès son arrivée — jamais d'attente ajoutée à la réflexion.
+   */
+  function paceFrames() {
+    let lastShownAt = performance.now();
+    const shown: Promise<void>[] = [];
+    return {
+      enqueue(frames: GameState[]) {
+        for (const frame of frames) {
+          const at = Math.max(lastShownAt + BOT_FRAME_DELAY_MS, performance.now());
+          lastShownAt = at;
+          shown.push(
+            new Promise<void>((resolve) => {
+              const timer = setTimeout(() => {
+                showView(frame);
+                resolve();
+              }, at - performance.now());
+              timers.current.push(timer);
+            })
+          );
+        }
+      },
+      finished: () => Promise.all(shown).then(() => undefined),
+    };
   }
 
   if (match.status === "abandoned") {

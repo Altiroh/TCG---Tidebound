@@ -92,6 +92,22 @@ export interface PlayerState {
    */
   oncePerGameUses?: Record<string, number>;
   /**
+   * Raison PERDUE depuis le début du tour de table en cours (dépensée ou
+   * retirée par un effet), tenue par `game/state/reasonDepletion.ts` :
+   * c'est ce que rend « Cap sûr » (L'Errant). Remise à zéro dès que le
+   * numéro de tour change.
+   */
+  reasonLostThisTurn?: { turnNumber: number; amount: number };
+  /**
+   * NOMS des Objets Brisés par ce joueur pendant le tour de table
+   * `turnNumber` (`game/actions/breakObject.ts`). Daté plutôt que remis à
+   * zéro, comme `reasonLostThisTurn`. Lu par
+   * `CardDefinition.breakOncePerTurnByName` — « une seule carte nommée
+   * Changement de rôle ! peut être Brisée par tour » : par NOM, pour que
+   * plusieurs exemplaires ne s'enchaînent pas.
+   */
+  objectsBrokenThisTurn?: { turnNumber: number; names: string[] };
+  /**
    * Protections de destruction en cours (« vos Structures ne peuvent pas
    * être détruites par des effets environnementaux jusqu'à la fin de ce
    * tour », Brise-Lames — Tenir la ligne).
@@ -221,6 +237,19 @@ export interface CostDiscount {
   grantedBy?: PlayerId;
   /** Tour au-delà duquel la réduction est perdue (« ce tour »). */
   expiresAfterTurn: number;
+  /**
+   * La carte qui en profite se joue SANS payer son coût de Raison
+   * (Changement de rôle !, « vous pouvez jouer une autre Marionnette […]
+   * sans payer son coût de Raison »). Contrairement à une réduction, la
+   * gratuité ignore le plancher de 1 des réductions et toute majoration :
+   * le coût payé est 0. `amount` est alors sans effet.
+   */
+  free?: boolean;
+  /**
+   * Cartes (par instance) qui n'en profitent pas : « une AUTRE
+   * Marionnette » exclut celle que l'effet vient de renvoyer en main.
+   */
+  excludeInstanceIds?: string[];
 }
 
 /**

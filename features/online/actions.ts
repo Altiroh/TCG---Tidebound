@@ -5,6 +5,7 @@ import { createGameState, type PlayerAction } from "@/game";
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import { createWaitingMatch, deckRejection } from "@/features/online/waitingMatch";
 import {
+  advanceBot,
   loadSnapshot,
   settleExpiredDeadlines,
   submitAction,
@@ -114,8 +115,8 @@ export async function fetchMatchView(
   // l'adversaire a laissé filer son délai, la partie avance ICI, sans que
   // le navigateur n'ait rien déclaré. C'est ce qui permet au joueur présent
   // de sortir d'une table que l'autre a quittée.
-  const settled = await settleExpiredDeadlines(matchId, user.id);
-  const snapshot = settled ?? (await loadSnapshot(matchId, user.id));
+  // Une seule lecture en base : le rattrapage rend la partie telle qu'elle est.
+  const snapshot = await settleExpiredDeadlines(matchId, user.id);
   if (!snapshot) return { ok: false, error: "Partie introuvable." };
   // Emballée comme les vues d'un coup : les decks masqués ne font pas le voyage (`matchFrames`).
   return { ok: true, data: { match: snapshot.match, frames: snapshot.view ? packFrames([snapshot.view]) : null } };
@@ -152,6 +153,22 @@ export async function submitMatchAction(matchId: string, action: PlayerAction): 
   } catch (error) {
     console.error("[submitMatchAction] Échec :", error);
     return { ok: false, error: "Coup non enregistré, réessaie." };
+  }
+}
+
+/**
+ * Partie contre bot : fait jouer au bot la tranche suivante de son tour
+ * (`advanceBot`). Appelée par l'écran tant que `botToMove` le demande,
+ * pendant qu'il rejoue ce qu'il a déjà reçu.
+ */
+export async function advanceBotMatch(matchId: string): Promise<ActionResult<MatchUpdate>> {
+  const user = await requireUser();
+  try {
+    const result = await advanceBot(matchId, user.id);
+    return result.ok ? { ok: true, data: result.data } : { ok: false, error: result.error };
+  } catch (error) {
+    console.error("[advanceBotMatch] Échec :", error);
+    return { ok: false, error: "Le bot n'a pas pu jouer, réessaie." };
   }
 }
 
@@ -215,8 +232,7 @@ export async function findResumableMatch(): Promise<ResumableMatch | null> {
     if (row.status === "active") {
       try {
         // Un délai échu peut avoir terminé la partie : on le constate avant de la proposer.
-        const settled = await settleExpiredDeadlines(row.id, user.id);
-        const snapshot = settled ?? (await loadSnapshot(row.id, user.id));
+        const snapshot = await settleExpiredDeadlines(row.id, user.id);
         game = snapshot?.view ? snapshot.view.status : "missing";
       } catch (readError) {
         console.error(`[findResumableMatch] État illisible pour ${row.id} :`, readError);

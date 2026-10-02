@@ -19,9 +19,21 @@ function visible(view: GameState, playerId: string) {
   }));
 }
 
+/**
+ * Le serveur a ouvert une fenêtre (réaction, choix, sauvetage) que la vue ne
+ * pouvait pas voir venir : la carte qui la déclenche est cachée (main
+ * adverse). Aucune prédiction honnête ne peut la deviner sans révéler ce
+ * que l'adversaire tient ; la vue du serveur remplace alors l'affichage.
+ */
+function openedHiddenWindow(state: GameState): boolean {
+  return Boolean(state.pendingReaction || state.pendingChoice || state.pendingDestruction);
+}
+
 describe("predictView", () => {
   it("affiche, pour chaque coup prédit, exactement ce que le serveur renverra", () => {
     let predictedCount = 0;
+    let phaseChangesPredicted = 0;
+    let hiddenWindows = 0;
     for (let deckIndex = 0; deckIndex < PLAYABLE_DECKS.length - 1; deckIndex++) {
       let state = createGameState({
         gameId: `predict-${deckIndex}`,
@@ -39,7 +51,37 @@ describe("predictView", () => {
           expect(server.ok).toBe(true);
           if (!server.ok) continue;
           predictedCount++;
+          if (openedHiddenWindow(server.state)) {
+            hiddenWindows++;
+            continue;
+          }
           expect(visible(prediction, actor)).toEqual(visible(toPlayerView(server.state, actor), actor));
+        }
+        // Poser réellement ce qui peut l'être : sans unité sur la table, il n'y aurait rien à attaquer.
+        for (let posed = 0; posed < 3; posed++) {
+          const play = enumerateCandidateActions(state, actor).find((action) => action.type === "playCard");
+          const played = play ? dispatch(state, play) : null;
+          if (!played?.ok || played.state.pendingReaction || played.state.pendingChoice) break;
+          state = played.state;
+        }
+        // Puis le combat : les attaques et le passage de phase se prédisent aussi.
+        const toCombat = dispatch(state, { type: "advancePhase", playerId: actor });
+        if (toCombat.ok && toCombat.state.phase === "combatPhase" && !toCombat.state.pendingReaction && !toCombat.state.pendingChoice) {
+          const combat = toCombat.state;
+          for (const action of enumerateCandidateActions(combat, actor)) {
+            const prediction = predictView(toPlayerView(combat, actor), action);
+            if (!prediction) continue;
+            const server = dispatch(combat, action);
+            expect(server.ok).toBe(true);
+            if (!server.ok) continue;
+            if (action.type === "advancePhase") phaseChangesPredicted++;
+            predictedCount++;
+            if (openedHiddenWindow(server.state)) {
+              hiddenWindows++;
+              continue;
+            }
+            expect(visible(prediction, actor)).toEqual(visible(toPlayerView(server.state, actor), actor));
+          }
         }
         const ended = dispatch(state, { type: "endTurn", playerId: actor });
         if (!ended.ok) break;
@@ -47,6 +89,12 @@ describe("predictView", () => {
       }
     }
     expect(predictedCount).toBeGreaterThan(0);
+    expect(phaseChangesPredicted).toBeGreaterThan(0);
+    // Tout écart restant est expliqué par une fenêtre que le serveur a
+    // ouverte depuis une carte cachée (`openedHiddenWindow`) : la prédiction
+    // ne se trompe jamais EN SILENCE. Ces fenêtres-là existent (réactions
+    // depuis la main adverse), et c'est la réponse du serveur qui fait foi.
+    expect(hiddenWindows).toBeLessThan(predictedCount);
   });
 
   it("ne prédit jamais un changement de tour", () => {

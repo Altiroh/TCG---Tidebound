@@ -25,6 +25,7 @@ export type TriggerType =
   | "onReturnedToHand" // un permanent quitte le board pour la main de son contrôleur (Lot 11 — Théâtre Englouti)
   | "onDiscarded" // CETTE carte vient d'être défaussée de la main (Lot 13) — elle n'a jamais été sur le plateau, sa capacité est lue sur sa définition
   | "onCardDiscardedFromHand" // une carte rejoint le Cimetière DEPUIS UNE MAIN : déclencheur d'OBSERVATEUR, filtré par `triggeredBy` (Lot 13)
+  | "onCardPutIntoGraveyard" // une carte rejoint le Cimetière depuis une MAIN ou une PIOCHE (défausse, meulage) — jamais une mort, que `onDeath` couvre : déclencheur d'OBSERVATEUR, filtré par `triggeredBy` (Test Verrier, 30/09/2026 : la Veillée doit pouvoir vider sa pioche pour nourrir ses récompenses)
   | "onCardRecoveredFromGraveyard" // une carte remonte du Cimetière vers la main : déclencheur d'OBSERVATEUR (Lot 13 — Maman revient)
   | "onIncomingDirectAttack" // le Navire du contrôleur va subir des dégâts directs d'une attaque — fenêtre d'INTERCEPTION, ouverte AVANT tout calcul de dégâts (pièges : Cylindre flottant, Caisses Arrimées, Cage de Flottaison)
   | "onCombatVsGarde" // une unité du contrôleur (`sourceInstanceId`) va COMBATTRE une unité adverse ayant Garde — qu'elle attaque la Garde ou que la Garde l'attaque. Ouverte à la déclaration de l'attaque, dans la fenêtre d'interception, pour le camp concerné (Lot 15 — Ouvrez la Ligne !)
@@ -70,6 +71,8 @@ export interface TriggerEvent {
   damage?: Array<{ cause?: import("@/game/cards/types").DestructionCause; byPlayerId?: string }>;
   /** `onCardDiscardedFromHand` : la défausse vient d'un effet de carte, pas de la limite de main. */
   discardByEffect?: boolean;
+  /** `onCardPutIntoGraveyard` : d'où vient la carte — défaussée de la main, ou meulée depuis la pioche. */
+  fromZone?: "hand" | "deck";
 }
 
 /**
@@ -89,6 +92,12 @@ export interface PendingReactionCandidate {
   abilityIndex: number;
   /** Coût en Raison à payer pour activer cette capacité (0 si aucun). */
   reasonCost: number;
+  /**
+   * `true` : l'Objet réactif est encore EN MAIN (règle du 29/09/2026,
+   * `isBreakReaction`). L'activer le Brise depuis la main — `reasonCost`
+   * inclut alors `handBreakCost` — sans qu'il ait jamais pris de Slot.
+   */
+  fromHand?: boolean;
   /**
    * Coût en ANCRAGE (0 si aucun). Contrairement au coût en Raison, il
    * écarte la capacité quand le joueur ne peut pas le payer en restant en

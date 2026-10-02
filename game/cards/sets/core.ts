@@ -1071,8 +1071,23 @@ export const CORE_SET: CardDefinition[] = [
     cost: 1,
     attack: 1,
     health: 3,
-    text: "Tant que vous contrôlez une Structure visible, il gagne +1 Résistance.",
+    // Standard Verrier (30/09/2026, validé par le propriétaire) : « un piège
+    // part, la troupe grandit ». Coût et statistiques inchangés.
+    text:
+      "Tant que vous contrôlez une Structure visible, il gagne +1 Résistance. La première fois à chaque tour qu'une " +
+      "Structure que vous contrôlez est détruite ou Sabordée, il gagne +1 Puissance.",
     selfBuffWhileControllingVisibleStructure: { healthAmount: 1 },
+    abilities: [
+      {
+        trigger: "onDeath",
+        triggeredBy: { cardTypes: ["structure"] },
+        oncePerTurnKey: "bernardStructurePartie",
+        description: "Une de vos Structures part : +1 Puissance, conservée.",
+        effects: [
+          { type: "buff", target: { kind: "self" }, attackAmount: { kind: "flat", value: 1 }, healthAmount: { kind: "flat", value: 0 }, permanent: true },
+        ],
+      },
+    ],
   },
   {
     id: "poisson-scie-gris",
@@ -1248,8 +1263,23 @@ export const CORE_SET: CardDefinition[] = [
     health: 5,
     durationTurns: 4,
     visibleDuringTide: ["houle", "tempete", "abysses"],
-    text: "Durée : 4 tours. Visible pendant Houle, Tempête et Abysses. Tant qu'elle est visible, votre Navire ne peut pas subir plus de 4 dégâts d'une même attaque.",
-    capDirectShipDamageWhileVisible: 4,
+    // Standard Verrier (30/09/2026, validé par le propriétaire) : la Forteresse
+    // « encaisse, grandit, frappe ». Coût et statistiques inchangés.
+    text:
+      "Durée : 4 tours. Visible pendant Houle, Tempête et Abysses. Si elle est visible, la première fois à chaque " +
+      "tour qu'une de vos unités survit à des dégâts, cette unité gagne +1 Puissance.",
+    abilities: [
+      {
+        trigger: "onSurvivedDamage",
+        triggeredBy: { cardTypes: ["marin", "creature"] },
+        condition: { selfVisible: true },
+        oncePerTurnKey: "carcasseRenversee",
+        description: "Une de vos unités tient bon derrière la Carcasse : +1 Puissance, conservée.",
+        effects: [
+          { type: "buff", target: { kind: "triggerSource" }, attackAmount: { kind: "flat", value: 1 }, healthAmount: { kind: "flat", value: 0 }, permanent: true },
+        ],
+      },
+    ],
   },
   {
     // Version STANDARD (Notion "Catalogue de cartes", Lot 06) — coexiste avec la variante ABYSSALE ci-dessous.
@@ -1581,7 +1611,16 @@ export const CORE_SET: CardDefinition[] = [
     cost: 1,
     attack: 1,
     health: 1,
-    // Volontairement sans effet : petite unité de base de l'archétype.
+    // Standard Verrier (01/10/2026, validé par le propriétaire) : le banc
+    // grossit — sa perte relance une arrivée. Coût et statistiques inchangés.
+    text: "Quand il est détruit, invoquez 1 Péon Cra-Poiscail 1 / 1.",
+    abilities: [
+      {
+        trigger: "onDeath",
+        description: "Détruit : invoquez 1 Péon Cra-Poiscail.",
+        effects: [{ type: "summon", target: { kind: "controllerPlayer" }, cardId: "peon-cra-poiscail" }],
+      },
+    ],
   },
   {
     id: "ptite-fesse",
@@ -1765,15 +1804,19 @@ export const CORE_SET: CardDefinition[] = [
     cost: 3,
     attack: 2,
     health: 3,
+    // Standard Verrier (01/10/2026, validé par le propriétaire) : le banc
+    // grossit — le gain est conservé. Le texte nomme désormais l'arrivante,
+    // que le code renforçait déjà (l'ancien texte nommait le Chef lui-même).
+    // Coût et statistiques inchangés.
     text:
       "La première fois à chaque tour qu'une autre unité Cra-Poiscail que vous contrôlez arrive en jeu, " +
-      "Cra-Poiscail Chef de Banc gagne +1 / +1 jusqu'à la fin du tour.",
+      "elle gagne +1 / +1.",
     abilities: [
       {
         trigger: "onEnterPlay",
         triggeredBy: { archetype: "cra-poiscail" },
         oncePerTurnKey: "chefDeBancAllyEnter",
-        description: "Un autre Cra-Poiscail arrive : il gagne +1 / +1 jusqu'à la fin du tour.",
+        description: "Un autre Cra-Poiscail arrive : il gagne +1 / +1, conservé.",
         effects: [
           {
             type: "buff",
@@ -1781,7 +1824,7 @@ export const CORE_SET: CardDefinition[] = [
             target: { kind: "triggerSource" },
             attackAmount: { kind: "flat", value: 1 },
             healthAmount: { kind: "flat", value: 1 },
-            permanent: false,
+            permanent: true,
           },
         ],
       },
@@ -1796,7 +1839,9 @@ export const CORE_SET: CardDefinition[] = [
     cost: 2,
     attack: 2,
     health: 2,
-    text: "La première fois à chaque tour que vous Brisez un Objet, il gagne +1 / +1 jusqu'à la fin du tour.",
+    // Standard Verrier (01/10/2026, validé par le propriétaire) : le banc
+    // grossit — le gain est conservé. Coût et statistiques inchangés.
+    text: "La première fois à chaque tour que vous Brisez un Objet, il gagne +1 / +1.",
     abilities: [
       {
         trigger: "onObjectBroken",
@@ -1804,14 +1849,14 @@ export const CORE_SET: CardDefinition[] = [
         // contrôleur qui le brise (`sameController` par défaut).
         triggeredBy: {},
         oncePerTurnKey: "ramasseurObjectBroken",
-        description: "Vous Brisez un Objet : +1 / +1 jusqu'à la fin du tour.",
+        description: "Vous Brisez un Objet : +1 / +1, conservé.",
         effects: [
           {
             type: "buff",
             target: { kind: "self" },
             attackAmount: { kind: "flat", value: 1 },
             healthAmount: { kind: "flat", value: 1 },
-            permanent: false,
+            permanent: true,
           },
         ],
       },
@@ -2086,16 +2131,18 @@ export const CORE_SET: CardDefinition[] = [
     attack: 1,
     health: 2,
     maxCopies: 2,
+    // Standard Verrier (01/10/2026, validé par le propriétaire) : le banc
+    // grossit — le gain est conservé. Coût et statistiques inchangés.
     text:
       "La première fois à chaque tour qu'une autre unité Cra-Poiscail que vous contrôlez gagne de la Puissance, " +
-      "P'tite Fesse, Grand Rêve gagne +1 Puissance jusqu'à la fin du tour.",
+      "P'tite Fesse, Grand Rêve gagne +1 Puissance.",
     abilities: [
       {
         trigger: "onPowerGained",
         triggeredBy: { archetype: "cra-poiscail" },
         oncePerTurnKey: "grandReveAllyPowerGain",
-        description: "Un autre Cra-Poiscail gagne de la Puissance : +1 Puissance jusqu'à la fin du tour.",
-        effects: [{ type: "buff", target: { kind: "self" }, attackAmount: { kind: "flat", value: 1 } }],
+        description: "Un autre Cra-Poiscail gagne de la Puissance : +1 Puissance, conservée.",
+        effects: [{ type: "buff", target: { kind: "self" }, attackAmount: { kind: "flat", value: 1 }, permanent: true }],
       },
     ],
   },
@@ -2371,8 +2418,24 @@ export const CORE_SET: CardDefinition[] = [
     attack: 2,
     health: 3,
     maxCopies: 3,
-    text: "Quand il est détruit, vous pouvez choisir une Créature adverse : infligez-lui 1 dégât.",
+    // Test Verrier (30/09/2026) : l'effet joue AUSSI à l'arrivée. Mort
+    // seulement, Pulcinella n'avait rien à offrir au rappel du Théâtre —
+    // le rejouer ne rapportait rien. Mesuré sur 60 parties : Δ +16, le
+    // Théâtre de 39 % à 44 %. Validé par le propriétaire le 30/09/2026.
+    text: "À son arrivée et quand il est détruit, vous pouvez choisir une Créature adverse : infligez-lui 1 dégât.",
     abilities: [
+      {
+        trigger: "onEnterPlay",
+        mode: "optional",
+        description: "À son arrivée : 1 dégât à une créature ennemie.",
+        effects: [
+          {
+            type: "damage",
+            target: { kind: "chosenUnit", among: { opponentOnly: true, cardTypes: ["creature"] } },
+            amount: { kind: "flat", value: 1 },
+          },
+        ],
+      },
       {
         trigger: "onDeath",
         mode: "optional",
@@ -2649,31 +2712,6 @@ export const CORE_SET: CardDefinition[] = [
     // « 3 Marionnettes de noms différents » du lot initial est abandonnée).
   },
   {
-    id: "les-coulisses-inondees",
-    name: "Les Coulisses Inondées",
-    type: "structure",
-    subtype: MARIONNETTE,
-    setCode: THEATRE_ENGLOUTI,
-    cost: 2,
-    health: 3,
-    durationTurns: 3,
-    maxCopies: 3,
-    text:
-      "Durée : 3 tours. La première fois à chaque tour qu'une carte Marionnette que vous contrôlez revient dans " +
-      "votre main, la prochaine carte Marionnette que vous jouez ce tour coûte 1 de moins, minimum 1.",
-    abilities: [
-      {
-        trigger: "onReturnedToHand",
-        triggeredBy: { subtype: MARIONNETTE, excludeSelf: false },
-        oncePerTurnKey: "coulissesRecall",
-        description: "Première Marionnette revenue en main du tour : elle coûte 1 de moins à rejouer ce tour.",
-        effects: [
-          { type: "discountNextCards", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 }, filter: { subtype: MARIONNETTE } },
-        ],
-      },
-    ],
-  },
-  {
     id: "changement-de-role",
     name: "Changement de rôle !",
     type: "objet",
@@ -2681,14 +2719,25 @@ export const CORE_SET: CardDefinition[] = [
     setCode: THEATRE_ENGLOUTI,
     cost: 2,
     maxCopies: 3,
+    // REFONTE (décision du propriétaire, 01/10/2026) : une substitution de
+    // scène — une Marionnette sort, une AUTRE entre, gratuitement. L'ancien
+    // texte (renvoi + remise de 1) ne faisait que rendre la monnaie. Une
+    // seule par tour, par NOM : plusieurs exemplaires ne videraient pas la
+    // main gratuitement. Coût inchangé.
     text:
-      "Brisez cet Objet : renvoyez une unité Marionnette que vous contrôlez dans votre main. La prochaine unité " +
-      "Marionnette que vous jouez ce tour coûte 1 de moins, minimum 1.",
-    // Réduction abaissée de 2 à 1 par l'audit : Brisé depuis la main, il ne
-    // doit pas transformer un retour défensif en accélération explosive.
+      "Brisez cet Objet : renvoyez une unité Marionnette que vous contrôlez dans votre main. Vous pouvez jouer une " +
+      "autre Marionnette depuis votre main ce tour sans payer son coût de Raison. Une seule carte nommée " +
+      "Changement de rôle ! peut être Brisée par tour.",
+    breakOncePerTurnByName: true,
     onBreakEffects: [
       { type: "moveZone", toZone: "hand", target: { kind: "chosenUnit", among: { subtype: MARIONNETTE } } },
-      { type: "discountNextCards", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 }, filter: { subtype: MARIONNETTE } },
+      {
+        type: "discountNextCards",
+        target: { kind: "controllerPlayer" },
+        free: true,
+        // « une AUTRE Marionnette » : celle qui vient de sortir n'en profite pas.
+        filter: { subtype: MARIONNETTE, excludeChosenTarget: true },
+      },
     ],
   },
   {
@@ -3309,12 +3358,17 @@ export const CORE_SET: CardDefinition[] = [
     attack: 1,
     health: 4,
     keywords: ["garde"],
-    text: "Garde. Quand elle est détruite, récupérez 1 Raison.",
+    // Standard Verrier (30/09/2026, validé par le propriétaire) : la Forteresse
+    // « encaisse, grandit, frappe ». Coût et statistiques inchangés.
+    text: "Garde. La première fois à chaque tour qu'elle survit à des dégâts, elle gagne +1 Puissance.",
     abilities: [
       {
-        trigger: "onDeath",
-        description: "Elle est détruite : récupérez 1 Raison.",
-        effects: [{ type: "reasonGain", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } }],
+        trigger: "onSurvivedDamage",
+        oncePerTurnKey: "survieMouetteBriseLames",
+        description: "Elle tient bon : +1 Puissance, conservée.",
+        effects: [
+          { type: "buff", target: { kind: "self" }, attackAmount: { kind: "flat", value: 1 }, healthAmount: { kind: "flat", value: 0 }, permanent: true },
+        ],
       },
     ],
   },
@@ -3547,16 +3601,19 @@ export const CORE_SET: CardDefinition[] = [
     health: 4,
     text:
       "La première fois à chaque tour qu'une Structure que vous contrôlez est détruite ou Sabordée, piochez " +
-      "1 carte puis défaussez 1 carte.",
+      "1 carte puis défaussez 1 carte, et il gagne +1 Puissance.",
+    // Standard Verrier (30/09/2026, validé par le propriétaire) : « un piège
+    // part, la troupe grandit ». Coût et statistiques inchangés.
     abilities: [
       {
         trigger: "onDeath",
         triggeredBy: { cardTypes: ["structure"] },
         oncePerTurnKey: "charpentierFiltre",
-        description: "Une de vos Structures part : piochez 1 carte puis défaussez 1 carte.",
+        description: "Une de vos Structures part : piochez 1 carte puis défaussez 1 carte, +1 Puissance conservée.",
         effects: [
           { type: "draw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
           { type: "discard", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
+          { type: "buff", target: { kind: "self" }, attackAmount: { kind: "flat", value: 1 }, healthAmount: { kind: "flat", value: 0 }, permanent: true },
         ],
       },
     ],
@@ -3638,20 +3695,6 @@ export const CORE_SET: CardDefinition[] = [
       },
     ],
   },
-  {
-    id: "ce-que-la-maree-rend",
-    name: "Ce que la Marée Rend",
-    type: "anomalie",
-    setCode: RAPIECER_LA_COQUE,
-    cost: 5,
-    health: 3,
-    durationTurns: 2,
-    maxCopies: 2,
-    // Choix IMPOSÉ : le joueur tranche, mais il ne peut pas refuser les deux
-    // (même primitive que Le Fond Vous Regarde).
-    anomalyForceChoiceAtStartOfTurn: { reasonLossAmount: 1, anchorDamageAmount: 1 },
-    text: "Pendant 2 tours, au début du tour de chaque joueur, celui-ci choisit : perdre 1 Raison ou subir 1 dégât d'Ancrage.",
-  },
   // ======================================================================
   // LOT 13 — Un Dead / La Veillée des Disparus
   // ======================================================================
@@ -3699,15 +3742,19 @@ export const CORE_SET: CardDefinition[] = [
     attack: 2,
     health: 1,
     text:
-      "La première fois pendant votre tour qu'une de vos cartes rejoint le Cimetière depuis votre main, " +
-      "elle gagne +1 Puissance jusqu'à la fin du tour.",
+      "La première fois pendant votre tour qu'une de vos cartes rejoint le Cimetière depuis votre main ou votre pioche, " +
+      "elle gagne +1 Puissance.",
+    // « ou votre pioche » (Test Verrier, 30/09/2026) : le meulage nourrit la
+    // Veillée comme la défausse (`onCardPutIntoGraveyard`).
+    // Standard Verrier (01/10/2026, validé par le propriétaire) : les gains de
+    // la Veillée RESTENT. Coût et statistiques inchangés.
     abilities: [
       {
-        trigger: "onCardDiscardedFromHand",
+        trigger: "onCardPutIntoGraveyard",
         triggeredBy: {},
         oncePerTurnKey: "cacheCacheDefausse",
-        description: "Une de vos cartes est défaussée : +1 Puissance jusqu'à la fin du tour.",
-        effects: [{ type: "buff", target: { kind: "self" }, attackAmount: { kind: "flat", value: 1 }, duration: "endOfTurn" }],
+        description: "Une de vos cartes rejoint le Cimetière (main ou pioche) : +1 Puissance, conservée.",
+        effects: [{ type: "buff", target: { kind: "self" }, attackAmount: { kind: "flat", value: 1 }, healthAmount: { kind: "flat", value: 0 }, permanent: true }],
       },
     ],
   },
@@ -3749,7 +3796,19 @@ export const CORE_SET: CardDefinition[] = [
     // à la Revenante de la Fosse. `from: ["combat"]` réalise « AU COMBAT » à
     // la lettre : ni un effet de destruction, ni la Marée ne la sauvent.
     survivesLethalOncePerTurn: { from: ["combat"] },
-    text: "La première fois à chaque tour qu'elle devrait être détruite au combat, elle reste à 1 Résistance.",
+    // Standard Verrier (01/10/2026, validé par le propriétaire) : les gains de
+    // la Veillée RESTENT. Coût et statistiques inchangés.
+    text:
+      "La première fois à chaque tour qu'elle devrait être détruite au combat, elle reste à 1 Résistance. La première " +
+      "fois à chaque tour qu'elle survit à des dégâts, elle gagne +1 Puissance.",
+    abilities: [
+      {
+        trigger: "onSurvivedDamage",
+        oncePerTurnKey: "cinqMinutesTientBon",
+        description: "Elle tient bon : +1 Puissance, conservée.",
+        effects: [{ type: "buff", target: { kind: "self" }, attackAmount: { kind: "flat", value: 1 }, healthAmount: { kind: "flat", value: 0 }, permanent: true }],
+      },
+    ],
   },
   {
     id: "le-gouter",
@@ -3787,15 +3846,16 @@ export const CORE_SET: CardDefinition[] = [
     attack: 2,
     health: 2,
     text:
-      "Quand une autre de vos unités Un Dead est détruite, il gagne +1 Puissance jusqu'à la fin du tour. " +
-      "Une fois par tour.",
+      "Quand une autre de vos unités Un Dead est détruite, il gagne +1 Puissance. Une fois par tour.",
+    // Standard Verrier (01/10/2026, validé par le propriétaire) : les gains de
+    // la Veillée RESTENT. Coût et statistiques inchangés.
     abilities: [
       {
         trigger: "onDeath",
         triggeredBy: { subtype: UN_DEAD, cardTypes: ["marin", "creature"] },
         oncePerTurnKey: "papaAllieDetruit",
-        description: "Un autre Un Dead meurt : +1 Puissance jusqu'à la fin du tour.",
-        effects: [{ type: "buff", target: { kind: "self" }, attackAmount: { kind: "flat", value: 1 }, duration: "endOfTurn" }],
+        description: "Un autre Un Dead meurt : +1 Puissance, conservée.",
+        effects: [{ type: "buff", target: { kind: "self" }, attackAmount: { kind: "flat", value: 1 }, healthAmount: { kind: "flat", value: 0 }, permanent: true }],
       },
     ],
   },
@@ -3984,14 +4044,15 @@ export const CORE_SET: CardDefinition[] = [
     durationTurns: 4,
     maxCopies: 2,
     text:
-      "Durée : 4 tours. La première fois à chaque tour qu'une carte rejoint votre Cimetière depuis votre main, " +
+      "Durée : 4 tours. La première fois à chaque tour qu'une carte rejoint votre Cimetière depuis votre main ou votre pioche, " +
       "infligez 1 dégât au Navire adverse.",
+    // « ou votre pioche » (Test Verrier, 30/09/2026) : vider sa pioche devient une menace.
     abilities: [
       {
-        trigger: "onCardDiscardedFromHand",
+        trigger: "onCardPutIntoGraveyard",
         triggeredBy: {},
         oncePerTurnKey: "marelleDefausse",
-        description: "Une carte part de votre main au Cimetière : 1 dégât au Navire adverse.",
+        description: "Une carte rejoint votre Cimetière (main ou pioche) : 1 dégât au Navire adverse.",
         effects: [{ type: "damage", target: { kind: "opponentPlayer" }, amount: { kind: "flat", value: 1 } }],
       },
     ],
@@ -4094,9 +4155,10 @@ export const CORE_SET: CardDefinition[] = [
     health: 5,
     maxCopies: 1,
     text:
-      "La première fois à chaque tour qu'une autre de vos cartes Un Dead est détruite ou défaussée, " +
-      "infligez 1 dégât au Navire adverse.",
-    // « Détruite OU défaussée » : deux déclencheurs, UNE seule clé de suivi.
+      "La première fois à chaque tour qu'une autre de vos cartes Un Dead est détruite ou rejoint votre Cimetière " +
+      "depuis votre main ou votre pioche, infligez 1 dégât au Navire adverse.",
+    // « Détruite OU défaussée / meulée » : deux déclencheurs, UNE seule clé de suivi.
+    // (« ou votre pioche » : Test Verrier, 30/09/2026.)
     // `oncePerTurnFlags` est porté par la carte et non par la capacité, donc
     // la même clé donne bien « une fois par tour » au total, pas une fois
     // par voie.
@@ -4109,10 +4171,10 @@ export const CORE_SET: CardDefinition[] = [
         effects: [{ type: "damage", target: { kind: "opponentPlayer" }, amount: { kind: "flat", value: 1 } }],
       },
       {
-        trigger: "onCardDiscardedFromHand",
+        trigger: "onCardPutIntoGraveyard",
         triggeredBy: { subtype: UN_DEAD },
         oncePerTurnKey: "tousEnsemble",
-        description: "Un autre Un Dead est défaussé : 1 dégât au Navire adverse.",
+        description: "Un autre Un Dead rejoint le Cimetière (main ou pioche) : 1 dégât au Navire adverse.",
         effects: [{ type: "damage", target: { kind: "opponentPlayer" }, amount: { kind: "flat", value: 1 } }],
       },
     ],
@@ -4560,36 +4622,16 @@ export const CORE_SET: CardDefinition[] = [
     ],
   },
   {
-    id: "panique-sur-le-pont",
-    // Résolution immédiate : part au Cimetière, n'occupe pas de Slot.
-    permanent: false,
-    name: "Panique sur le Pont",
-    type: "anomalie",
-    setCode: NECESSAIRE_DU_MARIN,
-    cost: 4,
-    maxCopies: 2,
-    text:
-      "Si l'adversaire contrôle au moins 4 unités, renvoyez jusqu'à 2 unités de coût 3 ou moins qu'il contrôle " +
-      "dans sa main.",
-    onPlayEffects: [
-      {
-        type: "pickUnits",
-        target: { kind: "allEnemyUnits" },
-        filter: { cardTypes: ["marin", "creature"], maxCost: 3 },
-        uses: 2,
-        conditionOpponentUnitsAtLeast: 4,
-        thenEffects: [{ type: "moveZone", toZone: "hand", target: { kind: "triggerSource" } }],
-      },
-    ],
-  },
-  {
     id: "chacun-sa-place",
     // Résolution immédiate : part au Cimetière, n'occupe pas de Slot.
     permanent: false,
     name: "Chacun sa Place",
     type: "anomalie",
     setCode: NECESSAIRE_DU_MARIN,
-    cost: 5,
+    // 5 → 3 (décision du propriétaire, 01/10/2026) : à 5, elle arrivait trop
+    // tard pour un effet souvent partiel. À 3, un outil contre les plateaux
+    // qui commencent à déborder, sans remplacer les vrais balais. Effet inchangé.
+    cost: 3,
     maxCopies: 1,
     text: "Chaque joueur choisit jusqu'à 3 unités qu'il contrôle. Détruisez toutes les autres.",
     onPlayEffects: [{ type: "keepUnitsDestroyRest", target: { kind: "allPlayers" }, uses: 3 }],
@@ -4712,27 +4754,6 @@ export const CORE_SET: CardDefinition[] = [
     ],
   },
   {
-    id: "journal-de-bord",
-    name: "Journal de Bord",
-    type: "objet",
-    setCode: NECESSAIRE_DU_MARIN,
-    cost: 2,
-    maxCopies: 3,
-    text:
-      "Brisez cet Objet : regardez les 4 premières cartes de votre pioche. Vous pouvez ajouter une Structure " +
-      "parmi elles à votre main. Placez les autres sous votre pioche.",
-    onBreakEffects: [
-      {
-        type: "lookAtDeckTop",
-        target: { kind: "controllerPlayer" },
-        amount: { kind: "flat", value: 4 },
-        uses: 1,
-        filter: { cardTypes: ["structure"] },
-        refusable: true,
-      },
-    ],
-  },
-  {
     id: "fouille-de-la-cale",
     name: "Fouille de la Cale",
     type: "objet",
@@ -4847,30 +4868,6 @@ export const CORE_SET: CardDefinition[] = [
         description: "Brisez Corde de Rappel : l'unité visée rentre dans votre main.",
         effects: [
           { type: "moveZone", toZone: "hand", target: { kind: "attackTarget" } },
-          { type: "saborde", target: { kind: "self" } },
-        ],
-      },
-    ],
-  },
-  {
-    id: "planche-de-fortune",
-    name: "Planche de Fortune",
-    type: "objet",
-    setCode: NECESSAIRE_DU_MARIN,
-    cost: 4,
-    maxCopies: 2,
-    text:
-      "Lorsqu'une Structure que vous contrôlez devrait être détruite pendant le tour adverse, vous pouvez Briser " +
-      "cet Objet : elle reste en jeu avec 1 Résistance.",
-    onBreakEffects: [{ type: "surviveWithHealth", target: { kind: "triggerSource" }, amount: { kind: "flat", value: 1 } }],
-    abilities: [
-      {
-        trigger: "onPermanentWouldBeDestroyed",
-        triggeredBy: { cardTypes: ["structure"] },
-        mode: "optional",
-        description: "Brisez Planche de Fortune : votre Structure reste en jeu avec 1 Résistance.",
-        effects: [
-          { type: "surviveWithHealth", target: { kind: "triggerSource" }, amount: { kind: "flat", value: 1 } },
           { type: "saborde", target: { kind: "self" } },
         ],
       },
@@ -5138,7 +5135,17 @@ export const CORE_SET: CardDefinition[] = [
     health: 8,
     maxCopies: 2,
     keywords: ["garde"],
-    text: "Garde.",
+    // Standard Verrier (30/09/2026, validé par le propriétaire) : la Forteresse
+    // « encaisse, grandit, frappe ». Coût et statistiques inchangés.
+    text: "Garde. La première fois à chaque tour qu'il survit à des dégâts, infligez 2 dégâts au Navire adverse.",
+    abilities: [
+      {
+        trigger: "onSurvivedDamage",
+        oncePerTurnKey: "survieDernierRempart",
+        description: "Il tient : 2 dégâts au Navire adverse.",
+        effects: [{ type: "damage", target: { kind: "opponentPlayer" }, amount: { kind: "flat", value: 2 } }],
+      },
+    ],
   },
   {
     id: "lamiral-sans-pavillon",
@@ -5205,6 +5212,7 @@ export const CORE_SET: CardDefinition[] = [
   // --- Finishers non-unités ----------------------------------------------
   // Trois cartes qui ferment une partie sans passer par un corps : c'est le
   // seul endroit du lot où le coût 6-7 achète un effet, pas une statistique.
+  // (Abandonnez le Navire ! en est sorti le 01/10/2026 : coût 2.)
   {
     id: "abandonnez-le-navire",
     // Résolution immédiate : part au Cimetière, n'occupe pas de Slot.
@@ -5212,7 +5220,10 @@ export const CORE_SET: CardDefinition[] = [
     name: "Abandonnez le Navire !",
     type: "anomalie",
     setCode: NECESSAIRE_DU_MARIN,
-    cost: 6,
+    // 6 → 2 (décision du propriétaire, 01/10/2026) : plus un finisher raté,
+    // une remise à zéro partielle très agressive. À surveiller dans les decks
+    // qui jouent naturellement peu d'unités. Effet inchangé.
+    cost: 2,
     maxCopies: 1,
     text: "Chaque joueur choisit jusqu'à 2 unités qu'il contrôle. Détruisez toutes les autres.",
     onPlayEffects: [{ type: "keepUnitsDestroyRest", target: { kind: "allPlayers" }, uses: 2 }],

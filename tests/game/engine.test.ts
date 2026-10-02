@@ -2348,8 +2348,10 @@ describe("engine.dispatch - La Gueule Sous la Mer : saut direct en Abysses + ver
     if (!result.ok) return;
     expect(result.state.environment.tideState).toBe("abysses"); // jamais "tempete" entre-temps
     expect(result.state.environment.tideOrientation).toBe("descendante");
-    expect(result.state.players[0].reason).toBe(4); // 10 - 6 (coût) ; le dégât n'affecte que l'Ancrage
-    expect(result.state.players[0].anchor).toBe(18); // 20 - 2
+    // Entrer dans les Abysses, même forcé, applique le choc d'entrée (29/09/2026) :
+    // 2 Ancrage, et « Équipage à bout » du Brise-Lames coûte 1 Raison de plus.
+    expect(result.state.players[0].reason).toBe(3); // 10 - 6 (coût) - 1 (Équipage à bout)
+    expect(result.state.players[0].anchor).toBe(16); // 20 - 2 (choc d'entrée) - 2 (Gueule)
     expect(result.state.players[0].statusFlags).toContain("noReasonGainUntilNextTurn");
 
     // Créature 3/5 depuis la mise à jour du Lot 08 : elle reste sur le plateau après résolution de son effet de pose.
@@ -2378,20 +2380,20 @@ describe("engine.dispatch - La Gueule Sous la Mer : saut direct en Abysses + ver
     const withMousse = dispatch(played.state, { type: "playCard", playerId: "p1", instanceId: mousse.instanceId });
     expect(withMousse.ok).toBe(true);
     if (!withMousse.ok) return;
-    expect(withMousse.state.players[0].reason).toBe(3); // 4 - 1 (coût) + 0 (gain verrouillé)
+    expect(withMousse.state.players[0].reason).toBe(2); // 3 (après la Gueule et Équipage à bout) - 1 (coût) + 0 (gain verrouillé)
 
     // Fin du tour de p1 (verrou consommé, pas de régénération), puis fin du tour de p2 (p1 redevient actif : le verrou est levé).
     const p2Turn = dispatch(withMousse.state, { type: "endTurn", playerId: "p1" });
     expect(p2Turn.ok).toBe(true);
     if (!p2Turn.ok) return;
-    expect(p2Turn.state.players[0].reason).toBe(3); // pas de régénération pour p1 ici (ce n'est pas son tour)
+    expect(p2Turn.state.players[0].reason).toBe(2); // pas de régénération pour p1 ici (ce n'est pas son tour)
     expect(p2Turn.state.players[0].statusFlags).toContain("noReasonGainUntilNextTurn"); // toujours posé : pas encore "le début de son tour"
 
     const p1Turn = dispatch(p2Turn.state, { type: "endTurn", playerId: "p2" });
     expect(p1Turn.ok).toBe(true);
     if (!p1Turn.ok) return;
     expect(p1Turn.state.players[0].statusFlags).not.toContain("noReasonGainUntilNextTurn");
-    expect(p1Turn.state.players[0].reason).toBe(3); // régénération bloquée PRÉCISÉMENT à ce tour-ci (le verrou vient d'expirer, pas de +1 rétroactif)
+    expect(p1Turn.state.players[0].reason).toBe(2); // régénération bloquée PRÉCISÉMENT à ce tour-ci (le verrou vient d'expirer, pas de +1 rétroactif)
   });
 });
 
@@ -2409,8 +2411,9 @@ describe("engine.dispatch - Sept Brasses Plus Bas : saut direct en Abysses + ori
     expect(result.state.environment.tideState).toBe("abysses");
     expect(result.state.environment.tideRemainingTurns).toBe(2); // 1 (base Abysses) + 1 (bonus de la carte)
     expect(result.state.environment.tideOrientation).toBe("descendante");
-    expect(result.state.players[0].reason).toBe(1); // 10 - 7 (coût) - 2 (perte de Raison)
-    expect(result.state.players[1].reason).toBe(8); // 10 - 2 (perte de Raison, chaque joueur)
+    // Le choc d'entrée s'applique aussi (29/09/2026) : « Équipage à bout » du Brise-Lames, -1 Raison.
+    expect(result.state.players[0].reason).toBe(0); // 10 - 7 (coût) - 2 (perte de Raison) - 1 (Équipage à bout)
+    expect(result.state.players[1].reason).toBe(6); // ramenée à la Raison max des Abysses (10 - 2 = 8), puis - 2 (perte de Raison, chaque joueur)
   });
 });
 

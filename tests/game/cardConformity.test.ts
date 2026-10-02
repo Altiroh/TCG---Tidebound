@@ -61,6 +61,10 @@ const EXCEPTIONS: Record<string, string> = {
     "« La première fois que chacune de vos unités » vaut pour la durée de l'Anomalie, qui ne vit que jusqu'à la " +
     "fin du tour (`expiresAtEndOfTurn`) : le « une fois par tour » suivi PAR UNITÉ (`oncePerTurnPerTriggerSource`) " +
     "en est la lecture exacte, sans `onceEver`.",
+  "changement-de-role:optional":
+    "« Vous pouvez jouer une autre Marionnette […] sans payer son coût » ne résout rien d'office : le Bris pose " +
+    "une gratuité (`discountNextCards` + `free`) que le joueur utilise en jouant lui-même la carte de son choix, " +
+    "ou laisse perdre à la fin du tour. Le choix reste entièrement le sien.",
 };
 
 /**
@@ -209,7 +213,7 @@ function check(def: CardDefinition): Violation[] {
   // « personnel » de `triggerBus.ts` ne trouve rien. Sans `triggeredBy`, la
   // capacité n'est collectée par AUCUN circuit et ne se déclenche jamais —
   // c'est exactement ce qui rendait les deux Cra-Poiscail Médecin inertes.
-  const OBSERVER_ONLY: TriggerType[] = ["onObjectBroken", "onCardDiscardedFromHand", "onCardRecoveredFromGraveyard"];
+  const OBSERVER_ONLY: TriggerType[] = ["onObjectBroken", "onCardDiscardedFromHand", "onCardPutIntoGraveyard", "onCardRecoveredFromGraveyard"];
   for (const [index, ability] of abilities.entries()) {
     if (!OBSERVER_ONLY.includes(ability.trigger) || ability.triggeredBy) continue;
     push("observateur", `capacité #${index} (${ability.trigger}) : un déclencheur d'observateur sans triggeredBy ne se déclenche jamais`);

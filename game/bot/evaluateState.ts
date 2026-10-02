@@ -1,4 +1,5 @@
 import { getShipDefinition } from "@/game/environment/shipData";
+import { advanceTideState } from "@/game/environment/types";
 import { computeEffectiveStats } from "@/game/cards/stats";
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { UNIT_CARD_TYPES, type CardInstance } from "@/game/cards/types";
@@ -6,6 +7,8 @@ import { hasEffectiveKeyword } from "@/game/rules/validation";
 import { deraisonAnchorDamage } from "@/game/state/reason";
 import { isShipArmed, shipAbilityOf } from "@/game/state/shipAbility";
 import type { GameState, PlayerId, PlayerState } from "@/game/state/types";
+import { graveyardValue, oceanJudgmentPressure } from "@/game/bot/graveyardValue";
+import { abilityValue } from "@/game/bot/abilityValue";
 
 /**
  * Évaluation d'une position, du point de vue d'un joueur.
@@ -85,6 +88,11 @@ function permanentValue(state: GameState, unit: CardInstance, controller: Player
     controllerReason: controller.reason,
   });
 
+  // Emportée par cette Marée (affinité `destroyed`) : elle ne vaut plus
+  // rien. Sans objet dans l'état courant — le moteur l'a déjà retirée — mais
+  // décisif quand on évalue la Marée QUI VIENT (`tideOutlook`).
+  if (stats.destroyedByTide) return 0;
+
   const def = getCardDefinition(unit.cardId);
   const isUnit = (UNIT_CARD_TYPES as readonly string[]).includes(def.type);
 
@@ -98,7 +106,16 @@ function permanentValue(state: GameState, unit: CardInstance, controller: Player
 
   let value = stats.attack * 1.5 + remaining * 1.2;
   if (hasEffectiveKeyword(state, controller, unit, KEYWORD_GARDE)) value += GARDE_BONUS;
-  if (isUnit && unit.summoningSick) value *= SUMMONING_SICK_FACTOR;
+  // Le mal d'arrivée ne coûte que tant qu'une attaque reste possible ce
+  // tour-ci : en Phase principale 2 le combat est passé, une unité fraîche
+  // vaut autant qu'une autre. Sans cette nuance, rejouer une unité après le
+  // combat (le rappel du Théâtre Englouti) paraissait lui faire perdre 15 %.
+  const attackStillAhead = state.activePlayerId === controller.id && state.phase !== "mainPhase2";
+  if (isUnit && unit.summoningSick && attackStillAhead) value *= SUMMONING_SICK_FACTOR;
+
+  // Ce que ses capacités déclenchées rapporteront dans les tours à venir
+  // (`abilityValue.ts`) : un moteur posé vaut plus que sa Résistance.
+  value += abilityValue(state, unit, controller);
 
   // Inactive à cause de la Marée : elle ne fait rien MAINTENANT, mais elle
   // tient son Slot et redeviendra active. Diminuée, jamais annulée.
@@ -164,8 +181,30 @@ function unblockedThreat(state: GameState, attacker: PlayerState, defender: Play
   return hits.slice(gardes).reduce((sum, attack) => sum + attack, 0);
 }
 
-/** Une carte en main vaut d'autant plus qu'on a la Raison pour la jouer. */
+/** Ce que vaut une carte en main, quelle qu'elle soit. */
 const CARD_IN_HAND = 0.9;
+/**
+ * DÉPARTAGE DES CARTES EN MAIN. Toutes valaient exactement 0,9 : face à une
+ * défausse, le bot jetait donc la première venue — y compris l'unité qu'il
+ * venait de rappeler pour la rejouer (Le Masque Fendu : « renvoyez… puis
+ * piochez 1 carte et défaussez 1 carte », relevé du 29/09/2026). Un léger
+ * supplément selon le coût fait garder la carte qui pèse le plus, sans
+ * rien changer à l'arbitrage « jouer ou garder » : 0,05 par point de coût,
+ * c'est dix fois moins que la Raison dépensée pour la jouer.
+ */
+const CARD_IN_HAND_PER_COST = 0.05;
+
+function handValue(player: PlayerState): number {
+  return player.hand.reduce((sum, card) => {
+    let cost = 0;
+    try {
+      cost = getCardDefinition(card.cardId).cost;
+    } catch {
+      // Carte masquée d'une vue projetée : on n'en sait que le nombre.
+    }
+    return sum + CARD_IN_HAND + Math.min(cost, 8) * CARD_IN_HAND_PER_COST;
+  }, 0);
+}
 
 /**
  * CANON ARMÉ. Ce que vaut une capacité de Navire déjà payée mais pas encore
@@ -223,8 +262,46 @@ function playerValue(state: GameState, player: PlayerState): number {
     Math.max(0, player.reason) * 0.5 +
     boardValue +
     armedShotValue(state, player) +
-    player.hand.length * CARD_IN_HAND
+    handValue(player) +
+    // Cimetière : ce que les cartes tenues sauront en tirer (`graveyardValue.ts`).
+    graveyardValue(state, player)
   );
+}
+
+/**
+ * LA MARÉE QUI VIENT.
+ *
+ * L'évaluation lisait les stats dans la Marée COURANTE, jamais dans la
+ * suivante. Raccourcir la Marée, inverser son sens, la maintenir : pour le
+ * bot, tout cela coûtait de la Raison et ne rapportait rien. Il pilotait mal,
+ * et le banc d'essai ne pouvait pas juger les decks qui pilotent (Descente
+ * aux Abysses, relevé du 30/09/2026 : le Sondeur posé 0,3 fois par partie).
+ *
+ * On compare donc, pour chaque camp, la valeur de son plateau dans l'état
+ * de Marée SUIVANT (selon l'orientation) à sa valeur actuelle — stats,
+ * inactivité, destructions : tout est lu dans les affinités de Marée des
+ * cartes (`tideAffinity`), rien n'est nommé ici. L'écart pèse d'autant plus
+ * que le changement est proche : `TIDE_LOOKAHEAD / tours restants`. Une
+ * Marée maintenue (« maintain ») ne change pas au prochain décompte : son
+ * écart ne pèse qu'à moitié.
+ */
+const TIDE_LOOKAHEAD = 0.5;
+
+function boardValue(state: GameState, player: PlayerState): number {
+  return player.board.reduce((sum, unit) => sum + permanentValue(state, unit, player), 0);
+}
+
+function tideOutlook(state: GameState, me: PlayerState, opponent: PlayerState): number {
+  const env = state.environment;
+  const next = advanceTideState(env.tideState, env.tideOrientation);
+  if (next === env.tideState) return 0;
+
+  const future: GameState = { ...state, environment: { ...env, tideState: next } };
+  const shift = (player: PlayerState) => boardValue(future, player) - boardValue(state, player);
+
+  const maintained = env.pendingTideModifiers.some((m) => m.kind === "maintain" && m.remainingTriggers > 0);
+  const weight = (TIDE_LOOKAHEAD / Math.max(1, env.tideRemainingTurns)) * (maintained ? 0.5 : 1);
+  return weight * (shift(me) - shift(opponent));
 }
 
 /**
@@ -251,5 +328,11 @@ export function evaluateState(state: GameState, forPlayerId: PlayerId): number {
   // qu'il abandonne comme aux corps adverses qu'il laisse debout.
   const pressure = unblockedThreat(state, me, opponent) * THREAT_MADE - unblockedThreat(state, opponent, me) * THREAT_TAKEN;
 
-  return material + pressure;
+  // Pioches bientôt vides : l'avance au Jugement de l'Océan décide de la partie.
+  const judgment = oceanJudgmentPressure(me, opponent);
+
+  // La Marée qui vient : qui y gagne, qui y perd (`tideOutlook`).
+  const tide = tideOutlook(state, me, opponent);
+
+  return material + pressure + judgment + tide;
 }

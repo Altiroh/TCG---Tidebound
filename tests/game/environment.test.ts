@@ -19,6 +19,20 @@ describe("environnement - emplacements du Navire", () => {
     const result = dispatch(state, { type: "playCard", playerId: "p1", instanceId: card.instanceId });
     expect(result.ok).toBe(false);
   });
+
+  it("Le Courlis tient 5 permanents (décision du 01/10/2026) et refuse le sixième", () => {
+    expect(getShipDefinition("le-courlis").slotCount).toBe(5);
+    const play = (boardSize: number) => {
+      const board = Array.from({ length: boardSize }, () => instance("marin-des-jetees", "p1"));
+      const card = instance("caisses-arrimees", "p1");
+      const state = testGameState({
+        players: [testPlayer("p1", { shipId: "le-courlis", board, hand: [card], reason: 5 }), testPlayer("p2")],
+      });
+      return dispatch(state, { type: "playCard", playerId: "p1", instanceId: card.instanceId });
+    };
+    expect(play(4).ok).toBe(true);
+    expect(play(5).ok).toBe(false);
+  });
 });
 
 describe("environnement - Marée (modèle durée + intensité)", () => {

@@ -11,6 +11,7 @@ import { graveyardChoicesFor } from "@/game/effects/graveyardChoices";
 import { markOncePerTurnUsed, oncePerTurnAvailable } from "@/game/state/oncePerTurn";
 import { chromaticColorsOf } from "@/game/rules/chromatic";
 import { payReasonCost } from "@/game/state/shields";
+import { handBreakCost, isBreakReaction } from "@/game/rules/objectBreak";
 import type { GameState, PlayerId, PlayerState } from "@/game/state/types";
 import type { PendingReactionCandidate, TriggerEvent } from "@/game/triggers/types";
 
@@ -727,22 +728,30 @@ export function processReturnedToHandTriggers(
 }
 
 /**
- * Déclenchements de DÉFAUSSE (Lot 13), à partir des `CARD_MOVED`
- * main → Cimetière produits par `game/state/discard.ts`.
+ * Déclenchements d'ENTRÉE AU CIMETIÈRE hors mort (Lot 13, élargi le
+ * 30/09/2026), à partir des `CARD_MOVED` main → Cimetière produits par
+ * `game/state/discard.ts` et pioche → Cimetière produits par l'effet `mill`.
  *
- * Deux déclencheurs pour un même geste, et ils ne se recouvrent pas :
+ * Pour une défausse, trois déclencheurs, qui ne se recouvrent pas :
  *
  *   - `onDiscarded` est PERSONNEL — « quand cette carte est défaussée »,
  *     lu sur la définition de la carte partie (P'tit Bout) ;
  *   - `onCardDiscardedFromHand` est un déclencheur d'OBSERVATEUR — « une
  *     carte rejoint votre Cimetière depuis votre main », pour ce qui est
  *     en jeu et regarde (Cache-Cache, La Marelle). Il se filtre avec
- *     `triggeredBy` comme n'importe quel observateur.
+ *     `triggeredBy` comme n'importe quel observateur ;
+ *   - `onCardPutIntoGraveyard`, observateur lui aussi, voit la défausse ET
+ *     le meulage : « une carte rejoint votre Cimetière depuis votre main ou
+ *     votre pioche » (La Marelle, Cache-Cache, On avait dit tous ensemble).
+ *     C'est ce qui fait d'une pioche qui se vide un carburant plutôt qu'une
+ *     simple perte.
+ *
+ * Un meulage ne réveille que ce dernier : la carte n'a jamais été en main.
  *
  * Même forme et même raison que `processReturnedToHandTriggers` : la
  * défausse est décidée ailleurs, l'appelant repasse ici les événements.
  */
-export function processDiscardedFromHandTriggers(
+export function processGraveyardEntryTriggers(
   state: GameState,
   events: readonly GameEvent[],
   turnNumber: number,
@@ -752,10 +761,13 @@ export function processDiscardedFromHandTriggers(
   const produced: GameEvent[] = [];
 
   for (const event of events) {
-    if (event.type !== "CARD_MOVED" || event.fromZone !== "hand" || event.toZone !== "graveyard") continue;
+    if (event.type !== "CARD_MOVED" || event.toZone !== "graveyard") continue;
+    if (event.fromZone !== "hand" && event.fromZone !== "deck") continue;
     if (!event.cardId || !event.ownerId) continue;
+    const fromZone = event.fromZone;
 
-    for (const trigger of ["onDiscarded", "onCardDiscardedFromHand"] as const) {
+    const triggers = fromZone === "hand" ? (["onDiscarded", "onCardDiscardedFromHand", "onCardPutIntoGraveyard"] as const) : (["onCardPutIntoGraveyard"] as const);
+    for (const trigger of triggers) {
       const result = processTrigger(
         nextState,
         {
@@ -764,6 +776,7 @@ export function processDiscardedFromHandTriggers(
           cardId: event.cardId,
           sourceInstanceId: event.instanceId,
           discardedOwnerId: event.ownerId,
+          fromZone,
           ...(event.discardByEffect ? { discardByEffect: true } : {}),
         },
         turnNumber,
@@ -927,7 +940,7 @@ export function processTrigger(
     // Et pour une défausse provoquée par une capacité (Lot 13) : une carte
     // envoyée au Cimetière par un déclenchement est défaussée tout autant
     // qu'une carte envoyée par une pose.
-    const discarded = processDiscardedFromHandTriggers(nextState, events, turnNumber, depth + 1);
+    const discarded = processGraveyardEntryTriggers(nextState, events, turnNumber, depth + 1);
     nextState = discarded.state;
     events.push(...discarded.events);
 
@@ -949,6 +962,19 @@ export function processTrigger(
  * (`game/reactions/`) ; jamais pour résoudre quoi que ce soit lui-même.
  */
 export function collectReactionCandidates(
+  state: GameState,
+  triggerEvents: TriggerEvent[],
+  forPlayerId: PlayerId,
+  turnNumber: number
+): PendingReactionCandidate[] {
+  return [
+    ...collectReactionCandidatesOnBoard(state, triggerEvents, forPlayerId, turnNumber),
+    ...handBreakReactionCandidates(state, triggerEvents, forPlayerId, turnNumber),
+  ];
+}
+
+/** Capacités facultatives éligibles des cartes EN JEU (et du Cimetière pour les déclencheurs de mort). */
+function collectReactionCandidatesOnBoard(
   state: GameState,
   triggerEvents: TriggerEvent[],
   forPlayerId: PlayerId,
@@ -1026,6 +1052,47 @@ export function collectReactionCandidates(
 }
 
 /**
+ * Objets RÉACTIFS encore en main (règle du 29/09/2026) : « Lorsque …, vous
+ * pouvez Briser cet Objet » se propose aussi depuis la main, au coût d'un
+ * Bris depuis la main, sans Slot.
+ *
+ * Plutôt que de dupliquer, déclencheur par déclencheur, la façon dont
+ * `collectTriggeredWork` trouve une capacité sur le plateau, on lui pose la
+ * question sur un plateau HYPOTHÉTIQUE où l'Objet serait posé : s'il y
+ * serait éligible, il l'est depuis la main. Rien de cet état n'est gardé.
+ */
+function handBreakReactionCandidates(
+  state: GameState,
+  triggerEvents: TriggerEvent[],
+  forPlayerId: PlayerId,
+  turnNumber: number
+): PendingReactionCandidate[] {
+  const player = state.players.find((p) => p.id === forPlayerId);
+  if (!player) return [];
+
+  const found: PendingReactionCandidate[] = [];
+  for (const card of player.hand) {
+    const def = getCardDefinition(card.cardId);
+    if (!(def.abilities ?? []).some((ability) => isBreakReaction(def, ability))) continue;
+
+    const hypothetical: GameState = {
+      ...state,
+      players: state.players.map((p) =>
+        p.id === forPlayerId ? { ...p, hand: p.hand.filter((c) => c.instanceId !== card.instanceId), board: [...p.board, card] } : p
+      ) as [PlayerState, PlayerState],
+    };
+    const onBoard = collectReactionCandidatesOnBoard(hypothetical, triggerEvents, forPlayerId, turnNumber);
+    for (const candidate of onBoard) {
+      if (candidate.sourceInstanceId !== card.instanceId) continue;
+      const ability = def.abilities?.[candidate.abilityIndex];
+      if (!ability || !isBreakReaction(def, ability)) continue;
+      found.push({ ...candidate, fromHand: true, reasonCost: candidate.reasonCost + handBreakCost(def) });
+    }
+  }
+  return found;
+}
+
+/**
  * Résout UNE capacité `optional` précise (identifiée par
  * `sourceInstanceId` + `abilityIndex`), en payant son coût d'abord. Ne
  * vérifie PAS l'éligibilité (déjà fait par l'appelant via
@@ -1089,7 +1156,13 @@ export function resolveReaction(
     turnNumber,
   };
 
-  const reacted = resolveEffectSequence(nextState, ability.effects, context);
+  // Depuis la main, l'Objet est déjà au Cimetière (`activateReaction`) :
+  // le « Briser cet Objet » que porte la capacité est fait, il ne reste que
+  // son effet.
+  const effects = candidate.fromHand
+    ? ability.effects.filter((effect) => !(effect.type === "saborde" && effect.target.kind === "self"))
+    : ability.effects;
+  const reacted = resolveEffectSequence(nextState, effects, context);
   nextState = reacted.state;
   events.push(...reacted.events);
 

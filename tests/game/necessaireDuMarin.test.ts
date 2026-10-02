@@ -302,6 +302,107 @@ describe("Objets réactifs : seulement dans leur fenêtre", () => {
   });
 });
 
+describe("Objets réactifs : proposés depuis la main aussi (règle du 29/09/2026)", () => {
+  function attaqueContreHarponEnMain(extraBoardP1: ReturnType<typeof instance>[] = []) {
+    const harpon = instance("harpon-a-ressort", "p1");
+    const attaquant = instance("murene-aveugle", "p2", { summoningSick: false });
+    const state = testGameState({
+      phase: "combatPhase",
+      players: [
+        testPlayer("p1", { shipId: "le-brise-lames", hand: [harpon], board: extraBoardP1, reason: 6 }),
+        testPlayer("p2", { shipId: "le-goliath", board: [attaquant] }),
+      ],
+      activePlayerId: "p2",
+    });
+    const attaque = dispatch(state, { type: "attack", playerId: "p2", attackerInstanceId: attaquant.instanceId });
+    ok(attaque);
+    return { harpon, attaquant, attaque };
+  }
+
+  it("Harpon à Ressort EN MAIN se propose à l'attaque, au coût d'un Bris depuis la main", () => {
+    const { attaque } = attaqueContreHarponEnMain();
+    const candidat = propositions(attaque.state, "p1").find((c) => c.cardId === "harpon-a-ressort");
+    expect(candidat, "le Harpon en main doit être proposé").toBeDefined();
+    expect(candidat!.fromHand).toBe(true);
+    expect(candidat!.reasonCost).toBe(handBreakCost(getCardDefinition("harpon-a-ressort")));
+  });
+
+  it("l'activer le Brise depuis la main : l'attaquant est frappé, l'Objet part au Cimetière sans prendre de Slot", () => {
+    const { harpon, attaquant, attaque } = attaqueContreHarponEnMain();
+    const candidat = propositions(attaque.state, "p1").find((c) => c.cardId === "harpon-a-ressort")!;
+    const riposte = dispatch(attaque.state, {
+      type: "activateReaction",
+      playerId: "p1",
+      sourceInstanceId: candidat.sourceInstanceId,
+      abilityIndex: candidat.abilityIndex,
+    });
+    ok(riposte);
+
+    const p1 = riposte.state.players.find((p) => p.id === "p1")!;
+    expect(p1.hand.some((c) => c.instanceId === harpon.instanceId)).toBe(false);
+    expect(p1.graveyard.some((c) => c.instanceId === harpon.instanceId)).toBe(true);
+    expect(p1.board).toHaveLength(0);
+    expect(p1.reason).toBe(6 - handBreakCost(getCardDefinition("harpon-a-ressort")));
+    const survivant = board(riposte.state, "p2").find((u) => u.instanceId === attaquant.instanceId);
+    if (survivant) expect(survivant.damageMarked).toBeGreaterThanOrEqual(2);
+    expect(riposte.events.some((e) => e.type === "OBJECT_BROKEN" && e.fromHand)).toBe(true);
+  });
+
+  it("c'est un Bris depuis la main : Pantalone Sans-Sou rend sa Raison", () => {
+    const pantalone = instance("pantalone-sans-sou", "p1");
+    const { attaque } = attaqueContreHarponEnMain([pantalone]);
+    const candidat = propositions(attaque.state, "p1").find((c) => c.cardId === "harpon-a-ressort")!;
+    const riposte = dispatch(attaque.state, {
+      type: "activateReaction",
+      playerId: "p1",
+      sourceInstanceId: candidat.sourceInstanceId,
+      abilityIndex: candidat.abilityIndex,
+    });
+    ok(riposte);
+    expect(riposte.state.players.find((p) => p.id === "p1")!.reason).toBe(6 - handBreakCost(getCardDefinition("harpon-a-ressort")) + 1);
+  });
+
+  it("hors de sa fenêtre, il ne se Brise toujours pas depuis la main", () => {
+    const enMain = instance("harpon-a-ressort", "p1");
+    const state = testGameState({
+      players: [testPlayer("p1", { hand: [enMain], reason: 5 }), testPlayer("p2", { shipId: "le-goliath" })],
+    });
+    expect(dispatch(state, { type: "breakObject", playerId: "p1", instanceId: enMain.instanceId, fromHand: true }).ok).toBe(false);
+  });
+});
+
+describe("Bris depuis la main : l'Objet rejoint le Cimetière DEPUIS LA MAIN (règle du 29/09/2026)", () => {
+  it("La Marelle voit un Objet Brisé depuis la main", () => {
+    const marelle = instance("la-marelle", "p1");
+    const seau = instance("le-seau", "p1");
+    const state = testGameState({
+      players: [
+        testPlayer("p1", { board: [marelle], hand: [seau], reason: 6 }),
+        testPlayer("p2", { shipId: "le-goliath" }),
+      ],
+    });
+    const anchorBefore = state.players[1]!.anchor;
+    const broken = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: seau.instanceId, fromHand: true });
+    ok(broken);
+    expect(broken.state.players[1]!.anchor).toBe(anchorBefore - 1);
+  });
+
+  it("un Bris depuis le PLATEAU ne compte pas : l'Objet ne vient pas de la main", () => {
+    const marelle = instance("la-marelle", "p1");
+    const seau = instance("le-seau", "p1");
+    const state = testGameState({
+      players: [
+        testPlayer("p1", { board: [marelle, seau], reason: 6 }),
+        testPlayer("p2", { shipId: "le-goliath" }),
+      ],
+    });
+    const anchorBefore = state.players[1]!.anchor;
+    const broken = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: seau.instanceId });
+    ok(broken);
+    expect(broken.state.players[1]!.anchor).toBe(anchorBefore);
+  });
+});
+
 describe("Objets réactifs : pas de Bris à la main", () => {
   it("Harpon à Ressort refuse un Bris manuel — sans attaque, il partait au Cimetière pour rien", () => {
     const harpon = instance("harpon-a-ressort", "p1");
@@ -342,7 +443,6 @@ describe("Bris depuis la main : la formule ne bouge pas", () => {
       "bouclier-decume",
       "signal-de-detresse",
       "corde-de-rappel",
-      "planche-de-fortune",
       "contre-harpon",
     ]) {
       const def = getCardDefinition(id);

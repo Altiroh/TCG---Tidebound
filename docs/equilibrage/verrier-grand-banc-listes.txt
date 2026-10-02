@@ -1,0 +1,41 @@
+liste: Le Grand Banc [V1 gains conservés]
+deck: le-grand-banc
+navire: le-brise-lames
+tetard-fesse x2
+ptite-fesse x3
+cra-poiscail-sauteur x3
+cra-poiscail-grand-gueule x1
+lab-ramasseur-verrier x3
+banc-de-cra-poiscail x3
+lab-chef-de-banc-verrier x3
+cra-poiscail-porte-etendard x2
+le-trone-de-bouchon x2
+cra-poiscail-des-hautes-eaux x3
+le-seau x3
+fesses-en-avant x3
+faire-linventaire x2
+cra-poiscail-messager x3
+roi-cra-poiscail x1
+le-grand-saut x1
+lab-grand-reve-verrier x2
+
+liste: Le Grand Banc [V2 + Têtard qui revient]
+deck: le-grand-banc
+navire: le-brise-lames
+lab-tetard-verrier x2
+ptite-fesse x3
+cra-poiscail-sauteur x3
+cra-poiscail-grand-gueule x1
+lab-ramasseur-verrier x3
+banc-de-cra-poiscail x3
+lab-chef-de-banc-verrier x3
+cra-poiscail-porte-etendard x2
+le-trone-de-bouchon x2
+cra-poiscail-des-hautes-eaux x3
+le-seau x3
+fesses-en-avant x3
+faire-linventaire x2
+cra-poiscail-messager x3
+roi-cra-poiscail x1
+le-grand-saut x1
+lab-grand-reve-verrier x2

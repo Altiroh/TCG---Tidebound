@@ -8,7 +8,7 @@ import type { CardInstance } from "@/game/cards/types";
 import { RULES } from "@/game/rules/constants";
 import { nextInt } from "@/game/rng";
 import type { GameEvent } from "@/game/events/types";
-import { processDiscardedFromHandTriggers, processTrigger } from "@/game/triggers/triggerBus";
+import { processGraveyardEntryTriggers, processTrigger } from "@/game/triggers/triggerBus";
 import { discardFromHandState, recordGraveyardArrival } from "@/game/state/discard";
 import {
   consumeEquippedEffectDamageShield,
@@ -16,6 +16,7 @@ import {
   consumeTideShipDamageShield,
 } from "@/game/state/shields";
 import { getPlayer, type GameState, type PlayerId, type PlayerState } from "@/game/state/types";
+import { applyAbyssesEntryOrExit, clearHouleSickness, isSick } from "@/game/environment/tideTransition";
 
 const IGNORE_FLAG_PREFIX = "ignoreNextTideDamage";
 
@@ -60,76 +61,6 @@ function computeTideDamageForPlayer(
   return { anchor, reason };
 }
 
-interface AbyssesEntryLoss {
-  anchor: number;
-  extraReason: number;
-}
-
-/**
- * Choc d'entrée dans les Abysses (une seule fois, pas par tour) : Ancrage
- * fixe modulé par le Navire, plus une éventuelle perte de Raison
- * supplémentaire propre au Navire (ex: "Équipage à bout" du Brise-Lames,
- * `reasonWeaknessByState.abysses`). La réduction de Raison maximale
- * elle-même est appliquée séparément (`applyAbyssesEntryOrExit`).
- */
-function computeAbyssesEntryLoss(player: PlayerState): AbyssesEntryLoss {
-  const ship = getShipDefinition(player.shipId);
-  const resistance = ship.resistanceByState?.abysses ?? 0;
-  const weakness = ship.weaknessByState?.abysses ?? 0;
-  const anchor = Math.max(0, RULES.ABYSSES_ENTRY_ANCHOR_LOSS + weakness - resistance);
-  const extraReason = ship.reasonWeaknessByState?.abysses ?? 0;
-  return { anchor, extraReason };
-}
-
-/**
- * Applique le choc d'entrée dans les Abysses (-Ancrage one-shot, -Raison
- * max continue avec clampage immédiat de la Raison courante) ou restaure
- * la Raison max à la sortie. Ne fait rien en dehors d'une transition
- * entrante/sortante des Abysses.
- */
-function applyAbyssesEntryOrExit(
-  state: GameState,
-  previousTideState: TideStateName,
-  newTideState: TideStateName,
-  turnNumber: number
-): { state: GameState; events: GameEvent[] } {
-  const events: GameEvent[] = [];
-  const base = { turnNumber, timestamp: Date.now() };
-
-  if (newTideState === "abysses" && previousTideState !== "abysses") {
-    const players = state.players.map((player) => {
-      const loss = computeAbyssesEntryLoss(player);
-      const reasonMax = Math.max(0, player.reasonMax - RULES.ABYSSES_REASON_MAX_PENALTY);
-      const reason = Math.min(reasonAfterLoss({ reason: player.reason }, loss.extraReason), reasonMax);
-      return { ...player, anchor: player.anchor - loss.anchor, reasonMax, reason };
-    }) as [PlayerState, PlayerState];
-
-    for (let i = 0; i < state.players.length; i++) {
-      const before = state.players[i]!;
-      const after = players[i]!;
-      const loss = computeAbyssesEntryLoss(before);
-      if (loss.anchor > 0) {
-        events.push({ ...base, type: "DAMAGE", targetPlayerId: before.id, amount: loss.anchor, targetAnchorAfter: after.anchor });
-      }
-      if (after.reason !== before.reason) {
-        events.push({ ...base, type: "REASON_CHANGED", playerId: before.id, delta: after.reason - before.reason });
-      }
-    }
-
-    return { state: { ...state, players }, events };
-  }
-
-  if (previousTideState === "abysses" && newTideState !== "abysses") {
-    const players = state.players.map((player) => ({
-      ...player,
-      reasonMax: player.reasonMax + RULES.ABYSSES_REASON_MAX_PENALTY,
-    })) as [PlayerState, PlayerState];
-    return { state: { ...state, players }, events };
-  }
-
-  return { state, events };
-}
-
 interface BoardCardRef {
   unit: CardInstance;
   ownerId: PlayerId;
@@ -151,10 +82,6 @@ function collectBoardCards(state: GameState): BoardCardRef[] {
     }
   }
   return refs;
-}
-
-function isSick(unit: CardInstance): boolean {
-  return (unit.statuses ?? []).includes(STATUS_MALADE);
 }
 
 /**
@@ -234,27 +161,6 @@ function applyHouleSickness(state: GameState, turnNumber: number): { state: Game
   }
 
   return { state: damaged, events };
-}
-
-/** Retire automatiquement le statut MALADE de tout le board dès que la Marée quitte la Houle. */
-function clearHouleSickness(state: GameState, turnNumber: number): { state: GameState; events: GameEvent[] } {
-  const events: GameEvent[] = [];
-  const base = { turnNumber, timestamp: Date.now() };
-
-  for (const player of state.players) {
-    for (const unit of player.board) {
-      if (isSick(unit)) events.push({ ...base, type: "STATUS_CHANGED", targetInstanceId: unit.instanceId, status: STATUS_MALADE, applied: false });
-    }
-  }
-
-  const players = state.players.map((player) => ({
-    ...player,
-    board: player.board.map((unit) =>
-      isSick(unit) ? { ...unit, statuses: unit.statuses!.filter((s) => s !== STATUS_MALADE) } : unit
-    ),
-  })) as [PlayerState, PlayerState];
-
-  return { state: { ...state, players }, events };
 }
 
 /**
@@ -389,7 +295,7 @@ export function applyTideTurnEffects(
   // comme les autres : leurs déclencheurs se réveillent ici, une fois le
   // nouvel état des joueurs posé.
   if (discardEvents.length > 0) {
-    const discardTriggers = processDiscardedFromHandTriggers(nextState, discardEvents, turnNumber);
+    const discardTriggers = processGraveyardEntryTriggers(nextState, discardEvents, turnNumber);
     nextState = discardTriggers.state;
     events.push(...discardTriggers.events);
   }

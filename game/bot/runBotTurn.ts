@@ -2,6 +2,7 @@ import { chooseBotAction } from "@/game/bot/chooseAction";
 import type { BotDifficulty } from "@/game/bot/types";
 import { dispatch } from "@/game/engine";
 import type { GameState, PlayerId } from "@/game/state/types";
+import type { PlayerAction } from "@/game/actions/types";
 
 /**
  * Garde-fou défensif contre une boucle infinie — en pratique largement
@@ -37,8 +38,22 @@ export interface BotTurnStep {
  */
 export function stepBotTurn(state: GameState, playerId: PlayerId, difficulty: BotDifficulty): BotTurnStep {
   if (state.status !== "active" || !botHasSomethingToDo(state, playerId)) return { state, done: true };
+  return applyBotAction(state, playerId, chooseBotAction(state, playerId, difficulty));
+}
 
-  const action = chooseBotAction(state, playerId, difficulty);
+/**
+ * Seconde moitié de `stepBotTurn` : applique une action DÉJÀ choisie (avec
+ * le même repli si elle est refusée).
+ *
+ * Séparée pour que l'interface puisse faire réfléchir le bot ailleurs que
+ * sur le fil principal (`features/match/bot/botWorker.ts`) : la recherche
+ * du bot « difficile » prend plusieurs centaines de millisecondes, pendant
+ * lesquelles l'écran gelait. Le choix revient du worker, l'application —
+ * un `dispatch`, instantané — reste ici.
+ */
+export function applyBotAction(state: GameState, playerId: PlayerId, action: PlayerAction): BotTurnStep {
+  if (state.status !== "active" || !botHasSomethingToDo(state, playerId)) return { state, done: true };
+
   const result = dispatch(state, action);
   if (!result.ok) {
     // L'Ancrage pèse bien plus lourd que la Raison dans `evaluateState` :

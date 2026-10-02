@@ -10,7 +10,7 @@
  */
 
 /** Découpage de l'ancien board (retour de test du 13/09). */
-export const ATTACK_TIMINGS = { lift: 170, windup: 210, strike: 140, back: 400 } as const;
+export const ATTACK_TIMINGS = { lift: 140, windup: 170, strike: 120, back: 320 } as const;
 export const ATTACK_IMPACT_AT_MS = ATTACK_TIMINGS.lift + ATTACK_TIMINGS.windup + ATTACK_TIMINGS.strike;
 export const ATTACK_TOTAL_MS = ATTACK_IMPACT_AT_MS + ATTACK_TIMINGS.back;
 

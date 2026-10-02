@@ -328,40 +328,6 @@ describe("pierres et Éclats", () => {
     expect(couleurs(choix.state, sentinelle.instanceId)).toEqual(["rouge", "vert"]);
   });
 
-  it("Coffret aux Cinq Pierres : Éclats plus solides, et un Éclat Sabordé cherche une Sentinelle de sa couleur", () => {
-    const coffret = instance("coffret-aux-cinq-pierres", "p1");
-    const eclat = instance("eclat-chromatique-jaune", "p1");
-    const jaune = instance("gardienne-de-leclat", "p1");
-    const rouge = instance("heros-de-la-flamme", "p1");
-    const state = table({ board: [coffret, eclat], deck: [rouge, jaune, instance("matelot-fele", "p1")] });
-    expect(stats(state, eclat.instanceId).health).toBe(2);
-    const r = dispatch(state, { type: "activateAbility", playerId: "p1", sourceInstanceId: coffret.instanceId, targetInstanceId: eclat.instanceId });
-    ok(r);
-    expect(unite(r.state, eclat.instanceId)).toBeUndefined();
-    const refus = dispatch(r.state, { type: "resolveChoice", playerId: "p1", choice: { takeInstanceIds: [rouge.instanceId] } });
-    expect(refus.ok).toBe(false);
-    const prise = dispatch(r.state, { type: "resolveChoice", playerId: "p1", choice: { takeInstanceIds: [jaune.instanceId] } });
-    ok(prise);
-    expect(joueur(prise.state, "p1").hand.map((c) => c.instanceId)).toContain(jaune.instanceId);
-  });
-
-  it("le bouton « Activer » du Coffret : proposé avec un Éclat à Saborder, plus après usage ni sans Éclat", () => {
-    const coffret = instance("coffret-aux-cinq-pierres", "p1");
-    const eclat = instance("eclat-chromatique-jaune", "p1");
-    const avec = table({ board: [coffret, eclat], deck: [instance("matelot-fele", "p1")] });
-    expect(canActivateAbility(avec, "p1", coffret.instanceId)).toBe(true);
-    // Rien à Saborder : rien à proposer.
-    expect(canActivateAbility(table({ board: [coffret] }), "p1", coffret.instanceId)).toBe(false);
-    // Pas pendant le tour adverse, et une fois par tour.
-    expect(canActivateAbility(avec, "p2", coffret.instanceId)).toBe(false);
-    const r = dispatch(avec, { type: "activateAbility", playerId: "p1", sourceInstanceId: coffret.instanceId, targetInstanceId: eclat.instanceId });
-    ok(r);
-    const apres = { ...r.state, pendingChoice: undefined };
-    const autreEclat = instance("eclat-chromatique-rouge", "p1");
-    const encore = { ...apres, players: apres.players.map((p) => (p.id === "p1" ? { ...p, board: [...p.board, autreEclat] } : p)) as GameState["players"] };
-    expect(canActivateAbility(encore, "p1", coffret.instanceId)).toBe(false);
-  });
-
   it("Appel des Sentinelles ne laisse prendre qu'une Sentinelle", () => {
     const appel = instance("appel-des-sentinelles", "p1");
     const sentinelle = instance("porteur-de-jade", "p1");
