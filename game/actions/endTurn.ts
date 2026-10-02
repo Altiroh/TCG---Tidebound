@@ -7,7 +7,7 @@ import { processTrigger } from "@/game/triggers/triggerBus";
 import { markArrivalsBeforeTurnStart, pruneGraveyardArrivals } from "@/game/state/discard";
 import { RULES } from "@/game/rules/constants";
 import { assertGameActive, assertIsActivePlayer, assertPlayerInGame, combine } from "@/game/rules/validation";
-import { findAnomalyForcedChoice } from "@/game/state/anomalies";
+import { findAnomalyForcedChoices } from "@/game/state/anomalies";
 import { ouvrirFenetrePour } from "@/game/reactions/reactionWindow";
 import type { TriggerEvent } from "@/game/triggers/types";
 import { getOpponent, STATUS_NO_REASON_GAIN, type GameState, type PlayerId, type PlayerState } from "@/game/state/types";
@@ -198,6 +198,16 @@ export function finirTour(state: GameState, endingPlayerId: PlayerId, eventsAvan
 
   nextState = {
     ...nextState,
+    // « Jusqu'au début de votre prochain tour, vous ne pouvez pas récupérer
+    // de Raison » (La Gueule Sous la Mer) : le verrou tombe AU DÉBUT de ce
+    // tour, avant tout ce qui s'y passe — la récupération naturelle de
+    // l'entame comprise, puisqu'elle a lieu au début du tour, donc après
+    // l'échéance du texte (lecture littérale).
+    players: nextState.players.map((p) =>
+      p.id === nextPlayer.id && p.statusFlags.includes(STATUS_NO_REASON_GAIN)
+        ? { ...p, statusFlags: p.statusFlags.filter((f) => f !== STATUS_NO_REASON_GAIN) }
+        : p
+    ) as [PlayerState, PlayerState],
     turnNumber: newTurnNumber,
     activePlayerId: nextPlayer.id,
     priorityPlayerId: nextPlayer.id,
@@ -305,11 +315,8 @@ export function entameDeTour(state: GameState, eventsAvant: GameEvent[] = []): A
   // --- 3-4. Récupération naturelle, absorption de la dette SUBIE, pioche ---
   const playerBeforeUpkeep = nextState.players.find((p) => p.id === nextPlayer.id)!;
 
-  // "La Gueule Sous la Mer" : verrou consommé exactement ICI — cette
-  // récupération-ci est bloquée, jamais les suivantes ("jusqu'au début de
-  // votre prochain tour" = jusqu'à ce moment précis, pas après).
-  const reasonGainLocked = playerBeforeUpkeep.statusFlags.includes(STATUS_NO_REASON_GAIN);
-  const statusFlagsAfterUpkeep = playerBeforeUpkeep.statusFlags.filter((f) => f !== STATUS_NO_REASON_GAIN);
+  // "La Gueule Sous la Mer" : son verrou est déjà tombé au passage de tour
+  // (`finirTour`) — cette récupération-ci a lieu normalement.
 
   // La Raison PERSISTE d'un tour à l'autre et ne remonte que de
   // `RULES.REASON_RECOVERY_CURVE` (passe de stabilisation du 2026-09-21 ;
@@ -349,9 +356,7 @@ export function entameDeTour(state: GameState, eventsAvant: GameEvent[] = []): A
   // `Math.max(base, ...)` : un joueur déjà AU-DESSUS du plafond (Abysses qui
   // viennent d'abaisser `reasonMax`, gain de carte au tour précédent) ne se
   // fait pas rogner ici — seul le plafond des GAINS mord, pas l'acquis.
-  const reason = reasonGainLocked
-    ? baseApresAbsorption
-    : Math.max(baseApresAbsorption, Math.min(ceiling, baseApresAbsorption + recuperation));
+  const reason = Math.max(baseApresAbsorption, Math.min(ceiling, baseApresAbsorption + recuperation));
   if (reason !== playerBeforeUpkeep.reason) {
     events.push({ ...newBase, type: "REASON_CHANGED", playerId: nextPlayer.id, delta: reason - playerBeforeUpkeep.reason });
   }
@@ -391,7 +396,6 @@ export function entameDeTour(state: GameState, eventsAvant: GameEvent[] = []): A
     deck,
     hand,
     board: refreshedBoard,
-    statusFlags: statusFlagsAfterUpkeep,
     // Le compteur d'attaques repart à zéro au début du tour de celui qui
     // va attaquer : « la troisième unité adverse qui attaque pendant un
     // même tour » se compte dans le tour où elles sont portées.
@@ -444,9 +448,16 @@ export function entameDeTour(state: GameState, eventsAvant: GameEvent[] = []): A
   // au début de CHAQUE tour tant que l'Anomalie reste en jeu (n'importe
   // quel contrôleur — cf. `game/state/anomalies.ts`). Bloque toute autre
   // action jusqu'à sa résolution (`resolveChoice`, vérifié dans `dispatch`).
-  const forcedChoice = findAnomalyForcedChoice(nextState, refreshedPlayer.id, newTurnNumber);
-  if (forcedChoice) {
-    nextState = { ...nextState, pendingChoice: forcedChoice };
+  // Une question déjà posée par l'entame (défausse d'un « piochez puis
+  // défaussez ») n'est pas écrasée : les choix forcés prennent la file.
+  const forcedChoices = findAnomalyForcedChoices(nextState, refreshedPlayer.id, newTurnNumber);
+  if (forcedChoices.length > 0) {
+    const file = nextState.pendingChoice ? forcedChoices : forcedChoices.slice(1);
+    nextState = {
+      ...nextState,
+      pendingChoice: nextState.pendingChoice ?? forcedChoices[0],
+      ...(file.length > 0 ? { pendingChoiceQueue: [...(nextState.pendingChoiceQueue ?? []), ...file] } : {}),
+    };
   }
 
   return { ok: true, state: nextState, events };

@@ -1,7 +1,7 @@
 import type { GameEvent } from "@/game/events/types";
 import { getShipDefinition } from "@/game/environment/shipData";
 import { oncePerGameAvailable, withOncePerGameUse } from "@/game/state/oncePerGame";
-import type { GameState, PlayerState } from "@/game/state/types";
+import { STATUS_NO_REASON_GAIN, type GameState, type PlayerState } from "@/game/state/types";
 
 /**
  * ÉPUISEMENT DE LA RAISON — la Raison perdue pendant le tour, et ce qu'en
@@ -48,6 +48,9 @@ export function applyReasonDepletion(before: GameState, after: GameState): { sta
 
     const depleted = previous.reason > 0 && player.reason <= 0;
     if (depleted && amount > 0 && refundsOnDepletion(player) && oncePerGameAvailable(player, DEPLETION_KEY)) {
+      // « Vous ne pouvez pas récupérer de Raison » (La Gueule Sous la Mer) :
+      // la première fois a bien eu lieu, mais elle ne rend rien.
+      if (player.statusFlags.includes(STATUS_NO_REASON_GAIN)) return withOncePerGameUse(next, DEPLETION_KEY);
       const reason = Math.min(next.reasonMax, next.reason + amount);
       events.push({ type: "REASON_CHANGED", turnNumber, timestamp: Date.now(), playerId: player.id, delta: reason - next.reason });
       next = withOncePerGameUse({ ...next, reason }, DEPLETION_KEY);

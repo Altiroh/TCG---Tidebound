@@ -317,6 +317,13 @@ export function dispatch(state: GameState, action: PlayerAction): ActionResult {
     ...deriveReactionTriggerEvents(finalState, aDeriver),
   ]);
 
+  // File de choix (`pendingChoiceQueue`) : la question suivante s'ouvre dès
+  // que la précédente a reçu sa réponse.
+  if (finalState.status === "active" && !finalState.pendingChoice && finalState.pendingChoiceQueue?.length) {
+    const [suivant, ...reste] = finalState.pendingChoiceQueue;
+    finalState = { ...finalState, pendingChoice: suivant, pendingChoiceQueue: reste.length > 0 ? reste : undefined };
+  }
+
   // Table OCCUPÉE — un choix attend sa réponse (le soin du Verrier de Pont,
   // la défausse de la Vigie aux Fissures), une fenêtre est déjà ouverte
   // (interception, annonce de Marée, sauvetage, chaîne en cours), un
@@ -353,8 +360,8 @@ export function dispatch(state: GameState, action: PlayerAction): ActionResult {
   if (finalState.status !== "active" && finalState.pendingReaction) {
     finalState = { ...finalState, pendingReaction: undefined };
   }
-  if (finalState.status !== "active" && finalState.pendingChoice) {
-    finalState = { ...finalState, pendingChoice: undefined };
+  if (finalState.status !== "active" && (finalState.pendingChoice || finalState.pendingChoiceQueue)) {
+    finalState = { ...finalState, pendingChoice: undefined, pendingChoiceQueue: undefined };
   }
   if (finalState.status !== "active" && finalState.reactionsEnAttente) {
     finalState = { ...finalState, reactionsEnAttente: undefined };

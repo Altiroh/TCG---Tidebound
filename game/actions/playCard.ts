@@ -481,8 +481,10 @@ export function playCard(state: GameState, action: PlayCardAction): ActionResult
   // « Lorsqu'elle devient visible » : une Structure posée pendant un état où
   // elle est DÉJÀ visible apparaît à cet instant — sans quoi son effet
   // n'existerait qu'au prochain changement de Marée, et poser la carte au
-  // bon moment la punirait.
-  if (def.visibleDuringTide && isVisibleDuringTide(def, nextState.environment.tideState)) {
+  // bon moment la punirait. Vaut pour TOUTE Structure, y compris celle
+  // « visible pendant toutes les Marées » (sans `visibleDuringTide`) : elle
+  // aussi apparaît à l'adversaire en arrivant (Contremaître des Amarres).
+  if ((def.visibleDuringTide || def.type === "structure") && isVisibleDuringTide(def, nextState.environment.tideState)) {
     events.push({
       ...base,
       type: "STRUCTURE_REVEALED",

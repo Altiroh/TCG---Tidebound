@@ -10,9 +10,9 @@ import { chosenTargetRequirement, eligibleChosenUnits } from "@/game/effects/cho
 import { graveyardChoicesFor } from "@/game/effects/graveyardChoices";
 import { markOncePerTurnUsed, oncePerTurnAvailable } from "@/game/state/oncePerTurn";
 import { chromaticColorsOf } from "@/game/rules/chromatic";
-import { payReasonCost } from "@/game/state/shields";
-import { handBreakCost, isBreakReaction } from "@/game/rules/objectBreak";
-import type { GameState, PlayerId, PlayerState } from "@/game/state/types";
+import { payReasonCost, reasonCostAfterShield } from "@/game/state/shields";
+import { consumeObjectBreakTax, handBreakCost, isBreakReaction, objectBreakTax } from "@/game/rules/objectBreak";
+import type { GameState, PendingChoice, PlayerId, PlayerState } from "@/game/state/types";
 import type { TideStateName } from "@/game/environment/types";
 import type { PendingReactionCandidate, TriggerEvent } from "@/game/triggers/types";
 
@@ -139,6 +139,8 @@ function matchesControlCondition(
     // Ceux qui se détruisent ou se Sabordent ne montraient pas le problème.
     if (holder.unit.revealed) return false;
   }
+  const resteMaree = ability.condition?.tideRemainingTurnsAtLeast;
+  if (resteMaree !== undefined && state.environment.tideRemainingTurns < resteMaree) return false;
   const handAtLeast = ability.condition?.controllerHandAtLeast;
   if (handAtLeast !== undefined) {
     const holder = state.players.find((p) => p.id === controllerId);
@@ -968,8 +970,9 @@ export function processTrigger(
     // « Choisissez : A ou B » en résolution AUTOMATIQUE (ex: Horloge de
     // Marée au Sabordage) : rien ne se résout ici, un choix est ouvert pour
     // le contrôleur (`GameState.pendingChoice`, résolu par `resolveChoice`).
-    // Si un choix est déjà en attente, la première option du groupe se
-    // résout d'office.
+    // Si un choix est déjà en attente, celui-ci prend la file
+    // (`pendingChoiceQueue`) : le moteur ne choisit jamais à la place du
+    // joueur.
     if (item.ability.choiceGroup && item.context.sourceInstanceId) {
       const groupKey = `${item.context.sourceInstanceId}:${item.ability.choiceGroup}`;
       if (openedChoiceGroups.has(groupKey)) continue;
@@ -977,21 +980,18 @@ export function processTrigger(
       const abilityIndexes = (getCardDefinition(item.cardId).abilities ?? []).flatMap((ability, index) =>
         ability.choiceGroup === item.ability.choiceGroup && (ability.mode ?? "auto") === "auto" ? [index] : []
       );
-      if (!nextState.pendingChoice) {
-        nextState = {
-          ...nextState,
-          pendingChoice: {
-            kind: "abilityOption",
-            playerId: item.context.controllerId,
-            sourceInstanceId: item.context.sourceInstanceId,
-            cardId: item.cardId,
-            abilityIndexes,
-            turnNumber,
-          },
-        };
-        continue;
-      }
-      if (abilityIndexes[0] !== item.abilityIndex) continue;
+      const option: PendingChoice = {
+        kind: "abilityOption",
+        playerId: item.context.controllerId,
+        sourceInstanceId: item.context.sourceInstanceId,
+        cardId: item.cardId,
+        abilityIndexes,
+        turnNumber,
+      };
+      nextState = nextState.pendingChoice
+        ? { ...nextState, pendingChoiceQueue: [...(nextState.pendingChoiceQueue ?? []), option] }
+        : { ...nextState, pendingChoice: option };
+      continue;
     }
 
     // "La première fois à chaque tour" : marquée AVANT résolution, pour
@@ -1105,7 +1105,16 @@ function collectReactionCandidatesOnBoard(
 
       // Le coût en Raison d'une réaction ne l'écarte jamais : sans plancher
       // de Déraison, la réaction se propose et se paie en creusant la dette.
-      const reasonCost = item.ability.cost?.reason ?? 0;
+      // Seule exception, portée par une carte : la taxe de Bris adverse
+      // (Cloche d'Alerte), qui s'ajoute au coût d'une réaction qui BRISE un
+      // Objet et la rend impossible si elle est impayable.
+      let reasonCost = item.ability.cost?.reason ?? 0;
+      const itemDef = getCardDefinition(item.cardId);
+      if (isBreakReaction(itemDef, item.ability)) {
+        const tax = objectBreakTax(state, forPlayerId, turnNumber);
+        reasonCost += tax.amount;
+        if (breakTaxBlocks(state, forPlayerId, tax.blocksIfUnpayable, reasonCost, turnNumber)) continue;
+      }
 
       // Le coût en ANCRAGE, lui, écarte : la coque n'a pas de découvert,
       // et proposer « payez 3 Ancrage » à un joueur qui en a 2 reviendrait
@@ -1153,6 +1162,17 @@ function collectReactionCandidatesOnBoard(
 }
 
 /**
+ * « S'il ne peut pas payer, l'Objet ne peut pas être Brisé » (Cloche
+ * d'Alerte) : vrai si une taxe bloquante rend ce Bris impayable — coût total
+ * après bouclier supérieur à la Raison du joueur.
+ */
+function breakTaxBlocks(state: GameState, playerId: PlayerId, blocksIfUnpayable: boolean, totalCost: number, turnNumber: number): boolean {
+  if (!blocksIfUnpayable) return false;
+  const player = state.players.find((p) => p.id === playerId);
+  return !player || player.reason < reasonCostAfterShield(state, playerId, totalCost, turnNumber);
+}
+
+/**
  * Objets RÉACTIFS encore en main (règle du 29/09/2026) : « Lorsque …, vous
  * pouvez Briser cet Objet » se propose aussi depuis la main, au coût d'un
  * Bris depuis la main, sans Slot.
@@ -1187,10 +1207,42 @@ function handBreakReactionCandidates(
       if (candidate.sourceInstanceId !== card.instanceId) continue;
       const ability = def.abilities?.[candidate.abilityIndex];
       if (!ability || !isBreakReaction(def, ability)) continue;
-      found.push({ ...candidate, fromHand: true, reasonCost: candidate.reasonCost + handBreakCost(def) });
+      const reasonCost = candidate.reasonCost + handBreakCost(def);
+      // Depuis la main, la taxe bloquante se mesure au coût TOTAL (Bris
+      // depuis la main + taxe), comme pour l'action `breakObject`.
+      const tax = objectBreakTax(state, forPlayerId, turnNumber);
+      if (breakTaxBlocks(state, forPlayerId, tax.blocksIfUnpayable, reasonCost, turnNumber)) continue;
+      found.push({ ...candidate, fromHand: true, reasonCost });
     }
   }
   return found;
+}
+
+/**
+ * REFUSER une « première fois à chaque tour … vous pouvez » consomme
+ * l'occasion du tour (règle de projet : passer une fenêtre est un choix).
+ * Appelé quand le joueur PASSE : chaque capacité facultative qui lui était
+ * proposée et qui porte un `oncePerTurnKey` est marquée pour le tour,
+ * exactement comme si elle avait servi — elle ne se reproposera pas à
+ * l'occurrence suivante, qui n'est plus « la première ».
+ *
+ * `onceEver` (« la première fois que… » sans « à chaque tour ») n'est PAS
+ * consommé par un refus : brûler l'unique usage de la partie sur un simple
+ * « pas maintenant » est une décision de design qui reste à prendre.
+ */
+export function consumeDeclinedOncePerTurnReactions(
+  state: GameState,
+  candidates: readonly PendingReactionCandidate[],
+  turnNumber: number
+): GameState {
+  let nextState = state;
+  for (const candidate of candidates) {
+    if (candidate.fromHand) continue;
+    const ability = getCardDefinition(candidate.cardId).abilities?.[candidate.abilityIndex];
+    if (!ability?.oncePerTurnKey || ability.onceEver) continue;
+    nextState = markOncePerTurnSlot(nextState, ability, candidate.sourceInstanceId, candidate.triggerSourceInstanceId, turnNumber);
+  }
+  return nextState;
 }
 
 /**
@@ -1215,6 +1267,12 @@ export function resolveReaction(
   const events: GameEvent[] = [];
   const base = { turnNumber, timestamp: Date.now() };
   let nextState = state;
+
+  // Bris en réaction : la taxe adverse (Cloche d'Alerte), déjà comptée dans
+  // `reasonCost` au recensement, est consommée pour le tour.
+  if (isBreakReaction(def, ability)) {
+    nextState = consumeObjectBreakTax(nextState, objectBreakTax(nextState, candidate.controllerId, turnNumber), turnNumber);
+  }
 
   if (candidate.reasonCost > 0) {
     const payment = payReasonCost(nextState, candidate.controllerId, candidate.reasonCost, turnNumber);

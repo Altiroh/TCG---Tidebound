@@ -275,6 +275,15 @@ export interface TriggeredAbility {
     destroyedBy?: DestructionCause[];
     tideState?: TideStateName;
     tideStateIn?: TideStateName[];
+    /**
+     * La Marée actuelle doit avoir AU MOINS N tours restants
+     * (`environment.tideRemainingTurns`). Pour une option « réduisez de N
+     * tour(s) la durée de la Marée » sans `advanceTideOnZero` : la durée ne
+     * descend jamais sous 1, donc à 1 tour restant l'option ne ferait rien —
+     * elle ne se propose pas, plutôt que d'encaisser son coût pour rien
+     * (Lanterne aux Verres Noirs).
+     */
+    tideRemainingTurnsAtLeast?: number;
     controlsAnyCardIds?: string[];
     /**
      * « si l'adversaire contrôle au moins N unités » : porte ANTI-SWARM
@@ -921,6 +930,19 @@ export interface CardDefinition {
    * cible-carte).
    */
   bonusDamageVsTargetType?: { type: CardType; amount: number };
+
+  /**
+   * « Lorsqu'il attaque une Structure, il gagne +1 PUISSANCE pour ce combat »
+   * (Barracuda des Hauts-Fonds, Corde de Remorquage) : pour une unité
+   * ATTAQUANTE (ou l'Équipement qui l'équipe), +N à la Puissance DÉCLARÉE
+   * de l'attaque (`pendingAttack.attackerPower`) quand sa cible est de ce
+   * type. Distinct de `bonusDamageVsTargetType` (« infligez 1 dégât
+   * supplémentaire », Poisson-Scie Gris) : c'est la Puissance que lisent
+   * les pièges et les conditions (`attackerPowerAtLeast`,
+   * `modifyAttackerPower`). Jamais stocké comme modificateur, sans effet
+   * sur la riposte ni sur une attaque directe.
+   */
+  bonusPowerVsTargetType?: { type: CardType; amount: number };
 
   /**
    * Pour une unité ATTAQUANTE (ou l'Équipement qui l'équipe) : dégâts

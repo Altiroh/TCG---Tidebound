@@ -187,7 +187,44 @@ export function consumeDirectShipDamageShield(
   };
 }
 
-/** Restauration "1ère fois par tour" de Résistance perdue par une Structure alliée (Wood Vy) — 0 si aucune carte éligible sur le plateau de `ownerId`. */
+/**
+ * « La première fois à chaque tour qu'une Structure que vous contrôlez PERD
+ * de la Résistance, RENDEZ-LUI 1 Résistance » (Wood Vy) : appelée APRÈS que
+ * la perte a été marquée (et son `DAMAGE` émis) — la Structure perd bien la
+ * Résistance, puis la récupère. Ce n'est pas une prévention : les
+ * déclencheurs « subit des dégâts » voient le coup.
+ *
+ * Partagée par les trois sources de perte : dégâts d'effet, de combat et de
+ * Marée. Sans effet si `unitInstanceId` n'est pas une Structure de `ownerId`,
+ * si rien n'a été perdu, ou si aucun bouclier n'est disponible ce tour.
+ */
+export function restoreStructureResistanceAfterLoss(
+  state: GameState,
+  ownerId: PlayerId,
+  unitInstanceId: string,
+  lost: number,
+  turnNumber: number
+): { state: GameState; events: GameEvent[] } {
+  if (lost <= 0) return { state, events: [] };
+  const owner = getPlayer(state, ownerId);
+  const unit = owner.board.find((u) => u.instanceId === unitInstanceId);
+  if (!unit || getCardDefinition(unit.cardId).type !== "structure") return { state, events: [] };
+  const shield = consumeStructureResistanceRestoreShield(state, ownerId, turnNumber);
+  if (shield.restore <= 0) return { state, events: [] };
+  const rendu = Math.min(shield.restore, unit.damageMarked);
+  if (rendu <= 0) return { state: shield.state, events: [] };
+  const next: GameState = {
+    ...shield.state,
+    players: shield.state.players.map((p) =>
+      p.id === ownerId
+        ? { ...p, board: p.board.map((u) => (u.instanceId === unitInstanceId ? { ...u, damageMarked: u.damageMarked - rendu } : u)) }
+        : p
+    ) as [PlayerState, PlayerState],
+  };
+  return { state: next, events: [{ type: "HEAL", turnNumber, timestamp: Date.now(), targetInstanceId: unitInstanceId, amount: rendu }] };
+}
+
+/** Restauration "1ère fois par tour" de Résistance perdue par une Structure alliée (Wood Vy) — 0 si aucune carte éligible sur le plateau de `ownerId`. Préférer `restoreStructureResistanceAfterLoss`. */
 export function consumeStructureResistanceRestoreShield(
   state: GameState,
   ownerId: PlayerId,

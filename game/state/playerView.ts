@@ -71,6 +71,9 @@ export function toPlayerView(state: GameState, viewerId: PlayerId): GameState {
           state.pendingChoice?.kind === "deckTopDecision" && state.pendingChoice.playerId !== viewerId
           ? { ...state.pendingChoice, card: hiddenZoneCards(1, state.pendingChoice.deckOwnerId, "deck")[0]! }
           : state.pendingChoice,
+    // Les questions en file ne regardent que leur destinataire : l'autre
+    // joueur les verra s'ouvrir, pas avant.
+    ...(state.pendingChoiceQueue ? { pendingChoiceQueue: state.pendingChoiceQueue.filter((c) => c.playerId === viewerId) } : {}),
     eventLog: state.eventLog.map((event) => projectEvent(event, viewerId, hiddenBoardIds)),
     pendingReaction: state.pendingReaction && {
       ...state.pendingReaction,
