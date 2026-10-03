@@ -287,6 +287,18 @@ export const DECK_LE_THEATRE_ENGLOUTI: DeckList = {
  * DEUXIÈME PASSE (29/09/2026, contre le rayon révisé) : retombé à 38 %.
  * Chaîne de Travers (Δ −13) cède la place à deux Baleines aux Cicatrices
  * Blanches. 38 % → 50 % au labo.
+ *
+ * RECONSTRUIT LE 03/10/2026. Le retrait du catalogue (02/10) lui avait pris
+ * six cartes sans remplaçant : Ancre de Dérive ×2, Plongeur des Épaves ×2
+ * et les deux Baleines. Le Plongeur cède sa place à la Charpentière de
+ * Veille ×2 (elle aussi vit du départ d'un piège) ; l'Ancre et les Baleines
+ * à des corps, parce que c'est ce qui manquait : Cormoran de Fer ×2, Mouette
+ * du Brise-Lames ×1 et Le Dernier Rempart ×1, un gros corps à
+ * Garde, qui fait le travail de la Baleine. Au premier tri (40 parties par
+ * paire), un deuxième piège (Pont Miné ×2 à la place de l'Ancre) faisait
+ * perdre — 35 % — et deux Derniers Remparts montaient à 57,5 % : écartés.
+ * Mesuré au labo (bot moyen, 200 parties par paire contre le rayon) :
+ * 39,0 % à 34 cartes → 51,7 %. Aucun texte changé.
  */
 export const DECK_MINEURS_DE_FOND: DeckList = {
   id: "mineurs-de-fond",
@@ -308,12 +320,16 @@ export const DECK_MINEURS_DE_FOND: DeckList = {
     ...repeat("cloche-dalerte", 2),
     // Ce qui vit du départ d'un piège (29/09/2026).
     ...repeat("charpentier-des-epaves", 3),
+    ...repeat("charpentiere-de-veille", 2),
     ...repeat("treuil-rouille", 1),
     ...repeat("bernard-lermite-dacier", 3),
     // Assez de corps pour ne pas perdre en attendant.
     ...repeat("crabe-de-fer", 3),
     ...repeat("matelot-du-sans-nom", 3),
     ...repeat("chose-des-hauts-fonds", 3),
+    ...repeat("cormoran-de-fer", 2),
+    ...repeat("mouette-du-brise-lames", 1),
+    ...repeat("le-dernier-rempart", 1),
   ],
 };
 
@@ -398,6 +414,19 @@ export const DECK_LA_FORTERESSE: DeckList = {
  * Pont Miné et Balise des Profondeurs cèdent la place à l'Albatros de
  * Mauvais Temps et au Second au Visage Pâle — deux corps de Tempête.
  * 37 % → 50 % au labo.
+ *
+ * RECONSTRUIT LE 03/10/2026. Le retrait du catalogue (02/10) lui avait pris
+ * onze cartes : Cartographe du Large ×3, Gardien du Sondeur ×2, Veilleuse
+ * des Profondeurs ×3, Ancre de Tempête ×2 et Épave Engloutie. Il n'en
+ * reste plus qui poussent la Marée sans en payer le prix ; la liste suit
+ * donc la pente du 29/09 — des corps de Marée, utiles tout de suite et
+ * meilleurs en bas. Entrent Poisson-Lanterne ×3 et Marin des Jetées ×2 (la
+ * courbe basse qui manquait), Masse-Sombre abyssale ×2 et Revenante de la
+ * Fosse ×2 à la place de la Veilleuse, et deux Bat-Marins de plus. Il ne
+ * reste que trois Structures (Régulateur de Courant). Mesuré au labo (bot
+ * moyen, 200 parties par paire contre le rayon) : 48,4 % à 29 cartes →
+ * 45,3 % à 40, mains sans carte à 2 ou moins 50 % → 29 %. Aucun texte
+ * changé.
  */
 export const DECK_DESCENTE_AUX_ABYSSES: DeckList = {
   id: "descente-aux-abysses",
@@ -410,14 +439,19 @@ export const DECK_DESCENTE_AUX_ABYSSES: DeckList = {
     ...repeat("anguille-des-profondeurs", 3),
     ...repeat("raie-des-fosses", 2),
     ...repeat("sondeur-des-mauvaises-eaux", 2),
+    // La courbe basse, qui lit la Marée elle aussi (03/10/2026).
+    ...repeat("poisson-lanterne", 3),
+    ...repeat("marin-des-jetees", 2),
     // Les instruments : durée, intensité, orientation.
     ...repeat("regulateur-de-courant", 3),
     // Le forçage, et ce qui vit en bas.
     ...repeat("la-gueule-sous-la-mer", 1),
     ...repeat("la-chose-qui-remonte", 2),
     ...repeat("masse-sombre", 3),
+    ...repeat("masse-sombre-abyssal", 2),
+    ...repeat("lhomme-revenu-de-la-fosse", 2),
     ...repeat("si-raie-ponce", 2),
-    ...repeat("bat-marin", 1),
+    ...repeat("bat-marin", 3),
     ...repeat("albatros-de-mauvais-temps", 2),
     ...repeat("second-au-visage-pale", 2),
     // La récompense de la descente, reprise de Sous la Ligne : ce que
@@ -426,7 +460,6 @@ export const DECK_DESCENTE_AUX_ABYSSES: DeckList = {
     ...repeat("marin-aux-yeux-rouges-abyssal", 1),
     ...repeat("bat-marin-abyssal", 1),
     ...repeat("revenante-de-la-fosse-abyssal", 1),
-    // Lot 14 : de quoi survivre à un adversaire pressé.
   ],
 };
 
@@ -475,6 +508,19 @@ export const DECK_DESCENTE_AUX_ABYSSES: DeckList = {
  * une fois les autres decks renforcés. L'Étau du Calfat et le dernier
  * Radeau cèdent la place à trois Crabes de Fer. 39 % → 48 % au labo,
  * 15 Structures toujours en jeu.
+ *
+ * RECONSTRUIT LE 03/10/2026. Le retrait du catalogue (02/10) lui avait pris
+ * Plongeur des Épaves ×2, les deux Baleines et Épaves Accrochées ×2. Le
+ * Plongeur cède sa place à Bernard-l'Ermite d'Acier ×2, qui grandit au
+ * départ de chaque Structure ; les Baleines et les Épaves à des corps qui
+ * tiennent pendant le recyclage, Cormoran de Fer ×2, Mouette du Brise-Lames
+ * et Le Dernier Rempart, le gros corps à Garde qui fait le travail de la
+ * Baleine. Combler avec des Structures et des outils (Treuil Rouillé,
+ * Régulateur de Courant) le faisait tomber à 29 % : la maladie du 22/09,
+ * toujours la même — le recyclage ne convertit rien seul. Deux Derniers
+ * Remparts montaient à 57,5 % : écartés. Mesuré au labo (bot moyen, 200
+ * parties par paire contre le rayon) : 34,4 % à 34 cartes → 50,7 %, 13
+ * Structures. Aucun texte changé.
  */
 export const DECK_EPAVISTES: DeckList = {
   id: "epavistes",
@@ -488,10 +534,14 @@ export const DECK_EPAVISTES: DeckList = {
     ...repeat("mecanicien-aux-mains-noires", 2),
     ...repeat("charpentiere-de-veille", 2),
     ...repeat("wood-vy", 2),
+    ...repeat("bernard-lermite-dacier", 2),
     // Les corps qui tiennent pendant que ça recycle.
     ...repeat("matelot-du-sans-nom", 3),
     ...repeat("chose-des-hauts-fonds", 3),
     ...repeat("crabe-de-fer", 3),
+    ...repeat("cormoran-de-fer", 2),
+    ...repeat("mouette-du-brise-lames", 1),
+    ...repeat("le-dernier-rempart", 1),
     // Les Structures à faire disparaître.
     ...repeat("caisses-arrimees", 3),
     ...repeat("caisse-des-dernieres-planches", 3),
@@ -551,6 +601,17 @@ export const DECK_EPAVISTES: DeckList = {
  * la première fois qu'elle tombe à 0 — exactement ce que vit ce deck.
  * Mesuré au labo (bot moyen, 60 parties par paire contre le rayon) :
  * 19 % → 35 % avec la liste seule, 54 % sous L'Errant. Aucun texte changé.
+ *
+ * RECONSTRUIT LE 03/10/2026. Le retrait du catalogue (02/10) lui avait pris
+ * neuf cartes : Ponton aux Cloches ×3, Cloche Immergée ×2, La Mer Réclame
+ * Davantage, Capitaine sans Sommeil et Cartographe du Large ×2. Entrent ce
+ * qui fait encore payer — le troisième Marin aux Yeux Rouges abyssal, Le
+ * Fond Vous Regarde ×2 à la place de l'Anomalie, Bat-Marin abyssal — et ce
+ * qui vit bas en Raison à la place du Capitaine : Ce Qui Suit le Navire ×2
+ * et la Seconde au Visage Pâle ×2. Trois Choses des Hauts-Fonds à la place
+ * de la Seconde et d'un Fond montaient à 71,6 % au premier tri (40 parties
+ * par paire) : écartées. Mesuré au labo (bot moyen, 200 parties par paire
+ * contre le rayon) : 54,5 % à 31 cartes → 52,6 %. Aucun texte changé.
  */
 export const DECK_A_BOUT_DE_RAISON: DeckList = {
   id: "a-bout-de-raison",
@@ -561,13 +622,17 @@ export const DECK_A_BOUT_DE_RAISON: DeckList = {
   cardIds: [
     // Ceux qui font payer.
     ...repeat("marin-aux-yeux-rouges", 3),
-    ...repeat("marin-aux-yeux-rouges-abyssal", 1),
+    ...repeat("marin-aux-yeux-rouges-abyssal", 3),
     ...repeat("si-raie-ponce", 3),
     ...repeat("anguille-des-profondeurs", 3),
+    ...repeat("bat-marin-abyssal", 1),
     ...repeat("le-role-dequipage", 2),
-    // Une Anomalie, qui presse la Marée.
+    // L'Anomalie : deux tours où chacun paie, en Raison ou en Ancrage.
+    ...repeat("le-fond-vous-regarde", 2),
     // Ceux qui vivent bas en Raison, et ce qui convertit la pression.
     ...repeat("matelot-insomniaque", 3),
+    ...repeat("ce-qui-suit-le-navire", 2),
+    ...repeat("second-au-visage-pale", 2),
     ...repeat("vieux-loup-de-mer", 2),
     ...repeat("murene-aveugle", 3),
     ...repeat("requin-balafre", 3),
@@ -662,6 +727,13 @@ export const DECK_ARSENAL_DE_PONT: DeckList = {
  * Le Goliath et son canon : un tir arme la seconde moitié de la boucle sans
  * dépenser de carte. Pas de combo — le deck cherche le meilleur échange à
  * chaque tour, et finit avec ce qui reste debout.
+ *
+ * RECONSTRUIT LE 03/10/2026. Les deux Baleines aux Cicatrices Blanches,
+ * retirées du catalogue (02/10), cèdent leur place à deux Choses des
+ * Hauts-Fonds : le même corps à 4 qui reste debout après l'échange. La
+ * Vieille-Selle, essayée à la même place, donnait 45,7 % au premier tri.
+ * Mesuré au labo (bot moyen, 200 parties par paire contre le rayon) :
+ * 49,8 % à 38 cartes → 52,8 %. Aucun texte changé.
  */
 export const DECK_CHASSE_AU_GROS: DeckList = {
   id: "chasse-au-gros",
@@ -686,6 +758,7 @@ export const DECK_CHASSE_AU_GROS: DeckList = {
     ...repeat("pont-mine", 2),
     // Ce qui reste debout quand l'échange est fini.
     ...repeat("ce-qui-suit-le-navire", 3),
+    ...repeat("chose-des-hauts-fonds", 2),
     ...repeat("le-brise-ligne", 2),
     ...repeat("lamiral-sans-pavillon", 1),
     ...repeat("chaine-de-fer-noir", 1),
@@ -737,6 +810,18 @@ export const DECK_CHASSE_AU_GROS: DeckList = {
  * Matelot Insomniaque ×2, qui vit bien en Déraison. Aucun texte changé.
  * Mesuré sur cette liste (bot moyen, 60 parties par paire contre le rayon) :
  * 52,5 % → 63 %, mains sans carte à 2 ou moins 66 % → 29 %.
+ *
+ * RECONSTRUIT LE 03/10/2026. Les deux Baleines aux Cicatrices Blanches,
+ * retirées du catalogue (02/10), laissaient 38 cartes — et le deck à
+ * 63,3 % contre le rayon, au-dessus de la cible avant même d'être complété.
+ * Les deux places reviennent au nettoyage, Chacun sa Place et Abandonnez le
+ * Navire !, revus le 01/10 (coût 5 → 3, 6 → 2) : la page fait de ce deck
+ * celui des balais, et ce sont les deux seuls qui restaient hors de la
+ * liste. Ils partent peu (23 % et 45 % des fois où ils sont en main), et le
+ * deck revient dans la cible. Le Dernier Rempart ×2, gros corps à la place
+ * des gros corps, le laissait à 67 % au premier tri : écarté. Mesuré au
+ * labo (bot moyen, 200 parties par paire contre le rayon) : 63,3 % à 38
+ * cartes → 53,3 %. Aucun texte changé.
  */
 export const DECK_APRES_LA_TEMPETE: DeckList = {
   id: "apres-la-tempete",
@@ -750,6 +835,9 @@ export const DECK_APRES_LA_TEMPETE: DeckList = {
     ...repeat("vague-scelerate", 2),
     ...repeat("le-large-se-fache", 1),
     ...repeat("la-mer-reprend-tout", 1),
+    // Les deux balais à la carte, revus le 01/10/2026 (reconstruit le 03/10).
+    ...repeat("chacun-sa-place", 1),
+    ...repeat("abandonnez-le-navire", 1),
     // Les pièges qui achètent les tours qui manquent.
     ...repeat("jugement-du-phare", 1),
     ...repeat("derniere-barricade", 2),
