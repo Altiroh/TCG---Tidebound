@@ -1,0 +1,160 @@
+/*
+ * Effets du nouveau cadre (test) — posés AU-DESSUS de l'illustration, du
+ * liseré et du débord, mais SOUS les textes : nom, règles et chiffres
+ * restent nets.
+ *
+ * - Légendaire : un éclat doré balaie la carte, des étoiles scintillent.
+ * - Abyssale : un reflet irisé (façon carte chromatique) glisse en continu.
+ *
+ * Tout s'arrête si l'appareil demande moins d'animations.
+ */
+
+/* Calque commun : couvre la carte et suit l'arrondi du liseré. */
+.calque {
+  position: absolute;
+  inset: 1.2% 4.6%;
+  border-radius: 6cqw;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* ─── Légendaire ─────────────────────────────────────────────────────── */
+
+/* Bande de lumière dorée qui traverse la carte en diagonale. */
+.eclatDore {
+  position: absolute;
+  inset: -50%;
+  background: linear-gradient(
+    115deg,
+    transparent 36%,
+    rgba(255, 220, 140, 0.12) 42%,
+    rgba(255, 232, 165, 0.38) 47%,
+    rgba(255, 246, 215, 0.5) 50%,
+    rgba(255, 232, 165, 0.38) 53%,
+    rgba(255, 220, 140, 0.12) 58%,
+    transparent 64%
+  );
+  mix-blend-mode: screen;
+  animation: balayage 4.2s ease-in-out infinite;
+}
+
+@keyframes balayage {
+  0% { transform: translateX(-45%); opacity: 0; }
+  12% { opacity: 1; }
+  45% { transform: translateX(45%); opacity: 1; }
+  52%, 100% { transform: translateX(45%); opacity: 0; }
+}
+
+/* Une étoile à quatre branches, placée et décalée par style en ligne. */
+.etoile {
+  position: absolute;
+  width: 6cqw;
+  height: 6cqw;
+  margin: -3cqw 0 0 -3cqw;
+  background:
+    radial-gradient(circle, rgba(255, 255, 240, 1) 0 8%, rgba(255, 220, 130, 0.9) 14%, transparent 34%),
+    linear-gradient(0deg, transparent 47%, rgba(255, 240, 190, 0.95) 50%, transparent 53%),
+    linear-gradient(90deg, transparent 47%, rgba(255, 240, 190, 0.95) 50%, transparent 53%);
+  filter: drop-shadow(0 0 1cqw rgba(255, 210, 110, 0.9));
+  mix-blend-mode: screen;
+  opacity: 0;
+  animation: scintille 2.6s ease-in-out infinite;
+}
+
+@keyframes scintille {
+  0%, 100% { opacity: 0; transform: scale(0.2) rotate(0deg); }
+  50% { opacity: 1; transform: scale(1) rotate(45deg); }
+}
+
+/* Halo doré qui respire sur le liseré, pour qu'une légendaire se repère même à l'arrêt. */
+.haloDore {
+  position: absolute;
+  inset: 0;
+  border-radius: 7cqw;
+  box-shadow: 0 0 2.5cqw rgba(255, 200, 90, 0.55), inset 0 0 2cqw rgba(255, 210, 120, 0.35);
+  pointer-events: none;
+  animation: respire 3s ease-in-out infinite;
+}
+
+@keyframes respire {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 1; }
+}
+
+/* ─── Abyssale ───────────────────────────────────────────────────────── */
+
+/* Irisation : un dégradé arc-en-ciel froid, très large, qui glisse en continu. */
+.irisation {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    125deg,
+    rgba(150, 70, 255, 0.55) 0%,
+    rgba(60, 220, 255, 0.5) 16%,
+    rgba(90, 255, 170, 0.45) 30%,
+    rgba(255, 90, 220, 0.5) 46%,
+    rgba(120, 90, 255, 0.55) 62%,
+    rgba(60, 220, 255, 0.5) 78%,
+    rgba(150, 70, 255, 0.55) 100%
+  );
+  background-size: 300% 300%;
+  mix-blend-mode: color-dodge;
+  opacity: 0.38;
+  animation: derive 7s linear infinite;
+}
+
+@keyframes derive {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 150% 50%; }
+}
+
+/* Reflet : une bande claire et nacrée qui passe par-dessus l'irisation. */
+.refletNacre {
+  position: absolute;
+  inset: -50%;
+  background: linear-gradient(
+    105deg,
+    transparent 38%,
+    rgba(200, 170, 255, 0.25) 46%,
+    rgba(235, 245, 255, 0.6) 50%,
+    rgba(170, 255, 240, 0.25) 54%,
+    transparent 62%
+  );
+  mix-blend-mode: overlay;
+  animation: balayage 5.5s ease-in-out infinite;
+}
+
+/* Halo violet sur le liseré. */
+.haloAbyssal {
+  position: absolute;
+  inset: 0;
+  border-radius: 7cqw;
+  box-shadow: 0 0 2.5cqw rgba(160, 90, 255, 0.55), inset 0 0 2cqw rgba(120, 220, 255, 0.25);
+  pointer-events: none;
+  animation: respire 3.6s ease-in-out infinite;
+}
+
+/* Le sujet du débord se fond dans le voile au lieu de finir net au-dessus du nom. */
+.debord {
+  -webkit-mask-image: linear-gradient(to bottom, #000 72%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 72%, transparent 100%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .eclatDore,
+  .refletNacre,
+  .etoile,
+  .irisation,
+  .haloDore,
+  .haloAbyssal {
+    animation: none;
+  }
+  .eclatDore,
+  .refletNacre {
+    opacity: 0;
+  }
+  .etoile {
+    opacity: 0.7;
+    transform: scale(0.7) rotate(45deg);
+  }
+}
