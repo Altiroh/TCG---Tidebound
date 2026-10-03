@@ -53,9 +53,9 @@ function passerTout(state: GameState): GameState {
 const pioche = (id: string) => [0, 1, 2].map(() => instance("murene-aveugle", id));
 
 describe("Bête de Halage : « détruite par un effet adverse »", () => {
-  it("des DÉGÂTS mortels d'un effet adverse se remplacent par 1 Résistance", () => {
-    const halage = instance("bete-de-halage", "p2", { damageMarked: 3 });
-    const eclat = instance("eclat-de-bouteille", "p1");
+  it("des DÉGÂTS mortels d'un effet adverse : le coup est annulé, elle perd 1 Résistance (permanent)", () => {
+    const halage = instance("bete-de-halage", "p2", { damageMarked: 2 }); // 4 de Résistance : 2 + 2 est mortel
+    const eclat = instance("coup-de-harpon", "p1");
     const r = dispatch(table({ board: [eclat] }, { board: [halage] }), {
       type: "breakObject",
       playerId: "p1",
@@ -65,7 +65,21 @@ describe("Bête de Halage : « détruite par un effet adverse »", () => {
     ok(r);
     expect(unite(r.state, halage.instanceId)).toBeDefined();
     expect(stats(r.state, halage.instanceId).health).toBe(3);
-    expect(unite(r.state, halage.instanceId)!.damageMarked).toBeLessThan(3);
+    // Le coup mortel n'est pas marqué : ses dégâts d'avant restent.
+    expect(unite(r.state, halage.instanceId)!.damageMarked).toBe(2);
+  });
+
+  it("si −1 Résistance suffit à la tuer, le remplacement ne la sauve pas", () => {
+    const halage = instance("bete-de-halage", "p2", { damageMarked: 3 }); // 4 de Résistance : 3/3 après le −1
+    const eclat = instance("eclat-de-bouteille", "p1");
+    const r = dispatch(table({ board: [eclat] }, { board: [halage] }), {
+      type: "breakObject",
+      playerId: "p1",
+      instanceId: eclat.instanceId,
+      targetInstanceId: halage.instanceId,
+    });
+    ok(r);
+    expect(unite(r.state, halage.instanceId)).toBeUndefined();
   });
 
   it("une destruction posée par « Chacun sa Place » adverse se remplace aussi", () => {

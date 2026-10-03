@@ -8,7 +8,7 @@ import { processSummonEnterTriggers, processTrigger } from "@/game/triggers/trig
 import { deriveReactionTriggerEvents } from "@/game/reactions/reactionWindow";
 import type { GameEvent } from "@/game/events/types";
 import type { GameState, PlayerState } from "@/game/state/types";
-import { activateReactionFor, answerHandDiscard, instance, pendingCandidates, testGameState, testPlayer } from "./testHelpers";
+import { activateReactionFor, answerHandDiscard, instance, pendingCandidates, testEnvironment, testGameState, testPlayer } from "./testHelpers";
 
 /**
  * Revue cartes ↔ moteur, phase 2 — Lot 10 (Cra-Poiscail), Lot 11 (Théâtre
@@ -109,7 +109,7 @@ describe("Le Régisseur Sans Visage — « renvoyer une AUTRE unité Marionnette
   });
 });
 
-describe("arrivée JOUÉE, invoquée ou REJOUÉE (`onlyPlayed`, `excludeRepeatedArrival`)", () => {
+describe("arrivée JOUÉE, invoquée ou REJOUÉE (`onlyPlayed`, arrivée rejouée invisible des observateurs)", () => {
   it("Le Rideau se Lève ne se consomme pas sur sa propre pose : la Marionnette jouée ensuite est répétée", () => {
     const rideau = instance("le-rideau-se-leve", "p1");
     const pulcinella = instance("pulcinella-gonfle", "p1");
@@ -161,6 +161,21 @@ describe("arrivée JOUÉE, invoquée ou REJOUÉE (`onlyPlayed`, `excludeRepeated
       players: [testPlayer("p1", { board: [regisseur, pulcinella] }), testPlayer("p2", { shipId: "le-goliath" })],
     });
     expect(processTrigger(avecRegisseur, invocation, 1).events.some((e) => e.type === "ENTER_EFFECTS_REPEATED")).toBe(true);
+  });
+
+  it("une arrivée REJOUÉE ne réveille pas un piège adverse « une unité adverse arrive » (La Nasse Trop Pleine)", () => {
+    const marionnettes = ["pulcinella-gonfle", "arlequin-raccommodeur", "marin-des-jetees", "marin-des-jetees"].map((id) => instance(id, "p1"));
+    const nasse = instance("la-nasse-trop-pleine", "p2", { turnsRemaining: 3 });
+    const state = testGameState({
+      environment: testEnvironment({ tideState: "tempete", tideRemainingTurns: 3 }),
+      players: [testPlayer("p1", { board: marionnettes }), testPlayer("p2", { shipId: "le-goliath", board: [nasse] })],
+    });
+    const arrivee = { trigger: "onEnterPlay" as const, playerId: "p1", cardId: "pulcinella-gonfle", sourceInstanceId: marionnettes[0]!.instanceId };
+    const degats = (r: { events: GameEvent[] }) => r.events.filter((e) => e.type === "DAMAGE").length;
+    // Rejouée (Colombina) : l'unité était déjà là, la Nasse ne bouge pas.
+    expect(degats(processTrigger(state, { ...arrivee, repeatedArrival: true }, 1))).toBe(0);
+    // Une vraie arrivée, elle, la déclenche.
+    expect(degats(processTrigger(state, arrivee, 1))).toBeGreaterThan(0);
   });
 
   it("la fenêtre de réaction distingue pose, invocation et arrivée rejouée", () => {

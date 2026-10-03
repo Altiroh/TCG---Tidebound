@@ -106,14 +106,14 @@ export interface TriggerSourceFilter {
    */
   onlyPlayed?: boolean;
   /**
-   * `onEnterPlay` seulement : une arrivée REJOUÉE (`repeatEnterEffects` —
-   * Colombina, Le Régisseur des Profondeurs, Le Rideau se Lève) n'est pas
-   * une arrivée en jeu. Sans ce filtre, « répétez son effet d'arrivée »
-   * réveille les observateurs de « … arrive en jeu » comme si la carte
-   * venait d'arriver une seconde fois. Les invocations, elles, restent des
-   * arrivées.
+   * `onEnterPlay` seulement. Par défaut, une arrivée REJOUÉE
+   * (`repeatEnterEffects` — Colombina, Le Régisseur des Profondeurs, Le
+   * Rideau se Lève) n'est PAS une arrivée en jeu pour un observateur : l'unité
+   * était déjà là, seul son effet d'arrivée est répété (décision du
+   * 02/10/2026). `true` : l'observateur la voit quand même. Les invocations,
+   * elles, restent toujours des arrivées.
    */
-  excludeRepeatedArrival?: boolean;
+  includeRepeatedArrival?: boolean;
   /**
    * Pour un Équipement : ne réagit qu'à ce qui arrive au permanent qu'il
    * équipe — "La première fois à chaque tour QU'IL attaque" (ex:

@@ -154,9 +154,11 @@ const SURVIVES_LETHAL_KEY = "survivesLethal";
 /**
  * Remplacement « par un effet adverse » (`opponentRemovalShieldOncePerTurn`)
  * vu depuis la passe de morts : l'unité part sous un EFFET (dégâts ou
- * destruction) dont l'auteur n'est pas son propriétaire. Le malus de
- * Résistance est posé (`applyOpponentRemovalShield`), puis ses dégâts sont
- * ramenés juste sous sa nouvelle Résistance pour qu'elle reste en jeu.
+ * destruction) dont l'auteur n'est pas son propriétaire. La destruction est
+ * remplacée par −1 Résistance permanente (`applyOpponentRemovalShield`) ;
+ * ses dégâts déjà marqués restent (décision du 02/10/2026 : le coup mortel
+ * d'un effet est, lui, annulé dès son marquage dans `resolveEffect`). Si ce
+ * −1 suffit à la tuer, le remplacement ne la garde pas et elle part.
  * `undefined` si rien ne s'applique (Marée, combat, effet allié, usage
  * du tour déjà pris).
  */
@@ -181,14 +183,9 @@ function remplacementParBeteDeHalage(
   const proprietaire = remplace.state.players.find((p) => p.id === owner.id)!;
   const malusee = proprietaire.board.find((u) => u.instanceId === unit.instanceId)!;
   const apres = computeEffectiveStats(malusee, state.environment.tideState, { ...contexte, controllerBoard: proprietaire.board });
-  // Plus de Résistance du tout : le remplacement ne peut pas la garder en jeu.
-  if (apres.health < 1) return undefined;
-  const gardee: CardInstance = {
-    ...malusee,
-    pendingRemoval: undefined,
-    pendingRemovalBy: undefined,
-    damageMarked: Math.min(malusee.damageMarked, apres.health - 1),
-  };
+  // Le −1 la tue déjà : le remplacement ne peut pas la garder en jeu.
+  if (apres.health <= malusee.damageMarked) return undefined;
+  const gardee: CardInstance = { ...malusee, pendingRemoval: undefined, pendingRemovalBy: undefined };
   return {
     state: {
       ...remplace.state,

@@ -1316,12 +1316,9 @@ export const CORE_SET: CardDefinition[] = [
     name: "Le Fond Vous Regarde",
     type: "anomalie",
     cost: 5,
-    // Valeur de Résistance absente du cadrage Notion pour cette famille de cartes (texte muet sur ce point,
-    // comme pour les Structures) : fixée ici par cohérence avec des permanents de coût comparable, PLUTÔT
-    // que de laisser `health` undefined — `computeEffectiveStats` retombe alors sur 0, ce qui ferait mourir
-    // l'Anomalie instantanément dès le premier `processDeaths` après sa pose (0 dégât marqué >= 0 PV). À
-    // ajuster si un vrai chiffrage Notion existe pour ce lot.
-    health: 4,
+    // Pas de Résistance (décision du 02/10/2026) : une Anomalie à durée reste en jeu le temps de sa durée,
+    // puis part ; rien ne peut lui infliger de dégâts. Sans `health`, `hasResistance` la tient à l'écart de
+    // l'arithmétique des dégâts, comme un Objet.
     maxCopies: 2,
     durationTurns: 2,
     text: "Pendant 2 tours, au début de chaque tour, le joueur actif choisit : perdre 1 Raison, ou infliger 1 dégât d'Ancrage à son propre Navire.",
@@ -1335,7 +1332,6 @@ export const CORE_SET: CardDefinition[] = [
     type: "anomalie",
     variant: "abyssale",
     cost: 7,
-    health: 5, // cf. commentaire sur la version Standard : valeur absente du cadrage, fixée par cohérence.
     maxCopies: 1,
     durationTurns: 2,
     text: "Pendant 2 tours, au début de chaque tour, le joueur actif choisit : perdre 2 Raison, ou infliger 2 dégâts d'Ancrage à son propre Navire.",
@@ -2025,11 +2021,7 @@ export const CORE_SET: CardDefinition[] = [
     archetype: "cra-poiscail",
     setCode: CRA_POISCAIL_BOOSTER_2,
     cost: 4,
-    // Résistance absente du cadrage Notion pour les Anomalies, comme pour
-    // "Le Fond Vous Regarde" : fixée par cohérence avec les
-    // permanents de coût comparable plutôt que laissée à 0, ce qui la
-    // ferait mourir au premier `processDeaths`.
-    health: 3,
+    // Pas de Résistance, comme toute Anomalie (cf. « Le Fond Vous Regarde »).
     maxCopies: 2,
     durationTurns: 2,
     text:
@@ -2690,7 +2682,7 @@ export const CORE_SET: CardDefinition[] = [
       {
         trigger: "onEnterPlay",
         // « arrive en jeu » : une arrivée rejouée n'en est pas une.
-        triggeredBy: { subtype: MARIONNETTE, cardTypes: ["marin", "creature"], excludeRepeatedArrival: true },
+        triggeredBy: { subtype: MARIONNETTE, cardTypes: ["marin", "creature"] },
         oncePerTurnKey: "regisseurRecall",
         mode: "optional",
         description: "Renvoyez une autre Marionnette de coût 2 ou moins en main : la prochaine coûte 1 de moins ce tour.",
@@ -2805,7 +2797,6 @@ export const CORE_SET: CardDefinition[] = [
     subtype: MARIONNETTE,
     setCode: THEATRE_ENGLOUTI,
     cost: 5,
-    health: 3,
     durationTurns: 2,
     maxCopies: 1,
     text:
@@ -2882,10 +2873,10 @@ export const CORE_SET: CardDefinition[] = [
     abilities: [
       {
         trigger: "onEnterPlay",
-        // Une arrivée REJOUÉE n'est pas une arrivée : sans
-        // `excludeRepeatedArrival`, la répétition d'une autre carte (Colombina,
-        // Le Rideau) brûlait l'usage du tour.
-        triggeredBy: { subtype: MARIONNETTE, cardTypes: ["marin", "creature"], excludeRepeatedArrival: true },
+        // Une arrivée REJOUÉE n'est pas une arrivée (défaut des observateurs) :
+        // la répétition d'une autre carte (Colombina, Le Rideau) ne brûle pas
+        // l'usage du tour.
+        triggeredBy: { subtype: MARIONNETTE, cardTypes: ["marin", "creature"] },
         oncePerTurnKey: "regisseurAbyssalEcho",
         description: "Première autre Marionnette du tour : son effet d'arrivée se répète.",
         effects: [{ type: "repeatEnterEffects", target: { kind: "triggerSource" } }],

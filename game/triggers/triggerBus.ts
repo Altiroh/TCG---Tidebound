@@ -352,8 +352,10 @@ function matchesTriggerSource(
   if (filter.onlySummoned && !event.fromSummon) return false;
   // « que vous JOUEZ » : ni une invocation, ni une arrivée rejouée.
   if (filter.onlyPlayed && (event.fromSummon || event.repeatedArrival)) return false;
-  // « répétez son effet d'arrivée » n'est pas une arrivée en jeu.
-  if (filter.excludeRepeatedArrival && event.repeatedArrival) return false;
+  // « répétez son effet d'arrivée » n'est pas une arrivée en jeu : l'unité
+  // était déjà là (décision du 02/10/2026). Seul un observateur qui le
+  // demande explicitement la voit.
+  if (event.repeatedArrival && !filter.includeRepeatedArrival) return false;
   // « depuis votre main » : la provenance du Bris écarte la capacité avant
   // tout marquage « une fois par tour » (cf. `TriggerSourceFilter.fromHand`).
   if (filter.fromHand !== undefined && filter.fromHand !== Boolean(event.fromHand)) return false;
@@ -724,8 +726,8 @@ export function processSummonEnterTriggers(
     // Une arrivée REJOUÉE (`ENTER_EFFECTS_REPEATED`, Colombina) rallume les
     // mêmes capacités qu'une invocation — sans être une invocation : les
     // filtres « seulement invoqué » ne la voient pas, et elle est marquée
-    // comme rejouée pour ceux qui ne la tiennent pas pour une arrivée
-    // (`onlyPlayed`, `excludeRepeatedArrival`).
+    // comme rejouée : les observateurs ne la tiennent pas pour une arrivée,
+    // sauf `includeRepeatedArrival`.
     if (event.type !== "SUMMON" && event.type !== "ENTER_EFFECTS_REPEATED") continue;
     const result = processTrigger(
       nextState,

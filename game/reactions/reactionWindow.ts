@@ -35,7 +35,7 @@ export function deriveReactionTriggerEvents(state: GameState, events: GameEvent[
       // Une arrivée REJOUÉE (Colombina) rouvre aussi les capacités
       // facultatives d'arrivée de la carte visée : c'est tout l'intérêt.
       // Marquée comme telle : ce n'est pas une arrivée pour les observateurs
-      // qui le précisent (`excludeRepeatedArrival`, `onlyPlayed`).
+      // (sauf `includeRepeatedArrival`).
       case "ENTER_EFFECTS_REPEATED":
         derived.push({
           trigger: "onEnterPlay",

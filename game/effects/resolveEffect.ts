@@ -780,6 +780,25 @@ export function resolveEffect(
         const finalAmount = Math.max(0, amount - reduction);
         if (finalAmount <= 0) continue;
 
+        // Bête de Halage : un coup MORTEL d'un effet adverse est remplacé —
+        // le coup est annulé et elle perd 1 Résistance, de façon permanente
+        // (décision du 02/10/2026 : « −1 permanent à chaque fois »). Le
+        // remplacement n'a lieu que s'il la garde réellement en jeu.
+        if (ownerId !== context.controllerId && getCardDefinition(unit.cardId).opponentRemovalShieldOncePerTurn) {
+          const actuelle = getPlayer(nextState, ownerId).board.find((u) => u.instanceId === unit.instanceId)!;
+          const vie = computeEffectiveStats(actuelle, nextState.environment.tideState, auraContextOf(nextState, ownerId)).health;
+          if (actuelle.damageMarked + finalAmount >= vie) {
+            const remplace = applyOpponentRemovalShield(nextState, ownerId, unit.instanceId, context.turnNumber);
+            const apres = remplace?.state ? getPlayer(remplace.state, ownerId).board.find((u) => u.instanceId === unit.instanceId) : undefined;
+            const vieApres = apres ? computeEffectiveStats(apres, remplace!.state.environment.tideState, auraContextOf(remplace!.state, ownerId)).health : 0;
+            if (remplace && apres && vieApres > apres.damageMarked) {
+              nextState = remplace.state;
+              events.push(...remplace.events);
+              continue;
+            }
+          }
+        }
+
         nextState = replaceUnit(nextState, ownerId, unit.instanceId, (u) => ({
           ...u,
           damageMarked: u.damageMarked + finalAmount,

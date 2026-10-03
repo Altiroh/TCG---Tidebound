@@ -51,7 +51,7 @@ export interface TriggerEvent {
   /**
    * `onEnterPlay` : ce n'est pas une arrivée mais l'effet d'arrivée d'une
    * carte DÉJÀ en jeu qui est rejoué (`ENTER_EFFECTS_REPEATED`). Lu par
-   * `triggeredBy.onlyPlayed` / `excludeRepeatedArrival`.
+   * `matchesTriggerSource` : invisible des observateurs, sauf `includeRepeatedArrival`.
    */
   repeatedArrival?: boolean;
   /** `onDiscarded` / `onCardDiscardedFromHand` : propriétaire de la carte défaussée. */
