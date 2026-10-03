@@ -3,10 +3,13 @@
 import { isAbyssalVariant, type CardDefinition } from "@/game";
 import { CARD_TYPE_LABELS } from "@/features/match/cardDisplay";
 import { useImageOk } from "@/features/match/useImageOk";
+import styles from "@/features/cadre-preview/NouveauCadreCard.module.css";
 
 /**
- * NOUVEAU CADRE — test (03/10/2026), à côté de `CardTile` qui reste le
- * rendu officiel tant que la décision n'est pas prise.
+ * NOUVEAU CADRE — test (03/10/2026). En jeu, il remplace la carte complète
+ * de `CardTile` quand le joueur l'active dans les Options (« Nouveau cadre
+ * de carte », `lib/settings.ts`) ; sinon l'ancien rendu reste en place.
+ * La tuile de plateau, les jetons et les dos ne changent pas.
  *
  * Parti pris de la maquette : l'illustration couvre TOUTE la carte, le cadre
  * n'est plus qu'un liseré posé par-dessus, et tout le reste est écrit sur
@@ -16,27 +19,49 @@ import { useImageOk } from "@/features/match/useImageOk";
  *  - pied : nom, texte de règles, puis Puissance (sur l'éclaboussure rouge)
  *    et Résistance.
  *
+ * Une Abyssale porte son sujet dans un calque de DÉBORD (l'illustration n'est
+ * que le décor), posé par-dessus le liseré, et un reflet irisé ; une
+ * légendaire scintille (`NouveauCadreCard.module.css`).
+ *
  * Assets : `public/assets/cards/frames/nouveau/` (cadre, cadre légendaire, cadre abyssal, cerveau, épée, bouclier,
  * fond de Puissance, `types/<type>.webp`).
  * Toutes les icônes (type, cerveau, épée, bouclier) sont fournies, blanches.
  */
 const ASSETS = "/assets/cards/frames/nouveau";
 
-export interface NouveauCadreCardProps {
+export interface NouveauCadreFaceProps {
   def: CardDefinition;
+  /** Cadre doré et scintillement (rareté `legendary`). Sans effet sur une Abyssale, qui a le sien. */
   legendaire?: boolean;
-  /** Classe de largeur : la carte compose tout en `cqw`, elle suit son emplacement. */
-  widthClassName?: string;
+  /** Valeurs AFFICHÉES en partie (modificateurs, blessures) ; à défaut, celles imprimées. */
+  attack?: number;
+  health?: number;
+  /** Classes du chiffre (couleur de bonus/malus, animation), fournies par `CardTile`. */
+  attackClassName?: string;
+  healthClassName?: string;
 }
 
-export function NouveauCadreCard({ def, legendaire = false, widthClassName = "w-64" }: NouveauCadreCardProps) {
+/** Enveloppe à largeur fixe de la page de test : la face y compose tout en `cqw`. */
+export function NouveauCadreCard({ widthClassName = "w-64", ...props }: NouveauCadreFaceProps & { widthClassName?: string }) {
+  return (
+    <div className={`${widthClassName} relative aspect-[5/7]`}>
+      <NouveauCadreFace {...props} />
+    </div>
+  );
+}
+
+/** La face seule : elle remplit son parent (format 5:7) et y ouvre son propre conteneur de `cqw`. */
+export function NouveauCadreFace({ def, legendaire = false, attack, health, attackClassName = "", healthClassName = "" }: NouveauCadreFaceProps) {
   const illustration = `/assets/cards/illustrations/${def.id}.webp`;
   const illustrationOk = useImageOk(illustration);
   const hasPower = def.attack !== undefined;
   const hasResistance = def.health !== undefined;
+  const abyssale = isAbyssalVariant(def);
+  const debord = abyssale ? `/assets/cards/illustrations/${def.id}-debord.webp` : null;
+  const debordOk = useImageOk(debord);
 
   return (
-    <div className={`${widthClassName} relative aspect-[5/7] select-none`} style={{ containerType: "inline-size" }}>
+    <div className="absolute inset-0 select-none" style={{ containerType: "inline-size" }}>
       {/* Couche 1 : l'illustration, plein cadre, coupée à l'arrondi du liseré. */}
       <div className="absolute overflow-hidden bg-slate-900" style={{ inset: "1.2% 4.6% 1.2% 4.6%", borderRadius: "6cqw" }}>
         {illustrationOk ? (
@@ -48,8 +73,8 @@ export function NouveauCadreCard({ def, legendaire = false, widthClassName = "w-
         {/* Voiles : un léger en tête pour le coût et le type, un franc en pied pour le texte. */}
         <div className="absolute inset-x-0 top-0 h-[22%] bg-gradient-to-b from-black/55 to-transparent" />
         <div
-          className="absolute inset-x-0 bottom-0 h-[52%]"
-          style={{ background: "linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.55) 28%, rgba(0,0,0,0.88) 60%, rgba(0,0,0,0.94) 100%)" }}
+          className="absolute inset-x-0 bottom-0 h-[58%]"
+          style={{ background: "linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.6) 26%, rgba(0,0,0,0.9) 52%, rgba(0,0,0,0.96) 100%)" }}
         />
       </div>
 
@@ -61,6 +86,21 @@ export function NouveauCadreCard({ def, legendaire = false, widthClassName = "w-
         className="pointer-events-none absolute inset-0 h-full w-full"
         draggable={false}
       />
+
+      {/* Couche 3 (Abyssales) : le sujet, qui déborde du liseré et se fond dans le voile en pied. */}
+      {abyssale && debordOk && debord && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={debord}
+          alt=""
+          className={`pointer-events-none absolute object-contain object-bottom ${styles.debord}`}
+          style={{ top: "0%", left: "2%", width: "96%", height: "64%" }}
+          draggable={false}
+        />
+      )}
+
+      {/* Couche 4 : l'effet de rareté, sous les textes. */}
+      {abyssale ? <EffetAbyssal /> : legendaire ? <EffetLegendaire /> : null}
 
       {/* Coût + Raison. */}
       <div
@@ -102,8 +142,8 @@ export function NouveauCadreCard({ def, legendaire = false, widthClassName = "w-
         </h3>
         {def.text && (
           <p
-            className="[font-family:var(--font-card-body)]"
-            style={{ fontSize: `${rulesSizeCqw(def.text)}cqw`, lineHeight: 1.18, marginTop: "3.5cqw", textShadow: TEXT_SHADOW }}
+            className="font-semibold [font-family:var(--font-card-body)]"
+            style={{ fontSize: `${rulesSizeCqw(def.text)}cqw`, lineHeight: 1.2, marginTop: "3cqw", textShadow: RULES_SHADOW }}
           >
             {def.text}
           </p>
@@ -120,7 +160,7 @@ export function NouveauCadreCard({ def, legendaire = false, widthClassName = "w-
             style={{ gap: "2.5cqw", fontSize: "10cqw", textShadow: TEXT_SHADOW }}
           >
             <SwordGlyph />
-            <span>{def.attack}</span>
+            <span data-stat="attack" className={attackClassName}>{attack ?? def.attack}</span>
           </div>
         </div>
       )}
@@ -130,7 +170,7 @@ export function NouveauCadreCard({ def, legendaire = false, widthClassName = "w-
           style={{ right: "11%", bottom: "4.2%", height: "13%", gap: "2.5cqw", fontSize: "10cqw", textShadow: TEXT_SHADOW }}
         >
           <ShieldGlyph />
-          <span>{def.health}</span>
+          <span data-stat="resistance" className={healthClassName}>{health ?? def.health}</span>
         </div>
       )}
     </div>
@@ -138,6 +178,50 @@ export function NouveauCadreCard({ def, legendaire = false, widthClassName = "w-
 }
 
 const TEXT_SHADOW = "0 0.3cqw 0.8cqw rgba(0,0,0,0.85), 0 0 0.3cqw rgba(0,0,0,0.9)";
+/** Texte de règles : petit corps, donc un contour plus serré pour qu'il tienne sur n'importe quelle image. */
+const RULES_SHADOW = "0 0 0.4cqw rgba(0,0,0,1), 0 0.2cqw 0.5cqw rgba(0,0,0,0.95), 0 0 1.2cqw rgba(0,0,0,0.7)";
+
+/** Étoiles de la légendaire : position (% de la carte) et décalage, fixes pour que la carte ne change pas d'un rendu à l'autre. */
+const ETOILES = [
+  { top: 8, left: 30, delai: 0 },
+  { top: 18, left: 78, delai: 0.9 },
+  { top: 34, left: 14, delai: 1.7 },
+  { top: 42, left: 62, delai: 0.4 },
+  { top: 27, left: 46, delai: 2.1 },
+  { top: 55, left: 86, delai: 1.3 },
+  { top: 62, left: 20, delai: 2.4 },
+  { top: 12, left: 58, delai: 1.1 },
+];
+
+function EffetLegendaire() {
+  return (
+    <>
+      <div className={styles.haloDore} />
+      <div className={styles.calque}>
+        <div className={styles.eclatDore} />
+      </div>
+      {ETOILES.map((etoile, index) => (
+        <span
+          key={index}
+          className={styles.etoile}
+          style={{ top: `${etoile.top}%`, left: `${etoile.left}%`, animationDelay: `${etoile.delai}s` }}
+        />
+      ))}
+    </>
+  );
+}
+
+function EffetAbyssal() {
+  return (
+    <>
+      <div className={styles.haloAbyssal} />
+      <div className={styles.calque}>
+        <div className={styles.irisation} />
+        <div className={styles.refletNacre} />
+      </div>
+    </>
+  );
+}
 
 function nameSizeCqw(name: string): number {
   if (name.length <= 16) return 8.6;
@@ -146,10 +230,10 @@ function nameSizeCqw(name: string): number {
 }
 
 function rulesSizeCqw(text: string): number {
-  if (text.length <= 90) return 4.8;
-  if (text.length <= 150) return 4.6;
-  if (text.length <= 220) return 3.8;
-  return 3.4;
+  if (text.length <= 90) return 5.4;
+  if (text.length <= 150) return 5;
+  if (text.length <= 220) return 4.4;
+  return 3.9;
 }
 
 /** Cerveau de Raison (icône fournie). */

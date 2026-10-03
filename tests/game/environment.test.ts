@@ -6,7 +6,7 @@ import { resolveEffect } from "@/game/effects/resolveEffect";
 import { grantIgnoreNextTideDamage } from "@/game/environment/resolveEnvironment";
 import { getShipDefinition } from "@/game/environment/shipData";
 import { validateDeckList } from "@/game/rules/deckValidation";
-import { deckEnAttente, instance, testEnvironment, testGameState, testPlayer } from "./testHelpers";
+import { instance, testEnvironment, testGameState, testPlayer } from "./testHelpers";
 
 describe("environnement - emplacements du Navire", () => {
   it("un Navire limite le plateau à son slotCount (6 pour Le Brise-Lames), Structures/Objets inclus (Slots universels)", () => {
@@ -368,8 +368,6 @@ describe("environnement - decks fournis par le jeu", () => {
       expect(couverts.has(ship.id), `${ship.id} n'a aucun préconstruit`).toBe(true);
     }
     for (const deck of PRECON_DECK_LISTS) {
-      // Incomplet en attente de reconstruction : cf. `PRECONS_EN_ATTENTE_DE_RECONSTRUCTION`.
-      if (deckEnAttente(deck)) continue;
       const validation = validateDeckList(deck);
       expect(validation.ok, `${deck.name}: ${!validation.ok ? validation.error : ""}`).toBe(true);
     }
@@ -382,8 +380,6 @@ describe("environnement - decks fournis par le jeu", () => {
       // Le Navire suggéré doit exister : `getShipDefinition` lève sinon, et
       // la partie ne démarrerait jamais.
       expect(() => getShipDefinition(deck.shipId)).not.toThrow();
-      // Incomplet en attente de reconstruction : cf. `PRECONS_EN_ATTENTE_DE_RECONSTRUCTION`.
-      if (deckEnAttente(deck)) continue;
       const validation = validateDeckList(deck);
       expect(validation.ok, `${deck.name}: ${!validation.ok ? validation.error : ""}`).toBe(true);
     }
