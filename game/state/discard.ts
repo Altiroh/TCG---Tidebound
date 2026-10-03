@@ -21,7 +21,7 @@ import type { GameState, GraveyardArrival, PlayerId, PlayerState } from "@/game/
  * son identité — et inscrit l'arrivée dans `graveyardArrivals`, que lisent
  * les conditions « … a rejoint votre Cimetière ce tour ».
  *
- * Il ne déclenche RIEN lui-même : `processDiscardedFromHandTriggers`
+ * Il ne déclenche RIEN lui-même : `processGraveyardEntryTriggers`
  * (`game/triggers/triggerBus.ts`) relit les événements produits. La
  * dépendance inverse serait circulaire, exactement comme pour les retours
  * en main et les invocations.
@@ -119,7 +119,7 @@ export function discardFromHandState(
     graveyard: [...player.graveyard, ...taken.map((card) => ({ ...card, graveyardCause: "discarded" as const }))],
   };
   for (const card of taken) {
-    next = recordGraveyardArrival(next, { cardId: card.cardId, turnNumber: base.turnNumber, fromZone: "hand" });
+    next = recordGraveyardArrival(next, { cardId: card.cardId, instanceId: card.instanceId, turnNumber: base.turnNumber, fromZone: "hand" });
   }
 
   return { player: next, events, discarded: taken };

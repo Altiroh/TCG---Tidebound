@@ -1,7 +1,7 @@
 import { countArchetypeUnits } from "@/game/cards/archetypes";
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { isVisibleDuringTide, UNIT_CARD_TYPES, type CardInstance } from "@/game/cards/types";
-import { signalSources } from "@/game/rules/chromatic";
+import { CHROMATIC_TUNING, signalSources } from "@/game/rules/chromatic";
 import type { TideStateName } from "@/game/environment/types";
 import type { GameState } from "@/game/state/types";
 
@@ -16,10 +16,9 @@ export interface EffectiveStats {
 
 /**
  * Contexte de plateau nécessaire pour calculer les auras/stats dynamiques
- * (Bernard-l'Ermite d'Acier, Matelot Insomniaque, Capitaine Sans Sommeil,
- * Lampe de Pont Rouge, Masque de Plongée Fissuré) : uniquement le plateau et
- * la Raison du CONTRÔLEUR de l'unité évaluée — ces mécanismes ne portent
- * jamais sur le plateau adverse. Optionnel : un appelant qui ne le fournit
+ * (Bernard-l'Ermite d'Acier, Matelot Insomniaque, Lampe de Pont Rouge) :
+ * uniquement le plateau et la Raison du CONTRÔLEUR de l'unité évaluée — ces
+ * mécanismes ne portent jamais sur le plateau adverse. Optionnel : un appelant qui ne le fournit
  * pas obtient les stats "de base" (modificateurs + Marée), sans les auras —
  * utile pour les affichages qui n'ont pas facilement accès au plateau complet.
  */
@@ -170,7 +169,8 @@ export function collectAuraContributions(
   // les AUTRES Sentinelles — même couleur comprise, et en cumul. Une
   // contribution par émetteur, pour que la fiche dise d'où vient chaque +1.
   const addSignal = (color: "rouge" | "jaune", spec: { attackAmount?: number; healthAmount?: number }) => {
-    for (const emitter of signalSources(unit, color, controllerBoard)) {
+    // Plafond éventuel du cumul (`CHROMATIC_TUNING`, aucun par défaut).
+    for (const emitter of signalSources(unit, color, controllerBoard).slice(0, CHROMATIC_TUNING.staticSignalCap)) {
       contributions.push({
         sourceCardId: emitter.cardId,
         sourceInstanceId: emitter.instanceId,
@@ -226,11 +226,7 @@ export function collectAuraContributions(
       add(typeAura);
     }
 
-    // Capitaine Sans Sommeil : aura conditionnée à la Raison, par type de carte.
-    const reasonAura = sourceDef.auraBuffOtherUnitsWhileControllerReasonAtMost;
-    if (reasonAura && reasonAura.targetType === def.type && controllerReason <= reasonAura.reasonAtMost) add(reasonAura);
-
-    // Lampe de Pont Rouge / Masque de Plongée Fissuré : bonus d'Équipement conditionnel à la Marée.
+    // Lampe de Pont Rouge : bonus d'Équipement conditionnel à la Marée.
     if (source.attachedToInstanceId === unit.instanceId) {
       const equipBuff = sourceDef.equipGrantsBuffWhileTideStateIn;
       if (equipBuff && equipBuff.tideStateIn.includes(tideState)) add(equipBuff);
@@ -244,6 +240,50 @@ export function collectAuraContributions(
   }
 
   return contributions.filter((c) => c.attack !== 0 || c.health !== 0);
+}
+
+const NO_AURA = { attack: 0, health: 0 } as const;
+
+/**
+ * Somme des bonus de plateau d'une unité, MÉMORISÉE.
+ *
+ * `computeEffectiveStats` est la fonction la plus appelée du moteur : chaque
+ * `dispatch` relit la Puissance de toutes les unités plusieurs fois (morts,
+ * pouvoirs, déclencheurs), et la recherche du bot « difficile » enchaîne des
+ * milliers de `dispatch` par décision. Chaque appel rebalayait tout le
+ * plateau pour y chercher des auras — la moitié du temps de réflexion du
+ * bot, mesuré au profileur.
+ *
+ * L'état de partie ne se modifie jamais en place (chaque changement produit
+ * de nouveaux objets) : un plateau et une unité IDENTIQUES en mémoire, avec
+ * la même Marée et le même contexte, donnent forcément le même total. La clé
+ * est donc l'identité des objets ; `WeakMap` laisse partir les états que
+ * plus personne ne tient.
+ */
+const auraTotalsCache = new WeakMap<readonly CardInstance[], WeakMap<CardInstance, Map<string, { attack: number; health: number }>>>();
+
+function auraTotals(unit: CardInstance, tideState: TideStateName, aura: AuraContext): { attack: number; health: number } {
+  let byUnit = auraTotalsCache.get(aura.controllerBoard);
+  if (!byUnit) {
+    byUnit = new WeakMap();
+    auraTotalsCache.set(aura.controllerBoard, byUnit);
+  }
+  let byContext = byUnit.get(unit);
+  if (!byContext) {
+    byContext = new Map();
+    byUnit.set(unit, byContext);
+  }
+  const key = `${tideState}|${aura.controllerReason}|${aura.tideOrientation ?? ""}|${aura.controllerIsActive ?? ""}`;
+  const cached = byContext.get(key);
+  if (cached) return cached;
+
+  const contributions = collectAuraContributions(unit, tideState, aura);
+  const totals = {
+    attack: contributions.reduce((sum, c) => sum + c.attack, 0),
+    health: contributions.reduce((sum, c) => sum + c.health, 0),
+  };
+  byContext.set(key, totals);
+  return totals;
 }
 
 /**
@@ -265,9 +305,7 @@ export function computeEffectiveStats(unit: CardInstance, tideState: TideStateNa
   const modifierAttack = unit.modifiers.reduce((sum, m) => sum + m.attack, 0);
   const modifierHealth = unit.modifiers.reduce((sum, m) => sum + m.health, 0);
 
-  const contributions = aura ? collectAuraContributions(unit, tideState, aura) : [];
-  const auraAttack = contributions.reduce((sum, c) => sum + c.attack, 0);
-  const auraHealth = contributions.reduce((sum, c) => sum + c.health, 0);
+  const { attack: auraAttack, health: auraHealth } = aura ? auraTotals(unit, tideState, aura) : NO_AURA;
 
   return {
     attack: baseAttack + modifierAttack + auraAttack,

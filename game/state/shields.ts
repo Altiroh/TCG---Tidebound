@@ -89,6 +89,40 @@ export function reasonCostAfterShield(state: GameState, playerId: PlayerId, cost
 }
 
 /**
+ * PERTE DE RAISON subie par `playerId`, quelle qu'en soit la source : le
+ * SEUL chemin par lequel le moteur retire de la Raison. Il consomme d'abord
+ * le bouclier « la première fois à chaque tour que vous perdez de la
+ * Raison, réduisez cette perte de 1 » (Vieux Loup de Mer, Seconde au Visage
+ * Pâle) — que le texte applique « toute source confondue » : effet, coût,
+ * Marée, attaque adverse, Équipement, choc d'entrée des Abysses.
+ *
+ * Plusieurs sites appelaient `reasonAfterLoss` en direct et contournaient
+ * ainsi le bouclier (perte infligée par une attaque, perte après une
+ * attaque, Équipement à la mort de son porteur, entrée en Abysses). Une
+ * perte nulle ne consomme rien. `lost` : ce qui a réellement été perdu.
+ */
+export function loseReason(
+  state: GameState,
+  playerId: PlayerId,
+  amount: number,
+  turnNumber: number
+): { state: GameState; lost: number } {
+  if (amount <= 0) return { state, lost: 0 };
+  const shield = consumeReasonLossShield(state, playerId, turnNumber);
+  const lost = Math.max(0, amount - shield.reduction);
+  const player = getPlayer(shield.state, playerId);
+  return {
+    state: {
+      ...shield.state,
+      players: shield.state.players.map((p) =>
+        p.id === playerId ? { ...player, reason: reasonAfterLoss(player, lost) } : p
+      ) as [PlayerState, PlayerState],
+    },
+    lost,
+  };
+}
+
+/**
  * Paie un coût en Raison en consommant le bouclier de perte de Raison s'il
  * est disponible. Un coût nul ne consomme rien (le bouclier reste pour une
  * vraie perte plus tard dans le tour).
@@ -99,19 +133,8 @@ export function payReasonCost(
   cost: number,
   turnNumber: number
 ): { state: GameState; paid: number } {
-  if (cost <= 0) return { state, paid: 0 };
-  const shield = consumeReasonLossShield(state, playerId, turnNumber);
-  const paid = Math.max(0, cost - shield.reduction);
-  const player = getPlayer(shield.state, playerId);
-  return {
-    state: {
-      ...shield.state,
-      players: shield.state.players.map((p) =>
-        p.id === playerId ? { ...player, reason: reasonAfterLoss(player, paid) } : p
-      ) as [PlayerState, PlayerState],
-    },
-    paid,
-  };
+  const loss = loseReason(state, playerId, cost, turnNumber);
+  return { state: loss.state, paid: loss.lost };
 }
 
 /** Réduction de dégâts de Marée au Navire disponible (Brise-Vague de Fortune, Tempête uniquement) — 0 si aucun bouclier éligible. */
@@ -164,24 +187,44 @@ export function consumeDirectShipDamageShield(
   };
 }
 
-/** Réduction de dégâts subis par UNE UNITÉ disponible sur son propre plateau (Baleine aux Cicatrices Blanches, "elle subit des dégâts") — 0 si aucun bouclier éligible sur CETTE instance précisément. */
-export function consumeOwnDamageTakenShield(
+/**
+ * « La première fois à chaque tour qu'une Structure que vous contrôlez PERD
+ * de la Résistance, RENDEZ-LUI 1 Résistance » (Wood Vy) : appelée APRÈS que
+ * la perte a été marquée (et son `DAMAGE` émis) — la Structure perd bien la
+ * Résistance, puis la récupère. Ce n'est pas une prévention : les
+ * déclencheurs « subit des dégâts » voient le coup.
+ *
+ * Partagée par les trois sources de perte : dégâts d'effet, de combat et de
+ * Marée. Sans effet si `unitInstanceId` n'est pas une Structure de `ownerId`,
+ * si rien n'a été perdu, ou si aucun bouclier n'est disponible ce tour.
+ */
+export function restoreStructureResistanceAfterLoss(
   state: GameState,
   ownerId: PlayerId,
   unitInstanceId: string,
+  lost: number,
   turnNumber: number
-): { state: GameState; reduction: number } {
-  const player = state.players.find((p) => p.id === ownerId);
-  const unit = player?.board.find((u) => u.instanceId === unitInstanceId);
-  if (!unit) return { state, reduction: 0 };
-  const def = getCardDefinition(unit.cardId);
-  const shield = def.reduceOwnDamageTakenOncePerTurn;
-  if (!shield || !isVisibleDuringTide(def, state.environment.tideState)) return { state, reduction: 0 };
-  if (!oncePerTurnAvailable(unit, "ownDamageTakenShield", turnNumber)) return { state, reduction: 0 };
-  return { state: consumeShield(state, ownerId, unit, "ownDamageTakenShield", turnNumber), reduction: shield };
+): { state: GameState; events: GameEvent[] } {
+  if (lost <= 0) return { state, events: [] };
+  const owner = getPlayer(state, ownerId);
+  const unit = owner.board.find((u) => u.instanceId === unitInstanceId);
+  if (!unit || getCardDefinition(unit.cardId).type !== "structure") return { state, events: [] };
+  const shield = consumeStructureResistanceRestoreShield(state, ownerId, turnNumber);
+  if (shield.restore <= 0) return { state, events: [] };
+  const rendu = Math.min(shield.restore, unit.damageMarked);
+  if (rendu <= 0) return { state: shield.state, events: [] };
+  const next: GameState = {
+    ...shield.state,
+    players: shield.state.players.map((p) =>
+      p.id === ownerId
+        ? { ...p, board: p.board.map((u) => (u.instanceId === unitInstanceId ? { ...u, damageMarked: u.damageMarked - rendu } : u)) }
+        : p
+    ) as [PlayerState, PlayerState],
+  };
+  return { state: next, events: [{ type: "HEAL", turnNumber, timestamp: Date.now(), targetInstanceId: unitInstanceId, amount: rendu }] };
 }
 
-/** Restauration "1ère fois par tour" de Résistance perdue par une Structure alliée (Wood Vy) — 0 si aucune carte éligible sur le plateau de `ownerId`. */
+/** Restauration "1ère fois par tour" de Résistance perdue par une Structure alliée (Wood Vy) — 0 si aucune carte éligible sur le plateau de `ownerId`. Préférer `restoreStructureResistanceAfterLoss`. */
 export function consumeStructureResistanceRestoreShield(
   state: GameState,
   ownerId: PlayerId,
@@ -192,20 +235,6 @@ export function consumeStructureResistanceRestoreShield(
   return {
     state: consumeShield(state, ownerId, match.unit, "structureResistanceRestoreShield", turnNumber),
     restore: match.spec!,
-  };
-}
-
-/** Nombre de cartes à révéler de la main d'un adversaire ayant activé une réaction pendant le tour de `observerId`, "1ère fois par tour" (Guetteur de Brume) — 0 si aucune carte éligible sur le plateau de `observerId`. */
-export function consumeOpponentReactionRevealShield(
-  state: GameState,
-  observerId: PlayerId,
-  turnNumber: number
-): { state: GameState; amount: number } {
-  const match = findAvailableShield(state, observerId, turnNumber, "opponentReactionRevealShield", (def) => def.revealOpponentHandOnReactionOncePerTurn?.amount);
-  if (!match) return { state, amount: 0 };
-  return {
-    state: consumeShield(state, observerId, match.unit, "opponentReactionRevealShield", turnNumber),
-    amount: match.spec,
   };
 }
 
@@ -220,10 +249,10 @@ export function consumeOpponentReactionRevealShield(
  * le combat (arbitrage du 2026-09-14). Les appelants sont donc les seuls
  * juges : ce sont eux qui savent d'où vient le dégât.
  *
- * Le bonus que l'Équipement avait accordé au porteur (ici +1 Résistance)
- * reste posé après sa destruction : c'est la convention du moteur pour
- * tout Équipement qui quitte le plateau (cf. `processDeaths.ts`, Plaque
- * de Fortune), pas une exception de cette carte.
+ * Le bonus que l'Équipement accordait au porteur (ici +1 Résistance) est
+ * une aura (`equipGrantsBuff`, relue en direct par `stats.ts`) : il
+ * disparaît avec la destruction de l'Équipement, comme pour tout
+ * Équipement qui quitte le plateau.
  */
 export function consumeEquippedEffectDamageShield(
   state: GameState,
@@ -246,9 +275,12 @@ export function consumeEquippedEffectDamageShield(
     {
       ...player,
       board: player.board.filter((u) => u.instanceId !== equipment.instanceId),
-      graveyard: [...player.graveyard, { ...equipment, damageMarked: 0, modifiers: [], graveyardCause: "destroyed" as const }],
+      graveyard: [
+        ...player.graveyard,
+        { ...equipment, damageMarked: 0, modifiers: [], graveyardCause: "destroyed" as const, destructionCause: "effect" as const },
+      ],
     },
-    { cardId: equipment.cardId, turnNumber, fromZone: "board" }
+    { cardId: equipment.cardId, turnNumber, fromZone: "board", destructionCause: "effect" }
   );
 
   return {
@@ -261,5 +293,49 @@ export function consumeEquippedEffectDamageShield(
     // Fortune) : un `DESTROY` de raison "effect", sans `onDeath` — la
     // carte est consommée par son propre texte, elle ne "meurt" pas.
     events: [{ type: "DESTROY", instanceId: equipment.instanceId, reason: "effect", turnNumber, timestamp: Date.now() }],
+  };
+}
+
+/** Clé `oncePerTurnFlags` du remplacement de Bête de Halage (`opponentRemovalShieldOncePerTurn`). */
+export const OPPONENT_REMOVAL_SHIELD_KEY = "opponentRemovalShield";
+
+/**
+ * Bête de Halage : « la première fois à chaque tour qu'elle devrait être
+ * renvoyée en main, déplacée ou détruite par un effet adverse, … lui retirer
+ * 1 Résistance à la place ». Pose le malus permanent et marque l'usage du
+ * tour ; retourne `undefined` si la carte n'a pas ce remplacement (ou l'a
+ * déjà utilisé ce tour). Partagé par la résolution d'effets (destruction,
+ * renvoi en main) et par la passe de morts (dégâts d'un effet adverse,
+ * destruction posée hors d'un effet `destroy`).
+ */
+export function applyOpponentRemovalShield(
+  state: GameState,
+  ownerId: PlayerId,
+  instanceId: string,
+  turnNumber: number
+): { state: GameState; events: GameEvent[] } | undefined {
+  const owner = getPlayer(state, ownerId);
+  const unit = owner.board.find((u) => u.instanceId === instanceId);
+  if (!unit) return undefined;
+  const shield = getCardDefinition(unit.cardId).opponentRemovalShieldOncePerTurn;
+  if (!shield || !oncePerTurnAvailable(unit, OPPONENT_REMOVAL_SHIELD_KEY, turnNumber)) return undefined;
+  const malus = {
+    id: `mod_${Math.random().toString(36).slice(2, 8)}`,
+    source: unit.cardId,
+    attack: 0,
+    health: -shield.healthLoss,
+    duration: "permanent" as const,
+  };
+  const remplacee = markOncePerTurnUsed({ ...unit, modifiers: [...unit.modifiers, malus] }, OPPONENT_REMOVAL_SHIELD_KEY, turnNumber);
+  return {
+    state: {
+      ...state,
+      players: state.players.map((p) =>
+        p.id === ownerId ? { ...p, board: p.board.map((u) => (u.instanceId === instanceId ? remplacee : u)) } : p
+      ) as [PlayerState, PlayerState],
+    },
+    events: [
+      { turnNumber, timestamp: Date.now(), type: "DEBUFF_APPLIED", targetInstanceId: instanceId, attack: 0, health: -shield.healthLoss },
+    ],
   };
 }

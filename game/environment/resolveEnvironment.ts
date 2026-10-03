@@ -3,21 +3,26 @@ import { getShipDefinition } from "@/game/environment/shipData";
 import { reasonAfterLoss } from "@/game/state/reason";
 import type { TideStateName } from "@/game/environment/types";
 import { getCardDefinition } from "@/game/cards/sets/core";
-import { hasResistance, isVisibleDuringTide, STATUS_MALADE, UNIT_CARD_TYPES } from "@/game/cards/types";
+import { hasResistance, STATUS_MALADE, UNIT_CARD_TYPES } from "@/game/cards/types";
 import type { CardInstance } from "@/game/cards/types";
 import { RULES } from "@/game/rules/constants";
 import { nextInt } from "@/game/rng";
 import type { GameEvent } from "@/game/events/types";
-import { processDiscardedFromHandTriggers, processTrigger } from "@/game/triggers/triggerBus";
+import {
+  processGraveyardEntryTriggers,
+  processTideStateChange,
+  processTrigger,
+  revealStructuresOnTideChange,
+} from "@/game/triggers/triggerBus";
 import { discardFromHandState, recordGraveyardArrival } from "@/game/state/discard";
-import { applyTideChangeAnomalies } from "@/game/state/anomalies";
 import {
   consumeEquippedEffectDamageShield,
-  consumeOwnDamageTakenShield,
   consumeReasonLossShield,
   consumeTideShipDamageShield,
+  restoreStructureResistanceAfterLoss,
 } from "@/game/state/shields";
 import { getPlayer, type GameState, type PlayerId, type PlayerState } from "@/game/state/types";
+import { applyAbyssesEntryOrExit, clearHouleSickness, isSick } from "@/game/environment/tideTransition";
 
 const IGNORE_FLAG_PREFIX = "ignoreNextTideDamage";
 
@@ -62,76 +67,6 @@ function computeTideDamageForPlayer(
   return { anchor, reason };
 }
 
-interface AbyssesEntryLoss {
-  anchor: number;
-  extraReason: number;
-}
-
-/**
- * Choc d'entrée dans les Abysses (une seule fois, pas par tour) : Ancrage
- * fixe modulé par le Navire, plus une éventuelle perte de Raison
- * supplémentaire propre au Navire (ex: "Équipage à bout" du Brise-Lames,
- * `reasonWeaknessByState.abysses`). La réduction de Raison maximale
- * elle-même est appliquée séparément (`applyAbyssesEntryOrExit`).
- */
-function computeAbyssesEntryLoss(player: PlayerState): AbyssesEntryLoss {
-  const ship = getShipDefinition(player.shipId);
-  const resistance = ship.resistanceByState?.abysses ?? 0;
-  const weakness = ship.weaknessByState?.abysses ?? 0;
-  const anchor = Math.max(0, RULES.ABYSSES_ENTRY_ANCHOR_LOSS + weakness - resistance);
-  const extraReason = ship.reasonWeaknessByState?.abysses ?? 0;
-  return { anchor, extraReason };
-}
-
-/**
- * Applique le choc d'entrée dans les Abysses (-Ancrage one-shot, -Raison
- * max continue avec clampage immédiat de la Raison courante) ou restaure
- * la Raison max à la sortie. Ne fait rien en dehors d'une transition
- * entrante/sortante des Abysses.
- */
-function applyAbyssesEntryOrExit(
-  state: GameState,
-  previousTideState: TideStateName,
-  newTideState: TideStateName,
-  turnNumber: number
-): { state: GameState; events: GameEvent[] } {
-  const events: GameEvent[] = [];
-  const base = { turnNumber, timestamp: Date.now() };
-
-  if (newTideState === "abysses" && previousTideState !== "abysses") {
-    const players = state.players.map((player) => {
-      const loss = computeAbyssesEntryLoss(player);
-      const reasonMax = Math.max(0, player.reasonMax - RULES.ABYSSES_REASON_MAX_PENALTY);
-      const reason = Math.min(reasonAfterLoss({ reason: player.reason }, loss.extraReason), reasonMax);
-      return { ...player, anchor: player.anchor - loss.anchor, reasonMax, reason };
-    }) as [PlayerState, PlayerState];
-
-    for (let i = 0; i < state.players.length; i++) {
-      const before = state.players[i]!;
-      const after = players[i]!;
-      const loss = computeAbyssesEntryLoss(before);
-      if (loss.anchor > 0) {
-        events.push({ ...base, type: "DAMAGE", targetPlayerId: before.id, amount: loss.anchor, targetAnchorAfter: after.anchor });
-      }
-      if (after.reason !== before.reason) {
-        events.push({ ...base, type: "REASON_CHANGED", playerId: before.id, delta: after.reason - before.reason });
-      }
-    }
-
-    return { state: { ...state, players }, events };
-  }
-
-  if (previousTideState === "abysses" && newTideState !== "abysses") {
-    const players = state.players.map((player) => ({
-      ...player,
-      reasonMax: player.reasonMax + RULES.ABYSSES_REASON_MAX_PENALTY,
-    })) as [PlayerState, PlayerState];
-    return { state: { ...state, players }, events };
-  }
-
-  return { state, events };
-}
-
 interface BoardCardRef {
   unit: CardInstance;
   ownerId: PlayerId;
@@ -153,10 +88,6 @@ function collectBoardCards(state: GameState): BoardCardRef[] {
     }
   }
   return refs;
-}
-
-function isSick(unit: CardInstance): boolean {
-  return (unit.statuses ?? []).includes(STATUS_MALADE);
 }
 
 /**
@@ -210,15 +141,12 @@ function applyHouleSickness(state: GameState, turnNumber: number): { state: Game
   );
 
   for (const { playerId, instanceId } of sickPairs) {
-    // Bouclier propre à l'unité (Baleine aux Cicatrices Blanches) PUIS
-    // bouclier d'Équipement (Casque-Coquille) : les deux interceptent un
-    // dégât d'effet, et le dégât de MALADE en est un.
-    const ownShield = consumeOwnDamageTakenShield(damaged, playerId, instanceId, turnNumber);
-    damaged = ownShield.state;
+    // Bouclier d'Équipement (Casque-Coquille) : il intercepte un dégât
+    // d'effet, et le dégât de MALADE en est un.
     const shield = consumeEquippedEffectDamageShield(damaged, playerId, instanceId, turnNumber);
     damaged = shield.state;
     events.push(...shield.events);
-    const amount = Math.max(0, RULES.HOULE_SICKNESS_DAMAGE - ownShield.reduction - shield.reduction);
+    const amount = Math.max(0, RULES.HOULE_SICKNESS_DAMAGE - shield.reduction);
     if (amount === 0) continue;
     events.push({ ...base, type: "DAMAGE", targetInstanceId: instanceId, amount });
     damaged = {
@@ -229,7 +157,7 @@ function applyHouleSickness(state: GameState, turnNumber: number): { state: Game
               ...p,
               board: p.board.map((u) =>
                 u.instanceId === instanceId
-                  ? { ...u, damageMarked: u.damageMarked + amount, lastDamageCause: "tide" as const, lastDamageTurn: turnNumber }
+                  ? { ...u, damageMarked: u.damageMarked + amount, lastDamageCause: "tide" as const, lastDamageBy: undefined, lastDamageTurn: turnNumber }
                   : u
               ),
             }
@@ -239,27 +167,6 @@ function applyHouleSickness(state: GameState, turnNumber: number): { state: Game
   }
 
   return { state: damaged, events };
-}
-
-/** Retire automatiquement le statut MALADE de tout le board dès que la Marée quitte la Houle. */
-function clearHouleSickness(state: GameState, turnNumber: number): { state: GameState; events: GameEvent[] } {
-  const events: GameEvent[] = [];
-  const base = { turnNumber, timestamp: Date.now() };
-
-  for (const player of state.players) {
-    for (const unit of player.board) {
-      if (isSick(unit)) events.push({ ...base, type: "STATUS_CHANGED", targetInstanceId: unit.instanceId, status: STATUS_MALADE, applied: false });
-    }
-  }
-
-  const players = state.players.map((player) => ({
-    ...player,
-    board: player.board.map((unit) =>
-      isSick(unit) ? { ...unit, statuses: unit.statuses!.filter((s) => s !== STATUS_MALADE) } : unit
-    ),
-  })) as [PlayerState, PlayerState];
-
-  return { state: { ...state, players }, events };
 }
 
 /**
@@ -300,20 +207,29 @@ function applyTideStructureDamage(
     board: player.board.map((unit) => {
       if (!touchee(unit)) return unit;
       events.push({ ...base, type: "DAMAGE", targetInstanceId: unit.instanceId, amount });
-      return { ...unit, damageMarked: unit.damageMarked + amount, lastDamageCause: "tide" as const, lastDamageTurn: turnNumber };
+      return { ...unit, damageMarked: unit.damageMarked + amount, lastDamageCause: "tide" as const, lastDamageBy: undefined, lastDamageTurn: turnNumber };
     }),
   })) as [PlayerState, PlayerState];
 
-  return { state: { ...state, players }, events };
+  // Wood Vy : une Structure alliée qui perd de la Résistance à la Marée en
+  // récupère 1, comme sous un coup d'effet ou de combat.
+  let nextState: GameState = { ...state, players };
+  for (const player of state.players) {
+    for (const unit of player.board) {
+      if (!touchee(unit)) continue;
+      const rendu = restoreStructureResistanceAfterLoss(nextState, player.id, unit.instanceId, amount, turnNumber);
+      nextState = rendu.state;
+      events.push(...rendu.events);
+    }
+  }
+  return { state: nextState, events };
 }
 
 /**
  * Effets DE TOUR d'un état de Marée, pour les deux joueurs : dégâts
  * d'Ancrage/Raison (boucliers de Navire compris), dégâts aux Structures,
  * choc d'entrée/sortie des Abysses, maladie de la Houle. Appelé par
- * `resolveTideTurnStep` au tick — ou, quand une Ancre de Dérive les a
- * reportés, par `endTurn` à la fin du tour en cours
- * (`EnvironmentState.deferredTideEffects`).
+ * `appliquerMareeAnnoncee` au tick.
  */
 export function applyTideTurnEffects(
   state: GameState,
@@ -396,7 +312,7 @@ export function applyTideTurnEffects(
   // comme les autres : leurs déclencheurs se réveillent ici, une fois le
   // nouvel état des joueurs posé.
   if (discardEvents.length > 0) {
-    const discardTriggers = processDiscardedFromHandTriggers(nextState, discardEvents, turnNumber);
+    const discardTriggers = processGraveyardEntryTriggers(nextState, discardEvents, turnNumber);
     nextState = discardTriggers.state;
     events.push(...discardTriggers.events);
   }
@@ -440,22 +356,17 @@ export interface AnnonceDeMaree {
 /**
  * PREMIÈRE moitié de l'étape de Marée : l'ANNONCE (étapes 4-5 de la
  * structure de tour). Décompte la durée restante, avance éventuellement
- * vers l'état suivant, applique les Anomalies de changement — et s'arrête
- * là. L'état de Marée est committé et `TIDE_ADVANCED` est émis, mais AUCUN
- * effet de tour n'est encore appliqué.
+ * vers l'état suivant — et s'arrête là. L'état de Marée est committé et
+ * `TIDE_ADVANCED` est émis, mais AUCUN effet de tour n'est encore appliqué.
  *
- * Cette coupure existe pour l'Ancre de Dérive (21/09/2026) : entre
- * l'annonce et l'application, une fenêtre `onTideAnnounced` laisse le
- * joueur décider s'il Saborde sa carte pour repousser ces effets. « Le
- * joueur décide, jamais le moteur » — avant cette passe, le report était
- * appliqué d'office dès que la carte était en jeu.
+ * Entre l'annonce et l'application, une fenêtre `onTideAnnounced` laisse
+ * les joueurs réagir (capacités de Navire « après l'annonce d'une Marée »).
  */
 export function annoncerMaree(
   state: GameState,
   turnNumber: number
 ): { state: GameState; events: GameEvent[]; annonce: AnnonceDeMaree } {
   const events: GameEvent[] = [];
-  const base = { turnNumber, timestamp: Date.now() };
   const previousTideState = state.environment.tideState;
 
   // La Marée ne PROGRESSE (décompte de durée + avancée d'état) qu'une fois
@@ -481,19 +392,12 @@ export function annoncerMaree(
   const { amplified, modifiers: modifiersAfterAmplify } = consumeAmplify(tick.pendingTideModifiers);
   const intensity = amplified ? tick.tideIntensity * 2 : tick.tideIntensity;
 
-  // "La Mer Réclame Davantage" : uniquement sur un vrai CHANGEMENT d'état
-  // (`tick.stateChanged`), jamais sur un simple décompte dans le même état —
-  // lue AVANT que le nouvel état ne soit committé ci-dessous.
-  const tideAnomaly = tick.stateChanged
-    ? applyTideChangeAnomalies(state, tick.tideRemainingTurns)
-    : { tideRemainingTurns: tick.tideRemainingTurns, anchorDamagePerShip: 0 };
-
   let nextState: GameState = {
     ...state,
     environment: {
       ...state.environment,
       tideState: tick.tideState,
-      tideRemainingTurns: tideAnomaly.tideRemainingTurns,
+      tideRemainingTurns: tick.tideRemainingTurns,
       tideOrientation: tick.tideOrientation,
       tideIntensity: tick.tideIntensity,
       pendingTideModifiers: modifiersAfterAmplify,
@@ -504,25 +408,11 @@ export function annoncerMaree(
     type: "TIDE_ADVANCED",
     turnNumber,
     timestamp: Date.now(),
-    remainingTurns: tideAnomaly.tideRemainingTurns,
+    remainingTurns: tick.tideRemainingTurns,
     tideState: tick.tideState,
     tideOrientation: tick.tideOrientation,
     stateChanged: tick.stateChanged,
   });
-
-  if (tideAnomaly.anchorDamagePerShip > 0) {
-    nextState = {
-      ...nextState,
-      players: nextState.players.map((p) => ({ ...p, anchor: p.anchor - tideAnomaly.anchorDamagePerShip })) as [
-        PlayerState,
-        PlayerState
-      ],
-    };
-    for (const p of nextState.players) {
-      // `nextState` porte déjà la perte : `p.anchor` est l'Ancrage d'après.
-      events.push({ ...base, type: "DAMAGE", targetPlayerId: p.id, amount: tideAnomaly.anchorDamagePerShip, targetAnchorAfter: p.anchor });
-    }
-  }
 
   return {
     state: nextState,
@@ -535,17 +425,11 @@ export function annoncerMaree(
  * SECONDE moitié de l'étape de Marée (étapes 6-7) : les effets de tour de
  * la Marée annoncée, les capacités d'entrée/sortie d'état, l'expiration des
  * permanents à durée limitée, et les Structures qui deviennent visibles.
- *
- * `reportee` vient de la fenêtre `onTideAnnounced` : quand elle est levée
- * (effet `deferTideEffects`), les effets de TOUR attendent la fin du tour
- * en cours — l'état de Marée, lui, a bel et bien changé, et les capacités
- * `onTideStateEntered` se déclenchent à l'heure.
  */
 export function appliquerMareeAnnoncee(
   state: GameState,
   turnNumber: number,
-  annonce: AnnonceDeMaree,
-  reportee: boolean
+  annonce: AnnonceDeMaree
 ): { state: GameState; events: GameEvent[] } {
   const events: GameEvent[] = [];
   const base = { turnNumber, timestamp: Date.now() };
@@ -553,29 +437,14 @@ export function appliquerMareeAnnoncee(
   const tick = { tideState, stateChanged: annonce.stateChanged };
   let nextState = state;
 
-  if (reportee) {
-    nextState = {
-      ...nextState,
-      environment: { ...nextState.environment, deferredTideEffects: { previousTideState, tideState, intensity } },
-    };
-  } else {
-    const turnEffects = applyTideTurnEffects(nextState, previousTideState, tideState, intensity, turnNumber);
-    nextState = turnEffects.state;
-    events.push(...turnEffects.events);
-  }
+  const turnEffects = applyTideTurnEffects(nextState, previousTideState, tideState, intensity, turnNumber);
+  nextState = turnEffects.state;
+  events.push(...turnEffects.events);
 
   if (tick.stateChanged) {
-    const trigger = processTrigger(nextState, { trigger: "onTideStateEntered", tideState: tick.tideState }, turnNumber);
-    nextState = trigger.state;
-    events.push(...trigger.events);
-
-    const exitTrigger = processTrigger(
-      nextState,
-      { trigger: "onTideStateExited", tideState: previousTideState },
-      turnNumber
-    );
-    nextState = exitTrigger.state;
-    events.push(...exitTrigger.events);
+    const change = processTideStateChange(nextState, previousTideState, tick.tideState, turnNumber);
+    nextState = change.state;
+    events.push(...change.events);
   }
 
   // --- Expiration des permanents à durée limitée (Structures/Objets) -----
@@ -589,11 +458,20 @@ export function appliquerMareeAnnoncee(
   // Le décompte a donc lieu au début du tour de son propriétaire, et
   // `resolveTideTurnStep` est appelée juste après le passage de main : le
   // joueur actif est celui qui commence. Ni mort ni Sabordage.
-  for (const player of nextState.players.filter((p) => p.id === nextState.activePlayerId)) {
-    const expiring = player.board.filter((u) => u.turnsRemaining !== undefined && u.turnsRemaining <= 1);
+  //
+  // Seule exception au « tour du contrôleur » : un permanent marqué
+  // `expiresAtNextTurnStart` (Anomalie dont les choix imposés sont épuisés,
+  // cf. `anomalyForceChoiceAtStartOfTurn.times`) part à l'entame du tour
+  // suivant, quel que soit le joueur qui commence.
+  for (const player of nextState.players) {
+    const isActive = player.id === nextState.activePlayerId;
+    const expiring = player.board.filter(
+      (u) => u.expiresAtNextTurnStart || (isActive && u.turnsRemaining !== undefined && u.turnsRemaining <= 1)
+    );
+    if (!isActive && expiring.length === 0) continue;
     const board = player.board
       .filter((u) => !expiring.some((e) => e.instanceId === u.instanceId))
-      .map((u) => (u.turnsRemaining !== undefined ? { ...u, turnsRemaining: u.turnsRemaining - 1 } : u));
+      .map((u) => (isActive && u.turnsRemaining !== undefined ? { ...u, turnsRemaining: u.turnsRemaining - 1 } : u));
 
     // Le décompte (nouveau `board`) doit toujours être appliqué, même
     // quand rien n'expire ce tour-ci — un `continue` prématuré ici
@@ -605,7 +483,7 @@ export function appliquerMareeAnnoncee(
         ? [...player.graveyard, ...expiring.map((u) => ({ ...u, damageMarked: 0, modifiers: [], graveyardCause: "expired" as const }))]
         : player.graveyard;
     const withArrivals = expiring.reduce<PlayerState>(
-      (acc, u) => recordGraveyardArrival(acc, { cardId: u.cardId, turnNumber, fromZone: "board" }),
+      (acc, u) => recordGraveyardArrival(acc, { cardId: u.cardId, instanceId: u.instanceId, turnNumber, fromZone: "board" }),
       { ...player, board, graveyard }
     );
     nextState = {
@@ -633,24 +511,9 @@ export function appliquerMareeAnnoncee(
   // --- "Devient visible" : Structures passant d'invisible à visible ------
   // Ne dépend que d'une transition d'état de Marée (`visibleDuringTide`).
   if (tick.stateChanged) {
-    for (const playerId of nextState.players.map((p) => p.id)) {
-      const player = nextState.players.find((p) => p.id === playerId)!;
-      for (const unit of player.board) {
-        const def = getCardDefinition(unit.cardId);
-        if (!def.visibleDuringTide) continue;
-        const wasVisible = isVisibleDuringTide(def, previousTideState);
-        const isVisible = isVisibleDuringTide(def, tick.tideState);
-        if (wasVisible || !isVisible) continue;
-        events.push({ turnNumber, timestamp: Date.now(), type: "STRUCTURE_REVEALED", playerId, instanceId: unit.instanceId, cardId: unit.cardId });
-        const becomeVisibleTrigger = processTrigger(
-          nextState,
-          { trigger: "onBecomeVisible", playerId, cardId: unit.cardId, sourceInstanceId: unit.instanceId },
-          turnNumber
-        );
-        nextState = becomeVisibleTrigger.state;
-        events.push(...becomeVisibleTrigger.events);
-      }
-    }
+    const reveal = revealStructuresOnTideChange(nextState, previousTideState, tick.tideState, turnNumber);
+    nextState = reveal.state;
+    events.push(...reveal.events);
   }
 
   return { state: nextState, events };
@@ -667,7 +530,7 @@ export function resolveTideTurnStep(
   turnNumber: number
 ): { state: GameState; events: GameEvent[] } {
   const annonce = annoncerMaree(state, turnNumber);
-  const applique = appliquerMareeAnnoncee(annonce.state, turnNumber, annonce.annonce, false);
+  const applique = appliquerMareeAnnoncee(annonce.state, turnNumber, annonce.annonce);
   return { state: applique.state, events: [...annonce.events, ...applique.events] };
 }
 

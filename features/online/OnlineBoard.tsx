@@ -336,7 +336,8 @@ export function OnlineBoard({
         <ShipWindowHint name={shipAbility.windowEntry.name} onPass={() => act({ type: "passReaction", playerId: myUserId })} />
       )}
       {selection?.kind === "reaction" && selection.needsTarget && (() => {
-        const sourceCardId = [...me.board, ...opponent.board].find((u) => u.instanceId === selection.sourceInstanceId)?.cardId;
+        // Un Objet réactif peut répondre depuis la MAIN (règle du 29/09/2026).
+        const sourceCardId = [...me.board, ...me.hand, ...opponent.board].find((u) => u.instanceId === selection.sourceInstanceId)?.cardId;
         const decline = () => {
           board.clearSelection();
           act({ type: "passReaction", playerId: myUserId });

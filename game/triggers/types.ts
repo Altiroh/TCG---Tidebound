@@ -16,8 +16,8 @@ export type TriggerType =
   | "endOfTurn"
   | "onCardPlayed" // n'importe quelle carte est jouée par n'importe qui
   | "onTideStateEntered" // la Marée vient d'entrer dans un nouvel état
-  | "onTideStateExited" // la Marée vient de QUITTER un état (ex: Masque de Plongée Fissuré, "à chaque sortie des Abysses")
-  | "onTideAnnounced" // une nouvelle Marée vient d'être ANNONCÉE : son état est committé, ses effets de tour ne sont PAS encore appliqués (Ancre de Dérive). Fenêtre strictement antérieure à `onTideStateEntered`.
+  | "onTideStateExited" // la Marée vient de QUITTER un état (ex: "à chaque sortie des Abysses")
+  | "onTideAnnounced" // une nouvelle Marée vient d'être ANNONCÉE : son état est committé, ses effets de tour ne sont PAS encore appliqués (capacités de Navire `activationWindow: "tideAnnounced"`). Fenêtre strictement antérieure à `onTideStateEntered`.
   | "onBecomeVisible" // une Structure devient visible pour l'adversaire (entrée dans un de ses `visibleDuringTide`)
   | "onExpire" // une Structure/Objet à durée limitée quitte le board par expiration (ni mort, ni Sabordage)
   | "onObjectBroken" // le contrôleur vient de Briser un Objet (depuis le board OU depuis sa main)
@@ -25,13 +25,15 @@ export type TriggerType =
   | "onReturnedToHand" // un permanent quitte le board pour la main de son contrôleur (Lot 11 — Théâtre Englouti)
   | "onDiscarded" // CETTE carte vient d'être défaussée de la main (Lot 13) — elle n'a jamais été sur le plateau, sa capacité est lue sur sa définition
   | "onCardDiscardedFromHand" // une carte rejoint le Cimetière DEPUIS UNE MAIN : déclencheur d'OBSERVATEUR, filtré par `triggeredBy` (Lot 13)
+  | "onCardPutIntoGraveyard" // une carte rejoint le Cimetière depuis une MAIN ou une PIOCHE (défausse, meulage) — jamais une mort, que `onDeath` couvre : déclencheur d'OBSERVATEUR, filtré par `triggeredBy` (Test Verrier, 30/09/2026 : la Veillée doit pouvoir vider sa pioche pour nourrir ses récompenses)
   | "onCardRecoveredFromGraveyard" // une carte remonte du Cimetière vers la main : déclencheur d'OBSERVATEUR (Lot 13 — Maman revient)
   | "onIncomingDirectAttack" // le Navire du contrôleur va subir des dégâts directs d'une attaque — fenêtre d'INTERCEPTION, ouverte AVANT tout calcul de dégâts (pièges : Cylindre flottant, Caisses Arrimées, Cage de Flottaison)
   | "onCombatVsGarde" // une unité du contrôleur (`sourceInstanceId`) va COMBATTRE une unité adverse ayant Garde — qu'elle attaque la Garde ou que la Garde l'attaque. Ouverte à la déclaration de l'attaque, dans la fenêtre d'interception, pour le camp concerné (Lot 15 — Ouvrez la Ligne !)
-  | "onUnitAttackDeclared" // une unité ADVERSE vient de déclarer une attaque, quelle qu'en soit la cible — même fenêtre, mais ouverte aussi sur un combat entre unités (Filet à la Dérive, Le Filet qui Respire)
+  | "onUnitAttackDeclared" // une unité ADVERSE vient de déclarer une attaque, quelle qu'en soit la cible — même fenêtre, mais ouverte aussi sur un combat entre unités (Filet à la Dérive)
   | "onBecomeOnlyCreature" // la carte vient de DEVENIR la seule Créature du plateau de son contrôleur (ex: Méduse des Lanternes) — détecté par photo avant/après chaque action (`processLoneCreatureChanges`)
-  | "onPermanentWouldBeDestroyed" // un permanent est sur le point de partir au Cimetière — fenêtre de SAUVETAGE, ouverte AVANT que `processDeaths` ne l'emporte (Lot 14 : Filet de Sauvetage, Cloison Étanche, Bouclier d'Écume, Planche de Fortune)
+  | "onPermanentWouldBeDestroyed" // un permanent est sur le point de partir au Cimetière — fenêtre de SAUVETAGE, ouverte AVANT que `processDeaths` ne l'emporte (Lot 14 : Filet de Sauvetage, Cloison Étanche, Bouclier d'Écume)
   | "onSurvivedDamage" // une unité a subi des dégâts ET est toujours en jeu une fois les morts réglées (Lot 15 — Équipage de Verre) : personnel, ou observateur avec `triggeredBy`
+  | "onChromaticColorChosen" // une carte EN JEU vient de recevoir la couleur choisie pour elle par une question (« À son arrivée, choisissez sa couleur » — Émissaire de Quartz) : personnel ou observateur ; `fromSummon` vaut vrai si elle n'a pas été JOUÉE (Lot 15 — Poste Chromatique)
   | "onReasonGained" // le contrôleur vient de récupérer de la Raison GRÂCE À UNE CARTE — jamais la régénération de début de tour (Lot 15 — Survivant de la Mousse)
   | "onCondition"; // condition arbitraire évaluée par un `ConditionExpression`
 
@@ -46,6 +48,12 @@ export interface TriggerEvent {
   tideState?: import("@/game/environment/types").TideStateName;
   /** `onEnterPlay` : la carte arrive par INVOCATION et non par une pose depuis la main (ex: un Péon). */
   fromSummon?: boolean;
+  /**
+   * `onEnterPlay` : ce n'est pas une arrivée mais l'effet d'arrivée d'une
+   * carte DÉJÀ en jeu qui est rejoué (`ENTER_EFFECTS_REPEATED`). Lu par
+   * `matchesTriggerSource` : invisible des observateurs, sauf `includeRepeatedArrival`.
+   */
+  repeatedArrival?: boolean;
   /** `onDiscarded` / `onCardDiscardedFromHand` : propriétaire de la carte défaussée. */
   discardedOwnerId?: string;
   /**
@@ -70,6 +78,17 @@ export interface TriggerEvent {
   damage?: Array<{ cause?: import("@/game/cards/types").DestructionCause; byPlayerId?: string }>;
   /** `onCardDiscardedFromHand` : la défausse vient d'un effet de carte, pas de la limite de main. */
   discardByEffect?: boolean;
+  /** `onCardDiscardedFromHand` : cette défausse d'effet suit une pioche du même joueur dans la même suite d'effets. */
+  discardAfterDraw?: boolean;
+  /** `onCardPutIntoGraveyard` : d'où vient la carte — défaussée de la main, ou meulée depuis la pioche. */
+  fromZone?: "hand" | "deck";
+  /**
+   * `onIncomingDirectAttack` : les dégâts directs viennent d'un TIR DE
+   * NAVIRE (`fireShipAbility`), pas d'une unité qui attaque. Lu par
+   * `condition.attackFromUnit` — « lorsqu'une UNITÉ adverse attaque / inflige
+   * des dégâts directs » ne s'ouvre pas sur un tir.
+   */
+  fromShipShot?: boolean;
 }
 
 /**
@@ -89,6 +108,12 @@ export interface PendingReactionCandidate {
   abilityIndex: number;
   /** Coût en Raison à payer pour activer cette capacité (0 si aucun). */
   reasonCost: number;
+  /**
+   * `true` : l'Objet réactif est encore EN MAIN (règle du 29/09/2026,
+   * `isBreakReaction`). L'activer le Brise depuis la main — `reasonCost`
+   * inclut alors `handBreakCost` — sans qu'il ait jamais pris de Slot.
+   */
+  fromHand?: boolean;
   /**
    * Coût en ANCRAGE (0 si aucun). Contrairement au coût en Raison, il
    * écarte la capacité quand le joueur ne peut pas le payer en restant en

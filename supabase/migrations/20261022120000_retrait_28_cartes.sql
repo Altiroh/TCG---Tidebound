@@ -1,0 +1,194 @@
+-- ======================================================================
+-- RETRAIT DE 28 CARTES (Lots 01 à 07) — passe de nettoyage du 02/10/2026
+-- ======================================================================
+-- Le code ne connaît plus ces cartes (`game/cards/sets/core.ts`) : tout
+-- `getCardDefinition` sur l'une d'elles lève « Carte inconnue ». La base
+-- doit donc cesser de les servir :
+--
+--   • `cards` : les lignes RESTENT (l'historique des ouvertures de booster
+--     et les choix de carte déjà tranchés y pointent par clé étrangère),
+--     mais elles sont désactivées — `is_enabled = false`,
+--     `is_collectible = false`. Le tirage des « cartes au choix »
+--     (`features/progression/cardChoices.ts`) filtre sur ces deux colonnes.
+--     `npm run seed:cards` ne les réactive pas : il n'upserte que le
+--     catalogue du code, où elles n'existent plus.
+--
+--   • Références VIVANTES retirées : collections (`player_cards`), decks
+--     de joueurs (`player_deck_cards`), decks système, pools de boosters,
+--     favoris, carnets ; avatar, illustration de deck et couverture de
+--     carnet remis à vide (l'écran retombe sur sa valeur par défaut).
+--
+--   • Choix de carte NON tranchés qui proposaient une carte retirée : la
+--     proposition est remplacée par une autre carte active de la même
+--     rareté, que le joueur ne possède pas si possible — le joueur garde
+--     un choix parmi le même nombre de cartes.
+--
+-- ARCHIVE — rien n'est perdu sans trace : chaque exemplaire possédé et
+-- chaque ligne de deck retirés sont copiés dans
+-- `retired_card_archive` AVANT suppression. Aucune compensation n'est
+-- versée ici : c'est une décision de design (rachat, monnaie, cartes de
+-- remplacement), qui pourra s'appuyer sur cette archive.
+--
+-- Decks de joueurs : une liste qui contenait ces cartes passe sous 40 et
+-- sera refusée au lancement de partie tant que son propriétaire ne l'a
+-- pas complétée — même situation que les cinq préconstruits en attente
+-- de reconstruction (`PRECONS_EN_ATTENTE_DE_RECONSTRUCTION`, tests).
+--
+-- À APPLIQUER sans partie en cours : un état de partie (`match_states`)
+-- qui contient l'une de ces cartes ne peut plus être rejoué par le moteur.
+--
+-- Rejouable : `if not exists`, `on conflict do nothing`, et les
+-- suppressions ne trouvent plus rien au second passage.
+
+-- ── Liste des cartes retirées ─────────────────────────────────────────
+create table if not exists public.retired_cards (
+  card_id text primary key references public.cards (id),
+  retired_at timestamptz not null default now(),
+  reason text not null
+);
+
+alter table public.retired_cards enable row level security;
+-- Pas de policy : lu et écrit par les migrations / la clé service_role.
+
+insert into public.retired_cards (card_id, reason)
+select c.id, 'Passe de nettoyage du 02/10/2026 — carte retirée du catalogue (Lots 01 à 07).'
+from public.cards c
+where c.id in (
+  -- Lot 01
+  'plongeur-des-epaves',
+  'quelque-chose-sous-la-coque',
+  -- Lot 02
+  'ancre-de-derive',
+  'guetteur-de-brume',
+  'bouee-de-derive',
+  'le-chant-sous-la-ligne',
+  -- Lot 03
+  'cartographe-du-large',
+  'gardien-du-sondeur',
+  'epave-engloutie',
+  'les-voix-dans-le-sillage',
+  -- Lot 04
+  'capitaine-sans-sommeil',
+  'ponton-aux-cloches',
+  'la-bouee-qui-regardait',
+  'ils-sont-sous-nous',
+  'ils-sont-sous-nous-abyssal',
+  -- Lot 05
+  'radeau-de-fortune',
+  'epaves-accrochees',
+  -- Lot 06
+  'veilleur-des-profondeurs',
+  'baleine-aux-cicatrices-blanches',
+  'loeil-sous-la-mer',
+  'loeil-sous-la-mer-abyssal',
+  'masque-de-plongee-fissure',
+  'cloche-immergee',
+  'le-filet-qui-respire',
+  -- Lot 07 (la Cloche du Grand Fond STANDARD reste)
+  'ancre-de-tempete',
+  'cloche-du-grand-fond-abyssal',
+  'la-mer-reclame-davantage',
+  'la-mer-reclame-davantage-abyssal'
+)
+on conflict (card_id) do nothing;
+
+-- ── Archive des possessions et des decks ──────────────────────────────
+create table if not exists public.retired_card_archive (
+  id bigint generated always as identity primary key,
+  source_table text not null,
+  user_id uuid,
+  card_id text not null,
+  quantity integer,
+  -- La ligne d'origine telle quelle, pour pouvoir la restaurer ou la
+  -- compenser sans deviner ses autres colonnes.
+  original_row jsonb not null,
+  archived_at timestamptz not null default now()
+);
+
+create index if not exists retired_card_archive_user_idx on public.retired_card_archive (user_id);
+
+alter table public.retired_card_archive enable row level security;
+-- Pas de policy : réservé à la clé service_role.
+
+insert into public.retired_card_archive (source_table, user_id, card_id, quantity, original_row)
+select 'player_cards', pc.user_id, pc.card_id, pc.quantity, to_jsonb(pc)
+from public.player_cards pc
+join public.retired_cards rc on rc.card_id = pc.card_id;
+
+insert into public.retired_card_archive (source_table, user_id, card_id, quantity, original_row)
+select 'player_deck_cards', pd.user_id, pdc.card_id, pdc.quantity, to_jsonb(pdc)
+from public.player_deck_cards pdc
+join public.player_decks pd on pd.id = pdc.deck_id
+join public.retired_cards rc on rc.card_id = pdc.card_id;
+
+-- ── Références vivantes ───────────────────────────────────────────────
+delete from public.player_cards pc using public.retired_cards rc where pc.card_id = rc.card_id;
+delete from public.player_deck_cards pdc using public.retired_cards rc where pdc.card_id = rc.card_id;
+delete from public.system_deck_cards sdc using public.retired_cards rc where sdc.card_id = rc.card_id;
+delete from public.booster_pool_cards bpc using public.retired_cards rc where bpc.card_id = rc.card_id;
+delete from public.player_card_favorites f using public.retired_cards rc where f.card_id = rc.card_id;
+delete from public.player_card_notebook_cards nc using public.retired_cards rc where nc.card_id = rc.card_id;
+
+update public.profiles p set avatar_card_id = null
+from public.retired_cards rc where p.avatar_card_id = rc.card_id;
+
+update public.player_decks d set art_card_id = null
+from public.retired_cards rc where d.art_card_id = rc.card_id;
+
+update public.player_card_notebooks n set cover_card_id = null
+from public.retired_cards rc where n.cover_card_id = rc.card_id;
+
+-- ── Choix de carte en attente ─────────────────────────────────────────
+-- Chaque carte retirée d'une proposition NON tranchée est remplacée par
+-- une carte active de la même rareté, absente de la proposition, non
+-- possédée de préférence. Sans remplaçant possible, elle est simplement
+-- retirée (le choix garde au moins ses autres cartes).
+do $$
+declare
+  v_choice record;
+  v_offered text[];
+  v_card text;
+  v_replacement text;
+begin
+  for v_choice in
+    select pcc.id, pcc.user_id, pcc.rarity, pcc.offered_card_ids
+    from public.player_card_choices pcc
+    where pcc.resolved_at is null
+      and pcc.offered_card_ids && (select array_agg(card_id) from public.retired_cards)
+  loop
+    v_offered := v_choice.offered_card_ids;
+    foreach v_card in array v_choice.offered_card_ids loop
+      if exists (select 1 from public.retired_cards rc where rc.card_id = v_card) then
+        select c.id into v_replacement
+        from public.cards c
+        where c.rarity = v_choice.rarity
+          and c.is_collectible
+          and c.is_enabled
+          and not exists (select 1 from public.retired_cards rc where rc.card_id = c.id)
+          and not (c.id = any (v_offered))
+        order by
+          exists (
+            select 1 from public.player_cards pc
+            where pc.user_id = v_choice.user_id and pc.card_id = c.id and pc.quantity > 0
+          ),
+          random()
+        limit 1;
+
+        v_offered := array_remove(v_offered, v_card);
+        if v_replacement is not null then
+          v_offered := array_append(v_offered, v_replacement);
+        end if;
+      end if;
+    end loop;
+
+    update public.player_card_choices set offered_card_ids = v_offered where id = v_choice.id;
+  end loop;
+end
+$$;
+
+-- ── Désactivation au catalogue ────────────────────────────────────────
+update public.cards c
+set is_enabled = false, is_collectible = false, updated_at = now()
+from public.retired_cards rc
+where c.id = rc.card_id
+  and (c.is_enabled or c.is_collectible);

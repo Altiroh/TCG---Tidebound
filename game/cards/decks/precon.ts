@@ -70,6 +70,15 @@ import { repeat, type DeckList } from "@/game/cards/decks/types";
  * de remplir ce deck de pièges. Son identité doit rester remplir →
  * renforcer → frapper. » Les deux seules cartes du Lot 14 sont de la
  * stabilité, pas du contrôle.
+ *
+ * LISTE REVUE LE 29/09/2026. Une fois les autres decks renforcés, le banc
+ * est tombé à 41 %, et ses Structures en étaient la cause : elles prenaient
+ * la place de corps dans un deck qui vit du nombre (La Flaque Sacrée Δ −14,
+ * Le Tas de Trucs −12). Elles cèdent la place à trois Cra-Poiscail des
+ * Hautes-Eaux et deux Casques-Coquilles. Mesuré au labo (bot moyen, 60
+ * parties par paire contre le rayon) : 42 % → 48 %. Les Messagers
+ * montaient à 63 %, les Rois à 70 % : écartés, au-dessus de la cible.
+ * Aucun texte changé.
  */
 export const DECK_LE_GRAND_BANC: DeckList = {
   id: "le-grand-banc",
@@ -90,8 +99,8 @@ export const DECK_LE_GRAND_BANC: DeckList = {
     ...repeat("cra-poiscail-chef-de-banc", 3),
     ...repeat("cra-poiscail-porte-etendard", 2),
     ...repeat("le-trone-de-bouchon", 2),
-    ...repeat("la-flaque-sacree", 3),
-    ...repeat("le-tas-de-trucs", 2),
+    ...repeat("cra-poiscail-des-hautes-eaux", 3),
+    ...repeat("casque-coquille", 2),
     // Des corps de plus sans passer par la Raison, et le coup de grâce.
     ...repeat("le-seau", 3),
     ...repeat("fesses-en-avant", 2),
@@ -108,6 +117,15 @@ export const DECK_LE_GRAND_BANC: DeckList = {
  * signature de la page : Filet de Sauvetage donne +2 Résistance à toute la
  * formation tant qu'il est visible, et sauve la pièce maîtresse une fois
  * quand il ne l'est pas.
+ *
+ * LISTE REVUE LE 29/09/2026. Dix cartes suspendues à deux Chevaliers :
+ * sans pièce pivot, la formation ne se montait qu'une partie sur deux. Le
+ * Chevalier abyssal — déjà désigné par l'Écuyer, le Destrier, la Quête et
+ * le Tournoi — en ajoute une, et trois Bancs de Cra-Poiscail remplacent la
+ * Bannière (jouée 38 % des fois où elle est en main) et Dernières Réserves
+ * (« 1 carte ou moins en main », Δ −13). Mesuré au labo (bot moyen, 60
+ * parties par paire contre le rayon) : 44 % → 53 %. Une formation plus
+ * serrée, sans équipements, montait à 69 % : écartée. Aucun texte changé.
  */
 export const DECK_CHEVALIERS_DU_GRAND_ETANG: DeckList = {
   id: "chevaliers-du-grand-etang",
@@ -120,7 +138,9 @@ export const DECK_CHEVALIERS_DU_GRAND_ETANG: DeckList = {
     ...repeat("ecuyer-cra-poiscail", 3),
     ...repeat("destrier-du-grand-etang", 3),
     ...repeat("chevalier-cra-poiscail", 2),
+    ...repeat("chevalier-cra-poiscail-abyssal", 1),
     ...repeat("bourreau-cra-poiscail", 3),
+    ...repeat("banc-de-cra-poiscail", 3),
     ...repeat("cra-poiscail-porte-etendard", 2),
     ...repeat("roi-cra-poiscail", 1),
     // Le soutien : soigner et relancer, pas ajouter des corps.
@@ -129,7 +149,6 @@ export const DECK_CHEVALIERS_DU_GRAND_ETANG: DeckList = {
     ...repeat("ptite-fesse-grand-reve", 2),
     // Ce qui transforme une formation en menace.
     ...repeat("fourchette-du-grand-etang", 3),
-    ...repeat("banniere-en-vieille-chaussette", 2),
     ...repeat("slip-de-guerre-cra-poiscail", 2),
     ...repeat("la-quete-du-grand-nenuphar", 2),
     ...repeat("le-tournoi-du-grand-etang", 2),
@@ -137,7 +156,6 @@ export const DECK_CHEVALIERS_DU_GRAND_ETANG: DeckList = {
     // Lot 14 : le piège signature, et de quoi ne pas rester sans pièce.
     ...repeat("filet-de-sauvetage", 2),
     ...repeat("faire-linventaire", 2),
-    ...repeat("dernieres-reserves", 2),
   ],
 };
 
@@ -194,11 +212,24 @@ export const DECK_LA_VEILLEE: DeckList = {
  * Corde de Rappel (Lot 14) est la carte que la page appelle de ses vœux :
  * une Marionnette ciblée par une attaque rentre en main, et son arrivée
  * repart. Chaîne de Travers tient le tempo pendant que le moteur se monte.
+ *
+ * LISTE ET NAVIRE REVUS LE 29/09/2026. Quatorze cartes rappelaient, deux
+ * arrivées seulement valaient d'être rejouées, et les pièces de soutien du
+ * rappel faisaient perdre au labo (Coulisses Δ −9, Théâtre Englouti −6).
+ * Sortent les rappels morts (Corde de Rappel, Le Rideau se Lève, Rappel du
+ * Public), deux Coulisses, Le Théâtre Englouti et un Changement de rôle ;
+ * entrent les Marionnettes abyssales (Arlecchino, Prima Noyée, Régisseur
+ * des Profondeurs), la Trappe du Souffleur et trois Matelots du Sans-Nom
+ * pour tenir la ligne. Le Courlis cède la place à La Religieuse : ses 4
+ * Slots étouffaient un deck de permanents. Mesuré au labo (bot moyen, 60
+ * parties par paire contre le rayon) : 31 % → 49 %, 35 cartes Marionnette
+ * sur 40, arrivées rejouées 0,07 → 0,43 par partie. Une liste plus chargée
+ * en corps montait à 61–69 % : écartée. Aucun texte changé.
  */
 export const DECK_LE_THEATRE_ENGLOUTI: DeckList = {
   id: "le-theatre-englouti-deck",
   name: "Le Théâtre Englouti",
-  shipId: "le-courlis",
+  shipId: "la-religieuse",
   description:
     "Tempo : les cartes reviennent sans cesse en main pour être rejouées, et chaque retour vaut une arrivée de plus.",
   cardIds: [
@@ -212,16 +243,19 @@ export const DECK_LE_THEATRE_ENGLOUTI: DeckList = {
     ...repeat("il-dottore-des-noyes", 2),
     ...repeat("il-capitano-naufrage", 2),
     ...repeat("le-regisseur-sans-visage", 1),
+    // Les têtes d'affiche abyssales.
+    ...repeat("arlecchino-celui-derriere-le-masque-abyssal", 1),
+    ...repeat("la-prima-noyee-abyssal", 1),
+    ...repeat("le-regisseur-des-profondeurs-abyssal", 1),
     // Les rappels eux-mêmes.
     ...repeat("le-masque-fendu", 3),
     ...repeat("la-clochette-du-rappel", 3),
+    ...repeat("trappe-du-souffleur", 2),
+    // Les Coulisses Inondées, supprimées du catalogue (01/10/2026), cèdent
+    // leur place à un deuxième Changement de rôle !, refondu le même jour.
     ...repeat("changement-de-role", 2),
-    ...repeat("rappel-du-public", 2),
-    ...repeat("les-coulisses-inondees", 2),
-    ...repeat("le-theatre-englouti", 1),
-    ...repeat("le-rideau-se-leve", 1),
-    // Lot 14 : un rappel de plus, et du temps pour le monter.
-    ...repeat("corde-de-rappel", 2),
+    // Tenir la ligne pendant que le moteur se monte.
+    ...repeat("matelot-du-sans-nom", 3),
     ...repeat("chaine-de-travers", 2),
   ],
 };
@@ -238,6 +272,21 @@ export const DECK_LE_THEATRE_ENGLOUTI: DeckList = {
  * L'adversaire doit se demander en permanence ce qui l'attend sous la
  * Marée. C'est pour ça qu'on trouve ici les pièges de plusieurs familles —
  * anti-swarm, anti-grosse-unité, anti-Objet — plutôt qu'une seule.
+ *
+ * LISTE REVUE LE 29/09/2026 — des pièges qui rapportent. Chaque piège se
+ * détruit après avoir tiré, et rien ne profitait de ce départ ; le deck
+ * cherchait, sauvait et cassait des Structures (Journal de Bord, Planche de
+ * Fortune, Charge de Démolition, Pont Miné) au lieu de gagner, avec 2,8
+ * unités posées par partie. Les outils cèdent la place à ce qui vit du
+ * départ d'une Structure (Charpentier et Plongeur des Épaves, Treuil
+ * Rouillé), à Bernard-l'Ermite d'Acier et à trois Choses des Hauts-Fonds
+ * à la place des Guetteurs de Brume. Mesuré au labo (bot moyen, 60
+ * parties par paire contre le rayon) : 13 % → 52 %, 22 Structures
+ * toujours en jeu. Aucun texte changé.
+ *
+ * DEUXIÈME PASSE (29/09/2026, contre le rayon révisé) : retombé à 38 %.
+ * Chaîne de Travers (Δ −13) cède la place à deux Baleines aux Cicatrices
+ * Blanches. 38 % → 50 % au labo.
  */
 export const DECK_MINEURS_DE_FOND: DeckList = {
   id: "mineurs-de-fond",
@@ -250,8 +299,6 @@ export const DECK_MINEURS_DE_FOND: DeckList = {
     ...repeat("la-nasse-trop-pleine", 2),
     ...repeat("jugement-du-phare", 1),
     ...repeat("barils-de-poudre", 2),
-    ...repeat("pont-mine", 2),
-    ...repeat("chaine-de-travers", 2),
     ...repeat("fausse-cargaison", 2),
     ...repeat("cloison-etanche", 2),
     ...repeat("cale-inondable", 2),
@@ -259,15 +306,14 @@ export const DECK_MINEURS_DE_FOND: DeckList = {
     // Les pièges historiques, qui rendent le bluff crédible.
     ...repeat("filet-a-la-derive", 3),
     ...repeat("cloche-dalerte", 2),
-    ...repeat("ancre-de-derive", 2),
-    // Lot 14 : chercher le piège qui manque, et sauver celui qui tombe.
-    ...repeat("journal-de-bord", 3),
-    ...repeat("planche-de-fortune", 2),
-    ...repeat("charge-de-demolition", 2),
+    // Ce qui vit du départ d'un piège (29/09/2026).
+    ...repeat("charpentier-des-epaves", 3),
+    ...repeat("treuil-rouille", 1),
+    ...repeat("bernard-lermite-dacier", 3),
     // Assez de corps pour ne pas perdre en attendant.
-    ...repeat("guetteur-de-brume", 3),
     ...repeat("crabe-de-fer", 3),
     ...repeat("matelot-du-sans-nom", 3),
+    ...repeat("chose-des-hauts-fonds", 3),
   ],
 };
 
@@ -333,6 +379,25 @@ export const DECK_LA_FORTERESSE: DeckList = {
  * la place — dont Sonde des Courants Perdus, qui filtrait sans jamais rien
  * conclure, et un exemplaire de Cloche du Grand Fond, qui demandait 2
  * Raison à un deck qui en manque déjà.
+ *
+ * LISTE REVUE LE 29/09/2026 — des cartes qui attendaient un état qui ne
+ * vient pas. Les Abysses durent UN tour de table, environ une fois par
+ * partie : L'Œil Sous la Mer n'était joué que 26 % des fois où il était
+ * en main, Ce que la Marée Rend 14 %, Sept Brasses 29 %, et les outils
+ * qui n'agissent que par Sabordage (Compas, Horloge) avaient le pire Δ du
+ * deck. Ils cèdent la place à des corps de Marée, utiles tout de suite et
+ * meilleurs quand la mer descend : Veilleur des Profondeurs (qui pousse
+ * lui-même la Marée), Masse Sombre, Si-Raie-Ponce, un troisième Ce Qui
+ * Suit, Bat-Marin. Mesuré au labo (bot moyen, 60 parties par paire contre
+ * le rayon) : 22 % → 49 %. Une version plus agressive montait à 62 % :
+ * écartée, au-dessus de la cible. Rendre Anguille et Raie actives
+ * « pendant Tempête ou Abysses » n'apportait qu'un à deux points : aucun
+ * texte changé.
+ *
+ * DEUXIÈME PASSE (29/09/2026, contre le rayon révisé) : retombé à 37 %.
+ * Pont Miné et Balise des Profondeurs cèdent la place à l'Albatros de
+ * Mauvais Temps et au Second au Visage Pâle — deux corps de Tempête.
+ * 37 % → 50 % au labo.
  */
 export const DECK_DESCENTE_AUX_ABYSSES: DeckList = {
   id: "descente-aux-abysses",
@@ -342,33 +407,26 @@ export const DECK_DESCENTE_AUX_ABYSSES: DeckList = {
     "Contrôle de Marée : fabriquer soi-même l'environnement, et y être chez soi quand l'adversaire n'y survit plus.",
   cardIds: [
     // Ceux qui lisent et poussent la Marée.
-    ...repeat("cartographe-du-large", 3),
     ...repeat("anguille-des-profondeurs", 3),
     ...repeat("raie-des-fosses", 2),
     ...repeat("sondeur-des-mauvaises-eaux", 2),
-    ...repeat("gardien-du-sondeur", 2),
     // Les instruments : durée, intensité, orientation.
     ...repeat("regulateur-de-courant", 3),
-    ...repeat("balise-des-profondeurs", 2),
-    ...repeat("compas-aux-aiguilles-noires", 2),
-    ...repeat("ancre-de-tempete", 2),
-    ...repeat("horloge-de-maree", 1),
-    ...repeat("cloche-du-grand-fond", 1),
-    ...repeat("epave-engloutie", 1),
     // Le forçage, et ce qui vit en bas.
     ...repeat("la-gueule-sous-la-mer", 1),
-    ...repeat("sept-brasses-plus-bas", 1),
-    ...repeat("ce-que-la-maree-rend", 2),
-    ...repeat("loeil-sous-la-mer", 3),
     ...repeat("la-chose-qui-remonte", 2),
+    ...repeat("masse-sombre", 3),
+    ...repeat("si-raie-ponce", 2),
+    ...repeat("bat-marin", 1),
+    ...repeat("albatros-de-mauvais-temps", 2),
+    ...repeat("second-au-visage-pale", 2),
     // La récompense de la descente, reprise de Sous la Ligne : ce que
     // personne d'autre ne peut se permettre de payer aussi tôt.
-    ...repeat("ce-qui-suit-le-navire", 2),
+    ...repeat("ce-qui-suit-le-navire", 3),
     ...repeat("marin-aux-yeux-rouges-abyssal", 1),
     ...repeat("bat-marin-abyssal", 1),
     ...repeat("revenante-de-la-fosse-abyssal", 1),
     // Lot 14 : de quoi survivre à un adversaire pressé.
-    ...repeat("pont-mine", 2),
   ],
 };
 
@@ -397,6 +455,26 @@ export const DECK_DESCENTE_AUX_ABYSSES: DeckList = {
  *
  * Ce qui a sauté : Clous de Récupération (12 poses pour 77 morts en main),
  * Dernière Planche (2 poses) et un Journal de Bord.
+ *
+ * LISTE REVUE LE 29/09/2026 — le moteur tournait encore sans rien gagner :
+ * 3,3 Sabordages par partie, 5,6 dégâts, 17 % contre le rayon, et aucune
+ * carte du catalogue ne transforme un Sabordage en dégâts. Sortent ce qui
+ * va contre le thème (Planche de Fortune ; Radeau de Fortune, qui ne rend
+ * rien s'il est détruit), le hors-sujet (Tas de Bouts de Bois, qui lit la
+ * mort d'un Cra-Poiscail) et le moins joué (Journal, deux Grappins, une
+ * Épave Accrochée). Entrent des corps qui tiennent pendant le recyclage —
+ * Matelot, Chose des Hauts-Fonds, Baleine aux Cicatrices Blanches — et des
+ * Structures qui gardent le Sabordage au centre : Cage de Flottaison, Étau
+ * du Calfat, la Caisse des Dernières Planches abyssale. Mesuré au labo
+ * (bot moyen, 60 parties par paire contre le rayon) : 14 % → 49 %, 16
+ * Structures et 2,1 Sabordages par partie. Une liste plus lourde montait à
+ * 57 % mais ne sabordait plus que 1,5 fois : écartée, le deck y perdait son
+ * sujet. Aucun texte changé.
+ *
+ * DEUXIÈME PASSE (29/09/2026, contre le rayon révisé) : retombé à 39 %
+ * une fois les autres decks renforcés. L'Étau du Calfat et le dernier
+ * Radeau cèdent la place à trois Crabes de Fer. 39 % → 48 % au labo,
+ * 15 Structures toujours en jeu.
  */
 export const DECK_EPAVISTES: DeckList = {
   id: "epavistes",
@@ -406,27 +484,25 @@ export const DECK_EPAVISTES: DeckList = {
     "Recyclage : une Structure détruite ou Sabordée n'est pas une perte, c'est la ressource que le deck attendait.",
   cardIds: [
     // Ceux qui vivent de ce qui casse.
-    ...repeat("plongeur-des-epaves", 2),
     ...repeat("charpentier-des-epaves", 3),
     ...repeat("mecanicien-aux-mains-noires", 2),
     ...repeat("charpentiere-de-veille", 2),
     ...repeat("wood-vy", 2),
-    // Le corps neutre : de quoi tenir la ligne pendant que ça recycle.
-    ...repeat("matelot-du-sans-nom", 2),
+    // Les corps qui tiennent pendant que ça recycle.
+    ...repeat("matelot-du-sans-nom", 3),
+    ...repeat("chose-des-hauts-fonds", 3),
+    ...repeat("crabe-de-fer", 3),
     // Les Structures à faire disparaître.
     ...repeat("caisses-arrimees", 3),
-    ...repeat("epaves-accrochees", 3),
-    ...repeat("tas-de-bouts-de-bois", 3),
-    ...repeat("radeau-de-fortune", 3),
     ...repeat("caisse-des-dernieres-planches", 3),
+    ...repeat("caisse-des-dernieres-planches-abyssal", 1),
     ...repeat("atelier-de-calfatage", 2),
+    ...repeat("cage-de-flottaison", 2),
     // Les outils du démontage.
     ...repeat("levier-de-lest", 2),
-    ...repeat("grappin-de-recuperation", 3),
-    // Lot 14 : garder ce qu'on veut garder, jeter le reste.
+    ...repeat("grappin-de-recuperation", 1),
+    // Lot 14 : garder ce qu'on veut garder.
     ...repeat("cloison-etanche", 2),
-    ...repeat("planche-de-fortune", 2),
-    ...repeat("journal-de-bord", 1),
   ],
 };
 
@@ -457,36 +533,46 @@ export const DECK_EPAVISTES: DeckList = {
  * que l'adversaire — c'est-à-dire tout le temps dans ce deck —, la Marin
  * aux Yeux Rouges Abyssale que la page Notion nomme, et deux corps bon
  * marché pour convertir la pression en dégâts.
+ *
+ * LISTE ET NAVIRE REVUS LE 29/09/2026. La « main injouable » n'existe pas
+ * en règles : sans plancher, l'adversaire s'endette et joue quand même, et
+ * aucune carte ne lit la Raison ADVERSE. Mousse du Premier Quart allait
+ * même contre le plan (elle ne rend que si VOUS êtes plus bas — plus on
+ * draine, moins elle sert). Sortent Mousse, Guetteur de Brume, La Bouée,
+ * Fausse Cargaison, Le Chant (symétrique) et Le Fond Vous Regarde (joué
+ * 17 % des fois où il est en main). Entrent des corps qui drainent ou qui
+ * vivent bas en Raison — Si-Raie-Ponce, Matelot du Sans-Nom, Vieux Loup de
+ * Mer, Capitaine sans Sommeil — et Le Rôle d'Équipage, qui fait payer les
+ * grands plateaux.
+ *
+ * Le Courlis cède la place à L'Errant : ses 12 Raison ne paient rien (la
+ * Raison remonte par la même courbe pour tous), ses 4 Slots et 26 Ancrage
+ * coûtaient cher, et le nouveau Cap sûr de L'Errant rend la Raison du tour
+ * la première fois qu'elle tombe à 0 — exactement ce que vit ce deck.
+ * Mesuré au labo (bot moyen, 60 parties par paire contre le rayon) :
+ * 19 % → 35 % avec la liste seule, 54 % sous L'Errant. Aucun texte changé.
  */
 export const DECK_A_BOUT_DE_RAISON: DeckList = {
   id: "a-bout-de-raison",
   name: "À bout de Raison",
-  shipId: "le-courlis",
+  shipId: "lerrant",
   description:
     "Attrition mentale : vider la réserve de Raison adverse, puis regarder sa main devenir injouable.",
   cardIds: [
     // Ceux qui font payer.
     ...repeat("marin-aux-yeux-rouges", 3),
     ...repeat("marin-aux-yeux-rouges-abyssal", 1),
-    ...repeat("ponton-aux-cloches", 3),
+    ...repeat("si-raie-ponce", 3),
     ...repeat("anguille-des-profondeurs", 3),
-    ...repeat("cloche-immergee", 2),
-    ...repeat("le-chant-sous-la-ligne", 1),
-    // Les Anomalies, qui imposent un choix dont aucune branche n'est bonne.
-    // Une seule de chaque : à 5 Raison, ce deck n'en joue pas deux.
-    ...repeat("le-fond-vous-regarde", 1),
-    ...repeat("la-mer-reclame-davantage", 1),
-    // Ce qui rend la Raison que le plan dépense, et ce qui la convertit.
-    ...repeat("mousse-du-premier-quart", 3),
+    ...repeat("le-role-dequipage", 2),
+    // Une Anomalie, qui presse la Marée.
+    // Ceux qui vivent bas en Raison, et ce qui convertit la pression.
+    ...repeat("matelot-insomniaque", 3),
+    ...repeat("vieux-loup-de-mer", 2),
     ...repeat("murene-aveugle", 3),
     ...repeat("requin-balafre", 3),
-    // Ce qui regarde la main d'en face pour savoir où appuyer.
-    ...repeat("guetteur-de-brume", 3),
-    ...repeat("la-bouee-qui-regardait", 1),
-    ...repeat("matelot-insomniaque", 3),
-    ...repeat("cartographe-du-large", 2),
-    // Lot 14 : taxer, retarder, renvoyer.
-    ...repeat("fausse-cargaison", 2),
+    ...repeat("matelot-du-sans-nom", 3),
+    // Lot 14 : retarder, renvoyer.
     ...repeat("chaine-de-travers", 2),
     ...repeat("par-dessus-bord", 3),
   ],
@@ -545,10 +631,11 @@ export const DECK_ARSENAL_DE_PONT: DeckList = {
     // Deux exemplaires pour les deux qui partent vraiment, un pour le reste.
     ...repeat("harpon-a-ressort", 2),
     ...repeat("contre-harpon", 2),
-    ...repeat("bouclier-decume", 1),
+    // Planche de Fortune, supprimée du catalogue (01/10/2026), cède sa
+    // place à un deuxième Bouclier d'Écume : même rôle, sauver un permanent.
+    ...repeat("bouclier-decume", 2),
     ...repeat("signal-de-detresse", 1),
     ...repeat("corde-de-rappel", 1),
-    ...repeat("planche-de-fortune", 1),
     // Le removal, qui part du même endroit.
     ...repeat("coup-de-harpon", 3),
     ...repeat("sabotage-discret", 2),
@@ -599,7 +686,6 @@ export const DECK_CHASSE_AU_GROS: DeckList = {
     ...repeat("pont-mine", 2),
     // Ce qui reste debout quand l'échange est fini.
     ...repeat("ce-qui-suit-le-navire", 3),
-    ...repeat("baleine-aux-cicatrices-blanches", 2),
     ...repeat("le-brise-ligne", 2),
     ...repeat("lamiral-sans-pavillon", 1),
     ...repeat("chaine-de-fer-noir", 1),
@@ -618,6 +704,39 @@ export const DECK_CHASSE_AU_GROS: DeckList = {
  * a qu'une sorte ici, et elle est là pour tenir, pas pour attaquer. Tout le
  * reste est du nettoyage et sept menaces lourdes, en un exemplaire chacune
  * pour qu'un wipe ne se joue jamais deux fois de suite.
+ *
+ * LISTE REVUE LE 29/09/2026. Sept cartes attendaient que l'adversaire
+ * contrôle au moins quatre unités — ~9 % des tours : Panique sur le Pont
+ * jouée 6 % des fois où elle était en main, Chacun sa Place 1 %,
+ * Abandonnez le Navire jamais — et le deck n'avait que neuf unités, alors
+ * que ses meilleurs Δ étaient des corps. Sortent Panique, Chacun sa Place,
+ * Abandonnez, les deux Nasses, le Journal de Bord et deux Dernières
+ * Réserves ; entrent des corps qui survivent aux balais du deck : Baleine
+ * aux Cicatrices Blanches, Carapé-Hus (Garde pendant le Calme, quand le
+ * Crabe la perd), Capitaine du Dernier Retour, Chose des Hauts-Fonds,
+ * Matelot du Sans-Nom. Mesuré au labo (bot moyen, 60 parties par paire
+ * contre le rayon) : 20 % → 47 %, toujours sur Le Courlis. Aucun texte
+ * changé.
+ *
+ * LE COURLIS, MESURÉ : ce sont ses 26 points d'Ancrage qui coûtent, pas
+ * ses 4 Slots — la même liste gagne 0 point avec 5 Slots, 13 avec 30
+ * Ancrage. Décision de rééquilibrage laissée au design.
+ *
+ * DEUXIÈME PASSE (29/09/2026, contre le rayon révisé) : retombé à 42 %.
+ * Le Capitaine du Dernier Retour (Δ −12) cède la place à deux Matelots du
+ * Sans-Nom. 42 % → 48 % au labo.
+ *
+ * LE COURLIS À 5 SLOTS (01/10/2026) : 49 % → 46 %, dans le bruit — la
+ * mesure de 2026-09 se confirme, le Slot de plus ne lui sert pas. Son
+ * frein est sa courbe : 38 % de mains sans carte à 2 Raison ou moins.
+ *
+ * STANDARD VERRIER (01/10/2026, validé par le propriétaire) : la courbe.
+ * Sortent Chirurgien du Bord ×2 (Δ −11) et Un Peu de Répit ×3 (joué 4 fois
+ * sur 10) ; entrent Mouette du Brise-Lames ×3 — Garde, et +1 Puissance
+ * conservée chaque fois qu'elle survit : les balais du deck la forgent — et
+ * Matelot Insomniaque ×2, qui vit bien en Déraison. Aucun texte changé.
+ * Mesuré sur cette liste (bot moyen, 60 parties par paire contre le rayon) :
+ * 52,5 % → 63 %, mains sans carte à 2 ou moins 66 % → 29 %.
  */
 export const DECK_APRES_LA_TEMPETE: DeckList = {
   id: "apres-la-tempete",
@@ -628,26 +747,25 @@ export const DECK_APRES_LA_TEMPETE: DeckList = {
   cardIds: [
     // Le nettoyage, du plus léger au plus définitif.
     ...repeat("le-pont-est-plein", 2),
-    ...repeat("panique-sur-le-pont", 2),
     ...repeat("vague-scelerate", 2),
-    ...repeat("chacun-sa-place", 1),
     ...repeat("le-large-se-fache", 1),
-    ...repeat("abandonnez-le-navire", 1),
     ...repeat("la-mer-reprend-tout", 1),
     // Les pièges qui achètent les tours qui manquent.
-    ...repeat("la-nasse-trop-pleine", 2),
     ...repeat("jugement-du-phare", 1),
     ...repeat("derniere-barricade", 2),
     ...repeat("cage-de-flottaison", 2),
-    // Tenir jusque-là.
+    // Tenir jusque-là — des corps qui survivent aux balais du deck.
     ...repeat("crabe-de-fer", 3),
-    ...repeat("chirurgien-du-bord", 2),
+    ...repeat("carape-hus", 3),
+    ...repeat("matelot-du-sans-nom", 3),
+    ...repeat("chose-des-hauts-fonds", 2),
     ...repeat("trousse-du-bord", 2),
+    // Les petits corps que les balais forgent (Standard Verrier, 01/10/2026).
+    ...repeat("mouette-du-brise-lames", 3),
+    ...repeat("matelot-insomniaque", 2),
     // Voir venir : un deck de contrôle qui pioche mal ne contrôle rien.
-    ...repeat("un-peu-de-repit", 3),
-    ...repeat("dernieres-reserves", 3),
+    ...repeat("dernieres-reserves", 1),
     ...repeat("faire-linventaire", 3),
-    ...repeat("journal-de-bord", 2),
     // Et de quoi conclure, une fois le plateau vide.
     ...repeat("le-brise-ligne", 2),
     ...repeat("lamiral-sans-pavillon", 1),
@@ -751,34 +869,47 @@ export const DECK_CAVALERIE: DeckList = {
  * moteur tient sur son propre plateau. Il retrouve ainsi le troisième
  * préconstruit qu'Arsenal de Pont lui a pris. Mesuré : 74 % (80 % sous le
  * Brise-Lames).
+ *
+ * LISTE ET NAVIRE REVUS LE 29/09/2026. Après la révision des six decks du
+ * bas, les Sentinelles restaient seules au-dessus du rayon (77 %, le
+ * nouveau Cap sûr de L'Errant leur ayant donné huit points), en traînant
+ * pourtant une dizaine de cartes qui font perdre : le sous-moteur des
+ * Éclats sans source (Bracelet Δ −18, Pierre Retrouvée −13, Coffret −12)
+ * et des sorts qui ne partent presque jamais (Les Couleurs Répondent −22,
+ * Synchronisation −13). Ils sortent pour des Sentinelles — chaque carte
+ * fait désormais quelque chose —, et le deck passe sur Le Courlis, dont
+ * les 26 Ancrage tiennent un plateau aussi fort à distance. Mesuré au labo
+ * (bot moyen, 60 parties par paire contre le rayon) : liste nettoyée 87 %
+ * sous L'Errant, 75 % sous Le Goliath, 50 % sous Le Courlis. Aucun texte
+ * changé. Si Le Courlis passe un jour à 30 Ancrage, remesurer.
+ *
+ * LE COURLIS À 5 SLOTS (01/10/2026). Remesuré contre la méta du jour :
+ * 41 % sous le Courlis à 4 Slots / 30 Ancrage — le deck restait inactif
+ * deux tours sur T1-4 dans 19 % des parties, faute de place. À 5 Slots :
+ * 54 %, 6 % de tours perdus. Liste inchangée.
  */
 export const DECK_SENTINELLES_CHROMATIQUES: DeckList = {
   id: "sentinelles-chromatiques",
   name: "Sentinelles Chromatiques",
-  shipId: "lerrant",
+  shipId: "le-courlis",
   description: "Des pierres qui se répondent : chaque Sentinelle renforce les autres, jusqu'au Géant.",
   cardIds: [
     ...repeat("heros-de-la-flamme", 3),
     ...repeat("gardienne-de-leclat", 3),
     ...repeat("tacticien-de-lecume", 3),
     ...repeat("porteur-de-jade", 2),
-    ...repeat("bracelet-chromatique", 2),
     ...repeat("appel-des-sentinelles", 3),
     ...repeat("poste-chromatique", 1),
-    ...repeat("pierre-retrouvee", 1),
-    ...repeat("veilleuse-de-lombre", 2),
+    ...repeat("veilleuse-de-lombre", 3),
     ...repeat("survivant-de-la-mousse", 2),
     ...repeat("emissaire-de-quartz", 2),
     ...repeat("la-premiere-pierre", 1),
-    ...repeat("coffret-aux-cinq-pierres", 1),
-    ...repeat("briseur-du-brasier", 2),
-    ...repeat("rempart-du-soleil", 2),
-    ...repeat("stratege-de-lazur", 2),
-    ...repeat("oracle-damethyste", 1),
-    ...repeat("les-couleurs-repondent", 2),
-    ...repeat("synchronisation", 1),
+    ...repeat("briseur-du-brasier", 3),
+    ...repeat("rempart-du-soleil", 3),
+    ...repeat("stratege-de-lazur", 3),
+    ...repeat("oracle-damethyste", 3),
     ...repeat("coup-de-harpon", 1),
-    ...repeat("heraut-de-nacre", 1),
+    ...repeat("heraut-de-nacre", 2),
     ...repeat("formation-prismatique", 1),
     ...repeat("le-geant-chromatique", 1),
   ],

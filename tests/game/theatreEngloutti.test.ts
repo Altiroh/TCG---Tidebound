@@ -16,8 +16,10 @@ import { instance, testGameState, testPlayer } from "./testHelpers";
 const LOT_11 = CORE_SET.filter((def) => def.setCode === "theatre-englouti");
 
 describe("catalogue du Lot 11", () => {
-  it("apporte 14 cartes STANDARD et 2 variantes Abyssales", () => {
-    expect(LOT_11).toHaveLength(16);
+  // 14 → 13 cartes STANDARD : Les Coulisses Inondées ont été supprimées du
+  // catalogue le 01/10/2026.
+  it("apporte 13 cartes STANDARD et 2 variantes Abyssales", () => {
+    expect(LOT_11).toHaveLength(15);
     expect(LOT_11.filter((def) => def.id.endsWith("-abyssal"))).toHaveLength(2);
   });
 
@@ -114,7 +116,14 @@ describe("retour en main", () => {
 });
 
 describe("ciblage par sous-type et par coût", () => {
-  it("le sous-type accepte Structures et Objets, contrairement au filtre d'archétype", () => {
+  // Nomenclature Notion : « une CARTE Marionnette » vise toute la troupe,
+  // Structures et Objets compris (La Clochette du Rappel) ; « une UNITÉ
+  // Marionnette » ne vise que les Marins et Créatures (Arlecchino, Le Masque
+  // Fendu, Colombina, Le Régisseur, Changement de rôle !). Ce test figeait
+  // l'ouverture aux non-unités pour TOUTES les cartes du lot, ce que leurs
+  // textes ne disent pas : le sous-type seul reste la lecture « carte », et
+  // `unitsOnly` la lecture « unité ».
+  it("le sous-type seul (« carte Marionnette ») accepte Structures et Objets, `unitsOnly` (« unité Marionnette ») non", () => {
     const base = testGameState();
     const puppet = instance("pulcinella-gonfle", "p1");
     const structure = instance("le-theatre-englouti", "p1");
@@ -124,8 +133,26 @@ describe("ciblage par sous-type et par coût", () => {
       players: [testPlayer("p1", { board: [puppet, structure, outsider] }), testPlayer("p2")] as typeof base.players,
     };
 
-    const eligible = eligibleChosenUnits(state, { kind: "chosenUnit", among: { subtype: MARIONNETTE } }, "p1");
-    expect(eligible.map((c) => c.unit.cardId).sort()).toEqual(["le-theatre-englouti", "pulcinella-gonfle"]);
+    const cartes = eligibleChosenUnits(state, { kind: "chosenUnit", among: { subtype: MARIONNETTE } }, "p1");
+    expect(cartes.map((c) => c.unit.cardId).sort()).toEqual(["le-theatre-englouti", "pulcinella-gonfle"]);
+    const unites = eligibleChosenUnits(state, { kind: "chosenUnit", among: { subtype: MARIONNETTE, unitsOnly: true } }, "p1");
+    expect(unites.map((c) => c.unit.cardId)).toEqual(["pulcinella-gonfle"]);
+  });
+
+  it("chaque carte du lot qui dit « unité Marionnette » restreint sa cible aux unités", () => {
+    for (const id of [
+      "arlecchino-des-profondeurs",
+      "arlecchino-celui-derriere-le-masque-abyssal",
+      "colombina-aux-cent-visages",
+      "le-regisseur-sans-visage",
+    ]) {
+      const cible = getCardDefinition(id).abilities?.[0]?.effects.find((e) => e.target.kind === "chosenUnit")?.target;
+      expect(cible?.kind === "chosenUnit" && cible.among?.unitsOnly, id).toBe(true);
+    }
+    for (const id of ["le-masque-fendu", "changement-de-role"]) {
+      const cible = getCardDefinition(id).onBreakEffects?.find((e) => e.target.kind === "chosenUnit")?.target;
+      expect(cible?.kind === "chosenUnit" && cible.among?.unitsOnly, id).toBe(true);
+    }
   });
 
   it("le plafond de coût du Régisseur écarte les grosses Marionnettes", () => {
@@ -286,8 +313,8 @@ describe("Il Dottore des Noyés — un camp par mode", () => {
   function arrival() {
     const dottore = instance("il-dottore-des-noyes", "p1");
     const ally = instance("pulcinella-gonfle", "p1");
-    // Une ennemie assez solide pour survivre au -2 / -2 (5 / 6) : on mesure le malus, pas une mort.
-    const enemy = instance("baleine-aux-cicatrices-blanches", "p2");
+    // Une ennemie assez solide pour survivre au -2 / -2 (5 / 5) : on mesure le malus, pas une mort.
+    const enemy = instance("la-chose-qui-remonte", "p2");
     const state = testGameState({
       players: [testPlayer("p1", { hand: [dottore], board: [ally], reason: 10 }), testPlayer("p2", { board: [enemy] })],
     });
@@ -326,7 +353,7 @@ describe("Il Dottore des Noyés — un camp par mode", () => {
     const colombina = instance("colombina-aux-cent-visages", "p1");
     const dottore = instance("il-dottore-des-noyes", "p1");
     const ally = instance("pulcinella-gonfle", "p1");
-    const enemy = instance("baleine-aux-cicatrices-blanches", "p2");
+    const enemy = instance("la-chose-qui-remonte", "p2");
     const state = testGameState({
       players: [testPlayer("p1", { hand: [colombina], board: [dottore, ally], reason: 10 }), testPlayer("p2", { board: [enemy] })],
     });

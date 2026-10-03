@@ -92,6 +92,22 @@ export interface PlayerState {
    */
   oncePerGameUses?: Record<string, number>;
   /**
+   * Raison PERDUE depuis le début du tour de table en cours (dépensée ou
+   * retirée par un effet), tenue par `game/state/reasonDepletion.ts` :
+   * c'est ce que rend « Cap sûr » (L'Errant). Remise à zéro dès que le
+   * numéro de tour change.
+   */
+  reasonLostThisTurn?: { turnNumber: number; amount: number };
+  /**
+   * NOMS des Objets Brisés par ce joueur pendant le tour de table
+   * `turnNumber` (`game/actions/breakObject.ts`). Daté plutôt que remis à
+   * zéro, comme `reasonLostThisTurn`. Lu par
+   * `CardDefinition.breakOncePerTurnByName` — « une seule carte nommée
+   * Changement de rôle ! peut être Brisée par tour » : par NOM, pour que
+   * plusieurs exemplaires ne s'enchaînent pas.
+   */
+  objectsBrokenThisTurn?: { turnNumber: number; names: string[] };
+  /**
    * Protections de destruction en cours (« vos Structures ne peuvent pas
    * être détruites par des effets environnementaux jusqu'à la fin de ce
    * tour », Brise-Lames — Tenir la ligne).
@@ -146,10 +162,22 @@ export interface PlayerState {
 /** Une arrivée au Cimetière, telle que la lisent les conditions du Lot 13. */
 export interface GraveyardArrival {
   cardId: string;
+  /**
+   * Exemplaire arrivé, quand la voie le connaît (Bris, défausse,
+   * destruction…). Lu par `conditionGraveyardArrival.excludeSource` : la
+   * carte dont l'effet pose la question ne remplit pas sa propre condition.
+   */
+  instanceId?: string;
   /** Tour de table de l'arrivée. */
   turnNumber: number;
   /** D'où venait la carte — « depuis votre main » est une condition à part entière. */
   fromZone: "hand" | "board" | "deck";
+  /**
+   * Départ du plateau par DESTRUCTION (`processDeaths`) : sa cause, Sabordage
+   * compris (`"scuttle"`). Absente pour un Bris, une expiration ou un
+   * Équipement d'abord retiré autrement — ce ne sont pas des destructions.
+   */
+  destructionCause?: import("@/game/cards/types").DestructionCause;
   /**
    * Arrivée survenue pendant l'entame du tour de son propriétaire, AVANT que
    * ses capacités de début de tour ne se déclenchent (effets de Marée). Sa
@@ -221,6 +249,27 @@ export interface CostDiscount {
   grantedBy?: PlayerId;
   /** Tour au-delà duquel la réduction est perdue (« ce tour »). */
   expiresAfterTurn: number;
+  /**
+   * La carte qui en profite se joue SANS payer son coût de Raison
+   * (Changement de rôle !, « vous pouvez jouer une autre Marionnette […]
+   * sans payer son coût de Raison »). Contrairement à une réduction, la
+   * gratuité ignore le plancher de 1 des réductions et toute majoration :
+   * le coût payé est 0. `amount` est alors sans effet.
+   */
+  free?: boolean;
+  /**
+   * Cartes (par instance) qui n'en profitent pas : « une AUTRE
+   * Marionnette » exclut celle que l'effet vient de renvoyer en main.
+   */
+  excludeInstanceIds?: string[];
+  /**
+   * Seuls ces exemplaires en profitent — « remettez-la dans votre main […]
+   * ELLE coûte 1 de moins » vise la carte repêchée, pas n'importe quelle
+   * carte du même profil (Tu viens jouer ?).
+   */
+  onlyInstanceIds?: string[];
+  /** Ne s'applique qu'aux cartes de coût IMPRIMÉ inférieur ou égal (`filter.maxCost` de l'effet). */
+  maxCost?: number;
 }
 
 /**
@@ -326,6 +375,16 @@ export interface GameState {
   reactionsEnAttente?: TriggerEvent[];
 
   /**
+   * Signaux VIOLETS déclenchés pendant qu'une question attendait sa réponse
+   * (Lot 15 — « piochez 1 carte puis défaussez-en 1 »). La défausse du
+   * Signal aurait écrasé la question posée ; l'occurrence n'est pas perdue
+   * pour autant : ses émetteurs sont marqués (c'était bien « la première
+   * fois ce tour »), et la pioche-défausse se résout dès que la table se
+   * libère (`processChromaticSignals`).
+   */
+  signauxVioletsEnAttente?: Array<{ playerId: PlayerId; count: number; sourceInstanceId: string }>;
+
+  /**
    * Choix forcé en attente pour `playerId` (Notion "Choix de joueur en
    * cours de résolution", ex: Le Fond Vous Regarde — "au début de chaque
    * tour, le joueur actif choisit : perdre X Raison, ou infliger X dégâts
@@ -336,6 +395,16 @@ export interface GameState {
    * qu'une capacité facultative.
    */
   pendingChoice?: PendingChoice;
+
+  /**
+   * Choix qui attendent leur tour derrière `pendingChoice` : un texte qui
+   * pose une question alors qu'une autre est déjà ouverte (deux Anomalies Le
+   * Fond Vous Regarde au même début de tour, Horloge de Marée Sabordée
+   * pendant un choix) ne doit ni écraser la question en cours, ni répondre à
+   * la place du joueur. `dispatch` ouvre le premier de la file dès que
+   * `pendingChoice` se libère.
+   */
+  pendingChoiceQueue?: PendingChoice[];
 
   /**
    * Attaque DÉCLARÉE mais pas encore résolue, suspendue le temps que le
@@ -356,8 +425,7 @@ export interface GameState {
   pendingAttack?: PendingAttack;
 
   /**
-   * Entame de tour suspendue à l'ANNONCE de la Marée (Ancre de Dérive,
-   * 21/09/2026). La nouvelle Marée est committée et annoncée, mais ses
+   * Entame de tour suspendue à l'ANNONCE de la Marée (21/09/2026). La nouvelle Marée est committée et annoncée, mais ses
    * effets de tour ne sont pas encore appliqués : la fenêtre
    * `onTideAnnounced` est ouverte et le joueur décide.
    *
@@ -458,10 +526,7 @@ export interface TurnTimerState {
  * Entame de tour suspendue le temps de la fenêtre `onTideAnnounced`.
  *
  * Porte tout ce qu'il faut pour reprendre : de QUI c'est le tour, et la
- * Marée annoncée, dont les effets n'ont pas encore été appliqués. Le seul
- * champ que la fenêtre peut changer est `deferred` — l'effet générique
- * `deferTideEffects` le lève, et l'entame reportera alors ces effets à la
- * fin du tour au lieu de les appliquer tout de suite.
+ * Marée annoncée, dont les effets n'ont pas encore été appliqués.
  */
 export interface PendingTideStep {
   /** Joueur dont le tour commence : celui pour qui l'entame doit reprendre. */
@@ -473,8 +538,6 @@ export interface PendingTideStep {
   intensity: number;
   /** La Marée vient-elle de CHANGER d'état, ou ne fait-elle que décompter ? */
   stateChanged: boolean;
-  /** Levé par `deferTideEffects` : les effets de cette Marée attendront la fin du tour. */
-  deferred?: boolean;
 }
 
 /**
@@ -549,6 +612,13 @@ export interface AbilityOptionChoice {
 export interface HandDiscardChoice {
   kind: "handDiscard";
   playerId: PlayerId;
+  /**
+   * Ce même joueur vient de PIOCHER par un effet de la même suite :
+   * « piochez 1 carte puis défaussez-en 1 » (Vigie aux Fissures, Signal
+   * Violet). Posé par `resolveEffectSequence`, relayé jusqu'aux
+   * déclencheurs de défausse (`TriggerSourceFilter.discardAfterDraw`).
+   */
+  afterDraw?: boolean;
   /** Nombre de cartes à défausser — déjà borné à la taille de la main. */
   count: number;
   /**
@@ -601,7 +671,7 @@ export interface HandDiscardChoice {
 /**
  * « Regardez les N premières cartes de votre pioche. Ajoutez-en une à votre
  * main. Placez les autres sous votre pioche. » (Lot 14 — Faire l'Inventaire,
- * Journal de Bord, Fouille de la Cale).
+ * Fouille de la Cale ; Lot 15 — Appel des Sentinelles).
  *
  * Les cartes regardées sont SORTIES de la pioche au moment où la question
  * est posée, et vivent ici jusqu'à la réponse : sans ça, une pioche qui se
@@ -679,13 +749,15 @@ export interface KeepUnitsChoice {
   keep: number;
   /** Unités déjà mises de côté, tous joueurs confondus. */
   kept: string[];
+  /** Joueur qui a joué la carte : l'auteur des destructions (Bête de Halage, « par un effet adverse »). */
+  controllerId?: PlayerId;
   sourceInstanceId?: string;
   turnNumber: number;
 }
 
 /**
- * « Renvoyez JUSQU'À 2 unités de coût 3 ou moins qu'il contrôle dans sa
- * main » (Panique sur le Pont, Lot 14).
+ * « Choisissez JUSQU'À N unités » (Trinquer Trop Fort, Les Couleurs
+ * Répondent, Lot 15).
  *
  * `chosenUnit` ne désigne qu'UNE cible : un texte qui en vise plusieurs
  * n'avait aucune façon de se dire. Ce choix-ci porte la liste des cibles

@@ -79,9 +79,11 @@ export function eligibleChosenUnits(
       if (def.archetype !== filter.archetype) return false;
       if (!UNIT_CARD_TYPES.includes(def.type)) return false;
     }
-    // Le sous-type, lui, ne restreint PAS aux unités : la troupe du Théâtre
-    // compte des Structures et des Objets, et « renvoyez une Marionnette
-    // alliée » doit pouvoir les viser.
+    // Le sous-type, lui, ne restreint PAS aux unités : « une CARTE
+    // Marionnette » (La Clochette du Rappel) vise aussi les Structures et les
+    // Objets de la troupe. Un texte qui dit « une UNITÉ Marionnette » le
+    // déclare avec `unitsOnly` (nomenclature Notion : « unité » = Marin ou
+    // Créature, « carte » = tout type).
     if (filter.subtype && getCardDefinition(unit.cardId).subtype !== filter.subtype) return false;
     if (filter.maxCost !== undefined && getCardDefinition(unit.cardId).cost > filter.maxCost) return false;
     if (filter.damaged && unit.damageMarked <= 0) return false;
@@ -92,6 +94,26 @@ export function eligibleChosenUnits(
     }
     return true;
   });
+}
+
+/**
+ * Cibles légales d'un effet `chosenUnit` porté par le BRIS d'un Objet
+ * (`onBreakEffects`). Même règle que `eligibleChosenUnits`, l'Objet brisé en
+ * moins : il quitte le plateau AVANT que ses effets ne se résolvent, il ne
+ * peut donc jamais être sa propre cible. Sans cette garde, un Objet
+ * Marionnette pouvait se désigner lui-même — « renvoyez une Marionnette »
+ * ne renvoyait rien, et la suite (pioche, réduction, gratuité) s'appliquait
+ * quand même. Partagé par le moteur, le bot et l'interface.
+ */
+export function eligibleBreakTargets(
+  state: GameState,
+  target: TargetSelector,
+  controllerId: PlayerId,
+  brokenObjectInstanceId: string
+): ChosenUnitCandidate[] {
+  return eligibleChosenUnits(state, target, controllerId, brokenObjectInstanceId).filter(
+    (c) => c.unit.instanceId !== brokenObjectInstanceId
+  );
 }
 
 /** Ce choix précis est-il légal pour cet effet ? Utilisé par le moteur juste avant de résoudre. */

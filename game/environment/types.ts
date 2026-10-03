@@ -81,13 +81,6 @@ export interface EnvironmentState {
   tideOrientation: TideOrientation;
   tideIntensity: number;
   pendingTideModifiers: PendingTideModifier[];
-  /**
-   * Effets de tour de la Marée reportés à la FIN du tour en cours (Ancre de
-   * Dérive, Sabordée au changement d'état) : dégâts d'Ancrage/Raison, choc
-   * d'entrée des Abysses, maladie de la Houle. Appliqués puis effacés par
-   * `endTurn` (`applyTideTurnEffects`).
-   */
-  deferredTideEffects?: { previousTideState: TideStateName; tideState: TideStateName; intensity: number };
 }
 
 /**
@@ -139,7 +132,7 @@ export interface ShipActivatableAbility {
    *
    * `"tideAnnounced"` : la capacité ne s'active que pendant la fenêtre déjà
    * ouverte par le moteur entre l'ANNONCE d'une Marée et l'application de
-   * ses effets (`GameState.pendingTideStep`) — celle de l'Ancre de Dérive.
+   * ses effets (`GameState.pendingTideStep`).
    * C'est la seule façon d'écrire « après qu'une Marée a été annoncée mais
    * avant l'application de ses effets » (L'Errant — Changer de cap) sans
    * doubler le système de réaction : le Navire rejoint la file de priorité
@@ -268,4 +261,12 @@ export interface ShipDefinition {
   directAttackWeakness?: number;
   /** Réduction des dégâts d'Ancrage de Déraison (réglés une seule fois par tour, donc équivaut à "la première fois par tour"). Ex: Pénitence de La Religieuse. */
   deraisonDamageReduction?: number;
+  /**
+   * « La première fois de la partie que votre Raison tombe à 0 ou moins,
+   * récupérez la Raison perdue pendant ce tour » (L'Errant — Cap sûr,
+   * 29/09/2026). Une seule fois par partie, sans action du joueur : le
+   * moteur le constate après chaque action (`game/state/reasonDepletion.ts`).
+   * La Raison rendue ne dépasse jamais la Raison maximale.
+   */
+  refundTurnReasonOnFirstDepletion?: boolean;
 }

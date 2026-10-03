@@ -153,3 +153,38 @@ export function answerHandDiscard(state: GameState, instanceIds?: string[]) {
     choice: { discardInstanceIds: instanceIds ?? hand.slice(0, choice.count).map((card) => card.instanceId) },
   });
 }
+
+/**
+ * Préconstruits VOLONTAIREMENT incomplets, en attente de reconstruction.
+ *
+ * Passe de nettoyage du 02/10/2026 : 28 cartes retirées du catalogue
+ * (Lots 01 à 07) ont été ôtées de ces listes SANS remplaçant — la
+ * reconstruction fait l'objet d'une passe dédiée. D'ici là, ces decks sont
+ * sous `RULES.DECK_SIZE_MIN` et le serveur les refuse.
+ *
+ * Les tests de validité les tolèrent tant qu'ils restent INCOMPLETS : une
+ * entrée ne survit pas à la reconstruction de son deck (`deckEnAttente`
+ * échoue dès que la liste atteint le minimum), et elle doit alors être
+ * retirée d'ici.
+ */
+export const PRECONS_EN_ATTENTE_DE_RECONSTRUCTION: ReadonlySet<string> = new Set([
+  "mineurs-de-fond",
+  "descente-aux-abysses",
+  "epavistes",
+  "a-bout-de-raison",
+  "chasse-au-gros",
+  "apres-la-tempete",
+]);
+
+/**
+ * Vrai si `deck` est un préconstruit en attente de reconstruction ET
+ * toujours incomplet. Lève s'il a été reconstruit sans être retiré de
+ * `PRECONS_EN_ATTENTE_DE_RECONSTRUCTION`.
+ */
+export function deckEnAttente(deck: { id: string; cardIds: readonly string[] }): boolean {
+  if (!PRECONS_EN_ATTENTE_DE_RECONSTRUCTION.has(deck.id)) return false;
+  if (deck.cardIds.length >= RULES.DECK_SIZE_MIN) {
+    throw new Error(`${deck.id} est reconstruit : le retirer de PRECONS_EN_ATTENTE_DE_RECONSTRUCTION.`);
+  }
+  return true;
+}

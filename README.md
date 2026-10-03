@@ -265,28 +265,18 @@ plateau est limité par `Navire.slotCount`, pas seulement pour les unités.
   de Navire ne s'appliquent pas, puisque le coup n'a pas touché.
 
   Les autres modificateurs de dégâts directs restent **automatiques**
-  (Le Filet qui Respire, Cage de Flottaison, Carcasse Renversée, faiblesse
+  (Cage de Flottaison, Carcasse Renversée, faiblesse
   de Navire) : ce sont des réductions pures, jamais un désavantage, donc
   rien à décider. Seul ce qui COÛTE quelque chose — une carte qui se
   détruit, se Saborde, ou se révèle — mérite une fenêtre.
 - **Fenêtre d'annonce de Marée** (`onTideAnnounced`, 21/09/2026) : même
   geste à l'autre bout du tour. L'étape de Marée est coupée en deux —
-  l'**annonce** (décompte, progression, orientation, Anomalies de
-  changement) puis l'**application** (dégâts de Tempête, choc des Abysses,
+  l'**annonce** (décompte, progression, orientation) puis l'**application** (dégâts de Tempête, choc des Abysses,
   maladie de la Houle) — et la fenêtre s'intercale entre les deux. L'état
   porte `pendingTideStep` ; l'entame du tour est suspendue en entier : ni
   Raison, ni pioche, ni `TURN_STARTED` tant que le joueur n'a pas répondu.
-
-  L'effet `deferTideEffects` (Ancre de Dérive) repousse à la **fin du tour
-  en cours** les seuls effets de TOUR de cette Marée. L'état, lui, a bel et
-  bien changé : les capacités `onTideStateEntered` se déclenchent à
-  l'heure, et les Structures changent de visibilité comme prévu. La Marée
-  n'est pas retenue — c'est sa gifle qui arrive en retard.
-
-  Comme toute fenêtre, elle est refusable : passer garde l'Ancre en jeu et
-  laisse la Marée frapper tout de suite. Avant cette passe, le Sabordage et
-  le report étaient appliqués d'office dès que la carte était en jeu et
-  visible — le moteur décidait à la place du joueur.
+  Les capacités de Navire « après l'annonce d'une Marée »
+  (`activationWindow: "tideAnnounced"`) s'y activent.
 
 ## Structure de tour
 
@@ -304,14 +294,13 @@ Déraison (dette sous 0 → dégâts d'Ancrage, Raison remise à 0).
    épuisée — jamais une carte de deck, toujours tiré par le moteur).
 2. **Annonce** de la Marée : décompte de la durée restante, progression
    éventuelle vers l'état suivant (`Calme → Houle → Tempête → Abysses →
-   Calme`), orientation, Anomalies de changement. Sur un changement
+   Calme`), orientation. Sur un changement
    d'état, la fenêtre `onTideAnnounced` s'ouvre ici (voir "Fenêtre
    d'annonce de Marée") et **suspend tout ce qui suit**.
 3. **Application** de la Marée : malus de l'état courant — voir "Malus
    globaux des Marées" ci-dessous —, capacités d'entrée/sortie d'état,
    expiration des permanents à durée limitée, Structures qui deviennent
-   visibles. Une Ancre de Dérive activée à l'étape 2 repousse les seuls
-   malus à la fin du tour en cours (`deferredTideEffects`).
+   visibles.
 4. Récupération naturelle : **+2 Raison**, bornée par le plafond de début
    de partie, et **amputée d'une dette subie** éventuelle (qui est alors
    effacée). La Raison persiste, elle n'est jamais remise à niveau.
@@ -398,18 +387,14 @@ le tour suivant recommence systématiquement en Phase principale.
   l'unité évaluée) pour calculer, sans jamais les stocker sur `CardInstance`,
   les bonus qui dépendent du reste du plateau ou de la Raison — bonus sur
   soi conditionné à une Structure visible contrôlée (`bernard-lermite-dacier`)
-  ou à un seuil de Raison (`matelot-insomniaque`), aura envoyée aux autres
-  unités d'un type donné sous un seuil de Raison (`capitaine-sans-sommeil`),
-  et bonus d'Équipement conditionné à la Marée (`lampe-de-pont-rouge`,
-  `masque-de-plongee-fissure`). Un appelant qui omet ce paramètre obtient les
+  ou à un seuil de Raison (`matelot-insomniaque`), et bonus d'Équipement
+  conditionné à la Marée (`lampe-de-pont-rouge`). Un appelant qui omet ce paramètre obtient les
   stats de base (modificateurs + Marée) sans ces auras.
 
 Exemples de cartes illustrant ces systèmes : `murene-aveugle` (stats
 variables selon la Marée), `masse-noire` (inactive pendant Calme),
 `regulateur-de-courant` / `horloge-de-maree` (Sabordage : réduit la durée
-de Marée restante), `radeau-de-fortune` (`onExpire` : récupère de
-l'Ancrage), `epave-engloutie` / `ponton-aux-cloches` (`onBecomeVisible`),
-`crabe-de-fer` (porte le mot-clé Garde), `thermos-du-dernier-quart` /
+de Marée restante), `crabe-de-fer` (porte le mot-clé Garde), `thermos-du-dernier-quart` /
 `levier-de-lest` (Objets : `onBreakEffects`).
 
 ## Combat, Sabordage et Garde
@@ -462,29 +447,19 @@ laissées de côté (trop risquées à câbler vite, ou demandant un vrai
 sous-système) avant d'être toutes construites depuis :
 
 - **Boucliers réactifs "1ère fois par tour"** (`game/state/shields.ts` +
-  `CardInstance.oncePerTurnFlags`) : 7 cartes (Vieux Loup de Mer, Brise-
-  Vague de Fortune, Seconde au Visage Pâle, Baleine aux Cicatrices
-  Blanches, Wood Vy, Cage de Flottaison, Le Filet qui Respire) —
+  `CardInstance.oncePerTurnFlags`) : Vieux Loup de Mer, Brise-Vague de
+  Fortune, Seconde au Visage Pâle, Wood Vy, Cage de Flottaison —
   interception d'une perte de Raison/de dégâts la première fois par tour
   que la situation se produit, câblée dans `resolveEffect.ts`,
   `resolveEnvironment.ts` et `attack.ts`.
-- **Auras/stats dynamiques** (`computeEffectiveStats`, voir plus haut) : 5
-  cartes (Bernard-l'Ermite d'Acier, Matelot Insomniaque, Capitaine Sans
-  Sommeil, Lampe de Pont Rouge, Masque de Plongée Fissuré).
-- **Lecture de main** (`HAND_CARD_REVEALED`, `game/effects/resolveEffect.ts`) :
-  3 cartes (Guetteur de Brume, La Bouée qui Regardait, Cloche Immergée) —
-  révèle N cartes aléatoires de la main adverse, purement informatif côté
-  moteur. Guetteur de Brume est câblé directement dans `resolveReaction`
-  (`game/triggers/triggerBus.ts`) plutôt que sur un `TriggerType` : activer
-  une réaction est, dans ce moteur, le seul moyen pour l'adversaire de
-  "déclencher un effet" pendant le tour de l'autre.
+- **Auras/stats dynamiques** (`computeEffectiveStats`, voir plus haut) :
+  Bernard-l'Ermite d'Acier, Matelot Insomniaque, Lampe de Pont Rouge.
+- **Lecture de main** (`HAND_CARD_REVEALED`, effet `revealRandomHandCards`,
+  `game/effects/resolveEffect.ts`) : révèle N cartes aléatoires de la main
+  adverse, purement informatif côté moteur.
 - **Anomalies globales temporaires** (`game/state/anomalies.ts`, permanents
-  `type: "anomalie"` à durée limitée) : 7 des 9 cartes de cette famille
-  (Quelque Chose Sous la Coque, Le Chant Sous la Ligne, Les Voix dans le
-  Sillage, Ils Sont Sous Nous ×2, La Mer Réclame Davantage ×2) — règles
-  symétriques appliquées automatiquement, centralisées dans
-  `processTrigger`/`resolveEffect`/`resolveEnvironment`. **Le Fond Vous
-  Regarde ×2 reste à part** : voir "Choix de joueur" ci-dessous.
+  `type: "anomalie"` à durée limitée) : Le Fond Vous Regarde ×2 — voir
+  "Choix de joueur" ci-dessous.
 - **Choix de joueur** (`GameState.pendingChoice` + `game/actions/resolveChoice.ts`) :
   Le Fond Vous Regarde (×2) force, au début de chaque tour, un choix
   binaire pour le joueur actif — perdre de la Raison, ou infliger des

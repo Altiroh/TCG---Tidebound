@@ -1,4 +1,5 @@
-import type { CardInstance, ChromaticColor, StatModifier } from "@/game/cards/types";
+import { getCardDefinition } from "@/game/cards/sets/core";
+import { UNIT_CARD_TYPES, type CardInstance, type ChromaticColor, type StatModifier } from "@/game/cards/types";
 import { resolveEffectSequence } from "@/game/effects/resolveSequence";
 import type { EffectDefinition } from "@/game/effects/types";
 import type { GameEvent } from "@/game/events/types";
@@ -60,6 +61,19 @@ export function processChromaticSignals(
   let next = state;
   const produced: GameEvent[] = [];
 
+  // Les Signaux Violets mis de côté pendant une question se résolvent dès
+  // que la table est libre (cf. `GameState.signauxVioletsEnAttente`).
+  const resoudreViolet = (playerId: PlayerId, count: number, sourceInstanceId: string) => {
+    const resolved = resolveEffectSequence(next, violet(count), { controllerId: playerId, sourceInstanceId, turnNumber });
+    next = resolved.state;
+    produced.push(...resolved.events);
+  };
+  while (next.signauxVioletsEnAttente && !next.pendingChoice) {
+    const [premier, ...reste] = next.signauxVioletsEnAttente;
+    next = reste.length > 0 ? { ...next, signauxVioletsEnAttente: reste } : (({ signauxVioletsEnAttente: _vides, ...sans }) => sans)(next);
+    resoudreViolet(premier!.playerId, premier!.count, premier!.sourceInstanceId);
+  }
+
   for (const event of events) {
     if (event.type === "PLAY_CARD") {
       const player = next.players.find((p) => p.id === event.playerId);
@@ -87,18 +101,21 @@ export function processChromaticSignals(
       if (!owner || !cible || event.byPlayerId === owner.id) continue;
       const emetteurs = availableSignalSources(cible, "violet", owner.board, turnNumber);
       if (emetteurs.length === 0) continue;
-      // Une question est déjà posée (l'effet adverse en attend une réponse) :
-      // la défausse du Signal l'écraserait. Les émetteurs restent disponibles
-      // pour la prochaine fois qu'on vise une de ces Sentinelles.
-      if (next.pendingChoice) continue;
       next = marquerEmetteurs(next, emetteurs, "violet", turnNumber);
-      const resolved = resolveEffectSequence(next, violet(emetteurs.length), {
-        controllerId: owner.id,
-        sourceInstanceId: emetteurs[0]!.instanceId,
-        turnNumber,
-      });
-      next = resolved.state;
-      produced.push(...resolved.events);
+      // Une question est déjà posée (l'effet adverse en attend une réponse) :
+      // la défausse du Signal l'écraserait. L'occurrence est mise de côté,
+      // pas jetée — elle se résout dès que la question a sa réponse.
+      if (next.pendingChoice) {
+        next = {
+          ...next,
+          signauxVioletsEnAttente: [
+            ...(next.signauxVioletsEnAttente ?? []),
+            { playerId: owner.id, count: emetteurs.length, sourceInstanceId: emetteurs[0]!.instanceId },
+          ],
+        };
+        continue;
+      }
+      resoudreViolet(owner.id, emetteurs.length, emetteurs[0]!.instanceId);
     }
   }
 
@@ -119,6 +136,10 @@ export function applyBlueSignal(
 ): { state: GameState; events: GameEvent[] } {
   const player = state.players.find((p) => p.id === attackerPlayerId);
   if (!player || !isSentinel(attacker)) return { state, events: [] };
+  // « attaque une UNITÉ adverse » : une Structure attaquée — un Éclat
+  // Chromatique compris — n'a pas de Puissance à perdre, et le Signal ne
+  // doit pas s'y consommer au détriment de l'attaque suivante du tour.
+  if (!UNIT_CARD_TYPES.includes(getCardDefinition(defender.cardId).type)) return { state, events: [] };
   // PLAFONNÉ à -1 par attaque (arbitrage du 23/09/2026) : un seul émetteur
   // répond, les autres restent disponibles pour les attaques suivantes du
   // tour. Cumulé, le Bleu retirait toute la riposte d'un coup.

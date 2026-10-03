@@ -33,7 +33,6 @@ export const NEUTRE: DeckList = {
     ...repeat("harponneur-du-dernier-quai", 3),
     ...repeat("chose-des-hauts-fonds", 3),
     ...repeat("si-raie-ponce", 3),
-    ...repeat("baleine-aux-cicatrices-blanches", 2),
     ...repeat("journal-de-bord-detrempe", 2),
   ],
 };

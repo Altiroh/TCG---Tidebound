@@ -1,0 +1,1521 @@
+# Théâtre Englouti — Standard Verrier, variantes du 01/10/2026
+
+## V1 / V2 (gains au retour en main)
+
+# Labo — 1860 parties, bot moyen, 60 par paire, 136 s
+
+## Classement
+
+| Deck | WR | 1er | durée | dégâts/partie (combat·effet·navire·tour) | soin | unités+invoc | Raison laissée | dette | inactif≥2 T1-4 | main sans ≤2 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Le Grand Banc [GB1 Pied marin sans Bavard] | **80.0%** | 90.0% | 4.7 | 17.2·0.0·0.1·3.2 | 0.0 | 6.5+4.1 | 0.4 | 1.9 | 0.0% | 0.0% |
+| La Forteresse [F1 murs sans soins] | **76.7%** | 66.7% | 6.3 | 16.1·0.1·0.1·4.5 | 0.8 | 4.9+0.0 | 0.5 | 1.9 | 0.0% | 10.0% |
+| Chasse au Gros [blessures bon marché] | **67.5%** | 85.0% | 4.6 | 14.5·0.0·0.8·2.9 | 0.0 | 5.1+0.0 | 0.0 | 2.9 | 0.0% | 8.3% |
+| À bout de Raison [drain concentré] | **65.0%** | 76.7% | 4.5 | 16.5·0.0·0.1·2.9 | 0.0 | 6.7+0.0 | 0.1 | 2.0 | 0.0% | 10.0% |
+| Arsenal de Pont [Bris payant] | **60.0%** | 56.7% | 5.7 | 11.8·0.0·2.7·4.3 | 1.2 | 4.6+0.0 | 0.5 | 1.3 | 0.0% | 1.7% |
+| Le Théâtre Englouti [TH2 Errant rappels payants] | **60.0%** | 70.0% | 4.7 | 15.1·0.0·0.1·3.3 | 0.3 | 7.1+0.0 | 0.1 | 2.0 | 0.0% | 6.7% |
+| Descente aux Abysses [descendre et rester] | **58.3%** | 73.3% | 4.6 | 14.2·0.0·0.3·3.2 | 0.0 | 7.1+0.0 | 0.1 | 1.7 | 0.0% | 21.7% |
+| Chevaliers du Grand Étang [CH1 Seau au lieu de Tournoi/Fourchette] | **55.0%** | 60.0% | 4.5 | 16.2·0.0·0.1·2.8 | 0.3 | 6.1+1.9 | 0.5 | 1.4 | 1.7% | 0.0% |
+| Épavistes [recyclage] | **50.8%** | 61.7% | 5.4 | 11.0·0.0·1.0·3.9 | 3.6 | 5.9+0.0 | 0.2 | 1.7 | 0.0% | 1.7% |
+| Cavalerie [peu mais lourdes] | **50.0%** | 66.7% | 4.0 | 14.9·0.0·0.3·2.0 | 0.9 | 5.1+0.0 | 0.0 | 3.8 | 0.0% | 10.0% |
+| Sentinelles Chromatiques [SC1 Courlis 4 Slots] | **48.3%** | 63.3% | 5.2 | 15.9·0.0·0.1·0.2 | 0.0 | 5.3+2.8 | 1.9 | 2.0 | 8.3% | 1.7% |
+| Après la Tempête [balai qui rapporte] | **45.8%** | 58.3% | 5.0 | 14.4·0.0·0.3·0.3 | 0.3 | 5.3+0.0 | 0.1 | 3.0 | 0.0% | 40.0% |
+| Le Théâtre Englouti [V1 le rappel frappe] | **44.2%** | 53.5% | 4.9 | 12.2·0.0·0.1·2.4 | 0.3 | 7.2+0.0 | 0.2 | 1.8 | 0.0% | 3.5% |
+| Le Théâtre Englouti [V2 + Théâtre qui tire] | **42.5%** | 52.7% | 4.9 | 11.9·0.1·0.1·2.4 | 0.3 | 7.2+0.0 | 0.2 | 1.8 | 0.0% | 3.3% |
+| La Veillée [actuelle] | **42.5%** | 56.7% | 5.0 | 11.7·0.8·0.1·3.8 | 4.4 | 7.7+0.0 | 0.0 | 2.7 | 0.0% | 0.0% |
+| Mineurs de Fond [pièges qui tirent] | **42.5%** | 51.7% | 5.9 | 11.2·0.0·0.1·4.5 | 1.6 | 5.4+0.0 | 0.3 | 1.5 | 0.0% | 0.0% |
+| Équipage de Verre [précon, étalon] | **40.8%** | 56.7% | 4.2 | 13.3·0.0·1.1·2.3 | 0.0 | 5.8+0.0 | 0.0 | 2.7 | 0.0% | 1.7% |
+
+## Matrice (ligne contre colonne)
+
+| | Le Grand B | La Fortere | Chasse au  | À bout de  | Arsenal de | Le Théâtre | Descente a | Chevaliers | Épavistes  | Cavalerie  | Sentinelle | Après la T | Le Théâtre | Le Théâtre | La Veillée | Mineurs de | Équipage d |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Le Grand Banc [GB1 | · |  |  |  |  |  |  |  |  |  |  |  | 80 | 80 |  |  |  |
+| La Forteresse [F1  |  | · |  |  |  |  |  |  |  |  |  |  | 75 | 78 |  |  |  |
+| Chasse au Gros [bl |  |  | · |  |  |  |  |  |  |  |  |  | 67 | 68 |  |  |  |
+| À bout de Raison [ |  |  |  | · |  |  |  |  |  |  |  |  | 65 | 65 |  |  |  |
+| Arsenal de Pont [B |  |  |  |  | · |  |  |  |  |  |  |  | 62 | 58 |  |  |  |
+| Le Théâtre Englout |  |  |  |  |  | · |  |  |  |  |  |  | 60 | 60 |  |  |  |
+| Descente aux Abyss |  |  |  |  |  |  | · |  |  |  |  |  | 58 | 58 |  |  |  |
+| Chevaliers du Gran |  |  |  |  |  |  |  | · |  |  |  |  | 55 | 55 |  |  |  |
+| Épavistes [recycla |  |  |  |  |  |  |  |  | · |  |  |  | 50 | 52 |  |  |  |
+| Cavalerie [peu mai |  |  |  |  |  |  |  |  |  | · |  |  | 50 | 50 |  |  |  |
+| Sentinelles Chroma |  |  |  |  |  |  |  |  |  |  | · |  | 48 | 48 |  |  |  |
+| Après la Tempête [ |  |  |  |  |  |  |  |  |  |  |  | · | 47 | 45 |  |  |  |
+| Le Théâtre Englout | 20 | 25 | 32 | 33 | 38 | 40 | 42 | 45 | 48 | 50 | 50 | 52 | · | 63 | 53 | 58 | 57 |
+| Le Théâtre Englout | 20 | 22 | 30 | 33 | 42 | 40 | 42 | 45 | 47 | 50 | 50 | 53 | 37 | · | 55 | 57 | 58 |
+| La Veillée [actuel |  |  |  |  |  |  |  |  |  |  |  |  | 43 | 42 | · |  |  |
+| Mineurs de Fond [p |  |  |  |  |  |  |  |  |  |  |  |  | 42 | 43 |  | · |  |
+| Équipage de Verre  |  |  |  |  |  |  |  |  |  |  |  |  | 42 | 40 |  |  | · |
+
+### Le Grand Banc [GB1 Pied marin sans Bavard] — 80.0% (le-brise-lames) · 1-2:25 3-4:13 5:2 6+:0 · unités 29, structure 2, objet 5, anomalie 4
+Meilleurs : Le Théâtre Englouti [V1 le rappel frappe] 80.0%, Le Théâtre Englouti [V2 + Théâtre qui tire] 80.0% · Pires : Le Théâtre Englouti [V1 le rappel frappe] 80.0%, Le Théâtre Englouti [V2 + Théâtre qui tire] 80.0%
+Coup final (victoires) : combat 64.6%, tour 29.2% · soi-même 0.0 · Déraison subie 8.5 · main pauvre (≤1 carte ≤3) 0.0%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Roi Cra-Poiscail (5) | 1 | 0.1 | 0.1 | 100.0% | 100.0% | 0.4 | 1 | 100 | 77 | 23 |
+| P'tite Fesse (1) | 3 | 0.7 | 0.6 | 92.7% | 93.3% | 1.2 | 0 | 88 | 70 | 18 |
+| Cra-Poiscail Messager (1) | 3 | 0.7 | 0.7 | 90.9% | 97.1% | 2.0 | 6 | 86 | 71 | 15 |
+| Cra-Poiscail des Hautes-Eaux (2) | 3 | 0.9 | 0.6 | 65.4% | 98.7% | 1.3 | 12 | 85 | 71 | 13 |
+| Le Grand Saut (5) | 1 | 0.2 | 0.2 | 100.0% | 100.0% | 0.0 | 0 | 86 | 78 | 7 |
+| Cra-Poiscail Grand-Gueule (2) | 1 | 0.2 | 0.2 | 100.0% | 100.0% | 0.3 | 0 | 85 | 79 | 6 |
+| Le Seau (2) | 3 | 0.7 | 0.7 | 95.5% | 100.0% | 0.0 | 0 | 81 | 79 | 3 |
+| P'tite Fesse, Grand Rêve (2) | 2 | 0.7 | 0.5 | 73.1% | 100.0% | 0.5 | 1 | 80 | 80 | 0 |
+| Le Trône de Bouchon (3) | 2 | 0.4 | 0.4 | 88.5% | 96.2% | 0.0 | 0 | 79 | 81 | -1 |
+| Faire l'Inventaire (2) | 2 | 0.5 | 0.3 | 67.9% | 93.2% | 0.0 | 0 | 79 | 81 | -1 |
+| Fesses en Avant ! (3) | 3 | 0.8 | 0.6 | 70.8% | 97.3% | 0.0 | 0 | 79 | 82 | -3 |
+| Cra-Poiscail Sauteur (2) | 3 | 0.7 | 0.6 | 89.7% | 93.0% | 0.7 | 6 | 76 | 84 | -8 |
+| Cra-Poiscail Ramasseur (2) | 3 | 0.7 | 0.7 | 93.0% | 100.0% | 0.6 | 0 | 73 | 89 | -16 |
+| Cra-Poiscail Chef de Banc (3) | 3 | 0.8 | 0.8 | 90.2% | 97.4% | 1.0 | 2 | 74 | 91 | -17 |
+| Banc de Cra-Poiscail (3) | 3 | 0.7 | 0.7 | 92.9% | 98.3% | 1.3 | 4 | 72 | 89 | -17 |
+| Têtard-Fesse (1) | 2 | 0.6 | 0.6 | 98.7% | 100.0% | 0.5 | 0 | 71 | 92 | -21 |
+| Cra-Poiscail Porte-Étendard (3) | 2 | 0.6 | 0.6 | 93.0% | 100.0% | 0.4 | 6 | 64 | 100 | -36 |
+
+### La Forteresse [F1 murs sans soins] — 76.7% (le-brise-lames) · 1-2:11 3-4:26 5:0 6+:3 · unités 18, structure 18, objet 4
+Meilleurs : Le Théâtre Englouti [V2 + Théâtre qui tire] 78.3%, Le Théâtre Englouti [V1 le rappel frappe] 75.0% · Pires : Le Théâtre Englouti [V2 + Théâtre qui tire] 78.3%, Le Théâtre Englouti [V1 le rappel frappe] 75.0%
+Coup final (victoires) : combat 64.1%, tour 27.2% · soi-même 0.7 · Déraison subie 12.3 · main pauvre (≤1 carte ≤3) 1.7%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Le Dernier Rempart (6) | 2 | 0.6 | 0.6 | 97.1% | 100.0% | 3.4 | 16 | 93 | 63 | 30 |
+| L'Amiral sans Pavillon (7) | 1 | 0.2 | 0.2 | 100.0% | 100.0% | 1.6 | 6 | 100 | 71 | 29 |
+| Crabe de Fer (3) | 3 | 0.9 | 0.9 | 94.5% | 94.6% | 1.9 | 5 | 83 | 63 | 20 |
+| Carape Hus (3) | 3 | 1.0 | 1.0 | 95.1% | 100.0% | 3.0 | 12 | 82 | 63 | 19 |
+| Signal de Détresse (4) | 2 | 0.6 | 0.3 | 53.4% | 92.0% | 0.0 | 0 | 82 | 71 | 11 |
+| Harpon à Ressort (4) | 2 | 0.7 | 0.4 | 64.1% | 95.4% | 0.0 | 0 | 81 | 71 | 10 |
+| Chose des Hauts-Fonds (4) | 3 | 0.8 | 0.7 | 95.6% | 100.0% | 2.6 | 10 | 79 | 74 | 5 |
+| Brise-Vague de Fortune (2) | 3 | 0.9 | 0.7 | 79.4% | 98.5% | 0.0 | 0 | 77 | 76 | 1 |
+| Barge de Réparation (3) | 2 | 0.5 | 0.4 | 73.8% | 100.0% | 0.0 | 0 | 75 | 78 | -4 |
+| Cormoran de Fer (3) | 3 | 0.9 | 0.8 | 96.2% | 94.7% | 2.0 | 3 | 75 | 80 | -5 |
+| Cylindre flottant (2) | 2 | 0.4 | 0.2 | 45.5% | 98.3% | 0.0 | 0 | 71 | 79 | -8 |
+| Caisses Arrimées (1) | 1 | 0.3 | 0.3 | 94.1% | 100.0% | 0.0 | 0 | 71 | 79 | -8 |
+| Mouette du Brise-Lames (2) | 3 | 0.8 | 0.8 | 100.0% | — | 1.5 | 7 | 73 | 81 | -9 |
+| Carcasse Renversée (3) | 2 | 0.8 | 0.6 | 80.0% | 98.8% | 0.0 | 0 | 73 | 83 | -10 |
+| Cage de Flottaison (3) | 2 | 0.5 | 0.4 | 73.3% | 100.0% | 0.0 | 0 | 70 | 82 | -11 |
+| Cloison Étanche (2) | 2 | 0.6 | 0.5 | 91.2% | 100.0% | 0.0 | 0 | 71 | 82 | -12 |
+| Cale Inondable (3) | 2 | 0.6 | 0.3 | 44.8% | 100.0% | 0.0 | 0 | 68 | 84 | -16 |
+| Dernière Barricade (3) | 2 | 0.6 | 0.3 | 56.3% | 97.6% | 0.0 | 0 | 68 | 86 | -18 |
+
+### Chasse au Gros [blessures bon marché] — 67.5% (le-goliath) · 1-2:12 3-4:22 5:5 6+:1 · unités 25, objet 12, anomalie 3
+Meilleurs : Le Théâtre Englouti [V2 + Théâtre qui tire] 68.3%, Le Théâtre Englouti [V1 le rappel frappe] 66.7% · Pires : Le Théâtre Englouti [V2 + Théâtre qui tire] 68.3%, Le Théâtre Englouti [V1 le rappel frappe] 66.7%
+Coup final (victoires) : combat 67.9%, navire 4.9%, tour 22.2% · soi-même 1.8 · Déraison subie 13.1 · main pauvre (≤1 carte ≤3) 1.7%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Éclat de Bouteille (1) | 3 | 0.8 | 0.7 | 84.8% | 100.0% | 0.0 | 0 | 81 | 48 | 33 |
+| Harpon à Ressort (4) | 2 | 0.6 | 0.2 | 39.4% | 100.0% | 0.0 | 0 | 81 | 55 | 26 |
+| Crabe de Fer (3) | 3 | 0.7 | 0.7 | 95.1% | 100.0% | 1.4 | 2 | 77 | 56 | 22 |
+| Coup de Harpon (4) | 3 | 0.7 | 0.5 | 66.7% | 100.0% | 0.0 | 0 | 77 | 57 | 21 |
+| Canonnier Fêlé (3) | 3 | 0.6 | 0.6 | 97.4% | 100.0% | 2.6 | 8 | 76 | 60 | 16 |
+| Trinquer Trop Fort (2) | 2 | 0.5 | 0.2 | 42.6% | 100.0% | 0.0 | 0 | 69 | 66 | 4 |
+| L'Amiral sans Pavillon (7) | 1 | 0.3 | 0.2 | 93.3% | 100.0% | 1.7 | 5 | 70 | 67 | 3 |
+| Chose des Hauts-Fonds (4) | 2 | 0.6 | 0.6 | 97.1% | 100.0% | 1.3 | 2 | 68 | 67 | 1 |
+| Poisson aux Dents de Verre (2) | 2 | 0.5 | 0.4 | 78.6% | 100.0% | 0.8 | 2 | 65 | 69 | -4 |
+| Par-dessus Bord ! (3) | 2 | 0.4 | 0.4 | 100.0% | 100.0% | 0.0 | 0 | 63 | 70 | -6 |
+| Encore Debout ? (2) | 2 | 0.6 | 0.3 | 54.5% | 100.0% | 0.0 | 0 | 64 | 71 | -7 |
+| Baleine aux Cicatrices Blanches (5) | 2 | 0.4 | 0.3 | 64.0% | 100.0% | 0.8 | 3 | 63 | 70 | -7 |
+| Ce Qui Suit le Navire (4) | 3 | 0.8 | 0.5 | 57.0% | 100.0% | 1.6 | 8 | 64 | 73 | -8 |
+| Guetteur Méfiant (2) | 3 | 0.8 | 0.8 | 100.0% | 100.0% | 1.7 | 11 | 64 | 74 | -10 |
+| Qu'on en Finisse (5) | 1 | 0.2 | 0.0 | 0.0% | 100.0% | 0.0 | 0 | 58 | 70 | -11 |
+| Harponneur du Dernier Quai (3) | 2 | 0.4 | 0.3 | 78.3% | 100.0% | 0.6 | 4 | 59 | 72 | -13 |
+| Matelot du Sans-Nom (3) | 2 | 0.4 | 0.4 | 88.7% | 100.0% | 0.8 | 6 | 51 | 79 | -28 |
+| Vieux Harponneur (5) | 2 | 0.6 | 0.5 | 80.9% | 100.0% | 1.1 | 4 | 53 | 85 | -32 |
+
+### À bout de Raison [drain concentré] — 65.0% (lerrant) · 1-2:13 3-4:25 5:2 6+:0 · unités 31, structure 7, anomalie 2
+Meilleurs : Le Théâtre Englouti [V1 le rappel frappe] 65.0%, Le Théâtre Englouti [V2 + Théâtre qui tire] 65.0% · Pires : Le Théâtre Englouti [V1 le rappel frappe] 65.0%, Le Théâtre Englouti [V2 + Théâtre qui tire] 65.0%
+Coup final (victoires) : combat 87.2%, tour 10.3% · soi-même 0.0 · Déraison subie 8.1 · main pauvre (≤1 carte ≤3) 0.0%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Marin aux Yeux Rouges (3) | 3 | 0.7 | 0.7 | 95.1% | 100.0% | 1.8 | 10 | 81 | 46 | 35 |
+| Requin Balafré (3) | 2 | 0.5 | 0.5 | 96.4% | 100.0% | 0.6 | 0 | 83 | 54 | 29 |
+| Baleine aux Cicatrices Blanches (5) | 2 | 0.6 | 0.5 | 83.8% | 100.0% | 3.1 | 8 | 75 | 54 | 21 |
+| Marin aux Yeux Rouges (2) | 3 | 0.8 | 0.7 | 93.5% | 100.0% | 1.1 | 8 | 68 | 59 | 9 |
+| Anguille des Profondeurs (3) | 3 | 0.6 | 0.3 | 52.9% | 100.0% | 0.5 | 0 | 67 | 63 | 3 |
+| Capitaine Sans Sommeil (4) | 2 | 0.7 | 0.6 | 85.0% | 100.0% | 1.5 | 7 | 66 | 64 | 1 |
+| Matelot Insomniaque (2) | 3 | 0.8 | 0.8 | 94.1% | 100.0% | 2.5 | 10 | 65 | 65 | -0 |
+| Capitaine du Dernier Retour (4) | 2 | 0.4 | 0.3 | 77.6% | 100.0% | 0.3 | 4 | 64 | 65 | -1 |
+| Si, Raie Ponce (4) | 3 | 0.7 | 0.6 | 80.5% | 100.0% | 1.4 | 2 | 63 | 67 | -3 |
+| Par-dessus Bord ! (3) | 2 | 0.6 | 0.6 | 94.3% | 100.0% | 0.0 | 0 | 63 | 67 | -3 |
+| Vieux Loup de Mer (3) | 2 | 0.5 | 0.3 | 64.3% | 97.6% | 0.4 | 4 | 60 | 69 | -9 |
+| Chaîne de Travers (2) | 2 | 0.4 | 0.2 | 43.5% | 100.0% | 0.0 | 0 | 59 | 68 | -9 |
+| Matelot du Sans-Nom (3) | 3 | 0.8 | 0.8 | 99.0% | 100.0% | 2.5 | 12 | 62 | 72 | -10 |
+| Ponton aux Cloches (3) | 3 | 0.8 | 0.2 | 23.0% | 100.0% | 0.0 | 0 | 54 | 83 | -29 |
+| Murène Aveugle (2) | 3 | 0.8 | 0.7 | 87.5% | 100.0% | 0.8 | 3 | 54 | 86 | -32 |
+| Le Rôle d'Équipage (2) | 2 | 0.4 | 0.2 | 56.0% | 100.0% | 0.0 | 0 | 38 | 79 | -41 |
+
+### Arsenal de Pont [Bris payant] — 60.0% (la-verriere) · 1-2:18 3-4:22 5:0 6+:0 · unités 16, objet 24
+Meilleurs : Le Théâtre Englouti [V1 le rappel frappe] 61.7%, Le Théâtre Englouti [V2 + Théâtre qui tire] 58.3% · Pires : Le Théâtre Englouti [V1 le rappel frappe] 61.7%, Le Théâtre Englouti [V2 + Théâtre qui tire] 58.3%
+Coup final (victoires) : combat 69.4%, tour 13.9%, navire 11.1% · soi-même 2.9 · Déraison subie 7.1 · main pauvre (≤1 carte ≤3) 3.3%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Chose des Hauts-Fonds (4) | 3 | 1.0 | 1.0 | 93.5% | 84.0% | 4.2 | 18 | 68 | 38 | 31 |
+| Cra-Poiscail Médecin (3) | 1 | 0.3 | 0.3 | 100.0% | 100.0% | 0.5 | 2 | 72 | 55 | 17 |
+| Journal de Bord Détrempé (2) | 2 | 0.7 | 0.7 | 89.8% | 100.0% | 0.0 | 0 | 67 | 50 | 17 |
+| Cormoran de Fer (3) | 3 | 0.9 | 0.8 | 90.9% | 100.0% | 2.4 | 3 | 63 | 54 | 10 |
+| Pantalone Sans-Sou (3) | 3 | 1.0 | 0.9 | 88.0% | 100.0% | 1.6 | 11 | 63 | 54 | 9 |
+| Lettre Jamais Ouverte (1) | 3 | 1.2 | 0.9 | 71.0% | 97.8% | 0.0 | 0 | 61 | 56 | 5 |
+| Coup de Harpon (4) | 3 | 1.1 | 0.9 | 90.5% | 100.0% | 0.0 | 0 | 61 | 59 | 2 |
+| Cra-Poiscail Médecin (2) | 2 | 0.6 | 0.5 | 78.1% | 100.0% | 0.4 | 8 | 60 | 60 | 0 |
+| Rations du Matin Gris (2) | 2 | 0.7 | 0.5 | 70.5% | 100.0% | 0.0 | 0 | 60 | 60 | 0 |
+| Thermos du Dernier Quart (2) | 2 | 0.8 | 0.7 | 91.1% | 0.0% | 0.0 | 0 | 60 | 60 | -1 |
+| Harpon à Ressort (4) | 2 | 0.7 | 0.5 | 61.4% | 90.9% | 0.0 | 0 | 60 | 60 | -1 |
+| Bouclier d'Écume (4) | 1 | 0.3 | 0.2 | 67.5% | 89.9% | 0.0 | 0 | 57 | 61 | -4 |
+| Il Capitano Naufragé (4) | 2 | 0.6 | 0.6 | 97.3% | 100.0% | 2.1 | 6 | 57 | 64 | -7 |
+| Éclat de Bouteille (1) | 3 | 1.1 | 0.9 | 79.2% | 97.8% | 0.0 | 0 | 58 | 67 | -8 |
+| Signal de Détresse (4) | 1 | 0.4 | 0.3 | 64.0% | 97.3% | 0.0 | 0 | 54 | 64 | -10 |
+| Marin des Jetées (1) | 2 | 0.6 | 0.6 | 91.7% | 66.7% | 0.7 | 2 | 53 | 67 | -13 |
+| Corde de Rappel (4) | 1 | 0.3 | 0.2 | 54.1% | 86.6% | 0.0 | 0 | 49 | 65 | -16 |
+| Choppe ! (1) | 2 | 0.6 | 0.5 | 80.5% | 100.0% | 0.0 | 0 | 50 | 73 | -23 |
+| Contre-Harpon (4) | 2 | 0.5 | 0.4 | 71.9% | 89.9% | 0.0 | 0 | 45 | 72 | -26 |
+
+### Le Théâtre Englouti [TH2 Errant rappels payants] — 60.0% (lerrant) · 1-2:17 3-4:20 5:2 6+:1 · unités 28, objet 8, structure 4
+Meilleurs : Le Théâtre Englouti [V1 le rappel frappe] 60.0%, Le Théâtre Englouti [V2 + Théâtre qui tire] 60.0% · Pires : Le Théâtre Englouti [V1 le rappel frappe] 60.0%, Le Théâtre Englouti [V2 + Théâtre qui tire] 60.0%
+Coup final (victoires) : tour 22.2%, combat 75.0% · soi-même 0.0 · Déraison subie 9.1 · main pauvre (≤1 carte ≤3) 0.0%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Pulcinella Gonflé (2) | 3 | 1.1 | 0.9 | 84.1% | 100.0% | 1.2 | 4 | 68 | 45 | 23 |
+| Matelot du Sans-Nom (3) | 3 | 0.9 | 0.8 | 95.3% | 100.0% | 2.3 | 3 | 67 | 48 | 19 |
+| Le Régisseur des Profondeurs (7) | 1 | 0.3 | 0.3 | 100.0% | 100.0% | 1.6 | 0 | 71 | 56 | 15 |
+| La Prima Noyée (5) | 1 | 0.4 | 0.3 | 62.5% | 100.0% | 0.9 | 4 | 67 | 56 | 11 |
+| Le Régisseur Sans Visage (5) | 1 | 0.3 | 0.2 | 93.3% | 100.0% | 0.5 | 8 | 67 | 58 | 9 |
+| Arlecchino des Profondeurs (2) | 3 | 0.9 | 0.7 | 78.3% | 100.0% | 0.5 | 3 | 64 | 56 | 8 |
+| Changement de rôle ! (2) | 2 | 0.5 | 0.3 | 69.0% | 100.0% | 0.0 | 0 | 64 | 57 | 7 |
+| Arlecchino, Celui derrière le Masque (4) | 1 | 0.2 | 0.2 | 100.0% | 100.0% | 0.7 | 2 | 64 | 59 | 6 |
+| Arlequin Raccommodeur (2) | 3 | 0.9 | 0.8 | 92.2% | 100.0% | 1.5 | 8 | 63 | 57 | 5 |
+| Le Théâtre Englouti (4) | 1 | 0.1 | 0.0 | 12.5% | 100.0% | 0.0 | 0 | 63 | 60 | 3 |
+| La Clochette du Rappel (3) | 3 | 0.9 | 0.3 | 35.6% | 99.1% | 0.0 | 0 | 61 | 59 | 1 |
+| La Prima Noyée (3) | 3 | 0.8 | 0.6 | 72.8% | 98.4% | 1.1 | 6 | 61 | 59 | 1 |
+| Les Coulisses Inondées (2) | 3 | 1.2 | 0.6 | 49.7% | 99.0% | 0.0 | 0 | 59 | 62 | -2 |
+| Le Masque Fendu (2) | 3 | 0.8 | 0.6 | 73.2% | 100.0% | 0.0 | 0 | 58 | 63 | -5 |
+| Il Dottore des Noyés (4) | 2 | 0.6 | 0.5 | 83.3% | 100.0% | 0.8 | 4 | 56 | 63 | -7 |
+| Pantalone Sans-Sou (3) | 3 | 0.8 | 0.6 | 75.8% | 100.0% | 0.9 | 8 | 57 | 65 | -8 |
+| Il Capitano Naufragé (4) | 2 | 0.6 | 0.6 | 100.0% | 100.0% | 2.4 | 2 | 53 | 67 | -13 |
+| Colombina aux Cent Visages (3) | 2 | 0.8 | 0.7 | 90.4% | 100.0% | 0.8 | 2 | 54 | 68 | -14 |
+
+### Descente aux Abysses [descendre et rester] — 58.3% (lerrant) · 1-2:8 3-4:30 5:2 6+:0 · equipement 3, unités 37
+Meilleurs : Le Théâtre Englouti [V1 le rappel frappe] 58.3%, Le Théâtre Englouti [V2 + Théâtre qui tire] 58.3% · Pires : Le Théâtre Englouti [V1 le rappel frappe] 58.3%, Le Théâtre Englouti [V2 + Théâtre qui tire] 58.3%
+Coup final (victoires) : combat 68.6%, tour 22.9% · soi-même 0.0 · Déraison subie 7.7 · main pauvre (≤1 carte ≤3) 1.7%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Masse-Sombre (4) | 2 | 0.5 | 0.4 | 78.6% | 100.0% | 0.9 | 0 | 72 | 49 | 23 |
+| Albatros de Mauvais Temps (4) | 2 | 0.5 | 0.5 | 87.1% | 100.0% | 2.2 | 2 | 70 | 48 | 22 |
+| L'Œil Sous la Mer (5) | 1 | 0.3 | 0.1 | 37.5% | 100.0% | 0.2 | 2 | 69 | 55 | 14 |
+| Marin aux Yeux Rouges (3) | 2 | 0.6 | 0.6 | 94.7% | 100.0% | 1.8 | 3 | 61 | 56 | 5 |
+| Poisson-Lanterne (1) | 2 | 0.5 | 0.5 | 93.8% | 100.0% | 0.3 | 4 | 61 | 56 | 4 |
+| Chose des Hauts-Fonds (4) | 3 | 0.6 | 0.6 | 100.0% | 100.0% | 1.1 | 1 | 61 | 56 | 4 |
+| Bat-Marin (3) | 2 | 0.6 | 0.5 | 87.9% | 100.0% | 0.7 | 4 | 60 | 57 | 3 |
+| Seconde au Visage Pâle (3) | 2 | 0.5 | 0.3 | 64.3% | 100.0% | 0.4 | 4 | 60 | 57 | 3 |
+| Bat-Marin (4) | 2 | 0.4 | 0.3 | 76.9% | 100.0% | 0.9 | 2 | 59 | 58 | 1 |
+| Revenante de la Fosse (5) | 1 | 0.3 | 0.1 | 35.3% | 100.0% | 0.1 | 0 | 59 | 58 | 1 |
+| Lanterne aux Verres Noirs (2) | 3 | 0.8 | 0.2 | 29.8% | 99.2% | 0.0 | 0 | 58 | 59 | -1 |
+| Veilleuse des Profondeurs (4) | 3 | 0.7 | 0.4 | 55.7% | 100.0% | 0.9 | 6 | 58 | 59 | -1 |
+| Cartographe du Large (2) | 3 | 0.7 | 0.5 | 74.4% | 100.0% | 0.6 | 6 | 55 | 61 | -6 |
+| Raie des Fosses (3) | 2 | 0.4 | 0.4 | 84.6% | 100.0% | 1.1 | 4 | 54 | 61 | -7 |
+| Si, Raie Ponce (4) | 3 | 0.6 | 0.6 | 94.6% | 100.0% | 0.8 | 4 | 53 | 64 | -11 |
+| Anguille des Profondeurs (3) | 2 | 0.6 | 0.5 | 86.1% | 100.0% | 0.9 | 2 | 52 | 65 | -13 |
+| Masse-Sombre (3) | 3 | 0.8 | 0.7 | 97.8% | 100.0% | 0.9 | 4 | 51 | 70 | -18 |
+| Sondeur des Mauvaises Eaux (3) | 2 | 0.5 | 0.3 | 55.6% | 100.0% | 0.3 | 0 | 40 | 71 | -31 |
+
+### Chevaliers du Grand Étang [CH1 Seau au lieu de Tournoi/Fourchette] — 55.0% (lerrant) · 1-2:23 3-4:15 5:2 6+:0 · unités 28, equipement 2, structure 4, anomalie 1, objet 5
+Meilleurs : Le Théâtre Englouti [V1 le rappel frappe] 55.0%, Le Théâtre Englouti [V2 + Théâtre qui tire] 55.0% · Pires : Le Théâtre Englouti [V1 le rappel frappe] 55.0%, Le Théâtre Englouti [V2 + Théâtre qui tire] 55.0%
+Coup final (victoires) : combat 71.2%, tour 28.8% · soi-même 0.0 · Déraison subie 5.9 · main pauvre (≤1 carte ≤3) 0.0%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Le Grand Saut (5) | 1 | 0.3 | 0.2 | 90.0% | 100.0% | 0.0 | 0 | 73 | 49 | 24 |
+| Roi Cra-Poiscail (5) | 1 | 0.3 | 0.3 | 94.1% | 100.0% | 0.5 | 0 | 71 | 49 | 22 |
+| Chevalier Cra-Poiscail (4) | 1 | 0.2 | 0.2 | 92.9% | 50.0% | 1.5 | 8 | 71 | 50 | 21 |
+| Destrier du Grand Étang (2) | 3 | 0.7 | 0.6 | 92.5% | 80.0% | 1.9 | 9 | 65 | 45 | 20 |
+| La Quête du Grand Nénuphar (3) | 2 | 0.4 | 0.1 | 30.0% | 93.3% | 0.0 | 0 | 64 | 50 | 14 |
+| Cra-Poiscail Porte-Étendard (3) | 2 | 0.6 | 0.6 | 100.0% | 84.6% | 0.5 | 2 | 61 | 48 | 12 |
+| Faire l'Inventaire (2) | 2 | 0.3 | 0.2 | 71.1% | 76.9% | 0.0 | 0 | 63 | 51 | 12 |
+| Écuyer Cra-Poiscail (2) | 3 | 0.7 | 0.6 | 83.7% | 90.5% | 1.0 | 2 | 58 | 50 | 8 |
+| P'tite Fesse, Grand Rêve (2) | 2 | 0.4 | 0.3 | 70.8% | 100.0% | 0.3 | 0 | 55 | 55 | -1 |
+| Filet de Sauvetage (2) | 2 | 0.6 | 0.5 | 79.2% | 90.5% | 0.0 | 0 | 53 | 57 | -4 |
+| Cra-Poiscail Médecin (3) | 1 | 0.2 | 0.2 | 100.0% | 100.0% | 0.7 | 7 | 50 | 57 | -7 |
+| P'tite Fesse, Grand Rêve (3) | 1 | 0.3 | 0.3 | 83.3% | 100.0% | 1.0 | 2 | 50 | 57 | -7 |
+| Banc de Cra-Poiscail (3) | 3 | 0.7 | 0.6 | 90.5% | 93.9% | 0.9 | 1 | 52 | 59 | -8 |
+| Cra-Poiscail Messager (1) | 3 | 0.8 | 0.7 | 85.7% | 82.9% | 1.6 | 4 | 51 | 62 | -11 |
+| Le Seau (2) | 3 | 0.8 | 0.7 | 95.7% | 78.6% | 0.0 | 0 | 50 | 62 | -12 |
+| Chevalier Cra-Poiscail (3) | 2 | 0.5 | 0.4 | 92.9% | 50.0% | 1.0 | 1 | 48 | 59 | -12 |
+| Cra-Poiscail Médecin (2) | 3 | 0.8 | 0.7 | 88.9% | 86.2% | 1.1 | 2 | 47 | 67 | -19 |
+| Slip de Guerre Cra-Poiscail (2) | 2 | 0.5 | 0.2 | 49.1% | 90.0% | 0.0 | 0 | 42 | 66 | -24 |
+| Bourreau Cra-Poiscail (3) | 3 | 0.7 | 0.6 | 77.5% | 99.0% | 0.3 | 0 | 44 | 69 | -25 |
+
+### Épavistes [recyclage] — 50.8% (le-goliath) · 1-2:19 3-4:18 5:3 6+:0 · structure 10, objet 6, equipement 2, unités 22
+Meilleurs : Le Théâtre Englouti [V2 + Théâtre qui tire] 51.7%, Le Théâtre Englouti [V1 le rappel frappe] 50.0% · Pires : Le Théâtre Englouti [V2 + Théâtre qui tire] 51.7%, Le Théâtre Englouti [V1 le rappel frappe] 50.0%
+Coup final (victoires) : navire 16.4%, combat 62.3%, tour 18.0% · soi-même 0.0 · Déraison subie 8.7 · main pauvre (≤1 carte ≤3) 0.0%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Chose des Hauts-Fonds (4) | 3 | 0.9 | 0.9 | 94.6% | 100.0% | 1.4 | 6 | 62 | 28 | 34 |
+| Caisse des Dernières Planches (4) | 1 | 0.2 | 0.1 | 25.0% | 100.0% | 0.0 | 0 | 68 | 46 | 22 |
+| Crabe de Fer (3) | 3 | 0.9 | 0.9 | 92.9% | 100.0% | 1.0 | 3 | 57 | 35 | 22 |
+| Matelot du Sans-Nom (3) | 3 | 0.9 | 0.9 | 98.2% | 100.0% | 2.2 | 7 | 56 | 39 | 17 |
+| Radeau de Fortune (1) | 2 | 0.6 | 0.5 | 89.7% | 96.3% | 0.0 | 0 | 59 | 44 | 15 |
+| Charpentière de Veille (2) | 2 | 0.7 | 0.6 | 82.9% | 98.1% | 0.8 | 4 | 56 | 44 | 12 |
+| Baleine aux Cicatrices Blanches (5) | 3 | 0.7 | 0.6 | 91.0% | 100.0% | 2.8 | 7 | 55 | 45 | 10 |
+| Caisses Arrimées (1) | 3 | 0.8 | 0.9 | 109.4% | 85.7% | 0.0 | 0 | 54 | 45 | 8 |
+| Levier de Lest (1) | 3 | 0.8 | 0.7 | 89.9% | 98.0% | 0.0 | 0 | 52 | 49 | 3 |
+| Plongeur des Épaves (2) | 2 | 0.5 | 0.5 | 90.0% | 100.0% | 0.3 | 0 | 50 | 52 | -2 |
+| Treuil Rouillé (1) | 2 | 0.7 | 0.2 | 31.7% | 82.7% | 0.0 | 0 | 49 | 53 | -4 |
+| Bernard-l'Ermite d'Acier (1) | 3 | 0.9 | 0.8 | 97.1% | 100.0% | 1.3 | 4 | 47 | 57 | -10 |
+| Grappin de Récupération (2) | 2 | 0.4 | 0.3 | 60.0% | 100.0% | 0.0 | 0 | 42 | 57 | -15 |
+| Clous de Récupération (3) | 1 | 0.3 | 0.0 | 16.1% | 95.5% | 0.0 | 0 | 39 | 55 | -16 |
+| Cage de Flottaison (3) | 2 | 0.5 | 0.3 | 60.7% | 100.0% | 0.0 | 0 | 42 | 58 | -17 |
+| Caisse des Dernières Planches (3) | 2 | 0.5 | 0.3 | 56.5% | 100.0% | 0.0 | 0 | 41 | 59 | -18 |
+| Charpentier des Épaves (3) | 3 | 0.9 | 0.8 | 89.7% | 100.0% | 1.2 | 7 | 40 | 77 | -37 |
+
+### Cavalerie [peu mais lourdes] — 50.0% (le-goliath) · 1-2:11 3-4:20 5:6 6+:3 · unités 28, equipement 3, objet 9
+Meilleurs : Le Théâtre Englouti [V1 le rappel frappe] 50.0%, Le Théâtre Englouti [V2 + Théâtre qui tire] 50.0% · Pires : Le Théâtre Englouti [V1 le rappel frappe] 50.0%, Le Théâtre Englouti [V2 + Théâtre qui tire] 50.0%
+Coup final (victoires) : combat 83.3%, tour 10.0%, navire 3.3% · soi-même 0.0 · Déraison subie 15.4 · main pauvre (≤1 carte ≤3) 18.3%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Un Peu de Répit (3) | 2 | 0.4 | 0.1 | 16.7% | 100.0% | 0.0 | 0 | 76 | 36 | 40 |
+| Monture de Brèche (2) | 3 | 0.7 | 0.7 | 93.0% | 100.0% | 1.6 | 5 | 56 | 42 | 14 |
+| Chargeur des Écueils (4) | 3 | 0.7 | 0.4 | 53.6% | 100.0% | 1.5 | 3 | 54 | 44 | 10 |
+| Selle de Guerre (2) | 3 | 0.7 | 0.5 | 70.0% | 100.0% | 0.0 | 0 | 55 | 44 | 10 |
+| Bête de Halage (2) | 3 | 0.6 | 0.6 | 96.0% | 100.0% | 1.3 | 10 | 55 | 45 | 10 |
+| Bête de Percée (4) | 2 | 0.5 | 0.2 | 48.1% | 100.0% | 0.6 | 4 | 54 | 47 | 7 |
+| La Bête qu'on n'attend plus (6) | 2 | 0.4 | 0.4 | 91.7% | 100.0% | 1.4 | 4 | 52 | 49 | 4 |
+| Le Déserteur Gris (5) | 3 | 0.9 | 0.6 | 61.6% | 100.0% | 1.5 | 4 | 52 | 48 | 3 |
+| Éclaireur à Cornes (3) | 3 | 0.6 | 0.6 | 91.9% | 100.0% | 2.1 | 6 | 50 | 50 | 0 |
+| Mufle au Fanion (4) | 3 | 0.7 | 0.7 | 100.0% | 100.0% | 2.0 | 2 | 50 | 50 | 0 |
+| Vieux Harponneur (5) | 1 | 0.3 | 0.2 | 61.1% | 100.0% | 0.5 | 2 | 50 | 50 | 0 |
+| Débusquer (2) | 2 | 0.5 | 0.3 | 64.3% | 100.0% | 0.0 | 0 | 50 | 50 | 0 |
+| Pas un Pas de Plus (3) | 2 | 0.6 | 0.6 | 100.0% | 100.0% | 0.0 | 0 | 47 | 53 | -7 |
+| Vieille-Selle (5) | 1 | 0.4 | 0.1 | 40.9% | 100.0% | 0.6 | 4 | 45 | 53 | -7 |
+| L'Amiral sans Pavillon (7) | 1 | 0.2 | 0.2 | 100.0% | 100.0% | 0.7 | 2 | 43 | 52 | -9 |
+| Destrier du Ressac (3) | 2 | 0.4 | 0.3 | 83.3% | 100.0% | 0.4 | 0 | 43 | 54 | -11 |
+| Mange-Fer (5) | 1 | 0.2 | 0.1 | 90.0% | 100.0% | 0.7 | 4 | 40 | 52 | -12 |
+| Coup de Harpon (4) | 2 | 0.4 | 0.3 | 90.9% | 100.0% | 0.0 | 0 | 38 | 56 | -18 |
+| Réparations d'Urgence (4) | 1 | 0.1 | 0.1 | 78.6% | 100.0% | 0.0 | 0 | 29 | 53 | -24 |
+
+### Sentinelles Chromatiques [SC1 Courlis 4 Slots] — 48.3% (le-courlis) · 1-2:20 3-4:17 5:0 6+:3 · unités 28, objet 11, anomalie 1
+Meilleurs : Le Théâtre Englouti [V1 le rappel frappe] 48.3%, Le Théâtre Englouti [V2 + Théâtre qui tire] 48.3% · Pires : Le Théâtre Englouti [V1 le rappel frappe] 48.3%, Le Théâtre Englouti [V2 + Théâtre qui tire] 48.3%
+Coup final (victoires) : combat 74.1%, tour 5.2% · soi-même 0.0 · Déraison subie 10.6 · main pauvre (≤1 carte ≤3) 1.7%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Briseur du Brasier (4) | 3 | 1.0 | 0.7 | 68.1% | 60.0% | 2.4 | 6 | 57 | 25 | 32 |
+| Héros de la Flamme (2) | 3 | 0.8 | 0.6 | 77.0% | 22.9% | 1.1 | 4 | 57 | 30 | 27 |
+| Journal de Bord Détrempé (2) | 2 | 0.4 | 0.4 | 92.5% | 100.0% | 0.0 | 0 | 63 | 39 | 24 |
+| Appel des Sentinelles (2) | 3 | 0.9 | 0.2 | 25.7% | 67.1% | 0.0 | 0 | 51 | 42 | 9 |
+| Rations du Matin Gris (2) | 3 | 0.9 | 0.4 | 38.4% | 72.3% | 0.0 | 0 | 51 | 42 | 9 |
+| Gardienne de l'Éclat (2) | 3 | 0.8 | 0.6 | 71.4% | 48.5% | 1.4 | 6 | 51 | 44 | 7 |
+| Émissaire de Quartz (3) | 2 | 0.6 | 0.5 | 77.1% | 60.9% | 1.5 | 0 | 52 | 45 | 7 |
+| Veilleuse de l'Ombre (3) | 1 | 0.3 | 0.1 | 48.4% | 64.9% | 0.2 | 2 | 52 | 47 | 4 |
+| Survivant de la Mousse (3) | 2 | 0.5 | 0.3 | 70.0% | 51.1% | 1.2 | 1 | 50 | 47 | 3 |
+| Le Géant Chromatique (9) | 1 | 0.3 | 0.2 | 50.0% | 89.7% | 1.1 | 2 | 47 | 49 | -1 |
+| Oracle d'Améthyste (4) | 3 | 1.0 | 0.5 | 50.4% | 80.8% | 1.4 | 8 | 47 | 52 | -4 |
+| Le Géant Chromatique (8) | 1 | 0.3 | 0.1 | 47.2% | 81.4% | 0.4 | 0 | 44 | 50 | -6 |
+| Tacticien de l'Écume (2) | 2 | 0.5 | 0.4 | 73.3% | 44.4% | 1.4 | 2 | 44 | 51 | -7 |
+| Stratège de l'Azur (4) | 2 | 0.4 | 0.1 | 34.0% | 65.0% | 0.7 | 3 | 43 | 51 | -8 |
+| Formation Prismatique (6) | 1 | 0.3 | 0.0 | 0.0% | 78.2% | 0.0 | 0 | 39 | 52 | -13 |
+| Coup de Harpon (4) | 1 | 0.4 | 0.4 | 100.0% | 100.0% | 0.0 | 0 | 39 | 54 | -15 |
+| Éclat de Bouteille (1) | 2 | 0.4 | 0.3 | 80.4% | 71.4% | 0.0 | 0 | 35 | 55 | -20 |
+| Porteur de Jade (2) | 2 | 0.5 | 0.4 | 68.8% | 73.9% | 0.8 | 3 | 36 | 59 | -24 |
+| Rempart du Soleil (4) | 3 | 1.0 | 0.8 | 75.8% | 54.7% | 2.3 | 6 | 40 | 67 | -26 |
+
+### Après la Tempête [balai qui rapporte] — 45.8% (le-courlis) · 1-2:6 3-4:20 5:9 6+:5 · anomalie 6, objet 9, unités 25
+Meilleurs : Le Théâtre Englouti [V1 le rappel frappe] 46.7%, Le Théâtre Englouti [V2 + Théâtre qui tire] 45.0% · Pires : Le Théâtre Englouti [V1 le rappel frappe] 46.7%, Le Théâtre Englouti [V2 + Théâtre qui tire] 45.0%
+Coup final (victoires) : combat 81.8% · soi-même 0.0 · Déraison subie 16.3 · main pauvre (≤1 carte ≤3) 21.7%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Chose des Hauts-Fonds (4) | 3 | 0.9 | 0.8 | 95.1% | 100.0% | 1.6 | 2 | 54 | 32 | 22 |
+| Trousse du Bord (4) | 1 | 0.2 | 0.0 | 18.2% | 97.3% | 0.0 | 0 | 64 | 42 | 22 |
+| Coup de Harpon (4) | 2 | 0.6 | 0.4 | 77.3% | 100.0% | 0.0 | 0 | 56 | 38 | 18 |
+| Maître Verrier (4) | 2 | 0.6 | 0.5 | 79.4% | 100.0% | 0.9 | 6 | 54 | 39 | 15 |
+| L'Amiral sans Pavillon (7) | 1 | 0.3 | 0.3 | 94.7% | 100.0% | 1.7 | 8 | 55 | 41 | 14 |
+| Baleine aux Cicatrices Blanches (5) | 3 | 0.8 | 0.6 | 74.5% | 100.0% | 2.7 | 7 | 51 | 37 | 13 |
+| Le Large se Fâche (6) | 1 | 0.3 | 0.1 | 52.9% | 100.0% | 0.0 | 0 | 50 | 44 | 6 |
+| Faire l'Inventaire (2) | 3 | 0.7 | 0.4 | 54.1% | 100.0% | 0.0 | 0 | 48 | 43 | 4 |
+| Chirurgien du Bord (5) | 2 | 0.7 | 0.1 | 18.3% | 100.0% | 0.3 | 1 | 47 | 44 | 3 |
+| Le Pont est Plein ! (3) | 2 | 0.6 | 0.3 | 42.9% | 98.8% | 0.0 | 0 | 46 | 45 | 1 |
+| Vigie aux Fissures (2) | 3 | 0.9 | 0.6 | 65.5% | 100.0% | 0.7 | 0 | 44 | 50 | -6 |
+| Matelot du Sans-Nom (3) | 1 | 0.2 | 0.1 | 70.0% | 100.0% | 0.4 | 1 | 40 | 47 | -7 |
+| Crabe de Fer (3) | 3 | 0.7 | 0.7 | 90.9% | 97.1% | 1.0 | 1 | 43 | 53 | -10 |
+| Un Peu de Répit (3) | 3 | 0.8 | 0.2 | 26.0% | 100.0% | 0.0 | 0 | 42 | 52 | -10 |
+| Le Brise-Ligne (6) | 1 | 0.3 | 0.1 | 45.5% | 100.0% | 0.3 | 4 | 36 | 49 | -13 |
+| Carape Hus (3) | 3 | 0.9 | 0.8 | 89.5% | 100.0% | 1.2 | 6 | 41 | 55 | -14 |
+| Léviathan Balafré (8) | 1 | 0.3 | 0.3 | 77.5% | 100.0% | 2.1 | 5 | 35 | 51 | -16 |
+| Vieux Harponneur (5) | 2 | 0.5 | 0.5 | 93.3% | 100.0% | 1.5 | 4 | 32 | 58 | -26 |
+| Dernier Jour en Mer (7) | 1 | 0.3 | 0.2 | 76.7% | 100.0% | 0.0 | 0 | 23 | 53 | -30 |
+| Vague Scélérate (5) | 2 | 0.4 | 0.2 | 38.0% | 100.0% | 0.0 | 0 | 27 | 58 | -31 |
+
+### Le Théâtre Englouti [V1 le rappel frappe] — 44.2% (lerrant) · 1-2:17 3-4:20 5:2 6+:1 · unités 28, objet 8, structure 4
+Meilleurs : Le Théâtre Englouti [V2 + Théâtre qui tire] 63.3%, Mineurs de Fond [pièges qui tirent] 58.3%, Équipage de Verre [précon, étalon] 56.7% · Pires : Chasse au Gros [blessures bon marché] 31.7%, La Forteresse [F1 murs sans soins] 25.0%, Le Grand Banc [GB1 Pied marin sans Bavard] 20.0%
+Coup final (victoires) : combat 76.7%, tour 17.0% · soi-même 0.0 · Déraison subie 8.5 · main pauvre (≤1 carte ≤3) 0.0%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Pulcinella Gonflé (2) | 3 | 1.1 | 1.0 | 89.7% | 91.0% | 1.1 | 33 | 52 | 33 | 19 |
+| Matelot du Sans-Nom (3) | 3 | 0.9 | 0.8 | 89.7% | 95.0% | 1.6 | 37 | 51 | 33 | 19 |
+| Le Régisseur des Profondeurs (7) | 1 | 0.2 | 0.2 | 81.9% | 99.5% | 1.0 | 28 | 58 | 40 | 19 |
+| Il Capitano Naufragé (4) | 2 | 0.6 | 0.6 | 94.5% | 95.9% | 1.6 | 27 | 49 | 38 | 11 |
+| Le Régisseur Sans Visage (5) | 1 | 0.3 | 0.3 | 92.5% | 99.3% | 0.8 | 22 | 52 | 41 | 11 |
+| La Prima Noyée (5) | 1 | 0.4 | 0.3 | 68.5% | 99.6% | 0.7 | 17 | 49 | 41 | 8 |
+| Arlequin Raccommodeur (2) | 3 | 1.1 | 0.9 | 87.1% | 90.0% | 1.3 | 37 | 46 | 40 | 6 |
+| Les Coulisses Inondées (2) | 3 | 1.1 | 0.5 | 48.8% | 97.6% | 0.0 | 0 | 45 | 42 | 4 |
+| Il Dottore des Noyés (4) | 2 | 0.6 | 0.5 | 83.0% | 99.4% | 0.7 | 15 | 45 | 43 | 2 |
+| Changement de rôle ! (2) | 2 | 0.6 | 0.4 | 71.1% | 99.9% | 0.0 | 0 | 43 | 45 | -3 |
+| Arlecchino, Celui derrière le Masque (4) | 1 | 0.3 | 0.3 | 88.6% | 97.1% | 0.5 | 9 | 42 | 45 | -3 |
+| La Prima Noyée (3) | 3 | 0.8 | 0.6 | 76.4% | 98.9% | 0.7 | 34 | 43 | 46 | -4 |
+| Colombina aux Cent Visages (3) | 2 | 0.6 | 0.5 | 91.0% | 99.2% | 0.7 | 16 | 41 | 46 | -5 |
+| La Clochette du Rappel (3) | 3 | 0.8 | 0.4 | 45.5% | 98.9% | 0.0 | 0 | 42 | 47 | -5 |
+| Le Théâtre Englouti (4) | 1 | 0.2 | 0.0 | 22.7% | 99.4% | 0.0 | 0 | 38 | 46 | -8 |
+| Arlecchino des Profondeurs (2) | 3 | 0.9 | 0.6 | 74.8% | 97.2% | 0.6 | 14 | 40 | 50 | -10 |
+| Le Masque Fendu (2) | 3 | 0.9 | 0.6 | 60.2% | 99.9% | 0.0 | 0 | 39 | 52 | -12 |
+| Pantalone Sans-Sou (3) | 3 | 0.8 | 0.7 | 85.8% | 98.1% | 0.9 | 36 | 39 | 52 | -13 |
+
+### Le Théâtre Englouti [V2 + Théâtre qui tire] — 42.5% (lerrant) · 1-2:17 3-4:20 5:2 6+:1 · unités 28, objet 8, structure 4
+Meilleurs : Équipage de Verre [précon, étalon] 58.3%, Mineurs de Fond [pièges qui tirent] 56.7%, La Veillée [actuelle] 55.0% · Pires : Chasse au Gros [blessures bon marché] 30.0%, La Forteresse [F1 murs sans soins] 21.7%, Le Grand Banc [GB1 Pied marin sans Bavard] 20.0%
+Coup final (victoires) : combat 76.0%, tour 15.9%, effet 1.2% · soi-même 0.0 · Déraison subie 8.5 · main pauvre (≤1 carte ≤3) 0.0%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Le Régisseur des Profondeurs (7) | 1 | 0.2 | 0.2 | 79.5% | 99.5% | 1.0 | 27 | 58 | 38 | 20 |
+| Pulcinella Gonflé (2) | 3 | 1.1 | 1.0 | 89.5% | 92.2% | 1.1 | 33 | 50 | 31 | 19 |
+| Matelot du Sans-Nom (3) | 3 | 0.9 | 0.8 | 89.6% | 94.7% | 1.5 | 36 | 50 | 31 | 18 |
+| Il Capitano Naufragé (4) | 2 | 0.6 | 0.6 | 94.6% | 95.9% | 1.5 | 26 | 48 | 36 | 12 |
+| Le Régisseur Sans Visage (5) | 1 | 0.3 | 0.3 | 91.9% | 99.3% | 0.8 | 19 | 50 | 39 | 11 |
+| La Prima Noyée (5) | 1 | 0.4 | 0.3 | 68.9% | 99.5% | 0.6 | 14 | 48 | 39 | 8 |
+| Arlequin Raccommodeur (2) | 3 | 1.1 | 0.9 | 86.7% | 90.2% | 1.3 | 35 | 45 | 38 | 6 |
+| Les Coulisses Inondées (2) | 3 | 1.1 | 0.5 | 47.5% | 97.3% | 0.0 | 0 | 44 | 41 | 3 |
+| Il Dottore des Noyés (4) | 2 | 0.6 | 0.5 | 83.1% | 99.3% | 0.7 | 12 | 43 | 42 | 2 |
+| La Prima Noyée (3) | 3 | 0.8 | 0.6 | 76.6% | 99.1% | 0.7 | 39 | 41 | 45 | -4 |
+| Arlecchino, Celui derrière le Masque (4) | 1 | 0.3 | 0.2 | 87.0% | 96.5% | 0.5 | 9 | 40 | 44 | -4 |
+| Changement de rôle ! (2) | 2 | 0.6 | 0.4 | 72.4% | 99.8% | 0.0 | 3 | 40 | 44 | -4 |
+| La Clochette du Rappel (3) | 3 | 0.8 | 0.4 | 45.0% | 98.8% | 0.0 | 2 | 40 | 46 | -5 |
+| Colombina aux Cent Visages (3) | 2 | 0.6 | 0.5 | 91.1% | 98.4% | 0.6 | 14 | 38 | 45 | -7 |
+| Le Théâtre Englouti (4) | 1 | 0.2 | 0.1 | 40.0% | 99.5% | 0.0 | 0 | 36 | 44 | -8 |
+| Le Masque Fendu (2) | 3 | 0.9 | 0.6 | 59.6% | 99.9% | 0.0 | 0 | 38 | 49 | -11 |
+| Arlecchino des Profondeurs (2) | 3 | 0.9 | 0.6 | 73.7% | 97.2% | 0.6 | 13 | 38 | 49 | -11 |
+| Pantalone Sans-Sou (3) | 3 | 0.8 | 0.7 | 86.6% | 98.5% | 0.9 | 33 | 36 | 51 | -15 |
+
+### La Veillée [actuelle] — 42.5% (la-religieuse) · 1-2:23 3-4:16 5:1 6+:0 · unités 28, equipement 3, objet 6, structure 3
+Meilleurs : Le Théâtre Englouti [V1 le rappel frappe] 43.3%, Le Théâtre Englouti [V2 + Théâtre qui tire] 41.7% · Pires : Le Théâtre Englouti [V1 le rappel frappe] 43.3%, Le Théâtre Englouti [V2 + Théâtre qui tire] 41.7%
+Coup final (victoires) : tour 27.5%, effet 11.8%, combat 49.0% · soi-même 0.0 · Déraison subie 8.9 · main pauvre (≤1 carte ≤3) 0.0%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Cache-Cache (1) | 3 | 0.8 | 1.1 | 134.0% | 100.0% | 1.2 | 0 | 53 | 29 | 24 |
+| Le Copain du dessous (3) | 3 | 1.0 | 0.8 | 83.1% | 100.0% | 1.1 | 4 | 49 | 32 | 17 |
+| Maman revient (4) | 1 | 0.3 | 0.3 | 88.9% | 100.0% | 0.6 | 7 | 53 | 38 | 15 |
+| Papa est en mer (2) | 3 | 0.8 | 0.7 | 90.7% | 100.0% | 0.8 | 0 | 48 | 33 | 15 |
+| P'tit Bout (1) | 3 | 0.9 | 0.9 | 107.5% | 96.6% | 0.9 | 0 | 47 | 33 | 14 |
+| La Marelle (3) | 2 | 0.6 | 0.3 | 43.4% | 100.0% | 0.0 | 0 | 48 | 36 | 12 |
+| Tu viens jouer ? (4) | 2 | 0.8 | 0.6 | 82.6% | 100.0% | 1.6 | 4 | 46 | 37 | 9 |
+| Maman revient (3) | 2 | 0.7 | 0.6 | 84.3% | 100.0% | 0.7 | 0 | 46 | 38 | 7 |
+| Promis, j'attends (2) | 2 | 0.7 | 0.6 | 86.4% | 100.0% | 1.1 | 1 | 43 | 42 | 1 |
+| On avait dit tous ensemble (5) | 1 | 0.2 | 0.2 | 100.0% | 100.0% | 0.5 | 0 | 43 | 42 | 0 |
+| Tu m'avais promis (3) | 2 | 0.6 | 0.6 | 95.9% | 100.0% | 1.0 | 2 | 43 | 42 | 0 |
+| Doudou (1) | 3 | 0.8 | 0.4 | 54.3% | 100.0% | 0.0 | 0 | 42 | 43 | -0 |
+| Encore cinq minutes (2) | 3 | 0.9 | 0.8 | 93.2% | 100.0% | 1.3 | 8 | 41 | 45 | -4 |
+| La Petite Chanson (2) | 2 | 0.7 | 0.4 | 51.2% | 100.0% | 0.2 | 0 | 41 | 45 | -5 |
+| Journal de Bord Détrempé (2) | 1 | 0.2 | 0.1 | 45.5% | 100.0% | 0.0 | 0 | 36 | 44 | -8 |
+| On rentre bientôt (3) | 3 | 0.8 | 0.5 | 60.0% | 100.0% | 0.9 | 5 | 39 | 48 | -9 |
+| Le Goûter (2) | 3 | 1.0 | 0.6 | 56.6% | 100.0% | 0.3 | 0 | 39 | 50 | -11 |
+| Tout le monde à table (4) | 1 | 0.3 | 0.1 | 30.6% | 100.0% | 0.0 | 0 | 28 | 49 | -21 |
+
+### Mineurs de Fond [pièges qui tirent] — 42.5% (le-brise-lames) · 1-2:17 3-4:21 5:2 6+:0 · structure 18, equipement 2, objet 1, unités 19
+Meilleurs : Le Théâtre Englouti [V2 + Théâtre qui tire] 43.3%, Le Théâtre Englouti [V1 le rappel frappe] 41.7% · Pires : Le Théâtre Englouti [V2 + Théâtre qui tire] 43.3%, Le Théâtre Englouti [V1 le rappel frappe] 41.7%
+Coup final (victoires) : combat 60.8%, tour 33.3% · soi-même 0.1 · Déraison subie 9.0 · main pauvre (≤1 carte ≤3) 0.0%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Charpentière de Veille (2) | 2 | 0.5 | 0.5 | 84.4% | 100.0% | 0.6 | 2 | 56 | 32 | 23 |
+| Chose des Hauts-Fonds (4) | 3 | 1.0 | 1.0 | 96.7% | 100.0% | 2.1 | 4 | 49 | 28 | 21 |
+| Baleine aux Cicatrices Blanches (5) | 2 | 0.4 | 0.4 | 96.0% | 100.0% | 1.8 | 8 | 55 | 36 | 19 |
+| Le Filet qui Respire (3) | 2 | 0.6 | 0.2 | 36.8% | 98.7% | 0.0 | 0 | 47 | 37 | 11 |
+| Crabe de Fer (3) | 3 | 0.8 | 0.8 | 96.0% | 100.0% | 1.3 | 0 | 45 | 38 | 7 |
+| Clous de Récupération (3) | 1 | 0.2 | 0.1 | 23.1% | 89.7% | 0.0 | 0 | 46 | 41 | 5 |
+| Filet à la Dérive (2) | 3 | 0.9 | 0.6 | 74.0% | 99.5% | 0.0 | 0 | 44 | 40 | 4 |
+| Charpentier des Épaves (3) | 3 | 1.0 | 0.9 | 97.4% | 100.0% | 1.5 | 4 | 43 | 42 | 1 |
+| Cage de Flottaison (3) | 2 | 0.8 | 0.5 | 65.2% | 98.9% | 0.0 | 0 | 42 | 43 | -0 |
+| Bernard-l'Ermite d'Acier (1) | 3 | 0.9 | 0.9 | 96.4% | 100.0% | 1.6 | 8 | 42 | 43 | -1 |
+| Dernière Barricade (3) | 2 | 0.5 | 0.4 | 77.4% | 96.8% | 0.0 | 0 | 41 | 44 | -2 |
+| Chaîne de Travers (2) | 2 | 0.5 | 0.3 | 64.5% | 100.0% | 0.0 | 0 | 40 | 44 | -4 |
+| Treuil Rouillé (1) | 2 | 0.6 | 0.5 | 73.7% | 92.1% | 0.0 | 0 | 39 | 48 | -9 |
+| Cylindre flottant (2) | 2 | 0.5 | 0.3 | 53.1% | 98.7% | 0.0 | 0 | 34 | 50 | -16 |
+| Caisses Arrimées (1) | 3 | 0.7 | 0.6 | 90.2% | 100.0% | 0.0 | 0 | 34 | 54 | -20 |
+| Matelot du Sans-Nom (3) | 3 | 0.9 | 0.9 | 98.2% | 100.0% | 2.4 | 5 | 35 | 61 | -27 |
+| Pont Miné (3) | 2 | 0.5 | 0.2 | 38.7% | 99.0% | 0.0 | 0 | 22 | 59 | -37 |
+
+### Équipage de Verre [précon, étalon] — 40.8% (la-verriere) · 1-2:18 3-4:14 5:5 6+:3 · unités 30, objet 7, equipement 1, structure 1, anomalie 1
+Meilleurs : Le Théâtre Englouti [V1 le rappel frappe] 41.7%, Le Théâtre Englouti [V2 + Théâtre qui tire] 40.0% · Pires : Le Théâtre Englouti [V1 le rappel frappe] 41.7%, Le Théâtre Englouti [V2 + Théâtre qui tire] 40.0%
+Coup final (victoires) : combat 87.8%, tour 8.2%, navire 4.1% · soi-même 0.0 · Déraison subie 11.0 · main pauvre (≤1 carte ≤3) 3.3%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Coup de Harpon (4) | 2 | 0.4 | 0.3 | 77.1% | 100.0% | 0.0 | 0 | 67 | 27 | 40 |
+| L'Amiral sans Pavillon (7) | 1 | 0.3 | 0.2 | 81.3% | 100.0% | 1.3 | 2 | 66 | 32 | 34 |
+| Éclaireur Ébréché (1) | 3 | 0.8 | 0.7 | 95.6% | 100.0% | 0.8 | 0 | 47 | 30 | 17 |
+| Trinquer Trop Fort (2) | 1 | 0.2 | 0.1 | 27.3% | 100.0% | 0.0 | 0 | 55 | 38 | 17 |
+| Éclat de Bouteille (1) | 2 | 0.5 | 0.3 | 58.6% | 100.0% | 0.0 | 0 | 50 | 35 | 15 |
+| Matelot Fêlé (1) | 3 | 0.7 | 0.6 | 97.4% | 100.0% | 0.9 | 4 | 48 | 34 | 14 |
+| Bretteuse au Bord (4) | 3 | 0.7 | 0.6 | 90.6% | 100.0% | 2.3 | 4 | 45 | 35 | 10 |
+| Porte-Éclats (3) | 2 | 0.4 | 0.3 | 66.7% | 100.0% | 0.1 | 3 | 43 | 39 | 4 |
+| La Grande Fissure (5) | 2 | 0.7 | 0.5 | 82.1% | 100.0% | 1.8 | 4 | 42 | 39 | 4 |
+| Le Brise-Ligne (6) | 2 | 0.5 | 0.3 | 56.7% | 100.0% | 0.5 | 0 | 40 | 41 | -1 |
+| Maître Verrier (4) | 2 | 0.5 | 0.3 | 61.0% | 100.0% | 0.7 | 4 | 39 | 43 | -4 |
+| Polisseuse des Fêlures (3) | 2 | 0.6 | 0.5 | 79.4% | 100.0% | 0.9 | 10 | 39 | 43 | -4 |
+| Bouclier Fendu (2) | 1 | 0.3 | 0.1 | 40.0% | 100.0% | 0.0 | 0 | 38 | 43 | -5 |
+| Duelliste de Verre (2) | 2 | 0.4 | 0.4 | 88.0% | 100.0% | 0.8 | 0 | 35 | 45 | -10 |
+| Pont de Verre (3) | 1 | 0.3 | 0.0 | 6.7% | 100.0% | 0.0 | 0 | 33 | 43 | -10 |
+| Canonnier Fêlé (3) | 2 | 0.6 | 0.6 | 98.5% | 100.0% | 1.4 | 4 | 36 | 46 | -10 |
+| Verrier de Pont (2) | 2 | 0.5 | 0.5 | 96.7% | 100.0% | 1.4 | 8 | 32 | 47 | -15 |
+| Vigie aux Fissures (2) | 2 | 0.4 | 0.2 | 58.0% | 100.0% | 0.3 | 0 | 28 | 49 | -20 |
+| Encore Debout ? (2) | 1 | 0.2 | 0.1 | 23.1% | 100.0% | 0.0 | 0 | 23 | 46 | -23 |
+| Chirurgien du Bord (5) | 2 | 0.4 | 0.1 | 17.4% | 100.0% | 0.1 | 0 | 25 | 50 | -25 |
+| Bandages Humides (2) | 1 | 0.3 | 0.1 | 25.0% | 100.0% | 0.0 | 0 | 19 | 49 | -30 |
+| Jusqu'à ce que ça casse (5) | 1 | 0.1 | 0.0 | 0.0% | 100.0% | 0.0 | 0 | 8 | 44 | -36 |
+
+## V3 (gains à l'arrivée) contre la liste actuelle
+
+# Labo — 1980 parties, bot moyen, 60 par paire, 156 s
+
+## Classement
+
+| Deck | WR | 1er | durée | dégâts/partie (combat·effet·navire·tour) | soin | unités+invoc | Raison laissée | dette | inactif≥2 T1-4 | main sans ≤2 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Le Grand Banc [GB1 Pied marin sans Bavard] | **75.8%** | 85.0% | 4.8 | 16.9·0.0·0.1·3.3 | 0.0 | 6.6+4.3 | 0.5 | 1.9 | 0.0% | 0.0% |
+| La Forteresse [F1 murs sans soins] | **69.2%** | 70.0% | 6.4 | 14.1·0.1·0.2·4.7 | 0.8 | 4.9+0.0 | 0.5 | 1.9 | 0.8% | 13.3% |
+| À bout de Raison [drain concentré] | **65.0%** | 83.3% | 4.4 | 15.7·0.0·0.2·2.8 | 0.0 | 6.6+0.0 | 0.1 | 2.0 | 0.0% | 7.5% |
+| Chasse au Gros [blessures bon marché] | **63.3%** | 81.7% | 4.6 | 14.3·0.0·0.8·2.9 | 0.0 | 5.0+0.0 | 0.0 | 2.9 | 0.0% | 8.3% |
+| Arsenal de Pont [Bris payant] | **61.7%** | 60.0% | 5.8 | 11.7·0.0·2.7·4.2 | 1.2 | 4.5+0.0 | 0.5 | 1.2 | 0.0% | 1.7% |
+| Descente aux Abysses [descendre et rester] | **59.2%** | 76.7% | 4.6 | 14.2·0.0·0.2·3.2 | 0.0 | 7.0+0.0 | 0.1 | 1.8 | 0.0% | 24.2% |
+| Chevaliers du Grand Étang [CH1 Seau au lieu de Tournoi/Fourchette] | **55.8%** | 58.3% | 4.4 | 15.7·0.0·0.1·2.8 | 0.3 | 6.1+1.9 | 0.5 | 1.4 | 1.7% | 0.0% |
+| Mineurs de Fond [pièges qui tirent] | **52.5%** | 58.3% | 5.7 | 11.9·0.0·0.2·4.3 | 1.6 | 5.3+0.0 | 0.3 | 1.6 | 0.0% | 1.7% |
+| Cavalerie [peu mais lourdes] | **50.8%** | 68.3% | 4.0 | 15.0·0.0·0.4·2.1 | 1.0 | 5.1+0.0 | 0.0 | 3.7 | 0.0% | 10.0% |
+| Sentinelles Chromatiques [SC1 Courlis 4 Slots] | **50.8%** | 65.0% | 5.1 | 16.4·0.0·0.1·0.2 | 0.0 | 5.4+2.8 | 1.7 | 2.0 | 8.3% | 1.7% |
+| Le Théâtre Englouti [V1 le rappel frappe] | **49.2%** | 60.0% | 4.7 | 13.3·0.0·0.1·3.3 | 0.3 | 7.0+0.0 | 0.1 | 1.9 | 0.0% | 5.0% |
+| Le Théâtre Englouti [V2 + Théâtre qui tire] | **49.2%** | 60.0% | 4.7 | 13.2·0.0·0.1·3.3 | 0.3 | 7.0+0.0 | 0.1 | 1.9 | 0.0% | 5.0% |
+| La Veillée [actuelle] | **45.8%** | 61.7% | 5.0 | 11.5·0.9·0.1·3.8 | 4.3 | 7.8+0.0 | 0.0 | 2.7 | 0.0% | 0.0% |
+| Le Théâtre Englouti [TH2 Errant rappels payants] | **45.3%** | 54.7% | 4.9 | 12.3·0.0·0.1·2.5 | 0.3 | 7.2+0.0 | 0.2 | 1.8 | 0.1% | 5.1% |
+| Le Théâtre Englouti [V3 l arrivée frappe] | **43.5%** | 54.9% | 4.9 | 12.0·0.2·0.1·2.5 | 0.3 | 7.2+0.0 | 0.2 | 1.8 | 0.1% | 3.3% |
+| Après la Tempête [balai qui rapporte] | **43.3%** | 55.0% | 4.8 | 13.8·0.1·0.2·0.3 | 0.3 | 5.1+0.0 | 0.1 | 3.2 | 0.0% | 39.2% |
+| Équipage de Verre [précon, étalon] | **41.7%** | 58.3% | 4.2 | 13.2·0.0·1.1·2.4 | 0.0 | 5.8+0.0 | 0.0 | 2.7 | 0.0% | 1.7% |
+| Épavistes [recyclage] | **39.2%** | 43.3% | 5.2 | 10.1·0.0·0.7·3.8 | 3.4 | 5.6+0.0 | 0.1 | 1.7 | 0.0% | 0.8% |
+
+## Matrice (ligne contre colonne)
+
+| | Le Grand B | La Fortere | À bout de  | Chasse au  | Arsenal de | Descente a | Chevaliers | Mineurs de | Cavalerie  | Sentinelle | Le Théâtre | Le Théâtre | La Veillée | Le Théâtre | Le Théâtre | Après la T | Équipage d | Épavistes  |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Le Grand Banc [GB1 | · |  |  |  |  |  |  |  |  |  |  |  |  | 78 | 73 |  |  |  |
+| La Forteresse [F1  |  | · |  |  |  |  |  |  |  |  |  |  |  | 65 | 73 |  |  |  |
+| À bout de Raison [ |  |  | · |  |  |  |  |  |  |  |  |  |  | 65 | 65 |  |  |  |
+| Chasse au Gros [bl |  |  |  | · |  |  |  |  |  |  |  |  |  | 63 | 63 |  |  |  |
+| Arsenal de Pont [B |  |  |  |  | · |  |  |  |  |  |  |  |  | 60 | 63 |  |  |  |
+| Descente aux Abyss |  |  |  |  |  | · |  |  |  |  |  |  |  | 62 | 57 |  |  |  |
+| Chevaliers du Gran |  |  |  |  |  |  | · |  |  |  |  |  |  | 55 | 57 |  |  |  |
+| Mineurs de Fond [p |  |  |  |  |  |  |  | · |  |  |  |  |  | 60 | 45 |  |  |  |
+| Cavalerie [peu mai |  |  |  |  |  |  |  |  | · |  |  |  |  | 50 | 52 |  |  |  |
+| Sentinelles Chroma |  |  |  |  |  |  |  |  |  | · |  |  |  | 53 | 48 |  |  |  |
+| Le Théâtre Englout |  |  |  |  |  |  |  |  |  |  | · |  |  | 40 | 58 |  |  |  |
+| Le Théâtre Englout |  |  |  |  |  |  |  |  |  |  |  | · |  | 40 | 58 |  |  |  |
+| La Veillée [actuel |  |  |  |  |  |  |  |  |  |  |  |  | · | 47 | 45 |  |  |  |
+| Le Théâtre Englout | 22 | 35 | 20 | 33 | 40 | 38 | 45 | 40 | 50 | 45 | 60 | 60 | 50 | · | 55 | 57 | 55 | 65 |
+| Le Théâtre Englout | 27 | 27 | 33 | 35 | 37 | 43 | 43 | 55 | 48 | 50 | 42 | 42 | 52 | 45 | · | 50 | 57 | 55 |
+| Après la Tempête [ |  |  |  |  |  |  |  |  |  |  |  |  |  | 40 | 47 | · |  |  |
+| Équipage de Verre  |  |  |  |  |  |  |  |  |  |  |  |  |  | 43 | 40 |  | · |  |
+| Épavistes [recycla |  |  |  |  |  |  |  |  |  |  |  |  |  | 33 | 45 |  |  | · |
+
+### Le Grand Banc [GB1 Pied marin sans Bavard] — 75.8% (le-brise-lames) · 1-2:25 3-4:13 5:2 6+:0 · unités 29, structure 2, objet 5, anomalie 4
+Meilleurs : Le Théâtre Englouti [TH2 Errant rappels payants] 78.3%, Le Théâtre Englouti [V3 l arrivée frappe] 73.3% · Pires : Le Théâtre Englouti [TH2 Errant rappels payants] 78.3%, Le Théâtre Englouti [V3 l arrivée frappe] 73.3%
+Coup final (victoires) : combat 60.4%, tour 35.2% · soi-même 0.0 · Déraison subie 8.6 · main pauvre (≤1 carte ≤3) 0.0%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Roi Cra-Poiscail (5) | 1 | 0.1 | 0.1 | 100.0% | 100.0% | 0.4 | 1 | 100 | 73 | 27 |
+| P'tite Fesse (1) | 3 | 0.7 | 0.6 | 91.7% | 93.3% | 1.2 | 3 | 85 | 64 | 21 |
+| Cra-Poiscail des Hautes-Eaux (2) | 3 | 0.8 | 0.6 | 67.6% | 99.3% | 1.2 | 8 | 82 | 65 | 17 |
+| Le Seau (2) | 3 | 0.8 | 0.7 | 95.6% | 100.0% | 0.0 | 0 | 80 | 70 | 10 |
+| Cra-Poiscail Messager (1) | 3 | 0.7 | 0.7 | 91.0% | 97.3% | 1.9 | 4 | 78 | 72 | 6 |
+| Le Grand Saut (5) | 1 | 0.2 | 0.2 | 96.6% | 100.0% | 0.0 | 0 | 79 | 75 | 5 |
+| Faire l'Inventaire (2) | 2 | 0.5 | 0.3 | 66.1% | 91.7% | 0.0 | 0 | 77 | 75 | 2 |
+| Cra-Poiscail Grand-Gueule (2) | 1 | 0.2 | 0.2 | 100.0% | 100.0% | 0.3 | 0 | 77 | 76 | 1 |
+| Le Trône de Bouchon (3) | 2 | 0.4 | 0.4 | 86.8% | 96.6% | 0.0 | 0 | 76 | 76 | -1 |
+| P'tite Fesse, Grand Rêve (2) | 2 | 0.6 | 0.5 | 78.9% | 100.0% | 0.5 | 0 | 74 | 78 | -5 |
+| Fesses en Avant ! (3) | 3 | 0.8 | 0.6 | 75.5% | 96.8% | 0.0 | 0 | 73 | 81 | -9 |
+| Cra-Poiscail Sauteur (2) | 3 | 0.7 | 0.6 | 88.6% | 92.1% | 0.6 | 6 | 69 | 82 | -12 |
+| Cra-Poiscail Chef de Banc (3) | 3 | 0.8 | 0.8 | 92.2% | 97.3% | 0.8 | 2 | 71 | 84 | -13 |
+| Têtard-Fesse (1) | 2 | 0.6 | 0.6 | 97.3% | 100.0% | 0.5 | 0 | 70 | 84 | -14 |
+| Cra-Poiscail Ramasseur (2) | 3 | 0.7 | 0.7 | 92.9% | 100.0% | 0.5 | 0 | 68 | 85 | -17 |
+| Banc de Cra-Poiscail (3) | 3 | 0.7 | 0.7 | 91.9% | 98.3% | 1.2 | 4 | 67 | 86 | -19 |
+| Cra-Poiscail Porte-Étendard (3) | 2 | 0.6 | 0.6 | 93.2% | 100.0% | 0.4 | 2 | 62 | 94 | -32 |
+
+### La Forteresse [F1 murs sans soins] — 69.2% (le-brise-lames) · 1-2:11 3-4:26 5:0 6+:3 · unités 18, structure 18, objet 4
+Meilleurs : Le Théâtre Englouti [V3 l arrivée frappe] 73.3%, Le Théâtre Englouti [TH2 Errant rappels payants] 65.0% · Pires : Le Théâtre Englouti [V3 l arrivée frappe] 73.3%, Le Théâtre Englouti [TH2 Errant rappels payants] 65.0%
+Coup final (victoires) : combat 55.4%, tour 33.7% · soi-même 0.6 · Déraison subie 12.6 · main pauvre (≤1 carte ≤3) 0.8%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Harpon à Ressort (4) | 2 | 0.6 | 0.4 | 61.1% | 96.3% | 0.0 | 0 | 80 | 58 | 23 |
+| Le Dernier Rempart (6) | 2 | 0.6 | 0.6 | 95.7% | 100.0% | 3.3 | 11 | 77 | 61 | 16 |
+| Carape Hus (3) | 3 | 0.9 | 0.9 | 95.4% | 100.0% | 2.1 | 10 | 75 | 59 | 16 |
+| L'Amiral sans Pavillon (7) | 1 | 0.2 | 0.2 | 100.0% | 100.0% | 1.3 | 7 | 77 | 67 | 10 |
+| Chose des Hauts-Fonds (4) | 3 | 0.8 | 0.7 | 93.7% | 97.1% | 2.4 | 7 | 72 | 65 | 7 |
+| Crabe de Fer (3) | 3 | 0.9 | 0.9 | 96.4% | 96.9% | 1.6 | 3 | 71 | 65 | 6 |
+| Brise-Vague de Fortune (2) | 3 | 0.9 | 0.7 | 82.1% | 98.9% | 0.0 | 0 | 70 | 68 | 2 |
+| Barge de Réparation (3) | 2 | 0.6 | 0.4 | 73.1% | 100.0% | 0.0 | 0 | 69 | 69 | -1 |
+| Cylindre flottant (2) | 2 | 0.5 | 0.3 | 54.5% | 98.5% | 0.0 | 0 | 67 | 71 | -4 |
+| Cormoran de Fer (3) | 3 | 0.9 | 0.8 | 96.1% | 97.9% | 2.1 | 4 | 68 | 72 | -5 |
+| Caisses Arrimées (1) | 1 | 0.3 | 0.3 | 100.0% | 100.0% | 0.0 | 0 | 65 | 71 | -6 |
+| Signal de Détresse (4) | 2 | 0.6 | 0.4 | 62.3% | 93.5% | 0.0 | 0 | 66 | 73 | -7 |
+| Cloison Étanche (2) | 2 | 0.6 | 0.6 | 92.0% | 98.8% | 0.0 | 0 | 64 | 75 | -11 |
+| Mouette du Brise-Lames (2) | 3 | 0.8 | 0.8 | 100.0% | 0.0% | 1.3 | 4 | 63 | 79 | -16 |
+| Carcasse Renversée (3) | 2 | 0.7 | 0.6 | 86.4% | 99.3% | 0.0 | 0 | 61 | 79 | -18 |
+| Dernière Barricade (3) | 2 | 0.6 | 0.3 | 53.6% | 98.7% | 0.0 | 0 | 57 | 81 | -24 |
+| Cage de Flottaison (3) | 2 | 0.6 | 0.5 | 88.7% | 100.0% | 0.0 | 0 | 57 | 81 | -24 |
+| Cale Inondable (3) | 2 | 0.6 | 0.3 | 50.0% | 99.5% | 0.0 | 0 | 54 | 84 | -29 |
+
+### À bout de Raison [drain concentré] — 65.0% (lerrant) · 1-2:13 3-4:25 5:2 6+:0 · unités 31, structure 7, anomalie 2
+Meilleurs : Le Théâtre Englouti [TH2 Errant rappels payants] 65.0%, Le Théâtre Englouti [V3 l arrivée frappe] 65.0% · Pires : Le Théâtre Englouti [TH2 Errant rappels payants] 65.0%, Le Théâtre Englouti [V3 l arrivée frappe] 65.0%
+Coup final (victoires) : combat 78.2%, tour 19.2% · soi-même 0.0 · Déraison subie 8.4 · main pauvre (≤1 carte ≤3) 0.0%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Marin aux Yeux Rouges (3) | 3 | 0.7 | 0.6 | 93.9% | 100.0% | 2.1 | 8 | 80 | 48 | 31 |
+| Requin Balafré (3) | 2 | 0.5 | 0.4 | 96.4% | 100.0% | 0.4 | 0 | 76 | 58 | 18 |
+| Baleine aux Cicatrices Blanches (5) | 2 | 0.6 | 0.5 | 85.5% | 100.0% | 2.8 | 6 | 73 | 56 | 17 |
+| Anguille des Profondeurs (3) | 3 | 0.6 | 0.3 | 53.2% | 100.0% | 0.4 | 1 | 67 | 63 | 4 |
+| Marin aux Yeux Rouges (2) | 3 | 0.8 | 0.7 | 89.4% | 90.0% | 1.1 | 9 | 66 | 63 | 3 |
+| Matelot Insomniaque (2) | 3 | 0.8 | 0.7 | 94.5% | 100.0% | 2.4 | 7 | 65 | 65 | 0 |
+| Capitaine Sans Sommeil (4) | 2 | 0.6 | 0.5 | 84.4% | 98.4% | 1.5 | 9 | 65 | 65 | -1 |
+| Matelot du Sans-Nom (3) | 3 | 0.7 | 0.7 | 95.3% | 96.3% | 1.6 | 8 | 64 | 66 | -2 |
+| Vieux Loup de Mer (3) | 2 | 0.5 | 0.3 | 61.0% | 98.9% | 0.3 | 6 | 63 | 67 | -4 |
+| Capitaine du Dernier Retour (4) | 2 | 0.5 | 0.4 | 82.1% | 100.0% | 0.4 | 3 | 63 | 67 | -4 |
+| Si, Raie Ponce (4) | 3 | 0.8 | 0.6 | 85.6% | 100.0% | 1.7 | 2 | 62 | 69 | -6 |
+| Chaîne de Travers (2) | 2 | 0.3 | 0.1 | 33.3% | 100.0% | 0.0 | 0 | 60 | 68 | -8 |
+| Murène Aveugle (2) | 3 | 0.8 | 0.6 | 83.7% | 100.0% | 0.8 | 2 | 61 | 72 | -11 |
+| Par-dessus Bord ! (3) | 2 | 0.6 | 0.5 | 91.5% | 100.0% | 0.0 | 0 | 58 | 72 | -14 |
+| Ponton aux Cloches (3) | 3 | 0.8 | 0.2 | 20.4% | 99.1% | 0.0 | 0 | 58 | 77 | -19 |
+| Le Rôle d'Équipage (2) | 2 | 0.4 | 0.2 | 50.0% | 100.0% | 0.0 | 0 | 50 | 74 | -24 |
+
+### Chasse au Gros [blessures bon marché] — 63.3% (le-goliath) · 1-2:12 3-4:22 5:5 6+:1 · unités 25, objet 12, anomalie 3
+Meilleurs : Le Théâtre Englouti [TH2 Errant rappels payants] 63.3%, Le Théâtre Englouti [V3 l arrivée frappe] 63.3% · Pires : Le Théâtre Englouti [TH2 Errant rappels payants] 63.3%, Le Théâtre Englouti [V3 l arrivée frappe] 63.3%
+Coup final (victoires) : combat 68.4%, navire 5.3%, tour 22.4% · soi-même 1.8 · Déraison subie 13.3 · main pauvre (≤1 carte ≤3) 1.7%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Éclat de Bouteille (1) | 3 | 0.8 | 0.7 | 86.7% | 100.0% | 0.0 | 0 | 76 | 45 | 31 |
+| Harpon à Ressort (4) | 2 | 0.6 | 0.2 | 41.8% | 100.0% | 0.0 | 0 | 76 | 51 | 25 |
+| Crabe de Fer (3) | 3 | 0.7 | 0.7 | 95.1% | 100.0% | 1.4 | 3 | 73 | 52 | 21 |
+| Coup de Harpon (4) | 3 | 0.7 | 0.5 | 66.7% | 100.0% | 0.0 | 0 | 73 | 53 | 19 |
+| Canonnier Fêlé (3) | 3 | 0.6 | 0.6 | 97.4% | 100.0% | 2.5 | 5 | 69 | 58 | 11 |
+| Trinquer Trop Fort (2) | 2 | 0.5 | 0.2 | 37.7% | 100.0% | 0.0 | 0 | 68 | 58 | 10 |
+| L'Amiral sans Pavillon (7) | 1 | 0.3 | 0.2 | 93.3% | 100.0% | 1.6 | 4 | 67 | 62 | 4 |
+| Poisson aux Dents de Verre (2) | 2 | 0.5 | 0.4 | 80.4% | 100.0% | 0.8 | 2 | 63 | 64 | -0 |
+| Chose des Hauts-Fonds (4) | 2 | 0.6 | 0.6 | 98.5% | 100.0% | 1.4 | 3 | 63 | 64 | -1 |
+| Encore Debout ? (2) | 2 | 0.5 | 0.3 | 54.7% | 100.0% | 0.0 | 0 | 61 | 66 | -5 |
+| Guetteur Méfiant (2) | 3 | 0.8 | 0.8 | 100.0% | 100.0% | 1.6 | 11 | 61 | 67 | -7 |
+| Ce Qui Suit le Navire (4) | 3 | 0.8 | 0.5 | 57.0% | 100.0% | 1.4 | 6 | 61 | 68 | -8 |
+| Par-dessus Bord ! (3) | 2 | 0.4 | 0.4 | 97.7% | 100.0% | 0.0 | 0 | 58 | 66 | -8 |
+| Harponneur du Dernier Quai (3) | 2 | 0.4 | 0.3 | 78.3% | 100.0% | 0.6 | 3 | 57 | 67 | -10 |
+| Qu'on en Finisse (5) | 1 | 0.2 | 0.0 | 0.0% | 100.0% | 0.0 | 0 | 54 | 66 | -11 |
+| Baleine aux Cicatrices Blanches (5) | 2 | 0.4 | 0.3 | 60.0% | 100.0% | 0.8 | 3 | 54 | 69 | -15 |
+| Vieux Harponneur (5) | 2 | 0.6 | 0.5 | 82.4% | 100.0% | 1.2 | 5 | 55 | 74 | -20 |
+| Matelot du Sans-Nom (3) | 2 | 0.4 | 0.4 | 86.5% | 100.0% | 1.0 | 7 | 46 | 75 | -29 |
+
+### Arsenal de Pont [Bris payant] — 61.7% (la-verriere) · 1-2:18 3-4:22 5:0 6+:0 · unités 16, objet 24
+Meilleurs : Le Théâtre Englouti [V3 l arrivée frappe] 63.3%, Le Théâtre Englouti [TH2 Errant rappels payants] 60.0% · Pires : Le Théâtre Englouti [V3 l arrivée frappe] 63.3%, Le Théâtre Englouti [TH2 Errant rappels payants] 60.0%
+Coup final (victoires) : combat 63.5%, tour 14.9%, navire 13.5% · soi-même 3.2 · Déraison subie 6.9 · main pauvre (≤1 carte ≤3) 3.3%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Chose des Hauts-Fonds (4) | 3 | 1.0 | 0.9 | 91.9% | 85.2% | 4.0 | 15 | 67 | 47 | 20 |
+| Journal de Bord Détrempé (2) | 2 | 0.7 | 0.6 | 87.4% | 100.0% | 0.0 | 0 | 70 | 51 | 19 |
+| Cra-Poiscail Médecin (3) | 1 | 0.3 | 0.3 | 100.0% | 100.0% | 0.4 | 1 | 70 | 58 | 12 |
+| Cormoran de Fer (3) | 3 | 0.9 | 0.8 | 90.2% | 93.8% | 2.4 | 5 | 65 | 54 | 12 |
+| Harpon à Ressort (4) | 2 | 0.8 | 0.5 | 62.2% | 90.8% | 0.0 | 0 | 65 | 57 | 8 |
+| Coup de Harpon (4) | 3 | 1.0 | 0.9 | 91.7% | 100.0% | 0.0 | 0 | 63 | 59 | 5 |
+| Pantalone Sans-Sou (3) | 3 | 1.0 | 0.9 | 86.7% | 100.0% | 1.6 | 13 | 63 | 59 | 4 |
+| Rations du Matin Gris (2) | 2 | 0.6 | 0.5 | 75.3% | 100.0% | 0.0 | 0 | 63 | 60 | 3 |
+| Cra-Poiscail Médecin (2) | 2 | 0.6 | 0.5 | 77.0% | 100.0% | 0.5 | 5 | 63 | 61 | 2 |
+| Lettre Jamais Ouverte (1) | 3 | 1.2 | 0.8 | 69.2% | 97.8% | 0.0 | 0 | 61 | 65 | -4 |
+| Bouclier d'Écume (4) | 1 | 0.3 | 0.2 | 58.5% | 92.9% | 0.0 | 0 | 59 | 63 | -5 |
+| Thermos du Dernier Quart (2) | 2 | 0.8 | 0.7 | 91.2% | 0.0% | 0.0 | 0 | 60 | 65 | -5 |
+| Éclat de Bouteille (1) | 3 | 1.1 | 0.9 | 78.0% | 95.8% | 0.0 | 0 | 60 | 67 | -6 |
+| Corde de Rappel (4) | 1 | 0.3 | 0.1 | 43.6% | 89.6% | 0.0 | 0 | 54 | 65 | -12 |
+| Il Capitano Naufragé (4) | 2 | 0.6 | 0.6 | 94.6% | 100.0% | 2.1 | 6 | 55 | 71 | -16 |
+| Marin des Jetées (1) | 2 | 0.6 | 0.5 | 88.9% | 66.7% | 0.7 | 2 | 53 | 70 | -17 |
+| Contre-Harpon (4) | 2 | 0.5 | 0.4 | 70.3% | 90.6% | 0.0 | 0 | 51 | 70 | -19 |
+| Signal de Détresse (4) | 1 | 0.4 | 0.3 | 70.0% | 96.7% | 0.0 | 0 | 50 | 70 | -20 |
+| Choppe ! (1) | 2 | 0.6 | 0.5 | 80.5% | 100.0% | 0.0 | 0 | 51 | 75 | -24 |
+
+### Descente aux Abysses [descendre et rester] — 59.2% (lerrant) · 1-2:8 3-4:30 5:2 6+:0 · equipement 3, unités 37
+Meilleurs : Le Théâtre Englouti [TH2 Errant rappels payants] 61.7%, Le Théâtre Englouti [V3 l arrivée frappe] 56.7% · Pires : Le Théâtre Englouti [TH2 Errant rappels payants] 61.7%, Le Théâtre Englouti [V3 l arrivée frappe] 56.7%
+Coup final (victoires) : combat 71.8%, tour 22.5% · soi-même 0.0 · Déraison subie 7.6 · main pauvre (≤1 carte ≤3) 4.2%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Marin aux Yeux Rouges (3) | 2 | 0.5 | 0.5 | 96.9% | 100.0% | 1.7 | 7 | 69 | 52 | 17 |
+| Albatros de Mauvais Temps (4) | 2 | 0.5 | 0.4 | 83.9% | 100.0% | 2.0 | 2 | 68 | 52 | 16 |
+| Masse-Sombre (4) | 2 | 0.5 | 0.4 | 81.7% | 100.0% | 1.1 | 3 | 65 | 55 | 10 |
+| Chose des Hauts-Fonds (4) | 3 | 0.6 | 0.6 | 97.4% | 100.0% | 1.1 | 1 | 63 | 54 | 9 |
+| Bat-Marin (4) | 2 | 0.4 | 0.3 | 69.2% | 100.0% | 0.8 | 2 | 64 | 56 | 8 |
+| Poisson-Lanterne (1) | 2 | 0.5 | 0.5 | 90.3% | 97.7% | 0.3 | 3 | 63 | 56 | 7 |
+| Seconde au Visage Pâle (3) | 2 | 0.5 | 0.3 | 70.7% | 96.7% | 0.6 | 5 | 63 | 57 | 6 |
+| Bat-Marin (3) | 2 | 0.5 | 0.4 | 86.4% | 100.0% | 0.6 | 2 | 61 | 58 | 3 |
+| L'Œil Sous la Mer (5) | 1 | 0.3 | 0.1 | 36.7% | 100.0% | 0.1 | 1 | 60 | 59 | 1 |
+| Veilleuse des Profondeurs (4) | 3 | 0.7 | 0.4 | 54.2% | 100.0% | 0.6 | 2 | 60 | 59 | 1 |
+| Revenante de la Fosse (5) | 1 | 0.3 | 0.1 | 32.3% | 100.0% | 0.2 | 0 | 55 | 61 | -6 |
+| Lanterne aux Verres Noirs (2) | 3 | 0.8 | 0.2 | 29.0% | 99.1% | 0.0 | 0 | 56 | 64 | -8 |
+| Raie des Fosses (3) | 2 | 0.5 | 0.4 | 89.7% | 100.0% | 1.4 | 6 | 55 | 63 | -8 |
+| Si, Raie Ponce (4) | 3 | 0.6 | 0.6 | 95.8% | 100.0% | 0.9 | 5 | 55 | 64 | -9 |
+| Cartographe du Large (2) | 3 | 0.7 | 0.5 | 73.4% | 100.0% | 0.6 | 3 | 53 | 65 | -12 |
+| Masse-Sombre (3) | 3 | 0.7 | 0.7 | 94.3% | 100.0% | 1.1 | 5 | 54 | 67 | -13 |
+| Anguille des Profondeurs (3) | 2 | 0.6 | 0.5 | 90.0% | 100.0% | 0.8 | 3 | 51 | 67 | -16 |
+| Sondeur des Mauvaises Eaux (3) | 2 | 0.5 | 0.2 | 49.1% | 99.0% | 0.3 | 1 | 47 | 68 | -21 |
+
+### Chevaliers du Grand Étang [CH1 Seau au lieu de Tournoi/Fourchette] — 55.8% (lerrant) · 1-2:23 3-4:15 5:2 6+:0 · unités 28, equipement 2, structure 4, anomalie 1, objet 5
+Meilleurs : Le Théâtre Englouti [V3 l arrivée frappe] 56.7%, Le Théâtre Englouti [TH2 Errant rappels payants] 55.0% · Pires : Le Théâtre Englouti [V3 l arrivée frappe] 56.7%, Le Théâtre Englouti [TH2 Errant rappels payants] 55.0%
+Coup final (victoires) : combat 70.1%, tour 28.4% · soi-même 0.0 · Déraison subie 5.9 · main pauvre (≤1 carte ≤3) 0.0%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Le Grand Saut (5) | 1 | 0.3 | 0.2 | 90.0% | 100.0% | 0.0 | 0 | 77 | 49 | 28 |
+| Roi Cra-Poiscail (5) | 1 | 0.3 | 0.3 | 97.1% | 100.0% | 0.6 | 2 | 74 | 49 | 25 |
+| Chevalier Cra-Poiscail (4) | 1 | 0.2 | 0.2 | 92.6% | 50.0% | 1.5 | 7 | 74 | 51 | 24 |
+| Destrier du Grand Étang (2) | 3 | 0.7 | 0.6 | 93.8% | 80.0% | 1.7 | 7 | 65 | 47 | 18 |
+| Cra-Poiscail Porte-Étendard (3) | 2 | 0.6 | 0.6 | 100.0% | 84.6% | 0.5 | 4 | 62 | 48 | 14 |
+| La Quête du Grand Nénuphar (3) | 2 | 0.4 | 0.2 | 37.3% | 93.9% | 0.0 | 0 | 62 | 52 | 10 |
+| Écuyer Cra-Poiscail (2) | 3 | 0.7 | 0.6 | 82.6% | 97.1% | 1.1 | 4 | 60 | 50 | 10 |
+| Faire l'Inventaire (2) | 2 | 0.3 | 0.2 | 67.6% | 84.6% | 0.0 | 0 | 62 | 53 | 9 |
+| Filet de Sauvetage (2) | 2 | 0.6 | 0.5 | 78.9% | 94.1% | 0.0 | 0 | 56 | 56 | -1 |
+| P'tite Fesse, Grand Rêve (2) | 2 | 0.4 | 0.3 | 77.1% | 100.0% | 0.2 | 0 | 53 | 57 | -4 |
+| Cra-Poiscail Médecin (3) | 1 | 0.2 | 0.2 | 96.4% | 88.9% | 0.7 | 3 | 50 | 58 | -8 |
+| P'tite Fesse, Grand Rêve (3) | 1 | 0.3 | 0.3 | 86.1% | 100.0% | 1.0 | 1 | 50 | 58 | -8 |
+| Cra-Poiscail Messager (1) | 3 | 0.8 | 0.7 | 83.5% | 83.7% | 1.5 | 4 | 53 | 62 | -9 |
+| Le Seau (2) | 3 | 0.8 | 0.7 | 94.6% | 75.0% | 0.0 | 0 | 51 | 62 | -11 |
+| Banc de Cra-Poiscail (3) | 3 | 0.7 | 0.6 | 88.1% | 95.7% | 0.8 | 3 | 50 | 63 | -13 |
+| Chevalier Cra-Poiscail (3) | 2 | 0.5 | 0.4 | 94.6% | 50.0% | 0.9 | 1 | 48 | 61 | -13 |
+| Bourreau Cra-Poiscail (3) | 3 | 0.7 | 0.6 | 80.2% | 100.0% | 0.4 | 1 | 47 | 67 | -20 |
+| Cra-Poiscail Médecin (2) | 3 | 0.8 | 0.7 | 87.8% | 91.7% | 1.0 | 2 | 46 | 71 | -25 |
+| Slip de Guerre Cra-Poiscail (2) | 2 | 0.5 | 0.2 | 48.2% | 88.6% | 0.0 | 0 | 42 | 67 | -26 |
+
+### Mineurs de Fond [pièges qui tirent] — 52.5% (le-brise-lames) · 1-2:17 3-4:21 5:2 6+:0 · structure 18, equipement 2, objet 1, unités 19
+Meilleurs : Le Théâtre Englouti [TH2 Errant rappels payants] 60.0%, Le Théâtre Englouti [V3 l arrivée frappe] 45.0% · Pires : Le Théâtre Englouti [TH2 Errant rappels payants] 60.0%, Le Théâtre Englouti [V3 l arrivée frappe] 45.0%
+Coup final (victoires) : combat 71.4%, tour 20.6% · soi-même 0.1 · Déraison subie 9.3 · main pauvre (≤1 carte ≤3) 0.0%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Chose des Hauts-Fonds (4) | 3 | 1.0 | 1.0 | 98.3% | 100.0% | 2.2 | 8 | 61 | 34 | 27 |
+| Baleine aux Cicatrices Blanches (5) | 2 | 0.5 | 0.5 | 93.3% | 100.0% | 2.5 | 11 | 65 | 43 | 23 |
+| Charpentière de Veille (2) | 2 | 0.5 | 0.4 | 81.0% | 100.0% | 0.5 | 1 | 63 | 44 | 19 |
+| Le Filet qui Respire (3) | 2 | 0.7 | 0.3 | 39.7% | 99.1% | 0.0 | 0 | 57 | 46 | 11 |
+| Crabe de Fer (3) | 3 | 0.8 | 0.7 | 96.7% | 100.0% | 1.1 | 1 | 56 | 48 | 8 |
+| Bernard-l'Ermite d'Acier (1) | 3 | 0.9 | 0.9 | 98.1% | 100.0% | 1.8 | 7 | 55 | 48 | 8 |
+| Treuil Rouillé (1) | 2 | 0.6 | 0.4 | 72.9% | 93.3% | 0.0 | 0 | 56 | 49 | 7 |
+| Cylindre flottant (2) | 2 | 0.5 | 0.3 | 50.0% | 98.7% | 0.0 | 0 | 55 | 51 | 4 |
+| Chaîne de Travers (2) | 2 | 0.5 | 0.4 | 71.9% | 100.0% | 0.0 | 0 | 51 | 54 | -3 |
+| Cage de Flottaison (3) | 2 | 0.7 | 0.5 | 67.9% | 99.4% | 0.0 | 0 | 51 | 54 | -4 |
+| Filet à la Dérive (2) | 3 | 0.9 | 0.6 | 69.2% | 99.5% | 0.0 | 0 | 51 | 56 | -5 |
+| Charpentier des Épaves (3) | 3 | 1.0 | 0.9 | 91.7% | 99.2% | 1.6 | 9 | 51 | 56 | -6 |
+| Caisses Arrimées (1) | 3 | 0.7 | 0.6 | 89.4% | 100.0% | 0.0 | 0 | 49 | 58 | -10 |
+| Dernière Barricade (3) | 2 | 0.6 | 0.5 | 78.3% | 98.6% | 0.0 | 0 | 48 | 58 | -10 |
+| Matelot du Sans-Nom (3) | 3 | 1.0 | 0.9 | 96.5% | 97.0% | 2.2 | 8 | 48 | 64 | -15 |
+| Clous de Récupération (3) | 1 | 0.3 | 0.1 | 38.7% | 94.4% | 0.0 | 0 | 39 | 57 | -19 |
+| Pont Miné (3) | 2 | 0.5 | 0.2 | 35.5% | 99.5% | 0.0 | 0 | 41 | 62 | -21 |
+
+### Cavalerie [peu mais lourdes] — 50.8% (le-goliath) · 1-2:11 3-4:20 5:6 6+:3 · unités 28, equipement 3, objet 9
+Meilleurs : Le Théâtre Englouti [V3 l arrivée frappe] 51.7%, Le Théâtre Englouti [TH2 Errant rappels payants] 50.0% · Pires : Le Théâtre Englouti [V3 l arrivée frappe] 51.7%, Le Théâtre Englouti [TH2 Errant rappels payants] 50.0%
+Coup final (victoires) : tour 16.4%, combat 72.1%, navire 4.9% · soi-même 0.0 · Déraison subie 15.3 · main pauvre (≤1 carte ≤3) 18.3%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Un Peu de Répit (3) | 2 | 0.4 | 0.1 | 14.6% | 100.0% | 0.0 | 0 | 79 | 36 | 43 |
+| Bête de Halage (2) | 3 | 0.6 | 0.6 | 96.0% | 100.0% | 1.3 | 7 | 57 | 45 | 12 |
+| Chargeur des Écueils (4) | 3 | 0.7 | 0.4 | 56.5% | 100.0% | 1.6 | 4 | 56 | 44 | 12 |
+| Monture de Brèche (2) | 3 | 0.7 | 0.7 | 92.9% | 100.0% | 1.6 | 4 | 55 | 45 | 10 |
+| Selle de Guerre (2) | 3 | 0.7 | 0.5 | 71.3% | 100.0% | 0.0 | 0 | 55 | 46 | 8 |
+| Bête de Percée (4) | 2 | 0.5 | 0.2 | 50.0% | 100.0% | 0.5 | 4 | 54 | 49 | 6 |
+| Débusquer (2) | 2 | 0.5 | 0.3 | 71.9% | 100.0% | 0.0 | 0 | 52 | 50 | 2 |
+| Le Déserteur Gris (5) | 3 | 0.9 | 0.6 | 58.9% | 100.0% | 1.7 | 5 | 52 | 50 | 2 |
+| Vieux Harponneur (5) | 1 | 0.3 | 0.2 | 54.1% | 100.0% | 0.4 | 1 | 51 | 51 | 1 |
+| La Bête qu'on n'attend plus (6) | 2 | 0.4 | 0.4 | 94.0% | 100.0% | 1.5 | 4 | 50 | 51 | -1 |
+| Éclaireur à Cornes (3) | 3 | 0.6 | 0.6 | 90.5% | 100.0% | 2.0 | 3 | 50 | 51 | -1 |
+| Mufle au Fanion (4) | 3 | 0.7 | 0.7 | 98.8% | 100.0% | 2.1 | 3 | 50 | 52 | -2 |
+| L'Amiral sans Pavillon (7) | 1 | 0.2 | 0.2 | 96.4% | 100.0% | 0.7 | 2 | 46 | 52 | -6 |
+| Pas un Pas de Plus (3) | 2 | 0.6 | 0.6 | 98.6% | 100.0% | 0.0 | 0 | 47 | 55 | -8 |
+| Vieille-Selle (5) | 1 | 0.4 | 0.1 | 37.2% | 100.0% | 0.5 | 3 | 44 | 55 | -10 |
+| Destrier du Ressac (3) | 2 | 0.4 | 0.3 | 83.3% | 100.0% | 0.5 | 0 | 43 | 55 | -12 |
+| Mange-Fer (5) | 1 | 0.2 | 0.1 | 85.0% | 100.0% | 0.7 | 4 | 40 | 53 | -13 |
+| Coup de Harpon (4) | 2 | 0.4 | 0.3 | 86.4% | 100.0% | 0.0 | 0 | 40 | 56 | -16 |
+| Réparations d'Urgence (4) | 1 | 0.1 | 0.1 | 71.4% | 100.0% | 0.0 | 0 | 29 | 54 | -25 |
+
+### Sentinelles Chromatiques [SC1 Courlis 4 Slots] — 50.8% (le-courlis) · 1-2:20 3-4:17 5:0 6+:3 · unités 28, objet 11, anomalie 1
+Meilleurs : Le Théâtre Englouti [TH2 Errant rappels payants] 53.3%, Le Théâtre Englouti [V3 l arrivée frappe] 48.3% · Pires : Le Théâtre Englouti [TH2 Errant rappels payants] 53.3%, Le Théâtre Englouti [V3 l arrivée frappe] 48.3%
+Coup final (victoires) : combat 78.7%, tour 3.3% · soi-même 0.0 · Déraison subie 10.5 · main pauvre (≤1 carte ≤3) 1.7%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Héros de la Flamme (2) | 3 | 0.8 | 0.6 | 78.6% | 20.0% | 1.1 | 4 | 60 | 33 | 27 |
+| Briseur du Brasier (4) | 3 | 1.0 | 0.7 | 71.2% | 61.3% | 2.3 | 5 | 57 | 33 | 23 |
+| Journal de Bord Détrempé (2) | 2 | 0.4 | 0.4 | 88.7% | 100.0% | 0.0 | 0 | 63 | 42 | 21 |
+| Appel des Sentinelles (2) | 3 | 0.9 | 0.2 | 25.9% | 68.5% | 0.0 | 0 | 54 | 44 | 11 |
+| Émissaire de Quartz (3) | 2 | 0.6 | 0.5 | 77.1% | 61.4% | 1.5 | 1 | 55 | 47 | 8 |
+| Rations du Matin Gris (2) | 3 | 0.9 | 0.3 | 36.0% | 74.3% | 0.0 | 0 | 52 | 47 | 5 |
+| Survivant de la Mousse (3) | 2 | 0.5 | 0.3 | 70.0% | 54.2% | 1.2 | 1 | 54 | 48 | 5 |
+| Gardienne de l'Éclat (2) | 3 | 0.8 | 0.6 | 70.7% | 44.9% | 1.4 | 6 | 51 | 51 | -0 |
+| Le Géant Chromatique (8) | 1 | 0.3 | 0.1 | 47.1% | 82.2% | 0.5 | 1 | 47 | 52 | -5 |
+| Oracle d'Améthyste (4) | 3 | 1.0 | 0.5 | 52.8% | 79.6% | 1.6 | 9 | 49 | 55 | -5 |
+| Veilleuse de l'Ombre (3) | 1 | 0.3 | 0.1 | 50.0% | 67.6% | 0.3 | 3 | 47 | 52 | -6 |
+| Le Géant Chromatique (9) | 1 | 0.3 | 0.2 | 52.6% | 90.6% | 1.0 | 1 | 45 | 54 | -9 |
+| Formation Prismatique (6) | 1 | 0.3 | 0.0 | 2.9% | 80.9% | 0.0 | 0 | 44 | 53 | -9 |
+| Stratège de l'Azur (4) | 2 | 0.4 | 0.1 | 36.0% | 68.4% | 0.7 | 4 | 42 | 56 | -14 |
+| Tacticien de l'Écume (2) | 2 | 0.5 | 0.4 | 73.3% | 46.2% | 1.4 | 2 | 42 | 57 | -15 |
+| Coup de Harpon (4) | 1 | 0.4 | 0.4 | 100.0% | 100.0% | 0.0 | 0 | 41 | 57 | -16 |
+| Éclat de Bouteille (1) | 2 | 0.4 | 0.3 | 86.4% | 75.8% | 0.0 | 0 | 38 | 57 | -18 |
+| Rempart du Soleil (4) | 3 | 1.0 | 0.8 | 77.4% | 59.7% | 2.4 | 7 | 45 | 66 | -21 |
+| Porteur de Jade (2) | 2 | 0.5 | 0.4 | 68.3% | 72.9% | 0.9 | 4 | 36 | 63 | -27 |
+
+### Le Théâtre Englouti [V1 le rappel frappe] — 49.2% (lerrant) · 1-2:17 3-4:20 5:2 6+:1 · unités 28, objet 8, structure 4
+Meilleurs : Le Théâtre Englouti [V3 l arrivée frappe] 58.3%, Le Théâtre Englouti [TH2 Errant rappels payants] 40.0% · Pires : Le Théâtre Englouti [V3 l arrivée frappe] 58.3%, Le Théâtre Englouti [TH2 Errant rappels payants] 40.0%
+Coup final (victoires) : combat 61.0%, tour 33.9% · soi-même 0.0 · Déraison subie 8.9 · main pauvre (≤1 carte ≤3) 0.0%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Pulcinella Gonflé (2) | 3 | 1.0 | 0.9 | 89.3% | 100.0% | 1.2 | 8 | 62 | 28 | 34 |
+| Matelot du Sans-Nom (3) | 3 | 0.8 | 0.8 | 93.1% | 100.0% | 1.9 | 5 | 59 | 33 | 27 |
+| Le Régisseur des Profondeurs (7) | 1 | 0.3 | 0.3 | 93.9% | 100.0% | 1.4 | 4 | 69 | 42 | 27 |
+| Les Coulisses Inondées (2) | 3 | 1.1 | 0.6 | 50.4% | 99.5% | 0.0 | 0 | 55 | 40 | 15 |
+| Arlequin Raccommodeur (2) | 3 | 0.9 | 0.8 | 90.3% | 100.0% | 1.6 | 2 | 54 | 43 | 10 |
+| La Prima Noyée (5) | 1 | 0.4 | 0.3 | 66.0% | 100.0% | 0.7 | 2 | 55 | 45 | 10 |
+| Arlecchino des Profondeurs (2) | 3 | 0.8 | 0.6 | 74.7% | 100.0% | 0.5 | 0 | 51 | 47 | 4 |
+| Le Régisseur Sans Visage (5) | 1 | 0.3 | 0.2 | 87.9% | 100.0% | 0.5 | 3 | 52 | 48 | 3 |
+| Le Masque Fendu (2) | 3 | 0.8 | 0.6 | 65.7% | 100.0% | 0.0 | 0 | 49 | 50 | -1 |
+| Il Capitano Naufragé (4) | 2 | 0.6 | 0.6 | 100.0% | 100.0% | 2.0 | 1 | 48 | 50 | -2 |
+| Changement de rôle ! (2) | 2 | 0.5 | 0.3 | 64.4% | 100.0% | 0.0 | 0 | 48 | 50 | -2 |
+| La Clochette du Rappel (3) | 3 | 0.8 | 0.3 | 42.9% | 97.6% | 0.0 | 0 | 46 | 53 | -7 |
+| Le Théâtre Englouti (4) | 1 | 0.1 | 0.0 | 11.1% | 100.0% | 0.0 | 0 | 41 | 50 | -9 |
+| Il Dottore des Noyés (4) | 2 | 0.6 | 0.5 | 85.1% | 100.0% | 0.7 | 2 | 43 | 54 | -10 |
+| La Prima Noyée (3) | 3 | 0.8 | 0.6 | 74.7% | 99.2% | 1.0 | 4 | 44 | 57 | -13 |
+| Arlecchino, Celui derrière le Masque (4) | 1 | 0.3 | 0.2 | 93.3% | 100.0% | 0.4 | 1 | 38 | 53 | -15 |
+| Colombina aux Cent Visages (3) | 2 | 0.6 | 0.6 | 93.2% | 100.0% | 0.5 | 1 | 41 | 56 | -15 |
+| Pantalone Sans-Sou (3) | 3 | 0.8 | 0.6 | 78.4% | 100.0% | 0.8 | 3 | 40 | 63 | -22 |
+
+### Le Théâtre Englouti [V2 + Théâtre qui tire] — 49.2% (lerrant) · 1-2:17 3-4:20 5:2 6+:1 · unités 28, objet 8, structure 4
+Meilleurs : Le Théâtre Englouti [V3 l arrivée frappe] 58.3%, Le Théâtre Englouti [TH2 Errant rappels payants] 40.0% · Pires : Le Théâtre Englouti [V3 l arrivée frappe] 58.3%, Le Théâtre Englouti [TH2 Errant rappels payants] 40.0%
+Coup final (victoires) : combat 61.0%, tour 33.9% · soi-même 0.0 · Déraison subie 8.9 · main pauvre (≤1 carte ≤3) 0.0%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Pulcinella Gonflé (2) | 3 | 1.0 | 0.9 | 89.3% | 100.0% | 1.2 | 8 | 62 | 28 | 34 |
+| Le Régisseur des Profondeurs (7) | 1 | 0.3 | 0.3 | 93.9% | 100.0% | 1.4 | 4 | 69 | 42 | 27 |
+| Matelot du Sans-Nom (3) | 3 | 0.8 | 0.8 | 94.1% | 100.0% | 1.9 | 5 | 59 | 34 | 25 |
+| Les Coulisses Inondées (2) | 3 | 1.1 | 0.6 | 49.3% | 99.5% | 0.0 | 0 | 55 | 40 | 15 |
+| Arlequin Raccommodeur (2) | 3 | 0.9 | 0.8 | 90.2% | 100.0% | 1.6 | 2 | 54 | 43 | 10 |
+| La Prima Noyée (5) | 1 | 0.4 | 0.3 | 66.0% | 100.0% | 0.7 | 2 | 55 | 45 | 10 |
+| Arlecchino des Profondeurs (2) | 3 | 0.8 | 0.6 | 75.0% | 100.0% | 0.5 | 0 | 51 | 47 | 4 |
+| Le Régisseur Sans Visage (5) | 1 | 0.3 | 0.2 | 87.9% | 100.0% | 0.5 | 3 | 52 | 48 | 3 |
+| Changement de rôle ! (2) | 2 | 0.5 | 0.3 | 63.8% | 100.0% | 0.0 | 0 | 49 | 49 | -0 |
+| Le Masque Fendu (2) | 3 | 0.8 | 0.6 | 65.3% | 100.0% | 0.0 | 0 | 49 | 50 | -1 |
+| Il Capitano Naufragé (4) | 2 | 0.6 | 0.6 | 100.0% | 100.0% | 2.0 | 1 | 48 | 50 | -2 |
+| La Clochette du Rappel (3) | 3 | 0.8 | 0.3 | 40.8% | 97.7% | 0.0 | 0 | 46 | 53 | -7 |
+| Le Théâtre Englouti (4) | 1 | 0.2 | 0.1 | 36.8% | 100.0% | 0.0 | 0 | 41 | 50 | -9 |
+| Il Dottore des Noyés (4) | 2 | 0.6 | 0.5 | 84.8% | 100.0% | 0.7 | 1 | 43 | 54 | -10 |
+| Colombina aux Cent Visages (3) | 2 | 0.6 | 0.6 | 93.2% | 100.0% | 0.5 | 1 | 42 | 56 | -13 |
+| La Prima Noyée (3) | 3 | 0.8 | 0.6 | 73.6% | 99.2% | 1.0 | 5 | 44 | 57 | -13 |
+| Arlecchino, Celui derrière le Masque (4) | 1 | 0.2 | 0.2 | 93.1% | 100.0% | 0.4 | 1 | 38 | 53 | -15 |
+| Pantalone Sans-Sou (3) | 3 | 0.8 | 0.6 | 79.2% | 100.0% | 0.8 | 3 | 41 | 61 | -20 |
+
+### La Veillée [actuelle] — 45.8% (la-religieuse) · 1-2:23 3-4:16 5:1 6+:0 · unités 28, equipement 3, objet 6, structure 3
+Meilleurs : Le Théâtre Englouti [TH2 Errant rappels payants] 46.7%, Le Théâtre Englouti [V3 l arrivée frappe] 45.0% · Pires : Le Théâtre Englouti [TH2 Errant rappels payants] 46.7%, Le Théâtre Englouti [V3 l arrivée frappe] 45.0%
+Coup final (victoires) : tour 27.3%, effet 14.5%, combat 47.3% · soi-même 0.0 · Déraison subie 8.8 · main pauvre (≤1 carte ≤3) 0.0%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Papa est en mer (2) | 3 | 0.8 | 0.7 | 90.7% | 100.0% | 0.7 | 0 | 53 | 34 | 19 |
+| Cache-Cache (1) | 3 | 0.8 | 1.1 | 132.6% | 100.0% | 1.0 | 0 | 54 | 35 | 18 |
+| Maman revient (4) | 1 | 0.3 | 0.3 | 88.9% | 100.0% | 0.7 | 2 | 58 | 40 | 18 |
+| P'tit Bout (1) | 3 | 0.9 | 0.9 | 107.5% | 100.0% | 0.9 | 2 | 52 | 34 | 18 |
+| La Marelle (3) | 2 | 0.7 | 0.3 | 44.9% | 100.0% | 0.0 | 1 | 53 | 38 | 16 |
+| Le Copain du dessous (3) | 3 | 1.0 | 0.8 | 83.5% | 100.0% | 1.1 | 5 | 51 | 37 | 14 |
+| Maman revient (3) | 2 | 0.7 | 0.6 | 86.7% | 100.0% | 0.8 | 0 | 50 | 40 | 10 |
+| Tu viens jouer ? (4) | 2 | 0.7 | 0.6 | 84.3% | 100.0% | 1.4 | 3 | 49 | 40 | 9 |
+| On avait dit tous ensemble (5) | 1 | 0.2 | 0.2 | 96.6% | 100.0% | 0.7 | 1 | 48 | 45 | 3 |
+| Encore cinq minutes (2) | 3 | 0.9 | 0.8 | 91.3% | 100.0% | 1.3 | 11 | 46 | 45 | 1 |
+| La Petite Chanson (2) | 2 | 0.7 | 0.4 | 51.2% | 100.0% | 0.2 | 1 | 46 | 45 | 1 |
+| Promis, j'attends (2) | 2 | 0.7 | 0.6 | 86.5% | 100.0% | 1.1 | 1 | 46 | 46 | 0 |
+| Tu m'avais promis (3) | 2 | 0.6 | 0.6 | 96.0% | 100.0% | 1.0 | 2 | 45 | 47 | -2 |
+| Doudou (1) | 3 | 0.8 | 0.4 | 53.3% | 100.0% | 0.0 | 0 | 44 | 48 | -4 |
+| Le Goûter (2) | 3 | 1.0 | 0.6 | 57.9% | 100.0% | 0.3 | 0 | 44 | 49 | -4 |
+| Journal de Bord Détrempé (2) | 1 | 0.2 | 0.1 | 45.0% | 100.0% | 0.0 | 0 | 40 | 47 | -7 |
+| On rentre bientôt (3) | 3 | 0.8 | 0.5 | 62.2% | 100.0% | 0.8 | 5 | 40 | 54 | -14 |
+| Tout le monde à table (4) | 1 | 0.3 | 0.1 | 28.6% | 100.0% | 0.0 | 0 | 34 | 51 | -16 |
+
+### Le Théâtre Englouti [TH2 Errant rappels payants] — 45.3% (lerrant) · 1-2:17 3-4:20 5:2 6+:1 · unités 28, objet 8, structure 4
+Meilleurs : Épavistes [recyclage] 65.0%, Le Théâtre Englouti [V1 le rappel frappe] 60.0%, Le Théâtre Englouti [V2 + Théâtre qui tire] 60.0% · Pires : Chasse au Gros [blessures bon marché] 33.3%, Le Grand Banc [GB1 Pied marin sans Bavard] 21.7%, À bout de Raison [drain concentré] 20.0%
+Coup final (victoires) : combat 74.9%, tour 18.2%, navire 0.2% · soi-même 0.0 · Déraison subie 8.7 · main pauvre (≤1 carte ≤3) 0.0%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Le Régisseur des Profondeurs (7) | 1 | 0.3 | 0.2 | 84.6% | 99.4% | 1.3 | 24 | 59 | 41 | 18 |
+| Pulcinella Gonflé (2) | 3 | 1.1 | 1.0 | 87.7% | 88.1% | 1.1 | 28 | 51 | 35 | 17 |
+| Le Régisseur Sans Visage (5) | 1 | 0.3 | 0.2 | 87.9% | 100.0% | 0.6 | 26 | 53 | 42 | 11 |
+| Matelot du Sans-Nom (3) | 3 | 0.9 | 0.8 | 91.0% | 96.7% | 1.6 | 39 | 49 | 39 | 10 |
+| La Prima Noyée (5) | 1 | 0.4 | 0.3 | 68.4% | 100.0% | 0.7 | 20 | 51 | 42 | 9 |
+| Changement de rôle ! (2) | 2 | 0.5 | 0.4 | 67.6% | 100.0% | 0.0 | 0 | 47 | 44 | 4 |
+| Il Dottore des Noyés (4) | 2 | 0.6 | 0.5 | 80.1% | 99.2% | 0.7 | 19 | 47 | 44 | 4 |
+| Il Capitano Naufragé (4) | 2 | 0.7 | 0.6 | 96.3% | 93.2% | 1.8 | 37 | 46 | 44 | 2 |
+| Arlecchino, Celui derrière le Masque (4) | 1 | 0.3 | 0.2 | 90.3% | 100.0% | 0.5 | 10 | 46 | 45 | 1 |
+| Colombina aux Cent Visages (3) | 2 | 0.7 | 0.6 | 90.8% | 98.0% | 0.7 | 19 | 46 | 45 | 1 |
+| Arlequin Raccommodeur (2) | 3 | 1.0 | 0.9 | 88.0% | 87.9% | 1.2 | 32 | 46 | 45 | 1 |
+| La Prima Noyée (3) | 3 | 0.8 | 0.6 | 74.6% | 98.6% | 0.8 | 38 | 45 | 46 | -1 |
+| La Clochette du Rappel (3) | 3 | 0.8 | 0.4 | 44.6% | 98.5% | 0.0 | 0 | 44 | 47 | -3 |
+| Le Théâtre Englouti (4) | 1 | 0.2 | 0.0 | 25.4% | 98.8% | 0.0 | 0 | 42 | 46 | -4 |
+| Les Coulisses Inondées (2) | 3 | 1.1 | 0.6 | 48.3% | 96.7% | 0.0 | 0 | 44 | 48 | -4 |
+| Pantalone Sans-Sou (3) | 3 | 0.8 | 0.7 | 82.4% | 98.0% | 0.8 | 37 | 42 | 50 | -8 |
+| Arlecchino des Profondeurs (2) | 3 | 0.9 | 0.6 | 76.3% | 97.5% | 0.5 | 17 | 42 | 50 | -9 |
+| Le Masque Fendu (2) | 3 | 0.9 | 0.6 | 62.7% | 99.9% | 0.0 | 0 | 42 | 50 | -9 |
+
+### Le Théâtre Englouti [V3 l arrivée frappe] — 43.5% (lerrant) · 1-2:17 3-4:20 5:2 6+:1 · unités 28, objet 8, structure 4
+Meilleurs : Équipage de Verre [précon, étalon] 56.7%, Épavistes [recyclage] 55.0%, Mineurs de Fond [pièges qui tirent] 55.0% · Pires : À bout de Raison [drain concentré] 33.3%, Le Grand Banc [GB1 Pied marin sans Bavard] 26.7%, La Forteresse [F1 murs sans soins] 26.7%
+Coup final (victoires) : combat 74.1%, tour 17.8%, effet 0.7% · soi-même 0.0 · Déraison subie 8.6 · main pauvre (≤1 carte ≤3) 0.0%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Le Régisseur des Profondeurs (7) | 1 | 0.2 | 0.2 | 78.1% | 99.5% | 1.1 | 26 | 58 | 39 | 19 |
+| Pulcinella Gonflé (2) | 3 | 1.1 | 1.0 | 89.7% | 90.0% | 1.2 | 35 | 51 | 32 | 19 |
+| Matelot du Sans-Nom (3) | 3 | 0.9 | 0.8 | 89.6% | 94.7% | 1.5 | 41 | 51 | 32 | 19 |
+| Il Capitano Naufragé (4) | 2 | 0.6 | 0.6 | 94.8% | 94.7% | 1.6 | 25 | 51 | 36 | 15 |
+| Le Régisseur Sans Visage (5) | 1 | 0.3 | 0.3 | 91.7% | 99.4% | 0.8 | 18 | 52 | 40 | 13 |
+| Arlequin Raccommodeur (2) | 3 | 1.1 | 0.9 | 86.6% | 89.3% | 1.4 | 33 | 47 | 38 | 9 |
+| La Prima Noyée (5) | 1 | 0.4 | 0.3 | 67.9% | 99.4% | 0.5 | 12 | 49 | 40 | 9 |
+| Les Coulisses Inondées (2) | 3 | 1.1 | 0.6 | 49.7% | 97.7% | 0.0 | 1 | 45 | 40 | 5 |
+| Il Dottore des Noyés (4) | 2 | 0.5 | 0.5 | 82.0% | 98.8% | 0.7 | 20 | 46 | 42 | 4 |
+| La Prima Noyée (3) | 3 | 0.8 | 0.6 | 77.2% | 99.1% | 0.8 | 49 | 43 | 45 | -2 |
+| Arlecchino, Celui derrière le Masque (4) | 1 | 0.3 | 0.2 | 86.6% | 96.8% | 0.4 | 11 | 40 | 45 | -5 |
+| Changement de rôle ! (2) | 2 | 0.6 | 0.4 | 72.0% | 99.9% | 0.0 | 0 | 40 | 46 | -6 |
+| Le Théâtre Englouti (4) | 1 | 0.2 | 0.1 | 34.2% | 99.6% | 0.0 | 0 | 38 | 45 | -6 |
+| Colombina aux Cent Visages (3) | 2 | 0.6 | 0.5 | 91.0% | 98.8% | 0.7 | 16 | 39 | 46 | -7 |
+| La Clochette du Rappel (3) | 3 | 0.8 | 0.4 | 45.6% | 98.8% | 0.0 | 1 | 40 | 48 | -8 |
+| Arlecchino des Profondeurs (2) | 3 | 0.9 | 0.6 | 73.8% | 96.6% | 0.6 | 15 | 39 | 50 | -11 |
+| Le Masque Fendu (2) | 3 | 0.9 | 0.6 | 60.8% | 99.9% | 0.0 | 0 | 39 | 51 | -12 |
+| Pantalone Sans-Sou (3) | 3 | 0.8 | 0.7 | 85.9% | 98.4% | 0.9 | 29 | 37 | 52 | -15 |
+
+### Après la Tempête [balai qui rapporte] — 43.3% (le-courlis) · 1-2:6 3-4:20 5:9 6+:5 · anomalie 6, objet 9, unités 25
+Meilleurs : Le Théâtre Englouti [V3 l arrivée frappe] 46.7%, Le Théâtre Englouti [TH2 Errant rappels payants] 40.0% · Pires : Le Théâtre Englouti [V3 l arrivée frappe] 46.7%, Le Théâtre Englouti [TH2 Errant rappels payants] 40.0%
+Coup final (victoires) : combat 78.8%, tour 5.8% · soi-même 0.0 · Déraison subie 16.9 · main pauvre (≤1 carte ≤3) 15.0%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Maître Verrier (4) | 2 | 0.5 | 0.4 | 67.7% | 100.0% | 0.8 | 3 | 51 | 37 | 14 |
+| Crabe de Fer (3) | 3 | 0.7 | 0.7 | 92.1% | 97.0% | 1.0 | 3 | 49 | 35 | 14 |
+| L'Amiral sans Pavillon (7) | 1 | 0.3 | 0.3 | 86.1% | 100.0% | 2.0 | 5 | 53 | 39 | 13 |
+| Coup de Harpon (4) | 2 | 0.6 | 0.5 | 81.4% | 100.0% | 0.0 | 0 | 50 | 37 | 13 |
+| Chose des Hauts-Fonds (4) | 3 | 0.8 | 0.8 | 93.8% | 100.0% | 1.5 | 1 | 48 | 36 | 12 |
+| Trousse du Bord (4) | 1 | 0.2 | 0.0 | 10.5% | 98.3% | 0.0 | 0 | 53 | 42 | 11 |
+| Faire l'Inventaire (2) | 3 | 0.8 | 0.4 | 53.8% | 100.0% | 0.0 | 0 | 46 | 40 | 7 |
+| Chirurgien du Bord (5) | 2 | 0.7 | 0.2 | 32.9% | 100.0% | 0.3 | 0 | 45 | 41 | 5 |
+| Baleine aux Cicatrices Blanches (5) | 3 | 0.8 | 0.6 | 79.8% | 100.0% | 2.6 | 11 | 45 | 41 | 3 |
+| Le Brise-Ligne (6) | 1 | 0.3 | 0.2 | 52.6% | 100.0% | 0.4 | 2 | 45 | 43 | 2 |
+| Vieux Harponneur (5) | 2 | 0.5 | 0.5 | 92.1% | 100.0% | 1.9 | 6 | 43 | 44 | -0 |
+| Le Large se Fâche (6) | 1 | 0.3 | 0.1 | 42.9% | 100.0% | 0.0 | 0 | 43 | 44 | -1 |
+| Carape Hus (3) | 3 | 0.9 | 0.8 | 94.3% | 100.0% | 1.4 | 6 | 43 | 44 | -1 |
+| Un Peu de Répit (3) | 3 | 0.8 | 0.2 | 26.3% | 99.6% | 0.0 | 0 | 43 | 44 | -2 |
+| Le Pont est Plein ! (3) | 2 | 0.5 | 0.2 | 40.0% | 99.3% | 0.0 | 0 | 40 | 47 | -7 |
+| Vigie aux Fissures (2) | 3 | 0.8 | 0.4 | 55.8% | 99.4% | 0.5 | 0 | 40 | 48 | -8 |
+| Dernier Jour en Mer (7) | 1 | 0.2 | 0.2 | 88.9% | 100.0% | 0.0 | 0 | 37 | 45 | -8 |
+| Léviathan Balafré (8) | 1 | 0.3 | 0.2 | 60.5% | 100.0% | 1.1 | 4 | 37 | 46 | -9 |
+| Matelot du Sans-Nom (3) | 1 | 0.2 | 0.1 | 76.2% | 100.0% | 0.3 | 0 | 33 | 45 | -12 |
+| Vague Scélérate (5) | 2 | 0.5 | 0.2 | 48.3% | 100.0% | 0.0 | 0 | 28 | 54 | -26 |
+
+### Équipage de Verre [précon, étalon] — 41.7% (la-verriere) · 1-2:18 3-4:14 5:5 6+:3 · unités 30, objet 7, equipement 1, structure 1, anomalie 1
+Meilleurs : Le Théâtre Englouti [TH2 Errant rappels payants] 43.3%, Le Théâtre Englouti [V3 l arrivée frappe] 40.0% · Pires : Le Théâtre Englouti [TH2 Errant rappels payants] 43.3%, Le Théâtre Englouti [V3 l arrivée frappe] 40.0%
+Coup final (victoires) : combat 82.0%, tour 12.0%, navire 6.0% · soi-même 0.0 · Déraison subie 11.2 · main pauvre (≤1 carte ≤3) 3.3%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| L'Amiral sans Pavillon (7) | 1 | 0.3 | 0.2 | 84.4% | 100.0% | 1.4 | 2 | 69 | 32 | 37 |
+| Coup de Harpon (4) | 2 | 0.4 | 0.3 | 74.5% | 100.0% | 0.0 | 0 | 63 | 30 | 33 |
+| Éclaireur Ébréché (1) | 3 | 0.8 | 0.7 | 95.6% | 100.0% | 0.8 | 0 | 49 | 30 | 18 |
+| Bretteuse au Bord (4) | 3 | 0.7 | 0.7 | 89.7% | 100.0% | 2.2 | 4 | 47 | 34 | 13 |
+| Matelot Fêlé (1) | 3 | 0.6 | 0.6 | 96.1% | 100.0% | 0.9 | 3 | 48 | 35 | 13 |
+| Trinquer Trop Fort (2) | 1 | 0.2 | 0.1 | 28.6% | 100.0% | 0.0 | 0 | 48 | 40 | 7 |
+| Éclat de Bouteille (1) | 2 | 0.5 | 0.3 | 65.5% | 100.0% | 0.0 | 0 | 46 | 39 | 7 |
+| Porte-Éclats (3) | 2 | 0.4 | 0.3 | 69.6% | 100.0% | 0.2 | 3 | 45 | 40 | 5 |
+| La Grande Fissure (5) | 2 | 0.6 | 0.5 | 83.1% | 100.0% | 1.9 | 7 | 44 | 39 | 5 |
+| Bouclier Fendu (2) | 1 | 0.3 | 0.1 | 36.6% | 100.0% | 0.0 | 0 | 41 | 42 | -0 |
+| Maître Verrier (4) | 2 | 0.5 | 0.3 | 62.9% | 100.0% | 0.5 | 3 | 39 | 44 | -5 |
+| Le Brise-Ligne (6) | 2 | 0.5 | 0.3 | 55.0% | 100.0% | 0.6 | 1 | 38 | 44 | -6 |
+| Canonnier Fêlé (3) | 2 | 0.6 | 0.6 | 98.6% | 100.0% | 1.4 | 3 | 38 | 46 | -9 |
+| Polisseuse des Fêlures (3) | 2 | 0.6 | 0.5 | 80.9% | 100.0% | 0.9 | 9 | 37 | 47 | -9 |
+| Pont de Verre (3) | 1 | 0.3 | 0.0 | 6.7% | 100.0% | 0.0 | 0 | 33 | 44 | -11 |
+| Verrier de Pont (2) | 2 | 0.5 | 0.5 | 96.7% | 100.0% | 1.4 | 6 | 32 | 49 | -17 |
+| Chirurgien du Bord (5) | 2 | 0.4 | 0.1 | 19.1% | 100.0% | 0.1 | 0 | 31 | 48 | -17 |
+| Duelliste de Verre (2) | 2 | 0.4 | 0.4 | 88.0% | 100.0% | 0.7 | 0 | 30 | 49 | -18 |
+| Encore Debout ? (2) | 1 | 0.2 | 0.1 | 26.9% | 100.0% | 0.0 | 0 | 27 | 46 | -19 |
+| Vigie aux Fissures (2) | 2 | 0.4 | 0.2 | 58.0% | 100.0% | 0.3 | 0 | 28 | 50 | -22 |
+| Jusqu'à ce que ça casse (5) | 1 | 0.1 | 0.0 | 0.0% | 100.0% | 0.0 | 0 | 17 | 44 | -28 |
+| Bandages Humides (2) | 1 | 0.3 | 0.1 | 28.1% | 100.0% | 0.0 | 0 | 19 | 50 | -31 |
+
+### Épavistes [recyclage] — 39.2% (le-goliath) · 1-2:19 3-4:18 5:3 6+:0 · structure 10, objet 6, equipement 2, unités 22
+Meilleurs : Le Théâtre Englouti [V3 l arrivée frappe] 45.0%, Le Théâtre Englouti [TH2 Errant rappels payants] 33.3% · Pires : Le Théâtre Englouti [V3 l arrivée frappe] 45.0%, Le Théâtre Englouti [TH2 Errant rappels payants] 33.3%
+Coup final (victoires) : navire 10.6%, combat 63.8%, tour 21.3% · soi-même 0.0 · Déraison subie 8.4 · main pauvre (≤1 carte ≤3) 0.0%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Chose des Hauts-Fonds (4) | 3 | 0.8 | 0.8 | 93.9% | 100.0% | 1.5 | 6 | 48 | 26 | 22 |
+| Crabe de Fer (3) | 3 | 0.9 | 0.8 | 94.4% | 100.0% | 0.8 | 1 | 45 | 26 | 19 |
+| Matelot du Sans-Nom (3) | 3 | 0.9 | 0.8 | 94.3% | 100.0% | 2.0 | 6 | 44 | 29 | 15 |
+| Bernard-l'Ermite d'Acier (1) | 3 | 0.8 | 0.8 | 94.0% | 83.3% | 1.3 | 1 | 44 | 31 | 13 |
+| Caisse des Dernières Planches (4) | 1 | 0.3 | 0.1 | 42.4% | 100.0% | 0.0 | 0 | 48 | 36 | 13 |
+| Baleine aux Cicatrices Blanches (5) | 3 | 0.7 | 0.6 | 93.9% | 100.0% | 2.6 | 8 | 43 | 34 | 9 |
+| Caisses Arrimées (1) | 3 | 0.8 | 0.9 | 103.0% | 87.5% | 0.0 | 0 | 41 | 36 | 6 |
+| Charpentière de Veille (2) | 2 | 0.7 | 0.5 | 76.8% | 100.0% | 0.6 | 4 | 41 | 37 | 5 |
+| Treuil Rouillé (1) | 2 | 0.6 | 0.2 | 31.4% | 88.7% | 0.0 | 0 | 39 | 39 | 0 |
+| Plongeur des Épaves (2) | 2 | 0.5 | 0.5 | 90.8% | 100.0% | 0.4 | 0 | 39 | 39 | 0 |
+| Radeau de Fortune (1) | 2 | 0.6 | 0.5 | 83.6% | 97.6% | 0.0 | 0 | 38 | 40 | -2 |
+| Grappin de Récupération (2) | 2 | 0.4 | 0.2 | 51.0% | 100.0% | 0.0 | 0 | 35 | 42 | -8 |
+| Caisse des Dernières Planches (3) | 2 | 0.5 | 0.3 | 54.2% | 100.0% | 0.0 | 0 | 35 | 43 | -9 |
+| Levier de Lest (1) | 3 | 0.9 | 0.7 | 82.9% | 99.1% | 0.0 | 0 | 36 | 45 | -9 |
+| Clous de Récupération (3) | 1 | 0.2 | 0.0 | 10.3% | 97.9% | 0.0 | 0 | 31 | 42 | -11 |
+| Cage de Flottaison (3) | 2 | 0.5 | 0.2 | 47.5% | 100.0% | 0.0 | 0 | 31 | 45 | -14 |
+| Charpentier des Épaves (3) | 3 | 0.9 | 0.8 | 88.3% | 100.0% | 1.0 | 4 | 33 | 51 | -18 |
+
+## Diagnostic du pilote (01/10/2026)
+Sur 1 939 décisions du Théâtre, un rappel est possible dans 990 ; le meilleur rappel est noté en médiane 11 points sous le meilleur coup (rejeu compris).
+En Phase principale 2, le bot est presque toujours en Déraison (−1 à −4 Raison) : pas de quoi rappeler ET rejouer.
+Un supplément d'évaluation (carte rappelée rejouable ≈ sa valeur en jeu) n'a rien changé (1,03 → 1,05 rappel par partie) : retiré.
+
+## V4 (rappel qui rembourse 2 Raison) contre la liste actuelle
+
+# Labo — 2100 parties, bot moyen, 60 par paire, 147 s
+
+## Classement
+
+| Deck | WR | 1er | durée | dégâts/partie (combat·effet·navire·tour) | soin | unités+invoc | Raison laissée | dette | inactif≥2 T1-4 | main sans ≤2 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Le Grand Banc [GB1 Pied marin sans Bavard] | **78.3%** | 85.0% | 4.8 | 17.7·0.0·0.1·3.3 | 0.0 | 6.5+4.2 | 0.4 | 1.9 | 0.0% | 0.0% |
+| À bout de Raison [drain concentré] | **65.8%** | 86.7% | 4.4 | 15.8·0.0·0.2·2.8 | 0.0 | 6.6+0.0 | 0.1 | 2.1 | 0.0% | 7.5% |
+| Chasse au Gros [blessures bon marché] | **63.3%** | 80.0% | 4.6 | 14.8·0.0·0.8·3.0 | 0.0 | 5.1+0.0 | 0.0 | 2.9 | 0.0% | 8.3% |
+| La Forteresse [F1 murs sans soins] | **61.7%** | 61.7% | 6.6 | 14.1·0.1·0.2·4.7 | 0.8 | 5.0+0.0 | 0.4 | 1.8 | 0.8% | 13.3% |
+| Descente aux Abysses [descendre et rester] | **60.0%** | 76.7% | 4.6 | 14.6·0.0·0.2·3.3 | 0.0 | 7.2+0.0 | 0.1 | 1.8 | 0.0% | 24.2% |
+| Arsenal de Pont [Bris payant] | **58.3%** | 56.7% | 5.8 | 12.0·0.0·2.8·4.2 | 1.2 | 4.6+0.0 | 0.5 | 1.3 | 0.0% | 1.7% |
+| Chevaliers du Grand Étang [CH1 Seau au lieu de Tournoi/Fourchette] | **53.3%** | 55.0% | 4.5 | 16.2·0.0·0.1·3.0 | 0.3 | 6.1+2.0 | 0.5 | 1.4 | 2.5% | 0.0% |
+| Mineurs de Fond [pièges qui tirent] | **52.5%** | 53.3% | 5.8 | 12.3·0.0·0.2·4.4 | 1.6 | 5.3+0.0 | 0.3 | 1.6 | 0.0% | 1.7% |
+| Le Théâtre Englouti [V3 l arrivée frappe] | **51.7%** | 60.0% | 4.7 | 13.8·0.1·0.1·3.3 | 0.3 | 7.1+0.0 | 0.1 | 1.9 | 0.0% | 5.0% |
+| Sentinelles Chromatiques [SC1 Courlis 4 Slots] | **50.8%** | 65.0% | 5.2 | 16.8·0.0·0.1·0.2 | 0.0 | 5.4+2.8 | 1.7 | 2.0 | 8.3% | 1.7% |
+| Cavalerie [peu mais lourdes] | **50.0%** | 70.0% | 4.0 | 15.2·0.0·0.3·2.1 | 1.0 | 5.1+0.0 | 0.0 | 3.7 | 0.0% | 10.0% |
+| Le Théâtre Englouti [V1 le rappel frappe] | **50.0%** | 58.3% | 4.7 | 13.9·0.0·0.1·3.3 | 0.3 | 7.0+0.0 | 0.1 | 1.9 | 0.0% | 5.0% |
+| Le Théâtre Englouti [V2 + Théâtre qui tire] | **50.0%** | 58.3% | 4.6 | 13.8·0.0·0.1·3.2 | 0.3 | 7.0+0.0 | 0.1 | 1.9 | 0.0% | 5.0% |
+| Le Théâtre Englouti [TH2 Errant rappels payants] | **46.1%** | 55.6% | 4.8 | 12.5·0.0·0.1·2.5 | 0.3 | 7.2+0.0 | 0.2 | 1.8 | 0.1% | 5.2% |
+| Le Théâtre Englouti [V4 le rappel rembourse] | **45.4%** | 54.4% | 4.9 | 12.3·0.0·0.1·2.6 | 0.3 | 7.6+0.0 | 0.3 | 1.6 | 0.3% | 3.3% |
+| La Veillée [actuelle] | **44.2%** | 58.3% | 4.9 | 12.2·0.9·0.1·3.6 | 4.3 | 7.7+0.0 | 0.0 | 2.7 | 0.0% | 0.0% |
+| Après la Tempête [balai qui rapporte] | **40.8%** | 51.7% | 4.8 | 13.9·0.0·0.3·0.4 | 0.3 | 5.2+0.0 | 0.1 | 3.3 | 0.0% | 39.2% |
+| Épavistes [recyclage] | **39.2%** | 40.0% | 5.3 | 10.5·0.0·0.8·3.9 | 3.6 | 5.7+0.0 | 0.1 | 1.7 | 0.0% | 0.8% |
+| Équipage de Verre [précon, étalon] | **37.5%** | 53.3% | 4.2 | 13.0·0.0·1.0·2.4 | 0.0 | 5.7+0.0 | 0.0 | 2.7 | 0.0% | 1.7% |
+
+## Matrice (ligne contre colonne)
+
+| | Le Grand B | À bout de  | Chasse au  | La Fortere | Descente a | Arsenal de | Chevaliers | Mineurs de | Le Théâtre | Sentinelle | Cavalerie  | Le Théâtre | Le Théâtre | Le Théâtre | Le Théâtre | La Veillée | Après la T | Épavistes  | Équipage d |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Le Grand Banc [GB1 | · |  |  |  |  |  |  |  |  |  |  |  |  | 78 | 78 |  |  |  |  |
+| À bout de Raison [ |  | · |  |  |  |  |  |  |  |  |  |  |  | 65 | 67 |  |  |  |  |
+| Chasse au Gros [bl |  |  | · |  |  |  |  |  |  |  |  |  |  | 63 | 63 |  |  |  |  |
+| La Forteresse [F1  |  |  |  | · |  |  |  |  |  |  |  |  |  | 65 | 58 |  |  |  |  |
+| Descente aux Abyss |  |  |  |  | · |  |  |  |  |  |  |  |  | 62 | 58 |  |  |  |  |
+| Arsenal de Pont [B |  |  |  |  |  | · |  |  |  |  |  |  |  | 60 | 57 |  |  |  |  |
+| Chevaliers du Gran |  |  |  |  |  |  | · |  |  |  |  |  |  | 55 | 52 |  |  |  |  |
+| Mineurs de Fond [p |  |  |  |  |  |  |  | · |  |  |  |  |  | 60 | 45 |  |  |  |  |
+| Le Théâtre Englout |  |  |  |  |  |  |  |  | · |  |  |  |  | 45 | 58 |  |  |  |  |
+| Sentinelles Chroma |  |  |  |  |  |  |  |  |  | · |  |  |  | 53 | 48 |  |  |  |  |
+| Cavalerie [peu mai |  |  |  |  |  |  |  |  |  |  | · |  |  | 50 | 50 |  |  |  |  |
+| Le Théâtre Englout |  |  |  |  |  |  |  |  |  |  |  | · |  | 40 | 60 |  |  |  |  |
+| Le Théâtre Englout |  |  |  |  |  |  |  |  |  |  |  |  | · | 40 | 60 |  |  |  |  |
+| Le Théâtre Englout | 22 | 20 | 33 | 35 | 38 | 40 | 45 | 40 | 55 | 45 | 50 | 60 | 60 | · | 60 | 50 | 57 | 65 | 55 |
+| Le Théâtre Englout | 22 | 32 | 37 | 42 | 40 | 43 | 48 | 55 | 42 | 52 | 50 | 40 | 40 | 40 | · | 57 | 55 | 55 | 68 |
+| La Veillée [actuel |  |  |  |  |  |  |  |  |  |  |  |  |  | 47 | 42 | · |  |  |  |
+| Après la Tempête [ |  |  |  |  |  |  |  |  |  |  |  |  |  | 40 | 42 |  | · |  |  |
+| Épavistes [recycla |  |  |  |  |  |  |  |  |  |  |  |  |  | 33 | 45 |  |  | · |  |
+| Équipage de Verre  |  |  |  |  |  |  |  |  |  |  |  |  |  | 43 | 32 |  |  |  | · |
+
+### Le Grand Banc [GB1 Pied marin sans Bavard] — 78.3% (le-brise-lames) · 1-2:25 3-4:13 5:2 6+:0 · unités 29, structure 2, objet 5, anomalie 4
+Meilleurs : Le Théâtre Englouti [TH2 Errant rappels payants] 78.3%, Le Théâtre Englouti [V4 le rappel rembourse] 78.3% · Pires : Le Théâtre Englouti [TH2 Errant rappels payants] 78.3%, Le Théâtre Englouti [V4 le rappel rembourse] 78.3%
+Coup final (victoires) : combat 66.0%, tour 29.8% · soi-même 0.0 · Déraison subie 8.7 · main pauvre (≤1 carte ≤3) 0.0%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Roi Cra-Poiscail (5) | 1 | 0.1 | 0.1 | 100.0% | 100.0% | 0.4 | 1 | 100 | 75 | 25 |
+| Le Seau (2) | 3 | 0.8 | 0.7 | 95.7% | 85.7% | 0.0 | 0 | 85 | 69 | 16 |
+| Cra-Poiscail Grand-Gueule (2) | 1 | 0.2 | 0.2 | 100.0% | 100.0% | 0.3 | 0 | 89 | 75 | 14 |
+| P'tite Fesse (1) | 3 | 0.7 | 0.6 | 91.7% | 90.6% | 1.1 | 2 | 82 | 74 | 9 |
+| Cra-Poiscail des Hautes-Eaux (2) | 3 | 0.8 | 0.6 | 69.7% | 100.0% | 1.3 | 10 | 81 | 73 | 8 |
+| Cra-Poiscail Messager (1) | 3 | 0.8 | 0.7 | 88.9% | 98.7% | 2.0 | 3 | 81 | 74 | 7 |
+| Le Trône de Bouchon (3) | 2 | 0.5 | 0.4 | 90.7% | 94.5% | 0.0 | 0 | 82 | 76 | 6 |
+| Faire l'Inventaire (2) | 2 | 0.5 | 0.3 | 69.5% | 95.7% | 0.0 | 0 | 78 | 79 | -1 |
+| Cra-Poiscail Chef de Banc (3) | 3 | 0.9 | 0.8 | 92.2% | 98.6% | 1.0 | 2 | 78 | 79 | -1 |
+| Le Grand Saut (5) | 1 | 0.2 | 0.2 | 92.9% | 100.0% | 0.0 | 0 | 75 | 79 | -4 |
+| Cra-Poiscail Sauteur (2) | 3 | 0.7 | 0.6 | 85.9% | 92.3% | 0.6 | 5 | 76 | 81 | -5 |
+| P'tite Fesse, Grand Rêve (2) | 2 | 0.6 | 0.5 | 78.1% | 100.0% | 0.7 | 2 | 76 | 81 | -6 |
+| Fesses en Avant ! (3) | 3 | 0.8 | 0.7 | 80.4% | 96.7% | 0.0 | 0 | 75 | 84 | -8 |
+| Banc de Cra-Poiscail (3) | 3 | 0.7 | 0.7 | 92.9% | 99.2% | 1.3 | 4 | 73 | 84 | -10 |
+| Cra-Poiscail Ramasseur (2) | 3 | 0.7 | 0.7 | 94.3% | 81.8% | 0.6 | 2 | 74 | 85 | -11 |
+| Têtard-Fesse (1) | 2 | 0.6 | 0.6 | 97.3% | 100.0% | 0.6 | 1 | 72 | 86 | -14 |
+| Cra-Poiscail Porte-Étendard (3) | 2 | 0.6 | 0.6 | 91.7% | 100.0% | 0.4 | 6 | 68 | 92 | -25 |
+
+### À bout de Raison [drain concentré] — 65.8% (lerrant) · 1-2:13 3-4:25 5:2 6+:0 · unités 31, structure 7, anomalie 2
+Meilleurs : Le Théâtre Englouti [V4 le rappel rembourse] 66.7%, Le Théâtre Englouti [TH2 Errant rappels payants] 65.0% · Pires : Le Théâtre Englouti [V4 le rappel rembourse] 66.7%, Le Théâtre Englouti [TH2 Errant rappels payants] 65.0%
+Coup final (victoires) : combat 75.9%, tour 21.5%, navire 1.3% · soi-même 0.0 · Déraison subie 8.7 · main pauvre (≤1 carte ≤3) 0.0%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Marin aux Yeux Rouges (3) | 3 | 0.7 | 0.7 | 95.1% | 100.0% | 2.1 | 7 | 77 | 54 | 23 |
+| Requin Balafré (3) | 2 | 0.5 | 0.4 | 96.3% | 100.0% | 0.5 | 0 | 77 | 58 | 19 |
+| Baleine aux Cicatrices Blanches (5) | 2 | 0.6 | 0.5 | 82.9% | 100.0% | 2.9 | 7 | 71 | 60 | 12 |
+| Vieux Loup de Mer (3) | 2 | 0.5 | 0.3 | 61.7% | 98.9% | 0.3 | 4 | 69 | 63 | 6 |
+| Marin aux Yeux Rouges (2) | 3 | 0.8 | 0.7 | 89.4% | 90.9% | 1.2 | 9 | 68 | 63 | 5 |
+| Matelot du Sans-Nom (3) | 3 | 0.7 | 0.7 | 93.1% | 96.2% | 1.6 | 6 | 68 | 63 | 5 |
+| Capitaine Sans Sommeil (4) | 2 | 0.6 | 0.6 | 85.7% | 98.3% | 1.5 | 9 | 68 | 64 | 4 |
+| Anguille des Profondeurs (3) | 3 | 0.7 | 0.4 | 57.7% | 100.0% | 0.5 | 2 | 64 | 68 | -4 |
+| Si, Raie Ponce (4) | 3 | 0.8 | 0.6 | 85.6% | 100.0% | 1.6 | 4 | 64 | 69 | -5 |
+| Matelot Insomniaque (2) | 3 | 0.8 | 0.7 | 96.7% | 100.0% | 2.5 | 8 | 64 | 69 | -5 |
+| Par-dessus Bord ! (3) | 2 | 0.6 | 0.6 | 94.4% | 100.0% | 0.0 | 0 | 61 | 71 | -9 |
+| Chaîne de Travers (2) | 2 | 0.3 | 0.1 | 29.3% | 100.0% | 0.0 | 0 | 59 | 69 | -10 |
+| Murène Aveugle (2) | 3 | 0.8 | 0.7 | 84.9% | 97.1% | 0.6 | 1 | 61 | 74 | -13 |
+| Ponton aux Cloches (3) | 3 | 0.8 | 0.2 | 21.4% | 99.1% | 0.0 | 0 | 60 | 74 | -14 |
+| Capitaine du Dernier Retour (4) | 2 | 0.5 | 0.4 | 78.6% | 100.0% | 0.5 | 3 | 57 | 72 | -16 |
+| Le Rôle d'Équipage (2) | 2 | 0.4 | 0.2 | 50.0% | 100.0% | 0.0 | 0 | 50 | 75 | -25 |
+
+### Chasse au Gros [blessures bon marché] — 63.3% (le-goliath) · 1-2:12 3-4:22 5:5 6+:1 · unités 25, objet 12, anomalie 3
+Meilleurs : Le Théâtre Englouti [TH2 Errant rappels payants] 63.3%, Le Théâtre Englouti [V4 le rappel rembourse] 63.3% · Pires : Le Théâtre Englouti [TH2 Errant rappels payants] 63.3%, Le Théâtre Englouti [V4 le rappel rembourse] 63.3%
+Coup final (victoires) : combat 75.0%, navire 3.9%, tour 19.7% · soi-même 1.7 · Déraison subie 13.5 · main pauvre (≤1 carte ≤3) 1.7%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Harpon à Ressort (4) | 2 | 0.6 | 0.2 | 41.8% | 100.0% | 0.0 | 0 | 78 | 49 | 29 |
+| Éclat de Bouteille (1) | 3 | 0.8 | 0.7 | 86.7% | 100.0% | 0.0 | 0 | 75 | 47 | 28 |
+| Crabe de Fer (3) | 3 | 0.7 | 0.7 | 96.3% | 100.0% | 1.4 | 4 | 73 | 52 | 21 |
+| Coup de Harpon (4) | 3 | 0.7 | 0.5 | 68.2% | 100.0% | 0.0 | 0 | 73 | 53 | 19 |
+| Canonnier Fêlé (3) | 3 | 0.6 | 0.6 | 97.4% | 100.0% | 2.8 | 6 | 71 | 56 | 14 |
+| Trinquer Trop Fort (2) | 2 | 0.5 | 0.3 | 48.4% | 100.0% | 0.0 | 0 | 68 | 58 | 10 |
+| Poisson aux Dents de Verre (2) | 2 | 0.5 | 0.4 | 76.8% | 100.0% | 0.8 | 1 | 67 | 61 | 5 |
+| L'Amiral sans Pavillon (7) | 1 | 0.3 | 0.2 | 93.3% | 100.0% | 1.5 | 5 | 67 | 62 | 4 |
+| Chose des Hauts-Fonds (4) | 2 | 0.6 | 0.6 | 98.5% | 100.0% | 1.2 | 0 | 65 | 61 | 4 |
+| Par-dessus Bord ! (3) | 2 | 0.4 | 0.4 | 100.0% | 100.0% | 0.0 | 0 | 63 | 64 | -1 |
+| Guetteur Méfiant (2) | 3 | 0.8 | 0.8 | 98.9% | 100.0% | 1.6 | 11 | 61 | 67 | -5 |
+| Ce Qui Suit le Navire (4) | 3 | 0.9 | 0.5 | 58.3% | 100.0% | 1.5 | 7 | 60 | 70 | -10 |
+| Encore Debout ? (2) | 2 | 0.5 | 0.3 | 60.0% | 100.0% | 0.0 | 0 | 58 | 68 | -10 |
+| Qu'on en Finisse (5) | 1 | 0.2 | 0.0 | 17.4% | 100.0% | 0.0 | 0 | 52 | 66 | -14 |
+| Harponneur du Dernier Quai (3) | 2 | 0.4 | 0.3 | 80.4% | 100.0% | 0.7 | 5 | 55 | 68 | -14 |
+| Baleine aux Cicatrices Blanches (5) | 2 | 0.4 | 0.3 | 66.0% | 100.0% | 1.2 | 6 | 54 | 69 | -15 |
+| Vieux Harponneur (5) | 2 | 0.6 | 0.5 | 84.1% | 100.0% | 1.3 | 7 | 53 | 76 | -23 |
+| Matelot du Sans-Nom (3) | 2 | 0.4 | 0.4 | 88.5% | 100.0% | 0.9 | 5 | 46 | 75 | -29 |
+
+### La Forteresse [F1 murs sans soins] — 61.7% (le-brise-lames) · 1-2:11 3-4:26 5:0 6+:3 · unités 18, structure 18, objet 4
+Meilleurs : Le Théâtre Englouti [TH2 Errant rappels payants] 65.0%, Le Théâtre Englouti [V4 le rappel rembourse] 58.3% · Pires : Le Théâtre Englouti [TH2 Errant rappels payants] 65.0%, Le Théâtre Englouti [V4 le rappel rembourse] 58.3%
+Coup final (victoires) : combat 63.5%, tour 29.7% · soi-même 1.0 · Déraison subie 12.6 · main pauvre (≤1 carte ≤3) 0.8%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Chose des Hauts-Fonds (4) | 3 | 0.8 | 0.8 | 93.9% | 97.1% | 2.3 | 6 | 69 | 50 | 19 |
+| Harpon à Ressort (4) | 2 | 0.6 | 0.4 | 65.8% | 97.2% | 0.0 | 0 | 71 | 52 | 19 |
+| L'Amiral sans Pavillon (7) | 1 | 0.2 | 0.2 | 100.0% | 100.0% | 1.4 | 9 | 74 | 59 | 15 |
+| Le Dernier Rempart (6) | 2 | 0.6 | 0.6 | 95.8% | 100.0% | 3.2 | 8 | 68 | 55 | 13 |
+| Crabe de Fer (3) | 3 | 0.9 | 0.9 | 97.3% | 98.4% | 1.7 | 5 | 65 | 55 | 11 |
+| Cormoran de Fer (3) | 3 | 0.9 | 0.8 | 96.2% | 97.9% | 2.1 | 4 | 62 | 61 | 1 |
+| Carape Hus (3) | 3 | 0.9 | 0.9 | 97.3% | 100.0% | 2.1 | 14 | 62 | 62 | -0 |
+| Mouette du Brise-Lames (2) | 3 | 0.8 | 0.8 | 100.0% | 0.0% | 1.2 | 1 | 60 | 64 | -4 |
+| Cylindre flottant (2) | 2 | 0.5 | 0.3 | 69.1% | 98.6% | 0.0 | 0 | 58 | 64 | -6 |
+| Brise-Vague de Fortune (2) | 3 | 0.9 | 0.8 | 86.2% | 99.4% | 0.0 | 0 | 60 | 66 | -6 |
+| Carcasse Renversée (3) | 2 | 0.7 | 0.6 | 90.0% | 100.0% | 0.0 | 0 | 58 | 67 | -9 |
+| Signal de Détresse (4) | 2 | 0.6 | 0.4 | 71.4% | 93.3% | 0.0 | 0 | 56 | 67 | -11 |
+| Caisses Arrimées (1) | 1 | 0.3 | 0.3 | 100.0% | 100.0% | 0.0 | 0 | 53 | 64 | -11 |
+| Barge de Réparation (3) | 2 | 0.6 | 0.5 | 81.8% | 100.0% | 0.0 | 0 | 56 | 67 | -11 |
+| Cloison Étanche (2) | 2 | 0.6 | 0.6 | 93.4% | 98.7% | 0.0 | 0 | 54 | 69 | -15 |
+| Cage de Flottaison (3) | 2 | 0.6 | 0.5 | 84.3% | 100.0% | 0.0 | 0 | 51 | 72 | -21 |
+| Dernière Barricade (3) | 2 | 0.6 | 0.3 | 50.0% | 98.8% | 0.0 | 0 | 49 | 74 | -25 |
+| Cale Inondable (3) | 2 | 0.6 | 0.3 | 57.1% | 100.0% | 0.0 | 0 | 42 | 82 | -40 |
+
+### Descente aux Abysses [descendre et rester] — 60.0% (lerrant) · 1-2:8 3-4:30 5:2 6+:0 · equipement 3, unités 37
+Meilleurs : Le Théâtre Englouti [TH2 Errant rappels payants] 61.7%, Le Théâtre Englouti [V4 le rappel rembourse] 58.3% · Pires : Le Théâtre Englouti [TH2 Errant rappels payants] 61.7%, Le Théâtre Englouti [V4 le rappel rembourse] 58.3%
+Coup final (victoires) : combat 79.2%, tour 16.7% · soi-même 0.0 · Déraison subie 7.9 · main pauvre (≤1 carte ≤3) 4.2%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Marin aux Yeux Rouges (3) | 2 | 0.5 | 0.5 | 96.9% | 100.0% | 1.6 | 7 | 74 | 48 | 26 |
+| Albatros de Mauvais Temps (4) | 2 | 0.5 | 0.4 | 83.9% | 100.0% | 2.3 | 3 | 66 | 55 | 11 |
+| Masse-Sombre (4) | 2 | 0.5 | 0.4 | 88.1% | 100.0% | 1.1 | 6 | 66 | 56 | 10 |
+| Poisson-Lanterne (1) | 2 | 0.5 | 0.5 | 90.5% | 98.8% | 0.3 | 2 | 64 | 57 | 7 |
+| Seconde au Visage Pâle (3) | 2 | 0.5 | 0.3 | 73.2% | 96.9% | 0.6 | 5 | 63 | 58 | 6 |
+| Chose des Hauts-Fonds (4) | 3 | 0.6 | 0.6 | 97.4% | 100.0% | 1.2 | 2 | 63 | 57 | 5 |
+| Bat-Marin (4) | 2 | 0.5 | 0.3 | 70.4% | 100.0% | 0.9 | 2 | 62 | 59 | 3 |
+| Lanterne aux Verres Noirs (2) | 3 | 0.8 | 0.2 | 26.9% | 99.6% | 0.0 | 0 | 61 | 58 | 3 |
+| L'Œil Sous la Mer (5) | 1 | 0.2 | 0.1 | 41.4% | 100.0% | 0.1 | 1 | 62 | 59 | 3 |
+| Veilleuse des Profondeurs (4) | 3 | 0.7 | 0.4 | 57.0% | 100.0% | 0.5 | 3 | 59 | 61 | -1 |
+| Bat-Marin (3) | 2 | 0.5 | 0.4 | 86.0% | 100.0% | 0.5 | 2 | 58 | 61 | -3 |
+| Revenante de la Fosse (5) | 1 | 0.3 | 0.1 | 31.3% | 100.0% | 0.2 | 0 | 56 | 61 | -5 |
+| Si, Raie Ponce (4) | 3 | 0.6 | 0.6 | 97.2% | 100.0% | 0.8 | 4 | 57 | 63 | -5 |
+| Raie des Fosses (3) | 2 | 0.5 | 0.4 | 91.4% | 100.0% | 1.5 | 6 | 57 | 63 | -6 |
+| Anguille des Profondeurs (3) | 2 | 0.6 | 0.6 | 94.3% | 100.0% | 0.8 | 3 | 54 | 66 | -11 |
+| Cartographe du Large (2) | 3 | 0.7 | 0.5 | 73.2% | 100.0% | 0.6 | 2 | 54 | 66 | -12 |
+| Masse-Sombre (3) | 3 | 0.7 | 0.7 | 97.7% | 100.0% | 1.2 | 8 | 54 | 69 | -15 |
+| Sondeur des Mauvaises Eaux (3) | 2 | 0.5 | 0.2 | 50.0% | 99.0% | 0.3 | 1 | 48 | 68 | -20 |
+
+### Arsenal de Pont [Bris payant] — 58.3% (la-verriere) · 1-2:18 3-4:22 5:0 6+:0 · unités 16, objet 24
+Meilleurs : Le Théâtre Englouti [TH2 Errant rappels payants] 60.0%, Le Théâtre Englouti [V4 le rappel rembourse] 56.7% · Pires : Le Théâtre Englouti [TH2 Errant rappels payants] 60.0%, Le Théâtre Englouti [V4 le rappel rembourse] 56.7%
+Coup final (victoires) : combat 72.9%, tour 15.7%, navire 5.7% · soi-même 3.3 · Déraison subie 7.2 · main pauvre (≤1 carte ≤3) 3.3%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Chose des Hauts-Fonds (4) | 3 | 1.0 | 1.0 | 95.2% | 87.5% | 4.0 | 14 | 63 | 43 | 20 |
+| Cra-Poiscail Médecin (3) | 1 | 0.3 | 0.3 | 97.1% | 100.0% | 0.4 | 2 | 69 | 54 | 14 |
+| Journal de Bord Détrempé (2) | 2 | 0.7 | 0.7 | 88.8% | 100.0% | 0.0 | 0 | 62 | 53 | 9 |
+| Harpon à Ressort (4) | 2 | 0.8 | 0.5 | 63.3% | 92.7% | 0.0 | 0 | 61 | 54 | 6 |
+| Cormoran de Fer (3) | 3 | 0.9 | 0.9 | 92.9% | 100.0% | 2.4 | 7 | 60 | 55 | 5 |
+| Pantalone Sans-Sou (3) | 3 | 1.0 | 0.9 | 89.1% | 100.0% | 1.8 | 14 | 59 | 56 | 3 |
+| Rations du Matin Gris (2) | 2 | 0.6 | 0.5 | 75.3% | 100.0% | 0.0 | 0 | 59 | 58 | 1 |
+| Lettre Jamais Ouverte (1) | 3 | 1.2 | 0.8 | 69.4% | 97.9% | 0.0 | 0 | 58 | 58 | 0 |
+| Coup de Harpon (4) | 3 | 1.0 | 0.9 | 90.3% | 100.0% | 0.0 | 0 | 58 | 59 | -0 |
+| Thermos du Dernier Quart (2) | 2 | 0.8 | 0.7 | 91.2% | 0.0% | 0.0 | 0 | 57 | 60 | -3 |
+| Éclat de Bouteille (1) | 3 | 1.1 | 0.9 | 81.8% | 94.7% | 0.0 | 0 | 57 | 64 | -6 |
+| Cra-Poiscail Médecin (2) | 2 | 0.6 | 0.5 | 78.1% | 100.0% | 0.5 | 5 | 55 | 62 | -7 |
+| Il Capitano Naufragé (4) | 2 | 0.6 | 0.6 | 95.9% | 100.0% | 2.2 | 7 | 54 | 64 | -10 |
+| Bouclier d'Écume (4) | 1 | 0.3 | 0.2 | 63.4% | 93.1% | 0.0 | 0 | 51 | 62 | -11 |
+| Signal de Détresse (4) | 1 | 0.4 | 0.3 | 72.0% | 97.3% | 0.0 | 0 | 52 | 63 | -11 |
+| Corde de Rappel (4) | 1 | 0.3 | 0.2 | 58.5% | 89.9% | 0.0 | 0 | 46 | 65 | -18 |
+| Marin des Jetées (1) | 2 | 0.6 | 0.5 | 89.0% | 75.0% | 0.6 | 2 | 49 | 68 | -19 |
+| Choppe ! (1) | 2 | 0.7 | 0.5 | 77.2% | 100.0% | 0.0 | 0 | 49 | 71 | -23 |
+| Contre-Harpon (4) | 2 | 0.5 | 0.3 | 63.1% | 92.4% | 0.0 | 0 | 44 | 71 | -27 |
+
+### Chevaliers du Grand Étang [CH1 Seau au lieu de Tournoi/Fourchette] — 53.3% (lerrant) · 1-2:23 3-4:15 5:2 6+:0 · unités 28, equipement 2, structure 4, anomalie 1, objet 5
+Meilleurs : Le Théâtre Englouti [TH2 Errant rappels payants] 55.0%, Le Théâtre Englouti [V4 le rappel rembourse] 51.7% · Pires : Le Théâtre Englouti [TH2 Errant rappels payants] 55.0%, Le Théâtre Englouti [V4 le rappel rembourse] 51.7%
+Coup final (victoires) : combat 71.9%, tour 26.6%, navire 1.6% · soi-même 0.0 · Déraison subie 5.9 · main pauvre (≤1 carte ≤3) 0.0%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Roi Cra-Poiscail (5) | 1 | 0.3 | 0.3 | 94.1% | 100.0% | 0.7 | 3 | 74 | 45 | 28 |
+| Le Grand Saut (5) | 1 | 0.3 | 0.2 | 83.9% | 100.0% | 0.0 | 0 | 74 | 46 | 28 |
+| Chevalier Cra-Poiscail (4) | 1 | 0.2 | 0.2 | 92.6% | 50.0% | 1.4 | 5 | 70 | 48 | 22 |
+| Destrier du Grand Étang (2) | 3 | 0.7 | 0.6 | 92.5% | 80.0% | 1.9 | 5 | 63 | 43 | 20 |
+| Écuyer Cra-Poiscail (2) | 3 | 0.7 | 0.6 | 87.2% | 97.0% | 1.1 | 4 | 59 | 45 | 14 |
+| Cra-Poiscail Porte-Étendard (3) | 2 | 0.6 | 0.6 | 98.6% | 76.9% | 0.5 | 4 | 59 | 46 | 13 |
+| La Quête du Grand Nénuphar (3) | 2 | 0.4 | 0.1 | 32.7% | 93.9% | 0.0 | 0 | 59 | 50 | 9 |
+| Faire l'Inventaire (2) | 2 | 0.3 | 0.2 | 75.7% | 88.7% | 0.0 | 0 | 57 | 52 | 5 |
+| P'tite Fesse, Grand Rêve (2) | 2 | 0.4 | 0.3 | 74.0% | 100.0% | 0.2 | 0 | 54 | 53 | 2 |
+| Filet de Sauvetage (2) | 2 | 0.6 | 0.5 | 77.8% | 94.2% | 0.0 | 0 | 53 | 54 | -0 |
+| Cra-Poiscail Médecin (3) | 1 | 0.2 | 0.2 | 92.9% | 88.9% | 0.7 | 5 | 50 | 54 | -4 |
+| Cra-Poiscail Messager (1) | 3 | 0.8 | 0.7 | 81.6% | 82.4% | 1.5 | 3 | 51 | 59 | -8 |
+| Banc de Cra-Poiscail (3) | 3 | 0.7 | 0.6 | 89.5% | 95.6% | 0.8 | 3 | 49 | 58 | -9 |
+| Chevalier Cra-Poiscail (3) | 2 | 0.5 | 0.5 | 96.4% | 66.7% | 1.0 | 3 | 47 | 57 | -11 |
+| P'tite Fesse, Grand Rêve (3) | 1 | 0.3 | 0.3 | 88.9% | 97.1% | 0.9 | 1 | 44 | 57 | -13 |
+| Le Seau (2) | 3 | 0.8 | 0.8 | 95.8% | 83.3% | 0.0 | 0 | 48 | 61 | -13 |
+| Bourreau Cra-Poiscail (3) | 3 | 0.8 | 0.6 | 81.1% | 100.0% | 0.4 | 2 | 46 | 63 | -16 |
+| Cra-Poiscail Médecin (2) | 3 | 0.8 | 0.7 | 88.9% | 92.6% | 1.1 | 1 | 45 | 65 | -20 |
+| Slip de Guerre Cra-Poiscail (2) | 2 | 0.5 | 0.2 | 47.5% | 89.5% | 0.0 | 0 | 41 | 64 | -23 |
+
+### Mineurs de Fond [pièges qui tirent] — 52.5% (le-brise-lames) · 1-2:17 3-4:21 5:2 6+:0 · structure 18, equipement 2, objet 1, unités 19
+Meilleurs : Le Théâtre Englouti [TH2 Errant rappels payants] 60.0%, Le Théâtre Englouti [V4 le rappel rembourse] 45.0% · Pires : Le Théâtre Englouti [TH2 Errant rappels payants] 60.0%, Le Théâtre Englouti [V4 le rappel rembourse] 45.0%
+Coup final (victoires) : combat 76.2%, tour 17.5% · soi-même 0.1 · Déraison subie 9.4 · main pauvre (≤1 carte ≤3) 0.0%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Baleine aux Cicatrices Blanches (5) | 2 | 0.5 | 0.5 | 94.8% | 100.0% | 2.4 | 10 | 71 | 39 | 31 |
+| Chose des Hauts-Fonds (4) | 3 | 1.0 | 1.0 | 98.3% | 100.0% | 2.3 | 6 | 62 | 31 | 31 |
+| Charpentière de Veille (2) | 2 | 0.5 | 0.4 | 85.5% | 100.0% | 0.5 | 2 | 67 | 41 | 26 |
+| Le Filet qui Respire (3) | 2 | 0.7 | 0.3 | 38.0% | 99.6% | 0.0 | 0 | 56 | 48 | 8 |
+| Bernard-l'Ermite d'Acier (1) | 3 | 0.9 | 0.8 | 98.1% | 100.0% | 1.8 | 6 | 55 | 48 | 8 |
+| Cylindre flottant (2) | 2 | 0.5 | 0.2 | 41.0% | 98.6% | 0.0 | 0 | 55 | 50 | 5 |
+| Cage de Flottaison (3) | 2 | 0.7 | 0.5 | 67.5% | 100.0% | 0.0 | 0 | 54 | 51 | 3 |
+| Charpentier des Épaves (3) | 3 | 1.0 | 0.9 | 91.9% | 99.2% | 1.9 | 14 | 53 | 51 | 2 |
+| Crabe de Fer (3) | 3 | 0.8 | 0.7 | 96.7% | 100.0% | 1.1 | 3 | 52 | 53 | -1 |
+| Filet à la Dérive (2) | 3 | 0.9 | 0.6 | 70.1% | 99.5% | 0.0 | 0 | 52 | 53 | -2 |
+| Chaîne de Travers (2) | 2 | 0.6 | 0.4 | 72.1% | 100.0% | 0.0 | 0 | 51 | 54 | -3 |
+| Treuil Rouillé (1) | 2 | 0.6 | 0.4 | 76.8% | 90.9% | 0.0 | 0 | 50 | 55 | -5 |
+| Dernière Barricade (3) | 2 | 0.6 | 0.5 | 84.3% | 100.0% | 0.0 | 0 | 50 | 55 | -5 |
+| Matelot du Sans-Nom (3) | 3 | 1.0 | 0.9 | 96.6% | 97.1% | 2.3 | 7 | 50 | 59 | -9 |
+| Caisses Arrimées (1) | 3 | 0.7 | 0.6 | 90.4% | 100.0% | 0.0 | 0 | 49 | 58 | -9 |
+| Pont Miné (3) | 2 | 0.5 | 0.2 | 32.3% | 99.5% | 0.0 | 0 | 43 | 61 | -18 |
+| Clous de Récupération (3) | 1 | 0.3 | 0.1 | 38.7% | 96.3% | 0.0 | 0 | 35 | 58 | -23 |
+
+### Le Théâtre Englouti [V3 l arrivée frappe] — 51.7% (lerrant) · 1-2:17 3-4:20 5:2 6+:1 · unités 28, objet 8, structure 4
+Meilleurs : Le Théâtre Englouti [V4 le rappel rembourse] 58.3%, Le Théâtre Englouti [TH2 Errant rappels payants] 45.0% · Pires : Le Théâtre Englouti [V4 le rappel rembourse] 58.3%, Le Théâtre Englouti [TH2 Errant rappels payants] 45.0%
+Coup final (victoires) : combat 75.8%, tour 17.7% · soi-même 0.0 · Déraison subie 8.7 · main pauvre (≤1 carte ≤3) 0.0%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Le Régisseur des Profondeurs (7) | 1 | 0.3 | 0.2 | 87.5% | 100.0% | 1.7 | 4 | 74 | 44 | 30 |
+| Pulcinella Gonflé (2) | 3 | 1.0 | 0.9 | 91.1% | 100.0% | 1.3 | 6 | 63 | 33 | 29 |
+| Matelot du Sans-Nom (3) | 3 | 0.9 | 0.8 | 91.3% | 100.0% | 1.9 | 4 | 62 | 35 | 27 |
+| Les Coulisses Inondées (2) | 3 | 1.1 | 0.6 | 50.7% | 100.0% | 0.0 | 0 | 58 | 41 | 17 |
+| Arlequin Raccommodeur (2) | 3 | 1.0 | 0.9 | 89.7% | 100.0% | 1.6 | 3 | 57 | 44 | 13 |
+| La Prima Noyée (5) | 1 | 0.4 | 0.3 | 68.8% | 100.0% | 0.6 | 1 | 58 | 47 | 11 |
+| Il Capitano Naufragé (4) | 2 | 0.7 | 0.7 | 98.7% | 100.0% | 2.0 | 3 | 56 | 47 | 8 |
+| Le Théâtre Englouti (4) | 1 | 0.1 | 0.0 | 23.5% | 100.0% | 0.0 | 0 | 53 | 51 | 2 |
+| Le Régisseur Sans Visage (5) | 1 | 0.3 | 0.3 | 88.2% | 100.0% | 0.5 | 2 | 53 | 51 | 2 |
+| Le Masque Fendu (2) | 3 | 0.9 | 0.5 | 61.5% | 100.0% | 0.0 | 0 | 51 | 53 | -2 |
+| Changement de rôle ! (2) | 2 | 0.5 | 0.3 | 68.9% | 100.0% | 0.0 | 0 | 50 | 53 | -3 |
+| Il Dottore des Noyés (4) | 2 | 0.6 | 0.5 | 85.3% | 100.0% | 0.6 | 5 | 50 | 53 | -3 |
+| Arlecchino, Celui derrière le Masque (4) | 1 | 0.3 | 0.2 | 90.3% | 100.0% | 0.4 | 1 | 47 | 53 | -7 |
+| Arlecchino des Profondeurs (2) | 3 | 0.8 | 0.6 | 71.7% | 98.8% | 0.5 | 0 | 49 | 56 | -7 |
+| La Clochette du Rappel (3) | 3 | 0.8 | 0.3 | 41.2% | 96.8% | 0.0 | 0 | 49 | 56 | -7 |
+| La Prima Noyée (3) | 3 | 0.7 | 0.6 | 77.3% | 99.2% | 1.1 | 6 | 47 | 58 | -11 |
+| Colombina aux Cent Visages (3) | 2 | 0.6 | 0.6 | 91.7% | 98.3% | 0.5 | 1 | 44 | 59 | -15 |
+| Pantalone Sans-Sou (3) | 3 | 0.8 | 0.7 | 84.9% | 100.0% | 1.1 | 11 | 43 | 63 | -19 |
+
+### Sentinelles Chromatiques [SC1 Courlis 4 Slots] — 50.8% (le-courlis) · 1-2:20 3-4:17 5:0 6+:3 · unités 28, objet 11, anomalie 1
+Meilleurs : Le Théâtre Englouti [TH2 Errant rappels payants] 53.3%, Le Théâtre Englouti [V4 le rappel rembourse] 48.3% · Pires : Le Théâtre Englouti [TH2 Errant rappels payants] 53.3%, Le Théâtre Englouti [V4 le rappel rembourse] 48.3%
+Coup final (victoires) : combat 83.6%, tour 3.3% · soi-même 0.0 · Déraison subie 10.4 · main pauvre (≤1 carte ≤3) 1.7%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Héros de la Flamme (2) | 3 | 0.8 | 0.7 | 78.8% | 25.0% | 1.0 | 4 | 61 | 30 | 31 |
+| Briseur du Brasier (4) | 3 | 1.0 | 0.7 | 74.1% | 61.9% | 2.7 | 9 | 57 | 32 | 25 |
+| Journal de Bord Détrempé (2) | 2 | 0.4 | 0.4 | 92.3% | 100.0% | 0.0 | 0 | 63 | 42 | 21 |
+| Émissaire de Quartz (3) | 2 | 0.6 | 0.5 | 76.1% | 65.2% | 1.5 | 2 | 54 | 48 | 7 |
+| Survivant de la Mousse (3) | 2 | 0.5 | 0.4 | 73.3% | 53.2% | 1.4 | 2 | 54 | 48 | 5 |
+| Appel des Sentinelles (2) | 3 | 0.9 | 0.2 | 25.7% | 68.3% | 0.0 | 0 | 52 | 47 | 5 |
+| Gardienne de l'Éclat (2) | 3 | 0.8 | 0.6 | 71.7% | 44.8% | 1.4 | 5 | 53 | 48 | 5 |
+| Oracle d'Améthyste (4) | 3 | 1.0 | 0.5 | 51.2% | 79.4% | 1.5 | 7 | 51 | 52 | -1 |
+| Rations du Matin Gris (2) | 3 | 1.0 | 0.4 | 40.5% | 74.2% | 0.0 | 0 | 50 | 53 | -3 |
+| Le Géant Chromatique (9) | 1 | 0.3 | 0.2 | 51.3% | 89.7% | 1.2 | 3 | 49 | 52 | -3 |
+| Formation Prismatique (6) | 1 | 0.3 | 0.0 | 2.7% | 82.2% | 0.0 | 0 | 46 | 53 | -7 |
+| Le Géant Chromatique (8) | 1 | 0.3 | 0.1 | 48.6% | 83.3% | 0.5 | 2 | 46 | 53 | -7 |
+| Veilleuse de l'Ombre (3) | 1 | 0.3 | 0.1 | 51.6% | 63.4% | 0.3 | 2 | 45 | 53 | -8 |
+| Stratège de l'Azur (4) | 2 | 0.4 | 0.1 | 35.3% | 69.4% | 0.6 | 2 | 43 | 55 | -12 |
+| Tacticien de l'Écume (2) | 2 | 0.5 | 0.4 | 72.9% | 50.0% | 1.4 | 2 | 43 | 56 | -13 |
+| Éclat de Bouteille (1) | 2 | 0.4 | 0.3 | 80.0% | 75.0% | 0.0 | 0 | 41 | 56 | -15 |
+| Rempart du Soleil (4) | 3 | 1.0 | 0.8 | 75.0% | 61.3% | 2.2 | 6 | 47 | 62 | -15 |
+| Coup de Harpon (4) | 1 | 0.4 | 0.4 | 97.8% | 100.0% | 0.0 | 0 | 38 | 59 | -21 |
+| Porteur de Jade (2) | 2 | 0.6 | 0.4 | 66.7% | 69.4% | 1.0 | 5 | 38 | 63 | -25 |
+
+### Cavalerie [peu mais lourdes] — 50.0% (le-goliath) · 1-2:11 3-4:20 5:6 6+:3 · unités 28, equipement 3, objet 9
+Meilleurs : Le Théâtre Englouti [TH2 Errant rappels payants] 50.0%, Le Théâtre Englouti [V4 le rappel rembourse] 50.0% · Pires : Le Théâtre Englouti [TH2 Errant rappels payants] 50.0%, Le Théâtre Englouti [V4 le rappel rembourse] 50.0%
+Coup final (victoires) : tour 15.0%, combat 76.7%, navire 5.0% · soi-même 0.0 · Déraison subie 15.1 · main pauvre (≤1 carte ≤3) 18.3%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Un Peu de Répit (3) | 2 | 0.4 | 0.1 | 14.9% | 100.0% | 0.0 | 0 | 76 | 37 | 39 |
+| Chargeur des Écueils (4) | 3 | 0.7 | 0.4 | 53.6% | 100.0% | 1.5 | 3 | 54 | 44 | 10 |
+| Bête de Halage (2) | 3 | 0.6 | 0.6 | 96.0% | 100.0% | 1.3 | 8 | 55 | 45 | 10 |
+| Monture de Brèche (2) | 3 | 0.7 | 0.7 | 94.2% | 100.0% | 1.6 | 6 | 53 | 46 | 7 |
+| Bête de Percée (4) | 2 | 0.5 | 0.2 | 48.1% | 100.0% | 0.5 | 3 | 54 | 47 | 7 |
+| Selle de Guerre (2) | 3 | 0.7 | 0.5 | 70.0% | 100.0% | 0.0 | 0 | 53 | 46 | 7 |
+| Le Déserteur Gris (5) | 3 | 0.9 | 0.5 | 57.0% | 100.0% | 1.7 | 6 | 52 | 47 | 5 |
+| L'Amiral sans Pavillon (7) | 1 | 0.2 | 0.2 | 92.9% | 100.0% | 0.8 | 2 | 54 | 49 | 5 |
+| Éclaireur à Cornes (3) | 3 | 0.6 | 0.6 | 89.3% | 100.0% | 2.0 | 3 | 51 | 49 | 2 |
+| Vieux Harponneur (5) | 1 | 0.3 | 0.2 | 63.9% | 100.0% | 0.5 | 4 | 50 | 50 | 0 |
+| Débusquer (2) | 2 | 0.5 | 0.3 | 66.7% | 100.0% | 0.0 | 0 | 50 | 50 | 0 |
+| Mufle au Fanion (4) | 3 | 0.7 | 0.7 | 97.7% | 100.0% | 2.0 | 3 | 48 | 52 | -3 |
+| La Bête qu'on n'attend plus (6) | 2 | 0.4 | 0.4 | 93.9% | 100.0% | 1.5 | 3 | 47 | 52 | -5 |
+| Vieille-Selle (5) | 1 | 0.4 | 0.1 | 37.2% | 100.0% | 0.6 | 3 | 44 | 53 | -9 |
+| Pas un Pas de Plus (3) | 2 | 0.6 | 0.6 | 98.6% | 100.0% | 0.0 | 0 | 44 | 56 | -12 |
+| Coup de Harpon (4) | 2 | 0.4 | 0.3 | 86.4% | 100.0% | 0.0 | 0 | 40 | 55 | -15 |
+| Mange-Fer (5) | 1 | 0.2 | 0.2 | 95.0% | 100.0% | 0.7 | 2 | 35 | 53 | -18 |
+| Destrier du Ressac (3) | 2 | 0.4 | 0.3 | 87.5% | 100.0% | 0.5 | 0 | 38 | 56 | -18 |
+| Réparations d'Urgence (4) | 1 | 0.1 | 0.1 | 80.0% | 100.0% | 0.0 | 0 | 33 | 52 | -19 |
+
+### Le Théâtre Englouti [V1 le rappel frappe] — 50.0% (lerrant) · 1-2:17 3-4:20 5:2 6+:1 · unités 28, objet 8, structure 4
+Meilleurs : Le Théâtre Englouti [V4 le rappel rembourse] 60.0%, Le Théâtre Englouti [TH2 Errant rappels payants] 40.0% · Pires : Le Théâtre Englouti [V4 le rappel rembourse] 60.0%, Le Théâtre Englouti [TH2 Errant rappels payants] 40.0%
+Coup final (victoires) : combat 73.3%, tour 21.7% · soi-même 0.0 · Déraison subie 8.7 · main pauvre (≤1 carte ≤3) 0.0%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Le Régisseur des Profondeurs (7) | 1 | 0.3 | 0.2 | 90.3% | 100.0% | 1.6 | 4 | 77 | 41 | 36 |
+| Pulcinella Gonflé (2) | 3 | 1.0 | 0.9 | 91.0% | 100.0% | 1.3 | 7 | 63 | 29 | 34 |
+| Matelot du Sans-Nom (3) | 3 | 0.9 | 0.8 | 90.3% | 100.0% | 2.0 | 3 | 60 | 33 | 27 |
+| Les Coulisses Inondées (2) | 3 | 1.1 | 0.5 | 48.5% | 100.0% | 0.0 | 0 | 55 | 41 | 14 |
+| La Prima Noyée (5) | 1 | 0.4 | 0.3 | 68.1% | 100.0% | 0.7 | 1 | 57 | 45 | 12 |
+| Arlequin Raccommodeur (2) | 3 | 0.9 | 0.9 | 91.2% | 100.0% | 1.7 | 3 | 54 | 44 | 10 |
+| Il Capitano Naufragé (4) | 2 | 0.6 | 0.6 | 98.7% | 100.0% | 2.0 | 2 | 53 | 47 | 7 |
+| Le Régisseur Sans Visage (5) | 1 | 0.3 | 0.2 | 87.9% | 100.0% | 0.5 | 2 | 52 | 49 | 2 |
+| Le Masque Fendu (2) | 3 | 0.9 | 0.5 | 62.5% | 100.0% | 0.0 | 0 | 49 | 52 | -3 |
+| Changement de rôle ! (2) | 2 | 0.5 | 0.3 | 67.7% | 100.0% | 0.0 | 0 | 47 | 52 | -5 |
+| La Clochette du Rappel (3) | 3 | 0.8 | 0.3 | 40.0% | 97.7% | 0.0 | 0 | 48 | 53 | -5 |
+| Arlecchino des Profondeurs (2) | 3 | 0.8 | 0.6 | 73.0% | 98.8% | 0.4 | 0 | 47 | 54 | -7 |
+| Le Théâtre Englouti (4) | 1 | 0.1 | 0.0 | 5.9% | 100.0% | 0.0 | 0 | 44 | 51 | -7 |
+| Arlecchino, Celui derrière le Masque (4) | 1 | 0.3 | 0.2 | 90.0% | 100.0% | 0.4 | 1 | 41 | 53 | -11 |
+| Il Dottore des Noyés (4) | 2 | 0.6 | 0.5 | 84.1% | 100.0% | 0.7 | 6 | 43 | 55 | -12 |
+| Colombina aux Cent Visages (3) | 2 | 0.6 | 0.6 | 90.4% | 98.3% | 0.5 | 1 | 43 | 56 | -13 |
+| La Prima Noyée (3) | 3 | 0.7 | 0.6 | 76.4% | 99.2% | 1.1 | 4 | 44 | 58 | -14 |
+| Pantalone Sans-Sou (3) | 3 | 0.8 | 0.7 | 84.4% | 100.0% | 1.1 | 10 | 41 | 63 | -22 |
+
+### Le Théâtre Englouti [V2 + Théâtre qui tire] — 50.0% (lerrant) · 1-2:17 3-4:20 5:2 6+:1 · unités 28, objet 8, structure 4
+Meilleurs : Le Théâtre Englouti [V4 le rappel rembourse] 60.0%, Le Théâtre Englouti [TH2 Errant rappels payants] 40.0% · Pires : Le Théâtre Englouti [V4 le rappel rembourse] 60.0%, Le Théâtre Englouti [TH2 Errant rappels payants] 40.0%
+Coup final (victoires) : combat 73.3%, tour 21.7% · soi-même 0.0 · Déraison subie 8.7 · main pauvre (≤1 carte ≤3) 0.0%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Le Régisseur des Profondeurs (7) | 1 | 0.3 | 0.2 | 90.3% | 100.0% | 1.6 | 4 | 77 | 41 | 36 |
+| Pulcinella Gonflé (2) | 3 | 1.0 | 0.9 | 91.0% | 100.0% | 1.3 | 8 | 63 | 29 | 34 |
+| Matelot du Sans-Nom (3) | 3 | 0.8 | 0.8 | 91.2% | 100.0% | 2.0 | 3 | 59 | 35 | 25 |
+| Les Coulisses Inondées (2) | 3 | 1.1 | 0.5 | 47.8% | 100.0% | 0.0 | 0 | 55 | 41 | 14 |
+| La Prima Noyée (5) | 1 | 0.4 | 0.3 | 68.1% | 100.0% | 0.7 | 1 | 57 | 45 | 12 |
+| Arlequin Raccommodeur (2) | 3 | 0.9 | 0.9 | 91.2% | 100.0% | 1.7 | 3 | 54 | 44 | 10 |
+| Il Capitano Naufragé (4) | 2 | 0.6 | 0.6 | 98.7% | 100.0% | 2.0 | 2 | 53 | 47 | 7 |
+| Le Régisseur Sans Visage (5) | 1 | 0.3 | 0.2 | 87.9% | 100.0% | 0.5 | 2 | 52 | 49 | 2 |
+| Changement de rôle ! (2) | 2 | 0.5 | 0.3 | 67.2% | 100.0% | 0.0 | 0 | 48 | 51 | -3 |
+| Le Masque Fendu (2) | 3 | 0.9 | 0.5 | 62.1% | 100.0% | 0.0 | 0 | 49 | 52 | -3 |
+| La Clochette du Rappel (3) | 3 | 0.8 | 0.3 | 36.8% | 97.7% | 0.0 | 0 | 48 | 53 | -5 |
+| Arlecchino des Profondeurs (2) | 3 | 0.8 | 0.6 | 73.3% | 98.8% | 0.4 | 0 | 47 | 54 | -7 |
+| Le Théâtre Englouti (4) | 1 | 0.1 | 0.1 | 38.9% | 100.0% | 0.0 | 0 | 44 | 51 | -7 |
+| Arlecchino, Celui derrière le Masque (4) | 1 | 0.2 | 0.2 | 89.7% | 100.0% | 0.4 | 1 | 41 | 53 | -11 |
+| Colombina aux Cent Visages (3) | 2 | 0.6 | 0.5 | 90.3% | 98.3% | 0.5 | 1 | 44 | 56 | -12 |
+| Il Dottore des Noyés (4) | 2 | 0.6 | 0.5 | 83.8% | 100.0% | 0.7 | 5 | 43 | 55 | -12 |
+| La Prima Noyée (3) | 3 | 0.7 | 0.6 | 75.3% | 99.2% | 1.1 | 5 | 44 | 58 | -14 |
+| Pantalone Sans-Sou (3) | 3 | 0.8 | 0.7 | 85.3% | 100.0% | 1.1 | 9 | 41 | 62 | -21 |
+
+### Le Théâtre Englouti [TH2 Errant rappels payants] — 46.1% (lerrant) · 1-2:17 3-4:20 5:2 6+:1 · unités 28, objet 8, structure 4
+Meilleurs : Épavistes [recyclage] 65.0%, Le Théâtre Englouti [V1 le rappel frappe] 60.0%, Le Théâtre Englouti [V2 + Théâtre qui tire] 60.0% · Pires : Chasse au Gros [blessures bon marché] 33.3%, Le Grand Banc [GB1 Pied marin sans Bavard] 21.7%, À bout de Raison [drain concentré] 20.0%
+Coup final (victoires) : combat 75.1%, tour 18.3%, navire 0.2% · soi-même 0.0 · Déraison subie 8.7 · main pauvre (≤1 carte ≤3) 0.0%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Le Régisseur des Profondeurs (7) | 1 | 0.3 | 0.2 | 85.2% | 99.4% | 1.3 | 26 | 60 | 41 | 19 |
+| Pulcinella Gonflé (2) | 3 | 1.1 | 1.0 | 87.8% | 88.2% | 1.1 | 29 | 53 | 35 | 17 |
+| Matelot du Sans-Nom (3) | 3 | 0.9 | 0.8 | 91.1% | 96.8% | 1.6 | 40 | 50 | 40 | 10 |
+| La Prima Noyée (5) | 1 | 0.4 | 0.3 | 68.3% | 100.0% | 0.7 | 22 | 52 | 42 | 10 |
+| Le Régisseur Sans Visage (5) | 1 | 0.3 | 0.2 | 88.2% | 100.0% | 0.6 | 28 | 53 | 43 | 10 |
+| Changement de rôle ! (2) | 2 | 0.5 | 0.4 | 67.8% | 100.0% | 0.0 | 0 | 48 | 44 | 4 |
+| Il Dottore des Noyés (4) | 2 | 0.6 | 0.5 | 80.4% | 99.2% | 0.7 | 21 | 48 | 45 | 3 |
+| Arlecchino, Celui derrière le Masque (4) | 1 | 0.3 | 0.2 | 90.4% | 100.0% | 0.5 | 11 | 47 | 46 | 1 |
+| Il Capitano Naufragé (4) | 2 | 0.7 | 0.6 | 96.5% | 93.2% | 1.9 | 39 | 47 | 46 | 1 |
+| Colombina aux Cent Visages (3) | 2 | 0.7 | 0.6 | 90.8% | 97.9% | 0.7 | 19 | 47 | 46 | 1 |
+| Arlequin Raccommodeur (2) | 3 | 1.0 | 0.9 | 88.3% | 88.4% | 1.2 | 36 | 46 | 46 | 0 |
+| La Prima Noyée (3) | 3 | 0.8 | 0.6 | 74.8% | 98.6% | 0.8 | 39 | 45 | 47 | -2 |
+| La Clochette du Rappel (3) | 3 | 0.8 | 0.4 | 44.0% | 98.6% | 0.0 | 0 | 45 | 47 | -2 |
+| Les Coulisses Inondées (2) | 3 | 1.2 | 0.6 | 48.3% | 96.9% | 0.0 | 0 | 45 | 48 | -3 |
+| Le Théâtre Englouti (4) | 1 | 0.2 | 0.0 | 24.4% | 98.8% | 0.0 | 0 | 43 | 47 | -3 |
+| Pantalone Sans-Sou (3) | 3 | 0.8 | 0.7 | 82.3% | 98.1% | 0.9 | 46 | 43 | 51 | -8 |
+| Arlecchino des Profondeurs (2) | 3 | 0.9 | 0.6 | 76.0% | 97.6% | 0.5 | 18 | 42 | 51 | -8 |
+| Le Masque Fendu (2) | 3 | 0.9 | 0.6 | 62.9% | 99.9% | 0.0 | 0 | 43 | 51 | -9 |
+
+### Le Théâtre Englouti [V4 le rappel rembourse] — 45.4% (lerrant) · 1-2:17 3-4:20 5:2 6+:1 · unités 28, objet 8, structure 4
+Meilleurs : Équipage de Verre [précon, étalon] 68.3%, La Veillée [actuelle] 56.7%, Épavistes [recyclage] 55.0% · Pires : Chasse au Gros [blessures bon marché] 36.7%, À bout de Raison [drain concentré] 31.7%, Le Grand Banc [GB1 Pied marin sans Bavard] 21.7%
+Coup final (victoires) : combat 75.5%, tour 17.3%, navire 0.4% · soi-même 0.0 · Déraison subie 7.5 · main pauvre (≤1 carte ≤3) 0.0%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Pulcinella Gonflé (2) | 3 | 1.2 | 1.1 | 94.0% | 81.9% | 1.2 | 47 | 55 | 32 | 23 |
+| Le Régisseur des Profondeurs (7) | 1 | 0.2 | 0.2 | 75.0% | 100.0% | 1.1 | 26 | 63 | 40 | 23 |
+| Matelot du Sans-Nom (3) | 3 | 0.9 | 0.8 | 92.0% | 93.6% | 1.6 | 53 | 54 | 32 | 21 |
+| Le Régisseur Sans Visage (5) | 1 | 0.3 | 0.3 | 92.4% | 100.0% | 0.8 | 14 | 56 | 41 | 15 |
+| Il Capitano Naufragé (4) | 2 | 0.6 | 0.6 | 97.0% | 88.7% | 1.7 | 29 | 52 | 38 | 14 |
+| Arlequin Raccommodeur (2) | 3 | 1.1 | 1.0 | 89.3% | 78.1% | 1.5 | 52 | 49 | 40 | 9 |
+| La Prima Noyée (5) | 1 | 0.4 | 0.3 | 73.1% | 99.4% | 0.6 | 15 | 49 | 43 | 6 |
+| Les Coulisses Inondées (2) | 3 | 1.1 | 0.6 | 53.9% | 96.5% | 0.0 | 0 | 47 | 43 | 4 |
+| Il Dottore des Noyés (4) | 2 | 0.6 | 0.5 | 83.5% | 98.7% | 0.8 | 15 | 46 | 45 | 2 |
+| Arlecchino, Celui derrière le Masque (4) | 1 | 0.3 | 0.3 | 93.6% | 98.1% | 0.5 | 8 | 43 | 46 | -3 |
+| Le Masque Fendu (2) | 3 | 0.9 | 0.7 | 83.4% | 99.7% | 0.0 | 0 | 44 | 48 | -4 |
+| La Prima Noyée (3) | 3 | 0.8 | 0.6 | 77.0% | 97.8% | 0.7 | 39 | 43 | 49 | -5 |
+| La Clochette du Rappel (3) | 3 | 0.8 | 0.5 | 63.1% | 97.5% | 0.0 | 0 | 42 | 49 | -7 |
+| Colombina aux Cent Visages (3) | 2 | 0.6 | 0.5 | 92.6% | 98.5% | 0.7 | 18 | 40 | 49 | -9 |
+| Changement de rôle ! (2) | 2 | 0.6 | 0.4 | 69.3% | 99.5% | 0.0 | 0 | 39 | 50 | -11 |
+| Le Théâtre Englouti (4) | 1 | 0.2 | 0.0 | 25.0% | 99.4% | 0.0 | 0 | 36 | 47 | -12 |
+| Arlecchino des Profondeurs (2) | 3 | 0.9 | 0.7 | 78.1% | 95.1% | 0.6 | 15 | 40 | 53 | -13 |
+| Pantalone Sans-Sou (3) | 3 | 0.9 | 0.7 | 86.1% | 98.2% | 0.9 | 39 | 39 | 54 | -15 |
+
+### La Veillée [actuelle] — 44.2% (la-religieuse) · 1-2:23 3-4:16 5:1 6+:0 · unités 28, equipement 3, objet 6, structure 3
+Meilleurs : Le Théâtre Englouti [TH2 Errant rappels payants] 46.7%, Le Théâtre Englouti [V4 le rappel rembourse] 41.7% · Pires : Le Théâtre Englouti [TH2 Errant rappels payants] 46.7%, Le Théâtre Englouti [V4 le rappel rembourse] 41.7%
+Coup final (victoires) : tour 24.5%, effet 11.3%, combat 58.5% · soi-même 0.0 · Déraison subie 8.7 · main pauvre (≤1 carte ≤3) 0.0%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Maman revient (4) | 1 | 0.3 | 0.3 | 88.2% | 100.0% | 0.7 | 4 | 59 | 38 | 20 |
+| Cache-Cache (1) | 3 | 0.8 | 1.0 | 130.5% | 100.0% | 1.3 | 1 | 52 | 33 | 19 |
+| Papa est en mer (2) | 3 | 0.8 | 0.7 | 91.8% | 100.0% | 0.7 | 0 | 49 | 36 | 14 |
+| La Marelle (3) | 2 | 0.6 | 0.3 | 46.7% | 100.0% | 0.0 | 0 | 51 | 37 | 14 |
+| P'tit Bout (1) | 3 | 0.9 | 0.9 | 104.7% | 100.0% | 1.0 | 2 | 48 | 37 | 12 |
+| Maman revient (3) | 2 | 0.7 | 0.6 | 86.7% | 100.0% | 0.8 | 0 | 49 | 38 | 10 |
+| Le Copain du dessous (3) | 3 | 1.0 | 0.8 | 84.7% | 100.0% | 1.2 | 6 | 47 | 39 | 9 |
+| La Petite Chanson (2) | 2 | 0.7 | 0.4 | 52.4% | 100.0% | 0.2 | 0 | 47 | 40 | 7 |
+| Encore cinq minutes (2) | 3 | 0.9 | 0.8 | 90.3% | 100.0% | 1.2 | 9 | 46 | 41 | 4 |
+| Tu viens jouer ? (4) | 2 | 0.8 | 0.6 | 84.4% | 100.0% | 1.7 | 4 | 45 | 43 | 3 |
+| Promis, j'attends (2) | 2 | 0.8 | 0.7 | 87.9% | 100.0% | 1.0 | 2 | 44 | 44 | -0 |
+| Tu m'avais promis (3) | 2 | 0.6 | 0.6 | 94.4% | 100.0% | 1.1 | 3 | 42 | 46 | -4 |
+| On avait dit tous ensemble (5) | 1 | 0.2 | 0.2 | 100.0% | 100.0% | 0.7 | 0 | 41 | 45 | -4 |
+| Le Goûter (2) | 3 | 1.0 | 0.6 | 57.4% | 100.0% | 0.2 | 0 | 43 | 48 | -5 |
+| Doudou (1) | 3 | 0.8 | 0.4 | 54.3% | 100.0% | 0.0 | 0 | 41 | 48 | -7 |
+| Tout le monde à table (4) | 1 | 0.3 | 0.1 | 27.0% | 100.0% | 0.0 | 0 | 35 | 48 | -13 |
+| Journal de Bord Détrempé (2) | 1 | 0.2 | 0.1 | 50.0% | 100.0% | 0.0 | 0 | 32 | 47 | -15 |
+| On rentre bientôt (3) | 3 | 0.7 | 0.4 | 61.6% | 100.0% | 0.8 | 6 | 37 | 54 | -17 |
+
+### Après la Tempête [balai qui rapporte] — 40.8% (le-courlis) · 1-2:6 3-4:20 5:9 6+:5 · anomalie 6, objet 9, unités 25
+Meilleurs : Le Théâtre Englouti [V4 le rappel rembourse] 41.7%, Le Théâtre Englouti [TH2 Errant rappels payants] 40.0% · Pires : Le Théâtre Englouti [V4 le rappel rembourse] 41.7%, Le Théâtre Englouti [TH2 Errant rappels payants] 40.0%
+Coup final (victoires) : combat 77.6%, tour 6.1% · soi-même 0.0 · Déraison subie 17.5 · main pauvre (≤1 carte ≤3) 15.0%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Crabe de Fer (3) | 3 | 0.8 | 0.7 | 91.1% | 96.9% | 1.1 | 3 | 49 | 28 | 20 |
+| Maître Verrier (4) | 2 | 0.5 | 0.4 | 66.2% | 100.0% | 1.0 | 5 | 50 | 33 | 17 |
+| L'Amiral sans Pavillon (7) | 1 | 0.3 | 0.3 | 88.9% | 100.0% | 1.7 | 2 | 50 | 37 | 13 |
+| Vieux Harponneur (5) | 2 | 0.5 | 0.5 | 88.5% | 100.0% | 1.8 | 6 | 47 | 35 | 12 |
+| Coup de Harpon (4) | 2 | 0.6 | 0.5 | 82.9% | 100.0% | 0.0 | 0 | 47 | 35 | 11 |
+| Trousse du Bord (4) | 1 | 0.2 | 0.0 | 25.0% | 98.4% | 0.0 | 0 | 50 | 39 | 11 |
+| Chose des Hauts-Fonds (4) | 3 | 0.8 | 0.7 | 94.6% | 100.0% | 1.5 | 1 | 45 | 35 | 10 |
+| Baleine aux Cicatrices Blanches (5) | 3 | 0.8 | 0.7 | 84.4% | 100.0% | 2.9 | 12 | 43 | 37 | 6 |
+| Faire l'Inventaire (2) | 3 | 0.8 | 0.4 | 54.3% | 100.0% | 0.0 | 0 | 43 | 38 | 6 |
+| Le Large se Fâche (6) | 1 | 0.3 | 0.1 | 38.9% | 100.0% | 0.0 | 0 | 44 | 39 | 5 |
+| Carape Hus (3) | 3 | 0.9 | 0.8 | 89.8% | 100.0% | 1.4 | 4 | 42 | 38 | 4 |
+| Le Brise-Ligne (6) | 1 | 0.3 | 0.2 | 54.1% | 100.0% | 0.3 | 0 | 43 | 40 | 3 |
+| Chirurgien du Bord (5) | 2 | 0.7 | 0.2 | 35.0% | 100.0% | 0.3 | 0 | 42 | 40 | 2 |
+| Un Peu de Répit (3) | 3 | 0.8 | 0.3 | 32.3% | 99.6% | 0.0 | 0 | 41 | 41 | -1 |
+| Léviathan Balafré (8) | 1 | 0.3 | 0.2 | 63.2% | 100.0% | 1.1 | 3 | 39 | 41 | -2 |
+| Dernier Jour en Mer (7) | 1 | 0.2 | 0.2 | 78.6% | 100.0% | 0.0 | 0 | 39 | 41 | -2 |
+| Le Pont est Plein ! (3) | 2 | 0.5 | 0.2 | 36.9% | 99.3% | 0.0 | 0 | 38 | 44 | -6 |
+| Vigie aux Fissures (2) | 3 | 0.8 | 0.5 | 59.8% | 99.4% | 0.5 | 2 | 38 | 45 | -7 |
+| Matelot du Sans-Nom (3) | 1 | 0.2 | 0.1 | 90.0% | 100.0% | 0.3 | 0 | 35 | 42 | -7 |
+| Vague Scélérate (5) | 2 | 0.5 | 0.2 | 42.6% | 100.0% | 0.0 | 0 | 24 | 54 | -30 |
+
+### Épavistes [recyclage] — 39.2% (le-goliath) · 1-2:19 3-4:18 5:3 6+:0 · structure 10, objet 6, equipement 2, unités 22
+Meilleurs : Le Théâtre Englouti [V4 le rappel rembourse] 45.0%, Le Théâtre Englouti [TH2 Errant rappels payants] 33.3% · Pires : Le Théâtre Englouti [V4 le rappel rembourse] 45.0%, Le Théâtre Englouti [TH2 Errant rappels payants] 33.3%
+Coup final (victoires) : navire 12.8%, combat 63.8%, tour 17.0% · soi-même 0.0 · Déraison subie 8.8 · main pauvre (≤1 carte ≤3) 0.0%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Crabe de Fer (3) | 3 | 0.9 | 0.9 | 96.3% | 100.0% | 0.8 | 1 | 48 | 21 | 27 |
+| Chose des Hauts-Fonds (4) | 3 | 0.8 | 0.8 | 94.9% | 100.0% | 1.5 | 4 | 48 | 26 | 22 |
+| Matelot du Sans-Nom (3) | 3 | 0.9 | 0.8 | 93.3% | 100.0% | 2.1 | 7 | 44 | 29 | 15 |
+| Baleine aux Cicatrices Blanches (5) | 3 | 0.7 | 0.6 | 92.7% | 100.0% | 2.8 | 8 | 45 | 32 | 13 |
+| Bernard-l'Ermite d'Acier (1) | 3 | 0.9 | 0.8 | 93.3% | 83.3% | 1.3 | 3 | 43 | 32 | 11 |
+| Caisse des Dernières Planches (4) | 1 | 0.3 | 0.2 | 57.1% | 100.0% | 0.0 | 0 | 43 | 38 | 5 |
+| Charpentière de Veille (2) | 2 | 0.7 | 0.5 | 77.1% | 100.0% | 0.6 | 4 | 41 | 37 | 5 |
+| Caisses Arrimées (1) | 3 | 0.8 | 0.9 | 104.0% | 100.0% | 0.0 | 0 | 41 | 36 | 4 |
+| Grappin de Récupération (2) | 2 | 0.4 | 0.3 | 57.7% | 100.0% | 0.0 | 0 | 39 | 39 | -1 |
+| Treuil Rouillé (1) | 2 | 0.6 | 0.2 | 36.6% | 90.6% | 0.0 | 0 | 39 | 40 | -1 |
+| Plongeur des Épaves (2) | 2 | 0.6 | 0.5 | 88.1% | 100.0% | 0.4 | 0 | 39 | 40 | -1 |
+| Caisse des Dernières Planches (3) | 2 | 0.5 | 0.3 | 57.6% | 100.0% | 0.0 | 0 | 36 | 42 | -5 |
+| Cage de Flottaison (3) | 2 | 0.5 | 0.3 | 49.2% | 100.0% | 0.0 | 0 | 34 | 43 | -9 |
+| Levier de Lest (1) | 3 | 0.9 | 0.8 | 84.9% | 99.1% | 0.0 | 0 | 36 | 46 | -10 |
+| Charpentier des Épaves (3) | 3 | 0.8 | 0.7 | 87.3% | 100.0% | 1.0 | 3 | 36 | 46 | -10 |
+| Clous de Récupération (3) | 1 | 0.3 | 0.0 | 13.3% | 98.9% | 0.0 | 0 | 30 | 42 | -12 |
+| Radeau de Fortune (1) | 2 | 0.6 | 0.5 | 88.1% | 96.6% | 0.0 | 0 | 31 | 46 | -15 |
+
+### Équipage de Verre [précon, étalon] — 37.5% (la-verriere) · 1-2:18 3-4:14 5:5 6+:3 · unités 30, objet 7, equipement 1, structure 1, anomalie 1
+Meilleurs : Le Théâtre Englouti [TH2 Errant rappels payants] 43.3%, Le Théâtre Englouti [V4 le rappel rembourse] 31.7% · Pires : Le Théâtre Englouti [TH2 Errant rappels payants] 43.3%, Le Théâtre Englouti [V4 le rappel rembourse] 31.7%
+Coup final (victoires) : combat 73.3%, tour 22.2%, navire 2.2% · soi-même 0.0 · Déraison subie 11.2 · main pauvre (≤1 carte ≤3) 3.3%
+
+| carte | cop. | vue/p | jouée/p | jouée/vue | morte | dégâts/p | coups fin. | WR vue | WR non vue | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| L'Amiral sans Pavillon (7) | 1 | 0.3 | 0.2 | 84.4% | 100.0% | 1.1 | 1 | 63 | 28 | 34 |
+| Coup de Harpon (4) | 2 | 0.4 | 0.3 | 78.7% | 100.0% | 0.0 | 0 | 59 | 27 | 32 |
+| Éclaireur Ébréché (1) | 3 | 0.8 | 0.7 | 94.5% | 100.0% | 0.7 | 0 | 45 | 24 | 21 |
+| Matelot Fêlé (1) | 3 | 0.7 | 0.6 | 96.2% | 100.0% | 0.9 | 2 | 47 | 29 | 18 |
+| Trinquer Trop Fort (2) | 1 | 0.2 | 0.1 | 28.6% | 100.0% | 0.0 | 0 | 48 | 35 | 12 |
+| Porte-Éclats (3) | 2 | 0.4 | 0.3 | 66.7% | 100.0% | 0.2 | 4 | 43 | 34 | 9 |
+| Bretteuse au Bord (4) | 3 | 0.7 | 0.6 | 85.2% | 100.0% | 2.1 | 2 | 41 | 33 | 8 |
+| Éclat de Bouteille (1) | 2 | 0.5 | 0.3 | 62.1% | 100.0% | 0.0 | 0 | 40 | 36 | 3 |
+| Bouclier Fendu (2) | 1 | 0.3 | 0.1 | 37.5% | 100.0% | 0.0 | 0 | 38 | 38 | 0 |
+| La Grande Fissure (5) | 2 | 0.6 | 0.5 | 84.4% | 100.0% | 1.8 | 7 | 37 | 38 | -1 |
+| Canonnier Fêlé (3) | 2 | 0.6 | 0.5 | 95.6% | 100.0% | 1.4 | 3 | 36 | 39 | -3 |
+| Maître Verrier (4) | 2 | 0.5 | 0.3 | 64.3% | 100.0% | 0.6 | 1 | 36 | 39 | -3 |
+| Le Brise-Ligne (6) | 2 | 0.5 | 0.3 | 51.6% | 100.0% | 0.6 | 0 | 34 | 40 | -6 |
+| Duelliste de Verre (2) | 2 | 0.4 | 0.4 | 89.8% | 100.0% | 0.7 | 0 | 33 | 40 | -7 |
+| Polisseuse des Fêlures (3) | 2 | 0.6 | 0.5 | 82.4% | 100.0% | 0.9 | 6 | 34 | 41 | -8 |
+| Pont de Verre (3) | 1 | 0.3 | 0.0 | 10.0% | 100.0% | 0.0 | 0 | 30 | 40 | -10 |
+| Verrier de Pont (2) | 2 | 0.5 | 0.5 | 96.7% | 100.0% | 1.4 | 7 | 30 | 43 | -13 |
+| Chirurgien du Bord (5) | 2 | 0.4 | 0.1 | 19.1% | 100.0% | 0.2 | 0 | 27 | 44 | -17 |
+| Encore Debout ? (2) | 1 | 0.2 | 0.1 | 30.8% | 100.0% | 0.0 | 0 | 23 | 41 | -18 |
+| Vigie aux Fissures (2) | 2 | 0.4 | 0.2 | 55.1% | 100.0% | 0.3 | 0 | 26 | 45 | -19 |
+| Jusqu'à ce que ça casse (5) | 1 | 0.1 | 0.0 | 0.0% | 100.0% | 0.0 | 0 | 14 | 41 | -26 |
+| Bandages Humides (2) | 1 | 0.3 | 0.1 | 25.8% | 100.0% | 0.0 | 0 | 16 | 45 | -29 |

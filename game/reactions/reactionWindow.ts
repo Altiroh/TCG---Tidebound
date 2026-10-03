@@ -21,13 +21,29 @@ export function deriveReactionTriggerEvents(state: GameState, events: GameEvent[
       case "PLAY_CARD":
         derived.push({ trigger: "onCardPlayed", playerId: event.playerId, cardId: event.cardId, sourceInstanceId: event.instanceId });
         break;
+      // Même provenance que le déclenchement automatique : jouée depuis la
+      // main, ou invoquée (« que vous jouez » / « que vous invoquez »).
       case "SUMMON":
-        derived.push({ trigger: "onEnterPlay", playerId: event.playerId, cardId: event.cardId, sourceInstanceId: event.instanceId });
+        derived.push({
+          trigger: "onEnterPlay",
+          playerId: event.playerId,
+          cardId: event.cardId,
+          sourceInstanceId: event.instanceId,
+          ...(event.played ? {} : { fromSummon: true }),
+        });
         break;
       // Une arrivée REJOUÉE (Colombina) rouvre aussi les capacités
       // facultatives d'arrivée de la carte visée : c'est tout l'intérêt.
+      // Marquée comme telle : ce n'est pas une arrivée pour les observateurs
+      // (sauf `includeRepeatedArrival`).
       case "ENTER_EFFECTS_REPEATED":
-        derived.push({ trigger: "onEnterPlay", playerId: event.playerId, cardId: event.cardId, sourceInstanceId: event.instanceId });
+        derived.push({
+          trigger: "onEnterPlay",
+          playerId: event.playerId,
+          cardId: event.cardId,
+          sourceInstanceId: event.instanceId,
+          repeatedArrival: true,
+        });
         break;
       case "ATTACK": {
         // Même contenu que le déclenchement automatique (`attack.ts`) :
@@ -71,19 +87,23 @@ export function deriveReactionTriggerEvents(state: GameState, events: GameEvent[
       }
       // Une mort ouvre une fenêtre comme le reste : la carte morte peut
       // proposer sa propre réaction depuis le cimetière (Pulcinella
-      // Gonflé), et ses observateurs encore en jeu la leur (Plongeur des
-      // Épaves, Mécanicien aux Mains Noires). Décision du 17/09/2026 :
+      // Gonflé), et ses observateurs encore en jeu la leur (Mécanicien aux
+      // Mains Noires). Décision du 17/09/2026 :
       // « jamais automatique, le joueur choisit ».
       case "DESTROY": {
         // L'identité du défunt n'est pas portée par l'événement : on la
         // relit dans le cimetière, où `processDeaths` vient de le poser.
         const found = findCardInstance(state, event.instanceId);
         if (!found) break;
+        // Sa CAUSE aussi, relue au même endroit : sans elle, « est détruite »
+        // (`destroyedBy`) ne matcherait jamais dans une fenêtre de réaction,
+        // et un Sabordage passerait pour une destruction.
         derived.push({
           trigger: "onDeath",
           playerId: found.owner.id,
           cardId: found.card.cardId,
           sourceInstanceId: event.instanceId,
+          destructionCause: found.card.destructionCause,
         });
         break;
       }

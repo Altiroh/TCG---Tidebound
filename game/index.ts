@@ -120,7 +120,7 @@ export type { EffectOrigin, GameEvent, GameEventType } from "@/game/events/types
 export { deckLookRefusal, isDeckLookTakeable, type DeckLookRefusal } from "@/game/rules/deckLook";
 
 export type { ChosenUnitFilter, EffectDefinition, EffectType, TargetSelector } from "@/game/effects/types";
-export { chosenTargetFilter, eligibleChosenUnits } from "@/game/effects/chosenTargets";
+export { chosenTargetFilter, eligibleBreakTargets, eligibleChosenUnits } from "@/game/effects/chosenTargets";
 export { canActivateAbility } from "@/game/actions/activateAbility";
 export { ARCHETYPE_LABELS } from "@/game/cards/archetypes";
 export type { ArchetypeId } from "@/game/cards/archetypes";
@@ -174,7 +174,8 @@ export {
   graveyardChoicesForPlay,
 } from "@/game/effects/graveyardChoices";
 
-export { botHasSomethingToDo, runBotTurn, runBotUntilIdle, stepBotTurn, type BotTurnStep } from "@/game/bot/runBotTurn";
+export { applyBotAction, botHasSomethingToDo, runBotTurn, runBotUntilIdle, stepBotTurn, type BotTurnStep } from "@/game/bot/runBotTurn";
+export { chooseBotAction } from "@/game/bot/chooseAction";
 export type { BotDifficulty } from "@/game/bot/types";
 
 // --- Cosmétiques -------------------------------------------------------

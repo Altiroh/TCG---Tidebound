@@ -28,10 +28,10 @@ function makeCards(prefix: string, cardIds: CardId[]): TableCardModel[] {
 export const PREVIEW_FIXTURES = {
   // Un jeton de chaque sorte (avec et sans Puissance) : la tuile ovale se règle ici.
   opponentBoard: makeCards("opp-board", ["chevalier-cra-poiscail", "bat-marin-abyssal", "crabe-de-fer", "peon-cra-poiscail"]),
-  playerBoard: makeCards("own-board", ["capitaine-sans-sommeil", "murene-aveugle", "epave-engloutie", "harpon-de-pont", "eclat-chromatique-bleu"]),
-  /** Le Harpon de pont (4e carte) équipe déjà le Capitaine (1re) : le lien se voit dès l'ouverture. */
-  playerAttachments: { "own-board-4": "own-board-1" } as Record<string, string>,
-  /** 8 cartes : la taille de main de référence du cahier des charges (7 ou 8). */
+  playerBoard: makeCards("own-board", ["murene-aveugle", "harpon-de-pont", "eclat-chromatique-bleu"]),
+  /** Le Harpon de pont (2e carte) équipe déjà la Murène (1re) : le lien se voit dès l'ouverture. */
+  playerAttachments: { "own-board-2": "own-board-1" } as Record<string, string>,
+  /** 7 cartes : la taille de main de référence du cahier des charges (7 ou 8). */
   playerHand: makeCards("own-hand", [
     "cra-poiscail-sauteur",
     "thermos-du-dernier-quart",
@@ -40,15 +40,12 @@ export const PREVIEW_FIXTURES = {
     "banc-de-cra-poiscail",
     "cylindre-flottant",
     "vieux-loup-de-mer",
-    "cloche-du-grand-fond-abyssal",
   ]),
   /** Suite de la pioche du joueur, après la main de départ (cf. `usePreviewTable`). */
   playerDeck: makeCards("own-deck", [
     "cra-poiscail-bavard",
     "bat-marin",
-    "guetteur-de-brume",
     "chope",
-    "cartographe-du-large",
     "casque-coquille",
     "anguille-des-profondeurs",
     "ecuyer-cra-poiscail",

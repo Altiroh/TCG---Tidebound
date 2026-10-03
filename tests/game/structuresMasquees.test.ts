@@ -97,7 +97,7 @@ describe("Fenêtre d'interception — le bot sait y répondre", () => {
     // Le Cylindre flottant n'est dans aucune liste v4 : les parties de bot
     // ne croisent donc jamais cette fenêtre d'elles-mêmes. Sans ce test, une
     // partie en ligne se figerait le jour où la carte serait jouée.
-    const attaquant = instance("baleine-aux-cicatrices-blanches", "p1");
+    const attaquant = instance("la-chose-qui-remonte", "p1");
     const cylindre = instance("cylindre-flottant", "p2", { turnsRemaining: 3 });
     const cible = instance("murene-aveugle", "p1");
     const state = testGameState({
@@ -131,7 +131,7 @@ describe("Pièges simultanés et cibles devenues invalides", () => {
     // Cage de Flottaison (−3 cachée) et Caisses Arrimées (−2 cachée) sont
     // toutes deux masquées en Abysses. Les deux doivent pouvoir répondre, et
     // leurs réductions s'additionner.
-    const attaquant = instance("baleine-aux-cicatrices-blanches", "p1"); // 5 Puissance
+    const attaquant = instance("la-chose-qui-remonte", "p1"); // 5 Puissance
     const cage = instance("cage-de-flottaison", "p2", { turnsRemaining: 4 });
     const caisses = instance("caisses-arrimees", "p2", { turnsRemaining: 4 });
     const state = testGameState({

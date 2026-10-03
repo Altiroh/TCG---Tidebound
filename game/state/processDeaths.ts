@@ -6,7 +6,7 @@ import type { GameEvent } from "@/game/events/types";
 import { collectReactionCandidates, processTrigger } from "@/game/triggers/triggerBus";
 import { leaveChromaticShard } from "@/game/rules/chromaticShards";
 import type { DestructionCause } from "@/game/cards/types";
-import { reasonAfterLoss } from "@/game/state/reason";
+import { applyOpponentRemovalShield, loseReason } from "@/game/state/shields";
 import { recordGraveyardArrival } from "@/game/state/discard";
 import { markOncePerTurnUsed, oncePerTurnAvailable } from "@/game/state/oncePerTurn";
 import type { GameState, PlayerState } from "@/game/state/types";
@@ -54,8 +54,7 @@ function shouldDie(
   if (isProtectedFromDestruction(controller, unit, destructionCauseOf(unit, stats.destroyedByTide), turnNumber)) {
     return false;
   }
-  // Un départ déjà décidé (effet `destroy`/`saborde`, action Saborder,
-  // Ancre de Dérive) ne dépend d'aucune arithmétique de Résistance : une
+  // Un départ déjà décidé (effet `destroy`/`saborde`, action Saborder) ne dépend d'aucune arithmétique de Résistance : une
   // Anomalie sans Résistance doit pouvoir partir comme une Créature.
   if (unit.pendingRemoval) return true;
   // Sans Résistance (un Objet), l'arithmétique des dégâts ne s'applique
@@ -110,7 +109,7 @@ function applyDestructionSubstitute(
     .map((u) => (u.instanceId === unit.instanceId ? savedUnit : u));
   const graveyard = [
     ...player.graveyard,
-    { ...substitute, damageMarked: 0, modifiers: [], graveyardCause: "destroyed" as const },
+    { ...substitute, damageMarked: 0, modifiers: [], graveyardCause: "destroyed" as const, destructionCause: "effect" as const },
   ];
 
   const nextState: GameState = {
@@ -151,6 +150,52 @@ export function destructionCauseOf(
 }
 
 const SURVIVES_LETHAL_KEY = "survivesLethal";
+
+/**
+ * Remplacement « par un effet adverse » (`opponentRemovalShieldOncePerTurn`)
+ * vu depuis la passe de morts : l'unité part sous un EFFET (dégâts ou
+ * destruction) dont l'auteur n'est pas son propriétaire. La destruction est
+ * remplacée par −1 Résistance permanente (`applyOpponentRemovalShield`) ;
+ * ses dégâts déjà marqués restent (décision du 02/10/2026 : le coup mortel
+ * d'un effet est, lui, annulé dès son marquage dans `resolveEffect`). Si ce
+ * −1 suffit à la tuer, le remplacement ne la garde pas et elle part.
+ * `undefined` si rien ne s'applique (Marée, combat, effet allié, usage
+ * du tour déjà pris).
+ */
+function remplacementParBeteDeHalage(
+  state: GameState,
+  turnNumber: number,
+  owner: PlayerState,
+  unit: CardInstance
+): { state: GameState; events: GameEvent[] } | undefined {
+  if (!getCardDefinition(unit.cardId).opponentRemovalShieldOncePerTurn) return undefined;
+  const contexte = {
+    controllerBoard: owner.board,
+    controllerReason: owner.reason,
+    tideOrientation: state.environment.tideOrientation,
+  };
+  const avant = computeEffectiveStats(unit, state.environment.tideState, contexte);
+  if (destructionCauseOf(unit, avant.destroyedByTide) !== "effect") return undefined;
+  const auteur = unit.pendingRemoval === "destroyed" ? unit.pendingRemovalBy : unit.lastDamageBy;
+  if (!auteur || auteur === owner.id) return undefined;
+  const remplace = applyOpponentRemovalShield(state, owner.id, unit.instanceId, turnNumber);
+  if (!remplace) return undefined;
+  const proprietaire = remplace.state.players.find((p) => p.id === owner.id)!;
+  const malusee = proprietaire.board.find((u) => u.instanceId === unit.instanceId)!;
+  const apres = computeEffectiveStats(malusee, state.environment.tideState, { ...contexte, controllerBoard: proprietaire.board });
+  // Le −1 la tue déjà : le remplacement ne peut pas la garder en jeu.
+  if (apres.health <= malusee.damageMarked) return undefined;
+  const gardee: CardInstance = { ...malusee, pendingRemoval: undefined, pendingRemovalBy: undefined };
+  return {
+    state: {
+      ...remplace.state,
+      players: remplace.state.players.map((p) =>
+        p.id === owner.id ? { ...p, board: p.board.map((u) => (u.instanceId === unit.instanceId ? gardee : u)) } : p
+      ) as [PlayerState, PlayerState],
+    },
+    events: remplace.events,
+  };
+}
 
 /**
  * "Il reste à 1 Résistance à la place" (`survivesLethalOncePerTurn`) :
@@ -230,13 +275,20 @@ function destroyOrphanedEquipment(state: GameState, turnNumber: number): { state
       players: next.players.map((p) =>
         p.id === player.id
           ? orphans.reduce<PlayerState>(
-              (acc, u) => recordGraveyardArrival(acc, { cardId: u.cardId, turnNumber, fromZone: "board" }),
+              (acc, u) => recordGraveyardArrival(acc, { cardId: u.cardId, instanceId: u.instanceId, turnNumber, fromZone: "board", destructionCause: "effect" }),
               {
                 ...p,
                 board: current.board.filter((u) => !orphanIds.has(u.instanceId)),
                 graveyard: [
                   ...current.graveyard,
-                  ...orphans.map((u) => ({ ...u, damageMarked: 0, modifiers: [], attachedToInstanceId: undefined, graveyardCause: "destroyed" as const })),
+                  ...orphans.map((u) => ({
+                    ...u,
+                    damageMarked: 0,
+                    modifiers: [],
+                    attachedToInstanceId: undefined,
+                    graveyardCause: "destroyed" as const,
+                    destructionCause: "effect" as const,
+                  })),
                 ],
               }
             )
@@ -328,6 +380,17 @@ export function processDeaths(
         events.push(...result.events);
         continue;
       }
+      // Bête de Halage : « détruite par un effet ADVERSE » couvre aussi les
+      // DÉGÂTS d'un effet adverse (la cause qu'en retient le moteur,
+      // `destructionCauseOf`) et une destruction posée hors d'un effet
+      // `destroy` (Chacun sa Place). Elle perd 1 Résistance à la place, et
+      // reste en jeu : ses dégâts redescendent juste sous sa Résistance.
+      const remplacee = remplacementParBeteDeHalage(current, turnNumber, player, unit);
+      if (remplacee) {
+        current = remplacee.state;
+        events.push(...remplacee.events);
+        continue;
+      }
       // "Il reste à 1 Résistance à la place" (Revenante de la Fosse).
       const survived = applySelfSurvival(current, turnNumber, player, unit);
       if (survived) current = survived;
@@ -394,33 +457,18 @@ export function processDeaths(
       // (ex: Chaîne de Fer Noir) : son contrôleur perd de la Raison quand
       // l'unité qu'il équipe meurt — lu AVANT le filtrage du board, tant
       // que l'Équipement (toujours attaché à `unit`) y est encore présent.
-      const equipReasonLoss = player.board
-        .filter((u) => u.attachedToInstanceId === unit.instanceId)
-        .reduce((sum, equip) => sum + (getCardDefinition(equip.cardId).controllerReasonLossOnOwnDestruction ?? 0), 0);
-
-      const boardWithoutUnit = player.board.filter((u) => u.instanceId !== unit.instanceId);
-
-      // Autres Structures du même contrôleur portant `buffSelfOnOtherOwnStructureDestroyed`
-      // (ex: Épaves Accrochées) : +Résistance permanente, plafonnée à `maxStacks`
-      // (compté via les modificateurs déjà posés par CETTE carte, `source` = son propre cardId).
-      const dyingIsStructure = getCardDefinition(unit.cardId).type === "structure";
-      const board = dyingIsStructure
-        ? boardWithoutUnit.map((other) => {
-            const buff = getCardDefinition(other.cardId).buffSelfOnOtherOwnStructureDestroyed;
-            if (!buff) return other;
-            const stacksSoFar = other.modifiers.filter((m) => m.source === other.cardId).length;
-            if (stacksSoFar >= buff.maxStacks) return other;
-            return {
-              ...other,
-              modifiers: [
-                ...other.modifiers,
-                { id: `mod_${Math.random().toString(36).slice(2, 8)}`, source: other.cardId, attack: 0, health: buff.healthAmount, duration: "permanent" as const },
-              ],
-            };
-          })
-        : boardWithoutUnit;
-
+      //
+      // « Si elle est DÉTRUITE » : un Sabordage n'en est pas une (cf.
+      // `DestructionCause`), il ne coûte donc rien.
       const scuttled = unit.pendingRemoval === "scuttled";
+      const equipReasonLoss = scuttled
+        ? 0
+        : player.board
+            .filter((u) => u.attachedToInstanceId === unit.instanceId)
+            .reduce((sum, equip) => sum + (getCardDefinition(equip.cardId).controllerReasonLossOnOwnDestruction ?? 0), 0);
+
+      const board = player.board.filter((u) => u.instanceId !== unit.instanceId);
+
       const cause = destructionCauseOf(
         unit,
         computeEffectiveStats(unit, tideState, {
@@ -446,19 +494,24 @@ export function processDeaths(
       // cette inscription, « une carte Un Dead a rejoint votre Cimetière ce
       // tour » (Lot 13) ne verrait que les défausses, et un Un Dead tué au
       // combat ne compterait pas — ce que son texte ne dit nulle part.
+      // La cause est inscrite avec l'arrivée : « une unité Un Dead a été
+      // DÉTRUITE ce tour » ne doit compter ni un Sabordage ni un Bris.
       const updatedPlayer = recordGraveyardArrival(
-        {
-          ...player,
-          board,
-          graveyard,
-          reason: reasonAfterLoss(player, equipReasonLoss),
-        },
-        { cardId: unit.cardId, turnNumber, fromZone: "board" }
+        { ...player, board, graveyard },
+        { cardId: unit.cardId, instanceId: unit.instanceId, turnNumber, fromZone: "board", destructionCause: cause }
       );
       next = {
         ...next,
         players: next.players.map((p) => (p.id === player.id ? updatedPlayer : p)) as [PlayerState, PlayerState],
       };
+      // Perte de Raison de l'Équipement (Chaîne de Fer Noir) : par le chemin
+      // commun, bouclier de perte de Raison compris.
+      let equipReasonLost = 0;
+      if (equipReasonLoss > 0) {
+        const perte = loseReason(next, player.id, equipReasonLoss, turnNumber);
+        next = perte.state;
+        equipReasonLost = perte.lost;
+      }
       // Le Sabordage est un fait distinct, que des cartes et des quêtes
       // observent : il précède la destruction, comme dans `saborder.ts`.
       if (scuttled) {
@@ -471,8 +524,8 @@ export function processDeaths(
         turnNumber,
         timestamp: Date.now(),
       });
-      if (equipReasonLoss > 0) {
-        events.push({ type: "REASON_CHANGED", playerId: player.id, delta: -equipReasonLoss, turnNumber, timestamp: Date.now() });
+      if (equipReasonLost > 0) {
+        events.push({ type: "REASON_CHANGED", playerId: player.id, delta: -equipReasonLost, turnNumber, timestamp: Date.now() });
       }
 
       if (scuttled) {

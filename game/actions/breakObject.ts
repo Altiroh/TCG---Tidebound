@@ -1,23 +1,26 @@
+import { consumeObjectBreakTax, handBreakCost, objectBreakTax } from "@/game/rules/objectBreak";
+
+export { objectBreakTax };
 import { getCardDefinition } from "@/game/cards/sets/core";
 import type { EffectContext } from "@/game/effects/resolveEffect";
 import { resolveEffect } from "@/game/effects/resolveEffect";
 import { resolveEffectSequence } from "@/game/effects/resolveSequence";
 import {
-  collectReactionCandidates,
-  processDiscardedFromHandTriggers,
+  processGraveyardEntryTriggers,
   processGraveyardRecoveryTriggers,
   processReturnedToHandTriggers,
   processSummonEnterTriggers,
   processTrigger,
 } from "@/game/triggers/triggerBus";
-import { isEligibleChosenUnit } from "@/game/effects/chosenTargets";
+import { eligibleBreakTargets } from "@/game/effects/chosenTargets";
+import { ouvrirFenetrePour } from "@/game/reactions/reactionWindow";
 import { validateGraveyardChoice } from "@/game/effects/graveyardChoices";
-import { markOncePerTurnUsed, oncePerTurnAvailable } from "@/game/state/oncePerTurn";
 import type { EffectDefinition } from "@/game/effects/types";
 import type { GameEvent } from "@/game/events/types";
 import {
   assertCanPayCost,
   assertCardInHand,
+  assertPlayableCondition,
   assertGameActive,
   assertInMainPhase,
   assertIsActivePlayer,
@@ -25,22 +28,13 @@ import {
   assertPlayerInGame,
   combine,
 } from "@/game/rules/validation";
-import { isVisibleDuringTide, type CardDefinition, type CardInstance } from "@/game/cards/types";
+import type { CardDefinition } from "@/game/cards/types";
 import { payReasonCost, reasonCostAfterShield } from "@/game/state/shields";
 import { getPlayer, type GameState, type PlayerId, type PlayerState } from "@/game/state/types";
 import { recordGraveyardArrival } from "@/game/state/discard";
 import type { ActionResult, BreakObjectAction } from "@/game/actions/types";
 
-/**
- * Coût IMPRIMÉ du Bris depuis la main (Notion "Catalogue de cartes", règle
- * prototype "Briser un Objet depuis la main") : moitié du coût imprimé,
- * arrondie au supérieur, minimum 1 Raison. Une réduction temporaire de coût
- * ne le réduit pas ; le bouclier de perte de Raison s'applique au paiement,
- * comme pour tout coût.
- */
-export function handBreakCost(def: CardDefinition): number {
-  return Math.max(1, Math.ceil(def.cost / 2));
-}
+export { handBreakCost } from "@/game/rules/objectBreak";
 
 /**
  * Cibles qui n'existent que DANS une fenêtre de réaction : l'attaquant ou la
@@ -62,40 +56,6 @@ const REACTION_ONLY_TARGETS: ReadonlySet<string> = new Set(["pendingAttacker", "
 export function breaksOnlyInReaction(def: CardDefinition): boolean {
   return (def.onBreakEffects ?? []).some((effect) => REACTION_ONLY_TARGETS.has(effect.target.kind));
 }
-
-/**
- * Un adversaire peut-il ANNULER l'effet de ce Bris (Fausse Cargaison) ?
- *
- * On ne suspend que si la réponse est oui. La question se pose en termes
- * STRUCTURELS — une capacité éligible dont l'un des effets est
- * `cancelObjectEffect` — et jamais en nommant une carte : le jour où une
- * deuxième carte annule un Bris, elle marchera sans une ligne de plus.
- */
-function peutAnnulerLeBris(
-  state: GameState,
-  briseurId: PlayerId,
-  instanceId: string,
-  cardId: string,
-  fromHand: boolean,
-  turnNumber: number
-): boolean {
-  const evenement = {
-    trigger: "onObjectBroken" as const,
-    playerId: briseurId,
-    cardId,
-    sourceInstanceId: instanceId,
-    fromHand,
-  };
-  return state.players.some((joueur) => {
-    if (joueur.id === briseurId) return false;
-    return collectReactionCandidates(state, [evenement], joueur.id, turnNumber).some((candidat) =>
-      (getCardDefinition(candidat.cardId).abilities?.[candidat.abilityIndex]?.effects ?? []).some(
-        (effet) => effet.type === "cancelObjectEffect"
-      )
-    );
-  });
-}
-
 
 /**
  * Ce qui suit un Bris une fois l'Objet parti : ses propres effets, les
@@ -137,7 +97,7 @@ function resoudreEffetsDeBris(
   events.push(...recalled.events);
 
   // Cartes défaussées par le Bris (ex: Le Goûter, Lot 13).
-  const discardedByBreak = processDiscardedFromHandTriggers(nextState, breakEffectEvents, turnNumber);
+  const discardedByBreak = processGraveyardEntryTriggers(nextState, breakEffectEvents, turnNumber);
   nextState = discardedByBreak.state;
   events.push(...discardedByBreak.events);
 
@@ -162,7 +122,93 @@ function resoudreEffetsDeBris(
   nextState = brokenTrigger.state;
   events.push(...brokenTrigger.events);
 
+  // Depuis la main, l'Objet a rejoint le Cimetière DEPUIS LA MAIN : ce qui
+  // guette ce geste le voit (règle du 29/09/2026 — Cache-Cache, La Marelle).
+  if (context.brokenFromHand === true && context.sourceInstanceId) {
+    const joined = handBreakJoinsGraveyard(nextState, context.controllerId, context.sourceInstanceId, def.id, turnNumber);
+    nextState = joined.state;
+    events.push(...joined.events);
+  }
+
   return { state: nextState, events };
+}
+
+/**
+ * Un Objet Brisé depuis la main rejoint le Cimetière DEPUIS LA MAIN, et
+ * compte pour tout ce qui guette ce geste : « une carte rejoint votre
+ * Cimetière depuis votre main » (Cache-Cache, La Marelle). Règle du
+ * 29/09/2026 : le Bris depuis la main n'était vu que comme un Bris.
+ * Ce n'est pas une défausse décidée par un effet (`discardByEffect`
+ * absent) : un texte qui dit « défaussée par un effet » ne le voit pas.
+ */
+function handBreakJoinsGraveyard(
+  state: GameState,
+  playerId: PlayerId,
+  instanceId: string,
+  cardId: string,
+  turnNumber: number
+): { state: GameState; events: GameEvent[] } {
+  const moved: GameEvent = {
+    type: "CARD_MOVED",
+    turnNumber,
+    timestamp: Date.now(),
+    instanceId,
+    fromZone: "hand",
+    toZone: "graveyard",
+    cardId,
+    ownerId: playerId,
+  };
+  return processGraveyardEntryTriggers(state, [moved], turnNumber);
+}
+
+/**
+ * Objet RÉACTIF activé depuis la main (`PendingReactionCandidate.fromHand`) :
+ * il quitte la main pour le Cimetière avant que son effet ne se résolve.
+ * Le coût est payé par la réaction elle-même (`reasonCost` y inclut
+ * `handBreakCost`).
+ */
+export function breakReactiveObjectFromHand(
+  state: GameState,
+  playerId: PlayerId,
+  instanceId: string,
+  turnNumber: number
+): { state: GameState; events: GameEvent[] } {
+  const player = getPlayer(state, playerId);
+  const card = player.hand.find((c) => c.instanceId === instanceId);
+  if (!card) return { state, events: [] };
+  const playerAfter = recordGraveyardArrival(
+    {
+      ...player,
+      hand: player.hand.filter((c) => c.instanceId !== instanceId),
+      graveyard: [...player.graveyard, { ...card, damageMarked: 0, modifiers: [] }],
+    },
+    { cardId: card.cardId, instanceId: card.instanceId, turnNumber, fromZone: "hand" }
+  );
+  const base = { turnNumber, timestamp: Date.now() };
+  return {
+    state: { ...state, players: state.players.map((p) => (p.id === playerId ? playerAfter : p)) as [PlayerState, PlayerState] },
+    events: [
+      { ...base, type: "CARD_MOVED", instanceId, fromZone: "hand", toZone: "graveyard", cardId: card.cardId, ownerId: playerId },
+      { ...base, type: "OBJECT_BROKEN", playerId, instanceId, cardId: card.cardId, fromHand: true },
+    ],
+  };
+}
+
+/**
+ * Ce qui suit le Bris depuis la main d'un Objet réactif, une fois son effet
+ * résolu : le fait « vous avez Brisé un Objet depuis votre main »
+ * (Pantalone) et l'arrivée au Cimetière depuis la main.
+ */
+export function afterReactiveObjectBrokenFromHand(
+  state: GameState,
+  playerId: PlayerId,
+  instanceId: string,
+  cardId: string,
+  turnNumber: number
+): { state: GameState; events: GameEvent[] } {
+  const broken = processTrigger(state, { trigger: "onObjectBroken", playerId, cardId, sourceInstanceId: instanceId, fromHand: true }, turnNumber);
+  const joined = handBreakJoinsGraveyard(broken.state, playerId, instanceId, cardId, turnNumber);
+  return { state: joined.state, events: [...broken.events, ...joined.events] };
 }
 
 /**
@@ -186,31 +232,6 @@ export function resumeObjectBreakEffects(
     },
     suspendu.cancelled === true
   );
-}
-
-/** Clé `oncePerTurnFlags` de la taxe de Bris adverse (Cloche d'Alerte). */
-const OBJECT_BREAK_TAX_KEY = "objectBreakTax";
-
-/**
- * Taxe de Bris adverse (Cloche d'Alerte, `taxOpponentObjectBreakOncePerTurnWhileVisible`)
- * que `playerId` devrait payer en Brisant un Objet maintenant : montant et
- * carte qui la porte (montant 0 si aucune carte visible et encore armée).
- */
-export function objectBreakTax(
-  state: GameState,
-  playerId: PlayerId,
-  turnNumber: number
-): { amount: number; blocksIfUnpayable: boolean; holder?: { unit: CardInstance; ownerId: PlayerId } } {
-  const opponent = state.players.find((p) => p.id !== playerId);
-  if (!opponent) return { amount: 0, blocksIfUnpayable: false };
-  for (const unit of opponent.board) {
-    const def = getCardDefinition(unit.cardId);
-    const tax = def.taxOpponentObjectBreakOncePerTurnWhileVisible;
-    if (tax === undefined || !isVisibleDuringTide(def, state.environment.tideState)) continue;
-    if (!oncePerTurnAvailable(unit, OBJECT_BREAK_TAX_KEY, turnNumber)) continue;
-    return { amount: tax.amount, blocksIfUnpayable: tax.blocksIfUnpayable === true, holder: { unit, ownerId: opponent.id } };
-  }
-  return { amount: 0, blocksIfUnpayable: false };
 }
 
 /**
@@ -253,10 +274,16 @@ export function previewBreakReason(
   // la dette. Une Cloche d'Alerte adverse, elle, peut rendre le Bris
   // impossible — l'aperçu doit le dire AVANT que le joueur ne tente.
   const reactionOnly = breaksOnlyInReaction(def);
-  const allowed = !reactionOnly && (!tax.blocksIfUnpayable || player.reason >= cost);
+  const jouable = !fromHand || assertPlayableCondition(state, playerId, def).ok;
+  const allowed = !reactionOnly && jouable && (!tax.blocksIfUnpayable || player.reason >= cost);
   return { cost, reasonAfter: player.reason - cost, allowed, reactionOnly };
 }
 
+
+/** Noms des Objets déjà Brisés par ce joueur ce tour-ci (`PlayerState.objectsBrokenThisTurn`). */
+function objectsBrokenThisTurn(player: PlayerState, turnNumber: number): string[] {
+  return player.objectsBrokenThisTurn?.turnNumber === turnNumber ? player.objectsBrokenThisTurn.names : [];
+}
 
 function validate(state: GameState, action: BreakObjectAction) {
   const generalChecks = combine(
@@ -282,6 +309,11 @@ function validate(state: GameState, action: BreakObjectAction) {
       reasonCostAfterShield(state, action.playerId, handBreakCost(def), state.turnNumber)
     );
     if (!costCheck.ok) return costCheck;
+    // « Jouable uniquement si… » (On Flotte Encore) : Briser depuis la main
+    // est une autre façon de JOUER la carte — la condition s'y applique
+    // comme à la pose, sans quoi le Bris contournait ce que la pose refuse.
+    const playable = assertPlayableCondition(state, action.playerId, def);
+    if (!playable.ok) return playable;
   }
 
   if (breaksOnlyInReaction(def)) {
@@ -290,6 +322,10 @@ function validate(state: GameState, action: BreakObjectAction) {
 
   if (def.requiresTideStateForBreak && !def.requiresTideStateForBreak.includes(state.environment.tideState)) {
     return { ok: false as const, error: "Cet Objet ne peut être brisé dans l'état de Marée actuel." };
+  }
+
+  if (def.breakOncePerTurnByName && objectsBrokenThisTurn(player, state.turnNumber).includes(def.name)) {
+    return { ok: false as const, error: `Une seule carte nommée ${def.name} peut être Brisée par tour.` };
   }
 
   // « S'il ne peut pas payer, l'Objet ne peut pas être Brisé » (Cloche
@@ -315,7 +351,11 @@ function validate(state: GameState, action: BreakObjectAction) {
     // silencieusement ignorée par `resolveEffect`.
     const legal = (def.onBreakEffects ?? [])
       .filter((e) => e.target.kind === "chosenUnit")
-      .every((e) => isEligibleChosenUnit(state, e.target, action.playerId, action.targetInstanceId!, action.instanceId));
+      .every((e) =>
+        eligibleBreakTargets(state, e.target, action.playerId, action.instanceId).some(
+          (c) => c.unit.instanceId === action.targetInstanceId
+        )
+      );
     if (!legal) return { ok: false as const, error: "Cette carte n'est pas une cible valide pour ce Bris." };
   }
 
@@ -367,8 +407,9 @@ export function breakObject(state: GameState, action: BreakObjectAction): Action
       hand: action.fromHand ? player.hand.filter((c) => c.instanceId !== unit.instanceId) : player.hand,
       board: action.fromHand ? player.board : player.board.filter((u) => u.instanceId !== unit.instanceId),
       graveyard: [...player.graveyard, { ...unit, damageMarked: 0, modifiers: [] }],
+      objectsBrokenThisTurn: { turnNumber: state.turnNumber, names: [...objectsBrokenThisTurn(player, state.turnNumber), def.name] },
     },
-    { cardId: unit.cardId, turnNumber: state.turnNumber, fromZone }
+    { cardId: unit.cardId, instanceId: unit.instanceId, turnNumber: state.turnNumber, fromZone }
   );
 
   let nextState: GameState = {
@@ -382,17 +423,7 @@ export function breakObject(state: GameState, action: BreakObjectAction): Action
   // Taxe adverse (Cloche d'Alerte) : consommée pour le tour et ajoutée au
   // coût du Bris — depuis la main comme depuis le plateau (sinon gratuit).
   const tax = objectBreakTax(nextState, player.id, state.turnNumber);
-  if (tax.holder) {
-    const { unit: holder, ownerId } = tax.holder;
-    nextState = {
-      ...nextState,
-      players: nextState.players.map((p) =>
-        p.id === ownerId
-          ? { ...p, board: p.board.map((u) => (u.instanceId === holder.instanceId ? markOncePerTurnUsed(u, OBJECT_BREAK_TAX_KEY, state.turnNumber) : u)) }
-          : p
-      ) as [PlayerState, PlayerState],
-    };
-  }
+  nextState = consumeObjectBreakTax(nextState, tax, state.turnNumber);
   const breakCost = (action.fromHand ? handBreakCost(def) : 0) + tax.amount;
   if (breakCost > 0) {
     const payment = payReasonCost(nextState, player.id, breakCost, state.turnNumber);
@@ -400,7 +431,7 @@ export function breakObject(state: GameState, action: BreakObjectAction): Action
     events.push({ ...base, type: "REASON_CHANGED", playerId: player.id, delta: -payment.paid });
   }
 
-  events.push({ ...base, type: "CARD_MOVED", instanceId: unit.instanceId, fromZone, toZone: "graveyard" });
+  events.push({ ...base, type: "CARD_MOVED", instanceId: unit.instanceId, fromZone, toZone: "graveyard", cardId: unit.cardId, ownerId: player.id });
   // Le Bris est un fait distinct du simple départ vers le cimetière : il
   // porte la fenêtre de réaction "la première fois à chaque tour que vous
   // Brisez un Objet" (Le Tas de Trucs), qui ne peut s'ouvrir qu'à partir
@@ -425,22 +456,37 @@ export function breakObject(state: GameState, action: BreakObjectAction): Action
   // sans cette garde, tous les Bris du jeu changeraient de rythme pour une
   // seule carte, et le moment où « la première fois que vous Brisez un
   // Objet » se déclenche bougerait sous les pieds des cartes existantes.
-  if (peutAnnulerLeBris(nextState, player.id, unit.instanceId, def.id, action.fromHand === true, state.turnNumber)) {
+  //
+  // La fenêtre s'ouvre ICI, avec le Bris en suspens : la laisser à la fin de
+  // `dispatch` revenait à reprendre le Bris AVANT de demander quoi que ce
+  // soit — l'annulation arrivait trop tard et ne trouvait plus rien
+  // (revue du 02/10/2026). Tant que le Bris est suspendu, seules les
+  // capacités qui l'ANNULENT y sont proposées (`collectReactionCandidates`) :
+  // ce qui réagit au Bris lui-même attend sa reprise, comme d'habitude.
+  // La question se pose en termes STRUCTURELS — une capacité éligible dont
+  // un effet est `cancelObjectEffect` — jamais en nommant une carte.
+  const suspendu: GameState = {
+    ...nextState,
+    pendingObjectBreak: {
+      playerId: player.id,
+      instanceId: unit.instanceId,
+      cardId: def.id,
+      brokenFromHand: action.fromHand === true,
+      ...(action.targetInstanceId ? { chosenTargetInstanceId: action.targetInstanceId } : {}),
+      ...(action.chosenGraveyardInstanceId ? { chosenGraveyardInstanceId: action.chosenGraveyardInstanceId } : {}),
+      turnNumber: state.turnNumber,
+    },
+  };
+  const fenetre = ouvrirFenetrePour(
+    suspendu,
+    [{ trigger: "onObjectBroken", playerId: player.id, cardId: def.id, sourceInstanceId: unit.instanceId, fromHand: action.fromHand === true }],
+    state.turnNumber
+  );
+  if (fenetre) {
     return {
       ok: true,
-      state: {
-        ...nextState,
-        pendingObjectBreak: {
-          playerId: player.id,
-          instanceId: unit.instanceId,
-          cardId: def.id,
-          brokenFromHand: action.fromHand === true,
-          ...(action.targetInstanceId ? { chosenTargetInstanceId: action.targetInstanceId } : {}),
-          ...(action.chosenGraveyardInstanceId ? { chosenGraveyardInstanceId: action.chosenGraveyardInstanceId } : {}),
-          turnNumber: state.turnNumber,
-        },
-      },
-      events,
+      state: { ...suspendu, pendingReaction: fenetre },
+      events: [...events, { ...base, type: "REACTION_WINDOW_OPENED", playerId: fenetre.awaitingPlayerId }],
     };
   }
 

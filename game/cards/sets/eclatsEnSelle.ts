@@ -514,8 +514,20 @@ const CAVALERIE_LOT: CardDefinition[] = [
     maxCopies: 3,
     attack: 2,
     health: 3,
-    text: "Lorsqu'elle attaque une unité ayant Garde, elle gagne +1 Puissance pour cette attaque.",
+    // Standard Verrier (01/10/2026, validé par le propriétaire) : la Cavalerie
+    // prend de l'élan. Coût et statistiques inchangés.
+    text:
+      "Lorsqu'elle attaque une unité ayant Garde, elle gagne +1 Puissance pour cette attaque. Chaque fois qu'elle " +
+      "attaque, elle gagne +1 Puissance.",
     bonusDamageVsKeyword: { keyword: "garde", amount: 1 },
+    abilities: [
+      {
+        trigger: "onAttack",
+        oncePerTurnKey: "montureElan",
+        description: "Elle charge : +1 Puissance, conservée.",
+        effects: [{ type: "buff", target: { kind: "self" }, attackAmount: { kind: "flat", value: 1 }, healthAmount: { kind: "flat", value: 0 }, permanent: true }],
+      },
+    ],
   },
   {
     id: "bete-de-halage",
@@ -559,8 +571,17 @@ const CAVALERIE_LOT: CardDefinition[] = [
     maxCopies: 3,
     attack: 3,
     health: 5,
-    text: "Tant qu'il est votre seule unité, il a +1 Puissance.",
-    selfBuffWhileOnlyUnit: { attackAmount: 1 },
+    // Standard Verrier (01/10/2026, validé par le propriétaire) : la Cavalerie
+    // prend de l'élan. Coût et statistiques inchangés.
+    text: "Chaque fois qu'il attaque, il gagne +1 Puissance.",
+    abilities: [
+      {
+        trigger: "onAttack",
+        oncePerTurnKey: "destrierElan",
+        description: "Il charge : +1 Puissance, conservée.",
+        effects: [{ type: "buff", target: { kind: "self" }, attackAmount: { kind: "flat", value: 1 }, healthAmount: { kind: "flat", value: 0 }, permanent: true }],
+      },
+    ],
   },
   {
     id: "mufle-au-fanion",
@@ -573,8 +594,18 @@ const CAVALERIE_LOT: CardDefinition[] = [
     maxCopies: 3,
     attack: 4,
     health: 6,
-    text: "Tant qu'il est blessé, il a Garde.",
+    // Standard Verrier (01/10/2026, validé par le propriétaire) : la Cavalerie
+    // prend de l'élan. Coût et statistiques inchangés.
+    text: "Tant qu'il est blessé, il a Garde. La première fois à chaque tour qu'il survit à des dégâts, il gagne +1 Puissance.",
     conditionalKeywords: [{ keyword: "garde", selfDamaged: true }],
+    abilities: [
+      {
+        trigger: "onSurvivedDamage",
+        oncePerTurnKey: "mufleTientBon",
+        description: "Il tient bon : +1 Puissance, conservée.",
+        effects: [{ type: "buff", target: { kind: "self" }, attackAmount: { kind: "flat", value: 1 }, healthAmount: { kind: "flat", value: 0 }, permanent: true }],
+      },
+    ],
   },
   {
     id: "chargeur-des-ecueils",
@@ -840,6 +871,8 @@ const CAVALERIE_LOT: CardDefinition[] = [
       {
         trigger: "onIncomingDirectAttack",
         mode: "optional",
+        // « une UNITÉ adverse déclare une attaque » : pas un tir de Navire.
+        condition: { attackFromUnit: true },
         description: "Brisez Pas un Pas de Plus : une de vos unités gagne Garde jusqu'à la fin du tour.",
         effects: [
           {
@@ -919,7 +952,12 @@ const SENTINELLES: CardDefinition[] = [
         effects: [
           {
             type: "buff",
-            target: { kind: "chosenUnit", among: { archetype: "sentinelle-chromatique", otherChromaticColorThanSource: true } },
+            // « une Sentinelle » sans « que vous contrôlez » : des deux camps
+            // (CLAUDE.md, règle Cartes §2).
+            target: {
+              kind: "chosenUnit",
+              among: { archetype: "sentinelle-chromatique", otherChromaticColorThanSource: true, sameController: false },
+            },
             attackAmount: { kind: "flat", value: 2 },
             healthAmount: { kind: "flat", value: 0 },
             duration: "endOfTurn",
@@ -1075,8 +1113,10 @@ const SENTINELLES: CardDefinition[] = [
     abilities: [
       {
         trigger: "onCardDiscardedFromHand",
-        // La défausse d'un effet de carte, jamais la limite de main.
-        triggeredBy: { discardByEffect: true },
+        // « piochez PUIS défaussez par un effet de carte » : une défausse
+        // d'effet qui suit une pioche du même effet (Vigie, Signal Violet…),
+        // jamais la limite de main ni une défausse seule.
+        triggeredBy: { discardByEffect: true, discardAfterDraw: true },
         condition: { duringOwnTurn: true },
         oncePerTurnKey: "oracleDamethyste",
         description: "Les pierres parlent : +2 Puissance jusqu'à la fin du tour.",
@@ -1117,6 +1157,8 @@ const SENTINELLES: CardDefinition[] = [
       },
       {
         trigger: "onDeath",
+        // « Quand il est DÉTRUIT » : un Sabordage n'en est pas un.
+        condition: { destroyedBy: ["combat", "effect", "tide"] },
         description: "La pierre lui survit : un Éclat Chromatique de sa couleur.",
         effects: [{ type: "summon", target: { kind: "controllerPlayer" }, chromaticShardOf: "self" }],
       },
@@ -1211,17 +1253,19 @@ const SENTINELLES: CardDefinition[] = [
       {
         trigger: "onSaborde",
         mode: "optional",
-        description: "Détruisez un de vos Éclats : la Sentinelle équipée émet son Signal jusqu'à votre prochain tour.",
+        description: "Détruisez un Éclat Chromatique : la Sentinelle équipée émet son Signal jusqu'à votre prochain tour.",
+        // « un Éclat Chromatique » sans « que vous contrôlez » : le vôtre ou
+        // celui de l'adversaire (Héraut, Transfert le précisent ; pas lui).
         effects: [
           {
             type: "chromaticModify",
-            target: { kind: "chosenUnit", among: { subtype: ECLAT } },
+            target: { kind: "chosenUnit", among: { subtype: ECLAT, sameController: false } },
             chromaticRecipient: "equippedUnit",
             chromaticEmits: true,
             chromaticEmitOnly: true,
             duration: "untilYourNextTurn",
           },
-          { type: "destroy", target: { kind: "chosenUnit", among: { subtype: ECLAT } } },
+          { type: "destroy", target: { kind: "chosenUnit", among: { subtype: ECLAT, sameController: false } } },
         ],
       },
     ],
@@ -1302,55 +1346,29 @@ const SENTINELLES: CardDefinition[] = [
     text:
       "Durée : 4 tours. La première fois pendant chacun de vos tours que vous jouez une Sentinelle d'une couleur " +
       "que vous ne contrôliez pas encore, elle gagne +1 Résistance jusqu'à votre prochain tour.",
-    abilities: [
-      {
-        trigger: "onEnterPlay",
-        triggeredBy: { archetype: "sentinelle-chromatique", cardTypes: [...UNITES] },
-        condition: { duringOwnTurn: true, triggerSourceBringsNewChromaticColor: true },
-        oncePerTurnKey: "posteChromatique",
-        description: "Une couleur nouvelle : +1 Résistance jusqu'à votre prochain tour.",
-        effects: [
-          {
-            type: "buff",
-            target: { kind: "triggerSource" },
-            attackAmount: { kind: "flat", value: 0 },
-            healthAmount: { kind: "flat", value: 1 },
-            duration: "untilYourNextTurn",
-          },
-        ],
-      },
-    ],
-  },
-  {
-    id: "coffret-aux-cinq-pierres",
-    name: "Coffret aux Cinq Pierres",
-    type: "structure",
-    archetype: "sentinelle-chromatique",
-    setCode: ECLATS_EN_SELLE,
-    cost: 3,
-    maxCopies: 2,
-    health: 3,
-    text:
-      "Vos Éclats Chromatiques ont +1 Résistance. Une fois par tour, vous pouvez Saborder un Éclat : regardez les " +
-      "3 premières cartes de votre pioche. Vous pouvez ajouter une Sentinelle de cette couleur parmi elles à votre main.",
-    auraBuffControllerCardTypes: { targetTypes: ["structure"], targetSubtype: ECLAT, healthAmount: 1 },
-    activatableOncePerTurn: {
-      cost: {},
+    // Deux moments pour un seul texte : la couleur d'une Sentinelle JOUÉE
+    // se lit à son arrivée — ou, si elle la choisit en arrivant (Émissaire
+    // de Quartz), une fois ce choix fait. Même clé « une fois par tour ».
+    // « que vous JOUEZ » : une Sentinelle invoquée n'en est pas une. Les
+    // couleurs « que vous ne contrôliez pas encore » se comparent à la
+    // photo prise avant la pose (`couleursAvantArrivee`) : un Géant
+    // Assemblé n'apporte pas les couleurs de ses quatre Sentinelles.
+    abilities: (["onEnterPlay", "onChromaticColorChosen"] as const).map((trigger) => ({
+      trigger,
+      triggeredBy: { archetype: "sentinelle-chromatique" as const, cardTypes: [...UNITES], onlyPlayed: true },
+      condition: { duringOwnTurn: true, triggerSourceBringsNewChromaticColor: true },
+      oncePerTurnKey: "posteChromatique",
+      description: "Une couleur nouvelle : +1 Résistance jusqu'à votre prochain tour.",
       effects: [
-        // La couleur de l'Éclat est lue en posant la question, AVANT qu'il ne
-        // soit Sabordé par l'effet suivant.
         {
-          type: "lookAtDeckTop",
-          target: { kind: "controllerPlayer" },
-          amount: { kind: "flat", value: 3 },
-          uses: 1,
-          refusable: true,
-          filter: { cardTypes: [...UNITES], archetype: "sentinelle-chromatique" },
-          takeableColorFrom: "chosenUnit",
+          type: "buff" as const,
+          target: { kind: "triggerSource" as const },
+          attackAmount: { kind: "flat" as const, value: 0 },
+          healthAmount: { kind: "flat" as const, value: 1 },
+          duration: "untilYourNextTurn" as const,
         },
-        { type: "saborde", target: { kind: "chosenUnit", among: { subtype: ECLAT } } },
       ],
-    },
+    })),
   },
   {
     id: "synchronisation",
@@ -1364,7 +1382,9 @@ const SENTINELLES: CardDefinition[] = [
     onBreakEffects: [
       {
         type: "chromaticModify",
-        target: { kind: "chosenUnit", among: { archetype: "sentinelle-chromatique" } },
+        // « une Sentinelle Chromatique » : des deux camps, le texte ne dit
+        // pas « que vous contrôlez ».
+        target: { kind: "chosenUnit", among: { archetype: "sentinelle-chromatique", sameController: false } },
         chromaticBenefitsOwn: true,
         duration: "endOfTurn",
       },
@@ -1385,8 +1405,10 @@ const SENTINELLES: CardDefinition[] = [
       "+1 Résistance jusqu'à votre prochain tour.",
     onPlayEffects: [
       {
+        // « jusqu'à 3 Sentinelles Chromatiques » : des deux camps, le texte
+        // ne restreint pas au vôtre.
         type: "pickUnits",
-        target: { kind: "allAllyUnits" },
+        target: { kind: "allUnits" },
         filter: { archetype: "sentinelle-chromatique" },
         uses: 3,
         distinctChromaticColors: true,
@@ -1397,6 +1419,8 @@ const SENTINELLES: CardDefinition[] = [
             attackAmount: { kind: "flat", value: 1 },
             healthAmount: { kind: "flat", value: 1 },
             duration: "untilYourNextTurn",
+            // « jusqu'à VOTRE prochain tour », même posé sur une Sentinelle adverse.
+            expiresOnControllersTurn: true,
           },
         ],
       },

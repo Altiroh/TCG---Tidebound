@@ -5,7 +5,6 @@ import { getShipDefinition } from "@/game/environment/shipData";
 import { isVisibleDuringTide, UNIT_CARD_TYPES } from "@/game/cards/types";
 import { collectReactionCandidates } from "@/game/triggers/triggerBus";
 import type { TriggerEvent } from "@/game/triggers/types";
-import { reasonAfterLoss } from "@/game/state/reason";
 import type { GameEvent } from "@/game/events/types";
 import { processTrigger } from "@/game/triggers/triggerBus";
 import {
@@ -21,8 +20,8 @@ import {
 import { applyBlueSignal } from "@/game/rules/chromaticSignals";
 import {
   consumeDirectShipDamageShield,
-  consumeOwnDamageTakenShield,
-  consumeStructureResistanceRestoreShield,
+  restoreStructureResistanceAfterLoss,
+  loseReason,
 } from "@/game/state/shields";
 import { getOpponent, getPlayer, type GameState, type PlayerState } from "@/game/state/types";
 import { recordGraveyardArrival } from "@/game/state/discard";
@@ -35,10 +34,10 @@ function effectiveAttack(unit: CardInstance, state: GameState): number {
 }
 
 /**
- * Bonus de dégâts (attaquant lui-même + un Équipement qui lui serait
- * attaché) quand la cible de l'attaque est du type visé — ex: Barracuda/
- * Poisson-Scie Gris "+1 contre une Structure", Corde de Remorquage "+1 à
- * l'unité équipée contre une Structure". Ne s'applique qu'aux attaques
+ * Bonus de DÉGÂTS (attaquant lui-même + un Équipement qui lui serait
+ * attaché) quand la cible de l'attaque est du type visé — ex: Poisson-Scie
+ * Gris « 1 dégât supplémentaire à cette Structure ». Un « +1 Puissance »
+ * passe, lui, par `bonusPowerVsTarget`. Ne s'applique qu'aux attaques
  * ciblant une unité (pas une attaque directe du Navire, qui n'a pas de
  * carte-cible) et n'entre jamais dans le calcul de la riposte.
  */
@@ -56,6 +55,33 @@ function bonusDamageAgainst(attacker: CardInstance, defenderType: string, state:
     }
   }
   return bonus;
+}
+
+/**
+ * « +N Puissance pour ce combat » quand la cible déclarée est du type visé
+ * (`bonusPowerVsTargetType`, attaquant + Équipement attaché) — compté dans
+ * la Puissance DÉCLARÉE (Barracuda des Hauts-Fonds, Corde de Remorquage).
+ * 0 pour une attaque directe ou une cible introuvable.
+ */
+function bonusPowerVsTarget(attacker: CardInstance, defenderInstanceId: string | undefined, state: GameState): number {
+  if (!defenderInstanceId) return 0;
+  const cible = state.players.flatMap((p) => p.board).find((u) => u.instanceId === defenderInstanceId);
+  if (!cible) return 0;
+  const type = getCardDefinition(cible.cardId).type;
+  let bonus = 0;
+  const attackerDef = getCardDefinition(attacker.cardId);
+  if (attackerDef.bonusPowerVsTargetType?.type === type) bonus += attackerDef.bonusPowerVsTargetType.amount;
+  for (const unit of [...state.players[0].board, ...state.players[1].board]) {
+    if (unit.attachedToInstanceId !== attacker.instanceId) continue;
+    const equipDef = getCardDefinition(unit.cardId);
+    if (equipDef.bonusPowerVsTargetType?.type === type) bonus += equipDef.bonusPowerVsTargetType.amount;
+  }
+  return bonus;
+}
+
+/** Puissance DÉCLARÉE d'une attaque : Puissance effective + bonus de Marée + bonus contre le type de la cible. */
+function declaredAttackPower(attacker: CardInstance, defenderInstanceId: string | undefined, state: GameState): number {
+  return effectiveAttack(attacker, state) + bonusDamageInTideState(attacker, state) + bonusPowerVsTarget(attacker, defenderInstanceId, state);
 }
 
 /**
@@ -117,12 +143,22 @@ function consumePendingBonusVsKeyword(
   };
 }
 
-/** Somme `selfDamageOnDirectAttack` de l'attaquant et de tout Équipement qui lui serait attaché (ex: Requin Balafré, Harpon de Pont). */
+/** Somme `selfDamageOnDirectAttack` de l'attaquant et de tout Équipement qui lui serait attaché (ex: Harpon de Pont — « s'il attaque directement »). */
 function selfDamageOnDirectAttack(attacker: CardInstance, state: GameState): number {
   let total = getCardDefinition(attacker.cardId).selfDamageOnDirectAttack ?? 0;
   for (const unit of [...state.players[0].board, ...state.players[1].board]) {
     if (unit.attachedToInstanceId !== attacker.instanceId) continue;
     total += getCardDefinition(unit.cardId).selfDamageOnDirectAttack ?? 0;
+  }
+  return total;
+}
+
+/** Somme `selfDamageOnDirectDamageDealt` de l'attaquant et de tout Équipement attaché (ex: Requin Balafré) — à n'appliquer que si la coque a vraiment été touchée. */
+function selfDamageOnDirectDamageDealt(attacker: CardInstance, state: GameState): number {
+  let total = getCardDefinition(attacker.cardId).selfDamageOnDirectDamageDealt ?? 0;
+  for (const unit of [...state.players[0].board, ...state.players[1].board]) {
+    if (unit.attachedToInstanceId !== attacker.instanceId) continue;
+    total += getCardDefinition(unit.cardId).selfDamageOnDirectDamageDealt ?? 0;
   }
   return total;
 }
@@ -168,7 +204,7 @@ function controllerReasonLossAfterAttack(attacker: CardInstance, state: GameStat
   return total;
 }
 
-/** Applique des dégâts de COMBAT à une unité, en respectant son propre bouclier "1ère fois par tour" (Baleine aux Cicatrices Blanches) et, si c'est une Structure, la restauration de Wood Vy — retourne le montant réellement marqué (peut être 0 si totalement absorbé). Utilisé aussi bien pour les dégâts au défenseur que pour la riposte à l'attaquant : "elle subit des dégâts" ne distingue pas les deux rôles. */
+/** Applique des dégâts de COMBAT à une unité (réduction de Vieille-Selle comprise) — retourne le montant réellement marqué (peut être 0 si totalement absorbé). Utilisé aussi bien pour les dégâts au défenseur que pour la riposte à l'attaquant : "elle subit des dégâts" ne distingue pas les deux rôles. La restauration de Wood Vy se fait APRÈS, une fois le coup consigné (`restoreStructureResistanceAfterLoss`). */
 function applyCombatDamageToUnit(
   state: GameState,
   ownerId: string,
@@ -177,20 +213,14 @@ function applyCombatDamageToUnit(
   turnNumber: number
 ): { state: GameState; amountApplied: number } {
   if (amount <= 0) return { state, amountApplied: 0 };
-  const selfShield = consumeOwnDamageTakenShield(state, ownerId, unit.instanceId, turnNumber);
-  let nextState = selfShield.state;
-  let reduction = selfShield.reduction;
-  if (getCardDefinition(unit.cardId).type === "structure") {
-    const restoreShield = consumeStructureResistanceRestoreShield(nextState, ownerId, turnNumber);
-    nextState = restoreShield.state;
-    reduction += restoreShield.restore;
-  }
+  const nextState = state;
+  let reduction = 0;
   // Vieille-Selle : un coup de 3 ou plus, d'une seule source, perd 1.
   const peau = getCardDefinition(unit.cardId).reduceLargeDamageTaken;
   if (peau && amount >= peau.atLeast) reduction += peau.amount;
   const finalAmount = Math.max(0, amount - reduction);
   if (finalAmount <= 0) return { state: nextState, amountApplied: 0 };
-  nextState = {
+  const marked: GameState = {
     ...nextState,
     players: nextState.players.map((p) =>
       p.id === ownerId
@@ -198,14 +228,14 @@ function applyCombatDamageToUnit(
             ...p,
             board: p.board.map((u) =>
               u.instanceId === unit.instanceId
-                ? { ...u, damageMarked: u.damageMarked + finalAmount, lastDamageCause: "combat" as const, lastDamageTurn: state.turnNumber }
+                ? { ...u, damageMarked: u.damageMarked + finalAmount, lastDamageCause: "combat" as const, lastDamageBy: undefined, lastDamageTurn: state.turnNumber }
                 : u
             ),
           }
         : p
     ) as [PlayerState, PlayerState],
   };
-  return { state: nextState, amountApplied: finalAmount };
+  return { state: marked, amountApplied: finalAmount };
 }
 
 function validate(state: GameState, action: AttackAction) {
@@ -292,13 +322,13 @@ function suspendrePourInterception(
       playerId: action.playerId,
       attackerInstanceId: action.attackerInstanceId,
       defenderInstanceId: action.defenderInstanceId,
-      attackerPower: effectiveAttack(attaquant, state) + bonusDamageInTideState(attaquant, state),
+      attackerPower: declaredAttackPower(attaquant, action.defenderInstanceId, state),
     },
   };
 
   // 1. Les défenses AUTOMATIQUES du défenseur s'appliquent d'abord : un texte
   //    sans « vous pouvez » ne se propose pas, il agit (Filet à la Dérive
-  //    visible, Le Filet qui Respire visible).
+  //    visible).
   const evenements: GameEvent[] = [];
   for (const triggerEvent of triggerEvents) {
     const auto = processTrigger(declaree, triggerEvent, state.turnNumber);
@@ -373,7 +403,7 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
   // pu amputer (`modifyAttackerPower`), et la recalculer ici effacerait sa
   // réduction. Hors interception, elle se calcule normalement.
   const declaredPower =
-    etat.pendingAttack?.attackerPower ?? effectiveAttack(declaredAttacker, etat) + bonusDamageInTideState(declaredAttacker, etat);
+    etat.pendingAttack?.attackerPower ?? declaredAttackPower(declaredAttacker, action.defenderInstanceId, etat);
   const powerBeforeAttackTriggers = effectiveAttack(declaredAttacker, etat);
   const events: GameEvent[] = [...evenementsDeclaration];
   const base = { turnNumber: etat.turnNumber, timestamp: Date.now() };
@@ -504,7 +534,7 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
       events.push({ ...base, type: "CARD_MOVED", instanceId: contrecoup.instanceId, fromZone: "board", toZone: "graveyard" });
 
       // Elle quitte le board sans être détruite : `onExpire`, comme une durée
-      // qui s'achève (Radeau de Fortune lit le même déclencheur).
+      // qui s'achève.
       const contrecoupTrigger = processTrigger(
         nextState,
         { trigger: "onExpire", playerId: opponent.id, cardId: contrecoup.cardId, sourceInstanceId: contrecoup.instanceId },
@@ -533,19 +563,22 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
       });
     }
 
-    const reasonLoss = opponentReasonLossOnDirectAttack(attackerUnit, nextState);
+    // « Lorsqu'elle INFLIGE des dégâts directs » (Anguille des Profondeurs,
+    // Bat-Marin Abyssal) : seulement si la coque a vraiment été touchée. Une
+    // interception, un Contrecoup, un bouclier ou un plafond qui ramène le
+    // coup à 0 n'inflige rien — et la perte passe par le bouclier de perte
+    // de Raison du défenseur, comme toute autre.
+    const reasonLoss = directDamage > 0 ? opponentReasonLossOnDirectAttack(attackerUnit, nextState) : 0;
     if (reasonLoss > 0) {
-      const opponentAfterDamage = getPlayer(nextState, opponent.id);
-      events.push({ ...base, type: "REASON_CHANGED", playerId: opponent.id, delta: -reasonLoss });
-      nextState = {
-        ...nextState,
-        players: nextState.players.map((p) =>
-          p.id === opponent.id ? { ...p, reason: reasonAfterLoss(opponentAfterDamage, reasonLoss) } : p
-        ) as [PlayerState, PlayerState],
-      };
+      const perte = loseReason(nextState, opponent.id, reasonLoss, etat.turnNumber);
+      nextState = perte.state;
+      if (perte.lost > 0) events.push({ ...base, type: "REASON_CHANGED", playerId: opponent.id, delta: -perte.lost });
     }
 
-    const recoil = selfDamageOnDirectAttack(attackerUnit, nextState);
+    // « S'il attaque directement » (Harpon de Pont) se paie dans tous les
+    // cas ; « lorsqu'il INFLIGE des dégâts directs » (Requin Balafré),
+    // seulement si la coque a été touchée.
+    const recoil = selfDamageOnDirectAttack(attackerUnit, nextState) + (directDamage > 0 ? selfDamageOnDirectDamageDealt(attackerUnit, nextState) : 0);
     if (recoil > 0) {
       nextState = {
         ...nextState,
@@ -557,7 +590,7 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
                   // Le contrecoup EST du combat : l'attaquant le prend en
                   // frappant, pas par un effet tiers.
                   u.instanceId === attackerUnit.instanceId
-                    ? { ...u, damageMarked: u.damageMarked + recoil, lastDamageCause: "combat" as const, lastDamageTurn: state.turnNumber }
+                    ? { ...u, damageMarked: u.damageMarked + recoil, lastDamageCause: "combat" as const, lastDamageBy: undefined, lastDamageTurn: state.turnNumber }
                     : u
                 ),
               }
@@ -592,9 +625,8 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
     nextState = contreMotCle.state;
     const totalAttackerDamage = attackerDamage + bonusDamageAgainst(attackerUnit, defenderType, nextState) + contreMotCle.bonus;
 
-    // Dégâts au défenseur, réduits par son propre bouclier "1ère fois par
-    // tour" (Baleine aux Cicatrices Blanches) et, si c'est une Structure,
-    // par la restauration de Résistance de Wood Vy.
+    // Dégâts au défenseur, réduits, si c'est une Structure, par la
+    // restauration de Résistance de Wood Vy.
     const defenderDamageResult = applyCombatDamageToUnit(nextState, opponent.id, defenderUnit, totalAttackerDamage, etat.turnNumber);
     nextState = defenderDamageResult.state;
     if (defenderDamageResult.amountApplied > 0) {
@@ -606,6 +638,9 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
         combat: "strike",
         cause: "combat",
       });
+      const rendu = restoreStructureResistanceAfterLoss(nextState, opponent.id, defenderUnit.instanceId, defenderDamageResult.amountApplied, etat.turnNumber);
+      nextState = rendu.state;
+      events.push(...rendu.events);
 
       const damagedTrigger = processTrigger(
         nextState,
@@ -636,6 +671,9 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
           combat: "retaliation",
           cause: "combat",
         });
+        const rendu = restoreStructureResistanceAfterLoss(nextState, attackerPlayer.id, attackerUnit.instanceId, attackerDamageResult.amountApplied, etat.turnNumber);
+        nextState = rendu.state;
+        events.push(...rendu.events);
 
         const attackerDamagedTrigger = processTrigger(
           nextState,
@@ -662,7 +700,7 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
               ...p,
               board: p.board.map((u) =>
                 u.instanceId === attackerUnit.instanceId
-                  ? { ...u, damageMarked: u.damageMarked + apresAttaque, lastDamageCause: "effect" as const, lastDamageTurn: state.turnNumber }
+                  ? { ...u, damageMarked: u.damageMarked + apresAttaque, lastDamageCause: "effect" as const, lastDamageBy: undefined, lastDamageTurn: state.turnNumber }
                   : u
               ),
             }
@@ -681,14 +719,10 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
 
   const postAttackReasonLoss = controllerReasonLossAfterAttack(attackerUnit, nextState);
   if (postAttackReasonLoss > 0) {
-    const attackerControllerAfter = getPlayer(nextState, attackerPlayer.id);
-    events.push({ ...base, type: "REASON_CHANGED", playerId: attackerPlayer.id, delta: -postAttackReasonLoss });
-    nextState = {
-      ...nextState,
-      players: nextState.players.map((p) =>
-        p.id === attackerPlayer.id ? { ...p, reason: reasonAfterLoss(attackerControllerAfter, postAttackReasonLoss) } : p
-      ) as [PlayerState, PlayerState],
-    };
+    // Une perte de Raison comme une autre : le bouclier de son contrôleur s'applique.
+    const perte = loseReason(nextState, attackerPlayer.id, postAttackReasonLoss, etat.turnNumber);
+    nextState = perte.state;
+    if (perte.lost > 0) events.push({ ...base, type: "REASON_CHANGED", playerId: attackerPlayer.id, delta: -perte.lost });
   }
 
   return { ok: true, state: nextState, events };

@@ -155,31 +155,6 @@ export const CORE_SET: CardDefinition[] = [
     reduceOwnReasonLossOncePerTurn: { amount: 1 },
   },
   {
-    id: "plongeur-des-epaves",
-    name: "Plongeur des Épaves",
-    type: "marin",
-    cost: 2,
-    attack: 2,
-    health: 2,
-    maxCopies: 2,
-    text:
-      "La première fois à chaque tour qu'une Structure que vous contrôlez est détruite ou Sabordée, vous pouvez " +
-      "récupérer 1 Raison.",
-    // « vous pouvez » : proposé, jamais imposé. Le Sabordage déclenche
-    // toujours `onDeath` en plus de `onSaborde` (cf. `saborder.ts`) — un
-    // seul déclencheur couvre les deux cas du texte.
-    abilities: [
-      {
-        trigger: "onDeath",
-        mode: "optional",
-        triggeredBy: { cardTypes: ["structure"], sameController: false },
-        oncePerTurnKey: "plongeurRecupere",
-        description: "Quand une Structure (des deux camps) est détruite ou Sabordée : récupérez 1 Raison. Une fois par tour.",
-        effects: [{ type: "reasonGain", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } }],
-      },
-    ],
-  },
-  {
     id: "murene-aveugle",
     name: "Murène Aveugle",
     type: "creature",
@@ -338,7 +313,11 @@ export const CORE_SET: CardDefinition[] = [
         trigger: "onIncomingDirectAttack",
         mode: "optional",
         oncePerTurnKey: "cylindreContrecoup",
-        condition: { selfVisible: true },
+        // « des dégâts directs D'UNE ATTAQUE » : un tir de Navire n'est pas
+        // l'attaque d'une unité — il ne déclenche pas le Cylindre (et
+        // « autant de dégâts », qui lit la Puissance de l'attaquant, n'y
+        // vaudrait rien).
+        condition: { selfVisible: true, attackFromUnit: true },
         description: "Annulez les dégâts directs et infligez-les à un permanent adverse, puis détruisez cette carte.",
         effects: [
           { type: "cancelIncomingAttack", target: { kind: "controllerPlayer" } },
@@ -352,7 +331,8 @@ export const CORE_SET: CardDefinition[] = [
         trigger: "onIncomingDirectAttack",
         mode: "optional",
         hiddenReaction: true,
-        condition: { selfHidden: true },
+        // « lorsqu'une UNITÉ adverse attaque directement » : pas un tir de Navire.
+        condition: { selfHidden: true, attackFromUnit: true },
         description: "Révélez Cylindre flottant : annulez les dégâts et infligez-les au Navire adverse, puis détruisez cette carte.",
         effects: [
           { type: "cancelIncomingAttack", target: { kind: "controllerPlayer" } },
@@ -361,22 +341,6 @@ export const CORE_SET: CardDefinition[] = [
         ],
       },
     ],
-  },
-  {
-    id: "quelque-chose-sous-la-coque",
-    name: "Quelque Chose Sous la Coque",
-    type: "anomalie",
-    cost: 4,
-    // Valeur de Résistance absente du cadrage Notion pour cette famille de cartes (texte muet sur ce point,
-    // comme pour les Structures) : fixée ici par cohérence avec des permanents de coût comparable, PLUTÔT
-    // que de laisser `health` undefined — `computeEffectiveStats` retombe alors sur 0, ce qui ferait mourir
-    // l'Anomalie instantanément dès le premier `processDeaths` après sa pose (0 dégât marqué >= 0 PV). À
-    // ajuster si un vrai chiffrage Notion existe pour ce lot.
-    health: 3,
-    maxCopies: 2,
-    durationTurns: 2,
-    text: "Pendant 2 tours, chaque joueur perd 1 Raison la première fois qu'il joue une carte pendant son tour.",
-    anomalyReasonLossOnFirstCardPlayedPerTurn: 1,
   },
 
   // ======================================================================
@@ -407,64 +371,6 @@ export const CORE_SET: CardDefinition[] = [
     // Raison ne couvre pas le total — c'est la seule entorse au « pas de
     // plancher de Déraison », portée par la carte (cf. `objectBreakTax`).
     taxOpponentObjectBreakOncePerTurnWhileVisible: { amount: 1, blocksIfUnpayable: true },
-  },
-  {
-    id: "ancre-de-derive",
-    name: "Ancre de Dérive",
-    type: "structure",
-    cost: 2,
-    health: 3,
-    durationTurns: 3,
-    visibleDuringTide: ["houle", "tempete"],
-    maxCopies: 2,
-    // « Même fonction visible/cachée, mais lorsqu'elle est cachée
-    // l'adversaire ne sait pas que vous disposez de cette sécurité »
-    // (Notion, « Cartes à reprendre »). Seule carte de la première vague
-    // dont les deux textes font exactement la même chose : ce qui change
-    // n'est pas l'effet, c'est l'information.
-    text:
-      "Durée : 3 tours. Visible pendant Houle et Tempête. Lorsqu'une nouvelle Marée est annoncée, vous pouvez " +
-      "Saborder cette carte : les effets de cette Marée ne s'appliquent qu'à la fin du tour en cours. Réaction " +
-      "cachée : lorsqu'une nouvelle Marée est annoncée, vous pouvez révéler puis Saborder Ancre de Dérive : les " +
-      "effets de cette Marée ne s'appliquent qu'à la fin du tour en cours.",
-    abilities: [
-      {
-        // « Vous pouvez » : fenêtre COMPLÈTE à l'annonce (arbitrage du
-        // 21/09/2026). Jusqu'ici le report était appliqué d'office dès que
-        // la carte était en jeu et visible — le moteur décidait à la place
-        // du joueur, et Saborder son Ancre pour rien lui était imposé.
-        //
-        // À l'annonce, la Marée courante est DÉJÀ la nouvelle : « visible »
-        // se lit donc dans l'état annoncé, et c'est bien ce que promet
-        // « Visible pendant Houle et Tempête ».
-        trigger: "onTideAnnounced",
-        mode: "optional",
-        condition: { selfVisible: true },
-        description:
-          "Sabordez l'Ancre de Dérive : les effets de la Marée qui vient d'être annoncée attendent la fin du tour en cours.",
-        // Le Sabordage est le COÛT, et il vient en premier : `deferTideEffects`
-        // ne touche pas au plateau, l'ordre n'a donc rien à rattraper.
-        effects: [
-          { type: "saborde", target: { kind: "self" } },
-          { type: "deferTideEffects", target: { kind: "self" } },
-        ],
-      },
-      {
-        // Même effet, depuis Calme ou Abysses — où l'adversaire ne voit
-        // qu'un Slot occupé. Il pousse la Marée en croyant passer, et
-        // l'Ancre se découvre pour lui reprendre son tempo.
-        trigger: "onTideAnnounced",
-        mode: "optional",
-        hiddenReaction: true,
-        condition: { selfHidden: true },
-        description:
-          "Révélez puis Sabordez l'Ancre de Dérive : les effets de la Marée qui vient d'être annoncée attendent la fin du tour en cours.",
-        effects: [
-          { type: "saborde", target: { kind: "self" } },
-          { type: "deferTideEffects", target: { kind: "self" } },
-        ],
-      },
-    ],
   },
   {
     // --- ANTI-SWARM, première paire (21/09/2026) ------------------------
@@ -620,7 +526,15 @@ export const CORE_SET: CardDefinition[] = [
         mode: "optional",
         oncePerTurnKey: "guetteurMefiant",
         cost: { reason: 1 },
-        effects: [{ type: "damage", target: { kind: "chosenUnit" }, amount: { kind: "flat", value: 2 } }],
+        // « une UNITÉ de votre choix » : Marin ou Créature, sur l'un ou
+        // l'autre plateau — jamais une Structure ni un Équipement.
+        effects: [
+          {
+            type: "damage",
+            target: { kind: "chosenUnit", among: { unitsOnly: true, sameController: false } },
+            amount: { kind: "flat", value: 2 },
+          },
+        ],
         description: "La première fois à chaque tour qu'une carte est jouée : dépensez 1 Raison pour infliger 2 dégâts à une unité.",
       },
     ],
@@ -660,18 +574,6 @@ export const CORE_SET: CardDefinition[] = [
     ],
   },
   {
-    id: "guetteur-de-brume",
-    name: "Guetteur de Brume",
-    type: "marin",
-    cost: 2,
-    attack: 1,
-    health: 3,
-    text:
-      "La première fois à chaque tour que l'adversaire active une réaction pendant votre tour, révélez 1 carte " +
-      "aléatoire de sa main.",
-    revealOpponentHandOnReactionOncePerTurn: { amount: 1 },
-  },
-  {
     id: "matelot-du-sans-nom",
     name: "Matelot du Sans-Nom",
     type: "marin",
@@ -702,33 +604,6 @@ export const CORE_SET: CardDefinition[] = [
     conditionalKeywordSuppressions: [{ keyword: "garde", tideStateIn: ["calme"] }],
   },
   {
-    id: "bouee-de-derive",
-    name: "Bouée de Dérive",
-    type: "structure",
-    cost: 1,
-    health: 2,
-    durationTurns: 3,
-    visibleDuringTide: ["calme", "houle"],
-    text:
-      "Durée : 3 tours. Visible pendant Calme et Houle. À votre début de tour, si elle est visible et que la " +
-      "Marée est descendante, récupérez 1 Raison.",
-    abilities: [
-      {
-        trigger: "startOfTurn",
-        description: "À votre début de tour, si elle est visible et que la Marée est descendante, récupérez 1 Raison.",
-        effects: [
-          {
-            type: "reasonGain",
-            target: { kind: "controllerPlayer" },
-            amount: { kind: "flat", value: 1 },
-            conditionOrientationIs: "descendante",
-            conditionSelfVisible: true,
-          },
-        ],
-      },
-    ],
-  },
-  {
     id: "epave-a-fleur-deau",
     name: "Épave à Fleur d'Eau",
     type: "structure",
@@ -740,31 +615,24 @@ export const CORE_SET: CardDefinition[] = [
       "Durée : 4 tours. Visible pendant Houle uniquement. Chaque fois qu'elle devient visible, vous pouvez défausser 1 " +
       "carte. Si vous le faites, piochez 1 carte.",
     // Réaction facultative à sa propre apparition (`STRUCTURE_REVEALED`).
-    // Fidélité partielle : la carte défaussée est la plus ancienne de la
-    // main, pas choisie. Pioche AVANT défausse (même résultat) pour que la
-    // garde "au moins 1 carte en main" lise la main d'avant l'échange.
+    // Dans l'ordre du texte : le joueur DÉSIGNE la carte à défausser (choix
+    // `handDiscard`), PUIS pioche — la séquence reprend après le choix
+    // (`resolveEffectSequence`). Pioche d'abord, il pourrait défausser la
+    // carte qu'il vient de voir : un filtrage que le texte ne donne pas.
+    // Main vide : rien à défausser, la capacité ne se propose pas — et la
+    // pioche, liée par « si vous le faites », n'a pas lieu non plus.
     abilities: [
       {
         trigger: "onBecomeVisible",
         mode: "optional",
+        condition: { controllerHandAtLeast: 1 },
         description: "Vous pouvez défausser 1 carte. Si vous le faites, piochez 1 carte.",
         effects: [
-          { type: "draw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 }, conditionControllerHandAtLeast: 1 },
-          { type: "discard", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 }, conditionControllerHandAtLeast: 2 },
+          { type: "discard", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
+          { type: "draw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
         ],
       },
     ],
-  },
-  {
-    id: "le-chant-sous-la-ligne",
-    name: "Le Chant Sous la Ligne",
-    type: "anomalie",
-    cost: 4,
-    health: 3, // cf. commentaire sur Quelque Chose Sous la Coque : valeur absente du cadrage, fixée par cohérence.
-    maxCopies: 2,
-    durationTurns: 2,
-    text: "Pendant 2 tours, chaque fois qu'un joueur récupère de la Raison, il en récupère 1 de moins, minimum 0.",
-    anomalyReduceAllReasonGains: 1,
   },
   {
     id: "plaque-de-fortune",
@@ -787,24 +655,6 @@ export const CORE_SET: CardDefinition[] = [
   // LOT 03 — Abysses, visibilité et contrôle de Marée
   // ======================================================================
   {
-    id: "cartographe-du-large",
-    name: "Cartographe du Large",
-    type: "marin",
-    cost: 2,
-    attack: 1,
-    health: 3,
-    text: "À son arrivée, vous pouvez inverser l'orientation de la Marée. Si vous le faites, perdez 1 Raison.",
-    abilities: [
-      {
-        trigger: "onEnterPlay",
-        mode: "optional",
-        cost: { reason: 1 },
-        description: "Vous pouvez dépenser 1 Raison : inversez l'orientation de la Marée.",
-        effects: [{ type: "tideInvertOrientation", target: { kind: "allPlayers" } }],
-      },
-    ],
-  },
-  {
     id: "matelot-insomniaque",
     name: "Matelot Insomniaque",
     type: "marin",
@@ -813,45 +663,6 @@ export const CORE_SET: CardDefinition[] = [
     health: 3,
     text: "Tant que votre Raison est inférieure ou égale à 4, il gagne +1 Puissance.",
     selfBuffWhileControllerReasonAtMost: { reasonAtMost: 4, attackAmount: 1 },
-  },
-  {
-    id: "gardien-du-sondeur",
-    name: "Gardien du Sondeur",
-    type: "marin",
-    cost: 3,
-    maxCopies: 2,
-    attack: 2,
-    health: 4,
-    // Le gain se PAIE depuis le 21/09/2026 (passe de stabilisation). Avec la
-    // récupération naturelle ramenée à 1 Raison par tour, un "+1 Raison une
-    // fois par tour" DOUBLE le revenu de son contrôleur, pour un coût unique
-    // de 3 — et un deck à Structures fait tourner plusieurs fenêtres de
-    // visibilité par cycle de Marée, donc le gain était récurrent et gratuit.
-    //
-    // Le prix est pris sur la DURÉE de la Structure qui déclenche, pas sur
-    // une ressource : la carte reste un moteur de Raison (son identité), mais
-    // chaque point rendu avance la fin d'une de ses Structures. "Vous pouvez"
-    // → `mode: "optional"` : personne n'est forcé de sacrifier du temps de
-    // Structure, et le joueur peut refuser la fenêtre.
-    text:
-      "La première fois à chaque tour qu'une Structure que vous contrôlez devient visible, vous pouvez " +
-      "réduire sa durée de 1 tour : récupérez 1 Raison.",
-    abilities: [
-      {
-        trigger: "onBecomeVisible",
-        triggeredBy: { cardTypes: ["structure"] },
-        mode: "optional",
-        oncePerTurnKey: "sondeurVisible",
-        description:
-          "La première fois par tour qu'une de vos Structures devient visible : vous pouvez réduire sa durée de 1 tour pour récupérer 1 Raison.",
-        // Le coût d'abord, le gain ensuite — l'ordre du texte, et celui qui
-        // se lit dans le journal.
-        effects: [
-          { type: "durationLoss", target: { kind: "triggerSource" }, amount: { kind: "flat", value: 1 } },
-          { type: "reasonGain", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
-        ],
-      },
-    ],
   },
   {
     id: "raie-des-fosses",
@@ -900,21 +711,29 @@ export const CORE_SET: CardDefinition[] = [
     ],
     // Aura, pas un modificateur posé : le bonus disparaît avec l'Équipement.
     equipGrantsBuff: { healthAmount: 1 },
-    // Le porteur part (détruit, Sabordé — qui déclenche aussi `onDeath` —
-    // ou expiré) : l'Équipement est encore sur le plateau à cet instant
-    // (`destroyOrphanedEquipment` ne le retire qu'ensuite), il peut donc
-    // suivre son porteur via `triggeredBy.equippedUnit`.
+    // « Quitte le board », par toutes les portes : détruite, Sabordée (qui
+    // déclenche aussi `onDeath`), expirée, ou renvoyée en main. L'Équipement
+    // est encore sur le plateau à cet instant (`destroyOrphanedEquipment` ne
+    // le retire qu'ensuite), il peut donc suivre son porteur via
+    // `triggeredBy.equippedUnit` — qui suffit à l'identifier, d'où
+    // `sameController: false` (une Structure adverse équipée compte aussi).
     abilities: [
       {
         trigger: "onDeath",
-        triggeredBy: { equippedUnit: true },
+        triggeredBy: { equippedUnit: true, sameController: false },
         description: "Quand la Structure équipée quitte le board : piochez 1 carte.",
         effects: [{ type: "draw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } }],
       },
       {
         trigger: "onExpire",
-        triggeredBy: { equippedUnit: true },
+        triggeredBy: { equippedUnit: true, sameController: false },
         description: "Quand la Structure équipée expire : piochez 1 carte.",
+        effects: [{ type: "draw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } }],
+      },
+      {
+        trigger: "onReturnedToHand",
+        triggeredBy: { equippedUnit: true, sameController: false },
+        description: "Quand la Structure équipée est renvoyée en main : piochez 1 carte.",
         effects: [{ type: "draw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } }],
       },
     ],
@@ -969,32 +788,6 @@ export const CORE_SET: CardDefinition[] = [
     ],
   },
   {
-    id: "epave-engloutie",
-    name: "Épave Engloutie",
-    type: "structure",
-    cost: 3,
-    health: 4,
-    durationTurns: 5,
-    visibleDuringTide: ["abysses"],
-    maxCopies: 2,
-    text:
-      "Durée : 5 tours. Visible pendant Abysses. Lorsqu'elle devient visible, récupérez 2 Raison. Lorsqu'elle " +
-      "quitte Abysses sans avoir été détruite, Sabordez-la.",
-    abilities: [
-      {
-        trigger: "onBecomeVisible",
-        description: "Lorsqu'elle devient visible, récupérez 2 Raison.",
-        effects: [{ type: "reasonGain", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 2 } }],
-      },
-      {
-        trigger: "onTideStateExited",
-        condition: { tideState: "abysses" },
-        description: "Lorsque la Marée quitte les Abysses : Sabordez-la.",
-        effects: [{ type: "saborde", target: { kind: "self" } }],
-      },
-    ],
-  },
-  {
     id: "balise-des-profondeurs",
     name: "Balise des Profondeurs",
     type: "structure",
@@ -1018,17 +811,6 @@ export const CORE_SET: CardDefinition[] = [
       },
     ],
   },
-  {
-    id: "les-voix-dans-le-sillage",
-    name: "Les Voix dans le Sillage",
-    type: "anomalie",
-    cost: 5,
-    health: 4, // cf. commentaire sur Quelque Chose Sous la Coque : valeur absente du cadrage, fixée par cohérence.
-    maxCopies: 2,
-    durationTurns: 2,
-    text: "Pendant 2 tours, chaque joueur perd 1 Raison la première fois qu'un de ses permanents quitte le board.",
-    anomalyReasonLossOnFirstPermanentLeavingPerTurn: 1,
-  },
 
   // ======================================================================
   // LOT 04 — Pression, horreur et cartes de rupture
@@ -1043,17 +825,6 @@ export const CORE_SET: CardDefinition[] = [
     text: "Lorsqu'il attaque pendant Tempête, il gagne +1 Puissance pour ce combat. Après l'attaque, perdez 1 Raison.",
     bonusDamageInTideState: { tideStateIn: ["tempete"], amount: 1 },
     controllerReasonLossAfterAttack: 1,
-  },
-  {
-    id: "capitaine-sans-sommeil",
-    name: "Capitaine Sans Sommeil",
-    type: "marin",
-    cost: 4,
-    maxCopies: 2,
-    attack: 3,
-    health: 5,
-    text: "Tant que votre Raison est à 3 ou moins, les autres Marins que vous contrôlez gagnent +1 Résistance.",
-    auraBuffOtherUnitsWhileControllerReasonAtMost: { reasonAtMost: 3, targetType: "marin", healthAmount: 1 },
   },
   {
     // Renommée "L'Homme Revenu de la Fosse" → "Revenante de la Fosse" (Notion "Catalogue de cartes", Lot 04)
@@ -1095,7 +866,7 @@ export const CORE_SET: CardDefinition[] = [
     attack: 4,
     health: 2,
     text: "Lorsqu'il inflige des dégâts directs au Navire adverse, il subit 1 dégât.",
-    selfDamageOnDirectAttack: 1,
+    selfDamageOnDirectDamageDealt: 1,
   },
   {
     // Version STANDARD (Notion "Catalogue de cartes", Lot 04, confirmée coexister avec une variante ABYSSALE
@@ -1210,6 +981,9 @@ export const CORE_SET: CardDefinition[] = [
         mode: "optional",
         cost: { reason: 1 },
         choiceGroup: "lanterneChoix",
+        // À 1 tour restant, la réduction ne ferait rien (plancher à 1) :
+        // l'option ne se propose pas, la Raison n'est pas payée pour rien.
+        condition: { tideRemainingTurnsAtLeast: 2 },
         description: "Vous pouvez dépenser 1 Raison : réduisez de 1 tour la durée de la Marée actuelle.",
         effects: [{ type: "tideReduceDuration", target: { kind: "allPlayers" }, amount: { kind: "flat", value: 1 } }],
       },
@@ -1257,87 +1031,6 @@ export const CORE_SET: CardDefinition[] = [
         ],
       },
     ],
-  },
-  {
-    id: "ponton-aux-cloches",
-    name: "Ponton aux Cloches",
-    type: "structure",
-    cost: 3,
-    health: 3,
-    durationTurns: 4,
-    visibleDuringTide: ["houle", "tempete"],
-    text: "Durée : 4 tours. Visible pendant Houle et Tempête. Chaque fois qu'il devient visible, chaque joueur perd 1 Raison.",
-    abilities: [
-      {
-        trigger: "onBecomeVisible",
-        description: "Lorsqu'il devient visible, chaque joueur perd 1 Raison.",
-        effects: [{ type: "reasonLoss", target: { kind: "allPlayers" }, amount: { kind: "flat", value: 1 } }],
-      },
-    ],
-  },
-  {
-    id: "la-bouee-qui-regardait",
-    name: "La Bouée qui Regardait",
-    type: "structure",
-    subtype: "objet-flottant",
-    cost: 4,
-    health: 3,
-    durationTurns: 5,
-    visibleDuringTide: ["tempete", "abysses"],
-    text:
-      "Durée : 5 tours. Visible pendant Tempête et Abysses. Chaque fois qu'elle devient visible, révélez 1 carte aléatoire " +
-      "de la main adverse. Si la Marée est en Abysses, révélez-en 2 à la place.",
-    abilities: [
-      {
-        trigger: "onBecomeVisible",
-        description: "Regardez une carte aléatoire de la main adverse (2 en Abysses).",
-        effects: [
-          { type: "revealRandomHandCards", target: { kind: "opponentPlayer" }, amount: { kind: "flat", value: 1 } },
-          {
-            type: "revealRandomHandCards",
-            target: { kind: "opponentPlayer" },
-            amount: { kind: "flat", value: 1 },
-            conditionTideStateIn: ["abysses"],
-          },
-        ],
-      },
-    ],
-    // NOTE : `onBecomeVisible` ne se déclenche que sur la transition
-    // invisible → visible (`game/environment/resolveEnvironment.ts`), qui,
-    // en progression normale (un état à la fois), passe TOUJOURS par
-    // Tempête avant d'atteindre l'Abysses — la branche "2 cartes" ci-dessus
-    // n'est donc atteignable aujourd'hui que si un futur effet fait entrer
-    // directement dans l'Abysses depuis un état invisible (ex: un saut de
-    // Marée multi-états façon Lot 08, "La Gueule Sous la Mer"). Comportement
-    // correct tel qu'écrit, simplement pas encore démontrable en jeu normal.
-  },
-  {
-    // Version STANDARD (Notion "Catalogue de cartes", Lot 04) — coexiste avec la variante ABYSSALE ci-dessous.
-    id: "ils-sont-sous-nous",
-    name: "Ils Sont Sous Nous",
-    type: "anomalie",
-    cost: 5,
-    health: 4, // cf. commentaire sur Quelque Chose Sous la Coque : valeur absente du cadrage, fixée par cohérence.
-    maxCopies: 2,
-    durationTurns: 2,
-    text: "Pendant 2 tours, la première fois à chaque tour qu'un joueur joue un permanent, ce joueur perd 1 Raison.",
-    anomalyReasonLossOnFirstPermanentPlayedPerTurn: { amount: 1 },
-  },
-  {
-    // Variante ABYSSALE distincte (coexiste avec la Standard ci-dessus) — anciennement seule entrée sous
-    // l'id de base, maintenant scindée pour correspondre au catalogue verrouillé.
-    id: "ils-sont-sous-nous-abyssal",
-    name: "Ils Sont Sous Nous",
-    type: "anomalie",
-    variant: "abyssale",
-    cost: 6,
-    health: 5, // cf. commentaire sur Quelque Chose Sous la Coque : valeur absente du cadrage, fixée par cohérence.
-    maxCopies: 1,
-    durationTurns: 2,
-    text:
-      "Pendant 2 tours, la première fois à chaque tour qu'un joueur joue un permanent, ce joueur perd 1 Raison. " +
-      "Si ce permanent est une Créature, il perd 1 Raison supplémentaire.",
-    anomalyReasonLossOnFirstPermanentPlayedPerTurn: { amount: 1, bonusIfCreature: 1 },
   },
 
   // ======================================================================
@@ -1397,7 +1090,7 @@ export const CORE_SET: CardDefinition[] = [
     attack: 3,
     health: 2,
     text: "Lorsqu'il attaque une Structure, il gagne +1 Puissance pour ce combat.",
-    bonusDamageVsTargetType: { type: "structure", amount: 1 },
+    bonusPowerVsTargetType: { type: "structure", amount: 1 },
   },
   {
     id: "bernard-lermite-dacier",
@@ -1406,8 +1099,23 @@ export const CORE_SET: CardDefinition[] = [
     cost: 1,
     attack: 1,
     health: 3,
-    text: "Tant que vous contrôlez une Structure visible, il gagne +1 Résistance.",
+    // Standard Verrier (30/09/2026, validé par le propriétaire) : « un piège
+    // part, la troupe grandit ». Coût et statistiques inchangés.
+    text:
+      "Tant que vous contrôlez une Structure visible, il gagne +1 Résistance. La première fois à chaque tour qu'une " +
+      "Structure que vous contrôlez est détruite ou Sabordée, il gagne +1 Puissance.",
     selfBuffWhileControllingVisibleStructure: { healthAmount: 1 },
+    abilities: [
+      {
+        trigger: "onDeath",
+        triggeredBy: { cardTypes: ["structure"] },
+        oncePerTurnKey: "bernardStructurePartie",
+        description: "Une de vos Structures part : +1 Puissance, conservée.",
+        effects: [
+          { type: "buff", target: { kind: "self" }, attackAmount: { kind: "flat", value: 1 }, healthAmount: { kind: "flat", value: 0 }, permanent: true },
+        ],
+      },
+    ],
   },
   {
     id: "poisson-scie-gris",
@@ -1430,9 +1138,10 @@ export const CORE_SET: CardDefinition[] = [
     equipTargetTypes: ["marin"],
     text: "Équipez un Marin. Lorsqu'il attaque une Structure, il gagne +1 Puissance.",
     // Bug corrigé au passage : l'Équipement ne s'attachait jamais (onPlayEffects absent), rendant
-    // `bonusDamageVsTargetType` ci-dessous inerte en pratique (jamais d'`attachedToInstanceId` à trouver).
+    // bonus ci-dessous inerte en pratique (jamais d'`attachedToInstanceId` à trouver).
     onPlayEffects: [{ type: "attachEquipment", target: { kind: "chosenUnit" } }],
-    bonusDamageVsTargetType: { type: "structure", amount: 1 },
+    // « +1 Puissance », pas « +1 dégât » : compté dans la Puissance déclarée.
+    bonusPowerVsTargetType: { type: "structure", amount: 1 },
   },
   {
     id: "kit-de-calfatage",
@@ -1458,44 +1167,6 @@ export const CORE_SET: CardDefinition[] = [
         ],
       },
     ],
-  },
-  {
-    id: "radeau-de-fortune",
-    name: "Radeau de Fortune",
-    type: "structure",
-    subtype: "objet-flottant",
-    cost: 1,
-    health: 2,
-    durationTurns: 3,
-    visibleDuringTide: ["calme", "houle"],
-    text:
-      "Durée : 3 tours. Visible pendant Calme et Houle. Lorsqu'il quitte le board sans avoir été détruit, récupérez " +
-      "1 Ancrage.",
-    abilities: [
-      {
-        trigger: "onExpire",
-        description: "Lorsqu'il expire (sans avoir été détruit), récupérez 1 Ancrage.",
-        effects: [{ type: "heal", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } }],
-      },
-      {
-        trigger: "onSaborde",
-        description: "Lorsqu'il est Sabordé (sans avoir été détruit), récupérez 1 Ancrage.",
-        effects: [{ type: "heal", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } }],
-      },
-    ],
-  },
-  {
-    id: "epaves-accrochees",
-    name: "Épaves Accrochées",
-    type: "structure",
-    cost: 2,
-    health: 3,
-    durationTurns: 4,
-    visibleDuringTide: ["houle", "tempete"],
-    text:
-      "Durée : 4 tours. Visible pendant Houle et Tempête. Lorsqu'une autre Structure que vous contrôlez est " +
-      "détruite, cette carte gagne +1 Résistance. Maximum +2.",
-    buffSelfOnOtherOwnStructureDestroyed: { healthAmount: 1, maxStacks: 2 },
   },
   {
     id: "levier-de-lest",
@@ -1547,34 +1218,6 @@ export const CORE_SET: CardDefinition[] = [
     reduceOwnReasonLossOncePerTurn: { amount: 1, tideStateIn: ["tempete", "abysses"] },
   },
   {
-    // Id historique conservé (référencé par `public.cards`, collections et decks) : la carte a été renommée
-    // "Veilleuse" pour la parité (Notion "Catalogue de cartes", Lot 06).
-    id: "veilleur-des-profondeurs",
-    name: "Veilleuse des Profondeurs",
-    type: "marin",
-    cost: 4,
-    attack: 3,
-    health: 4,
-    text:
-      "À son arrivée, si la Marée est en Abysses, forcez son orientation à devenir descendante. Sinon, vous " +
-      "pouvez réduire de 1 tour la durée de la Marée actuelle.",
-    abilities: [
-      {
-        trigger: "onEnterPlay",
-        condition: { tideStateIn: ["abysses"] },
-        description: "À son arrivée, si la Marée est en Abysses : son orientation devient descendante.",
-        effects: [{ type: "tideSetOrientation", target: { kind: "allPlayers" }, forceTideOrientation: "descendante" }],
-      },
-      {
-        trigger: "onEnterPlay",
-        mode: "optional",
-        condition: { tideStateIn: ["calme", "houle", "tempete"] },
-        description: "À son arrivée, hors Abysses : vous pouvez réduire de 1 tour la durée de la Marée actuelle.",
-        effects: [{ type: "tideReduceDuration", target: { kind: "allPlayers" }, amount: { kind: "flat", value: 1 } }],
-      },
-    ],
-  },
-  {
     id: "mecanicien-aux-mains-noires",
     name: "Mécanicien aux Mains Noires",
     type: "marin",
@@ -1591,7 +1234,7 @@ export const CORE_SET: CardDefinition[] = [
       {
         trigger: "onDeath",
         mode: "optional",
-        triggeredBy: { cardTypes: ["structure"] },
+        triggeredBy: { cardTypes: ["structure"], destroyedBy: ["combat", "effect", "tide"] },
         oncePerTurnKey: "mecanicienRepare",
         description: "Quand une de vos Structures est détruite : une autre de vos Structures gagne +1 Résistance. Une fois par tour.",
         effects: [
@@ -1624,64 +1267,6 @@ export const CORE_SET: CardDefinition[] = [
     ],
   },
   {
-    id: "baleine-aux-cicatrices-blanches",
-    name: "Baleine aux Cicatrices Blanches",
-    type: "creature",
-    cost: 5,
-    attack: 5,
-    health: 6,
-    text: "La première fois à chaque tour qu'elle subit des dégâts, réduisez-les de 1.",
-    reduceOwnDamageTakenOncePerTurn: 1,
-  },
-  {
-    // Version STANDARD (Notion "Catalogue de cartes", Lot 06) — coexiste avec la variante ABYSSALE ci-dessous.
-    id: "loeil-sous-la-mer",
-    name: "L'Œil Sous la Mer",
-    type: "creature",
-    cost: 5,
-    attack: 4,
-    health: 6,
-    requiresTideState: ["abysses"],
-    text: "Ne peut être jouée que pendant Abysses. À son arrivée, chaque joueur perd 1 Raison.",
-    onPlayEffects: [{ type: "reasonLoss", target: { kind: "allPlayers" }, amount: { kind: "flat", value: 1 } }],
-  },
-  {
-    // Variante ABYSSALE distincte (coexiste avec la Standard ci-dessus) — anciennement seule entrée sous
-    // l'id de base, maintenant scindée pour correspondre au catalogue verrouillé.
-    id: "loeil-sous-la-mer-abyssal",
-    name: "L'Œil Sous la Mer",
-    type: "creature",
-    variant: "abyssale",
-    cost: 6,
-    attack: 5,
-    health: 7,
-    maxCopies: 1,
-    requiresTideState: ["abysses"],
-    text: "Ne peut être jouée que pendant Abysses. À son arrivée, chaque joueur perd 2 Raison.",
-    onPlayEffects: [{ type: "reasonLoss", target: { kind: "allPlayers" }, amount: { kind: "flat", value: 2 } }],
-  },
-  {
-    id: "masque-de-plongee-fissure",
-    name: "Masque de Plongée Fissuré",
-    type: "equipement",
-    permanent: true,
-    cost: 2,
-    health: 2,
-    text: "Équipez un Marin. Pendant Abysses, il gagne +2 Résistance. À chaque sortie des Abysses, son contrôleur perd 1 Raison.",
-    equipTargetTypes: ["marin"],
-    onPlayEffects: [{ type: "attachEquipment", target: { kind: "chosenUnit" } }],
-    abilities: [
-      {
-        trigger: "onTideStateExited",
-        condition: { tideState: "abysses" },
-        description: "À chaque sortie des Abysses, son contrôleur perd 1 Raison.",
-        effects: [{ type: "reasonLoss", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } }],
-      },
-    ],
-    // Bug corrigé au passage : l'Équipement ne s'attachait jamais (onPlayEffects absent).
-    equipGrantsBuffWhileTideStateIn: { tideStateIn: ["abysses"], healthAmount: 2 },
-  },
-  {
     id: "chaine-de-fer-noir",
     name: "Chaîne de Fer Noir",
     type: "equipement",
@@ -1707,62 +1292,21 @@ export const CORE_SET: CardDefinition[] = [
     health: 5,
     durationTurns: 4,
     visibleDuringTide: ["houle", "tempete", "abysses"],
-    text: "Durée : 4 tours. Visible pendant Houle, Tempête et Abysses. Tant qu'elle est visible, votre Navire ne peut pas subir plus de 4 dégâts d'une même attaque.",
-    capDirectShipDamageWhileVisible: 4,
-  },
-  {
-    id: "cloche-immergee",
-    name: "Cloche Immergée",
-    type: "structure",
-    cost: 4,
-    maxCopies: 2,
-    health: 4,
-    durationTurns: 5,
-    visibleDuringTide: ["tempete", "abysses"],
+    // Standard Verrier (30/09/2026, validé par le propriétaire) : la Forteresse
+    // « encaisse, grandit, frappe ». Coût et statistiques inchangés.
     text:
-      "Durée : 5 tours. Visible pendant Tempête et Abysses. Chaque fois qu'elle devient visible, chaque joueur révèle une " +
-      "carte aléatoire de sa main. Le joueur ayant révélé la carte au coût le plus élevé perd 1 Raison. En cas " +
-      "d'égalité, personne ne perd de Raison.",
+      "Durée : 4 tours. Visible pendant Houle, Tempête et Abysses. Si elle est visible, la première fois à chaque " +
+      "tour qu'une de vos unités survit à des dégâts, cette unité gagne +1 Puissance.",
     abilities: [
       {
-        trigger: "onBecomeVisible",
-        description: "Chaque joueur révèle une carte aléatoire de sa main ; le coût le plus élevé perd 1 Raison (égalité = personne).",
-        effects: [{ type: "reasonLossToHigherRevealedHandCard", target: { kind: "allPlayers" }, amount: { kind: "flat", value: 1 } }],
-      },
-    ],
-  },
-  {
-    id: "le-filet-qui-respire",
-    name: "Le Filet qui Respire",
-    type: "structure",
-    subtype: "objet-flottant",
-    cost: 3,
-    health: 3,
-    durationTurns: 4,
-    visibleDuringTide: ["tempete", "abysses"],
-    // Rework du 21/09/2026 : se distingue du Filet à la Dérive par un SEUIL.
-    // L'un freine le swarm (toute unité, −1), l'autre les grosses menaces
-    // (Puissance ≥ 4, −2). Sans ce seuil, les deux cartes feraient doublon.
-    text:
-      "Durée : 4 tours. Visible pendant Tempête et Abysses. La première fois à chaque tour qu'une unité adverse " +
-      "attaque, elle perd 2 Puissance pour cette attaque si sa Puissance est supérieure ou égale à 4. Réaction " +
-      "cachée : lorsqu'une unité adverse de Puissance 4 ou plus attaque, vous pouvez révéler Le Filet qui " +
-      "Respire : elle perd 3 Puissance pour cette attaque.",
-    abilities: [
-      {
-        trigger: "onUnitAttackDeclared",
-        oncePerTurnKey: "filetRespireAffaiblit",
-        condition: { selfVisible: true, attackerPowerAtLeast: 4 },
-        description: "La première fois à chaque tour qu'une unité adverse de Puissance 4 ou plus attaque : elle perd 2 Puissance.",
-        effects: [{ type: "modifyAttackerPower", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 2 } }],
-      },
-      {
-        trigger: "onUnitAttackDeclared",
-        mode: "optional",
-        hiddenReaction: true,
-        condition: { selfHidden: true, attackerPowerAtLeast: 4 },
-        description: "Révélez Le Filet qui Respire : l'unité qui attaque perd 3 Puissance pour cette attaque.",
-        effects: [{ type: "modifyAttackerPower", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 3 } }],
+        trigger: "onSurvivedDamage",
+        triggeredBy: { cardTypes: ["marin", "creature"] },
+        condition: { selfVisible: true },
+        oncePerTurnKey: "carcasseRenversee",
+        description: "Une de vos unités tient bon derrière la Carcasse : +1 Puissance, conservée.",
+        effects: [
+          { type: "buff", target: { kind: "triggerSource" }, attackAmount: { kind: "flat", value: 1 }, healthAmount: { kind: "flat", value: 0 }, permanent: true },
+        ],
       },
     ],
   },
@@ -1772,11 +1316,13 @@ export const CORE_SET: CardDefinition[] = [
     name: "Le Fond Vous Regarde",
     type: "anomalie",
     cost: 5,
-    health: 4, // cf. commentaire sur Quelque Chose Sous la Coque : valeur absente du cadrage, fixée par cohérence.
+    // Pas de Résistance (décision du 02/10/2026) : une Anomalie à durée reste en jeu le temps de sa durée,
+    // puis part ; rien ne peut lui infliger de dégâts. Sans `health`, `hasResistance` la tient à l'écart de
+    // l'arithmétique des dégâts, comme un Objet.
     maxCopies: 2,
     durationTurns: 2,
     text: "Pendant 2 tours, au début de chaque tour, le joueur actif choisit : perdre 1 Raison, ou infliger 1 dégât d'Ancrage à son propre Navire.",
-    anomalyForceChoiceAtStartOfTurn: { reasonLossAmount: 1, anchorDamageAmount: 1 },
+    anomalyForceChoiceAtStartOfTurn: { reasonLossAmount: 1, anchorDamageAmount: 1, times: 2 },
   },
   {
     // Variante ABYSSALE distincte (coexiste avec la Standard ci-dessus) — anciennement seule entrée sous
@@ -1786,11 +1332,10 @@ export const CORE_SET: CardDefinition[] = [
     type: "anomalie",
     variant: "abyssale",
     cost: 7,
-    health: 5, // cf. commentaire sur Quelque Chose Sous la Coque : valeur absente du cadrage, fixée par cohérence.
     maxCopies: 1,
     durationTurns: 2,
     text: "Pendant 2 tours, au début de chaque tour, le joueur actif choisit : perdre 2 Raison, ou infliger 2 dégâts d'Ancrage à son propre Navire.",
-    anomalyForceChoiceAtStartOfTurn: { reasonLossAmount: 2, anchorDamageAmount: 2 },
+    anomalyForceChoiceAtStartOfTurn: { reasonLossAmount: 2, anchorDamageAmount: 2, times: 2 },
   },
 
   // ======================================================================
@@ -1835,17 +1380,14 @@ export const CORE_SET: CardDefinition[] = [
       {
         trigger: "onSaborde",
         description: "Sabordage : uniquement pendant Houle ou Tempête, avancez immédiatement la Marée d'un état, puis perdez 1 Raison.",
+        // « Uniquement pendant Houle ou Tempête » porte sur toute la
+        // capacité : lue AVANT le premier effet (`condition.tideStateIn`).
+        // Puis dans l'ordre du texte : l'avancée, PUIS la perte — qui se lit
+        // donc dans la Marée d'arrivée (un bouclier actif en Tempête la réduit).
+        condition: { tideStateIn: ["houle", "tempete"] },
         effects: [
-          // La perte de Raison DOIT être vérifiée avant l'avancée (sinon
-          // `tideForceAdvance` aurait déjà changé l'état de Marée que ce
-          // second effet vérifie, faussant la condition).
-          {
-            type: "reasonLoss",
-            target: { kind: "controllerPlayer" },
-            amount: { kind: "flat", value: 1 },
-            conditionTideStateIn: ["houle", "tempete"],
-          },
-          { type: "tideForceAdvance", target: { kind: "allPlayers" }, conditionTideStateIn: ["houle", "tempete"] },
+          { type: "tideForceAdvance", target: { kind: "allPlayers" } },
+          { type: "reasonLoss", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
         ],
       },
     ],
@@ -1916,20 +1458,6 @@ export const CORE_SET: CardDefinition[] = [
     },
   },
   {
-    id: "ancre-de-tempete",
-    name: "Ancre de Tempête",
-    type: "structure",
-    cost: 3,
-    maxCopies: 2,
-    health: 4,
-    durationTurns: 4,
-    visibleDuringTide: ["houle", "tempete"],
-    text:
-      "Durée : 4 tours. Visible pendant Houle et Tempête. Tant qu'elle est visible, la première réduction de " +
-      "durée de Marée que vous provoquez chaque tour est augmentée de 1.",
-    amplifyTideReductionOncePerTurnWhileVisible: 1,
-  },
-  {
     // Version STANDARD (Notion "Catalogue de cartes", Lot 07) — coexiste avec la variante ABYSSALE ci-dessous.
     id: "cloche-du-grand-fond",
     name: "Cloche du Grand Fond",
@@ -1952,60 +1480,6 @@ export const CORE_SET: CardDefinition[] = [
         effects: [{ type: "tideExtendDuration", target: { kind: "allPlayers" }, amount: { kind: "flat", value: 1 } }],
       },
     ],
-  },
-  {
-    // Variante ABYSSALE distincte (coexiste avec la Standard ci-dessus) — anciennement seule entrée sous
-    // l'id de base, maintenant scindée pour correspondre au catalogue verrouillé.
-    id: "cloche-du-grand-fond-abyssal",
-    name: "Cloche du Grand Fond",
-    type: "structure",
-    variant: "abyssale",
-    cost: 4,
-    maxCopies: 2,
-    health: 3,
-    durationTurns: 4,
-    visibleDuringTide: ["tempete", "abysses"],
-    text:
-      "Durée : 4 tours. Visible pendant Tempête et Abysses. À chaque entrée en Abysses, vous pouvez perdre 2 " +
-      "Raison. Si vous le faites, augmentez de 1 tour la durée des Abysses.",
-    abilities: [
-      {
-        trigger: "onTideStateEntered",
-        condition: { tideState: "abysses" },
-        mode: "optional",
-        cost: { reason: 2 },
-        description: "Vous pouvez dépenser 2 Raison : augmentez la durée des Abysses de 1 tour.",
-        effects: [{ type: "tideExtendDuration", target: { kind: "allPlayers" }, amount: { kind: "flat", value: 1 } }],
-      },
-    ],
-  },
-  {
-    // Version STANDARD (Notion "Catalogue de cartes", Lot 07) — coexiste avec la variante ABYSSALE ci-dessous.
-    id: "la-mer-reclame-davantage",
-    name: "La Mer Réclame Davantage",
-    type: "anomalie",
-    cost: 5,
-    health: 4, // cf. commentaire sur Quelque Chose Sous la Coque : valeur absente du cadrage, fixée par cohérence.
-    maxCopies: 2,
-    durationTurns: 2,
-    text: "Pendant 2 tours, chaque fois qu'une Marée change, elle entre avec 1 tour de durée en moins, minimum 1.",
-    anomalyReduceTideEntryDuration: { amount: 1 },
-  },
-  {
-    // Variante ABYSSALE distincte (coexiste avec la Standard ci-dessus) — anciennement seule entrée sous
-    // l'id de base, maintenant scindée pour correspondre au catalogue verrouillé.
-    id: "la-mer-reclame-davantage-abyssal",
-    name: "La Mer Réclame Davantage",
-    type: "anomalie",
-    variant: "abyssale",
-    cost: 6,
-    health: 5, // cf. commentaire sur Quelque Chose Sous la Coque : valeur absente du cadrage, fixée par cohérence.
-    maxCopies: 1,
-    durationTurns: 2,
-    text:
-      "Pendant 2 tours, chaque fois qu'une Marée change, elle entre avec 1 tour de durée en moins, minimum 1. " +
-      "Chaque changement de Marée inflige aussi 1 dégât d'Ancrage à chaque Navire.",
-    anomalyReduceTideEntryDuration: { amount: 1, anchorDamagePerShip: 1 },
   },
 
   // ======================================================================
@@ -2159,7 +1633,18 @@ export const CORE_SET: CardDefinition[] = [
     cost: 1,
     attack: 1,
     health: 1,
-    // Volontairement sans effet : petite unité de base de l'archétype.
+    // Standard Verrier (01/10/2026, validé par le propriétaire) : le banc
+    // grossit — sa perte relance une arrivée. Coût et statistiques inchangés.
+    text: "Quand il est détruit, invoquez 1 Péon Cra-Poiscail 1 / 1.",
+    abilities: [
+      {
+        trigger: "onDeath",
+        // « Quand il est DÉTRUIT » : un Sabordage n'en est pas un.
+        condition: { destroyedBy: ["combat", "effect", "tide"] },
+        description: "Détruit : invoquez 1 Péon Cra-Poiscail.",
+        effects: [{ type: "summon", target: { kind: "controllerPlayer" }, cardId: "peon-cra-poiscail" }],
+      },
+    ],
   },
   {
     id: "ptite-fesse",
@@ -2266,7 +1751,7 @@ export const CORE_SET: CardDefinition[] = [
         trigger: "onEnterPlay",
         // Elle-même est un Cra-Poiscail, mais une Structure n'"arrive" pas
         // pour se renforcer elle-même : `excludeSelf` par défaut suffit.
-        triggeredBy: { archetype: "cra-poiscail" },
+        triggeredBy: { archetype: "cra-poiscail", cardTypes: ["marin", "creature"] },
         oncePerTurnKey: "flaqueAllyEnter",
         description: "Un Cra-Poiscail arrive : il gagne +1 Résistance.",
         effects: [
@@ -2324,7 +1809,7 @@ export const CORE_SET: CardDefinition[] = [
     abilities: [
       {
         trigger: "onEnterPlay",
-        triggeredBy: { archetype: "cra-poiscail" },
+        triggeredBy: { archetype: "cra-poiscail", cardTypes: ["marin", "creature"] },
         oncePerTurnKey: "bavardAllyEnter",
         description: "Un autre Cra-Poiscail arrive : il gagne +1 Puissance jusqu'à la fin du tour.",
         // "il gagne" = le Cra-Poiscail QUI ARRIVE, pas le Bavard — même
@@ -2343,15 +1828,19 @@ export const CORE_SET: CardDefinition[] = [
     cost: 3,
     attack: 2,
     health: 3,
+    // Standard Verrier (01/10/2026, validé par le propriétaire) : le banc
+    // grossit — le gain est conservé. Le texte nomme désormais l'arrivante,
+    // que le code renforçait déjà (l'ancien texte nommait le Chef lui-même).
+    // Coût et statistiques inchangés.
     text:
       "La première fois à chaque tour qu'une autre unité Cra-Poiscail que vous contrôlez arrive en jeu, " +
-      "Cra-Poiscail Chef de Banc gagne +1 / +1 jusqu'à la fin du tour.",
+      "elle gagne +1 / +1.",
     abilities: [
       {
         trigger: "onEnterPlay",
-        triggeredBy: { archetype: "cra-poiscail" },
+        triggeredBy: { archetype: "cra-poiscail", cardTypes: ["marin", "creature"] },
         oncePerTurnKey: "chefDeBancAllyEnter",
-        description: "Un autre Cra-Poiscail arrive : il gagne +1 / +1 jusqu'à la fin du tour.",
+        description: "Un autre Cra-Poiscail arrive : il gagne +1 / +1, conservé.",
         effects: [
           {
             type: "buff",
@@ -2359,7 +1848,7 @@ export const CORE_SET: CardDefinition[] = [
             target: { kind: "triggerSource" },
             attackAmount: { kind: "flat", value: 1 },
             healthAmount: { kind: "flat", value: 1 },
-            permanent: false,
+            permanent: true,
           },
         ],
       },
@@ -2374,7 +1863,9 @@ export const CORE_SET: CardDefinition[] = [
     cost: 2,
     attack: 2,
     health: 2,
-    text: "La première fois à chaque tour que vous Brisez un Objet, il gagne +1 / +1 jusqu'à la fin du tour.",
+    // Standard Verrier (01/10/2026, validé par le propriétaire) : le banc
+    // grossit — le gain est conservé. Coût et statistiques inchangés.
+    text: "La première fois à chaque tour que vous Brisez un Objet, il gagne +1 / +1.",
     abilities: [
       {
         trigger: "onObjectBroken",
@@ -2382,14 +1873,14 @@ export const CORE_SET: CardDefinition[] = [
         // contrôleur qui le brise (`sameController` par défaut).
         triggeredBy: {},
         oncePerTurnKey: "ramasseurObjectBroken",
-        description: "Vous Brisez un Objet : +1 / +1 jusqu'à la fin du tour.",
+        description: "Vous Brisez un Objet : +1 / +1, conservé.",
         effects: [
           {
             type: "buff",
             target: { kind: "self" },
             attackAmount: { kind: "flat", value: 1 },
             healthAmount: { kind: "flat", value: 1 },
-            permanent: false,
+            permanent: true,
           },
         ],
       },
@@ -2440,7 +1931,7 @@ export const CORE_SET: CardDefinition[] = [
     abilities: [
       {
         trigger: "onEnterPlay",
-        triggeredBy: { archetype: "cra-poiscail" },
+        triggeredBy: { archetype: "cra-poiscail", cardTypes: ["marin", "creature"] },
         oncePerTurnKey: "slipAllyEnter",
         description: "Un autre Cra-Poiscail arrive : le porteur gagne +1 Puissance jusqu'à la fin du tour.",
         effects: [{ type: "buff", target: { kind: "equippedUnit" }, attackAmount: { kind: "flat", value: 1 }, permanent: false }],
@@ -2466,9 +1957,9 @@ export const CORE_SET: CardDefinition[] = [
     // Aura, pas un modificateur posé : le bonus disparaît avec l'Équipement.
     equipGrantsBuff: { healthAmount: 1 },
     // "Dégâts d'un effet" = la Marée et le texte d'une carte, jamais le
-    // combat (arbitrage du 2026-09-14). Le porteur garde le +1 Résistance
-    // après la destruction du Casque : convention du moteur pour tout
-    // Équipement qui quitte le plateau, pas une exception d'ici.
+    // combat (arbitrage du 2026-09-14). Le +1 Résistance étant une aura
+    // (`equipGrantsBuff`), le porteur le PERD avec la destruction du Casque,
+    // comme pour tout Équipement qui quitte le plateau.
     reduceEquippedEffectDamageThenDestroy: 1,
   },
   {
@@ -2530,22 +2021,20 @@ export const CORE_SET: CardDefinition[] = [
     archetype: "cra-poiscail",
     setCode: CRA_POISCAIL_BOOSTER_2,
     cost: 4,
-    // Résistance absente du cadrage Notion pour les Anomalies, comme pour
-    // "Quelque Chose Sous la Coque" : fixée par cohérence avec les
-    // permanents de coût comparable plutôt que laissée à 0, ce qui la
-    // ferait mourir au premier `processDeaths`.
-    health: 3,
+    // Pas de Résistance, comme toute Anomalie (cf. « Le Fond Vous Regarde »).
     maxCopies: 2,
     durationTurns: 2,
     text:
       "Pendant 2 tours, la première fois à chaque tour qu'une unité Cra-Poiscail que vous contrôlez est détruite, " +
       "invoquez 1 Péon Cra-Poiscail 1 / 1.",
-    // « un Cra-Poiscail » sans « autre » : elle compte aussi sa propre
-    // destruction (décision du 17/09/2026).
+    // « une UNITÉ Cra-Poiscail » : une Structure, un Équipement ou un Objet
+    // de la famille qui part ne compte pas — et l'Anomalie elle-même non
+    // plus (ce n'est pas une unité, et elle a déjà quitté le plateau quand
+    // les observateurs sont balayés).
     abilities: [
       {
         trigger: "onDeath",
-        triggeredBy: { archetype: "cra-poiscail", excludeSelf: false },
+        triggeredBy: { archetype: "cra-poiscail", cardTypes: ["marin", "creature"], destroyedBy: ["combat", "effect", "tide"] },
         oncePerTurnKey: "grandeMigrationAllyDeath",
         description: "Un de vos Cra-Poiscail est détruit : invoquez 1 Péon Cra-Poiscail.",
         effects: [{ type: "summon", target: { kind: "controllerPlayer" }, cardId: "peon-cra-poiscail" }],
@@ -2610,7 +2099,7 @@ export const CORE_SET: CardDefinition[] = [
     abilities: [
       {
         trigger: "onDeath",
-        triggeredBy: { archetype: "cra-poiscail" },
+        triggeredBy: { archetype: "cra-poiscail", cardTypes: ["marin", "creature"], destroyedBy: ["combat", "effect", "tide"] },
         oncePerTurnKey: "bourreauAllyDeath",
         description: "Un autre Cra-Poiscail est détruit : +1 Puissance jusqu'à la fin du tour.",
         effects: [{ type: "buff", target: { kind: "self" }, attackAmount: { kind: "flat", value: 1 }, permanent: false }],
@@ -2664,16 +2153,18 @@ export const CORE_SET: CardDefinition[] = [
     attack: 1,
     health: 2,
     maxCopies: 2,
+    // Standard Verrier (01/10/2026, validé par le propriétaire) : le banc
+    // grossit — le gain est conservé. Coût et statistiques inchangés.
     text:
       "La première fois à chaque tour qu'une autre unité Cra-Poiscail que vous contrôlez gagne de la Puissance, " +
-      "P'tite Fesse, Grand Rêve gagne +1 Puissance jusqu'à la fin du tour.",
+      "P'tite Fesse, Grand Rêve gagne +1 Puissance.",
     abilities: [
       {
         trigger: "onPowerGained",
-        triggeredBy: { archetype: "cra-poiscail" },
+        triggeredBy: { archetype: "cra-poiscail", cardTypes: ["marin", "creature"] },
         oncePerTurnKey: "grandReveAllyPowerGain",
-        description: "Un autre Cra-Poiscail gagne de la Puissance : +1 Puissance jusqu'à la fin du tour.",
-        effects: [{ type: "buff", target: { kind: "self" }, attackAmount: { kind: "flat", value: 1 } }],
+        description: "Un autre Cra-Poiscail gagne de la Puissance : +1 Puissance, conservée.",
+        effects: [{ type: "buff", target: { kind: "self" }, attackAmount: { kind: "flat", value: 1 }, permanent: true }],
       },
     ],
   },
@@ -2741,7 +2232,7 @@ export const CORE_SET: CardDefinition[] = [
       {
         trigger: "onEnterPlay",
         // "que vous INVOQUEZ" : une carte posée depuis la main ne compte pas.
-        triggeredBy: { archetype: "cra-poiscail", onlySummoned: true },
+        triggeredBy: { archetype: "cra-poiscail", onlySummoned: true, cardTypes: ["marin", "creature"] },
         oncePerTurnKey: "banniereSummon",
         description: "Vous invoquez un Cra-Poiscail : il gagne +1 Puissance jusqu'à la fin du tour.",
         effects: [{ type: "buff", target: { kind: "triggerSource" }, attackAmount: { kind: "flat", value: 1 }, permanent: false }],
@@ -2877,7 +2368,7 @@ export const CORE_SET: CardDefinition[] = [
     abilities: [
       {
         trigger: "onPowerGained",
-        triggeredBy: { archetype: "cra-poiscail" },
+        triggeredBy: { archetype: "cra-poiscail", cardTypes: ["marin", "creature"] },
         oncePerTurnKey: "grandReveAbyssalAllyPowerGain",
         description: "Un autre Cra-Poiscail gagne de la Puissance : +2 Puissance et Pied marin jusqu'à la fin du tour.",
         // Pied marin = peut attaquer dès le tour de son arrivée (`KEYWORD_PIED_MARIN`).
@@ -2949,10 +2440,28 @@ export const CORE_SET: CardDefinition[] = [
     attack: 2,
     health: 3,
     maxCopies: 3,
-    text: "Quand il est détruit, vous pouvez choisir une Créature adverse : infligez-lui 1 dégât.",
+    // Test Verrier (30/09/2026) : l'effet joue AUSSI à l'arrivée. Mort
+    // seulement, Pulcinella n'avait rien à offrir au rappel du Théâtre —
+    // le rejouer ne rapportait rien. Mesuré sur 60 parties : Δ +16, le
+    // Théâtre de 39 % à 44 %. Validé par le propriétaire le 30/09/2026.
+    text: "À son arrivée et quand il est détruit, vous pouvez choisir une Créature adverse : infligez-lui 1 dégât.",
     abilities: [
       {
+        trigger: "onEnterPlay",
+        mode: "optional",
+        description: "À son arrivée : 1 dégât à une créature ennemie.",
+        effects: [
+          {
+            type: "damage",
+            target: { kind: "chosenUnit", among: { opponentOnly: true, cardTypes: ["creature"] } },
+            amount: { kind: "flat", value: 1 },
+          },
+        ],
+      },
+      {
         trigger: "onDeath",
+        // « Quand il est DÉTRUIT » : un Sabordage n'en est pas un.
+        condition: { destroyedBy: ["combat", "effect", "tide"] },
         mode: "optional",
         description: "Détruit : 1 dégât à une créature ennemie.",
         // La cible est désignée par le joueur, depuis le cimetière : Pulcinella
@@ -2986,7 +2495,7 @@ export const CORE_SET: CardDefinition[] = [
         mode: "optional",
         description: "Renvoyez une autre Marionnette alliée en main : il gagne +2 Puissance jusqu'à la fin du tour.",
         effects: [
-          { type: "moveZone", toZone: "hand", target: { kind: "chosenUnit", among: { subtype: MARIONNETTE, excludeSource: true } } },
+          { type: "moveZone", toZone: "hand", target: { kind: "chosenUnit", among: { subtype: MARIONNETTE, unitsOnly: true, excludeSource: true } } },
           { type: "buff", target: { kind: "self" }, attackAmount: { kind: "flat", value: 2 }, permanent: false },
         ],
       },
@@ -3004,7 +2513,7 @@ export const CORE_SET: CardDefinition[] = [
       "Brisez cet Objet : renvoyez une unité Marionnette que vous contrôlez dans votre main, puis piochez 1 carte " +
       "et défaussez 1 carte.",
     onBreakEffects: [
-      { type: "moveZone", toZone: "hand", target: { kind: "chosenUnit", among: { subtype: MARIONNETTE } } },
+      { type: "moveZone", toZone: "hand", target: { kind: "chosenUnit", among: { subtype: MARIONNETTE, unitsOnly: true } } },
       { type: "draw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
       { type: "discard", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
     ],
@@ -3033,7 +2542,7 @@ export const CORE_SET: CardDefinition[] = [
         oncePerTurnKey: "colombinaRepeat",
         description: "Répète l'effet d'arrivée d'une autre Marionnette alliée.",
         effects: [
-          { type: "repeatEnterEffects", target: { kind: "chosenUnit", among: { subtype: MARIONNETTE, excludeSource: true } } },
+          { type: "repeatEnterEffects", target: { kind: "chosenUnit", among: { subtype: MARIONNETTE, unitsOnly: true, excludeSource: true } } },
         ],
       },
     ],
@@ -3146,6 +2655,10 @@ export const CORE_SET: CardDefinition[] = [
             attackAmount: { kind: "flat", value: 2 },
             healthAmount: { kind: "flat", value: 2 },
             duration: "untilYourNextTurn",
+            // « jusqu'à VOTRE prochain tour » : celui du lanceur, pas celui
+            // du propriétaire de l'unité visée — sans quoi le malus tombait
+            // dès l'entame du tour adverse.
+            expiresOnControllersTurn: true,
           },
         ],
       },
@@ -3168,19 +2681,26 @@ export const CORE_SET: CardDefinition[] = [
     abilities: [
       {
         trigger: "onEnterPlay",
-        triggeredBy: { subtype: MARIONNETTE },
+        // « arrive en jeu » : une arrivée rejouée n'en est pas une.
+        triggeredBy: { subtype: MARIONNETTE, cardTypes: ["marin", "creature"] },
         oncePerTurnKey: "regisseurRecall",
         mode: "optional",
-        description: "Renvoyez une Marionnette de coût 2 ou moins en main : elle coûte 1 de moins à rejouer ce tour.",
+        description: "Renvoyez une autre Marionnette de coût 2 ou moins en main : la prochaine coûte 1 de moins ce tour.",
         // Le plafond de coût 2 empêche les boucles de valeur avec Colombina
         // ou Il Dottore (audit du 15 septembre).
+        // « une AUTRE unité Marionnette » : autre que le Régisseur
+        // (`excludeSource`) ET autre que celle qui vient d'arriver
+        // (`excludeTriggerSource`) — le texte oppose les deux.
         effects: [
           {
             type: "moveZone",
             toZone: "hand",
-            target: { kind: "chosenUnit", among: { subtype: MARIONNETTE, excludeSource: true, maxCost: 2 } },
+            target: {
+              kind: "chosenUnit",
+              among: { subtype: MARIONNETTE, unitsOnly: true, excludeSource: true, excludeTriggerSource: true, maxCost: 2 },
+            },
           },
-          { type: "discountNextCards", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 }, filter: { subtype: MARIONNETTE } },
+          { type: "discountNextCards", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 }, filter: { subtype: MARIONNETTE, cardTypes: ["marin", "creature"] } },
         ],
       },
     ],
@@ -3217,7 +2737,7 @@ export const CORE_SET: CardDefinition[] = [
     abilities: [
       {
         trigger: "onReturnedToHand",
-        triggeredBy: { subtype: MARIONNETTE, excludeSelf: false },
+        triggeredBy: { subtype: MARIONNETTE, cardTypes: ["marin", "creature"], excludeSelf: false },
         oncePerTurnKey: "theatreRecall",
         description: "Première Marionnette revenue en main du tour : récupérez 1 Raison.",
         effects: [{ type: "reasonGain", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } }],
@@ -3227,31 +2747,6 @@ export const CORE_SET: CardDefinition[] = [
     // « 3 Marionnettes de noms différents » du lot initial est abandonnée).
   },
   {
-    id: "les-coulisses-inondees",
-    name: "Les Coulisses Inondées",
-    type: "structure",
-    subtype: MARIONNETTE,
-    setCode: THEATRE_ENGLOUTI,
-    cost: 2,
-    health: 3,
-    durationTurns: 3,
-    maxCopies: 3,
-    text:
-      "Durée : 3 tours. La première fois à chaque tour qu'une carte Marionnette que vous contrôlez revient dans " +
-      "votre main, la prochaine carte Marionnette que vous jouez ce tour coûte 1 de moins, minimum 1.",
-    abilities: [
-      {
-        trigger: "onReturnedToHand",
-        triggeredBy: { subtype: MARIONNETTE, excludeSelf: false },
-        oncePerTurnKey: "coulissesRecall",
-        description: "Première Marionnette revenue en main du tour : elle coûte 1 de moins à rejouer ce tour.",
-        effects: [
-          { type: "discountNextCards", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 }, filter: { subtype: MARIONNETTE } },
-        ],
-      },
-    ],
-  },
-  {
     id: "changement-de-role",
     name: "Changement de rôle !",
     type: "objet",
@@ -3259,14 +2754,25 @@ export const CORE_SET: CardDefinition[] = [
     setCode: THEATRE_ENGLOUTI,
     cost: 2,
     maxCopies: 3,
+    // REFONTE (décision du propriétaire, 01/10/2026) : une substitution de
+    // scène — une Marionnette sort, une AUTRE entre, gratuitement. L'ancien
+    // texte (renvoi + remise de 1) ne faisait que rendre la monnaie. Une
+    // seule par tour, par NOM : plusieurs exemplaires ne videraient pas la
+    // main gratuitement. Coût inchangé.
     text:
-      "Brisez cet Objet : renvoyez une unité Marionnette que vous contrôlez dans votre main. La prochaine unité " +
-      "Marionnette que vous jouez ce tour coûte 1 de moins, minimum 1.",
-    // Réduction abaissée de 2 à 1 par l'audit : Brisé depuis la main, il ne
-    // doit pas transformer un retour défensif en accélération explosive.
+      "Brisez cet Objet : renvoyez une unité Marionnette que vous contrôlez dans votre main. Vous pouvez jouer une " +
+      "autre Marionnette depuis votre main ce tour sans payer son coût de Raison. Une seule carte nommée " +
+      "Changement de rôle ! peut être Brisée par tour.",
+    breakOncePerTurnByName: true,
     onBreakEffects: [
-      { type: "moveZone", toZone: "hand", target: { kind: "chosenUnit", among: { subtype: MARIONNETTE } } },
-      { type: "discountNextCards", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 }, filter: { subtype: MARIONNETTE } },
+      { type: "moveZone", toZone: "hand", target: { kind: "chosenUnit", among: { subtype: MARIONNETTE, unitsOnly: true } } },
+      {
+        type: "discountNextCards",
+        target: { kind: "controllerPlayer" },
+        free: true,
+        // « une AUTRE Marionnette » : celle qui vient de sortir n'en profite pas.
+        filter: { subtype: MARIONNETTE, excludeChosenTarget: true },
+      },
     ],
   },
   {
@@ -3291,16 +2797,20 @@ export const CORE_SET: CardDefinition[] = [
     subtype: MARIONNETTE,
     setCode: THEATRE_ENGLOUTI,
     cost: 5,
-    health: 3,
     durationTurns: 2,
     maxCopies: 1,
     text:
       "Pendant 2 tours, la première carte Marionnette que vous jouez à chacun de vos tours déclenche une seconde " +
       "fois son effet d'arrivée.",
+    // « que vous JOUEZ » : une carte posée depuis la main (`onlyPlayed`) — ni
+    // un Péon invoqué, ni une arrivée rejouée par Colombina ou le Régisseur,
+    // qui brûlaient sinon l'usage du tour. Le Rideau ne se compte pas
+    // lui-même (`excludeSelf` par défaut) : sa pose n'a aucun effet d'arrivée
+    // à rejouer, et la compter consommait le premier de ses deux tours.
     abilities: [
       {
         trigger: "onEnterPlay",
-        triggeredBy: { subtype: MARIONNETTE, excludeSelf: false },
+        triggeredBy: { subtype: MARIONNETTE, onlyPlayed: true },
         oncePerTurnKey: "rideauEncore",
         description: "Première Marionnette du tour : son effet d'arrivée se déclenche une seconde fois.",
         effects: [{ type: "repeatEnterEffects", target: { kind: "triggerSource" } }],
@@ -3332,7 +2842,7 @@ export const CORE_SET: CardDefinition[] = [
         mode: "optional",
         description: "Renvoyez une autre Marionnette alliée en main : il gagne +2 / +2 et la prochaine coûte 2 de moins ce tour.",
         effects: [
-          { type: "moveZone", toZone: "hand", target: { kind: "chosenUnit", among: { subtype: MARIONNETTE, excludeSource: true } } },
+          { type: "moveZone", toZone: "hand", target: { kind: "chosenUnit", among: { subtype: MARIONNETTE, unitsOnly: true, excludeSource: true } } },
           {
             type: "buff",
             target: { kind: "self" },
@@ -3363,18 +2873,21 @@ export const CORE_SET: CardDefinition[] = [
     abilities: [
       {
         trigger: "onEnterPlay",
-        triggeredBy: { subtype: MARIONNETTE },
+        // Une arrivée REJOUÉE n'est pas une arrivée (défaut des observateurs) :
+        // la répétition d'une autre carte (Colombina, Le Rideau) ne brûle pas
+        // l'usage du tour.
+        triggeredBy: { subtype: MARIONNETTE, cardTypes: ["marin", "creature"] },
         oncePerTurnKey: "regisseurAbyssalEcho",
         description: "Première autre Marionnette du tour : son effet d'arrivée se répète.",
         effects: [{ type: "repeatEnterEffects", target: { kind: "triggerSource" } }],
       },
       {
         trigger: "onReturnedToHand",
-        triggeredBy: { subtype: MARIONNETTE, excludeSelf: false },
+        triggeredBy: { subtype: MARIONNETTE, cardTypes: ["marin", "creature"], excludeSelf: false },
         oncePerTurnKey: "regisseurAbyssalRecall",
         description: "Première Marionnette revenue en main du tour : la prochaine coûte 1 de moins.",
         effects: [
-          { type: "discountNextCards", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 }, filter: { subtype: MARIONNETTE } },
+          { type: "discountNextCards", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 }, filter: { subtype: MARIONNETTE, cardTypes: ["marin", "creature"] } },
         ],
       },
     ],
@@ -3388,9 +2901,10 @@ export const CORE_SET: CardDefinition[] = [
   // primitive nouvelle en dehors de `condition.controllerHandAtLeast` — tout
   // le reste se dit avec ce que le moteur portait déjà.
   //
-  // Le « piochez puis défaussez » du lot s'appuie sur l'effet `discard`
-  // existant, qui prend en TÊTE de main : le texte ne dit jamais « de votre
-  // choix », et c'est déjà ainsi que Le Masque Fendu se comporte.
+  // Le « piochez puis défaussez » du lot s'appuie sur l'effet `discard` :
+  // c'est le JOUEUR qui désigne la carte défaussée (choix `handDiscard`), et
+  // la suite du texte reprend une fois sa réponse donnée
+  // (`resolveEffectSequence`) — le moteur ne choisit jamais à sa place.
   // ======================================================================
   {
     id: "mousse-des-quarts",
@@ -3858,7 +3372,10 @@ export const CORE_SET: CardDefinition[] = [
     keywords: ["pied-marin"],
     // Le contournement de Garde est un champ de données, pas un mot-clé
     // accordé : il ne vaut que pour CET attaquant, pendant Tempête.
-    bonusDamageInTideState: { tideStateIn: ["tempete"], amount: 1 },
+    // « +1 Puissance » est une vraie Puissance (affichée, en riposte, lue par
+    // les conditions) : affinité de Marée 4 → 5 en Tempête, et non un bonus
+    // de dégâts à l'attaque seulement.
+    tideAffinity: { tempete: { attack: 5 } },
     bypassesGardeTideStateIn: ["tempete"],
     text: "Pied marin. Pendant Tempête, il gagne +1 Puissance et ignore Garde.",
   },
@@ -3887,12 +3404,17 @@ export const CORE_SET: CardDefinition[] = [
     attack: 1,
     health: 4,
     keywords: ["garde"],
-    text: "Garde. Quand elle est détruite, récupérez 1 Raison.",
+    // Standard Verrier (30/09/2026, validé par le propriétaire) : la Forteresse
+    // « encaisse, grandit, frappe ». Coût et statistiques inchangés.
+    text: "Garde. La première fois à chaque tour qu'elle survit à des dégâts, elle gagne +1 Puissance.",
     abilities: [
       {
-        trigger: "onDeath",
-        description: "Elle est détruite : récupérez 1 Raison.",
-        effects: [{ type: "reasonGain", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } }],
+        trigger: "onSurvivedDamage",
+        oncePerTurnKey: "survieMouetteBriseLames",
+        description: "Elle tient bon : +1 Puissance, conservée.",
+        effects: [
+          { type: "buff", target: { kind: "self" }, attackAmount: { kind: "flat", value: 1 }, healthAmount: { kind: "flat", value: 0 }, permanent: true },
+        ],
       },
     ],
   },
@@ -4003,7 +3525,7 @@ export const CORE_SET: CardDefinition[] = [
     abilities: [
       {
         trigger: "onDeath",
-        triggeredBy: { archetype: "cra-poiscail" },
+        triggeredBy: { archetype: "cra-poiscail", cardTypes: ["marin", "creature"], destroyedBy: ["combat", "effect", "tide"] },
         oncePerTurnKey: "tasDeBoisRenfort",
         description: "Un de vos Cra-Poiscail tombe : +1 Résistance, définitivement.",
         effects: [
@@ -4037,7 +3559,7 @@ export const CORE_SET: CardDefinition[] = [
     abilities: [
       {
         trigger: "onReturnedToHand",
-        triggeredBy: { subtype: MARIONNETTE },
+        triggeredBy: { subtype: MARIONNETTE, cardTypes: ["marin", "creature"] },
         oncePerTurnKey: "primaFiltre",
         description: "Une autre Marionnette revient en main : piochez 1 carte puis défaussez 1 carte.",
         effects: [
@@ -4064,7 +3586,7 @@ export const CORE_SET: CardDefinition[] = [
     abilities: [
       {
         trigger: "onReturnedToHand",
-        triggeredBy: { subtype: MARIONNETTE },
+        triggeredBy: { subtype: MARIONNETTE, cardTypes: ["marin", "creature"] },
         oncePerTurnKey: "primaFiltre",
         description: "Une autre Marionnette revient en main : piochez 1 carte et récupérez 1 Raison.",
         effects: [
@@ -4087,6 +3609,8 @@ export const CORE_SET: CardDefinition[] = [
     abilities: [
       {
         trigger: "onDeath",
+        // « Quand il est DÉTRUIT » : un Sabordage n'en est pas un.
+        condition: { destroyedBy: ["combat", "effect", "tide"] },
         description: "Il est détruit : récupérez 1 Ancrage.",
         effects: [{ type: "heal", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } }],
       },
@@ -4125,16 +3649,19 @@ export const CORE_SET: CardDefinition[] = [
     health: 4,
     text:
       "La première fois à chaque tour qu'une Structure que vous contrôlez est détruite ou Sabordée, piochez " +
-      "1 carte puis défaussez 1 carte.",
+      "1 carte puis défaussez 1 carte, et il gagne +1 Puissance.",
+    // Standard Verrier (30/09/2026, validé par le propriétaire) : « un piège
+    // part, la troupe grandit ». Coût et statistiques inchangés.
     abilities: [
       {
         trigger: "onDeath",
         triggeredBy: { cardTypes: ["structure"] },
         oncePerTurnKey: "charpentierFiltre",
-        description: "Une de vos Structures part : piochez 1 carte puis défaussez 1 carte.",
+        description: "Une de vos Structures part : piochez 1 carte puis défaussez 1 carte, +1 Puissance conservée.",
         effects: [
           { type: "draw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
           { type: "discard", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
+          { type: "buff", target: { kind: "self" }, attackAmount: { kind: "flat", value: 1 }, healthAmount: { kind: "flat", value: 0 }, permanent: true },
         ],
       },
     ],
@@ -4216,20 +3743,6 @@ export const CORE_SET: CardDefinition[] = [
       },
     ],
   },
-  {
-    id: "ce-que-la-maree-rend",
-    name: "Ce que la Marée Rend",
-    type: "anomalie",
-    setCode: RAPIECER_LA_COQUE,
-    cost: 5,
-    health: 3,
-    durationTurns: 2,
-    maxCopies: 2,
-    // Choix IMPOSÉ : le joueur tranche, mais il ne peut pas refuser les deux
-    // (même primitive que Le Fond Vous Regarde).
-    anomalyForceChoiceAtStartOfTurn: { reasonLossAmount: 1, anchorDamageAmount: 1 },
-    text: "Pendant 2 tours, au début du tour de chaque joueur, celui-ci choisit : perdre 1 Raison ou subir 1 dégât d'Ancrage.",
-  },
   // ======================================================================
   // LOT 13 — Un Dead / La Veillée des Disparus
   // ======================================================================
@@ -4277,15 +3790,22 @@ export const CORE_SET: CardDefinition[] = [
     attack: 2,
     health: 1,
     text:
-      "La première fois pendant votre tour qu'une de vos cartes rejoint le Cimetière depuis votre main, " +
-      "elle gagne +1 Puissance jusqu'à la fin du tour.",
+      "La première fois pendant votre tour qu'une de vos cartes rejoint le Cimetière depuis votre main ou votre pioche, " +
+      "elle gagne +1 Puissance.",
+    // « ou votre pioche » (Test Verrier, 30/09/2026) : le meulage nourrit la
+    // Veillée comme la défausse (`onCardPutIntoGraveyard`).
+    // Standard Verrier (01/10/2026, validé par le propriétaire) : les gains de
+    // la Veillée RESTENT. Coût et statistiques inchangés.
     abilities: [
       {
-        trigger: "onCardDiscardedFromHand",
+        trigger: "onCardPutIntoGraveyard",
         triggeredBy: {},
+        // « La première fois PENDANT VOTRE TOUR » : une défausse imposée
+        // pendant le tour adverse ne compte pas (et ne brûle pas l'usage).
+        condition: { duringOwnTurn: true },
         oncePerTurnKey: "cacheCacheDefausse",
-        description: "Une de vos cartes est défaussée : +1 Puissance jusqu'à la fin du tour.",
-        effects: [{ type: "buff", target: { kind: "self" }, attackAmount: { kind: "flat", value: 1 }, duration: "endOfTurn" }],
+        description: "Une de vos cartes rejoint le Cimetière (main ou pioche) : +1 Puissance, conservée.",
+        effects: [{ type: "buff", target: { kind: "self" }, attackAmount: { kind: "flat", value: 1 }, healthAmount: { kind: "flat", value: 0 }, permanent: true }],
       },
     ],
   },
@@ -4304,7 +3824,7 @@ export const CORE_SET: CardDefinition[] = [
     abilities: [
       {
         trigger: "onDeath",
-        triggeredBy: { equippedUnit: true },
+        triggeredBy: { equippedUnit: true, destroyedBy: ["combat", "effect", "tide"] },
         description: "Le porteur meurt : piochez 1 carte puis défaussez 1 carte.",
         effects: [
           { type: "draw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
@@ -4327,7 +3847,19 @@ export const CORE_SET: CardDefinition[] = [
     // à la Revenante de la Fosse. `from: ["combat"]` réalise « AU COMBAT » à
     // la lettre : ni un effet de destruction, ni la Marée ne la sauvent.
     survivesLethalOncePerTurn: { from: ["combat"] },
-    text: "La première fois à chaque tour qu'elle devrait être détruite au combat, elle reste à 1 Résistance.",
+    // Standard Verrier (01/10/2026, validé par le propriétaire) : les gains de
+    // la Veillée RESTENT. Coût et statistiques inchangés.
+    text:
+      "La première fois à chaque tour qu'elle devrait être détruite au combat, elle reste à 1 Résistance. La première " +
+      "fois à chaque tour qu'elle survit à des dégâts, elle gagne +1 Puissance.",
+    abilities: [
+      {
+        trigger: "onSurvivedDamage",
+        oncePerTurnKey: "cinqMinutesTientBon",
+        description: "Elle tient bon : +1 Puissance, conservée.",
+        effects: [{ type: "buff", target: { kind: "self" }, attackAmount: { kind: "flat", value: 1 }, healthAmount: { kind: "flat", value: 0 }, permanent: true }],
+      },
+    ],
   },
   {
     id: "le-gouter",
@@ -4350,7 +3882,10 @@ export const CORE_SET: CardDefinition[] = [
         type: "draw",
         target: { kind: "controllerPlayer" },
         amount: { kind: "flat", value: 1 },
-        conditionGraveyardArrival: { subtype: UN_DEAD, since: "thisTurn" },
+        // `excludeSource` : Le Goûter, lui-même Un Dead, rejoint le Cimetière
+        // en se brisant, AVANT ses effets — il ne remplit pas sa propre
+        // condition (il piochait sinon 2 cartes à chaque Bris).
+        conditionGraveyardArrival: { subtype: UN_DEAD, since: "thisTurn", excludeSource: true },
       },
     ],
   },
@@ -4365,15 +3900,16 @@ export const CORE_SET: CardDefinition[] = [
     attack: 2,
     health: 2,
     text:
-      "Quand une autre de vos unités Un Dead est détruite, il gagne +1 Puissance jusqu'à la fin du tour. " +
-      "Une fois par tour.",
+      "Quand une autre de vos unités Un Dead est détruite, il gagne +1 Puissance. Une fois par tour.",
+    // Standard Verrier (01/10/2026, validé par le propriétaire) : les gains de
+    // la Veillée RESTENT. Coût et statistiques inchangés.
     abilities: [
       {
         trigger: "onDeath",
-        triggeredBy: { subtype: UN_DEAD, cardTypes: ["marin", "creature"] },
+        triggeredBy: { subtype: UN_DEAD, cardTypes: ["marin", "creature"], destroyedBy: ["combat", "effect", "tide"] },
         oncePerTurnKey: "papaAllieDetruit",
-        description: "Un autre Un Dead meurt : +1 Puissance jusqu'à la fin du tour.",
-        effects: [{ type: "buff", target: { kind: "self" }, attackAmount: { kind: "flat", value: 1 }, duration: "endOfTurn" }],
+        description: "Un autre Un Dead meurt : +1 Puissance, conservée.",
+        effects: [{ type: "buff", target: { kind: "self" }, attackAmount: { kind: "flat", value: 1 }, healthAmount: { kind: "flat", value: 0 }, permanent: true }],
       },
     ],
   },
@@ -4450,24 +3986,26 @@ export const CORE_SET: CardDefinition[] = [
     text:
       "À son arrivée, vous pouvez défausser 1 carte. Si vous le faites, piochez 1 carte et elle gagne " +
       "+1 Résistance jusqu'à votre prochain tour.",
-    // Pioche AVANT défausse, comme Épave à Fleur d'Eau : la garde « au moins
-    // 1 carte en main » lit ainsi la main d'AVANT l'échange, et « si vous le
-    // faites » ne se paie pas main vide. Le bonus vient en dernier, donc
-    // après la réponse du joueur à la défausse.
+    // Défausse PUIS pioche, dans l'ordre du texte : la défausse est le prix,
+    // payé avant de voir la carte piochée. « Si vous le faites » est tenu
+    // par la condition de CAPACITÉ (au moins 1 carte en main) : la capacité
+    // n'est proposée que si la défausse est possible, et une fois activée la
+    // défausse (au choix du joueur) a forcément lieu — la pioche et le bonus
+    // suivent sans autre garde.
     abilities: [
       {
         trigger: "onEnterPlay",
         mode: "optional",
+        condition: { controllerHandAtLeast: 1 },
         description: "Défaussez 1 carte : piochez 1 carte et +1 Résistance jusqu'à votre prochain tour.",
         effects: [
-          { type: "draw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 }, conditionControllerHandAtLeast: 1 },
-          { type: "discard", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 }, conditionControllerHandAtLeast: 2 },
+          { type: "discard", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
+          { type: "draw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
           {
             type: "buff",
             target: { kind: "self" },
             healthAmount: { kind: "flat", value: 1 },
             duration: "untilYourNextTurn",
-            conditionControllerHandAtLeast: 1,
           },
         ],
       },
@@ -4511,6 +4049,8 @@ export const CORE_SET: CardDefinition[] = [
     abilities: [
       {
         trigger: "onDeath",
+        // « Quand il est DÉTRUIT » : un Sabordage n'en est pas un.
+        condition: { destroyedBy: ["combat", "effect", "tide"] },
         description: "Détruite : 1 dégât au Navire adverse.",
         effects: [{ type: "damage", target: { kind: "opponentPlayer" }, amount: { kind: "flat", value: 1 } }],
       },
@@ -4537,7 +4077,7 @@ export const CORE_SET: CardDefinition[] = [
       {
         trigger: "onDeath",
         mode: "optional",
-        triggeredBy: { subtype: UN_DEAD, cardTypes: ["marin", "creature"] },
+        triggeredBy: { subtype: UN_DEAD, cardTypes: ["marin", "creature"], destroyedBy: ["combat", "effect", "tide"] },
         oncePerTurnKey: "tuMavaisPromis",
         description: "Un autre Un Dead meurt : repêchez une unité Un Dead de coût 1.",
         effects: [
@@ -4562,14 +4102,15 @@ export const CORE_SET: CardDefinition[] = [
     durationTurns: 4,
     maxCopies: 2,
     text:
-      "Durée : 4 tours. La première fois à chaque tour qu'une carte rejoint votre Cimetière depuis votre main, " +
+      "Durée : 4 tours. La première fois à chaque tour qu'une carte rejoint votre Cimetière depuis votre main ou votre pioche, " +
       "infligez 1 dégât au Navire adverse.",
+    // « ou votre pioche » (Test Verrier, 30/09/2026) : vider sa pioche devient une menace.
     abilities: [
       {
-        trigger: "onCardDiscardedFromHand",
+        trigger: "onCardPutIntoGraveyard",
         triggeredBy: {},
         oncePerTurnKey: "marelleDefausse",
-        description: "Une carte part de votre main au Cimetière : 1 dégât au Navire adverse.",
+        description: "Une carte rejoint votre Cimetière (main ou pioche) : 1 dégât au Navire adverse.",
         effects: [{ type: "damage", target: { kind: "opponentPlayer" }, amount: { kind: "flat", value: 1 } }],
       },
     ],
@@ -4612,7 +4153,7 @@ export const CORE_SET: CardDefinition[] = [
     abilities: [
       {
         trigger: "onDeath",
-        triggeredBy: { cardTypes: ["marin", "creature"] },
+        triggeredBy: { cardTypes: ["marin", "creature"], destroyedBy: ["combat", "effect", "tide"] },
         oncePerTurnKey: "tableUniteDetruite",
         description: "Une de vos unités meurt : piochez 1 carte puis défaussez 1 carte.",
         effects: [
@@ -4637,14 +4178,15 @@ export const CORE_SET: CardDefinition[] = [
       "À son arrivée, choisissez une unité Un Dead de coût 2 ou moins dans votre Cimetière. Remettez-la dans " +
       "votre main. Si une unité Un Dead a été détruite ce tour, elle coûte 1 Raison de moins à jouer ce tour, " +
       "minimum 1.",
-    // La réduction porte sur la carte qu'on vient de repêcher. Le moteur
-    // l'exprime comme « la prochaine carte de ce profil jouée ce tour »
-    // (`discountNextCards`, un seul usage) : le filtre reprend celui de la
-    // récupération, donc la seule carte que le joueur puisse viser est bien
-    // celle qui vient de remonter.
+    // La réduction porte sur la carte qu'on vient de repêcher, et sur elle
+    // seule (`discountOnlyRecoveredCard`) : une autre unité Un Dead déjà en
+    // main n'en profite pas, et rien n'est posé si rien n'a été repêché. Le
+    // filtre (coût 2 ou moins compris) reprend celui de la récupération.
     //
     // `fromZone: "board"` : « DÉTRUITE ce tour », pas défaussée — la nuance
-    // compte pour une famille qui fait les deux.
+    // compte pour une famille qui fait les deux. Et une UNITÉ détruite : ni
+    // un Objet brisé, ni un Équipement, ni un Sabordage (`cardTypes`,
+    // `destroyedBy`).
     onPlayEffects: [
       {
         type: "moveGraveyardCardToHand",
@@ -4656,7 +4198,14 @@ export const CORE_SET: CardDefinition[] = [
         target: { kind: "controllerPlayer" },
         amount: { kind: "flat", value: 1 },
         filter: { subtype: UN_DEAD, cardTypes: ["marin", "creature"], maxCost: 2 },
-        conditionGraveyardArrival: { subtype: UN_DEAD, fromZone: "board", since: "thisTurn" },
+        discountOnlyRecoveredCard: true,
+        conditionGraveyardArrival: {
+          subtype: UN_DEAD,
+          fromZone: "board",
+          cardTypes: ["marin", "creature"],
+          destroyedBy: ["combat", "effect", "tide"],
+          since: "thisTurn",
+        },
       },
     ],
   },
@@ -4672,25 +4221,26 @@ export const CORE_SET: CardDefinition[] = [
     health: 5,
     maxCopies: 1,
     text:
-      "La première fois à chaque tour qu'une autre de vos cartes Un Dead est détruite ou défaussée, " +
-      "infligez 1 dégât au Navire adverse.",
-    // « Détruite OU défaussée » : deux déclencheurs, UNE seule clé de suivi.
+      "La première fois à chaque tour qu'une autre de vos cartes Un Dead est détruite ou rejoint votre Cimetière " +
+      "depuis votre main ou votre pioche, infligez 1 dégât au Navire adverse.",
+    // « Détruite OU défaussée / meulée » : deux déclencheurs, UNE seule clé de suivi.
+    // (« ou votre pioche » : Test Verrier, 30/09/2026.)
     // `oncePerTurnFlags` est porté par la carte et non par la capacité, donc
     // la même clé donne bien « une fois par tour » au total, pas une fois
     // par voie.
     abilities: [
       {
         trigger: "onDeath",
-        triggeredBy: { subtype: UN_DEAD },
+        triggeredBy: { subtype: UN_DEAD, destroyedBy: ["combat", "effect", "tide"] },
         oncePerTurnKey: "tousEnsemble",
         description: "Un autre Un Dead meurt : 1 dégât au Navire adverse.",
         effects: [{ type: "damage", target: { kind: "opponentPlayer" }, amount: { kind: "flat", value: 1 } }],
       },
       {
-        trigger: "onCardDiscardedFromHand",
+        trigger: "onCardPutIntoGraveyard",
         triggeredBy: { subtype: UN_DEAD },
         oncePerTurnKey: "tousEnsemble",
-        description: "Un autre Un Dead est défaussé : 1 dégât au Navire adverse.",
+        description: "Un autre Un Dead rejoint le Cimetière (main ou pioche) : 1 dégât au Navire adverse.",
         effects: [{ type: "damage", target: { kind: "opponentPlayer" }, amount: { kind: "flat", value: 1 } }],
       },
     ],
@@ -4803,17 +4353,19 @@ export const CORE_SET: CardDefinition[] = [
     maxCopies: 2,
     visibleDuringTide: ["tempete", "abysses"],
     text:
-      "Durée : 3 tours. Visible pendant Tempête et Abysses. La première fois à chaque tour qu'une unité adverse " +
-      "arrive alors que l'adversaire contrôle au moins 4 unités, elle subit 1 dégât. Réaction cachée : lorsqu'une " +
-      "unité adverse arrive alors que l'adversaire en contrôle au moins 4, infligez 2 dégâts à toutes les unités " +
-      "adverses. Détruisez ensuite Barils de Poudre.",
+      "Durée : 3 tours. Visible pendant Tempête et Abysses. La première unité adverse jouée après la troisième " +
+      "chaque tour subit 1 dégât. Réaction cachée : lorsqu'une unité adverse arrive alors que l'adversaire en " +
+      "contrôle au moins 4, infligez 2 dégâts à toutes les unités adverses. Détruisez ensuite Barils de Poudre.",
     abilities: [
       {
+        // Texte Notion (revue du 02/10/2026) : un compte des unités JOUÉES
+        // ce tour par l'adversaire, pas de celles qu'il contrôle — un
+        // plateau déjà plein ne déclenche rien, la quatrième pose du tour oui.
         trigger: "onEnterPlay",
-        triggeredBy: { cardTypes: ["marin", "creature"], opponentOnly: true },
+        triggeredBy: { cardTypes: ["marin", "creature"], opponentOnly: true, onlyPlayed: true },
         oncePerTurnKey: "barilsDePoudre",
-        condition: { selfVisible: true, opponentUnitsAtLeast: 4 },
-        description: "Une quatrième unité adverse arrive : elle subit 1 dégât.",
+        condition: { selfVisible: true, opponentUnitsPlayedThisTurnAtLeast: 4 },
+        description: "La quatrième unité adverse jouée ce tour subit 1 dégât.",
         effects: [{ type: "damage", target: { kind: "triggerSource" }, amount: { kind: "flat", value: 1 } }],
       },
       {
@@ -4918,7 +4470,9 @@ export const CORE_SET: CardDefinition[] = [
       {
         trigger: "onUnitAttackDeclared",
         oncePerTurnKey: "caleInondable",
-        condition: { selfVisible: true, opponentUnitsMoreThanController: true },
+        // « la PREMIÈRE unité adverse qui attaque chaque tour » : la première
+        // attaque seulement, même si la comparaison des plateaux l'écarte.
+        condition: { selfVisible: true, opponentUnitsMoreThanController: true, opponentAttacksThisTurnAtMost: 1 },
         description: "L'adversaire a plus de corps : son attaquant perd 1 Puissance.",
         effects: [{ type: "modifyAttackerPower", target: { kind: "self" }, amount: { kind: "flat", value: 1 } }],
       },
@@ -4959,7 +4513,8 @@ export const CORE_SET: CardDefinition[] = [
     abilities: [
       {
         trigger: "onEnterPlay",
-        triggeredBy: { cardTypes: ["marin", "creature"], opponentOnly: true },
+        // « JOUÉE » : une unité invoquée par un effet n'en est pas une.
+        triggeredBy: { cardTypes: ["marin", "creature"], opponentOnly: true, onlyPlayed: true },
         oncePerTurnKey: "chaineDeTravers",
         condition: { selfVisible: true },
         description: "La première unité adverse du tour perd 1 Puissance.",
@@ -5138,36 +4693,16 @@ export const CORE_SET: CardDefinition[] = [
     ],
   },
   {
-    id: "panique-sur-le-pont",
-    // Résolution immédiate : part au Cimetière, n'occupe pas de Slot.
-    permanent: false,
-    name: "Panique sur le Pont",
-    type: "anomalie",
-    setCode: NECESSAIRE_DU_MARIN,
-    cost: 4,
-    maxCopies: 2,
-    text:
-      "Si l'adversaire contrôle au moins 4 unités, renvoyez jusqu'à 2 unités de coût 3 ou moins qu'il contrôle " +
-      "dans sa main.",
-    onPlayEffects: [
-      {
-        type: "pickUnits",
-        target: { kind: "allEnemyUnits" },
-        filter: { cardTypes: ["marin", "creature"], maxCost: 3 },
-        uses: 2,
-        conditionOpponentUnitsAtLeast: 4,
-        thenEffects: [{ type: "moveZone", toZone: "hand", target: { kind: "triggerSource" } }],
-      },
-    ],
-  },
-  {
     id: "chacun-sa-place",
     // Résolution immédiate : part au Cimetière, n'occupe pas de Slot.
     permanent: false,
     name: "Chacun sa Place",
     type: "anomalie",
     setCode: NECESSAIRE_DU_MARIN,
-    cost: 5,
+    // 5 → 3 (décision du propriétaire, 01/10/2026) : à 5, elle arrivait trop
+    // tard pour un effet souvent partiel. À 3, un outil contre les plateaux
+    // qui commencent à déborder, sans remplacer les vrais balais. Effet inchangé.
+    cost: 3,
     maxCopies: 1,
     text: "Chaque joueur choisit jusqu'à 3 unités qu'il contrôle. Détruisez toutes les autres.",
     onPlayEffects: [{ type: "keepUnitsDestroyRest", target: { kind: "allPlayers" }, uses: 3 }],
@@ -5290,27 +4825,6 @@ export const CORE_SET: CardDefinition[] = [
     ],
   },
   {
-    id: "journal-de-bord",
-    name: "Journal de Bord",
-    type: "objet",
-    setCode: NECESSAIRE_DU_MARIN,
-    cost: 2,
-    maxCopies: 3,
-    text:
-      "Brisez cet Objet : regardez les 4 premières cartes de votre pioche. Vous pouvez ajouter une Structure " +
-      "parmi elles à votre main. Placez les autres sous votre pioche.",
-    onBreakEffects: [
-      {
-        type: "lookAtDeckTop",
-        target: { kind: "controllerPlayer" },
-        amount: { kind: "flat", value: 4 },
-        uses: 1,
-        filter: { cardTypes: ["structure"] },
-        refusable: true,
-      },
-    ],
-  },
-  {
     id: "fouille-de-la-cale",
     name: "Fouille de la Cale",
     type: "objet",
@@ -5376,6 +4890,7 @@ export const CORE_SET: CardDefinition[] = [
         trigger: "onPermanentWouldBeDestroyed",
         triggeredBy: { cardTypes: ["marin", "creature"] },
         mode: "optional",
+        condition: { duringOpponentTurn: true },
         description: "Brisez Bouclier d'Écume : votre unité reste en jeu avec 1 Résistance.",
         effects: [
           { type: "surviveWithHealth", target: { kind: "triggerSource" }, amount: { kind: "flat", value: 1 } },
@@ -5422,33 +4937,11 @@ export const CORE_SET: CardDefinition[] = [
       {
         trigger: "onUnitAttackDeclared",
         mode: "optional",
+        // « une de vos UNITÉS est ciblée » : ni une attaque directe, ni une Structure attaquée.
+        condition: { attackTargetIsOwnUnit: true },
         description: "Brisez Corde de Rappel : l'unité visée rentre dans votre main.",
         effects: [
           { type: "moveZone", toZone: "hand", target: { kind: "attackTarget" } },
-          { type: "saborde", target: { kind: "self" } },
-        ],
-      },
-    ],
-  },
-  {
-    id: "planche-de-fortune",
-    name: "Planche de Fortune",
-    type: "objet",
-    setCode: NECESSAIRE_DU_MARIN,
-    cost: 4,
-    maxCopies: 2,
-    text:
-      "Lorsqu'une Structure que vous contrôlez devrait être détruite pendant le tour adverse, vous pouvez Briser " +
-      "cet Objet : elle reste en jeu avec 1 Résistance.",
-    onBreakEffects: [{ type: "surviveWithHealth", target: { kind: "triggerSource" }, amount: { kind: "flat", value: 1 } }],
-    abilities: [
-      {
-        trigger: "onPermanentWouldBeDestroyed",
-        triggeredBy: { cardTypes: ["structure"] },
-        mode: "optional",
-        description: "Brisez Planche de Fortune : votre Structure reste en jeu avec 1 Résistance.",
-        effects: [
-          { type: "surviveWithHealth", target: { kind: "triggerSource" }, amount: { kind: "flat", value: 1 } },
           { type: "saborde", target: { kind: "self" } },
         ],
       },
@@ -5473,6 +4966,8 @@ export const CORE_SET: CardDefinition[] = [
         // coque, sans rien changer à ce qu'elle rend.
         trigger: "onIncomingDirectAttack",
         mode: "optional",
+        // « une UNITÉ adverse inflige » : pas un tir de Navire.
+        condition: { attackFromUnit: true },
         description: "Brisez Contre-Harpon : 2 dégâts à l'unité qui frappe votre coque.",
         effects: [
           { type: "damage", target: { kind: "pendingAttacker" }, amount: { kind: "flat", value: 2 } },
@@ -5633,8 +5128,10 @@ export const CORE_SET: CardDefinition[] = [
     text:
       "Brisez cet Objet : récupérez 4 Ancrage. Jouable uniquement si vous avez perdu au moins la moitié de votre " +
       "Ancrage initial.",
-    // La condition porte sur la POSE, pas sur le Bris : une carte qu'on ne
-    // peut pas jouer reste en main, et rien n'est dépensé.
+    // La condition porte sur la POSE comme sur le Bris DEPUIS LA MAIN (autre
+    // façon de jouer la carte, `breakObject`) : une carte qu'on ne peut pas
+    // jouer reste en main, et rien n'est dépensé. Une fois posée, son Bris
+    // depuis le plateau n'est plus conditionné — elle a déjà été jouée.
     playableOnlyIf: { controllerAnchorAtMostRatioOfStart: 0.5 },
     onBreakEffects: [
       { type: "heal", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 4 } },
@@ -5689,7 +5186,7 @@ export const CORE_SET: CardDefinition[] = [
     attack: 5,
     health: 6,
     maxCopies: 2,
-    text: "À son arrivée, si l'adversaire contrôle au moins 4 unités, infligez 1 dégât à toutes ses unités.",
+    text: "À son arrivée, si l'adversaire contrôle au moins 4 unités, infligez 1 dégât à toutes les unités adverses.",
     onPlayEffects: [
       {
         type: "damage",
@@ -5716,7 +5213,17 @@ export const CORE_SET: CardDefinition[] = [
     health: 8,
     maxCopies: 2,
     keywords: ["garde"],
-    text: "Garde.",
+    // Standard Verrier (30/09/2026, validé par le propriétaire) : la Forteresse
+    // « encaisse, grandit, frappe ». Coût et statistiques inchangés.
+    text: "Garde. La première fois à chaque tour qu'il survit à des dégâts, infligez 2 dégâts au Navire adverse.",
+    abilities: [
+      {
+        trigger: "onSurvivedDamage",
+        oncePerTurnKey: "survieDernierRempart",
+        description: "Il tient : 2 dégâts au Navire adverse.",
+        effects: [{ type: "damage", target: { kind: "opponentPlayer" }, amount: { kind: "flat", value: 2 } }],
+      },
+    ],
   },
   {
     id: "lamiral-sans-pavillon",
@@ -5783,6 +5290,7 @@ export const CORE_SET: CardDefinition[] = [
   // --- Finishers non-unités ----------------------------------------------
   // Trois cartes qui ferment une partie sans passer par un corps : c'est le
   // seul endroit du lot où le coût 6-7 achète un effet, pas une statistique.
+  // (Abandonnez le Navire ! en est sorti le 01/10/2026 : coût 2.)
   {
     id: "abandonnez-le-navire",
     // Résolution immédiate : part au Cimetière, n'occupe pas de Slot.
@@ -5790,7 +5298,10 @@ export const CORE_SET: CardDefinition[] = [
     name: "Abandonnez le Navire !",
     type: "anomalie",
     setCode: NECESSAIRE_DU_MARIN,
-    cost: 6,
+    // 6 → 2 (décision du propriétaire, 01/10/2026) : plus un finisher raté,
+    // une remise à zéro partielle très agressive. À surveiller dans les decks
+    // qui jouent naturellement peu d'unités. Effet inchangé.
+    cost: 2,
     maxCopies: 1,
     text: "Chaque joueur choisit jusqu'à 2 unités qu'il contrôle. Détruisez toutes les autres.",
     onPlayEffects: [{ type: "keepUnitsDestroyRest", target: { kind: "allPlayers" }, uses: 2 }],

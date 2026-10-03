@@ -1,7 +1,7 @@
 /**
  * Audit du catalogue, seconde passe (2026-09-16) : les dix cartes qui
- * demandaient de nouvelles primitives — Contrecoup, taxe de Bris, report de
- * Marée, choix au Sabordage, passage immédiat, Sabordage forcé, « seule
+ * demandaient de nouvelles primitives — Contrecoup, taxe de Bris, choix au
+ * Sabordage, passage immédiat, Sabordage forcé, « seule
  * Créature », Pied marin temporaire — et les textes réécrits (Théâtre,
  * Rappel du Public, Arlecchino abyssal).
  */
@@ -16,7 +16,7 @@ import { processTrigger } from "@/game/triggers/triggerBus";
 import { eligibleCandidatesFor } from "@/game/reactions/reactionWindow";
 import { assertUnitCanAttack, hasEffectiveKeyword, hasKeywordInContext, KEYWORD_PIED_MARIN } from "@/game/rules/validation";
 import type { GameState } from "@/game/state/types";
-import { activateReactionFor, instance, testEnvironment, testGameState, testPlayer } from "./testHelpers";
+import { activateReactionFor, instance, pendingCandidates, testEnvironment, testGameState, testPlayer } from "./testHelpers";
 
 const STRUCTURE = "le-trone-de-bouchon"; // Structure toujours visible, sans capacité
 const OBJET = "cartes-des-courants"; // Objet coût 2, sans cible ni Raison en jeu
@@ -41,7 +41,7 @@ function candidates(state: GameState) {
 
 describe("Cylindre flottant — Contrecoup", () => {
   it("SUSPEND l'attaque et propose le piège, sans rien appliquer d'office", () => {
-    const attacker = instance("baleine-aux-cicatrices-blanches", "p1"); // 5 Puissance
+    const attacker = instance("la-chose-qui-remonte", "p1"); // 5 Puissance
     const cylindre = instance("cylindre-flottant", "p2"); // visible en Houle
     const cible = instance("murene-aveugle", "p1"); // le permanent adverse à frapper
     const state = testGameState({
@@ -63,7 +63,7 @@ describe("Cylindre flottant — Contrecoup", () => {
   });
 
   it("activé, il annule les dégâts, frappe le permanent désigné, et se détruit", () => {
-    const attacker = instance("baleine-aux-cicatrices-blanches", "p1"); // 5 Puissance
+    const attacker = instance("la-chose-qui-remonte", "p1"); // 5 Puissance
     const cylindre = instance("cylindre-flottant", "p2");
     const cible = instance("murene-aveugle", "p1");
     const state = testGameState({
@@ -90,7 +90,7 @@ describe("Cylindre flottant — Contrecoup", () => {
   });
 
   it("passé, l'attaque reprend et porte normalement", () => {
-    const attacker = instance("baleine-aux-cicatrices-blanches", "p1"); // 5 Puissance
+    const attacker = instance("la-chose-qui-remonte", "p1"); // 5 Puissance
     const cylindre = instance("cylindre-flottant", "p2");
     const state = testGameState({
       phase: "combatPhase",
@@ -111,7 +111,7 @@ describe("Cylindre flottant — Contrecoup", () => {
   it("MASQUÉ (Calme), il propose sa Réaction cachée et frappe le NAVIRE adverse", () => {
     // Le piège ne vise plus un permanent quand il est caché : le joueur n'a
     // pas choisi son moment, il ne choisit pas non plus sa cible.
-    const attacker = instance("baleine-aux-cicatrices-blanches", "p1"); // 5 Puissance
+    const attacker = instance("la-chose-qui-remonte", "p1"); // 5 Puissance
     const cylindre = instance("cylindre-flottant", "p2", { turnsRemaining: 3 });
     const state = testGameState({
       phase: "combatPhase",
@@ -130,7 +130,7 @@ describe("Cylindre flottant — Contrecoup", () => {
   });
 
   it("MASQUÉ, passer laisse l'attaque porter et ne révèle rien", () => {
-    const attacker = instance("baleine-aux-cicatrices-blanches", "p1");
+    const attacker = instance("la-chose-qui-remonte", "p1"); // 5 Puissance
     const cylindre = instance("cylindre-flottant", "p2", { turnsRemaining: 3 });
     const state = testGameState({
       phase: "combatPhase",
@@ -182,146 +182,18 @@ describe("Cloche d'Alerte — taxe sur le Bris adverse", () => {
   });
 });
 
-describe("Ancre de Dérive — report des effets de Marée", () => {
-  /**
-   * Houle → Tempête à la fin du tour de p1. p2 joue Le Goliath, sans
-   * résistance à la Tempête : 1 dégât d'Ancrage par tour.
-   */
-  function changementVersTempete(avecAncre: boolean) {
-    const ancre = instance("ancre-de-derive", "p1"); // visible en Houle et Tempête
-    return {
-      ancre,
-      state: testGameState({
-        turnNumber: 2,
-        environment: testEnvironment({ tideState: "houle", tideRemainingTurns: 1, tideOrientation: "montante" }),
-        players: [
-          testPlayer("p1", { board: avecAncre ? [ancre] : [], deck: filler("p1") }),
-          testPlayer("p2", { shipId: "le-goliath", deck: filler("p2"), anchor: 20 }),
-        ],
-      }),
-    };
-  }
-
-  it("l'annonce SUSPEND l'entame du tour : ni Raison, ni pioche, ni dégâts tant que le joueur n'a pas répondu", () => {
-    // Arbitrage du 21/09/2026 : fenêtre COMPLÈTE. Avant cette passe, le
-    // Sabordage et le report étaient appliqués d'office — le moteur
-    // décidait à la place du joueur.
-    const { state } = changementVersTempete(true);
-    const mainAvant = player(state, "p2").hand.length;
-
-    const annonce = dispatch(state, { type: "endTurn", playerId: "p1" });
-    ok(annonce);
-    // La Marée a bien changé : c'est l'ANNONCE, pas une attente.
-    expect(annonce.state.environment.tideState).toBe("tempete");
-    expect(annonce.state.pendingReaction?.awaitingPlayerId).toBe("p1");
-    expect(annonce.state.pendingTideStep?.tideState).toBe("tempete");
-    // Rien de l'entame n'a eu lieu.
-    expect(player(annonce.state, "p2").anchor).toBe(20);
-    expect(player(annonce.state, "p2").hand).toHaveLength(mainAvant);
-    expect(annonce.events.some((e) => e.type === "TURN_STARTED")).toBe(false);
-  });
-
-  it("activer la fenêtre Saborde l'Ancre et reporte les effets à la fin du tour en cours", () => {
-    const { ancre, state } = changementVersTempete(true);
-    const annonce = dispatch(state, { type: "endTurn", playerId: "p1" });
-    ok(annonce);
-
-    const entered = activateReactionFor(annonce.state, "ancre-de-derive");
-    ok(entered);
-    // La fenêtre refermée, l'entame a repris toute seule.
-    expect(entered.state.pendingTideStep).toBeUndefined();
-    expect(entered.events.some((e) => e.type === "TURN_STARTED")).toBe(true);
-    expect(player(entered.state, "p2").anchor).toBe(20); // reporté
-    expect(entered.state.environment.deferredTideEffects?.tideState).toBe("tempete");
-    expect(board(entered.state, "p1")).toHaveLength(0);
-    expect(player(entered.state, "p1").graveyard.find((u) => u.instanceId === ancre.instanceId)?.graveyardCause).toBe("scuttled");
-
-    // Fin du tour en cours (celui de p2) : les effets reportés s'appliquent
-    // (-1), puis le tour suivant commence en Tempête et inflige son propre
-    // dégât de tour (-1) — comme sans Ancre, un tour plus tard.
-    const ended = dispatch(entered.state, { type: "endTurn", playerId: "p2" });
-    ok(ended);
-    expect(ended.state.environment.deferredTideEffects).toBeUndefined();
-    expect(player(ended.state, "p2").anchor).toBe(18);
-    expect(ended.events.filter((e) => e.type === "DAMAGE" && e.targetPlayerId === "p2")).toHaveLength(2);
-  });
-
-  it("passer la fenêtre garde l'Ancre et laisse la Marée frapper tout de suite", () => {
-    // Le joueur peut toujours refuser : une Ancre gardée pour un
-    // changement plus dur vaut mieux qu'une Ancre dépensée sur 1 dégât.
-    const { ancre, state } = changementVersTempete(true);
-    const annonce = dispatch(state, { type: "endTurn", playerId: "p1" });
-    ok(annonce);
-
-    const passe = dispatch(annonce.state, { type: "passReaction", playerId: "p1" });
-    ok(passe);
-    expect(passe.state.pendingTideStep).toBeUndefined();
-    expect(passe.state.environment.deferredTideEffects).toBeUndefined();
-    expect(player(passe.state, "p2").anchor).toBe(19); // la Tempête a frappé
-    expect(board(passe.state, "p1").some((u) => u.instanceId === ancre.instanceId)).toBe(true);
-    expect(passe.events.some((e) => e.type === "TURN_STARTED")).toBe(true);
-  });
-
-  it("masquée, elle agit quand même — c'est sa Réaction cachée, et elle se révèle en le faisant", () => {
-    // L'Ancre est visible en Houle et Tempête : une annonce d'Abysses la
-    // masque. La règle générale veut qu'une Structure masquée soit
-    // inactive ; son texte déclare l'exception (« Réaction cachée »), et
-    // c'est le seul chemin par lequel une carte masquée peut agir.
-    const ancre = instance("ancre-de-derive", "p1");
+describe("Changement de Marée sans fenêtre d'annonce", () => {
+  it("sans carte pour y répondre, les dégâts de la nouvelle Marée s'appliquent immédiatement", () => {
+    // Houle → Tempête à la fin du tour de p1. p2 joue Le Goliath, sans
+    // résistance à la Tempête : 1 dégât d'Ancrage par tour.
     const state = testGameState({
-      turnNumber: 2,
-      environment: testEnvironment({ tideState: "tempete", tideRemainingTurns: 1, tideOrientation: "montante" }),
-      players: [
-        testPlayer("p1", { board: [ancre], deck: filler("p1") }),
-        testPlayer("p2", { shipId: "le-goliath", deck: filler("p2"), anchor: 20 }),
-      ],
-    });
-    const annonce = dispatch(state, { type: "endTurn", playerId: "p1" });
-    ok(annonce);
-    expect(annonce.state.environment.tideState).toBe("abysses");
-    expect(annonce.state.pendingReaction?.awaitingPlayerId).toBe("p1");
-
-    const active = activateReactionFor(annonce.state, "ancre-de-derive");
-    ok(active);
-    // L'entrée en Abysses coûte 2 Ancrage : reportée, elle ne tombe pas ici.
-    expect(player(active.state, "p2").anchor).toBe(20);
-    expect(active.state.environment.deferredTideEffects?.tideState).toBe("abysses");
-    expect(active.events.some((e) => e.type === "STRUCTURE_REVEALED")).toBe(true);
-    expect(board(active.state, "p1")).toHaveLength(0);
-  });
-
-  it("visible ou masquée, une seule des deux moitiés est proposée", () => {
-    // Le texte promet deux fois la même chose dans deux états différents,
-    // jamais les deux à la fois : `selfVisible` et `selfHidden` sont
-    // exclusifs, et sans eux le joueur verrait deux entrées identiques.
-    const ancre = instance("ancre-de-derive", "p1");
-    const versTempete = testGameState({
       turnNumber: 2,
       environment: testEnvironment({ tideState: "houle", tideRemainingTurns: 1, tideOrientation: "montante" }),
       players: [
-        testPlayer("p1", { board: [ancre], deck: filler("p1") }),
+        testPlayer("p1", { deck: filler("p1") }),
         testPlayer("p2", { shipId: "le-goliath", deck: filler("p2"), anchor: 20 }),
       ],
     });
-    const visible = dispatch(versTempete, { type: "endTurn", playerId: "p1" });
-    ok(visible);
-    expect(candidates(visible.state).filter((c) => c.cardId === "ancre-de-derive")).toHaveLength(1);
-
-    const versAbysses = testGameState({
-      turnNumber: 2,
-      environment: testEnvironment({ tideState: "tempete", tideRemainingTurns: 1, tideOrientation: "montante" }),
-      players: [
-        testPlayer("p1", { board: [ancre], deck: filler("p1") }),
-        testPlayer("p2", { shipId: "le-goliath", deck: filler("p2"), anchor: 20 }),
-      ],
-    });
-    const masquee = dispatch(versAbysses, { type: "endTurn", playerId: "p1" });
-    ok(masquee);
-    expect(candidates(masquee.state).filter((c) => c.cardId === "ancre-de-derive")).toHaveLength(1);
-  });
-
-  it("sans Ancre, les dégâts de la nouvelle Marée s'appliquent immédiatement", () => {
-    const { state } = changementVersTempete(false);
     const entered = dispatch(state, { type: "endTurn", playerId: "p1" });
     ok(entered);
     expect(entered.state.pendingReaction).toBeUndefined();
@@ -415,18 +287,24 @@ describe("Levier de Lest — Sabordage conjoint d'une Structure", () => {
     expect(result.events.some((e) => e.type === "SABORDED" && e.instanceId === structure.instanceId)).toBe(true);
   });
 
-  it("le Sabordage forcé réveille les observateurs (Plongeur des Épaves)", () => {
+  it("le Sabordage forcé réveille les observateurs « détruite ou Sabordée », pas ceux de « détruite »", () => {
     const levier = instance("levier-de-lest", "p1");
     const structure = instance(STRUCTURE, "p1");
-    const plongeur = instance("plongeur-des-epaves", "p1");
-    const state = testGameState({ players: [testPlayer("p1", { board: [levier, structure, plongeur], reason: 5 }), testPlayer("p2")] });
+    const kept = instance(STRUCTURE, "p1");
+    const mecanicien = instance("mecanicien-aux-mains-noires", "p1");
+    const bernard = instance("bernard-lermite-dacier", "p1");
+    const state = testGameState({
+      players: [testPlayer("p1", { board: [levier, structure, kept, mecanicien, bernard], reason: 5 }), testPlayer("p2")],
+    });
     const broken = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: levier.instanceId, targetInstanceId: structure.instanceId });
     ok(broken);
     expect(player(broken.state, "p1").reason).toBe(6); // +1 du Levier
-    // Le Plongeur PROPOSE sa Raison : le Sabordage forcé ouvre bien sa fenêtre.
-    const result = activateReactionFor(broken.state, "plongeur-des-epaves");
-    ok(result);
-    expect(player(result.state, "p1").reason).toBe(7);
+    // Bernard (« détruite OU SABORDÉE ») voit le Sabordage : +1 Puissance.
+    const lermite = board(broken.state, "p1").find((u) => u.instanceId === bernard.instanceId)!;
+    expect(lermite.modifiers.reduce((s, m) => s + m.attack, 0)).toBe(1);
+    // Le Mécanicien (« est DÉTRUITE ») ne se propose pas : un Sabordage n'est
+    // pas une destruction (revue B2, décision appliquée le 02/10/2026).
+    expect(pendingCandidates(broken.state).some((c) => c.cardId === "mecanicien-aux-mains-noires")).toBe(false);
   });
 });
 
@@ -542,15 +420,56 @@ describe("Théâtre Englouti et Cra-Poiscail — écarts relevés le 17/09/2026"
     const state = testGameState({
       players: [testPlayer("p1", { board: [pulcinella] }), testPlayer("p2", { board: [marin, creature] })],
     });
-    // Pulcinella meurt d'une action du joueur : c'est `dispatch` qui ouvre
-    // la fenêtre, et la cible est désignée depuis le cimetière.
-    const dead = dispatch({ ...state, phase: "mainPhase" }, { type: "saborder", playerId: "p1", instanceId: pulcinella.instanceId });
+    // Pulcinella est DÉTRUIT (un Sabordage n'en serait pas une) : c'est
+    // `dispatch` qui ouvre la fenêtre, et la cible est désignée depuis le
+    // cimetière.
+    const sabordage = dispatch({ ...state, phase: "mainPhase" }, { type: "saborder", playerId: "p1", instanceId: pulcinella.instanceId });
+    ok(sabordage);
+    expect(sabordage.state.pendingReaction).toBeUndefined();
+    const condamne = {
+      ...state,
+      phase: "mainPhase" as const,
+      players: state.players.map((p) =>
+        p.id === "p1" ? { ...p, board: p.board.map((u) => ({ ...u, pendingRemoval: "destroyed" as const })) } : p
+      ) as typeof state.players,
+    };
+    const dead = dispatch(condamne, { type: "advancePhase", playerId: "p1" });
     ok(dead);
     expect(board(dead.state, "p1")).toHaveLength(0);
     const result = activateReactionFor(dead.state, "pulcinella-gonfle", creature.instanceId);
     ok(result);
     expect(board(result.state, "p2").find((u) => u.instanceId === marin.instanceId)!.damageMarked).toBe(0);
     expect(board(result.state, "p2").find((u) => u.instanceId === creature.instanceId)!.damageMarked).toBe(1);
+  });
+
+  it("Pulcinella Gonflé : à son ARRIVÉE aussi, le joueur désigne une Créature ennemie — ou refuse", () => {
+    const pulcinella = instance("pulcinella-gonfle", "p1");
+    const marin = instance("marin-des-jetees", "p2");
+    const creature = instance("requin-balafre", "p2");
+    const state = testGameState({
+      phase: "mainPhase",
+      players: [testPlayer("p1", { hand: [pulcinella], reason: 10 }), testPlayer("p2", { board: [marin, creature] })],
+    });
+
+    const posed = dispatch(state, { type: "playCard", playerId: "p1", instanceId: pulcinella.instanceId });
+    ok(posed);
+    // La fenêtre s'ouvre pour le joueur : le moteur ne choisit pas la cible à sa place.
+    expect(posed.state.pendingReaction?.awaitingPlayerId).toBe("p1");
+    expect(board(posed.state, "p2").every((u) => u.damageMarked === 0)).toBe(true);
+
+    const result = activateReactionFor(posed.state, "pulcinella-gonfle", creature.instanceId);
+    ok(result);
+    expect(board(result.state, "p2").find((u) => u.instanceId === creature.instanceId)!.damageMarked).toBe(1);
+    expect(board(result.state, "p2").find((u) => u.instanceId === marin.instanceId)!.damageMarked).toBe(0);
+
+    // Un Marin n'est pas une cible recevable.
+    expect(activateReactionFor(posed.state, "pulcinella-gonfle", marin.instanceId).ok).toBe(false);
+
+    // « Vous pouvez » : passer la fenêtre ne blesse personne.
+    const passed = dispatch(posed.state, { type: "passReaction", playerId: "p1" });
+    ok(passed);
+    expect(board(passed.state, "p2").every((u) => u.damageMarked === 0)).toBe(true);
+    expect(board(passed.state, "p1").some((u) => u.instanceId === pulcinella.instanceId)).toBe(true);
   });
 
   it("Rappel du Public : ne propose que des Marionnettes du Cimetière, et refuse une autre carte", () => {
@@ -683,26 +602,16 @@ describe("écarts moteur corrigés le 17/09/2026", () => {
   });
 
   it("une Structure posée dans un état où elle est déjà visible déclenche son apparition", () => {
-    const epave = instance("epave-engloutie", "p1"); // visible en Abysses, +2 Raison à l'apparition
+    const epave = instance("epave-a-fleur-deau", "p1"); // visible en Houle, propose défausse/pioche à l'apparition
     const state = testGameState({
-      environment: testEnvironment({ tideState: "abysses", tideRemainingTurns: 3, tideOrientation: "descendante" }),
-      players: [testPlayer("p1", { hand: [epave], reason: 5 }), testPlayer("p2")],
+      environment: testEnvironment({ tideState: "houle", tideRemainingTurns: 3, tideOrientation: "montante" }),
+      players: [testPlayer("p1", { hand: [epave, instance("marin-des-jetees", "p1")], deck: filler("p1"), reason: 5 }), testPlayer("p2")],
     });
     const result = dispatch(state, { type: "playCard", playerId: "p1", instanceId: epave.instanceId });
     ok(result);
     expect(result.events.some((e) => e.type === "STRUCTURE_REVEALED")).toBe(true);
-    expect(player(result.state, "p1").reason).toBe(5 - 3 + 2); // coût 3, puis +2 Raison
-  });
-
-  it("la Baleine aux Cicatrices Blanches encaisse aussi le dégât de MALADE", () => {
-    const baleine = instance("baleine-aux-cicatrices-blanches", "p1", { statuses: ["malade"] });
-    const state = testGameState({
-      environment: testEnvironment({ tideState: "houle", tideRemainingTurns: 5 }),
-      players: [testPlayer("p1", { board: [baleine], deck: filler("p1") }), testPlayer("p2", { deck: filler("p2") })],
-    });
-    const result = dispatch(state, { type: "endTurn", playerId: "p1" });
-    ok(result);
-    expect(board(result.state, "p1").find((u) => u.instanceId === baleine.instanceId)!.damageMarked).toBe(0);
+    // Son apparition est proposée au joueur, comme si la Marée l'avait révélée.
+    expect(candidates(result.state).some((c) => c.cardId === "epave-a-fleur-deau")).toBe(true);
   });
 });
 

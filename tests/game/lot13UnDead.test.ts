@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { CORE_SET, UN_DEAD, VEILLEE_DES_DISPARUS, getCardDefinition } from "@/game/cards/sets/core";
+import { CARD_DATABASE, CORE_SET, UN_DEAD, VEILLEE_DES_DISPARUS, getCardDefinition } from "@/game/cards/sets/core";
+import type { CardDefinition } from "@/game/cards/types";
 import { dispatch } from "@/game/engine";
 import { hasGraveyardArrival } from "@/game/effects/resolveEffect";
 import { countArchetypeUnits } from "@/game/cards/archetypes";
@@ -116,7 +117,68 @@ describe("Lot 13 — la défausse comme moteur", () => {
     // carte, donc la clé partagée donne « une fois par tour » au total.
     const cles = new Set((def.abilities ?? []).map((a) => a.oncePerTurnKey));
     expect(cles.size).toBe(1);
-    expect((def.abilities ?? []).map((a) => a.trigger).sort()).toEqual(["onCardDiscardedFromHand", "onDeath"]);
+    expect((def.abilities ?? []).map((a) => a.trigger).sort()).toEqual(["onCardPutIntoGraveyard", "onDeath"]);
+  });
+});
+
+/**
+ * « … depuis votre main OU VOTRE PIOCHE » (Test Verrier, 30/09/2026) : un
+ * meulage nourrit les récompenses de la Veillée comme une défausse
+ * (`onCardPutIntoGraveyard`). Aucune carte du catalogue ne meule encore :
+ * une carte d'essai, retirée après coup, joue le rôle du meuleur.
+ */
+describe("Lot 13 — le meulage nourrit la Veillée", () => {
+  const MEULEUR: CardDefinition = {
+    id: "test-meuleur",
+    name: "Meuleur d'essai",
+    type: "objet",
+    cost: 1,
+    text: "À son arrivée, placez les 2 premières cartes de la pioche ciblée dans son Cimetière.",
+    onPlayEffects: [],
+  } as unknown as CardDefinition;
+
+  function meule(cible: "controllerPlayer" | "opponentPlayer", observateurs: ReturnType<typeof instance>[]) {
+    const table = CARD_DATABASE as Map<string, CardDefinition>;
+    table.set(MEULEUR.id, { ...MEULEUR, onPlayEffects: [{ type: "mill", target: { kind: cible }, amount: { kind: "flat", value: 2 } }] } as CardDefinition);
+    try {
+      const meuleur = instance(MEULEUR.id, "p1");
+      const state = testGameState({
+        players: [
+          testPlayer("p1", { hand: [meuleur], board: observateurs, reason: 10, deck: [instance("ptit-bout", "p1"), instance("crabe-de-fer", "p1"), instance("crabe-de-fer", "p1")] }),
+          testPlayer("p2", { shipId: "le-goliath", deck: [instance("crabe-de-fer", "p2"), instance("crabe-de-fer", "p2")] }),
+        ],
+      });
+      const joue = dispatch(state, { type: "playCard", playerId: "p1", instanceId: meuleur.instanceId });
+      ok(joue);
+      return { avant: state, apres: joue.state };
+    } finally {
+      table.delete(MEULEUR.id);
+    }
+  }
+  const ancrageAdverse = (s: ReturnType<typeof testGameState>) => s.players.find((p) => p.id === "p2")!.anchor;
+
+  it("La Marelle cogne quand la pioche va au Cimetière — une seule fois pour deux cartes meulées", () => {
+    const { avant, apres } = meule("controllerPlayer", [instance("la-marelle", "p1")]);
+    expect(apres.players[0].graveyard).toHaveLength(2);
+    expect(ancrageAdverse(apres)).toBe(ancrageAdverse(avant) - 1);
+  });
+
+  it("Cache-Cache grandit sur un meulage", () => {
+    const cacheCache = instance("cache-cache", "p1");
+    const { apres } = meule("controllerPlayer", [cacheCache]);
+    const enJeu = apres.players[0].board.find((u) => u.instanceId === cacheCache.instanceId)!;
+    expect(enJeu.modifiers.reduce((sum, m) => sum + m.attack, 0)).toBe(1);
+  });
+
+  it("On avait dit tous ensemble voit un Un Dead meulé", () => {
+    const { avant, apres } = meule("controllerPlayer", [instance("on-avait-dit-tous-ensemble", "p1")]);
+    expect(ancrageAdverse(apres)).toBe(ancrageAdverse(avant) - 1);
+  });
+
+  it("« votre Cimetière » : meuler l'adversaire ne réveille pas La Marelle", () => {
+    const { avant, apres } = meule("opponentPlayer", [instance("la-marelle", "p1")]);
+    expect(apres.players[1].graveyard).toHaveLength(2);
+    expect(ancrageAdverse(apres)).toBe(ancrageAdverse(avant));
   });
 });
 
@@ -272,12 +334,22 @@ describe("Lot 13 — l'attrition", () => {
     });
     const avant = state.players.find((p) => p.id === "p2")!.anchor;
 
-    // Le Sabordage est la voie la plus courte jusqu'à une mort, sans passer
-    // par le combat — et il déclenche `onDeath` comme n'importe quelle
-    // destruction.
+    // « Quand elle est DÉTRUITE » : un Sabordage n'en est pas une (cause
+    // `scuttle`), le Navire adverse ne bouge pas.
     const saborde = dispatch(state, { type: "saborder", playerId: "p1", instanceId: copain.instanceId });
     ok(saborde);
-    expect(saborde.state.players.find((p) => p.id === "p2")!.anchor).toBe(avant - 1);
+    expect(saborde.state.players.find((p) => p.id === "p2")!.anchor).toBe(avant);
+
+    // Détruite par un effet : elle cogne.
+    const condamnee = {
+      ...state,
+      players: state.players.map((p) =>
+        p.id === "p1" ? { ...p, board: p.board.map((u) => ({ ...u, pendingRemoval: "destroyed" as const })) } : p
+      ) as typeof state.players,
+    };
+    const detruite = dispatch(condamnee, { type: "advancePhase", playerId: "p1" });
+    ok(detruite);
+    expect(detruite.state.players.find((p) => p.id === "p2")!.anchor).toBe(avant - 1);
   });
 
   it("Encore cinq minutes se sauve du COMBAT, quelle que soit la Marée — mais pas d'un effet", () => {
@@ -336,7 +408,9 @@ describe("Lot 13 — choisir une carte du Cimetière ailleurs que sur un Bris", 
   });
 
   it("Tu viens jouer ? ne réduit le coût que si un Un Dead a été DÉTRUIT ce tour", () => {
-    function pose(arrivals: { cardId: string; turnNumber: number; fromZone: "hand" | "board" | "deck" }[]) {
+    function pose(
+      arrivals: { cardId: string; turnNumber: number; fromZone: "hand" | "board" | "deck"; destructionCause?: "combat" | "effect" | "tide" | "scuttle" }[]
+    ) {
       const tuViensJouer = instance("tu-viens-jouer", "p1");
       const ptitBout = instance("ptit-bout", "p1");
       const state = testGameState({
@@ -358,7 +432,12 @@ describe("Lot 13 — choisir une carte du Cimetière ailleurs que sur un Bris", 
     // Défaussé ce tour : ce n'est pas « détruite », le texte ne paie pas.
     expect(pose([{ cardId: "ptit-bout", turnNumber: 1, fromZone: "hand" }])).toHaveLength(0);
     // Détruit ce tour : la réduction est posée.
-    expect(pose([{ cardId: "ptit-bout", turnNumber: 1, fromZone: "board" }])).toHaveLength(1);
+    expect(pose([{ cardId: "ptit-bout", turnNumber: 1, fromZone: "board", destructionCause: "combat" }])).toHaveLength(1);
+    // Sabordé : un Sabordage n'est pas une destruction (« a été détruite »).
+    expect(pose([{ cardId: "ptit-bout", turnNumber: 1, fromZone: "board", destructionCause: "scuttle" }])).toHaveLength(0);
+    // Un Objet Un Dead brisé quitte aussi le plateau, mais ce n'est ni une
+    // UNITÉ ni une destruction.
+    expect(pose([{ cardId: "la-petite-chanson", turnNumber: 1, fromZone: "board" }])).toHaveLength(0);
   });
 
   it("une destruction s'inscrit au journal des arrivées, comme une défausse", () => {
@@ -371,7 +450,15 @@ describe("Lot 13 — choisir une carte du Cimetière ailleurs que sur un Bris", 
     const saborde = dispatch(state, { type: "saborder", playerId: "p1", instanceId: copain.instanceId });
     ok(saborde);
     const arrivals = saborde.state.players.find((p) => p.id === "p1")!.graveyardArrivals ?? [];
-    expect(arrivals).toContainEqual({ cardId: "le-copain-du-dessous", turnNumber: 1, fromZone: "board" });
+    // La cause est inscrite avec l'arrivée : un Sabordage reste une arrivée
+    // au Cimetière, mais pas une destruction.
+    expect(arrivals).toContainEqual({
+      cardId: "le-copain-du-dessous",
+      instanceId: copain.instanceId,
+      turnNumber: 1,
+      fromZone: "board",
+      destructionCause: "scuttle",
+    });
   });
 
   it("Tu m'avais promis se propose en réaction, et attend une carte du Cimetière", () => {

@@ -6,7 +6,7 @@ describe("moteur de réactions — fenêtre facultative (Notion 'Moteur de parti
   it("ouvre une fenêtre de réaction quand une capacité `optional` devient éligible, et bloque les actions normales tant qu'elle reste ouverte", () => {
     const guetteur = instance("guetteur-mefiant", "p2"); // onCardPlayed, optional, coût 1 Raison
     const cardToPlay = instance("marin-des-jetees", "p1"); // coût 1
-    const bigUnit = instance("baleine-aux-cicatrices-blanches", "p1"); // 5/6, cible potentielle
+    const bigUnit = instance("la-chose-qui-remonte", "p1"); // 5/5, cible potentielle
     const state = testGameState({
       players: [
         testPlayer("p1", { hand: [cardToPlay], board: [bigUnit], reason: 5 }),
@@ -35,7 +35,7 @@ describe("moteur de réactions — fenêtre facultative (Notion 'Moteur de parti
   it("ouvre la fenêtre même quand le réacteur est déjà en Déraison profonde : le coût ne l'écarte jamais (pas de plancher)", () => {
     const guetteur = instance("guetteur-mefiant", "p2");
     const cardToPlay = instance("marin-des-jetees", "p1");
-    const bigUnit = instance("baleine-aux-cicatrices-blanches", "p1"); // cible potentielle
+    const bigUnit = instance("la-chose-qui-remonte", "p1"); // cible potentielle
     const state = testGameState({
       players: [
         testPlayer("p1", { hand: [cardToPlay], board: [bigUnit], reason: 5 }),
@@ -53,7 +53,7 @@ describe("moteur de réactions — fenêtre facultative (Notion 'Moteur de parti
   it("passer ferme la fenêtre quand il ne reste aucun joueur éligible", () => {
     const guetteur = instance("guetteur-mefiant", "p2");
     const cardToPlay = instance("marin-des-jetees", "p1");
-    const bigUnit = instance("baleine-aux-cicatrices-blanches", "p1");
+    const bigUnit = instance("la-chose-qui-remonte", "p1");
     const state = testGameState({
       players: [
         testPlayer("p1", { hand: [cardToPlay], board: [bigUnit], reason: 5 }),
@@ -79,7 +79,7 @@ describe("moteur de réactions — fenêtre facultative (Notion 'Moteur de parti
   it("active une réaction éligible : paie son coût, résout son effet ciblé, puis referme la fenêtre (capacité déjà utilisée)", () => {
     const guetteur = instance("guetteur-mefiant", "p2");
     const cardToPlay = instance("marin-des-jetees", "p1");
-    const bigUnit = instance("baleine-aux-cicatrices-blanches", "p1"); // 5/6
+    const bigUnit = instance("la-chose-qui-remonte", "p1"); // 5/5
     const state = testGameState({
       players: [
         testPlayer("p1", { hand: [cardToPlay], board: [bigUnit], reason: 5 }),
@@ -104,11 +104,9 @@ describe("moteur de réactions — fenêtre facultative (Notion 'Moteur de parti
     const p2After = activated.state.players.find((p) => p.id === "p2")!;
     expect(p2After.reason).toBe(2); // 3 - 1 (coût de la réaction)
 
-    // La Baleine aux Cicatrices Blanches réduit de 1 le premier dégât qu'elle
-    // subit chaque tour (`reduceOwnDamageTakenOncePerTurn`) : 2 dégâts bruts
-    // devient donc 1 dégât marqué.
+    // L'effet ciblé du Guetteur Méfiant (2 dégâts) est bien résolu sur la cible désignée.
     const targetAfter = activated.state.players.find((p) => p.id === "p1")!.board.find((u) => u.instanceId === bigUnit.instanceId);
-    expect(targetAfter?.damageMarked).toBe(1);
+    expect(targetAfter?.damageMarked).toBe(2);
 
     // Plus rien d'éligible : cette capacité a déjà été activée pendant
     // cette fenêtre (`usedCandidateKeys`), la fenêtre se referme.
@@ -119,7 +117,7 @@ describe("moteur de réactions — fenêtre facultative (Notion 'Moteur de parti
   it("refuse d'activer une capacité qui ne figure pas (ou plus) parmi les candidats éligibles", () => {
     const guetteur = instance("guetteur-mefiant", "p2");
     const cardToPlay = instance("marin-des-jetees", "p1");
-    const bigUnit = instance("baleine-aux-cicatrices-blanches", "p1");
+    const bigUnit = instance("la-chose-qui-remonte", "p1");
     const state = testGameState({
       players: [
         testPlayer("p1", { hand: [cardToPlay], board: [bigUnit], reason: 5 }),

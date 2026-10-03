@@ -18,8 +18,11 @@ import { resolveOceanJudgment } from "@/game/rules/oceanJudgment";
 import { refreshTurnTimer } from "@/game/rules/turnTimer";
 import { assertValidDefender, hasEffectiveKeyword } from "@/game/rules/validation";
 import { processDeaths } from "@/game/state/processDeaths";
+import { applyReasonDepletion } from "@/game/state/reasonDepletion";
 import { processChromaticSignals } from "@/game/rules/chromaticSignals";
 import {
+  aSurvecuAuxDegats,
+  processForcedTideTransitions,
   processLoneCreatureChanges,
   processPowerGains,
   processReasonGained,
@@ -97,6 +100,24 @@ export function dispatch(state: GameState, action: PlayerAction): ActionResult {
   // n'est retiré qu'une fois l'attaque résolue.
   if (result.state.status === "active" && !result.state.pendingReaction && result.state.pendingAttack) {
     const suspendue = result.state.pendingAttack;
+    // Un attaquant DÉTRUIT pendant la fenêtre (Pont Miné, Harpon à Ressort,
+    // Contre-Harpon…) n'inflige pas ses dégâts : la réaction l'a seulement
+    // marqué (`pendingRemoval`, dégâts mortels), la passe de morts n'a pas
+    // encore eu lieu. On la fait AVANT la reprise — une unité sauvée par
+    // une substitution ou une survie frappe donc toujours, une unité qui
+    // part ne frappe plus (la reprise, illégale, est alors abandonnée). Si
+    // un sauvetage est encore possible (fenêtre `pendingDestruction`), on
+    // ne peut pas attendre sa réponse : l'attaque est abandonnée, la
+    // destruction suit son cours normal plus bas.
+    if (suspendue.kind !== "tirDeNavire" && !aSurvecuAuxDegats(result.state, suspendue.attackerInstanceId)) {
+      const morts = processDeaths(result.state, state.turnNumber);
+      result = morts.state.pendingDestruction
+        ? { ok: true, state: { ...result.state, pendingAttack: undefined }, events: result.events }
+        : { ok: true, state: morts.state, events: [...result.events, ...morts.events] };
+    }
+  }
+  if (result.state.status === "active" && !result.state.pendingReaction && result.state.pendingAttack) {
+    const suspendue = result.state.pendingAttack;
     const repris = applyAction(
       result.state,
       suspendue.kind === "tirDeNavire"
@@ -124,9 +145,9 @@ export function dispatch(state: GameState, action: PlayerAction): ActionResult {
   // --- REPRISE D'UNE ENTAME DE TOUR SUSPENDUE ---------------------------
   //
   // Même geste, à l'autre bout du tour : `endTurn` s'arrête à l'ANNONCE de
-  // la Marée quand une Ancre de Dérive a quelque chose à proposer. Dès que
-  // la fenêtre se referme, l'entame reprend là où elle s'était arrêtée —
-  // effets de la Marée (reportés ou non), expirations, Raison, pioche.
+  // la Marée quand une capacité a quelque chose à proposer. Dès que la
+  // fenêtre se referme, l'entame reprend là où elle s'était arrêtée —
+  // effets de la Marée, expirations, Raison, pioche.
   //
   // Contrairement à une attaque, rien n'est rejoué : `entameDeTour` est la
   // SUITE, pas une répétition, et `pendingTideStep` porte tout ce qu'il lui
@@ -168,7 +189,30 @@ export function dispatch(state: GameState, action: PlayerAction): ActionResult {
     result = { ...result, state: { ...result.state, pendingDestruction: undefined } };
   }
 
+  // --- TRANSITIONS DE MARÉE FORCÉES ---------------------------------------
+  //
+  // Une carte qui pousse la Marée (Compas, Bouée, Régulateur, Sept Brasses…)
+  // la fait changer d'état au cœur de `resolveEffect`, qui ne peut pas
+  // réveiller le bus. Ici, toutes les actions passent : on rend à cette
+  // transition les déclencheurs d'une transition naturelle (entrée, sortie,
+  // Structures qui deviennent visibles), sans rejouer le choc ni les effets
+  // de tour — cf. `processForcedTideTransitions`.
+  const forcees = processForcedTideTransitions(result.state, result.events, state.turnNumber);
+  if (forcees.events.length > 0 || forcees.state !== result.state) {
+    result = { ok: true, state: forcees.state, events: [...result.events, ...forcees.events] };
+  }
+
   let deaths = processDeaths(result.state, state.turnNumber);
+  // Une transition forcée peut aussi naître PENDANT la passe de morts : un
+  // Sabordage (Compas aux Aiguilles Noires, Bouée de Rappel) ne résout son
+  // texte qu'au départ de la carte.
+  if (!deaths.state.pendingDestruction) {
+    const forceesALaMort = processForcedTideTransitions(deaths.state, deaths.events, state.turnNumber);
+    if (forceesALaMort.events.length > 0) {
+      const encore = processDeaths(forceesALaMort.state, state.turnNumber);
+      deaths = { state: encore.state, events: [...deaths.events, ...forceesALaMort.events, ...encore.events] };
+    }
+  }
   let survieJugee = false;
 
   // --- CE QUI NE SE SAIT QU'APRÈS LES MORTS (Lot 15) ---------------------
@@ -182,7 +226,9 @@ export function dispatch(state: GameState, action: PlayerAction): ActionResult {
   if (!deaths.state.pendingDestruction) {
     survieJugee = true;
     const tour = deaths.state.turnNumber;
-    const signaux = processChromaticSignals(deaths.state, result.events, tour);
+    // Les effets des déclenchements de la passe de morts (une capacité
+    // `onDeath` qui désigne une Sentinelle adverse) comptent aussi.
+    const signaux = processChromaticSignals(deaths.state, [...result.events, ...deaths.events], tour);
     const survies = processSurvivedDamage(signaux.state, [...coupsReportes, ...result.events, ...deaths.events], tour);
     const raison = processReasonGained(survies.state, [...result.events, ...signaux.events, ...survies.events], tour);
     const produits = [...signaux.events, ...survies.events, ...raison.events];
@@ -234,11 +280,13 @@ export function dispatch(state: GameState, action: PlayerAction): ActionResult {
 
   const powerGains = processPowerGains(deaths.state, powerBefore, state.turnNumber);
   const loneCreatures = processLoneCreatureChanges(powerGains.state, loneBefore, state.turnNumber);
-  const allEvents: GameEvent[] = [...result.events, ...deaths.events, ...powerGains.events, ...loneCreatures.events];
+  // Raison perdue ce tour, et « Cap sûr » (L'Errant) si elle vient de tomber à 0.
+  const depletion = applyReasonDepletion(state, loneCreatures.state);
+  const allEvents: GameEvent[] = [...result.events, ...deaths.events, ...powerGains.events, ...loneCreatures.events, ...depletion.events];
 
   const stateWithEvents: GameState = {
-    ...loneCreatures.state,
-    eventLog: [...loneCreatures.state.eventLog, ...allEvents],
+    ...depletion.state,
+    eventLog: [...depletion.state.eventLog, ...allEvents],
   };
 
   let finalState = checkWinCondition(stateWithEvents);
@@ -270,6 +318,13 @@ export function dispatch(state: GameState, action: PlayerAction): ActionResult {
     ...(finalState.reactionsEnAttente ?? []),
     ...deriveReactionTriggerEvents(finalState, aDeriver),
   ]);
+
+  // File de choix (`pendingChoiceQueue`) : la question suivante s'ouvre dès
+  // que la précédente a reçu sa réponse.
+  if (finalState.status === "active" && !finalState.pendingChoice && finalState.pendingChoiceQueue?.length) {
+    const [suivant, ...reste] = finalState.pendingChoiceQueue;
+    finalState = { ...finalState, pendingChoice: suivant, pendingChoiceQueue: reste.length > 0 ? reste : undefined };
+  }
 
   // Table OCCUPÉE — un choix attend sa réponse (le soin du Verrier de Pont,
   // la défausse de la Vigie aux Fissures), une fenêtre est déjà ouverte
@@ -307,8 +362,8 @@ export function dispatch(state: GameState, action: PlayerAction): ActionResult {
   if (finalState.status !== "active" && finalState.pendingReaction) {
     finalState = { ...finalState, pendingReaction: undefined };
   }
-  if (finalState.status !== "active" && finalState.pendingChoice) {
-    finalState = { ...finalState, pendingChoice: undefined };
+  if (finalState.status !== "active" && (finalState.pendingChoice || finalState.pendingChoiceQueue)) {
+    finalState = { ...finalState, pendingChoice: undefined, pendingChoiceQueue: undefined };
   }
   if (finalState.status !== "active" && finalState.reactionsEnAttente) {
     finalState = { ...finalState, reactionsEnAttente: undefined };

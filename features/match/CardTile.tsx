@@ -51,7 +51,7 @@ interface CardTileProps {
    * Plateau du CONTRÔLEUR de cette carte (+ sa Raison, + l'orientation de
    * Marée). Sans lui, la carte n'affiche que sa valeur propre : tous les
    * bonus venus d'une autre carte — Porte-Étendard, Trône de Bouchon,
-   * Destrier, Capitaine Sans Sommeil — restent invisibles alors que le
+   * Destrier — restent invisibles alors que le
    * combat, lui, les compte. À fournir dès que la carte est EN JEU.
    */
   auraContext?: AuraContext;
@@ -145,6 +145,7 @@ export function cardStatusLegend(
     });
   }
   if (instance.summoningSick && isUnit && !has("pied-marin")) legend.push(ENGOURDI_ICON_INFO);
+  if (piedMarinUtile(instance, isUnit, has("pied-marin"))) legend.push(PIED_MARIN_INFO);
   if (has("garde")) legend.push(GARDE_ICON_INFO);
   for (const status of instance.statuses ?? []) {
     const info = STATUS_ICON_INFO[status];
@@ -201,6 +202,22 @@ const CHROMATIC_SIGNAL_TEXT: Record<ChromaticColor, string> = {
 
 /** Icône du badge "Durée" (Structure/Objet à durée limitée, `instance.turnsRemaining`) — le nombre de tours restants est superposé au centre. */
 const TOUR_ICON = "/assets/status/tour.webp";
+
+/**
+ * Pied marin, montré quand il compte : l'unité vient d'arriver (mot-clé
+ * imprimé) ou l'a reçu pour le tour (« ils gagnent Pied marin jusqu'à la fin
+ * du tour », Fesses en Avant !). Pas d'icône dédiée : une pastille texte,
+ * comme « Inactive ».
+ */
+const PIED_MARIN_INFO = {
+  label: "Pied marin",
+  description: "Peut attaquer dès son arrivée en jeu.",
+};
+
+/** Le badge Pied marin a-t-il un sens sur cette carte en ce moment ? */
+function piedMarinUtile(instance: CardInstance, isUnit: boolean, hasPiedMarin: boolean): boolean {
+  return isUnit && hasPiedMarin && (instance.summoningSick || instance.modifiers.some((m) => m.keywords?.includes("pied-marin")));
+}
 
 /** Maladie d'invocation (`instance.summoningSick`) — distincte des statuts à durée (`instance.statuses`). */
 const ENGOURDI_ICON_INFO = {
@@ -527,6 +544,7 @@ export function CardTile({
       })
     : hasKeyword(def, "pied-marin");
   const engourdi = instance.summoningSick && isUnit && !hasPiedMarin;
+  const piedMarinVisible = piedMarinUtile(instance, isUnit, hasPiedMarin);
   // Couleurs chromatiques EN JEU (Lot 15) : celle qu'un Émissaire a choisie,
   // qu'un Héraut a prise, qu'un Bracelet prête — rien ne les montrait.
   const couleursChromatiques = auraContext ? chromaticColorsOf(instance, auraContext.controllerBoard) : [];
@@ -975,6 +993,7 @@ export function CardTile({
       {showStatusBadges &&
         (stats.inactive ||
         engourdi ||
+        piedMarinVisible ||
         instance.turnsRemaining !== undefined ||
         hasGarde ||
         couleursChromatiques.length > 0 ||
@@ -1008,6 +1027,15 @@ export function CardTile({
               description={ENGOURDI_ICON_INFO.description}
               size={badgeSize}
             />
+          )}
+          {piedMarinVisible && (
+            <span
+              className="pointer-events-auto shrink-0 cursor-help rounded-full border border-sky-400/60 bg-black/90 font-semibold uppercase text-sky-300 shadow-md"
+              style={{ padding: `${badgeSize / 38}px ${(badgeSize / 38) * 2.5}px`, fontSize: badgeSize / 3.2 }}
+              title={`${PIED_MARIN_INFO.label} — ${PIED_MARIN_INFO.description}`}
+            >
+              {PIED_MARIN_INFO.label}
+            </span>
           )}
           {hasGarde && (
             <span className={gardeGained ? "animate-badge-arrive" : undefined} style={{ display: "inline-flex" }}>

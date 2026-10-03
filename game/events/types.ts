@@ -153,6 +153,12 @@ export interface SummonEvent extends BaseGameEvent {
   playerId: PlayerId;
   instanceId: string;
   cardId: string;
+  /**
+   * Le permanent a été JOUÉ depuis la main (`playCard`), pas invoqué par un
+   * effet. Absent = invocation (un Péon). Relu par la fenêtre de réaction
+   * pour « que vous jouez » / « que vous invoquez ».
+   */
+  played?: boolean;
 }
 
 /**
@@ -254,6 +260,8 @@ export interface CardMovedEvent extends BaseGameEvent {
    * en fin de tour (`false`). Absent sur les autres déplacements.
    */
   discardByEffect?: boolean;
+  /** Défausse d'effet qui SUIT une pioche du même joueur dans la même suite d'effets (`HandDiscardChoice.afterDraw`). */
+  discardAfterDraw?: boolean;
 }
 
 /**
@@ -328,6 +336,16 @@ export interface TideAdvancedEvent extends BaseGameEvent {
   /** Sens de la prochaine transition après ce tick (cadrage 2026-09-10). */
   tideOrientation: "montante" | "descendante";
   stateChanged: boolean;
+  /**
+   * Transition FORCÉE par un effet de carte (Compas, Bouée, Régulateur,
+   * Sept Brasses…), et non le tick de début de tour. `dispatch` en déduit
+   * les mêmes déclencheurs qu'une transition naturelle (`onTideStateEntered`,
+   * `onTideStateExited`, Structures qui deviennent visibles —
+   * `processForcedTideTransitions`), sans rejouer les effets de tour.
+   */
+  forced?: boolean;
+  /** État quitté — renseigné pour une transition forcée. */
+  previousTideState?: "calme" | "houle" | "tempete" | "abysses";
 }
 
 /**
@@ -451,8 +469,8 @@ export interface ReactionPassedEvent extends BaseGameEvent {
 }
 
 /**
- * Une carte de la main de `ownerId` a été révélée (ex: Guetteur de Brume,
- * La Bouée qui Regardait, Cloche Immergée) — purement informatif : ne
+ * Une carte de la main de `ownerId` a été révélée (effet
+ * `revealRandomHandCards`) — purement informatif : ne
  * déplace ni ne modifie la carte elle-même, jamais suffisant à lui seul
  * pour reconstituer l'état (l'UI décide qui a le droit de voir `cardId`).
  */

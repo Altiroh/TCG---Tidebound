@@ -36,52 +36,7 @@ function candidates(state: GameState) {
   return eligibleCandidatesFor(state, pending.events, pending.awaitingPlayerId, pending.turnNumber, pending.usedCandidateKeys);
 }
 
-describe("observateurs de Structures — Plongeur des Épaves, Mécanicien aux Mains Noires, Treuil Rouillé", () => {
-  it("Plongeur des Épaves : PROPOSE 1 Raison quand une Structure est Sabordée, une fois par tour, et se refuse", () => {
-    const plongeur = instance("plongeur-des-epaves", "p1");
-    const own = instance(STRUCTURE, "p1");
-    const own2 = instance(STRUCTURE, "p1");
-    const state = testGameState({
-      players: [testPlayer("p1", { board: [plongeur, own, own2], reason: 5 }), testPlayer("p2")],
-    });
-
-    const saborded = dispatch(state, { type: "saborder", playerId: "p1", instanceId: own.instanceId });
-    ok(saborded);
-    // Rien n'est encaissé d'office : « vous pouvez ».
-    expect(player(saborded.state, "p1").reason).toBe(5);
-
-    const accepted = activateReactionFor(saborded.state, "plongeur-des-epaves");
-    ok(accepted);
-    expect(player(accepted.state, "p1").reason).toBe(6);
-
-    // Une fois par tour : la seconde Structure sabordée ne propose plus rien.
-    const second = dispatch(accepted.state, { type: "saborder", playerId: "p1", instanceId: own2.instanceId });
-    ok(second);
-    expect(pendingCandidates(second.state).some((c) => c.cardId === "plongeur-des-epaves")).toBe(false);
-
-    // Le joueur peut aussi refuser : la fenêtre se ferme, rien ne se passe.
-    const refused = dispatch(saborded.state, { type: "passReaction", playerId: "p1" });
-    ok(refused);
-    expect(player(refused.state, "p1").reason).toBe(5);
-  });
-
-  it("Plongeur des Épaves : réagit aussi à une Structure ADVERSE", () => {
-    const plongeur = instance("plongeur-des-epaves", "p1");
-    const enemy = instance(STRUCTURE, "p2");
-    const state = testGameState({
-      activePlayerId: "p2",
-      priorityPlayerId: "p2",
-      players: [testPlayer("p1", { board: [plongeur], reason: 5 }), testPlayer("p2", { board: [enemy] })],
-    });
-    const result = dispatch(state, { type: "saborder", playerId: "p2", instanceId: enemy.instanceId });
-    ok(result);
-    // La fenêtre s'ouvre pour p1, propriétaire du Plongeur, hors de son tour.
-    expect(result.state.pendingReaction?.awaitingPlayerId).toBe("p1");
-    const accepted = activateReactionFor(result.state, "plongeur-des-epaves");
-    ok(accepted);
-    expect(player(accepted.state, "p1").reason).toBe(6);
-  });
-
+describe("observateurs de Structures — Mécanicien aux Mains Noires, Treuil Rouillé", () => {
   it("Mécanicien aux Mains Noires : le joueur DÉSIGNE l'autre Structure qui gagne +1 Résistance", () => {
     const mecanicien = instance("mecanicien-aux-mains-noires", "p1");
     const lost = instance(STRUCTURE, "p1");
@@ -89,7 +44,18 @@ describe("observateurs de Structures — Plongeur des Épaves, Mécanicien aux M
     const state = testGameState({
       players: [testPlayer("p1", { board: [mecanicien, lost, kept] }), testPlayer("p2")],
     });
-    const saborded = dispatch(state, { type: "saborder", playerId: "p1", instanceId: lost.instanceId });
+    // « est DÉTRUITE » : un Sabordage ne l'ouvre pas…
+    const sabordee = dispatch(state, { type: "saborder", playerId: "p1", instanceId: lost.instanceId });
+    ok(sabordee);
+    expect(pendingCandidates(sabordee.state).some((c) => c.cardId === "mecanicien-aux-mains-noires")).toBe(false);
+    // …une destruction par un effet, si.
+    const condamnee = {
+      ...state,
+      players: state.players.map((p) =>
+        p.id === "p1" ? { ...p, board: p.board.map((u) => (u.instanceId === lost.instanceId ? { ...u, pendingRemoval: "destroyed" as const } : u)) } : p
+      ) as typeof state.players,
+    };
+    const saborded = dispatch(condamnee, { type: "advancePhase", playerId: "p1" });
     ok(saborded);
     const candidate = pendingCandidates(saborded.state).find((c) => c.cardId === "mecanicien-aux-mains-noires");
     expect(candidate?.needsTarget).toBe(true);
@@ -127,7 +93,7 @@ describe("observateurs de Structures — Plongeur des Épaves, Mécanicien aux M
   });
 });
 
-describe("Structures qui deviennent visibles — Gardien du Sondeur, Contremaître des Amarres, Épave à Fleur d'Eau", () => {
+describe("Structures qui deviennent visibles — Contremaître des Amarres, Épave à Fleur d'Eau", () => {
   /** Calme → Houle à la fin du tour de p1 : l'Épave (Houle) de p1 devient visible. */
   function revealSetup(extraP1: ReturnType<typeof instance>[], extraP2: ReturnType<typeof instance>[]) {
     // `turnsRemaining` n'est posé que par `playCard` : une Structure montée
@@ -145,43 +111,6 @@ describe("Structures qui deviennent visibles — Gardien du Sondeur, Contremaît
     });
     return { epave, state };
   }
-
-  it("Gardien du Sondeur : PROPOSE d'échanger 1 tour de durée contre 1 Raison, sans rien imposer", () => {
-    const { epave, state } = revealSetup([instance("gardien-du-sondeur", "p1")], []);
-    const control = revealSetup([], []);
-
-    const withGardien = dispatch(state, { type: "endTurn", playerId: "p1" });
-    const without = dispatch(control.state, { type: "endTurn", playerId: "p1" });
-    ok(withGardien);
-    ok(without);
-    expect(withGardien.state.environment.tideState).toBe("houle");
-
-    // Rien n'est appliqué d'office : le gain se paie, donc le joueur décide.
-    expect(player(withGardien.state, "p1").reason).toBe(player(without.state, "p1").reason);
-    expect(withGardien.state.pendingReaction?.awaitingPlayerId).toBe("p1");
-
-    const avant = board(withGardien.state, "p1").find((u) => u.instanceId === epave.instanceId)!;
-    const activated = activateReactionFor(withGardien.state, "gardien-du-sondeur");
-    ok(activated);
-
-    // Le gain arrive, et la Structure qui a déclenché perd un tour de durée.
-    expect(player(activated.state, "p1").reason).toBe(player(without.state, "p1").reason + 1);
-    const apres = board(activated.state, "p1").find((u) => u.instanceId === epave.instanceId)!;
-    expect(apres.turnsRemaining).toBe(avant.turnsRemaining! - 1);
-    expect(activated.events.some((e) => e.type === "DURATION_CHANGED")).toBe(true);
-  });
-
-  it("Gardien du Sondeur : refuser la fenêtre ne coûte aucune durée", () => {
-    const { epave, state } = revealSetup([instance("gardien-du-sondeur", "p1")], []);
-    const revealed = dispatch(state, { type: "endTurn", playerId: "p1" });
-    ok(revealed);
-    const avant = board(revealed.state, "p1").find((u) => u.instanceId === epave.instanceId)!;
-
-    const passed = dispatch(revealed.state, { type: "passReaction", playerId: "p1" });
-    ok(passed);
-    const apres = board(passed.state, "p1").find((u) => u.instanceId === epave.instanceId)!;
-    expect(apres.turnsRemaining).toBe(avant.turnsRemaining);
-  });
 
   it("Contremaître des Amarres : une Structure ADVERSE qui devient visible perd 1 Résistance", () => {
     const { epave, state } = revealSetup([], [instance("contremaitre-des-amarres", "p2")]);
@@ -222,7 +151,7 @@ describe("Structures qui deviennent visibles — Gardien du Sondeur, Contremaît
   });
 });
 
-describe("Marée — Balise des Profondeurs, Épave Engloutie, Veilleuse des Profondeurs, Lanterne aux Verres Noirs", () => {
+describe("Marée — Balise des Profondeurs, Lanterne aux Verres Noirs", () => {
   it("Balise des Profondeurs : au changement de Marée, peut perdre 1 Raison pour prolonger la nouvelle Marée d'1 tour", () => {
     const balise = instance("balise-des-profondeurs", "p1");
     const state = testGameState({
@@ -247,53 +176,6 @@ describe("Marée — Balise des Profondeurs, Épave Engloutie, Veilleuse des Pro
     ok(activated);
     expect(activated.state.environment.tideRemainingTurns).toBe(remaining + 1);
     expect(player(activated.state, "p1").reason).toBe(reason - 1);
-  });
-
-  it("Épave Engloutie : quitte le board lorsque la Marée quitte les Abysses", () => {
-    const epave = instance("epave-engloutie", "p1");
-    const state = testGameState({
-      turnNumber: 2,
-      environment: testEnvironment({ tideState: "abysses", tideRemainingTurns: 1, tideOrientation: "descendante" }),
-      players: [testPlayer("p1", { board: [epave] }), testPlayer("p2", { deck: filler("p2") })],
-    });
-    const result = dispatch(state, { type: "endTurn", playerId: "p1" });
-    ok(result);
-    expect(result.state.environment.tideState).not.toBe("abysses");
-    expect(board(result.state, "p1").some((u) => u.instanceId === epave.instanceId)).toBe(false);
-    expect(player(result.state, "p1").graveyard.some((u) => u.instanceId === epave.instanceId)).toBe(true);
-  });
-
-  it("Veilleuse des Profondeurs : en Abysses, force l'orientation descendante (sans rien proposer)", () => {
-    const veilleuse = instance("veilleur-des-profondeurs", "p1");
-    const state = testGameState({
-      environment: testEnvironment({ tideState: "abysses", tideRemainingTurns: 3, tideOrientation: "montante" }),
-      players: [testPlayer("p1", { hand: [veilleuse], reason: 10 }), testPlayer("p2")],
-    });
-    const result = dispatch(state, { type: "playCard", playerId: "p1", instanceId: veilleuse.instanceId });
-    ok(result);
-    expect(result.state.environment.tideOrientation).toBe("descendante");
-    expect(result.state.pendingReaction).toBeUndefined();
-  });
-
-  it("Veilleuse des Profondeurs : hors Abysses, propose de réduire la Marée d'1 tour", () => {
-    const veilleuse = instance("veilleur-des-profondeurs", "p1");
-    const state = testGameState({
-      environment: testEnvironment({ tideState: "houle", tideRemainingTurns: 3, tideOrientation: "montante" }),
-      players: [testPlayer("p1", { hand: [veilleuse], reason: 10 }), testPlayer("p2")],
-    });
-    const played = dispatch(state, { type: "playCard", playerId: "p1", instanceId: veilleuse.instanceId });
-    ok(played);
-    expect(played.state.environment.tideOrientation).toBe("montante");
-    const candidate = candidates(played.state).find((c) => c.cardId === "veilleur-des-profondeurs");
-    expect(candidate).toBeDefined();
-    const activated = dispatch(played.state, {
-      type: "activateReaction",
-      playerId: "p1",
-      sourceInstanceId: candidate!.sourceInstanceId,
-      abilityIndex: candidate!.abilityIndex,
-    });
-    ok(activated);
-    expect(activated.state.environment.tideRemainingTurns).toBe(2);
   });
 
   it("Lanterne aux Verres Noirs : deux options au début du tour, une seule activable", () => {
@@ -360,7 +242,7 @@ describe("Équipements récurrents — Kit de Calfatage, Treuil à Chair", () =>
   });
 });
 
-describe("Filet à la Dérive, Radeau de Fortune, Carcasse Renversée, Il Capitano Naufragé", () => {
+describe("Filet à la Dérive, Carcasse Renversée, Il Capitano Naufragé", () => {
   it("Filet à la Dérive : VISIBLE, il retire 1 Puissance à la première unité adverse qui attaque", () => {
     // Rework du 21/09 : l'effet de début de tour devient une défense qui mord
     // au moment de l'attaque. Pas de « vous pouvez » : elle s'applique seule.
@@ -401,39 +283,9 @@ describe("Filet à la Dérive, Radeau de Fortune, Carcasse Renversée, Il Capita
     expect(board(active.state, "p2").find((u) => u.cardId === "filet-a-la-derive")?.revealed).toBe(true);
   });
 
-  it("Radeau de Fortune : Sabordé, il rend 1 Ancrage", () => {
-    const radeau = instance("radeau-de-fortune", "p1");
-    const state = testGameState({
-      players: [testPlayer("p1", { board: [radeau], anchor: 10 }), testPlayer("p2")],
-    });
-    const result = dispatch(state, { type: "saborder", playerId: "p1", instanceId: radeau.instanceId });
-    ok(result);
-    expect(player(result.state, "p1").anchor).toBe(11);
-  });
-
-  it("Carcasse Renversée : tant qu'elle est visible, le Navire ne subit pas plus de 4 dégâts d'une même attaque", () => {
-    const setup = (tideState: "houle" | "calme") => {
-      const attacker = instance("baleine-aux-cicatrices-blanches", "p1"); // 5 Puissance
-      const carcasse = instance("carcasse-renversee", "p2");
-      return {
-        attacker,
-        state: testGameState({
-          phase: "combatPhase",
-          environment: testEnvironment({ tideState, tideRemainingTurns: 4 }),
-          players: [testPlayer("p1", { board: [attacker] }), testPlayer("p2", { board: [carcasse], anchor: 20 })],
-        }),
-      };
-    };
-    const capped = setup("houle");
-    const cappedResult = dispatch(capped.state, { type: "attack", playerId: "p1", attackerInstanceId: capped.attacker.instanceId });
-    ok(cappedResult);
-    expect(player(cappedResult.state, "p2").anchor).toBe(16);
-
-    const free = setup("calme"); // Carcasse invisible en Calme
-    const freeResult = dispatch(free.state, { type: "attack", playerId: "p1", attackerInstanceId: free.attacker.instanceId });
-    ok(freeResult);
-    expect(player(freeResult.state, "p2").anchor).toBe(15);
-  });
+  // Carcasse Renversée ne plafonne plus les dégâts d'une attaque : depuis le
+  // 30/09/2026 (Standard Verrier), elle fait grandir l'unité qui survit
+  // derrière elle — testé dans `forteresseVerrier.test.ts`.
 
   it("Il Capitano Naufragé : ne perd ses -3 / -2 qu'une seule fois, même sur plusieurs tours", () => {
     const capitano = instance("il-capitano-naufrage", "p1");
@@ -448,7 +300,7 @@ describe("Filet à la Dérive, Radeau de Fortune, Carcasse Renversée, Il Capita
   });
 });
 
-describe("Revenante de la Fosse, Ancre de Tempête", () => {
+describe("Revenante de la Fosse", () => {
   it("Revenante de la Fosse : en Abysses, la première fois par tour qu'elle devrait être détruite, elle reste à 1 Résistance", () => {
     const revenante = instance("revenante-de-la-fosse-abyssal", "p1", { damageMarked: 4 }); // 4 Résistance : létal
     const state = testGameState({
@@ -471,35 +323,5 @@ describe("Revenante de la Fosse, Ancre de Tempête", () => {
     // Hors Abysses : aucune survie.
     const calme = testGameState({ players: [testPlayer("p1", { board: [instance("revenante-de-la-fosse-abyssal", "p1", { damageMarked: 4 })] }), testPlayer("p2")] });
     expect(board(processDeaths(calme, 1).state, "p1")).toHaveLength(0);
-  });
-
-  it("Ancre de Tempête : tant qu'elle est visible, la première réduction de Marée du tour est augmentée de 1", () => {
-    const ancre = instance("ancre-de-tempete", "p1");
-    const horloge1 = instance("horloge-de-maree", "p1"); // Sabordage : -2 tours
-    const horloge2 = instance("horloge-de-maree", "p1");
-    const state = testGameState({
-      environment: testEnvironment({ tideState: "houle", tideRemainingTurns: 6 }),
-      players: [testPlayer("p1", { board: [ancre, horloge1, horloge2] }), testPlayer("p2")],
-    });
-    // L'Horloge ouvre un choix au Sabordage : option 0 = réduire de 2 tours.
-    const reduceBy2 = (from: GameState, instanceId: string) => {
-      const saborded = dispatch(from, { type: "saborder", playerId: "p1", instanceId });
-      ok(saborded);
-      const chosen = dispatch(saborded.state, { type: "resolveChoice", playerId: "p1", choice: { abilityIndex: 0 } });
-      ok(chosen);
-      return chosen.state;
-    };
-    const first = reduceBy2(state, horloge1.instanceId);
-    expect(first.environment.tideRemainingTurns).toBe(3); // 6 - (2 + 1)
-    const second = reduceBy2(first, horloge2.instanceId);
-    expect(second.environment.tideRemainingTurns).toBe(1); // 3 - 2, sans amplification
-
-    // Invisible (Calme) : pas d'amplification.
-    const hidden = testGameState({
-      environment: testEnvironment({ tideState: "calme", tideRemainingTurns: 6 }),
-      players: [testPlayer("p1", { board: [instance("ancre-de-tempete", "p1"), instance("horloge-de-maree", "p1")] }), testPlayer("p2")],
-    });
-    const plain = reduceBy2(hidden, player(hidden, "p1").board[1]!.instanceId);
-    expect(plain.environment.tideRemainingTurns).toBe(4);
   });
 });

@@ -13,20 +13,22 @@ import { canBeEquipTarget, getCardDefinition } from "@/game/cards/sets/core";
 import { countArchetypeUnits } from "@/game/cards/archetypes";
 import { auraContextOf, computeEffectiveStats } from "@/game/cards/stats";
 import { getShipDefinition } from "@/game/environment/shipData";
-import { forceTideJumpToAbysses, forceTideTransition, tickTide } from "@/game/environment/tide";
+import { endCurrentTideState, forceTideJumpToAbysses, forceTideTransition } from "@/game/environment/tide";
+import { applyForcedTideTransition } from "@/game/environment/tideTransition";
+import { recordGraveyardArrival } from "@/game/state/discard";
+import type { TideStateName } from "@/game/environment/types";
 import { isEligibleChosenUnit } from "@/game/effects/chosenTargets";
 import type { EffectAmount, EffectDefinition } from "@/game/effects/types";
 import type { EffectOrigin, GameEvent } from "@/game/events/types";
 import { nextInt, type RngState } from "@/game/rng";
-import { reduceReasonGain } from "@/game/state/anomalies";
 import { reasonAfterLoss, reasonCeiling } from "@/game/state/reason";
 import { markOncePerTurnUsed, oncePerTurnAvailable } from "@/game/state/oncePerTurn";
 import { chromaticColorsOf, chromaticShardCardId } from "@/game/rules/chromatic";
 import {
+  applyOpponentRemovalShield,
   consumeEquippedEffectDamageShield,
-  consumeOwnDamageTakenShield,
   consumeReasonLossShield,
-  consumeStructureResistanceRestoreShield,
+  restoreStructureResistanceAfterLoss,
 } from "@/game/state/shields";
 import {
   findCardInstance,
@@ -53,6 +55,16 @@ import {
  * références pendantes (Équipements attachés, capacités qui suivent une
  * instance) pointer sur une carte qui n'est plus en jeu.
  */
+/**
+ * Identifiant de l'exemplaire NEUF qu'un permanent renvoyé en main y
+ * devient (`returnPermanentToHand`). Exporté pour qu'un effet qui suit le
+ * renvoi puisse désigner cette carte — « une AUTRE Marionnette » — sans
+ * redeviner la convention.
+ */
+export function recalledInstanceId(boardInstanceId: string, turnNumber: number): string {
+  return `${boardInstanceId}:hand:${turnNumber}`;
+}
+
 function returnPermanentToHand(
   state: GameState,
   ownerId: PlayerId,
@@ -63,7 +75,7 @@ function returnPermanentToHand(
   if (!unit) return { state, events: [], returned: null };
 
   const fresh: CardInstance = {
-    instanceId: `${unit.instanceId}:hand:${state.turnNumber}`,
+    instanceId: recalledInstanceId(unit.instanceId, state.turnNumber),
     cardId: unit.cardId,
     ownerId: unit.ownerId,
     damageMarked: 0,
@@ -99,15 +111,38 @@ function returnPermanentToHand(
   return { state: nextState, events, returned: fresh };
 }
 
+/**
+ * Pose l'état de Marée FORCÉ par un effet, puis applique sur-le-champ le
+ * choc de transition (Abysses : Ancrage et Raison max ; sortie de Houle :
+ * MALADE retiré — `game/environment/tideTransition.ts`). Sans lui, une
+ * descente forcée en Abysses n'ôtait pas la Raison max que la sortie
+ * naturelle rendait ensuite.
+ */
+function withForcedTransition(
+  next: GameState,
+  previousTideState: TideStateName,
+  events: GameEvent[],
+  turnNumber: number
+): { state: GameState; events: GameEvent[] } {
+  const transition = applyForcedTideTransition(next, previousTideState, next.environment.tideState, turnNumber);
+  return { state: transition.state, events: [...events, ...transition.events] };
+}
+
 /** Une réduction de coût s'applique-t-elle à cette carte ? */
 export function discountApplies(
   discount: CostDiscount,
   def: CardDefinition,
   turnNumber: number,
   /** Unités déjà posées par le joueur ce tour-ci, celle en cours NON comprise. */
-  unitsPlayedThisTurn = 0
+  unitsPlayedThisTurn = 0,
+  /** Instance de la carte jouée : sert à `excludeInstanceIds` (« une AUTRE Marionnette »). */
+  instanceId?: string
 ): boolean {
   if (!discount.persistent && discount.uses <= 0) return false;
+  if (instanceId !== undefined && discount.excludeInstanceIds?.includes(instanceId)) return false;
+  // « ELLE coûte 1 de moins » : seule la carte désignée en profite.
+  if (discount.onlyInstanceIds && !(instanceId !== undefined && discount.onlyInstanceIds.includes(instanceId))) return false;
+  if (discount.maxCost !== undefined && def.cost > discount.maxCost) return false;
   if (turnNumber > discount.expiresAfterTurn) return false;
   if (discount.subtype && def.subtype !== discount.subtype) return false;
   if (discount.cardTypes && !discount.cardTypes.includes(def.type)) return false;
@@ -170,7 +205,9 @@ function matchesCardTypeFilter(filter: EffectDefinition["filter"], cardType: str
 export function hasGraveyardArrival(
   state: GameState,
   controllerId: PlayerId,
-  condition: NonNullable<EffectDefinition["conditionGraveyardArrival"]>
+  condition: NonNullable<EffectDefinition["conditionGraveyardArrival"]>,
+  /** Carte source de l'effet — écartée par `condition.excludeSource`. */
+  sourceInstanceId?: string
 ): boolean {
   const controller = state.players.find((p) => p.id === controllerId);
   // « ce tour » = le tour de table courant ; « depuis votre dernier tour »
@@ -185,9 +222,12 @@ export function hasGraveyardArrival(
     } else if (entry.turnNumber < lastOwnTurn || (entry.turnNumber === lastOwnTurn && entry.beforeOwnTurnStart)) {
       return false;
     }
+    if (condition.excludeSource && sourceInstanceId !== undefined && entry.instanceId === sourceInstanceId) return false;
     if (condition.fromZone && entry.fromZone !== condition.fromZone) return false;
     if (condition.cardIds && !condition.cardIds.includes(entry.cardId)) return false;
     if (condition.subtype && getCardDefinition(entry.cardId).subtype !== condition.subtype) return false;
+    if (condition.cardTypes && !condition.cardTypes.includes(getCardDefinition(entry.cardId).type)) return false;
+    if (condition.destroyedBy && !(entry.destructionCause && condition.destroyedBy.includes(entry.destructionCause))) return false;
     return true;
   });
 }
@@ -223,6 +263,16 @@ function amountValue(
     const unites = plateau.board.filter((u) => UNIT_CARD_TYPES.includes(getCardDefinition(u.cardId).type)).length;
     return Math.max(0, unites - (amount.above ?? 0)) * (amount.per ?? 1);
   }
+  if (amount.kind === "graveyardCount") {
+    const joueur = amount.of === "opponent" ? getOpponent(state, controllerId) : getPlayer(state, controllerId);
+    const cartes = joueur.graveyard.filter((c) => {
+      const def = getCardDefinition(c.cardId);
+      if (amount.subtype && def.subtype !== amount.subtype) return false;
+      return !amount.cardTypes || amount.cardTypes.includes(def.type);
+    }).length;
+    const brut = Math.floor(cartes / Math.max(1, amount.perCards ?? 1));
+    return amount.max === undefined ? brut : Math.min(amount.max, brut);
+  }
   if (amount.kind === "freeSlots") {
     const joueur = getPlayer(state, controllerId);
     const libres = Math.max(0, getShipDefinition(joueur.shipId).slotCount - joueur.board.length);
@@ -235,11 +285,8 @@ function amountValue(
 /**
  * Révèle jusqu'à `amount` cartes aléatoires DISTINCTES de la main de
  * `targetPlayerId` (moins si sa main en contient moins) : émet un
- * `HAND_CARD_REVEALED` par carte, sans autre effet sur l'état (ex: Guetteur
- * de Brume, La Bouée qui Regardait). Factorisé pour être appelable aussi
- * bien depuis `case "revealRandomHandCards"` que directement depuis
- * `game/triggers/triggerBus.ts` (Guetteur de Brume, hors du pipeline
- * d'effets habituel — cf. commentaire sur place).
+ * `HAND_CARD_REVEALED` par carte, sans autre effet sur l'état. Appelée par
+ * `case "revealRandomHandCards"`.
  */
 export function revealRandomHandCards(
   state: GameState,
@@ -539,40 +586,6 @@ function chosenTargetSurvives(state: GameState, context: EffectContext): boolean
   return !stats.destroyedByTide && unit.damageMarked < stats.health;
 }
 
-/** Clé `oncePerTurnFlags` du remplacement de Bête de Halage (`opponentRemovalShieldOncePerTurn`). */
-const REMOVAL_SHIELD_KEY = "opponentRemovalShield";
-
-/**
- * Bête de Halage : « la première fois à chaque tour qu'elle devrait être
- * renvoyée en main, déplacée ou détruite par un effet adverse, … lui retirer
- * 1 Résistance à la place ». Retourne l'état où le remplacement a eu lieu,
- * ou `undefined` si la carte n'en a pas (ou l'a déjà utilisé ce tour).
- */
-function applyOpponentRemovalShield(
-  state: GameState,
-  ownerId: PlayerId,
-  unit: CardInstance,
-  turnNumber: number,
-  base: { turnNumber: number; timestamp: number }
-): EffectResolution | undefined {
-  const shield = getCardDefinition(unit.cardId).opponentRemovalShieldOncePerTurn;
-  if (!shield || !oncePerTurnAvailable(unit, REMOVAL_SHIELD_KEY, turnNumber)) return undefined;
-  const malus: StatModifier = {
-    id: `mod_${Math.random().toString(36).slice(2, 8)}`,
-    source: unit.cardId,
-    attack: 0,
-    health: -shield.healthLoss,
-    duration: "permanent",
-  };
-  const next = replaceUnit(state, ownerId, unit.instanceId, (u) =>
-    markOncePerTurnUsed({ ...u, modifiers: [...u.modifiers, malus] }, REMOVAL_SHIELD_KEY, turnNumber)
-  );
-  return {
-    state: next,
-    events: [{ ...base, type: "DEBUFF_APPLIED", targetInstanceId: unit.instanceId, attack: 0, health: -shield.healthLoss }],
-  };
-}
-
 /**
  * Harnais de Retenue : « la première fois que l'unité équipée devrait être
  * renvoyée en main par un effet adverse, détruisez cet Équipement à la
@@ -624,9 +637,6 @@ function originOf(context: EffectContext): EffectOrigin {
     : { playerId: context.controllerId };
 }
 
-/** Clé `oncePerTurnFlags` de l'amplification de réduction de Marée (`amplifyTideReductionOncePerTurnWhileVisible`). */
-const AMPLIFY_TIDE_REDUCTION_KEY = "amplifyTideReduction";
-
 /** Résout un effet unique et retourne le nouvel état + les événements produits. */
 export function resolveEffect(
   state: GameState,
@@ -650,6 +660,10 @@ export function resolveEffect(
   if (effect.conditionControllerReasonAtMost !== undefined) {
     const controller = getPlayer(state, context.controllerId);
     if (controller.reason > effect.conditionControllerReasonAtMost) return { state, events };
+  }
+  if (effect.conditionOpponentReasonAtMost !== undefined) {
+    const opponent = getOpponent(state, context.controllerId);
+    if (opponent.reason > effect.conditionOpponentReasonAtMost) return { state, events };
   }
   if (effect.conditionBrokenFromHand !== undefined && effect.conditionBrokenFromHand !== Boolean(context.brokenFromHand)) {
     return { state, events };
@@ -697,7 +711,7 @@ export function resolveEffect(
     if (effect.conditionEquippedUnitAttackedThisTurn && !holder.hasAttackedThisTurn) return { state, events };
   }
   if (effect.conditionGraveyardArrival) {
-    if (!hasGraveyardArrival(state, context.controllerId, effect.conditionGraveyardArrival)) return { state, events };
+    if (!hasGraveyardArrival(state, context.controllerId, effect.conditionGraveyardArrival, context.sourceInstanceId)) return { state, events };
   }
   if (effect.conditionControllerHandAtMost !== undefined) {
     if (getPlayer(state, context.controllerId).hand.length > effect.conditionControllerHandAtMost) return { state, events };
@@ -752,25 +766,13 @@ export function resolveEffect(
         // sélecteurs de masse (`allEnemyUnits`, `allUnits`, `random*Unit`)
         // balaient tout le board, Objets compris.
         if (!hasResistance(getCardDefinition(unit.cardId))) continue;
-        // Boucliers "1ère fois par tour" (Baleine aux Cicatrices Blanches :
-        // réduction directe ; Wood Vy : restauration après coup sur une
-        // Structure alliée — équivalent net à une réduction supplémentaire,
-        // cf. commentaire de `consumeStructureResistanceRestoreShield`).
-        const selfShield = consumeOwnDamageTakenShield(nextState, ownerId, unit.instanceId, context.turnNumber);
-        nextState = selfShield.state;
-        let reduction = selfShield.reduction;
         // Casque-Coquille : ces dégâts-ci viennent bien d'un effet de
         // carte, pas d'un combat — l'Équipement les absorbe une fois puis
         // se détruit.
         const effectShield = consumeEquippedEffectDamageShield(nextState, ownerId, unit.instanceId, context.turnNumber);
         nextState = effectShield.state;
-        reduction += effectShield.reduction;
+        let reduction = effectShield.reduction;
         events.push(...effectShield.events);
-        if (getCardDefinition(unit.cardId).type === "structure") {
-          const restoreShield = consumeStructureResistanceRestoreShield(nextState, ownerId, context.turnNumber);
-          nextState = restoreShield.state;
-          reduction += restoreShield.restore;
-        }
         // Vieille-Selle : « 3 dégâts ou plus d'une seule source » se lit sur
         // le coup tel qu'il arrive, avant toute autre réduction.
         const peau = getCardDefinition(unit.cardId).reduceLargeDamageTaken;
@@ -778,12 +780,34 @@ export function resolveEffect(
         const finalAmount = Math.max(0, amount - reduction);
         if (finalAmount <= 0) continue;
 
+        // Bête de Halage : un coup MORTEL d'un effet adverse est remplacé —
+        // le coup est annulé et elle perd 1 Résistance, de façon permanente
+        // (décision du 02/10/2026 : « −1 permanent à chaque fois »). Le
+        // remplacement n'a lieu que s'il la garde réellement en jeu.
+        if (ownerId !== context.controllerId && getCardDefinition(unit.cardId).opponentRemovalShieldOncePerTurn) {
+          const actuelle = getPlayer(nextState, ownerId).board.find((u) => u.instanceId === unit.instanceId)!;
+          const vie = computeEffectiveStats(actuelle, nextState.environment.tideState, auraContextOf(nextState, ownerId)).health;
+          if (actuelle.damageMarked + finalAmount >= vie) {
+            const remplace = applyOpponentRemovalShield(nextState, ownerId, unit.instanceId, context.turnNumber);
+            const apres = remplace?.state ? getPlayer(remplace.state, ownerId).board.find((u) => u.instanceId === unit.instanceId) : undefined;
+            const vieApres = apres ? computeEffectiveStats(apres, remplace!.state.environment.tideState, auraContextOf(remplace!.state, ownerId)).health : 0;
+            if (remplace && apres && vieApres > apres.damageMarked) {
+              nextState = remplace.state;
+              events.push(...remplace.events);
+              continue;
+            }
+          }
+        }
+
         nextState = replaceUnit(nextState, ownerId, unit.instanceId, (u) => ({
           ...u,
           damageMarked: u.damageMarked + finalAmount,
           // Retenue pour la mort : une unité qui meurt n'a plus de source à
           // interroger (cf. `DestructionCause`).
           lastDamageCause: "effect" as const,
+          // L'auteur du coup : « détruite par un effet ADVERSE » (Bête de
+          // Halage) se lit à la mort, quand l'effet est déjà loin.
+          lastDamageBy: context.controllerId,
           lastDamageTurn: context.turnNumber,
         }));
         events.push({
@@ -795,6 +819,10 @@ export function resolveEffect(
           sourcePlayerId: context.controllerId,
           origin: originOf(context),
         });
+        // Wood Vy : la Structure a perdu de la Résistance, elle en récupère 1.
+        const rendu = restoreStructureResistanceAfterLoss(nextState, ownerId, unit.instanceId, finalAmount, context.turnNumber);
+        nextState = rendu.state;
+        events.push(...rendu.events);
       }
 
       for (const player of resolvePlayerTargets(state, effect, context)) {
@@ -878,6 +906,23 @@ export function resolveEffect(
       };
     }
 
+    case "mill": {
+      const amount = amountValue(effect.amount, state, context.controllerId);
+      const player = resolveSinglePlayerTarget(state, effect, context) ?? getPlayer(state, context.controllerId);
+      const partent = player.deck.slice(0, Math.max(0, amount));
+      if (partent.length === 0) return { state, events };
+      let milled: PlayerState = {
+        ...player,
+        deck: player.deck.slice(partent.length),
+        graveyard: [...player.graveyard, ...partent],
+      };
+      for (const card of partent) {
+        milled = recordGraveyardArrival(milled, { cardId: card.cardId, turnNumber: context.turnNumber, fromZone: "deck" });
+        events.push({ ...base, type: "CARD_MOVED", instanceId: card.instanceId, fromZone: "deck", toZone: "graveyard", cardId: card.cardId, ownerId: player.id });
+      }
+      return { state: replacePlayer(state, milled), events };
+    }
+
     case "discard": {
       const amount = amountValue(effect.amount, state, context.controllerId);
       const player = resolveSinglePlayerTarget(state, effect, context) ?? getPlayer(state, context.controllerId);
@@ -920,7 +965,7 @@ export function resolveEffect(
         // Bête de Halage : une destruction décidée par un effet ADVERSE se
         // remplace par une perte de Résistance, une fois par tour.
         if (removal === "destroyed" && ownerId !== context.controllerId) {
-          const remplace = applyOpponentRemovalShield(nextState, ownerId, unit, context.turnNumber, base);
+          const remplace = applyOpponentRemovalShield(nextState, ownerId, unit.instanceId, context.turnNumber);
           if (remplace) {
             nextState = remplace.state;
             events.push(...remplace.events);
@@ -992,7 +1037,7 @@ export function resolveEffect(
           ownerId: player.id,
           damageMarked: 0,
           modifiers: [],
-          // Ruée (`rush`) : le corps invoqué peut attaquer le tour même.
+          // Pied marin (`rush`) : le corps invoqué peut attaquer le tour même.
           summoningSick: !effect.rush,
           hasAttackedThisTurn: false,
           ...(illustrationVariant !== undefined ? { illustrationVariant } : {}),
@@ -1003,9 +1048,29 @@ export function resolveEffect(
         events.push({ ...base, type: "SUMMON", playerId: player.id, instanceId: token.instanceId, cardId: token.cardId });
       }
 
+      // « Ils gagnent Pied marin jusqu'à la fin du tour » : le mot-clé est
+      // aussi POSÉ (modificateur de fin de tour), pas seulement le mal
+      // d'invocation levé — sans quoi rien ne l'affichait sur la carte.
+      const withPiedMarin = effect.rush
+        ? summoned.map((token) => ({
+            ...token,
+            modifiers: [
+              ...token.modifiers,
+              {
+                id: `mod_pied_marin_${token.instanceId}`,
+                source: summonCardId,
+                attack: 0,
+                health: 0,
+                duration: "endOfTurn" as StatModifierDuration,
+                keywords: ["pied-marin"], // `KEYWORD_PIED_MARIN` (game/rules/validation.ts)
+              },
+            ],
+          }))
+        : summoned;
+
       // Bonus accordé aux corps qui viennent d'arriver (ex: Le Grand Saut).
       const buffed = effect.summonBuff
-        ? summoned.map((token) => ({
+        ? withPiedMarin.map((token) => ({
             ...token,
             modifiers: [
               ...token.modifiers,
@@ -1018,7 +1083,7 @@ export function resolveEffect(
               },
             ],
           }))
-        : summoned;
+        : withPiedMarin;
 
       const board = [...player.board, ...buffed];
       return { state: { ...replacePlayer(state, { ...player, board }), rngState }, events };
@@ -1098,16 +1163,14 @@ export function resolveEffect(
     }
 
     case "reasonGain": {
-      const rawAmount = amountValue(effect.amount, state, context.controllerId);
+      const amount = amountValue(effect.amount, state, context.controllerId);
       const targets = resolvePlayerTargets(state, effect, context);
       const players = targets.length > 0 ? targets : [getPlayer(state, context.controllerId)];
       let nextState = state;
       for (const target of players) {
         const player = getPlayer(nextState, target.id);
-        // "La Gueule Sous la Mer" : verrou total, prioritaire sur toute réduction.
+        // "La Gueule Sous la Mer" : verrou total sur tout gain de Raison.
         if (player.statusFlags.includes(STATUS_NO_REASON_GAIN)) continue;
-        // "Le Chant Sous la Ligne" : réduit TOUT gain de Raison tant qu'elle est en jeu.
-        const amount = reduceReasonGain(nextState, rawAmount);
         if (amount <= 0) continue;
         // `source: "card"` : récupérée GRÂCE À UNE CARTE (Survivant de la
         // Mousse), par opposition à la régénération de début de tour.
@@ -1132,13 +1195,6 @@ export function resolveEffect(
         nextState = replacePlayer(nextState, { ...player, reason: reasonAfterLoss(player, finalAmount) });
       }
       return { state: nextState, events };
-    }
-
-    case "deferTideEffects": {
-      // Hors fenêtre `onTideAnnounced`, aucune Marée n'attend : sans objet
-      // plutôt qu'une erreur, comme les autres effets de fenêtre.
-      if (!state.pendingTideStep) return { state, events };
-      return { state: { ...state, pendingTideStep: { ...state.pendingTideStep, deferred: true } }, events };
     }
 
     case "cancelIncomingAttack": {
@@ -1233,28 +1289,8 @@ export function resolveEffect(
 
     case "tideReduceDuration":
     case "tideExtendDuration": {
-      let amount = amountValue(effect.amount, state, context.controllerId) || 1;
-      let nextState = state;
-      if (effect.type === "tideReduceDuration") {
-        // "La première réduction de durée que vous provoquez chaque tour est
-        // augmentée de N" (Ancre de Tempête, visible) : lue sur le plateau du
-        // contrôleur de l'effet, consommée pour le tour.
-        const controller = getPlayer(state, context.controllerId);
-        const amplifier = controller.board.find((u) => {
-          const def = getCardDefinition(u.cardId);
-          return (
-            def.amplifyTideReductionOncePerTurnWhileVisible !== undefined &&
-            isVisibleDuringTide(def, state.environment.tideState) &&
-            oncePerTurnAvailable(u, AMPLIFY_TIDE_REDUCTION_KEY, context.turnNumber)
-          );
-        });
-        if (amplifier) {
-          amount += getCardDefinition(amplifier.cardId).amplifyTideReductionOncePerTurnWhileVisible ?? 0;
-          nextState = replaceUnit(nextState, controller.id, amplifier.instanceId, (u) =>
-            markOncePerTurnUsed(u, AMPLIFY_TIDE_REDUCTION_KEY, context.turnNumber)
-          );
-        }
-      }
+      const amount = amountValue(effect.amount, state, context.controllerId) || 1;
+      const nextState = state;
       const delta = effect.type === "tideReduceDuration" ? -amount : amount;
       const rawRemaining = nextState.environment.tideRemainingTurns + delta;
       // Régulateur de Courant (`advanceTideOnZero`) : la réduction qui fait
@@ -1263,7 +1299,9 @@ export function resolveEffect(
       // orientation changent ; les effets du nouvel état s'appliquent au
       // prochain tick de début de tour).
       if (effect.type === "tideReduceDuration" && effect.advanceTideOnZero && rawRemaining <= 0) {
-        const tick = tickTide({ ...nextState.environment, tideRemainingTurns: 1 });
+        // La Marée prend fin : on passe à la suivante même si un « Maintien »
+        // attend le prochain décompte (`endCurrentTideState`).
+        const tick = endCurrentTideState(nextState.environment);
         events.push({
           ...base,
           type: "TIDE_ADVANCED",
@@ -1271,9 +1309,11 @@ export function resolveEffect(
           tideState: tick.tideState,
           tideOrientation: tick.tideOrientation,
           stateChanged: tick.stateChanged,
+          forced: true,
+          previousTideState: nextState.environment.tideState,
         });
-        return {
-          state: {
+        return withForcedTransition(
+          {
             ...nextState,
             environment: {
               ...nextState.environment,
@@ -1284,8 +1324,10 @@ export function resolveEffect(
               pendingTideModifiers: tick.pendingTideModifiers,
             },
           },
+          nextState.environment.tideState,
           events,
-        };
+          context.turnNumber
+        );
       }
       // Sinon, un état ne progresse jamais "immédiatement" via cet effet : la
       // durée reste au minimum à 1, l'avancée réelle se fait via le tick de
@@ -1339,11 +1381,12 @@ export function resolveEffect(
 
     case "tideForceAdvance":
     case "tideForceRetreat": {
-      // Simplification assumée : contrairement au tick de début de tour
-      // (`resolveTideTurnStep`), cette transition forcée ne déclenche pas
-      // `onTideStateEntered` ni les vérifications "devient visible" — seuls
-      // l'état/la durée/l'orientation changent. À étendre si une carte
-      // future combine forçage ET réaction à l'entrée dans le nouvel état.
+      // Le choc d'entrée/sortie (Abysses, Houle) s'applique ici même — cf.
+      // `withForcedTransition`. Les déclencheurs d'une transition
+      // (`onTideStateEntered`/`onTideStateExited`, Structures qui deviennent
+      // visibles) ne peuvent pas partir d'ici (`resolveEffect` n'appelle pas
+      // le bus) : l'événement est marqué `forced` et `dispatch` les réveille
+      // (`processForcedTideTransitions`), comme au tick de début de tour.
       const tick = forceTideTransition(state.environment, effect.type === "tideForceAdvance" ? "avancer" : "reculer");
       events.push({
         ...base,
@@ -1352,9 +1395,11 @@ export function resolveEffect(
         tideState: tick.tideState,
         tideOrientation: tick.tideOrientation,
         stateChanged: tick.stateChanged,
+        forced: true,
+        previousTideState: state.environment.tideState,
       });
-      return {
-        state: {
+      return withForcedTransition(
+        {
           ...state,
           environment: {
             ...state.environment,
@@ -1365,8 +1410,10 @@ export function resolveEffect(
             pendingTideModifiers: tick.pendingTideModifiers,
           },
         },
+        state.environment.tideState,
         events,
-      };
+        context.turnNumber
+      );
     }
 
     case "tideInvertOrientation": {
@@ -1412,36 +1459,6 @@ export function resolveEffect(
       return { state: nextState, events };
     }
 
-    case "reasonLossToHigherRevealedHandCard": {
-      const amount = amountValue(effect.amount, state, context.controllerId) || 1;
-      let nextState = state;
-      let rngState = nextState.rngState;
-      const revealed: Array<{ playerId: PlayerId; cost: number }> = [];
-
-      for (const player of nextState.players) {
-        if (player.hand.length === 0) continue;
-        const draw = nextInt(rngState, player.hand.length);
-        rngState = draw.nextState;
-        const card = player.hand[draw.value]!;
-        events.push({ ...base, type: "HAND_CARD_REVEALED", ownerId: player.id, instanceId: card.instanceId, cardId: card.cardId });
-        revealed.push({ playerId: player.id, cost: getCardDefinition(card.cardId).cost });
-      }
-      nextState = { ...nextState, rngState };
-
-      if (revealed.length === 2 && revealed[0]!.cost !== revealed[1]!.cost) {
-        const loser = revealed[0]!.cost > revealed[1]!.cost ? revealed[0]! : revealed[1]!;
-        const shield = consumeReasonLossShield(nextState, loser.playerId, context.turnNumber);
-        nextState = shield.state;
-        const finalAmount = Math.max(0, amount - shield.reduction);
-        if (finalAmount > 0) {
-          const loserPlayer = getPlayer(nextState, loser.playerId);
-          events.push({ ...base, type: "REASON_CHANGED", playerId: loserPlayer.id, delta: -finalAmount });
-          nextState = replacePlayer(nextState, { ...loserPlayer, reason: reasonAfterLoss(loserPlayer, finalAmount) });
-        }
-      }
-      return { state: nextState, events };
-    }
-
     case "tideForceJumpToAbysses": {
       const extraDurationTurns = amountValue(effect.amount, state, context.controllerId) || 0;
       const tick = forceTideJumpToAbysses(state.environment, {
@@ -1455,9 +1472,11 @@ export function resolveEffect(
         tideState: tick.tideState,
         tideOrientation: tick.tideOrientation,
         stateChanged: tick.stateChanged,
+        forced: true,
+        previousTideState: state.environment.tideState,
       });
-      return {
-        state: {
+      return withForcedTransition(
+        {
           ...state,
           environment: {
             ...state.environment,
@@ -1468,8 +1487,10 @@ export function resolveEffect(
             pendingTideModifiers: tick.pendingTideModifiers,
           },
         },
+        state.environment.tideState,
         events,
-      };
+        context.turnNumber
+      );
     }
 
     case "lockReasonGainUntilNextTurn": {
@@ -1530,7 +1551,7 @@ export function resolveEffect(
             nextState = harnais;
             continue;
           }
-          const remplace = applyOpponentRemovalShield(nextState, ownerId, unit, context.turnNumber, base);
+          const remplace = applyOpponentRemovalShield(nextState, ownerId, unit.instanceId, context.turnNumber);
           if (remplace) {
             nextState = remplace.state;
             events.push(...remplace.events);
@@ -1542,7 +1563,7 @@ export function resolveEffect(
         // une unité dans la main de son propriétaire », Lot 14). Avant le
         // Lot 14 aucun texte ne visait une carte adverse ; le renvoi était
         // donc simplement refusé pour elles, ce qui aurait silencieusement
-        // annulé Par-dessus Bord ! et Panique sur le Pont.
+        // annulé Par-dessus Bord !.
         const moved = returnPermanentToHand(nextState, ownerId, unit.instanceId);
         nextState = moved.state;
         events.push(...moved.events);
@@ -1600,10 +1621,20 @@ export function resolveEffect(
     }
 
     case "discountNextCards": {
-      const reduction = amountValue(effect.amount, state, context.controllerId);
-      if (reduction <= 0) return { state, events };
+      const reduction = effect.free ? 0 : amountValue(effect.amount, state, context.controllerId);
+      if (!effect.free && reduction <= 0) return { state, events };
+      // « une AUTRE Marionnette » : la cible désignée par le joueur — et
+      // l'exemplaire qu'elle est devenue si l'effet précédent l'a renvoyée
+      // en main — n'en profite pas.
+      const chosen = effect.filter?.excludeChosenTarget ? context.chosenTargetInstanceId : undefined;
 
       const player = getPlayer(state, context.controllerId);
+      // « remettez-la dans votre main […] ELLE coûte 1 de moins » : la carte
+      // repêchée, et elle seule — encore faut-il qu'elle soit arrivée en main.
+      const recovered = effect.discountOnlyRecoveredCard ? context.chosenGraveyardInstanceId : undefined;
+      if (effect.discountOnlyRecoveredCard && !(recovered && player.hand.some((c) => c.instanceId === recovered))) {
+        return { state, events };
+      }
       const discount: CostDiscount = {
         amount: reduction,
         uses: Math.max(1, effect.uses ?? 1),
@@ -1615,6 +1646,10 @@ export function resolveEffect(
         // La Mauvaise Réputation : la carte qui en profite « subit 1 dégât »
         // à son arrivée — porté par la réduction, qui sait laquelle c'est.
         ...(effect.arrivalDamage ? { arrivalDamage: effect.arrivalDamage, grantedBy: context.controllerId } : {}),
+        ...(effect.free ? { free: true } : {}),
+        ...(chosen ? { excludeInstanceIds: [chosen, recalledInstanceId(chosen, state.turnNumber)] } : {}),
+        ...(recovered ? { onlyInstanceIds: [recovered] } : {}),
+        ...(effect.filter?.maxCost !== undefined ? { maxCost: effect.filter.maxCost } : {}),
       };
 
       return {
@@ -1703,6 +1738,7 @@ export function resolveEffect(
           pendingChoice: {
             kind: "keepUnits",
             playerId: controleur.id,
+            controllerId: controleur.id,
             remainingPlayerIds: [adversaire.id],
             keep: garde,
             kept: [],
@@ -1718,8 +1754,11 @@ export function resolveEffect(
       const budget = amountValue(effect.amount, state, context.controllerId);
       const player = resolveSinglePlayerTarget(state, effect, context) ?? getPlayer(state, context.controllerId);
       // Rien à réparer, ou rien à répartir : on ne pose pas une question
-      // sans réponse utile.
-      if (budget <= 0 || !player.board.some((u) => u.damageMarked > 0)) return { state, events };
+      // sans réponse utile. « Répartie entre les UNITÉS » : une Structure
+      // blessée n'entre pas dans la répartition (cf. `resolveChoice`).
+      if (budget <= 0 || !player.board.some((u) => u.damageMarked > 0 && UNIT_CARD_TYPES.includes(getCardDefinition(u.cardId).type))) {
+        return { state, events };
+      }
       return {
         state: {
           ...state,

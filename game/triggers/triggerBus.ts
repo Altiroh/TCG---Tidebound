@@ -3,16 +3,17 @@ import { computeEffectiveStats } from "@/game/cards/stats";
 import { isVisibleDuringTide, UNIT_CARD_TYPES, type CardInstance, type TriggeredAbility, type TriggerSourceFilter } from "@/game/cards/types";
 import type { EffectDefinition } from "@/game/effects/types";
 import type { EffectContext } from "@/game/effects/resolveEffect";
-import { hasGraveyardArrival, resolveEffect, revealRandomHandCards } from "@/game/effects/resolveEffect";
+import { hasGraveyardArrival, resolveEffect } from "@/game/effects/resolveEffect";
 import { resolveEffectSequence } from "@/game/effects/resolveSequence";
 import type { GameEvent } from "@/game/events/types";
-import { applyCardPlayedAnomalies, applyPermanentLeftAnomalies } from "@/game/state/anomalies";
 import { chosenTargetRequirement, eligibleChosenUnits } from "@/game/effects/chosenTargets";
 import { graveyardChoicesFor } from "@/game/effects/graveyardChoices";
 import { markOncePerTurnUsed, oncePerTurnAvailable } from "@/game/state/oncePerTurn";
 import { chromaticColorsOf } from "@/game/rules/chromatic";
-import { consumeOpponentReactionRevealShield, payReasonCost } from "@/game/state/shields";
-import type { GameState, PlayerId, PlayerState } from "@/game/state/types";
+import { payReasonCost, reasonCostAfterShield } from "@/game/state/shields";
+import { consumeObjectBreakTax, handBreakCost, isBreakReaction, objectBreakTax } from "@/game/rules/objectBreak";
+import type { GameState, PendingChoice, PlayerId, PlayerState } from "@/game/state/types";
+import type { TideStateName } from "@/game/environment/types";
 import type { PendingReactionCandidate, TriggerEvent } from "@/game/triggers/types";
 
 interface TriggeredWork {
@@ -117,6 +118,14 @@ function matchesControlCondition(
   // carte portant les deux textes proposerait les deux en même temps.
   const seuil = ability.condition?.attackerPowerAtLeast;
   if (seuil !== undefined && (state.pendingAttack?.attackerPower ?? 0) < seuil) return false;
+  // « lorsqu'une de VOS UNITÉS est ciblée par une attaque » : ni une attaque
+  // directe contre le Navire, ni une attaque contre une Structure.
+  if (ability.condition?.attackTargetIsOwnUnit) {
+    const cible = state.pendingAttack?.defenderInstanceId;
+    const trouvee = cible ? findBoardUnit(state, cible) : undefined;
+    if (!trouvee || trouvee.playerId !== controllerId) return false;
+    if (!UNIT_CARD_TYPES.includes(getCardDefinition(trouvee.unit.cardId).type)) return false;
+  }
   if (ability.condition?.selfHidden) {
     const holder = sourceInstanceId ? findBoardUnit(state, sourceInstanceId) : undefined;
     if (!holder || isVisibleDuringTide(getCardDefinition(holder.unit.cardId), state.environment.tideState)) return false;
@@ -125,11 +134,13 @@ function matchesControlCondition(
     // mais elle ne peut plus se « révéler » une seconde fois.
     //
     // Sans cette garde, un piège qui RESTE en jeu après s'être révélé — Filet
-    // à la Dérive, Le Filet qui Respire — reproposait sa réaction à CHAQUE
+    // à la Dérive — reproposait sa réaction à CHAQUE
     // attaque, indéfiniment : 43 fenêtres de réaction par partie, mesurées.
     // Ceux qui se détruisent ou se Sabordent ne montraient pas le problème.
     if (holder.unit.revealed) return false;
   }
+  const resteMaree = ability.condition?.tideRemainingTurnsAtLeast;
+  if (resteMaree !== undefined && state.environment.tideRemainingTurns < resteMaree) return false;
   const handAtLeast = ability.condition?.controllerHandAtLeast;
   if (handAtLeast !== undefined) {
     const holder = state.players.find((p) => p.id === controllerId);
@@ -164,16 +175,43 @@ function matchesControlCondition(
     if (unites(adversaire?.board) <= unites(moi?.board)) return false;
   }
   const seuilAttaques = ability.condition?.opponentAttacksThisTurnAtLeast;
-  if (seuilAttaques !== undefined) {
+  if (seuilAttaques !== undefined && attaquesAdversesDuTour(state, controllerId) < seuilAttaques) return false;
+  const seuilPoses = ability.condition?.opponentUnitsPlayedThisTurnAtLeast;
+  if (seuilPoses !== undefined) {
     const adversaire = state.players.find((p) => p.id !== controllerId);
-    if ((adversaire?.attacksDeclaredThisTurn ?? 0) < seuilAttaques) return false;
+    if ((adversaire?.unitsPlayedThisTurn ?? 0) < seuilPoses) return false;
   }
+  const plafondAttaques = ability.condition?.opponentAttacksThisTurnAtMost;
+  if (plafondAttaques !== undefined && attaquesAdversesDuTour(state, controllerId) > plafondAttaques) return false;
   const arrival = ability.condition?.graveyardArrival;
   if (arrival && !hasGraveyardArrival(state, controllerId, arrival)) return false;
   const required = ability.condition?.controlsAnyCardIds;
   if (!required) return true;
   const controller = state.players.find((p) => p.id === controllerId);
   return Boolean(controller?.board.some((unit) => required.includes(unit.cardId)));
+}
+
+/**
+ * Attaques déclarées par l'adversaire de `controllerId` pendant ce tour de
+ * table, CELLE EN COURS COMPRISE (`opponentAttacksThisTurnAtLeast/AtMost`).
+ *
+ * `attacksDeclaredThisTurn` n'est incrémenté qu'à la RÉSOLUTION de
+ * l'attaque (`attack.ts`), après la fenêtre d'interception ouverte à sa
+ * déclaration : lu tel quel, il valait 2 à la troisième attaque, et Cale
+ * Inondable ne se proposait qu'à la quatrième. Une attaque adverse
+ * suspendue (`pendingAttack`) dont l'attaquant n'est pas encore marqué
+ * « a attaqué » n'est pas encore comptée : on l'ajoute.
+ */
+function attaquesAdversesDuTour(state: GameState, controllerId: PlayerId): number {
+  const adversaire = state.players.find((p) => p.id !== controllerId);
+  if (!adversaire) return 0;
+  const dejaComptees = adversaire.attacksDeclaredThisTurn ?? 0;
+  const enCours = state.pendingAttack;
+  if (!enCours || enCours.kind === "tirDeNavire" || enCours.playerId !== adversaire.id || !enCours.attackerInstanceId) {
+    return dejaComptees;
+  }
+  const attaquant = adversaire.board.find((u) => u.instanceId === enCours.attackerInstanceId);
+  return attaquant && !attaquant.hasAttackedThisTurn ? dejaComptees + 1 : dejaComptees;
 }
 
 /**
@@ -191,6 +229,8 @@ function matchesLot15Condition(
   if (!condition) return true;
   // « pendant votre tour » / « pendant chacun de vos tours ».
   if (condition.duringOwnTurn && state.activePlayerId !== controllerId) return false;
+  // « pendant le tour adverse » (Bouclier d'Écume).
+  if (condition.duringOpponentTurn && state.activePlayerId === controllerId) return false;
   const moi = state.players.find((p) => p.id === controllerId);
   const adversaire = state.players.find((p) => p.id !== controllerId);
   // « si vous contrôlez au moins N AUTRES unités » (Le Déserteur Gris).
@@ -213,11 +253,17 @@ function matchesLot15Condition(
     const arrivee = triggerSourceInstanceId ? findBoardUnit(state, triggerSourceInstanceId) : undefined;
     if (!arrivee || !moi) return false;
     const siennes = chromaticColorsOf(arrivee.unit, moi.board);
+    // La photo prise à la pose fait foi (`CardInstance.couleursAvantArrivee`) :
+    // un Assemblage a déjà retiré ses Sentinelles quand on lit la condition.
+    // À défaut, le plateau actuel, la déclencheuse exclue.
     const dejaLa = new Set(
-      moi.board.filter((u) => u.instanceId !== arrivee.unit.instanceId).flatMap((u) => chromaticColorsOf(u, moi.board))
+      arrivee.unit.couleursAvantArrivee ??
+        moi.board.filter((u) => u.instanceId !== arrivee.unit.instanceId).flatMap((u) => chromaticColorsOf(u, moi.board))
     );
-    for (const claim of moi.claimedChromaticColors ?? []) {
-      if (state.turnNumber <= claim.expiresAfterTurn) dejaLa.add(claim.color);
+    if (!arrivee.unit.couleursAvantArrivee) {
+      for (const claim of moi.claimedChromaticColors ?? []) {
+        if (state.turnNumber <= claim.expiresAfterTurn) dejaLa.add(claim.color);
+      }
     }
     if (!siennes.some((color) => !dejaLa.has(color))) return false;
   }
@@ -304,6 +350,12 @@ function matchesTriggerSource(
     return false;
   }
   if (filter.onlySummoned && !event.fromSummon) return false;
+  // « que vous JOUEZ » : ni une invocation, ni une arrivée rejouée.
+  if (filter.onlyPlayed && (event.fromSummon || event.repeatedArrival)) return false;
+  // « répétez son effet d'arrivée » n'est pas une arrivée en jeu : l'unité
+  // était déjà là (décision du 02/10/2026). Seul un observateur qui le
+  // demande explicitement la voit.
+  if (event.repeatedArrival && !filter.includeRepeatedArrival) return false;
   // « depuis votre main » : la provenance du Bris écarte la capacité avant
   // tout marquage « une fois par tour » (cf. `TriggerSourceFilter.fromHand`).
   if (filter.fromHand !== undefined && filter.fromHand !== Boolean(event.fromHand)) return false;
@@ -334,6 +386,8 @@ function matchesTriggerSource(
   }
   // « par un effet de carte » : la limite de main en fin de tour n'en est pas un.
   if (filter.discardByEffect && !event.discardByEffect) return false;
+  // « piochez PUIS défaussez » : la défausse suit une pioche du même effet.
+  if (filter.discardAfterDraw && !event.discardAfterDraw) return false;
   return true;
 }
 
@@ -401,6 +455,11 @@ function collectTriggeredWork(
       // Capacité personnelle uniquement : `triggeredBy` désigne une AUTRE
       // carte, elle est traitée par `collectObserverWork` juste après.
       if (ability.trigger !== event.trigger || !matchesMode(ability) || ability.triggeredBy) return;
+      // « Quand il est DÉTRUIT » : la cause de départ que le texte accepte
+      // (un Sabordage n'est pas une destruction). Sans cause portée par
+      // l'événement, la condition ne matche pas.
+      const causes = ability.condition?.destroyedBy;
+      if (causes && !(event.destructionCause && causes.includes(event.destructionCause))) return;
       result.push(work(ability, abilityIndex, def.id, event.playerId!, event.sourceInstanceId!, turnNumber));
     });
     result.push(...collectObserverWork(state, event, turnNumber, mode));
@@ -447,6 +506,8 @@ function collectTriggeredWork(
       (def.abilities ?? []).forEach((ability, abilityIndex) => {
         if (ability.trigger !== event.trigger || !matchesMode(ability)) return;
         if (blocqueParMasquage(state, unit, ability)) return;
+        // « lorsqu'une UNITÉ adverse attaque » : un tir de Navire n'en est pas une.
+        if (ability.condition?.attackFromUnit && event.fromShipShot) return;
         if (ability.oncePerTurnKey && !oncePerTurnAvailable(unit, ability.oncePerTurnKey, turnNumber)) return;
         result.push(work(ability, abilityIndex, def.id, defenseur.id, unit.instanceId, turnNumber, event.sourceInstanceId));
       });
@@ -664,7 +725,9 @@ export function processSummonEnterTriggers(
   for (const event of events) {
     // Une arrivée REJOUÉE (`ENTER_EFFECTS_REPEATED`, Colombina) rallume les
     // mêmes capacités qu'une invocation — sans être une invocation : les
-    // filtres « seulement invoqué » ne la voient pas.
+    // filtres « seulement invoqué » ne la voient pas, et elle est marquée
+    // comme rejouée : les observateurs ne la tiennent pas pour une arrivée,
+    // sauf `includeRepeatedArrival`.
     if (event.type !== "SUMMON" && event.type !== "ENTER_EFFECTS_REPEATED") continue;
     const result = processTrigger(
       nextState,
@@ -673,7 +736,7 @@ export function processSummonEnterTriggers(
         playerId: event.playerId,
         cardId: event.cardId,
         sourceInstanceId: event.instanceId,
-        fromSummon: event.type === "SUMMON",
+        ...(event.type === "SUMMON" ? (event.played ? {} : { fromSummon: true }) : { repeatedArrival: true }),
       },
       turnNumber,
       depth
@@ -728,22 +791,30 @@ export function processReturnedToHandTriggers(
 }
 
 /**
- * Déclenchements de DÉFAUSSE (Lot 13), à partir des `CARD_MOVED`
- * main → Cimetière produits par `game/state/discard.ts`.
+ * Déclenchements d'ENTRÉE AU CIMETIÈRE hors mort (Lot 13, élargi le
+ * 30/09/2026), à partir des `CARD_MOVED` main → Cimetière produits par
+ * `game/state/discard.ts` et pioche → Cimetière produits par l'effet `mill`.
  *
- * Deux déclencheurs pour un même geste, et ils ne se recouvrent pas :
+ * Pour une défausse, trois déclencheurs, qui ne se recouvrent pas :
  *
  *   - `onDiscarded` est PERSONNEL — « quand cette carte est défaussée »,
  *     lu sur la définition de la carte partie (P'tit Bout) ;
  *   - `onCardDiscardedFromHand` est un déclencheur d'OBSERVATEUR — « une
  *     carte rejoint votre Cimetière depuis votre main », pour ce qui est
  *     en jeu et regarde (Cache-Cache, La Marelle). Il se filtre avec
- *     `triggeredBy` comme n'importe quel observateur.
+ *     `triggeredBy` comme n'importe quel observateur ;
+ *   - `onCardPutIntoGraveyard`, observateur lui aussi, voit la défausse ET
+ *     le meulage : « une carte rejoint votre Cimetière depuis votre main ou
+ *     votre pioche » (La Marelle, Cache-Cache, On avait dit tous ensemble).
+ *     C'est ce qui fait d'une pioche qui se vide un carburant plutôt qu'une
+ *     simple perte.
+ *
+ * Un meulage ne réveille que ce dernier : la carte n'a jamais été en main.
  *
  * Même forme et même raison que `processReturnedToHandTriggers` : la
  * défausse est décidée ailleurs, l'appelant repasse ici les événements.
  */
-export function processDiscardedFromHandTriggers(
+export function processGraveyardEntryTriggers(
   state: GameState,
   events: readonly GameEvent[],
   turnNumber: number,
@@ -753,10 +824,13 @@ export function processDiscardedFromHandTriggers(
   const produced: GameEvent[] = [];
 
   for (const event of events) {
-    if (event.type !== "CARD_MOVED" || event.fromZone !== "hand" || event.toZone !== "graveyard") continue;
+    if (event.type !== "CARD_MOVED" || event.toZone !== "graveyard") continue;
+    if (event.fromZone !== "hand" && event.fromZone !== "deck") continue;
     if (!event.cardId || !event.ownerId) continue;
+    const fromZone = event.fromZone;
 
-    for (const trigger of ["onDiscarded", "onCardDiscardedFromHand"] as const) {
+    const triggers = fromZone === "hand" ? (["onDiscarded", "onCardDiscardedFromHand", "onCardPutIntoGraveyard"] as const) : (["onCardPutIntoGraveyard"] as const);
+    for (const trigger of triggers) {
       const result = processTrigger(
         nextState,
         {
@@ -765,7 +839,9 @@ export function processDiscardedFromHandTriggers(
           cardId: event.cardId,
           sourceInstanceId: event.instanceId,
           discardedOwnerId: event.ownerId,
+          fromZone,
           ...(event.discardByEffect ? { discardByEffect: true } : {}),
+          ...(event.discardAfterDraw ? { discardAfterDraw: true } : {}),
         },
         turnNumber,
         depth
@@ -819,6 +895,91 @@ export function processGraveyardRecoveryTriggers(
 }
 
 /**
+ * Déclencheurs d'un CHANGEMENT D'ÉTAT de Marée : `onTideStateEntered` pour
+ * l'état atteint, puis `onTideStateExited` pour l'état quitté. Point commun
+ * du tick de début de tour (`appliquerMareeAnnoncee`) et des transitions
+ * forcées par une carte (`processForcedTideTransitions`) : une Marée qui
+ * change est une Marée qui change, qui que ce soit qui l'ait poussée.
+ */
+export function processTideStateChange(
+  state: GameState,
+  previousTideState: TideStateName,
+  tideState: TideStateName,
+  turnNumber: number
+): { state: GameState; events: GameEvent[] } {
+  const entered = processTrigger(state, { trigger: "onTideStateEntered", tideState }, turnNumber);
+  const exited = processTrigger(entered.state, { trigger: "onTideStateExited", tideState: previousTideState }, turnNumber);
+  return { state: exited.state, events: [...entered.events, ...exited.events] };
+}
+
+/**
+ * Structures qui DEVIENNENT VISIBLES parce que la Marée est passée de
+ * `previousTideState` à `tideState` (`visibleDuringTide`) : `STRUCTURE_REVEALED`
+ * puis `onBecomeVisible`. Même partage que `processTideStateChange`.
+ */
+export function revealStructuresOnTideChange(
+  state: GameState,
+  previousTideState: TideStateName,
+  tideState: TideStateName,
+  turnNumber: number
+): { state: GameState; events: GameEvent[] } {
+  let nextState = state;
+  const events: GameEvent[] = [];
+  for (const playerId of nextState.players.map((p) => p.id)) {
+    const player = nextState.players.find((p) => p.id === playerId)!;
+    for (const unit of player.board) {
+      const def = getCardDefinition(unit.cardId);
+      if (!def.visibleDuringTide) continue;
+      const wasVisible = isVisibleDuringTide(def, previousTideState);
+      const isVisible = isVisibleDuringTide(def, tideState);
+      if (wasVisible || !isVisible) continue;
+      events.push({ turnNumber, timestamp: Date.now(), type: "STRUCTURE_REVEALED", playerId, instanceId: unit.instanceId, cardId: unit.cardId });
+      const becomeVisible = processTrigger(
+        nextState,
+        { trigger: "onBecomeVisible", playerId, cardId: unit.cardId, sourceInstanceId: unit.instanceId },
+        turnNumber
+      );
+      nextState = becomeVisible.state;
+      events.push(...becomeVisible.events);
+    }
+  }
+  return { state: nextState, events };
+}
+
+/**
+ * Transitions de Marée FORCÉES par un effet de carte (`TIDE_ADVANCED` marqué
+ * `forced`, Compas, Bouée, Régulateur de Courant, Sept Brasses…) : elles
+ * réveillent les MÊMES déclencheurs qu'une transition naturelle — entrée,
+ * sortie, Structures qui deviennent visibles. Avant, seul le tick de début
+ * de tour le faisait (« simplification assumée ») : la Sonde des Courants
+ * Perdus ou le Contremaître des Amarres ne voyaient jamais une Marée
+ * poussée par une carte.
+ *
+ * Ce qui N'EST PAS rejoué : le choc d'entrée/sortie des Abysses et la
+ * levée du MALADE, déjà appliqués par l'effet lui-même
+ * (`applyForcedTideTransition`), ni les effets DE TOUR du nouvel état, qui
+ * attendent le prochain tick comme avant. Appelée par `dispatch`, seul
+ * endroit que traversent toutes les actions (pose, Bris, Sabordage,
+ * réaction, capacité de Navire).
+ */
+export function processForcedTideTransitions(
+  state: GameState,
+  events: readonly GameEvent[],
+  turnNumber: number
+): { state: GameState; events: GameEvent[] } {
+  let nextState = state;
+  const produced: GameEvent[] = [];
+  for (const event of events) {
+    if (event.type !== "TIDE_ADVANCED" || !event.forced || !event.stateChanged || !event.previousTideState) continue;
+    const change = processTideStateChange(nextState, event.previousTideState, event.tideState, turnNumber);
+    const reveal = revealStructuresOnTideChange(change.state, event.previousTideState, event.tideState, turnNumber);
+    nextState = reveal.state;
+    produced.push(...change.events, ...reveal.events);
+  }
+  return { state: nextState, events: produced };
+}
+
+/**
  * Traite un `TriggerEvent` : résout dans l'ordre toutes les capacités
  * AUTOMATIQUES concernées et retourne le nouvel état + les événements
  * produits (à ajouter au journal par l'appelant). Les capacités
@@ -855,8 +1016,9 @@ export function processTrigger(
     // « Choisissez : A ou B » en résolution AUTOMATIQUE (ex: Horloge de
     // Marée au Sabordage) : rien ne se résout ici, un choix est ouvert pour
     // le contrôleur (`GameState.pendingChoice`, résolu par `resolveChoice`).
-    // Si un choix est déjà en attente, la première option du groupe se
-    // résout d'office.
+    // Si un choix est déjà en attente, celui-ci prend la file
+    // (`pendingChoiceQueue`) : le moteur ne choisit jamais à la place du
+    // joueur.
     if (item.ability.choiceGroup && item.context.sourceInstanceId) {
       const groupKey = `${item.context.sourceInstanceId}:${item.ability.choiceGroup}`;
       if (openedChoiceGroups.has(groupKey)) continue;
@@ -864,21 +1026,18 @@ export function processTrigger(
       const abilityIndexes = (getCardDefinition(item.cardId).abilities ?? []).flatMap((ability, index) =>
         ability.choiceGroup === item.ability.choiceGroup && (ability.mode ?? "auto") === "auto" ? [index] : []
       );
-      if (!nextState.pendingChoice) {
-        nextState = {
-          ...nextState,
-          pendingChoice: {
-            kind: "abilityOption",
-            playerId: item.context.controllerId,
-            sourceInstanceId: item.context.sourceInstanceId,
-            cardId: item.cardId,
-            abilityIndexes,
-            turnNumber,
-          },
-        };
-        continue;
-      }
-      if (abilityIndexes[0] !== item.abilityIndex) continue;
+      const option: PendingChoice = {
+        kind: "abilityOption",
+        playerId: item.context.controllerId,
+        sourceInstanceId: item.context.sourceInstanceId,
+        cardId: item.cardId,
+        abilityIndexes,
+        turnNumber,
+      };
+      nextState = nextState.pendingChoice
+        ? { ...nextState, pendingChoiceQueue: [...(nextState.pendingChoiceQueue ?? []), option] }
+        : { ...nextState, pendingChoice: option };
+      continue;
     }
 
     // "La première fois à chaque tour" : marquée AVANT résolution, pour
@@ -928,7 +1087,7 @@ export function processTrigger(
     // Et pour une défausse provoquée par une capacité (Lot 13) : une carte
     // envoyée au Cimetière par un déclenchement est défaussée tout autant
     // qu'une carte envoyée par une pose.
-    const discarded = processDiscardedFromHandTriggers(nextState, events, turnNumber, depth + 1);
+    const discarded = processGraveyardEntryTriggers(nextState, events, turnNumber, depth + 1);
     nextState = discarded.state;
     events.push(...discarded.events);
 
@@ -936,23 +1095,6 @@ export function processTrigger(
     const recovered = processGraveyardRecoveryTriggers(nextState, events, turnNumber, depth + 1);
     nextState = recovered.state;
     events.push(...recovered.events);
-  }
-
-  // Anomalies globales temporaires (`game/state/anomalies.ts`) : centralisées
-  // ICI plutôt que sur chaque site d'appel (playCard.ts / processDeaths.ts /
-  // saborder.ts / resolveEnvironment.ts) puisque `processTrigger` est déjà
-  // le point de passage unique pour ces trois `TriggerType`. Le Sabordage
-  // déclenche toujours `onDeath` EN PLUS de `onSaborde` (cf. `TriggerType`),
-  // donc ne réagir qu'à `onDeath`/`onExpire` ici évite de compter deux fois
-  // le départ d'un même permanent sabordé.
-  if (event.trigger === "onCardPlayed" && event.playerId && event.cardId) {
-    const anomaly = applyCardPlayedAnomalies(nextState, event.playerId, getCardDefinition(event.cardId).type, turnNumber);
-    nextState = anomaly.state;
-    events.push(...anomaly.events);
-  } else if ((event.trigger === "onDeath" || event.trigger === "onExpire") && event.playerId) {
-    const anomaly = applyPermanentLeftAnomalies(nextState, event.playerId, turnNumber);
-    nextState = anomaly.state;
-    events.push(...anomaly.events);
   }
 
   return { state: nextState, events };
@@ -967,6 +1109,19 @@ export function processTrigger(
  * (`game/reactions/`) ; jamais pour résoudre quoi que ce soit lui-même.
  */
 export function collectReactionCandidates(
+  state: GameState,
+  triggerEvents: TriggerEvent[],
+  forPlayerId: PlayerId,
+  turnNumber: number
+): PendingReactionCandidate[] {
+  return [
+    ...collectReactionCandidatesOnBoard(state, triggerEvents, forPlayerId, turnNumber),
+    ...handBreakReactionCandidates(state, triggerEvents, forPlayerId, turnNumber),
+  ];
+}
+
+/** Capacités facultatives éligibles des cartes EN JEU (et du Cimetière pour les déclencheurs de mort). */
+function collectReactionCandidatesOnBoard(
   state: GameState,
   triggerEvents: TriggerEvent[],
   forPlayerId: PlayerId,
@@ -994,9 +1149,26 @@ export function collectReactionCandidates(
       const key = `${item.context.sourceInstanceId}:${item.abilityIndex}`;
       if (seen.has(key)) continue;
 
+      // Bris SUSPENDU (Fausse Cargaison) : sa fenêtre n'appelle que ce qui
+      // l'annule — ce qui réagit au Bris lui-même se propose à sa reprise,
+      // pas deux fois. Et une annulation ne se propose que s'il reste un
+      // Bris à annuler : hors de cette fenêtre, elle ne ferait rien.
+      const annule = item.effects.some((effect) => effect.type === "cancelObjectEffect");
+      if (annule && !(state.pendingObjectBreak && !state.pendingObjectBreak.cancelled)) continue;
+      if (state.pendingObjectBreak && event.trigger === "onObjectBroken" && !annule) continue;
+
       // Le coût en Raison d'une réaction ne l'écarte jamais : sans plancher
       // de Déraison, la réaction se propose et se paie en creusant la dette.
-      const reasonCost = item.ability.cost?.reason ?? 0;
+      // Seule exception, portée par une carte : la taxe de Bris adverse
+      // (Cloche d'Alerte), qui s'ajoute au coût d'une réaction qui BRISE un
+      // Objet et la rend impossible si elle est impayable.
+      let reasonCost = item.ability.cost?.reason ?? 0;
+      const itemDef = getCardDefinition(item.cardId);
+      if (isBreakReaction(itemDef, item.ability)) {
+        const tax = objectBreakTax(state, forPlayerId, turnNumber);
+        reasonCost += tax.amount;
+        if (breakTaxBlocks(state, forPlayerId, tax.blocksIfUnpayable, reasonCost, turnNumber)) continue;
+      }
 
       // Le coût en ANCRAGE, lui, écarte : la coque n'a pas de découvert,
       // et proposer « payez 3 Ancrage » à un joueur qui en a 2 reviendrait
@@ -1044,6 +1216,90 @@ export function collectReactionCandidates(
 }
 
 /**
+ * « S'il ne peut pas payer, l'Objet ne peut pas être Brisé » (Cloche
+ * d'Alerte) : vrai si une taxe bloquante rend ce Bris impayable — coût total
+ * après bouclier supérieur à la Raison du joueur.
+ */
+function breakTaxBlocks(state: GameState, playerId: PlayerId, blocksIfUnpayable: boolean, totalCost: number, turnNumber: number): boolean {
+  if (!blocksIfUnpayable) return false;
+  const player = state.players.find((p) => p.id === playerId);
+  return !player || player.reason < reasonCostAfterShield(state, playerId, totalCost, turnNumber);
+}
+
+/**
+ * Objets RÉACTIFS encore en main (règle du 29/09/2026) : « Lorsque …, vous
+ * pouvez Briser cet Objet » se propose aussi depuis la main, au coût d'un
+ * Bris depuis la main, sans Slot.
+ *
+ * Plutôt que de dupliquer, déclencheur par déclencheur, la façon dont
+ * `collectTriggeredWork` trouve une capacité sur le plateau, on lui pose la
+ * question sur un plateau HYPOTHÉTIQUE où l'Objet serait posé : s'il y
+ * serait éligible, il l'est depuis la main. Rien de cet état n'est gardé.
+ */
+function handBreakReactionCandidates(
+  state: GameState,
+  triggerEvents: TriggerEvent[],
+  forPlayerId: PlayerId,
+  turnNumber: number
+): PendingReactionCandidate[] {
+  const player = state.players.find((p) => p.id === forPlayerId);
+  if (!player) return [];
+
+  const found: PendingReactionCandidate[] = [];
+  for (const card of player.hand) {
+    const def = getCardDefinition(card.cardId);
+    if (!(def.abilities ?? []).some((ability) => isBreakReaction(def, ability))) continue;
+
+    const hypothetical: GameState = {
+      ...state,
+      players: state.players.map((p) =>
+        p.id === forPlayerId ? { ...p, hand: p.hand.filter((c) => c.instanceId !== card.instanceId), board: [...p.board, card] } : p
+      ) as [PlayerState, PlayerState],
+    };
+    const onBoard = collectReactionCandidatesOnBoard(hypothetical, triggerEvents, forPlayerId, turnNumber);
+    for (const candidate of onBoard) {
+      if (candidate.sourceInstanceId !== card.instanceId) continue;
+      const ability = def.abilities?.[candidate.abilityIndex];
+      if (!ability || !isBreakReaction(def, ability)) continue;
+      const reasonCost = candidate.reasonCost + handBreakCost(def);
+      // Depuis la main, la taxe bloquante se mesure au coût TOTAL (Bris
+      // depuis la main + taxe), comme pour l'action `breakObject`.
+      const tax = objectBreakTax(state, forPlayerId, turnNumber);
+      if (breakTaxBlocks(state, forPlayerId, tax.blocksIfUnpayable, reasonCost, turnNumber)) continue;
+      found.push({ ...candidate, fromHand: true, reasonCost });
+    }
+  }
+  return found;
+}
+
+/**
+ * REFUSER une « première fois à chaque tour … vous pouvez » consomme
+ * l'occasion du tour (règle de projet : passer une fenêtre est un choix).
+ * Appelé quand le joueur PASSE : chaque capacité facultative qui lui était
+ * proposée et qui porte un `oncePerTurnKey` est marquée pour le tour,
+ * exactement comme si elle avait servi — elle ne se reproposera pas à
+ * l'occurrence suivante, qui n'est plus « la première ».
+ *
+ * `onceEver` (« la première fois que… » sans « à chaque tour ») n'est PAS
+ * consommé par un refus : brûler l'unique usage de la partie sur un simple
+ * « pas maintenant » est une décision de design qui reste à prendre.
+ */
+export function consumeDeclinedOncePerTurnReactions(
+  state: GameState,
+  candidates: readonly PendingReactionCandidate[],
+  turnNumber: number
+): GameState {
+  let nextState = state;
+  for (const candidate of candidates) {
+    if (candidate.fromHand) continue;
+    const ability = getCardDefinition(candidate.cardId).abilities?.[candidate.abilityIndex];
+    if (!ability?.oncePerTurnKey || ability.onceEver) continue;
+    nextState = markOncePerTurnSlot(nextState, ability, candidate.sourceInstanceId, candidate.triggerSourceInstanceId, turnNumber);
+  }
+  return nextState;
+}
+
+/**
  * Résout UNE capacité `optional` précise (identifiée par
  * `sourceInstanceId` + `abilityIndex`), en payant son coût d'abord. Ne
  * vérifie PAS l'éligibilité (déjà fait par l'appelant via
@@ -1065,6 +1321,12 @@ export function resolveReaction(
   const events: GameEvent[] = [];
   const base = { turnNumber, timestamp: Date.now() };
   let nextState = state;
+
+  // Bris en réaction : la taxe adverse (Cloche d'Alerte), déjà comptée dans
+  // `reasonCost` au recensement, est consommée pour le tour.
+  if (isBreakReaction(def, ability)) {
+    nextState = consumeObjectBreakTax(nextState, objectBreakTax(nextState, candidate.controllerId, turnNumber), turnNumber);
+  }
 
   if (candidate.reasonCost > 0) {
     const payment = payReasonCost(nextState, candidate.controllerId, candidate.reasonCost, turnNumber);
@@ -1107,7 +1369,13 @@ export function resolveReaction(
     turnNumber,
   };
 
-  const reacted = resolveEffectSequence(nextState, ability.effects, context);
+  // Depuis la main, l'Objet est déjà au Cimetière (`activateReaction`) :
+  // le « Briser cet Objet » que porte la capacité est fait, il ne reste que
+  // son effet.
+  const effects = candidate.fromHand
+    ? ability.effects.filter((effect) => !(effect.type === "saborde" && effect.target.kind === "self"))
+    : ability.effects;
+  const reacted = resolveEffectSequence(nextState, effects, context);
   nextState = reacted.state;
   events.push(...reacted.events);
 
@@ -1117,23 +1385,6 @@ export function resolveReaction(
     playerId: candidate.controllerId,
     sourceInstanceId: candidate.sourceInstanceId,
   });
-
-  // Guetteur de Brume (et cartes similaires) : "la première fois par tour
-  // que l'adversaire déclenche un effet pendant votre tour, regardez une
-  // carte de sa main" — activer une réaction est, dans ce moteur, le SEUL
-  // moyen pour un joueur non-actif de déclencher un effet pendant le tour
-  // de l'autre. Ne concerne que le joueur ACTIF (celui dont c'est le tour) :
-  // s'il active lui-même une de ses propres réactions, ce n'est pas
-  // "l'adversaire" qui a agi.
-  if (candidate.controllerId !== state.activePlayerId) {
-    const reveal = consumeOpponentReactionRevealShield(nextState, state.activePlayerId, turnNumber);
-    nextState = reveal.state;
-    if (reveal.amount > 0) {
-      const revealResult = revealRandomHandCards(nextState, candidate.controllerId, reveal.amount, turnNumber);
-      nextState = revealResult.state;
-      events.push(...revealResult.events);
-    }
-  }
 
   return { state: nextState, events };
 }

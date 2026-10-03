@@ -27,7 +27,7 @@ function tableExposee(tideState: "calme" | "houle" | "tempete" | "abysses"): {
   structure: string;
   objet: string;
 } {
-  const structure = instance("epaves-accrochees", "p1", { turnsRemaining: 4 });
+  const structure = instance("le-role-dequipage", "p1", { turnsRemaining: 4 });
   const objet = instance("treuil-rouille", "p1", { turnsRemaining: 4 });
   return {
     structure: structure.instanceId,

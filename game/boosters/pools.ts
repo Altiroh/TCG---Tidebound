@@ -48,7 +48,6 @@ export const BOOSTER_ECLATS_EN_SELLE = "eclats-en-selle";
 const DEFAUT: readonly string[] = [
   "marin-des-jetees", // Marin des Jetées
   "vieux-loup-de-mer", // Vieux Loup de Mer
-  "plongeur-des-epaves", // Plongeur des Épaves
   "murene-aveugle", // Murène Aveugle
   "poisson-lanterne", // Poisson-Lanterne
   "chose-des-hauts-fonds", // Chose des Hauts-Fonds
@@ -59,16 +58,13 @@ const DEFAUT: readonly string[] = [
   "cylindre-flottant", // Cylindre flottant
   "cartes-des-courants", // Cartes des Courants
   "cloche-dalerte", // Cloche d'Alerte
-  "ancre-de-derive", // Ancre de Dérive
   "la-nasse-trop-pleine", // La Nasse Trop Pleine
   "le-role-dequipage", // Le Rôle d'Équipage
   "marin-aux-yeux-rouges", // Marin aux Yeux Rouges
   "marin-aux-yeux-rouges-abyssal", // Marin aux Yeux Rouges
   "guetteur-mefiant", // Guetteur Méfiant
-  "guetteur-de-brume", // Guetteur de Brume
   "matelot-du-sans-nom", // Matelot du Sans-Nom
   "crabe-de-fer", // Crabe de Fer
-  "bouee-de-derive", // Bouée de Dérive
   "epave-a-fleur-deau", // Épave à Fleur d'Eau
   "plaque-de-fortune", // Plaque de Fortune
   "poisson-aux-dents-de-verre", // Poisson aux Dents de Verre
@@ -80,8 +76,6 @@ const DEFAUT: readonly string[] = [
   "bernard-lermite-dacier", // Bernard-l'Ermite d'Acier
   "corde-de-remorquage", // Corde de Remorquage
   "kit-de-calfatage", // Kit de Calfatage
-  "radeau-de-fortune", // Radeau de Fortune
-  "epaves-accrochees", // Épaves Accrochées
   "levier-de-lest", // Levier de Lest
   "regulateur-de-courant", // Régulateur de Courant
   "wood-vy", // Wood Vy
@@ -119,43 +113,32 @@ const DEFAUT: readonly string[] = [
  */
 const POISSONS_PAS_FRAIS: readonly string[] = [
   "anguille-des-profondeurs", // Anguille des Profondeurs
-  "le-chant-sous-la-ligne", // Le Chant Sous la Ligne
-  "cartographe-du-large", // Cartographe du Large
   "matelot-insomniaque", // Matelot Insomniaque
-  "gardien-du-sondeur", // Gardien du Sondeur
   "raie-des-fosses", // Raie des Fosses
   "lampe-de-pont-rouge", // Lampe de Pont Rouge
   "balise-des-profondeurs", // Balise des Profondeurs
   "harponneur-du-dernier-quai", // Harponneur du Dernier Quai
-  "capitaine-sans-sommeil", // Capitaine Sans Sommeil
   "requin-balafre", // Requin Balafré
   "cage-de-flottaison", // Cage de Flottaison
-  "ponton-aux-cloches", // Ponton aux Cloches
   "barracuda-des-hauts-fonds", // Barracuda des Hauts-Fonds
   "poisson-scie-gris", // Poisson-Scie Gris
   "grappin-de-recuperation", // Grappin de Récupération
   "mecanicien-aux-mains-noires", // Mécanicien aux Mains Noires
   "meduse-des-lanternes", // Méduse des Lanternes
-  "baleine-aux-cicatrices-blanches", // Baleine aux Cicatrices Blanches
   "carcasse-renversee", // Carcasse Renversée
   "bouee-de-rappel", // Bouée de Rappel
   "horloge-de-maree", // Horloge de Marée
   "sondeur-des-mauvaises-eaux", // Sondeur des Mauvaises Eaux
-  "ancre-de-tempete", // Ancre de Tempête
   "si-raie-ponce", // Si, Raie Ponce
   "bat-marin", // Bat-Marin
   "bat-marin-abyssal", // Bat-Marin
   "chope", // Choppe !
   "la-chose-qui-remonte", // La Chose qui Remonte
-  "epave-engloutie", // Épave Engloutie
   "lhomme-revenu-de-la-fosse", // Revenante de la Fosse
   "revenante-de-la-fosse-abyssal", // Revenante de la Fosse — ABYSSALE
   "treuil-a-chair", // Treuil à Chair
   "second-au-visage-pale", // Seconde au Visage Pâle
-  "veilleur-des-profondeurs", // Veilleuse des Profondeurs
-  "masque-de-plongee-fissure", // Masque de Plongée Fissuré
   "chaine-de-fer-noir", // Chaîne de Fer Noir
-  "le-filet-qui-respire", // Le Filet qui Respire
   "compas-aux-aiguilles-noires", // Compas aux Aiguilles Noires
   "cra-poiscail-bavard", // Cra-Poiscail Bavard
   "cra-poiscail-chef-de-banc", // Cra-Poiscail Chef de Banc
@@ -192,25 +175,14 @@ const POISSONS_PAS_FRAIS: readonly string[] = [
  * branche pseudo-médiévale Cra-Poiscail.
  */
 const ETRANGETE_SOUS_MARINE: readonly string[] = [
-  "quelque-chose-sous-la-coque", // Quelque Chose Sous la Coque
-  "les-voix-dans-le-sillage", // Les Voix dans le Sillage
   "masse-sombre", // Masse-Sombre
   "masse-sombre-abyssal", // Masse-Sombre — ABYSSALE
   "ce-qui-suit-le-navire", // Ce Qui Suit le Navire
   "ce-qui-suit-le-navire-abyssal", // Ce Qui Suit le Navire
   "lanterne-aux-verres-noirs", // Lanterne aux Verres Noirs
-  "la-bouee-qui-regardait", // La Bouée qui Regardait
-  "ils-sont-sous-nous", // Ils Sont Sous Nous
-  "ils-sont-sous-nous-abyssal", // Ils Sont Sous Nous
-  "loeil-sous-la-mer", // L'Œil Sous la Mer
-  "loeil-sous-la-mer-abyssal", // L'Œil Sous la Mer
-  "cloche-immergee", // Cloche Immergée
   "le-fond-vous-regarde", // Le Fond Vous Regarde
   "le-fond-vous-regarde-abyssal", // Le Fond Vous Regarde
   "cloche-du-grand-fond", // Cloche du Grand Fond
-  "cloche-du-grand-fond-abyssal", // Cloche du Grand Fond
-  "la-mer-reclame-davantage", // La Mer Réclame Davantage
-  "la-mer-reclame-davantage-abyssal", // La Mer Réclame Davantage
   "la-gueule-sous-la-mer", // La Gueule Sous la Mer
   "sept-brasses-plus-bas", // Sept Brasses Plus Bas
   "ecuyer-cra-poiscail", // Écuyer Cra-Poiscail
@@ -238,7 +210,6 @@ const ETRANGETE_SOUS_MARINE: readonly string[] = [
   "le-regisseur-sans-visage", // Le Régisseur Sans Visage
   "la-clochette-du-rappel", // La Clochette du Rappel
   "le-theatre-englouti", // Le Théâtre Englouti
-  "les-coulisses-inondees", // Les Coulisses Inondées
   "changement-de-role", // Changement de rôle !
   "rappel-du-public", // Rappel du Public
   "le-rideau-se-leve", // Le Rideau se Lève
@@ -256,7 +227,6 @@ const ETRANGETE_SOUS_MARINE: readonly string[] = [
   "clous-de-recuperation",
   "etau-du-calfat",
   "sonde-des-courants-perdus",
-  "ce-que-la-maree-rend",
 ];
 
 /**
@@ -309,7 +279,6 @@ const VEILLEE_DES_DISPARUS: readonly string[] = [
   "le-masque-fendu",
   // --- Cimetière et récupération ---
   "grappin-de-recuperation",
-  "plongeur-des-epaves",
   "mecanicien-aux-mains-noires",
   "charpentier-des-epaves",
   "caisse-des-dernieres-planches",
@@ -357,7 +326,6 @@ const NECESSAIRE_DU_MARIN: readonly string[] = [
   "filet-de-sauvetage",
   "le-pont-est-plein",
   "vague-scelerate",
-  "panique-sur-le-pont",
   "chacun-sa-place",
   "pas-tous-a-la-fois",
   "le-large-se-fache",
@@ -365,13 +333,11 @@ const NECESSAIRE_DU_MARIN: readonly string[] = [
   "mauvaise-main",
   "un-peu-de-repit",
   "dernieres-reserves",
-  "journal-de-bord",
   "fouille-de-la-cale",
   "harpon-a-ressort",
   "bouclier-decume",
   "signal-de-detresse",
   "corde-de-rappel",
-  "planche-de-fortune",
   "contre-harpon",
   "coup-de-harpon",
   "par-dessus-bord",
@@ -466,7 +432,6 @@ const ECLATS_EN_SELLE_POOL: readonly string[] = [
   "pierre-retrouvee",
   "transfert-de-pierre",
   "poste-chromatique",
-  "coffret-aux-cinq-pierres",
   "synchronisation",
   "les-couleurs-repondent",
   "formation-prismatique",

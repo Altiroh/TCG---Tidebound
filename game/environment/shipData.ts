@@ -12,14 +12,13 @@ import type { ShipDefinition } from "@/game/environment/types";
  * NOTE — toutes les capacités activables sont désormais CÂBLÉES. La
  * fréquence "une fois par PARTIE" a sa primitive générique
  * (`activationsPerGame`, `game/state/oncePerGame.ts`), et la fenêtre
- * "après l'annonce d'une Marée" réutilise celle que le moteur ouvrait déjà
- * pour l'Ancre de Dérive (`activationWindow`). `capacityText` — le champ
+ * "après l'annonce d'une Marée" réutilise la fenêtre d'annonce de Marée
+ * du moteur (`activationWindow`). `capacityText` — le champ
  * "texte seul, rien n'est appliqué" — n'a plus d'occupant.
  *
- * Restent en texte seul certains PASSIFS qui demanderaient de distinguer
- * "gain de Raison venant d'une carte" (Cap sûr, cadrage section 16,
- * volontairement complexe) ; seuls les effets exprimables avec les champs
- * numériques ci-dessous sont réellement appliqués.
+ * Les PASSIFS aussi : le dernier en texte seul, Cap sûr (L'Errant), a été
+ * réécrit le 29/09/2026 en une forme que le moteur sait constater
+ * (`refundTurnReasonOnFirstDepletion`).
  *
  * ANCRAGE DE DÉPART, +50 % LE 21/09/2026 (17/20/24 → 26/30/36).
  *
@@ -45,9 +44,23 @@ export const SHIP_SET: ShipDefinition[] = [
   {
     id: "le-courlis",
     name: "Le Courlis",
-    startingAnchor: 26,
+    // 26 → 30 ANCRAGE (décision du 29/09/2026). Mesuré au labo sur Après la
+    // Tempête : ce sont ses 26 points d'Ancrage qui coûtaient, pas ses 4
+    // Slots (+0 point à 5 Slots, +13 à 30 Ancrage). Chacun des trois decks
+    // qui l'avaient quitté progressait d'abord par là. Il rejoint les
+    // coques moyennes (L'Errant, Le Goliath, La Religieuse, La Verrière) et
+    // garde ce qui le distingue : 12 Raison, Tirant léger.
+    //
+    // 4 → 5 SLOTS (décision du 01/10/2026). Les Sentinelles Chromatiques,
+    // deck d'unités bon marché et d'invocations, y étaient bridées : 18,7 %
+    // de parties à au moins deux tours inactifs sur T1-4, 41 % de victoires
+    // contre la méta. À 5 Slots : 6 % et 54 %. Après la Tempête n'y gagne
+    // rien (49 → 46 %, dans le bruit) mais n'y perd que si l'Ancrage baisse
+    // aussi (5 Slots / 28 Ancrage : 40 %) — d'où 30 Ancrage conservés.
+    // Archives : docs/equilibrage/courlis-5-slots.txt.
+    startingAnchor: 30,
     reasonMax: 12,
-    slotCount: 4,
+    slotCount: 5,
     illustration: "le-courlis.webp",
     text: "Profil : léger / maniable / contrôle environnemental.",
     // TIRANT LÉGER — texte remis à jour le 22/09/2026. Il nommait « un
@@ -61,7 +74,8 @@ export const SHIP_SET: ShipDefinition[] = [
     // directe » coûtait à elle seule 9 des 11 points que le Courlis cédait à
     // L'Errant au labo (15 listes × chaque coque, bot moyen ; −7 → +1 au bot
     // difficile). Sans elle, le Courlis revient au niveau de L'Errant et
-    // garde ce qui le distingue : 26 Ancrage, 4 Slots, 12 Raison.
+    // garde ce qui le distingue : 26 Ancrage (30 depuis le 29/09/2026),
+    // 4 Slots (5 depuis le 01/10/2026), 12 Raison.
     // VIRAGE COURT — texte repris de la fiche Notion (22/09/2026).
     //
     // Le code portait encore l'ancien texte, celui des Eaux (« lorsqu'une
@@ -102,10 +116,14 @@ export const SHIP_SET: ShipDefinition[] = [
     slotCount: 5,
     illustration: "errant.webp",
     text: "Profil standard : polyvalent, équilibré, sans faiblesse critique.",
+    // Cap sûr réécrit le 29/09/2026 (décision de design) : l'ancien texte —
+    // « +1 Raison la première fois par tour que vous en récupérez grâce à
+    // une carte » — n'a jamais été appliqué, faute de distinguer l'origine
+    // d'un gain de Raison.
     passiveText:
-      "Cap sûr — la première fois par tour que vous récupérez de la Raison grâce à une carte, récupérez 1 " +
-      "Raison supplémentaire (non appliqué : nécessite de distinguer les gains de Raison venant des cartes, " +
-      "pas encore modélisé).",
+      "Cap sûr — la première fois de la partie que votre Raison tombe à 0 ou moins, récupérez la Raison " +
+      "perdue pendant ce tour.",
+    refundTurnReasonOnFirstDepletion: true,
     // Première capacité « une fois par partie » réellement câblée
     // (`activationsPerGame`), et première à s'activer DANS une fenêtre :
     // celle que le moteur ouvre déjà entre l'annonce d'une Marée et
