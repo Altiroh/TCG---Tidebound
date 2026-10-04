@@ -117,6 +117,26 @@ export function ProfileView({
   const { apply: applyCardBack } = useCardBack();
   const [reveal, setReveal] = useState<{ levels: RevealedLevel[]; choices: PendingCardChoice[]; extraItems?: RewardItem[]; title?: string } | null>(null);
   const [claiming, setClaiming] = useState<number | "all" | "everything" | string | null>(null);
+  /**
+   * Une réclamation réussie reste marquée jusqu'à l'arrivée du profil RELU
+   * (`onRefresh` → nouveau `profile`) : relâchée plus tôt, la récompense
+   * réclamée réapparaissait « à réclamer » le temps de la relecture.
+   */
+  const releaseTimer = useRef<number | undefined>(undefined);
+  useEffect(() => {
+    window.clearTimeout(releaseTimer.current);
+    setClaiming(null);
+  }, [profile]);
+  useEffect(() => () => window.clearTimeout(releaseTimer.current), []);
+  /** Fin d'une réclamation : tout de suite si rien n'est relu, sinon à l'arrivée du profil (filet de 10 s). */
+  function releaseClaim(refreshed: boolean) {
+    if (!refreshed) {
+      setClaiming(null);
+      return;
+    }
+    window.clearTimeout(releaseTimer.current);
+    releaseTimer.current = window.setTimeout(() => setClaiming(null), 10_000);
+  }
   const [claimError, setClaimError] = useState<string | null>(null);
   /**
    * Choix ouvert : le titre s'ouvre à la place de l'onglet ; l'illustration,
@@ -193,6 +213,7 @@ export function ProfileView({
     playButtonClick();
     setClaimError(null);
     setClaiming("everything");
+    let refreshed = false;
     try {
       const extra: RewardItem[] = [];
       if (profile.login.claimable) {
@@ -222,8 +243,9 @@ export function ProfileView({
       }
       notifyProgressionChanged();
       onRefresh();
+      refreshed = true;
     } finally {
-      setClaiming(null);
+      releaseClaim(refreshed);
     }
   }
 
@@ -232,14 +254,16 @@ export function ProfileView({
     playButtonClick();
     setClaimError(null);
     setClaiming(code);
+    let refreshed = false;
     try {
       const result = await claimAchievement(code);
       if (!result.ok) setClaimError(result.error ?? "Réclamation impossible.");
       else setReveal({ levels: [], choices: [], extraItems: [{ kind: "tides", amount: result.tides ?? 0 }], title: "Exploit réclamé !" });
       notifyProgressionChanged();
       onRefresh();
+      refreshed = true;
     } finally {
-      setClaiming(null);
+      releaseClaim(refreshed);
     }
   }
 
@@ -260,6 +284,7 @@ export function ProfileView({
     playButtonClick();
     setClaimError(null);
     setClaiming(level);
+    let refreshed = false;
     try {
       if (level === "all") {
         const result = await claimAllLevelRewards();
@@ -279,8 +304,10 @@ export function ProfileView({
         }
       }
       notifyProgressionChanged();
+      onRefresh();
+      refreshed = true;
     } finally {
-      setClaiming(null);
+      releaseClaim(refreshed);
     }
   }
 
@@ -503,7 +530,11 @@ export function ProfileView({
 function LogbookTab({ profile, onRefresh, onShowRewards }: { profile: ProfileSummary; onRefresh: () => void; onShowRewards: () => void }) {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
+  // `startTransition(async …)` ne suit pas l'appel sous React 18 : l'escale
+  // réclamée réapparaissait « à réclamer » jusqu'au profil relu. Marquée
+  // jusqu'à son arrivée.
+  const [isPending, setIsPending] = useState(false);
+  useEffect(() => setIsPending(false), [profile]);
   const { view } = profile;
   const unlockedAchievements = profile.achievements.filter((achievement) => achievement.unlocked).length;
 
@@ -511,10 +542,12 @@ function LogbookTab({ profile, onRefresh, onShowRewards }: { profile: ProfileSum
     playButtonClick();
     setError(null);
     setMessage(null);
-    startTransition(async () => {
+    setIsPending(true);
+    void (async () => {
       const result = await claimDailyLogin();
       if (!result.ok) {
         setError(result.error ?? "Réclamation impossible.");
+        setIsPending(false);
         return;
       }
       const gains = loginGainsText(result);
@@ -522,7 +555,9 @@ function LogbookTab({ profile, onRefresh, onShowRewards }: { profile: ProfileSum
       setMessage(gains ? `Escale franchie — ${gains}.` : "Escale franchie.");
       notifyProgressionChanged();
       onRefresh();
-    });
+      // Relâché à l'arrivée du profil relu ; filet si la relecture n'aboutit pas.
+      window.setTimeout(() => setIsPending(false), 10_000);
+    })().catch(() => setIsPending(false));
   }
 
   return (

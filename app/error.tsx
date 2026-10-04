@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { GameScreen } from "@/features/shell/GameScreen";
+import { reportClientError } from "@/features/shell/reportClientError";
 import game from "@/features/shell/GameScreen.module.css";
 
 /**
@@ -21,6 +22,8 @@ import game from "@/features/shell/GameScreen.module.css";
 export default function RouteError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   useEffect(() => {
     console.error("[route] Rendu interrompu :", error);
+    // Une erreur côté navigateur n'a pas de « Référence » ni de trace serveur : on l'y écrit.
+    void reportClientError({ where: "route", message: error.message, stack: error.stack, digest: error.digest, path: window.location.pathname }).catch(() => undefined);
   }, [error]);
 
   return (
@@ -47,6 +50,12 @@ export default function RouteError({ error, reset }: { error: Error & { digest?:
               </Link>
             </div>
             {error.digest && <p className={game.muted}>Référence : {error.digest}</p>}
+            {!error.digest && error.message && (
+              <details className={game.muted} style={{ maxWidth: "100%", textAlign: "left" }}>
+                <summary>Détails techniques</summary>
+                <pre style={{ whiteSpace: "pre-wrap", wordBreak: "break-word", fontSize: 11, margin: "6px 0 0" }}>{error.message}</pre>
+              </details>
+            )}
           </div>
         </div>
       </div>
