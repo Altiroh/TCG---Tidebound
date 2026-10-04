@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { QUEST_CATEGORY_META, type QuestCategory } from "@/game/quests";
 import styles from "@/features/quests/Quests.module.css";
 import { claimQuestReward, rerollQuest, type QuestBoard, type QuestEntry } from "@/features/quests/actions";
@@ -74,6 +74,10 @@ export function QuestJournal({ board, voyages, voyagesPending = false, onChanged
   const visible = useCallback((entries: QuestEntry[]) => (filter ? entries.filter((entry) => entry.category === filter) : entries), [filter]);
   const empty = useMemo(() => board.daily.length + board.weekly.length === 0, [board.daily, board.weekly]);
 
+  // Une quête réclamée reste marquée jusqu'au journal RELU : relâchée plus
+  // tôt, elle réapparaissait « à réclamer » le temps de la relecture.
+  useEffect(() => setBusyKey(null), [board]);
+
   function handleClaim(entry: QuestEntry) {
     playButtonClick();
     setNotice(null);
@@ -84,6 +88,7 @@ export function QuestJournal({ board, voyages, voyagesPending = false, onChanged
       .then((result) => {
         if (!result.ok) {
           setNotice({ tone: "error", text: result.error ?? "Réclamation impossible." });
+          setBusyKey(null);
           return;
         }
         playRewardClaimed();
@@ -91,8 +96,10 @@ export function QuestJournal({ board, voyages, voyagesPending = false, onChanged
         if (gains.length > 0) setNotice({ tone: "success", text: gains.join(" · ") });
         notifyProgressionChanged();
         onChanged();
+        // Relâchée à l'arrivée du journal relu ; filet si la relecture n'aboutit pas.
+        window.setTimeout(() => setBusyKey((current) => (current === key ? null : current)), 10_000);
       })
-      .finally(() => setBusyKey(null));
+      .catch(() => setBusyKey(null));
   }
 
   function handleReroll(entry: QuestEntry) {

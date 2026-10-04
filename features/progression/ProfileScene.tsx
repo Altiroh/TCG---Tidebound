@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, type ReactNode } from "react";
+import { useEffect, useState, useTransition, type ReactNode } from "react";
 import { getCardDefinition } from "@/game";
 import {
   LOGIN_CYCLE_LENGTH,
@@ -353,17 +353,23 @@ function LoginPanel({
   const { login } = profile;
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
+  // `startTransition(async …)` ne suit pas l'appel sous React 18 : l'escale
+  // réclamée réapparaissait « à réclamer » jusqu'au profil relu. Marquée
+  // jusqu'à son arrivée.
+  const [pending, setPending] = useState(false);
+  useEffect(() => setPending(false), [profile]);
 
   function claim() {
     if (!login.claimable || pending) return;
     playButtonClick();
     setError(null);
     setMessage(null);
-    startTransition(async () => {
+    setPending(true);
+    void (async () => {
       const result = await claimDailyLogin();
       if (!result.ok) {
         setError(result.error ?? "Réclamation impossible.");
+        setPending(false);
         return;
       }
       const gains = loginGainsText(result);
@@ -371,7 +377,9 @@ function LoginPanel({
       setMessage(gains ? `Escale franchie — ${gains}.` : "Escale franchie.");
       notifyProgressionChanged();
       onRefresh();
-    });
+      // Relâché à l'arrivée du profil relu ; filet si la relecture n'aboutit pas.
+      window.setTimeout(() => setPending(false), 10_000);
+    })().catch(() => setPending(false));
   }
 
   return (

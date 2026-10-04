@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState } from "react";
 import { GIFT_OPEN_MS, GiftOpening } from "@/features/progression/GiftOpening";
 import { MasteriesSheet } from "@/features/progression/HubSheets";
 import { SponsorsSheet } from "@/features/progression/SponsorsSheet";
@@ -60,7 +60,20 @@ const ROUTE_WINDOW = 6;
  */
 export function RewardsHub({ profile, claiming, onClaimLevel, onReveal, onRefresh, onShowQuests, onShowAchievements, initialSheet }: RewardsHubProps) {
   const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
+  /**
+   * Réclamation en cours, JUSQU'À la relecture du profil : la récompense
+   * reste marquée tant que le nouveau `profile` n'est pas arrivé. Avant, un
+   * `startTransition(async …)` (React 18 ne suit pas la partie asynchrone)
+   * relâchait les boutons dès le départ de l'appel, et la récompense
+   * réclamée restait affichée « à réclamer » jusqu'au `router.refresh()`.
+   */
+  const [pending, setPending] = useState(false);
+  const releaseTimer = useRef<number | undefined>(undefined);
+  useEffect(() => {
+    window.clearTimeout(releaseTimer.current);
+    setPending(false);
+  }, [profile]);
+  useEffect(() => () => window.clearTimeout(releaseTimer.current), []);
   /** Coffret de mécène en train de s'ouvrir (scène plein écran, `GiftOpening`). */
   const [gift, setGift] = useState<{ color: string; name: string | null } | null>(null);
   /** Extension ouverte en grand : tous les mécènes, ou toutes les maîtrises. */
@@ -87,11 +100,13 @@ export function RewardsHub({ profile, claiming, onClaimLevel, onReveal, onRefres
     playButtonClick();
     setError(null);
     const startedAt = Date.now();
-    startTransition(async () => {
+    setPending(true);
+    void (async () => {
       const result = await action().catch(() => ({ ok: false, error: "Serveur injoignable — réessaie." }) as { ok: boolean; error?: string });
       if (!result.ok) {
         setError(result.error ?? "Réclamation impossible.");
         setGift(null);
+        setPending(false);
         return;
       }
       if ("items" in result && result.items && result.items.length > 0) {
@@ -104,7 +119,9 @@ export function RewardsHub({ profile, claiming, onClaimLevel, onReveal, onRefres
       }
       notifyProgressionChanged();
       onRefresh();
-    });
+      // Relâché à l'arrivée du profil relu ; filet si la relecture n'aboutit pas.
+      releaseTimer.current = window.setTimeout(() => setPending(false), 10_000);
+    })();
   }
 
   function claimMastery(mastery: MasteryView, level: number) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type CSSProperties } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import styles from "@/features/quests/VoyagePanel.module.css";
 import { claimVoyageTier, type VoyageBoard, type VoyageStepView, type VoyageView } from "@/features/quests/voyageActions";
 import type { SceneNotice } from "@/features/quests/QuestScene";
@@ -82,6 +82,8 @@ export function VoyagePanel({
   const [selectedId, setSelectedId] = useState(() => initialVoyageId(board.voyages));
   const [hovered, setHovered] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
+  // Un palier réclamé reste marqué jusqu'aux Traversées RELUES : relâché plus tôt, il réapparaissait « à réclamer ».
+  useEffect(() => setBusy(false), [board]);
 
   const voyage = board.voyages.find((entry) => entry.id === selectedId) ?? board.voyages[0];
   if (!board.available || !voyage) return null;
@@ -94,6 +96,7 @@ export function VoyagePanel({
       .then((result) => {
         if (!result.ok) {
           onNotice({ tone: "error", text: result.error ?? "Réclamation impossible." });
+          setBusy(false);
           return;
         }
         playRewardClaimed();
@@ -105,8 +108,10 @@ export function VoyagePanel({
         onNotice({ tone: "success", text: `Palier ${result.tier} : ${gains.join(" · ")}` });
         notifyProgressionChanged();
         onChanged();
+        // Relâché à l'arrivée des Traversées relues (`board`) ; filet si la relecture n'aboutit pas.
+        window.setTimeout(() => setBusy(false), 10_000);
       })
-      .finally(() => setBusy(false));
+      .catch(() => setBusy(false));
   }
 
   const shown = hovered ?? focusIndex(voyage);
