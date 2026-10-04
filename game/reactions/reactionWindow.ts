@@ -45,6 +45,12 @@ export function deriveReactionTriggerEvents(state: GameState, events: GameEvent[
           repeatedArrival: true,
         });
         break;
+      // « Après qu'un Altéré s'est Éveillé » (Lot 16) : l'Éveil vient de se
+      // résoudre. Ses capacités automatiques l'ont déjà été (`runEveil`) ; la
+      // fenêtre n'offre que ce qui est facultatif — Propagation, depuis la main.
+      case "EVEIL":
+        derived.push({ trigger: "onEveil", playerId: event.playerId, cardId: event.cardId, sourceInstanceId: event.instanceId });
+        break;
       case "ATTACK": {
         // Même contenu que le déclenchement automatique (`attack.ts`) :
         // l'attaquant a pu mourir au combat, on retombe alors sur un

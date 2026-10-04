@@ -595,8 +595,8 @@ export function MatchBoard({
       {state.pendingChoice?.kind === "deckLook" && state.pendingChoice.playerId === viewerPlayerId && (
         <DeckLookPrompt
           choice={state.pendingChoice}
-          onConfirm={(takeInstanceIds) =>
-            runReactionAction({ type: "resolveChoice", playerId: viewerPlayerId, choice: { takeInstanceIds } })
+          onConfirm={(takeInstanceIds, restOrder) =>
+            runReactionAction({ type: "resolveChoice", playerId: viewerPlayerId, choice: { takeInstanceIds, ...(restOrder ? { restOrder } : {}) } })
           }
           onRefuse={() => runReactionAction({ type: "resolveChoice", playerId: viewerPlayerId, choice: "pass" })}
         />

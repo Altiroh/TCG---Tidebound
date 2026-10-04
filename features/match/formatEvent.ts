@@ -55,6 +55,8 @@ export function formatEvent(state: GameState, event: GameEvent, playerLabel: (pl
       return `${cardName(state, event.cardId)} entre en jeu (${playerLabel(event.playerId)}).`;
     case "ENTER_EFFECTS_REPEATED":
       return `L'effet d'arrivée de ${cardName(state, event.cardId)} se rejoue (${playerLabel(event.playerId)}).`;
+    case "EVEIL":
+      return `${cardName(state, event.cardId)} s'Éveille${event.count > 1 ? ` (${event.count}e Éveil du tour)` : ""}.`;
     case "ATTACK":
       return `${playerLabel(event.playerId)} attaque${event.defenderInstanceId ? " une cible" : " le Navire adverse"}.`;
     case "DAMAGE":

@@ -5,7 +5,7 @@ import { CORE_SET, isAbyssalVariant, type CardDefinition, type CardType } from "
 import { CardTile } from "@/features/match/CardTile";
 import { NouveauCadreCard } from "@/features/cadre-preview/NouveauCadreCard";
 
-/** La carte de la maquette d'abord, puis une carte par type (une sans stats, une Résistance seule…), puis deux Abyssales. */
+/** La carte de la maquette d'abord, puis une carte par type (une sans stats, une Résistance seule…), puis deux Abyssales, puis le texte le plus long du catalogue (zone qui défile). */
 const MAQUETTE_ID = "la-bete-quon-nattend-plus";
 const TYPES: CardType[] = ["creature", "marin", "equipement", "structure", "objet", "anomalie"];
 
@@ -15,7 +15,8 @@ function echantillon(): CardDefinition[] {
     (card): card is CardDefinition => card !== undefined
   );
   const abyssales = CORE_SET.filter(isAbyssalVariant).slice(0, 2);
-  return [...(maquette ? [maquette] : []), ...parType, ...abyssales];
+  const texteLePlusLong = CORE_SET.reduce((longest, card) => ((card.text?.length ?? 0) > (longest.text?.length ?? 0) ? card : longest));
+  return [...(maquette ? [maquette] : []), ...parType, ...abyssales, texteLePlusLong];
 }
 
 /**

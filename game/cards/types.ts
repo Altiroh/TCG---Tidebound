@@ -214,6 +214,24 @@ export interface TriggeredAbility {
   hiddenReaction?: boolean;
 
   /**
+   * **RÉACTION DEPUIS LA MAIN** pour une carte qui n'est pas un Objet (Lot 16
+   * — Propagation, une Anomalie : « Après qu'un Altéré s'est Éveillé : … »).
+   *
+   * La capacité se propose dans la fenêtre de réaction alors que la carte
+   * est encore EN MAIN, quand son déclencheur a lieu — avec `mode:
+   * "optional"` et un `triggeredBy` d'observateur, elle est lue comme si la
+   * carte était déjà en jeu. L'activer, c'est JOUER la carte : son coût est
+   * payé, elle part au Cimetière comme une Anomalie résolue (sans être une
+   * défausse), puis l'effet se résout.
+   *
+   * Une carte qui porte une telle capacité ne se joue PAS en phase
+   * principale : elle n'a rien à y faire (`playCard` la refuse). Les Objets
+   * réactifs, eux, ont leur propre voie — le Bris depuis la main
+   * (`isBreakReaction`) — et n'ont pas besoin de ce drapeau.
+   */
+  playedFromHand?: boolean;
+
+  /**
    * CE QUE DEVIENT LA STRUCTURE une fois sa Réaction cachée résolue
    * (grammaire des Structures-pièges, 22/09/2026).
    *
@@ -1498,6 +1516,16 @@ export interface CardInstance {
    * remise à zéro oubliée quelque part.
    */
   lastDamageTurn?: number;
+
+  /**
+   * Lot 16 — Éveils de cette carte pendant le tour de TABLE `turn` : « si
+   * c'est son deuxième Éveil ce tour », « s'il s'est déjà Éveillé ce tour ».
+   * Même parti pris que `lastDamageTurn` : le numéro de tour porte la
+   * remise à zéro, rien n'a à l'effacer entre deux tours. Incrémenté par
+   * `runEveil` (`triggerBus.ts`) AVANT que l'Éveil ne se résolve : pendant
+   * son deuxième Éveil, une carte lit 2. Lu par `eveilsThisTurn`.
+   */
+  eveils?: { turn: number; count: number };
 
   /**
    * Une fenêtre de sauvetage a déjà été ouverte pour CETTE destruction-ci

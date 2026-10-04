@@ -216,6 +216,28 @@ export const ECLATS_EN_SELLE_PACK_VISUAL: BoosterPackVisual = {
   cardBacks: PACK_CARD_BACKS,
 };
 
+/**
+ * La mutation mondiale (Lot 16) — planches du 03/10/2026, même gabarit.
+ * Dans cette planche, la bande flotte plus haut au-dessus du corps : son
+ * bord haut (posé sur celui du fermé) est à −14,89 % au lieu de −4 % environ.
+ */
+export const LA_MUTATION_MONDIALE_PACK_VISUAL: BoosterPackVisual = {
+  id: "la-mutation-mondiale",
+  assets: {
+    closed: "/assets/boosters/la-mutation-mondiale/la-mutation-mondiale.webp",
+    openTop: "/assets/boosters/la-mutation-mondiale/la-mutation-mondiale-open-top.webp",
+    openBottom: "/assets/boosters/la-mutation-mondiale/la-mutation-mondiale-open-bottom.webp",
+  },
+  // Corps 882 × 1307 px, bande 830 × 168 px, fermé 887 × 1498 px ramené à 100.24 %.
+  aspectRatio: 882 / 1307,
+  closedRect: { left: -0.29, top: -14.89, width: 100.81, height: 114.89 },
+  topRect: { left: 2.95, top: -14.89, width: 94.1, height: 12.85 },
+  topHinge: { x: 96, y: 84 },
+  tearLineTop: 2,
+  mouth: PACK_MOUTH,
+  cardBacks: PACK_CARD_BACKS,
+};
+
 /** Id de booster (table `boosters`) → visuel. Tout id inconnu retombe sur le visuel par défaut. */
 const BOOSTER_VISUAL_BY_ID: Record<string, BoosterPackVisual> = {
   standard: DEFAULT_PACK_VISUAL,
@@ -225,6 +247,7 @@ const BOOSTER_VISUAL_BY_ID: Record<string, BoosterPackVisual> = {
   "la-veillee-des-disparus": LA_VEILLEE_DES_DISPARUS_PACK_VISUAL,
   "necessaire-du-marin": NECESSAIRE_DU_MARIN_PACK_VISUAL,
   "eclats-en-selle": ECLATS_EN_SELLE_PACK_VISUAL,
+  "la-mutation-mondiale": LA_MUTATION_MONDIALE_PACK_VISUAL,
 };
 
 export const BOOSTER_PACK_VISUALS: readonly BoosterPackVisual[] = [
@@ -234,6 +257,7 @@ export const BOOSTER_PACK_VISUALS: readonly BoosterPackVisual[] = [
   ETRANGETE_SOUS_MARINE_PACK_VISUAL,
   LA_VEILLEE_DES_DISPARUS_PACK_VISUAL,
   ECLATS_EN_SELLE_PACK_VISUAL,
+  LA_MUTATION_MONDIALE_PACK_VISUAL,
   WELCOME_PACK_VISUAL,
 ];
 
@@ -269,6 +293,10 @@ const SHELF_ROLL_BY_ID: Readonly<Record<string, string>> = {
   "etrangete-sous-marine": "/assets/boosters/etrangete-sous-marine/etrangete-sous-marine-rayon.webp",
   "la-veillee-des-disparus": "/assets/boosters/la-veillee-des-disparus/la-veillee-des-disparus-rayon.webp",
   "eclats-en-selle": "/assets/boosters/eclats-en-selle/eclats-en-selle-rayon.webp",
+  // « la-mutation-mondiale-rayon.webp » existe, mais hors gabarit : logo et
+  // nom en cartouche, sans le pictogramme « x » où se pose le compte (qui
+  // tomberait sur le titre). Repli sur le rouleau du Défaut tant qu'il n'est
+  // pas repeint.
 };
 
 export const DEFAULT_SHELF_ROLL = "/assets/boosters/defaut/defaut-rayon.webp";

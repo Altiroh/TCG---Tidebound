@@ -34,6 +34,7 @@ export type TriggerType =
   | "onPermanentWouldBeDestroyed" // un permanent est sur le point de partir au Cimetière — fenêtre de SAUVETAGE, ouverte AVANT que `processDeaths` ne l'emporte (Lot 14 : Filet de Sauvetage, Cloison Étanche, Bouclier d'Écume)
   | "onSurvivedDamage" // une unité a subi des dégâts ET est toujours en jeu une fois les morts réglées (Lot 15 — Équipage de Verre) : personnel, ou observateur avec `triggeredBy`
   | "onChromaticColorChosen" // une carte EN JEU vient de recevoir la couleur choisie pour elle par une question (« À son arrivée, choisissez sa couleur » — Émissaire de Quartz) : personnel ou observateur ; `fromSummon` vaut vrai si elle n'a pas été JOUÉE (Lot 15 — Poste Chromatique)
+  | "onEveil" // Lot 16 — l'Éveil d'une carte se résout : personnel (la carte résout SON Éveil, « Éveil — … »), ou observateur avec `triggeredBy` (« quand un autre Altéré s'Éveille »). Émis à l'arrivée d'une carte qui a un Éveil et par l'effet `triggerEveil` (`runEveil`, `triggerBus.ts`)
   | "onReasonGained" // le contrôleur vient de récupérer de la Raison GRÂCE À UNE CARTE — jamais la régénération de début de tour (Lot 15 — Survivant de la Mousse)
   | "onCondition"; // condition arbitraire évaluée par un `ConditionExpression`
 

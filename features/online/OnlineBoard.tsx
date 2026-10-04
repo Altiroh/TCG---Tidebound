@@ -390,8 +390,8 @@ export function OnlineBoard({
       {state.pendingChoice?.kind === "deckLook" && state.pendingChoice.playerId === myUserId && (
         <DeckLookPrompt
           choice={state.pendingChoice}
-          onConfirm={(takeInstanceIds) =>
-            act({ type: "resolveChoice", playerId: myUserId, choice: { takeInstanceIds } })
+          onConfirm={(takeInstanceIds, restOrder) =>
+            act({ type: "resolveChoice", playerId: myUserId, choice: { takeInstanceIds, ...(restOrder ? { restOrder } : {}) } })
           }
           onRefuse={() => act({ type: "resolveChoice", playerId: myUserId, choice: "pass" })}
         />

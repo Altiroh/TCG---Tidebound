@@ -18,7 +18,7 @@
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { UNIT_CARD_TYPES, type CardInstance } from "@/game/cards/types";
 
-export type ArchetypeId = "cra-poiscail" | "un-dead" | "cavalerie" | "equipage-de-verre" | "sentinelle-chromatique";
+export type ArchetypeId = "cra-poiscail" | "un-dead" | "cavalerie" | "equipage-de-verre" | "sentinelle-chromatique" | "alteres";
 
 /** Libellé humain — outils de design, journaux, tests. Jamais rendu sur une carte. */
 export const ARCHETYPE_LABELS: Record<ArchetypeId, string> = {
@@ -37,6 +37,11 @@ export const ARCHETYPE_LABELS: Record<ArchetypeId, string> = {
   // couleurs (`game/rules/chromatic.ts`), et la famille dit qui en a une.
   "equipage-de-verre": "Équipage de Verre",
   "sentinelle-chromatique": "Sentinelles Chromatiques",
+  // Lot 16 — Les Altérés (Notion, 02/10/2026) : des Marins dont les
+  // capacités passent par l'Éveil (`game/rules/eveil.ts`), et leurs
+  // Anomalies de soutien. « Un Altéré » désigne l'UNITÉ (sous-type
+  // `altere`) ; « une carte Altéré », toute carte de la famille.
+  alteres: "Altérés",
 };
 
 /**

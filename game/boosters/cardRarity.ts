@@ -477,6 +477,44 @@ const ECLATS_EN_SELLE_RARITY: Record<string, CardRarity> = {
 const ABYSSAL_VARIANT_SUFFIX = "-abyssal";
 
 /**
+ * LOT 16 — Les Altérés (Notion « Boosters & économie » § Booster 4,
+ * répartition des raretés). Un écart assumé : Notion classe L'Anomalie
+ * Première « Abyssale », mais ce n'est pas une variante — la règle
+ * verrouillée du 16/09/2026 (« une carte Abyssale est la variante
+ * `-abyssal`, sinon au mieux c'est légendaire ») la plafonne à Légendaire.
+ * Les Abyssales du booster sont deux vraies variantes, ajoutées le
+ * 04/10/2026 (La Chute de l'Ange et Le Diable en Personne) : leur suffixe
+ * suffit, elles ne sont pas listées ici.
+ */
+const ALTERES_RARITY: Record<string, CardRarity> = {
+  // --- Communes ---
+  linstable: "common",
+  "le-dedouble": "common",
+  lentendant: "common",
+  "le-buveur": "common",
+  "le-fendu": "common",
+  "le-recousu": "common",
+  "alteration-forcee": "common",
+  "ils-etaient-deja-la": "common",
+  // --- Peu communes ---
+  leveilleur: "uncommon",
+  "le-feral": "uncommon",
+  "lattire-fer": "uncommon",
+  "la-revenante": "uncommon",
+  propagation: "uncommon",
+  // --- Rares ---
+  "le-copieur": "rare",
+  "le-meneur": "rare",
+  "la-chute-de-lange": "rare",
+  surcharge: "rare",
+  // --- Épiques ---
+  "la-conscience-commune": "epic",
+  "le-diable-en-personne": "epic",
+  // --- Légendaire (Abyssale dans Notion, voir plus haut) ---
+  "lanomalie-premiere": "legendary",
+};
+
+/**
  * Rareté d'une carte. Les variantes Abyssales sont déduites de leur slug
  * plutôt que listées une par une : c'est une règle de design, pas une
  * décision carte par carte, et ça évite d'oublier une variante ajoutée
@@ -491,6 +529,7 @@ export function rarityForCardId(cardId: string): CardRarity | null {
     VEILLEE_DES_DISPARUS_RARITY[cardId] ??
     NECESSAIRE_DU_MARIN_RARITY[cardId] ??
     ECLATS_EN_SELLE_RARITY[cardId] ??
+    ALTERES_RARITY[cardId] ??
     PROVISIONAL_RARITY[cardId] ??
     null
   );

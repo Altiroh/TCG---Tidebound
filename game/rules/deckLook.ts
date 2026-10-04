@@ -3,7 +3,7 @@ import type { CardInstance } from "@/game/cards/types";
 import type { DeckLookChoice } from "@/game/state/types";
 
 /** Pourquoi une carte regardée ne peut pas être prise — `null` si elle le peut. */
-export type DeckLookRefusal = "type" | "archetype" | "color";
+export type DeckLookRefusal = "type" | "archetype" | "color" | "subtype" | "cost";
 
 /**
  * Une carte regardée (`DeckLookChoice.revealed`) peut-elle être prise en
@@ -23,6 +23,8 @@ export function deckLookRefusal(choice: DeckLookChoice, card: CardInstance): Dec
   if (choice.takeableChromaticColors && !(def.chromatic?.colors ?? []).some((c) => choice.takeableChromaticColors!.includes(c))) {
     return "color";
   }
+  if (choice.takeableSubtype && def.subtype !== choice.takeableSubtype) return "subtype";
+  if (choice.takeableMaxCost !== undefined && def.cost > choice.takeableMaxCost) return "cost";
   return null;
 }
 

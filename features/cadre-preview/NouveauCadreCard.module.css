@@ -140,6 +140,31 @@
   mask-image: linear-gradient(to bottom, #000 72%, transparent 100%);
 }
 
+/* Texte de règles plafonné : il défile au besoin, avec une barre fine et
+   dorée plutôt que la barre grise du système. La marge à droite laisse la
+   barre hors du texte. */
+.regles {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 1.5cqw;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(232, 200, 140, 0.7) rgba(255, 255, 255, 0.08);
+}
+
+.regles::-webkit-scrollbar {
+  width: 1.2cqw;
+}
+
+.regles::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 1cqw;
+}
+
+.regles::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom, rgba(245, 215, 150, 0.9), rgba(190, 140, 70, 0.9));
+  border-radius: 1cqw;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .eclatDore,
   .refletNacre,
