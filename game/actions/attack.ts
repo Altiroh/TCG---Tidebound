@@ -612,6 +612,11 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
     const cibleDeclaree = opponent.board.find((u) => u.instanceId === action.defenderInstanceId);
     // Cible partie pendant les déclencheurs « Lorsqu'il attaque » : pas de coup.
     if (!cibleDeclaree) return { ok: true, state: nextState, events };
+    // « Annulez cette attaque » (Mutation Réflexe, Lot 16) : interceptée, une
+    // attaque contre une unité n'a pas lieu — ni coup, ni riposte. Jusque-là
+    // l'interception ne pouvait viser qu'une attaque directe (dégâts au
+    // Navire annulés, plus bas) ; elle n'avait aucun effet ici.
+    if (etat.pendingAttack?.intercepted === true) return { ok: true, state: nextState, events };
 
     // Signal Bleu (Lot 15) : la cible perd 1 Puissance AVANT l'échange —
     // c'est sa riposte qu'il affaiblit.

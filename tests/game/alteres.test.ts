@@ -439,3 +439,109 @@ describe("Propagation : une réaction jouée depuis la main", () => {
     expect(r.ok).toBe(false);
   });
 });
+
+describe("L'Intangible : inciblable par l'adversaire jusqu'à votre prochain tour", () => {
+  const inciblable = { id: "mod_test", source: "lintangible", attack: 0, health: 0, duration: "untilYourNextTurn" as const, keywords: ["inciblable"] };
+
+  it("son Éveil la rend inciblable", () => {
+    const intangible = instance("lintangible", "p1");
+    const r = jouer(table({ hand: [intangible] }), intangible);
+    ok(r);
+    expect(unite(r.state, intangible.instanceId)!.modifiers.some((m) => m.keywords?.includes("inciblable"))).toBe(true);
+  });
+
+  it("l'adversaire ne peut pas la désigner ; il se rabat sur une autre unité, et vous piochez 1 carte", () => {
+    const intangible = instance("lintangible", "p1", { modifiers: [inciblable] });
+    const autre = instance("lentendant", "p1");
+    const renvoi = instance("par-dessus-bord", "p2");
+    const renvoi2 = instance("par-dessus-bord", "p2");
+    const state = testGameState({
+      ...table({ board: [intangible, autre] }, { hand: [renvoi, renvoi2] }),
+      activePlayerId: "p2",
+      priorityPlayerId: "p2",
+    });
+    const vise = dispatch(state, { type: "playCard", playerId: "p2", instanceId: renvoi.instanceId, targetInstanceId: intangible.instanceId });
+    expect(vise.ok).toBe(false);
+    const rabat = dispatch(state, { type: "playCard", playerId: "p2", instanceId: renvoi2.instanceId, targetInstanceId: autre.instanceId });
+    ok(rabat);
+    expect(unite(rabat.state, autre.instanceId)).toBeUndefined();
+    expect(main(rabat.state, "p1")).toBe(1 + 1);
+  });
+
+  it("ses propres effets la désignent toujours", () => {
+    const intangible = instance("lintangible", "p1", { modifiers: [inciblable] });
+    const forcee = instance("alteration-forcee", "p1");
+    const r = jouer(table({ board: [intangible], hand: [forcee] }), forcee, intangible.instanceId);
+    ok(r);
+    expect(eveils(r.state, intangible.instanceId)).toBe(1);
+  });
+});
+
+describe("Mutation Réflexe : une réaction jouée depuis la main quand un Altéré est attaqué", () => {
+  function attaque(defenseur: CardInstance, main2: CardInstance[]) {
+    const brute = instance("le-feral", "p1");
+    const state = testGameState({
+      ...table({ board: [brute] }, { board: [defenseur], hand: main2 }),
+      phase: "combatPhase",
+    });
+    return { brute, r: dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: brute.instanceId, defenderInstanceId: defenseur.instanceId }) };
+  }
+
+  it("éveille l'Altéré attaqué, annule l'attaque et part au Cimetière", () => {
+    const entendant = instance("lentendant", "p2");
+    const mutation = instance("mutation-reflexe", "p2");
+    const { r } = attaque(entendant, [mutation]);
+    ok(r);
+    expect(pendingCandidates(r.state).some((c) => c.cardId === "mutation-reflexe" && c.fromHand)).toBe(true);
+    const raison = joueur(r.state, "p2").reason;
+    const act = activateReactionFor(r.state, "mutation-reflexe");
+    ok(act);
+    const p2 = joueur(act.state, "p2");
+    expect(p2.reason).toBe(raison - 2);
+    expect(p2.graveyard.some((c) => c.instanceId === mutation.instanceId)).toBe(true);
+    expect(eveils(act.state, entendant.instanceId)).toBe(1);
+    // L'attaque n'a pas porté : L'Entendant (2 / 3) aurait péri sous les 5 Puissance du Féral.
+    expect(unite(act.state, entendant.instanceId)!.damageMarked).toBe(0);
+  });
+
+  it("ne se propose pas pour une unité qui n'est pas un Altéré", () => {
+    const autre = instance("le-recousu", "p2");
+    const nonAltere = instance("marin-des-jetees", "p2");
+    const mutation = instance("mutation-reflexe", "p2");
+    const vise = attaque(nonAltere, [mutation]);
+    ok(vise.r);
+    expect(pendingCandidates(vise.r.state).some((c) => c.cardId === "mutation-reflexe")).toBe(false);
+    void autre;
+  });
+});
+
+describe("une question et une fenêtre de réaction ouvertes ensemble", () => {
+  it("la fenêtre passe d'abord, puis la question reprend : la partie ne se fige pas", () => {
+    // Une chaîne d'Éveils pose une question (« déclenchez l'Éveil d'un autre
+    // Altéré ») dans la même action que des dégâts qui ouvrent une fenêtre de
+    // sauvetage chez l'adversaire. Avant le correctif, chacune refusait l'autre.
+    const a = instance("lentendant", "p1");
+    const b = instance("lentendant", "p1");
+    const state: GameState = {
+      ...table({ board: [a, b] }),
+      pendingChoice: {
+        kind: "pickUnits",
+        playerId: "p1",
+        controllerId: "p1",
+        pick: 1,
+        among: [b.instanceId],
+        effects: [{ type: "triggerEveil", target: { kind: "triggerSource" } }],
+        sourceInstanceId: a.instanceId,
+        turnNumber: 1,
+      },
+      pendingReaction: { events: [], awaitingPlayerId: "p2", priorityQueue: [], usedCandidateKeys: [], turnNumber: 1 },
+    };
+    expect(dispatch(state, { type: "resolveChoice", playerId: "p1", choice: { pickInstanceIds: [b.instanceId] } }).ok).toBe(false);
+    const passe = dispatch(state, { type: "passReaction", playerId: "p2" });
+    ok(passe);
+    expect(passe.state.pendingReaction).toBeUndefined();
+    const reponse = designer(passe.state, b.instanceId);
+    ok(reponse);
+    expect(eveils(reponse.state, b.instanceId)).toBe(1);
+  });
+});

@@ -37,16 +37,8 @@ const DOSSIER = path.join(process.cwd(), "public", "assets", "cards", "illustrat
  * de son visuel — le troisième test le refuse.
  */
 const SANS_VISUEL: Record<string, string> = {
-  // Le Lot 15 — Éclats en Selle — a reçu ses derniers visuels le 24/09/2026.
-  "la-revenante":
-    "Lot 16 — Les Altérés : les illustrations du lot ont été livrées le 03/10/2026 sans celle de La Revenante (à ne pas " +
-    "confondre avec Revenante de la Fosse, qui a la sienne). À retirer d'ici dès que le visuel arrive.",
-  "la-chute-de-lange-abyssal":
-    "Lot 16 — variante Abyssale créée le 04/10/2026 pour donner son Abyssale au booster ; l'image sera livrée " +
-    "ensuite. À retirer dès que le visuel arrive.",
-  "le-diable-en-personne-abyssal":
-    "Lot 16 — variante Abyssale créée le 04/10/2026 pour donner son Abyssale au booster ; l'image sera livrée " +
-    "ensuite. À retirer dès que le visuel arrive.",
+  // VIDE depuis le 04/10/2026 : le Lot 16 — Les Altérés — a reçu ses
+  // derniers visuels (La Revenante et les deux variantes Abyssales).
 };
 
 const fichiers = new Set(readdirSync(DOSSIER));

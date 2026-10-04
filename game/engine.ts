@@ -27,6 +27,7 @@ import {
   processPowerGains,
   processReasonGained,
   processSurvivedDamage,
+  processUnitTargetedTriggers,
   snapshotEffectivePower,
   snapshotLoneCreatures,
 } from "@/game/triggers/triggerBus";
@@ -68,7 +69,19 @@ export function dispatch(state: GameState, action: PlayerAction): ActionResult {
 
   // Même principe pour un choix forcé en attente (ex: Le Fond Vous
   // Regarde) : seule `resolveChoice` est acceptée tant qu'il reste ouvert.
-  if (state.pendingChoice && action.type !== "resolveChoice" && action.type !== "concede" && action.type !== "timeout") {
+  // SAUF si une fenêtre de réaction est ouverte par-dessus : elle passe
+  // d'abord. Une fenêtre de sauvetage s'ouvre quand des dégâts vont détruire
+  // un permanent, même si la même action vient de poser une question (une
+  // chaîne d'Éveils, Lot 16 : « infligez 1 dégât… puis déclenchez l'Éveil
+  // d'un autre Altéré »). Sans cette priorité, la fenêtre refusait la réponse
+  // à la question et la question refusait la réaction : la partie se figeait.
+  if (
+    state.pendingChoice &&
+    !state.pendingReaction &&
+    action.type !== "resolveChoice" &&
+    action.type !== "concede" &&
+    action.type !== "timeout"
+  ) {
     return { ok: false, error: "Un choix est en attente : résolvez-le avant toute autre action." };
   }
 
@@ -229,9 +242,12 @@ export function dispatch(state: GameState, action: PlayerAction): ActionResult {
     // Les effets des déclenchements de la passe de morts (une capacité
     // `onDeath` qui désigne une Sentinelle adverse) comptent aussi.
     const signaux = processChromaticSignals(deaths.state, [...result.events, ...deaths.events], tour);
-    const survies = processSurvivedDamage(signaux.state, [...coupsReportes, ...result.events, ...deaths.events], tour);
-    const raison = processReasonGained(survies.state, [...result.events, ...signaux.events, ...survies.events], tour);
-    const produits = [...signaux.events, ...survies.events, ...raison.events];
+    // « Quand un effet adverse cible une autre unité que vous contrôlez »
+    // (L'Intangible, Lot 16) : même événement que le Signal Violet.
+    const ciblees = processUnitTargetedTriggers(signaux.state, [...result.events, ...deaths.events], tour);
+    const survies = processSurvivedDamage(ciblees.state, [...coupsReportes, ...result.events, ...deaths.events], tour);
+    const raison = processReasonGained(survies.state, [...result.events, ...signaux.events, ...ciblees.events, ...survies.events], tour);
+    const produits = [...signaux.events, ...ciblees.events, ...survies.events, ...raison.events];
     if (produits.length > 0) {
       const encore = processDeaths(raison.state, state.turnNumber);
       deaths = { state: encore.state, events: [...deaths.events, ...produits, ...encore.events] };

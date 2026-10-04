@@ -558,13 +558,13 @@ export function MatchBoard({
           />
         );
       })()}
-      {state.pendingChoice?.playerId === viewerPlayerId && (
+      {!state.pendingReaction && state.pendingChoice?.playerId === viewerPlayerId && (
         <PendingChoicePrompt
           choice={state.pendingChoice}
           onChoose={(choice) => runReactionAction({ type: "resolveChoice", playerId: viewerPlayerId, choice })}
         />
       )}
-      {state.pendingChoice?.kind === "pickUnits" && state.pendingChoice.playerId === viewerPlayerId && (
+      {!state.pendingReaction && state.pendingChoice?.kind === "pickUnits" && state.pendingChoice.playerId === viewerPlayerId && (
         <PickUnitsPrompt
           choice={state.pendingChoice}
           allUnits={state.players.flatMap((p) => p.board)}
@@ -573,7 +573,7 @@ export function MatchBoard({
           }
         />
       )}
-      {state.pendingChoice?.kind === "keepUnits" && state.pendingChoice.playerId === viewerPlayerId && (
+      {!state.pendingReaction && state.pendingChoice?.kind === "keepUnits" && state.pendingChoice.playerId === viewerPlayerId && (
         <KeepUnitsPrompt
           choice={state.pendingChoice}
           board={viewerPlayer.board}
@@ -592,7 +592,7 @@ export function MatchBoard({
           onExpire={healAllocation.banner.onExpire}
         />
       )}
-      {state.pendingChoice?.kind === "deckLook" && state.pendingChoice.playerId === viewerPlayerId && (
+      {!state.pendingReaction && state.pendingChoice?.kind === "deckLook" && state.pendingChoice.playerId === viewerPlayerId && (
         <DeckLookPrompt
           choice={state.pendingChoice}
           onConfirm={(takeInstanceIds, restOrder) =>
@@ -612,7 +612,7 @@ export function MatchBoard({
           onExpire={handLimit.banner.onExpire}
         />
       )}
-      {state.pendingChoice?.kind === "handDiscard" && state.pendingChoice.destination === "deckBottom" && state.pendingChoice.playerId === viewerPlayerId && (
+      {!state.pendingReaction && state.pendingChoice?.kind === "handDiscard" && state.pendingChoice.destination === "deckBottom" && state.pendingChoice.playerId === viewerPlayerId && (
         <HandDiscardPrompt
           choice={state.pendingChoice}
           hand={viewerPlayer.hand}

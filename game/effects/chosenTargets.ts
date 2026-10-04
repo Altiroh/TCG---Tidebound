@@ -9,10 +9,15 @@
  * servir sans dépendre de la résolution d'effets elle-même.
  */
 import { getCardDefinition } from "@/game/cards/sets/core";
-import { UNIT_CARD_TYPES, type CardInstance } from "@/game/cards/types";
+import { KEYWORD_INCIBLABLE, UNIT_CARD_TYPES, type CardInstance } from "@/game/cards/types";
 import { chromaticColorsOf, isOtherColorSentinel } from "@/game/rules/chromatic";
 import type { ChosenUnitFilter, EffectDefinition, TargetSelector } from "@/game/effects/types";
 import type { GameState, PlayerId } from "@/game/state/types";
+
+/** Cette carte, contrôlée par `ownerId`, échappe-t-elle à une désignation par `chooserId` ? */
+export function isUntargetableBy(unit: CardInstance, ownerId: PlayerId, chooserId: PlayerId): boolean {
+  return ownerId !== chooserId && unit.modifiers.some((m) => m.keywords?.includes(KEYWORD_INCIBLABLE));
+}
 
 export interface ChosenUnitCandidate {
   unit: CardInstance;
@@ -43,9 +48,9 @@ export function eligibleChosenUnits(
 ): ChosenUnitCandidate[] {
   if (target.kind !== "chosenUnit") return [];
 
-  const all: ChosenUnitCandidate[] = state.players.flatMap((player) =>
-    player.board.map((unit) => ({ unit, ownerId: player.id }))
-  );
+  const all: ChosenUnitCandidate[] = state.players
+    .flatMap((player) => player.board.map((unit) => ({ unit, ownerId: player.id })))
+    .filter(({ unit, ownerId }) => !isUntargetableBy(unit, ownerId, controllerId));
 
   const filter = target.among;
   if (!filter) return all;
