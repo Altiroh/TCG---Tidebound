@@ -353,13 +353,13 @@ export function OnlineBoard({
           />
         );
       })()}
-      {state.pendingChoice?.playerId === myUserId && (
+      {!state.pendingReaction && state.pendingChoice?.playerId === myUserId && (
         <PendingChoicePrompt
           choice={state.pendingChoice}
           onChoose={(choice) => act({ type: "resolveChoice", playerId: myUserId, choice })}
         />
       )}
-      {state.pendingChoice?.kind === "pickUnits" && state.pendingChoice.playerId === myUserId && (
+      {!state.pendingReaction && state.pendingChoice?.kind === "pickUnits" && state.pendingChoice.playerId === myUserId && (
         <PickUnitsPrompt
           choice={state.pendingChoice}
           allUnits={state.players.flatMap((p) => p.board)}
@@ -368,7 +368,7 @@ export function OnlineBoard({
           }
         />
       )}
-      {state.pendingChoice?.kind === "keepUnits" && state.pendingChoice.playerId === myUserId && (
+      {!state.pendingReaction && state.pendingChoice?.kind === "keepUnits" && state.pendingChoice.playerId === myUserId && (
         <KeepUnitsPrompt
           choice={state.pendingChoice}
           board={me.board}
@@ -387,7 +387,7 @@ export function OnlineBoard({
           onExpire={healAllocation.banner.onExpire}
         />
       )}
-      {state.pendingChoice?.kind === "deckLook" && state.pendingChoice.playerId === myUserId && (
+      {!state.pendingReaction && state.pendingChoice?.kind === "deckLook" && state.pendingChoice.playerId === myUserId && (
         <DeckLookPrompt
           choice={state.pendingChoice}
           onConfirm={(takeInstanceIds, restOrder) =>
@@ -407,7 +407,7 @@ export function OnlineBoard({
           onExpire={handLimit.banner.onExpire}
         />
       )}
-      {state.pendingChoice?.kind === "handDiscard" && state.pendingChoice.destination === "deckBottom" && state.pendingChoice.playerId === myUserId && (
+      {!state.pendingReaction && state.pendingChoice?.kind === "handDiscard" && state.pendingChoice.destination === "deckBottom" && state.pendingChoice.playerId === myUserId && (
         <HandDiscardPrompt
           choice={state.pendingChoice}
           hand={me.hand}

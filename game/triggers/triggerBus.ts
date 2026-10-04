@@ -121,6 +121,18 @@ function matchesControlCondition(
   if (seuil !== undefined && (state.pendingAttack?.attackerPower ?? 0) < seuil) return false;
   // « lorsqu'une de VOS UNITÉS est ciblée par une attaque » : ni une attaque
   // directe contre le Navire, ni une attaque contre une Structure.
+  if (ability.condition?.attackTargetSubtype) {
+    const cible = state.pendingAttack?.defenderInstanceId;
+    const trouvee = cible ? findBoardUnit(state, cible) : undefined;
+    if (!trouvee || getCardDefinition(trouvee.unit.cardId).subtype !== ability.condition.attackTargetSubtype) return false;
+  }
+  if (ability.condition?.selfHasKeyword) {
+    const motCle = ability.condition.selfHasKeyword;
+    const holder = sourceInstanceId ? findBoardUnit(state, sourceInstanceId) : undefined;
+    if (!holder) return false;
+    const imprime = getCardDefinition(holder.unit.cardId).keywords?.includes(motCle) ?? false;
+    if (!imprime && !holder.unit.modifiers.some((m) => m.keywords?.includes(motCle))) return false;
+  }
   if (ability.condition?.attackTargetIsOwnUnit) {
     const cible = state.pendingAttack?.defenderInstanceId;
     const trouvee = cible ? findBoardUnit(state, cible) : undefined;
@@ -1191,6 +1203,39 @@ export function runEveil(state: GameState, instanceId: string, turnNumber: numbe
 }
 
 setEveilRunner(runEveil);
+
+/**
+ * « Quand un effet adverse cible une unité » (Lot 16 — L'Intangible) : chaque
+ * désignation d'une unité par un effet de l'adversaire de son contrôleur
+ * (`UNIT_TARGETED`) réveille les observateurs `onUnitTargeted`. Appelé par
+ * `dispatch`, au même moment que les Signaux Chromatiques qui lisent le même
+ * événement (Signal Violet).
+ */
+export function processUnitTargetedTriggers(
+  state: GameState,
+  events: readonly GameEvent[],
+  turnNumber: number
+): { state: GameState; events: GameEvent[] } {
+  let nextState = state;
+  const produced: GameEvent[] = [];
+  for (const event of events) {
+    if (event.type !== "UNIT_TARGETED") continue;
+    // La cible a pu partir sous l'effet qui la visait (renvoi, destruction) :
+    // son identité voyage avec l'événement, sa présence n'est pas requise.
+    const cible = findBoardUnit(nextState, event.instanceId);
+    const ownerId = event.ownerId ?? cible?.playerId;
+    const cardId = event.cardId ?? cible?.unit.cardId;
+    if (!ownerId || !cardId || event.byPlayerId === ownerId) continue;
+    const result = processTrigger(
+      nextState,
+      { trigger: "onUnitTargeted", playerId: ownerId, cardId, sourceInstanceId: event.instanceId },
+      turnNumber
+    );
+    nextState = result.state;
+    produced.push(...result.events);
+  }
+  return { state: nextState, events: produced };
+}
 
 /**
  * L'Éveil d'une carte qui ARRIVE en jeu (« Éveil — … » se résout à son

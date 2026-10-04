@@ -17,7 +17,7 @@ import { endCurrentTideState, forceTideJumpToAbysses, forceTideTransition } from
 import { applyForcedTideTransition } from "@/game/environment/tideTransition";
 import { recordGraveyardArrival } from "@/game/state/discard";
 import type { TideStateName } from "@/game/environment/types";
-import { isEligibleChosenUnit } from "@/game/effects/chosenTargets";
+import { isEligibleChosenUnit, isUntargetableBy } from "@/game/effects/chosenTargets";
 import type { EffectAmount, EffectDefinition } from "@/game/effects/types";
 import type { EffectOrigin, GameEvent } from "@/game/events/types";
 import { nextInt, type RngState } from "@/game/rng";
@@ -822,7 +822,15 @@ export function resolveEffect(
   if (effect.target.kind === "chosenUnit" && context.chosenTargetInstanceId) {
     const cible = findUnitOwner(state, context.chosenTargetInstanceId);
     if (cible && cible.id !== context.controllerId) {
-      events.push({ ...base, type: "UNIT_TARGETED", instanceId: context.chosenTargetInstanceId, byPlayerId: context.controllerId });
+      const ciblee = cible.board.find((u) => u.instanceId === context.chosenTargetInstanceId)!;
+      events.push({
+        ...base,
+        type: "UNIT_TARGETED",
+        instanceId: context.chosenTargetInstanceId,
+        byPlayerId: context.controllerId,
+        ownerId: cible.id,
+        cardId: ciblee.cardId,
+      });
     }
   }
 
@@ -1786,7 +1794,10 @@ export function resolveEffect(
       // Les cibles légales sont calculées ICI, avec le sélecteur et le
       // filtre de l'effet : l'interface ne proposera rien d'autre, et le
       // moteur n'acceptera rien d'autre.
-      const eligibles = resolveUnitTargets(state, effect, context);
+      const trouvees = resolveUnitTargets(state, effect, context);
+      // Désigner, c'est cibler : une carte inciblable par l'adversaire n'est
+      // pas proposée (L'Intangible).
+      const eligibles = { ...trouvees, targets: trouvees.targets.filter(({ unit, ownerId }) => !isUntargetableBy(unit, ownerId, context.controllerId)) };
       if (eligibles.targets.length === 0) return { state, events };
       return {
         state: openChoice({ ...state, rngState: eligibles.rngState }, {

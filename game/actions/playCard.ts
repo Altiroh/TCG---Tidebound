@@ -1,6 +1,7 @@
 import { canBeEquipTarget, getCardDefinition, hasAnyValidEquipTarget } from "@/game/cards/sets/core";
 import { isPermanentCard, isVisibleDuringTide, UNIT_CARD_TYPES, type CardDefinition } from "@/game/cards/types";
 import { validateGraveyardChoice } from "@/game/effects/graveyardChoices";
+import { isEligibleChosenUnit } from "@/game/effects/chosenTargets";
 import type { EffectContext } from "@/game/effects/resolveEffect";
 import { discountApplies, resolveEffect } from "@/game/effects/resolveEffect";
 import { resolveEffectSequence } from "@/game/effects/resolveSequence";
@@ -247,6 +248,15 @@ function validate(state: GameState, action: PlayCardAction) {
       }
     } else if (!action.targetInstanceId) {
       return { ok: false as const, error: "Cette carte nécessite une cible." };
+    } else {
+      // Même filtre qu'à la résolution (`isEligibleChosenUnit`) : une cible
+      // qu'aucun effet n'accepte — hors filtre, ou inciblable par vous
+      // (L'Intangible) — est refusée AVANT que la carte ne soit payée et
+      // jouée pour rien.
+      const accepte = (def.onPlayEffects ?? [])
+        .filter((e) => e.target.kind === "chosenUnit")
+        .some((e) => isEligibleChosenUnit(state, e.target, action.playerId, action.targetInstanceId!, action.instanceId));
+      if (!accepte) return { ok: false as const, error: "Cette carte n'est pas une cible valide pour cet effet." };
     }
   }
 

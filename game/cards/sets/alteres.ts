@@ -1,4 +1,4 @@
-import type { CardDefinition, TriggeredAbility } from "@/game/cards/types";
+import { KEYWORD_INCIBLABLE, type CardDefinition, type TriggeredAbility } from "@/game/cards/types";
 import type { EffectDefinition } from "@/game/effects/types";
 
 /**
@@ -286,6 +286,43 @@ const MARINS_ALTERES: CardDefinition[] = [
         eveilDUnAltere({ conditionSourceRemainingResistanceAtMost: 1 }),
         { type: "heal", target: { kind: "self" }, healFully: true },
       ]),
+    ],
+  },
+  {
+    id: "lintangible",
+    name: "L'Intangible",
+    type: "marin",
+    subtype: ALTERE,
+    archetype: "alteres",
+    setCode: LA_MUTATION_MONDIALE,
+    cost: 3,
+    maxCopies: 3,
+    attack: 3,
+    health: 4,
+    text:
+      "Éveil — Jusqu'à votre prochain tour, cette carte ne peut pas être ciblée par l'adversaire. Pendant ce temps, " +
+      "quand un effet adverse cible une autre unité que vous contrôlez, piochez 1 carte.",
+    // « Quand un effet adverse échoue ainsi » (Notion) : l'effet qui ne peut
+    // pas la viser en vise une autre — lecture arrêtée le 04/10/2026. Seules
+    // les désignations de VOS unités sont visibles du moteur (`UNIT_TARGETED`).
+    abilities: [
+      eveil("Inciblable jusqu'à votre prochain tour.", [
+        {
+          type: "buff",
+          target: { kind: "self" },
+          attackAmount: { kind: "flat", value: 0 },
+          healthAmount: { kind: "flat", value: 0 },
+          grantKeywords: [KEYWORD_INCIBLABLE],
+          duration: "untilYourNextTurn",
+        },
+      ]),
+      {
+        trigger: "onUnitTargeted",
+        triggeredBy: { cardTypes: [...UNITES] },
+        condition: { selfHasKeyword: KEYWORD_INCIBLABLE },
+        description: "Un effet adverse se rabat sur une autre de vos unités : piochez 1 carte.",
+        effects: [{ type: "draw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } }],
+      },
     ],
   },
   {
@@ -637,6 +674,33 @@ const SOUTIENS: CardDefinition[] = [
     ],
   },
   {
+    id: "mutation-reflexe",
+    name: "Mutation Réflexe",
+    type: "anomalie",
+    permanent: false,
+    archetype: "alteres",
+    setCode: LA_MUTATION_MONDIALE,
+    cost: 2,
+    maxCopies: 3,
+    text: "Quand un Altéré que vous contrôlez est attaqué : déclenchez l'Éveil de cet Altéré, puis annulez cette attaque.",
+    // « Brisez 1 carte de votre main » (Notion) : c'est Mutation Réflexe
+    // elle-même qui part, jouée depuis la main en réaction — lecture arrêtée
+    // le 04/10/2026, comme Propagation (`playedFromHand`).
+    abilities: [
+      {
+        trigger: "onUnitAttackDeclared",
+        mode: "optional",
+        playedFromHand: true,
+        condition: { attackTargetIsOwnUnit: true, attackTargetSubtype: ALTERE },
+        description: "L'Altéré attaqué s'Éveille, et l'attaque est annulée.",
+        effects: [
+          { type: "triggerEveil", target: { kind: "attackTarget" } },
+          { type: "cancelIncomingAttack", target: { kind: "self" } },
+        ],
+      },
+    ],
+  },
+  {
     id: "ils-etaient-deja-la",
     name: "Ils Étaient Déjà Là",
     type: "anomalie",
@@ -677,5 +741,5 @@ const SOUTIENS: CardDefinition[] = [
   },
 ];
 
-/** Les cartes du Lot 16 et leurs deux variantes Abyssales — L'Intangible et Mutation Réflexe attendent leur texte réécrit. */
+/** Les 22 cartes du Lot 16 et leurs deux variantes Abyssales. */
 export const ALTERES_SET: CardDefinition[] = [...MARINS_ALTERES, ...ABYSSALES, ...SOUTIENS];

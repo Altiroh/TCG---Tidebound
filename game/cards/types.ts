@@ -309,6 +309,18 @@ export interface TriggeredAbility {
      */
     attackTargetIsOwnUnit?: boolean;
     /**
+     * … et cette unité attaquée est de ce sous-type (« quand un Altéré allié
+     * est attaqué », Mutation Réflexe — Lot 16). À poser avec
+     * `attackTargetIsOwnUnit`.
+     */
+    attackTargetSubtype?: string;
+    /**
+     * La porteuse a ce mot-clé en ce moment, imprimé ou accordé par un
+     * modificateur (« pendant ce temps » : tant que L'Intangible est
+     * inciblable, Lot 16).
+     */
+    selfHasKeyword?: string;
+    /**
      * `onDeath` PERSONNEL (« quand il est détruit », « à sa destruction ») :
      * ne se déclenche que pour ces CAUSES de départ. Pendant, pour la carte
      * elle-même, de `TriggerSourceFilter.destroyedBy` : « détruite » n'est
@@ -1628,6 +1640,18 @@ export interface StatModifier {
 }
 
 /** Cette carte est-elle la version ABYSSALE ? Lecteur unique : l'interface ne doit jamais tester `subtype` pour ça. */
+/**
+ * « Cette carte ne peut pas être ciblée par l'adversaire » (L'Intangible,
+ * Lot 16) : mot-clé accordé par un modificateur, pour la durée du texte.
+ * Ne protège que de la DÉSIGNATION par un effet adverse — cible choisie
+ * (`chosenUnit`) ou question `pickUnits` —, ni des effets de masse ou au
+ * hasard, qui ne ciblent personne, ni des attaques, qui ne sont pas des
+ * effets. Lu par `isUntargetableBy` (`game/effects/chosenTargets.ts`).
+ * Ici plutôt qu'à côté de sa lecture : les fichiers de cartes le citent, et
+ * ce module ne dépend de rien.
+ */
+export const KEYWORD_INCIBLABLE = "inciblable";
+
 export function isAbyssalVariant(def: CardDefinition): boolean {
   return def.variant === "abyssale";
 }

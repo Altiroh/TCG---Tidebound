@@ -498,10 +498,12 @@ const ALTERES_RARITY: Record<string, CardRarity> = {
   "ils-etaient-deja-la": "common",
   // --- Peu communes ---
   leveilleur: "uncommon",
+  lintangible: "uncommon",
   "le-feral": "uncommon",
   "lattire-fer": "uncommon",
   "la-revenante": "uncommon",
   propagation: "uncommon",
+  "mutation-reflexe": "uncommon",
   // --- Rares ---
   "le-copieur": "rare",
   "le-meneur": "rare",

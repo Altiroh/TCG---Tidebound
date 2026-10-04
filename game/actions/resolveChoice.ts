@@ -183,7 +183,8 @@ export function resolveChoice(state: GameState, action: ResolveChoiceAction): Ac
       // votre Sentinelle ne réveillait pas la Veilleuse de l'Ombre.
       const proprietaire = nextState.players.find((p) => p.board.some((u) => u.instanceId === instanceId));
       if (proprietaire && proprietaire.id !== choice.controllerId) {
-        events.push({ ...base, type: "UNIT_TARGETED", instanceId, byPlayerId: choice.controllerId });
+        const ciblee = proprietaire.board.find((u) => u.instanceId === instanceId)!;
+        events.push({ ...base, type: "UNIT_TARGETED", instanceId, byPlayerId: choice.controllerId, ownerId: proprietaire.id, cardId: ciblee.cardId });
       }
       // Chaque cible est traitée l'une après l'autre, et les effets y
       // visent `triggerSource` : c'est la cible en cours.

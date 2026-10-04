@@ -291,6 +291,13 @@ export interface UnitTargetedEvent extends BaseGameEvent {
   instanceId: string;
   /** Joueur dont l'effet vise l'unité. */
   byPlayerId: PlayerId;
+  /**
+   * Contrôleur et identité de la cible AU MOMENT où elle est désignée : l'effet
+   * qui la vise peut la faire partir (renvoi, destruction) avant que les
+   * observateurs ne lisent l'événement (`processUnitTargetedTriggers`).
+   */
+  ownerId?: PlayerId;
+  cardId?: string;
 }
 
 export interface TurnStartedEvent extends BaseGameEvent {
