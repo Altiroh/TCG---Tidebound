@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { CadrePreview } from "@/features/cadre-preview/CadrePreview";
 
 export const metadata: Metadata = {
@@ -13,5 +14,10 @@ export const metadata: Metadata = {
  * l'ancien, sans toucher au rendu des cartes ailleurs dans le jeu.
  */
 export default function CadrePreviewRoute() {
-  return <CadrePreview />;
+  // `?cartes=` est lu par `useSearchParams` : sans frontière, le rendu statique échoue au build.
+  return (
+    <Suspense>
+      <CadrePreview />
+    </Suspense>
+  );
 }

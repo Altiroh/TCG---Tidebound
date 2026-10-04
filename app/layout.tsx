@@ -1,6 +1,6 @@
 import { MenuAmbiance } from "@/components/menu/MenuAmbiance";
 import type { Metadata, Viewport } from "next";
-import { cardBodyFont, cardTitleFont, uiFont } from "@/lib/fonts";
+import { cardBodyFont, cardNewTitleFont, cardTitleFont, uiFont } from "@/lib/fonts";
 import { ScreenDiagnostic } from "@/components/ScreenDiagnostic";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 import { InstallPromptCapture } from "@/components/InstallPrompt";
@@ -82,7 +82,7 @@ export default function RootLayout({
   return (
     <html
       lang="fr"
-      className={`${cardTitleFont.variable} ${cardBodyFont.variable} ${uiFont.variable}`}
+      className={`${cardTitleFont.variable} ${cardBodyFont.variable} ${cardNewTitleFont.variable} ${uiFont.variable}`}
       // `--font-menu` : alias de la police de titre (`lib/fonts.ts`), sans seconde déclaration à télécharger.
       style={{ ["--font-menu" as string]: `var(--font-card-title)` }}
     >

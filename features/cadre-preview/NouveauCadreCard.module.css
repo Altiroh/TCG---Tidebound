@@ -12,8 +12,9 @@
 /* Calque commun : couvre la carte et suit l'arrondi du liseré. */
 .calque {
   position: absolute;
-  inset: 1.2% 4.6%;
-  border-radius: 6cqw;
+  /* Même calage que l'illustration, propre à chaque cadre (`CALAGES`). */
+  inset: var(--illus-inset);
+  border-radius: var(--illus-radius);
   overflow: hidden;
   pointer-events: none;
 }
@@ -66,21 +67,6 @@
   50% { opacity: 1; transform: scale(1) rotate(45deg); }
 }
 
-/* Halo doré qui respire sur le liseré, pour qu'une légendaire se repère même à l'arrêt. */
-.haloDore {
-  position: absolute;
-  inset: 0;
-  border-radius: 7cqw;
-  box-shadow: 0 0 2.5cqw rgba(255, 200, 90, 0.55), inset 0 0 2cqw rgba(255, 210, 120, 0.35);
-  pointer-events: none;
-  animation: respire 3s ease-in-out infinite;
-}
-
-@keyframes respire {
-  0%, 100% { opacity: 0.45; }
-  50% { opacity: 1; }
-}
-
 /* ─── Abyssale ───────────────────────────────────────────────────────── */
 
 /* Irisation : un dégradé arc-en-ciel froid, très large, qui glisse en continu. */
@@ -124,15 +110,6 @@
   animation: balayage 5.5s ease-in-out infinite;
 }
 
-/* Halo violet sur le liseré. */
-.haloAbyssal {
-  position: absolute;
-  inset: 0;
-  border-radius: 7cqw;
-  box-shadow: 0 0 2.5cqw rgba(160, 90, 255, 0.55), inset 0 0 2cqw rgba(120, 220, 255, 0.25);
-  pointer-events: none;
-  animation: respire 3.6s ease-in-out infinite;
-}
 
 /* Le sujet du débord se fond dans le voile au lieu de finir net au-dessus du nom. */
 .debord {
@@ -169,9 +146,7 @@
   .eclatDore,
   .refletNacre,
   .etoile,
-  .irisation,
-  .haloDore,
-  .haloAbyssal {
+  .irisation {
     animation: none;
   }
   .eclatDore,

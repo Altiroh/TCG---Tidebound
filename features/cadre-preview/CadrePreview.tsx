@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { rarityForCardId } from "@/game/boosters/cardRarity";
 import { CORE_SET, isAbyssalVariant, type CardDefinition, type CardType } from "@/game";
 import { CardTile } from "@/features/match/CardTile";
 import { NouveauCadreCard } from "@/features/cadre-preview/NouveauCadreCard";
@@ -27,7 +29,9 @@ export function CadrePreview() {
   const [legendaire, setLegendaire] = useState(false);
   const [largeur, setLargeur] = useState(260);
   const [comparer, setComparer] = useState(true);
-  const cartes = echantillon();
+  // `?cartes=id1,id2` : une liste précise plutôt que l'échantillon.
+  const demandees = (useSearchParams().get("cartes") ?? "").split(",").filter(Boolean);
+  const cartes = demandees.length > 0 ? CORE_SET.filter((def) => demandees.includes(def.id)) : echantillon();
 
   return (
     <main className="min-h-dvh bg-slate-950 p-6 text-slate-100">
@@ -52,7 +56,7 @@ export function CadrePreview() {
         {cartes.map((def) => (
           <div key={def.id} className="flex gap-3">
             <div style={{ width: largeur }}>
-              <NouveauCadreCard def={def} legendaire={legendaire} widthClassName="w-full" />
+              <NouveauCadreCard def={def} legendaire={legendaire || rarityForCardId(def.id) === "legendary"} widthClassName="w-full" />
             </div>
             {comparer && (
               <div style={{ width: largeur }} className="opacity-90">

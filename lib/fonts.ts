@@ -1,4 +1,4 @@
-import { Cinzel, Crimson_Pro, Spectral } from "next/font/google";
+import { Cinzel, Crimson_Pro, Lora, Spectral } from "next/font/google";
 
 /**
  * Typographie verrouillée dans Notion ("Bibliothèque visuelle — cohérence
@@ -14,6 +14,20 @@ export const cardTitleFont = Cinzel({
   // deux fois sous deux noms de police différents.
   weight: ["600", "700", "900"],
   variable: "--font-card-title",
+});
+
+/**
+ * Titre du NOUVEAU CADRE (test, 04/10/2026) : Lora Bold Italic, choisie
+ * d'après la maquette — distincte du Cinzel des cartes actuelles, qui reste
+ * la police verrouillée du rendu officiel. Chargée en `swap` : seule la face
+ * du nouveau cadre l'emploie.
+ */
+export const cardNewTitleFont = Lora({
+  subsets: ["latin"],
+  weight: "700",
+  style: "italic",
+  display: "swap",
+  variable: "--font-card-new-title",
 });
 
 export const cardBodyFont = Crimson_Pro({
