@@ -87,7 +87,11 @@ export function legalTargetsFor(state: GameState, viewerId: PlayerId, targeting:
       return card && spec ? chosenAmong(state, spec.effects, viewerId, card.instanceId) : null;
     }
     case "reaction": {
-      const card = state.players.flatMap((p) => p.board).find((c) => c.instanceId === targeting.sourceInstanceId);
+      // La source peut être EN MAIN : un Objet réactif qui se Brise, ou une
+      // carte jouée en réaction (Propagation, Mutation Réflexe — Lot 16). La
+      // chercher seulement en jeu ne trouvait rien : aucune cible ne
+      // s'éclairait, et le joueur restait dans la fenêtre sans savoir quoi toucher.
+      const card = [...state.players.flatMap((p) => p.board), ...viewer.hand].find((c) => c.instanceId === targeting.sourceInstanceId);
       const ability = card && getCardDefinition(card.cardId).abilities?.[targeting.abilityIndex];
       return card && ability
         ? chosenAmong(state, ability.effects, viewerId, card.instanceId, targeting.triggerSourceInstanceId)
