@@ -28,6 +28,12 @@ import styles from "@/features/cadre-preview/NouveauCadreCard.module.css";
  * Toutes les icônes (type, cerveau, épée, bouclier) sont fournies, blanches.
  */
 const ASSETS = "/assets/cards/frames/nouveau";
+/**
+ * Version des icônes (type, cerveau, épée, bouclier) : une icône remplacée
+ * sous le même nom resterait un jour en cache (service worker + HTTP).
+ * À monter à chaque nouvelle livraison d'icônes.
+ */
+const ICONES_REV = 2;
 
 export interface NouveauCadreFaceProps {
   def: CardDefinition;
@@ -115,7 +121,7 @@ export function NouveauCadreFace({ def, legendaire = false, attack, health, atta
       <div className="absolute flex flex-col items-center text-white" style={{ top: "5%", right: "10%", width: "20%" }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={`${ASSETS}/types/${def.type}.webp`}
+          src={`${ASSETS}/types/${def.type}.webp?v=${ICONES_REV}`}
           alt=""
           className="object-contain"
           style={{ height: "13cqw", width: "auto", filter: "drop-shadow(0 0.4cqw 0.6cqw rgba(0,0,0,0.7))" }}
@@ -142,8 +148,9 @@ export function NouveauCadreFace({ def, legendaire = false, attack, health, atta
         </h3>
         {def.text && (
           <p
-            className="font-semibold [font-family:var(--font-card-body)]"
-            style={{ fontSize: `${rulesSizeCqw(def.text)}cqw`, lineHeight: 1.2, marginTop: "3cqw", textShadow: RULES_SHADOW }}
+            // Hauteur plafonnée : un texte long (Le Géant Chromatique…) défile dans sa zone au lieu de recouvrir l'illustration.
+            className={`font-semibold [font-family:var(--font-card-body)] ${styles.regles}`}
+            style={{ fontSize: `${rulesSizeCqw(def.text)}cqw`, lineHeight: 1.2, marginTop: "3cqw", maxHeight: "36cqw", textShadow: RULES_SHADOW }}
           >
             {def.text}
           </p>
@@ -230,24 +237,24 @@ function nameSizeCqw(name: string): number {
 }
 
 function rulesSizeCqw(text: string): number {
-  if (text.length <= 90) return 5.4;
-  if (text.length <= 150) return 5;
-  if (text.length <= 220) return 4.4;
-  return 3.9;
+  if (text.length <= 90) return 5.2;
+  if (text.length <= 150) return 4.8;
+  if (text.length <= 220) return 4.3;
+  return 4;
 }
 
 /** Cerveau de Raison (icône fournie). */
 function BrainGlyph() {
-  return <StatIcon src={`${ASSETS}/cerveau.webp`} height="0.75em" />;
+  return <StatIcon src={`${ASSETS}/cerveau.webp?v=${ICONES_REV}`} height="0.75em" />;
 }
 
 /** Épée de Puissance et bouclier de Résistance : même hauteur, en `em` pour suivre le chiffre. */
 function SwordGlyph() {
-  return <StatIcon src={`${ASSETS}/epee.webp`} height="1.1em" />;
+  return <StatIcon src={`${ASSETS}/epee.webp?v=${ICONES_REV}`} height="1.1em" />;
 }
 
 function ShieldGlyph() {
-  return <StatIcon src={`${ASSETS}/bouclier.webp`} height="0.9em" />;
+  return <StatIcon src={`${ASSETS}/bouclier.webp?v=${ICONES_REV}`} height="0.9em" />;
 }
 
 /** L'épée, fine, monte un peu plus haut que le bouclier pour peser autant que lui. */
