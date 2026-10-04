@@ -1009,6 +1009,52 @@ export const DECK_SENTINELLES_CHROMATIQUES: DeckList = {
  * marée, sabordage, raison, objets, midrange, contrôle — puis les trois
  * archétypes du Lot 15 : survie, cavalerie, couleurs.
  */
+/**
+ * 16 — Les Altérés (Lot 16, 04/10/2026). Multiplier les Éveils jusqu'à
+ * produire plus de valeur que le coût payé, puis convertir la chaîne en
+ * plateau, en dégâts ou en attaque immédiate.
+ *
+ * Liste et Navire de Notion (« Préconstruits » § 16) : La Religieuse, dont
+ * Réparation d'urgence prolonge la fenêtre de combo et rattrape un tour où
+ * le joueur s'est endetté en Raison — le deck amorce lui-même ses Éveils.
+ * 30 Marins Altérés, 10 Anomalies, 25 cartes à 2 Raison ou moins.
+ * ÉCART DE PUISSANCE SIGNALÉ, NON CORRIGÉ (décision du 04/10/2026 : gardé
+ * tel quel). Mesuré au labo (bot moyen, 60 parties par paire) : 77 % contre
+ * le rayon sous La Religieuse, là où les quinze autres tiennent entre 42 et
+ * 59 %. Sous les autres coques : 84 % L'Errant, 82 % Brise-Lames, 69 %
+ * Courlis, 67 % Verrière, 63 % Goliath (`scripts/preconLab/libraries/lot16Navires.ts`).
+ */
+export const DECK_LES_ALTERES: DeckList = {
+  id: "les-alteres",
+  name: "Les Altérés",
+  shipId: "la-religieuse",
+  description: "Un Éveil en appelle un autre : la chaîne paie plus qu'elle ne coûte.",
+  cardIds: [
+    ...repeat("linstable", 3),
+    ...repeat("le-dedouble", 2),
+    ...repeat("lentendant", 3),
+    ...repeat("leveilleur", 3),
+    ...repeat("le-copieur", 2),
+    ...repeat("le-buveur", 2),
+    ...repeat("le-fendu", 2),
+    ...repeat("le-recousu", 1),
+    ...repeat("lintangible", 1),
+    ...repeat("le-meneur", 2),
+    ...repeat("le-feral", 2),
+    ...repeat("lattire-fer", 1),
+    ...repeat("la-conscience-commune", 1),
+    ...repeat("la-revenante", 1),
+    ...repeat("la-chute-de-lange", 2),
+    ...repeat("le-diable-en-personne", 1),
+    ...repeat("lanomalie-premiere", 1),
+    ...repeat("alteration-forcee", 3),
+    ...repeat("propagation", 3),
+    ...repeat("ils-etaient-deja-la", 1),
+    ...repeat("surcharge", 2),
+    ...repeat("mutation-reflexe", 1),
+  ],
+};
+
 export const PRECON_DECK_LISTS: readonly DeckList[] = [
   DECK_LE_GRAND_BANC,
   DECK_CHEVALIERS_DU_GRAND_ETANG,
@@ -1026,4 +1072,6 @@ export const PRECON_DECK_LISTS: readonly DeckList[] = [
   DECK_EQUIPAGE_DE_VERRE,
   DECK_CAVALERIE,
   DECK_SENTINELLES_CHROMATIQUES,
+  // Lot 16 — Les Altérés (04/10/2026).
+  DECK_LES_ALTERES,
 ];

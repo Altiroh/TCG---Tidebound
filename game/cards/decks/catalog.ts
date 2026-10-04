@@ -138,6 +138,12 @@ const DECK_META: Record<string, DeckMeta> = {
     difficulty: 4,
     mechanics: ["Couleurs qui se répondent", "Signaux Chromatiques", "Assemblage"],
   },
+  // Lot 16 — Les Altérés (04/10/2026).
+  "les-alteres": {
+    style: "Tempo-combo / Éveils en chaîne",
+    difficulty: 4,
+    mechanics: ["Déclencher l'Éveil", "Répéter et propager", "Réactions depuis la main"],
+  },
 };
 
 const FALLBACK_META: DeckMeta = { style: "Polyvalent", difficulty: 3, mechanics: [] };
