@@ -42,6 +42,22 @@ interface OnlineMatchProps {
  * une par une.
  */
 
+/**
+ * Recharge la page, une fois par période de 20 s au plus : si le serveur
+ * lui-même est indisponible, un rechargement en boucle n'arrangerait rien.
+ */
+function reloadOnce() {
+  const KEY = "tidebound:online-reload-at";
+  try {
+    const last = Number(window.sessionStorage.getItem(KEY) ?? 0);
+    if (Date.now() - last < 20_000) return;
+    window.sessionStorage.setItem(KEY, String(Date.now()));
+  } catch {
+    // Stockage indisponible : on recharge quand même, une fois.
+  }
+  window.location.reload();
+}
+
 export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: OnlineMatchProps) {
   const [match, setMatch] = useState<MatchRow>(initialMatch);
   const [view, setView] = useState<GameState | null>(initialView);
@@ -89,8 +105,33 @@ export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: On
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `refresh` est stable pour une partie donnée.
   }, []);
 
+  /**
+   * Échecs d'appel consécutifs de `fetchMatchView` (pas un refus : une
+   * EXCEPTION). Le cas type est un nouveau déploiement pendant la partie : les
+   * actions serveur de l'ancienne version de l'onglet n'existent plus, chaque
+   * appel lève une erreur, et l'écran restait figé sans un mot pendant que
+   * l'adversaire jouait (04/10/2026). L'état vit sur le serveur : recharger la
+   * page reprend la partie là où elle en est.
+   */
+  const refreshFailures = useRef(0);
+
   async function refresh() {
-    const result = await fetchMatchView(matchId);
+    let result: Awaited<ReturnType<typeof fetchMatchView>>;
+    try {
+      result = await fetchMatchView(matchId);
+      refreshFailures.current = 0;
+    } catch (error) {
+      refreshFailures.current += 1;
+      console.error("[OnlineMatch] Rafraîchissement impossible :", error);
+      if (refreshFailures.current === 1) {
+        // Un raté réseau isolé : une seconde chance avant de recharger.
+        const retry = setTimeout(() => void refresh(), 1500);
+        timers.current.push(retry);
+      } else {
+        reloadOnce();
+      }
+      return;
+    }
     if (!result.ok || !result.data) return;
     shownVersion.current = result.data.match.state_version;
     latestRemoteVersion.current = Math.max(latestRemoteVersion.current, shownVersion.current);

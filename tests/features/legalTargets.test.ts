@@ -79,6 +79,22 @@ describe("legalTargetsFor", () => {
       expect([...(targets ?? [])].sort(), `${def.id}#${index}`).toEqual(expected.sort());
     }
   });
+  it("une réaction JOUÉE depuis la main (Propagation) éclaire ses cibles : un AUTRE Altéré que l'éveillé", () => {
+    // Lot 16 : la source est encore en main. La chercher seulement en jeu ne
+    // rendait rien, et le joueur restait dans la fenêtre sans cible éclairée.
+    const propagation = instance("propagation", "p1");
+    const eveille = instance("le-dedouble", "p1");
+    const autre = instance("lentendant", "p1");
+    const peon = instance("peon-altere", "p1");
+    const state = testGameState({ players: [testPlayer("p1", { hand: [propagation], board: [eveille, autre, peon] }), testPlayer("p2")] });
+    const targets = legalTargetsFor(state, "p1", {
+      kind: "reaction",
+      sourceInstanceId: propagation.instanceId,
+      abilityIndex: 0,
+      triggerSourceInstanceId: eveille.instanceId,
+    });
+    expect([...(targets ?? [])].sort()).toEqual([autre.instanceId, peon.instanceId].sort());
+  });
 });
 
 describe("phaseButtonFor", () => {

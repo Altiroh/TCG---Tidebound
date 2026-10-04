@@ -28,7 +28,11 @@
 .backdrop {
   position: fixed;
   inset: 0;
-  z-index: 90;
+  /* Au-dessus de la scène d'ouverture des boosters (`BoosterOpening.module.css`,
+     z-index 200) : la fiche d'une carte tout juste tirée s'ouvrait derrière
+     elle, et la scène bloquait tout. Toujours sous les voiles de plus haut
+     niveau (1200 et plus). */
+  z-index: 210;
   display: flex;
   align-items: center;
   justify-content: center;
