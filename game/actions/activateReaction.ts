@@ -8,8 +8,10 @@ import {
   processGraveyardRecoveryTriggers,
   processReturnedToHandTriggers,
   processSummonEnterTriggers,
+  processTrigger,
   resolveReaction,
 } from "@/game/triggers/triggerBus";
+import { recordGraveyardArrival } from "@/game/state/discard";
 import type { PendingReactionCandidate } from "@/game/triggers/types";
 import type { GameEvent } from "@/game/events/types";
 import { assertGameActive, assertPlayerInGame, combine } from "@/game/rules/validation";
@@ -76,6 +78,32 @@ function validate(
 }
 
 /**
+ * Carte JOUÉE en réaction depuis la main (`TriggeredAbility.playedFromHand`,
+ * Propagation — Lot 16) : elle quitte la main pour le Cimetière comme une
+ * Anomalie résolue — sans déplacement journalisé, une carte jouée n'est pas
+ * une carte défaussée — et la pose est consignée (`PLAY_CARD`). Son coût
+ * est payé par la réaction elle-même (`reasonCost` l'inclut).
+ */
+function playReactiveCardFromHand(
+  state: GameState,
+  playerId: string,
+  instanceId: string,
+  turnNumber: number
+): { state: GameState; events: GameEvent[] } {
+  const player = state.players.find((p) => p.id === playerId);
+  const card = player?.hand.find((c) => c.instanceId === instanceId);
+  if (!player || !card) return { state, events: [] };
+  const after = recordGraveyardArrival(
+    { ...player, hand: player.hand.filter((c) => c.instanceId !== instanceId), graveyard: [...player.graveyard, card] },
+    { cardId: card.cardId, instanceId, turnNumber, fromZone: "hand" }
+  );
+  return {
+    state: { ...state, players: state.players.map((p) => (p.id === playerId ? after : p)) as [PlayerState, PlayerState] },
+    events: [{ type: "PLAY_CARD", turnNumber, timestamp: Date.now(), playerId, instanceId, cardId: card.cardId }],
+  };
+}
+
+/**
  * Active une capacité facultative éligible pendant une fenêtre de
  * réaction : paie son coût, résout ses effets, puis reconstruit la
  * fenêtre — soit elle continue (l'activation vient elle-même de rendre
@@ -131,10 +159,14 @@ export function activateReaction(state: GameState, action: ActivateReactionActio
   // Objet réactif EN MAIN (règle du 29/09/2026) : il se Brise depuis la
   // main — Cimetière d'abord, effet ensuite, comme un Bris ordinaire.
   const fromHand = validation.candidate.fromHand === true;
+  // Hors Objet, une réaction depuis la main est une carte JOUÉE (Lot 16).
+  const joueeDepuisLaMain = fromHand && getCardDefinition(validation.candidate.cardId).type !== "objet";
   if (fromHand) {
-    const broken = breakReactiveObjectFromHand(revealedState, action.playerId, action.sourceInstanceId, pending.turnNumber);
-    revealedState = broken.state;
-    revealEvents.push(...broken.events);
+    const quitte = joueeDepuisLaMain
+      ? playReactiveCardFromHand(revealedState, action.playerId, action.sourceInstanceId, pending.turnNumber)
+      : breakReactiveObjectFromHand(revealedState, action.playerId, action.sourceInstanceId, pending.turnNumber);
+    revealedState = quitte.state;
+    revealEvents.push(...quitte.events);
   }
 
   const resolution = resolveReaction(
@@ -172,7 +204,16 @@ export function activateReaction(state: GameState, action: ActivateReactionActio
   nextState = discarded.state;
   events.push(...discarded.events);
 
-  if (fromHand) {
+  if (joueeDepuisLaMain) {
+    // « quand une carte est jouée » : celle-ci l'a été, en réaction.
+    const played = processTrigger(
+      nextState,
+      { trigger: "onCardPlayed", playerId: action.playerId, cardId: validation.candidate.cardId, sourceInstanceId: action.sourceInstanceId },
+      pending.turnNumber
+    );
+    nextState = played.state;
+    events.push(...played.events);
+  } else if (fromHand) {
     const after = afterReactiveObjectBrokenFromHand(nextState, action.playerId, action.sourceInstanceId, validation.candidate.cardId, pending.turnNumber);
     nextState = after.state;
     events.push(...after.events);

@@ -15,6 +15,7 @@ export type GameEventType =
   | "HEAL"
   | "SUMMON"
   | "ENTER_EFFECTS_REPEATED"
+  | "EVEIL"
   | "DESTROY"
   | "BUFF_APPLIED"
   | "DEBUFF_APPLIED"
@@ -172,6 +173,22 @@ export interface EnterEffectsRepeatedEvent extends BaseGameEvent {
   playerId: PlayerId;
   instanceId: string;
   cardId: string;
+}
+
+/**
+ * Lot 16 — un Altéré s'Éveille : son Éveil (capacités `onEveil`) vient de
+ * se résoudre, qu'il ait été déclenché par son arrivée ou par un effet
+ * (`triggerEveil`). Fait déjà résolu : `count` est le rang de cet Éveil
+ * dans le tour pour cette carte (1 = premier Éveil du tour). Lu par le
+ * journal, et par la fenêtre de réaction (« après qu'un Altéré s'est
+ * Éveillé », Propagation).
+ */
+export interface EveilEvent extends BaseGameEvent {
+  type: "EVEIL";
+  playerId: PlayerId;
+  instanceId: string;
+  cardId: string;
+  count: number;
 }
 
 export interface DestroyEvent extends BaseGameEvent {
@@ -524,6 +541,7 @@ export interface ShipAbilityFiredEvent extends BaseGameEvent {
 }
 
 export type GameEvent =
+  | EveilEvent
   | AttackInterceptedEvent
   | DurationChangedEvent
   | DrawCardEvent

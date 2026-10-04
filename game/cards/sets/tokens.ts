@@ -90,4 +90,18 @@ export const TOKEN_SET: CardDefinition[] = [
     chromatic: { colors: ["violet"] },
     text: "Compte comme Violet pour les effets Chromatiques. N'émet aucun Signal.",
   },
+  // Lot 16 — Les Altérés. « Créez un Altéré 1/1 » (Le Dédoublé) : un Marin de
+  // la famille, sans Éveil. Il compte comme un Altéré pour tout ce qui en
+  // désigne un, mais déclencher son Éveil ne fait rien — il n'en a pas.
+  {
+    id: "peon-altere",
+    name: "Péon Altéré",
+    type: "marin",
+    subtype: "altere",
+    archetype: "alteres",
+    token: true,
+    cost: 0,
+    attack: 1,
+    health: 1,
+  },
 ];

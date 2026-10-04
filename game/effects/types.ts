@@ -299,7 +299,30 @@ export type EffectType =
    * (`DeckTopDecisionChoice`) à celui qui regarde. Rien ne sort de la
    * pioche tant qu'il n'a pas répondu.
    */
-  | "deckTopDecision";
+  | "deckTopDecision"
+  /**
+   * Lot 16 — « déclenchez l'Éveil » d'une carte en jeu : son Éveil (ses
+   * capacités `onEveil`) se résout MAINTENANT, au milieu de la séquence,
+   * comme si elle venait d'arriver — sans être une arrivée. `count` le
+   * répète (« déclenchez deux fois l'Éveil », Surcharge). Une carte sans
+   * Éveil n'en a pas à déclencher : l'effet est alors sans objet.
+   *
+   * La résolution est déléguée à `runEveil` (`triggerBus.ts`), branché au
+   * chargement (`setEveilRunner`, `resolveEffect.ts`) : ce module ne peut
+   * pas importer le bus de déclencheurs, qui l'importe déjà.
+   */
+  | "triggerEveil"
+  /**
+   * « Renvoyez dans votre main un Altéré coûtant 3 ou moins depuis votre
+   * Cimetière » (La Revenante, Lot 16) quand c'est une capacité AUTOMATIQUE
+   * qui le dit : aucune carte n'a pu être désignée à l'activation, donc la
+   * question est posée maintenant (`DeckLookChoice` avec `zone: "graveyard"`).
+   * `filter` (sous-type, coût, types) décrit ce qui est prenable, `uses`
+   * combien, `refusable` si ne rien prendre est une réponse, et
+   * `thenEffects` ce qui se résout ensuite sur la carte prise
+   * (`chosenGraveyardInstanceId`). Sans carte prenable, pas de question.
+   */
+  | "pickFromGraveyard";
 
 /** Une valeur numérique d'effet, pour l'instant une constante — prête à
  * être étendue vers des formules (ex: "= nombre d'unités contrôlées"). */
@@ -542,6 +565,9 @@ export interface EffectDefinition {
   cardId?: string;
 
   /**
+   * Pour `triggerEveil` : nombre de fois que l'Éveil est déclenché, à la
+   * suite (défaut 1).
+   *
    * Pour `summon` : nombre d'exemplaires à invoquer (défaut 1). L'invocation
    * s'arrête aux Slots libres du Navire — "on n'invoque pas plus qu'il n'en
    * tient" (décision du 2026-09-14) : deux Péons sur un plateau qui n'a
@@ -650,6 +676,17 @@ export interface EffectDefinition {
    */
   thenEffects?: EffectDefinition[];
   /**
+   * Pour `lookAtDeckTop` : où retournent les cartes regardées et non prises
+   * (`DeckLookChoice.restTo`). Défaut : sous la pioche.
+   */
+  restTo?: "deckBottom" | "deckTopChosenOrder";
+  /**
+   * Pour `heal` sur une unité : « restaurez TOUTE sa Résistance » (Le
+   * Recousu, Lot 16) — tous les dégâts marqués s'effacent, quel qu'en soit
+   * le nombre. `amount` est alors ignoré pour les unités.
+   */
+  healFully?: boolean;
+  /**
    * Pour `surchargeCards` : ne s'applique qu'à partir de la N-ième unité
    * posée dans le tour par le joueur taxé (« après la troisième unité
    * jouée »).
@@ -720,6 +757,18 @@ export interface EffectDefinition {
      * première (Verrier de Pont).
      */
     excludeChosenTarget?: boolean;
+    /**
+     * Écarte la carte DÉCLENCHEUSE (`triggerSourceInstanceId`) : « déclenchez
+     * l'Éveil d'un autre Altéré allié DIFFÉRENT » de celui qui vient de
+     * s'Éveiller (Le Meneur, Lot 16).
+     */
+    excludeTriggerSource?: boolean;
+    /**
+     * Ne retient que les cartes qui se sont déjà Éveillées pendant le tour en
+     * cours (« s'il s'est déjà Éveillé ce tour », Le Diable en Personne ;
+     * « l'un d'eux », L'Anomalie Première — Lot 16).
+     */
+    eveilledThisTurn?: boolean;
   };
   /**
    * Lot 15 — « Si elle survit, … » : ne résout CET effet que si la cible
@@ -976,4 +1025,46 @@ export interface EffectDefinition {
    * cet effet vient de laisser.
    */
   conditionOpponentReasonAtMost?: number;
+
+  /**
+   * Lot 16 — « si c'est son deuxième Éveil ce tour », « s'il s'est déjà
+   * Éveillé ce tour » : nombre d'Éveils de la carte lue (`of`) pendant le
+   * tour en cours, bornes comprises. La source (`"source"`) pendant son
+   * propre Éveil se compte déjà : à son deuxième Éveil, elle lit 2. Une carte
+   * qui n'est plus en jeu ne remplit aucune borne.
+   */
+  conditionEveils?: { of: "source" | "triggerSource"; min?: number; max?: number };
+
+  /**
+   * « Si elle est détruite ainsi » (L'Instable, Lot 16) : la carte
+   * déclencheuse — la cible désignée par `pickUnits` — a quitté le jeu, est
+   * condamnée, ou porte des dégâts qui atteignent sa Résistance effective.
+   * L'exact contraire de `conditionChosenTargetSurvives`, lu sur
+   * `triggerSource` : la mort elle-même n'est réglée qu'à la passe suivante.
+   */
+  conditionTriggerSourceDoomed?: boolean;
+
+  /**
+   * « Si sa Puissance tombe à 0 ainsi » (Le Buveur, Lot 16) : Puissance
+   * EFFECTIVE de la carte déclencheuse au plus égale à ce plafond. Une carte
+   * qui n'est plus en jeu ne remplit pas la condition.
+   */
+  conditionTriggerSourcePowerAtMost?: number;
+
+  /**
+   * « Si la carte renvoyée était adverse » (L'Attire-Fer, Lot 16) : la carte
+   * déclencheuse est contrôlée par l'adversaire du contrôleur de l'effet.
+   * À placer AVANT l'effet qui la déplace : une fois en main, elle n'est
+   * plus sur le plateau de personne.
+   */
+  conditionTriggerSourceIsOpponents?: boolean;
+
+  /**
+   * « Si elle avait 1 Résistance restante ou moins » (Le Recousu), « si elle a
+   * 2 Résistance restante ou moins » (La Chute de l'Ange) — Lot 16 :
+   * Résistance effective MOINS les dégâts marqués de la SOURCE, au moment où
+   * l'effet se résout. Une source qui n'est plus en jeu ne remplit pas la
+   * condition.
+   */
+  conditionSourceRemainingResistanceAtMost?: number;
 }

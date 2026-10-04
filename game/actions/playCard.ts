@@ -10,6 +10,7 @@ import {
   processGraveyardRecoveryTriggers,
   processReturnedToHandTriggers,
   processSummonEnterTriggers,
+  runEveilOnArrival,
   processTrigger,
 } from "@/game/triggers/triggerBus";
 import {
@@ -167,6 +168,12 @@ function validatePlayability(state: GameState, action: PlayCardAction) {
 
   const instance = player!.hand.find((c) => c.instanceId === action.instanceId)!;
   const def = getCardDefinition(instance.cardId);
+
+  // Une carte qui ne se joue qu'en RÉACTION, depuis la main (Propagation,
+  // Lot 16) : la poser en phase principale ne ferait rien.
+  if (def.type !== "objet" && (def.abilities ?? []).some((ability) => ability.playedFromHand)) {
+    return { ok: false as const, error: "Cette carte se joue en réaction, depuis votre main, quand son déclencheur a lieu." };
+  }
 
   if (def.requiresTideState && !def.requiresTideState.includes(state.environment.tideState)) {
     return { ok: false as const, error: "Cette carte ne peut pas être jouée dans l'état de Marée actuel." };
@@ -480,6 +487,12 @@ export function playCard(state: GameState, action: PlayCardAction): ActionResult
     );
     nextState = enterPlayTrigger.state;
     events.push(...enterPlayTrigger.events);
+
+    // « Éveil — … » (Lot 16) se résout à l'arrivée, juste après les
+    // capacités d'arrivée : c'est le premier Éveil de la carte ce tour.
+    const eveil = runEveilOnArrival(nextState, instance.instanceId, state.turnNumber);
+    nextState = eveil.state;
+    events.push(...eveil.events);
   }
 
   // « Lorsqu'elle devient visible » : une Structure posée pendant un état où

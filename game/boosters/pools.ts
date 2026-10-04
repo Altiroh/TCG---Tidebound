@@ -37,6 +37,8 @@ export const BOOSTER_VEILLEE_DES_DISPARUS = "la-veillee-des-disparus";
 export const BOOSTER_NECESSAIRE_DU_MARIN = "necessaire-du-marin";
 /** B6 — Éclats en Selle (Lot 15). Trois familles : Équipage de Verre, Cavalerie, Sentinelles Chromatiques. */
 export const BOOSTER_ECLATS_EN_SELLE = "eclats-en-selle";
+/** B7 — La mutation mondiale (Lot 16). Les Altérés et leur Éveil (« Booster 4 — Altérations du Large » dans Notion avant son nom définitif). */
+export const BOOSTER_LA_MUTATION_MONDIALE = "la-mutation-mondiale";
 
 /**
  * B1 — Défaut. 63 entrées (61 + les deux anti-swarm du 21/09/2026, qui
@@ -440,6 +442,21 @@ const ECLATS_EN_SELLE_POOL: readonly string[] = [
   "le-geant-chromatique-abyssal",
 ];
 
+/**
+ * B7 — La mutation mondiale (Lot 16, Notion « Boosters & économie » §
+ * Booster 4). Pool de lancement : les cartes du lot et elles seules —
+ * « volontairement plus concentré qu'un booster généraliste : un joueur qui
+ * l'ouvre doit réellement progresser vers un deck Altérés ».
+ *
+ * Ses Abyssales sont les siennes : les variantes de La Chute de l'Ange et
+ * du Diable en Personne (04/10/2026). L'Anomalie Première, annoncée comme
+ * l'Abyssale du lot par Notion, n'est pas une variante et plafonne à
+ * Légendaire (`cardRarity.ts`).
+ */
+const LA_MUTATION_MONDIALE_POOL: readonly string[] = CORE_SET.filter((card) => card.setCode === BOOSTER_LA_MUTATION_MONDIALE).map(
+  (card) => card.id
+);
+
 const BIENVENUE: readonly string[] = DEFAUT.filter((cardId) => {
   const def = CORE_SET.find((card) => card.id === cardId);
   if (!def) return false;
@@ -456,6 +473,7 @@ export const BOOSTER_POOLS: Readonly<Record<string, readonly string[]>> = {
   [BOOSTER_VEILLEE_DES_DISPARUS]: VEILLEE_DES_DISPARUS,
   [BOOSTER_NECESSAIRE_DU_MARIN]: NECESSAIRE_DU_MARIN,
   [BOOSTER_ECLATS_EN_SELLE]: ECLATS_EN_SELLE_POOL,
+  [BOOSTER_LA_MUTATION_MONDIALE]: LA_MUTATION_MONDIALE_POOL,
   [BOOSTER_BIENVENUE]: BIENVENUE,
 };
 
@@ -471,6 +489,7 @@ export const PURCHASABLE_BOOSTER_IDS: readonly string[] = [
   BOOSTER_ETRANGETE_SOUS_MARINE,
   BOOSTER_VEILLEE_DES_DISPARUS,
   BOOSTER_ECLATS_EN_SELLE,
+  BOOSTER_LA_MUTATION_MONDIALE,
 ];
 
 /**

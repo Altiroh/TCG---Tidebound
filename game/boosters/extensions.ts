@@ -4,6 +4,7 @@ import {
   BOOSTER_DEFAUT,
   BOOSTER_ECLATS_EN_SELLE,
   BOOSTER_ETRANGETE_SOUS_MARINE,
+  BOOSTER_LA_MUTATION_MONDIALE,
   BOOSTER_POISSONS_PAS_FRAIS,
   BOOSTER_NECESSAIRE_DU_MARIN,
   BOOSTER_VEILLEE_DES_DISPARUS,
@@ -184,6 +185,21 @@ const EXTENSIONS: readonly BoosterExtension[] = [
       "dernière extrémité, et des marins qui ont trouvé au fond des pierres de couleur qui répondent les unes aux " +
       "autres. Éclats en Selle réunit ce qui brille parce que ça a été brisé — et ce qui charge quand plus rien ne " +
       "tient la ligne.",
+  },
+  {
+    // BROUILLON (04/10/2026) : Notion n'a ni accroche ni lore pour ce
+    // booster — texte à valider, puis à reporter dans « Boosters & économie »
+    // § Lore & extension. Le pool n'est fait que d'Altérés : la famille est
+    // annoncée.
+    boosterId: BOOSTER_LA_MUTATION_MONDIALE,
+    name: "La mutation mondiale",
+    kind: "extension",
+    archetype: "alteres",
+    tagline: "Ce qui s'éveille sous la peau",
+    lore:
+      "Ils ont l'air de marins jusqu'à ce que quelque chose remue sous leur peau. La mutation mondiale réunit les " +
+      "Altérés : des corps que la mer a réécrits, qui s'éveillent les uns les autres, et dont chaque réveil en appelle " +
+      "un autre — jusqu'à ce qu'il ne reste plus personne à bord pour compter.",
   },
 ];
 

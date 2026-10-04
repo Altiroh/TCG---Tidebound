@@ -3,13 +3,14 @@ import { computeEffectiveStats } from "@/game/cards/stats";
 import { isVisibleDuringTide, UNIT_CARD_TYPES, type CardInstance, type TriggeredAbility, type TriggerSourceFilter } from "@/game/cards/types";
 import type { EffectDefinition } from "@/game/effects/types";
 import type { EffectContext } from "@/game/effects/resolveEffect";
-import { hasGraveyardArrival, resolveEffect } from "@/game/effects/resolveEffect";
+import { hasGraveyardArrival, resolveEffect, setEveilRunner } from "@/game/effects/resolveEffect";
 import { resolveEffectSequence } from "@/game/effects/resolveSequence";
 import type { GameEvent } from "@/game/events/types";
 import { chosenTargetRequirement, eligibleChosenUnits } from "@/game/effects/chosenTargets";
 import { graveyardChoicesFor } from "@/game/effects/graveyardChoices";
 import { markOncePerTurnUsed, oncePerTurnAvailable } from "@/game/state/oncePerTurn";
 import { chromaticColorsOf } from "@/game/rules/chromatic";
+import { eveilsThisTurn, hasEveil } from "@/game/rules/eveil";
 import { payReasonCost, reasonCostAfterShield } from "@/game/state/shields";
 import { consumeObjectBreakTax, handBreakCost, isBreakReaction, objectBreakTax } from "@/game/rules/objectBreak";
 import type { GameState, PendingChoice, PlayerId, PlayerState } from "@/game/state/types";
@@ -743,6 +744,15 @@ export function processSummonEnterTriggers(
     );
     nextState = result.state;
     produced.push(...result.events);
+
+    // Une carte INVOQUÉE qui a un Éveil s'Éveille en arrivant, comme une
+    // carte posée (Lot 16). Une arrivée rejouée n'est pas une arrivée, et une
+    // carte posée s'est déjà Éveillée dans `playCard`.
+    if (event.type === "SUMMON" && !event.played) {
+      const eveil = runEveil(nextState, event.instanceId, turnNumber);
+      nextState = eveil.state;
+      produced.push(...eveil.events);
+    }
   }
 
   return { state: nextState, events: produced };
@@ -1070,34 +1080,129 @@ export function processTrigger(
     events.push(...resolved.events);
   }
 
-  // Une invocation produite par ces capacités (ex: La Grande Migration)
-  // fait bien "arriver en jeu" un Cra-Poiscail : les observateurs doivent
-  // le voir, comme pour une carte posée à la main.
   if (depth === 0) {
-    const summoned = processSummonEnterTriggers(nextState, events, turnNumber, depth + 1);
-    nextState = summoned.state;
-    events.push(...summoned.events);
-
-    // Idem pour un retour en main provoqué par une capacité (ex: Le
-    // Régisseur Sans Visage) : Le Théâtre Englouti doit le voir.
-    const recalled = processReturnedToHandTriggers(nextState, events, turnNumber, depth + 1);
-    nextState = recalled.state;
-    events.push(...recalled.events);
-
-    // Et pour une défausse provoquée par une capacité (Lot 13) : une carte
-    // envoyée au Cimetière par un déclenchement est défaussée tout autant
-    // qu'une carte envoyée par une pose.
-    const discarded = processGraveyardEntryTriggers(nextState, events, turnNumber, depth + 1);
-    nextState = discarded.state;
-    events.push(...discarded.events);
-
-    // Et pour une carte repêchée au Cimetière par une capacité.
-    const recovered = processGraveyardRecoveryTriggers(nextState, events, turnNumber, depth + 1);
-    nextState = recovered.state;
-    events.push(...recovered.events);
+    const swept = sweepAfterEffects(nextState, events, turnNumber, depth);
+    nextState = swept.state;
+    events.push(...swept.events);
   }
 
   return { state: nextState, events };
+}
+
+/**
+ * Ce que des effets viennent de faire arriver, renvoyer, défausser ou
+ * repêcher réveille les déclencheurs qui le guettent. Les événements
+ * produits par ces réveils s'ajoutent à `events` au fil de l'eau : chaque
+ * balayage voit ce que les précédents ont produit.
+ */
+function sweepAfterEffects(
+  state: GameState,
+  events: GameEvent[],
+  turnNumber: number,
+  depth: number
+): { state: GameState; events: GameEvent[] } {
+  let nextState = state;
+  const all = [...events];
+  const produced: GameEvent[] = [];
+  const take = (result: { state: GameState; events: GameEvent[] }) => {
+    nextState = result.state;
+    all.push(...result.events);
+    produced.push(...result.events);
+  };
+  // Une invocation produite par ces capacités (ex: La Grande Migration)
+  // fait bien "arriver en jeu" un Cra-Poiscail : les observateurs doivent
+  // le voir, comme pour une carte posée à la main.
+  take(processSummonEnterTriggers(nextState, all, turnNumber, depth + 1));
+  // Idem pour un retour en main provoqué par une capacité (ex: Le
+  // Régisseur Sans Visage) : Le Théâtre Englouti doit le voir.
+  take(processReturnedToHandTriggers(nextState, all, turnNumber, depth + 1));
+  // Et pour une défausse provoquée par une capacité (Lot 13) : une carte
+  // envoyée au Cimetière par un déclenchement est défaussée tout autant
+  // qu'une carte envoyée par une pose.
+  take(processGraveyardEntryTriggers(nextState, all, turnNumber, depth + 1));
+  // Et pour une carte repêchée au Cimetière par une capacité.
+  take(processGraveyardRecoveryTriggers(nextState, all, turnNumber, depth + 1));
+  return { state: nextState, events: produced };
+}
+
+/**
+ * Garde-fou des chaînes d'Éveils (Lot 16) : un Éveil qui en déclenche un
+ * autre, qui en déclenche un autre… Les cartes du lot bornent leurs
+ * chaînes (« une fois par tour », conditions), mais deux Diables en
+ * Personne peuvent se relancer l'un l'autre aussi longtemps que leur
+ * joueur le veut et que sa coque tient. Au-delà de cette profondeur,
+ * l'Éveil demandé est sans objet plutôt que de faire tourner le moteur
+ * sans fin.
+ */
+const PROFONDEUR_EVEIL_MAX = 40;
+let profondeurEveil = 0;
+
+/**
+ * Résout l'ÉVEIL d'une carte en jeu (Lot 16, `game/rules/eveil.ts`) : son
+ * compteur du tour avance, l'Éveil est consigné (`EVEIL`), puis ses
+ * capacités `onEveil` se résolvent — la sienne (« Éveil — … ») et celles
+ * des observateurs (« quand un autre Altéré s'Éveille »).
+ *
+ * Appelé à l'arrivée d'une carte qui a un Éveil (`runEveilOnArrival`) et
+ * par l'effet `triggerEveil` — au MILIEU de la séquence qui le porte : « 
+ * déclenchez deux fois l'Éveil d'un Altéré. Puis il subit 1 dégât »
+ * (Surcharge) frappe après les deux Éveils, pas avant.
+ *
+ * Les événements rendus sont BRUTS : comme pour un effet, c'est à l'appelant
+ * de balayer ce qu'ils font arriver ou partir (`sweepAfterEffects`).
+ * Résolu à la profondeur 1 pour la même raison : sinon une invocation née
+ * d'un Éveil serait balayée deux fois, ici et chez l'appelant.
+ */
+export function runEveil(state: GameState, instanceId: string, turnNumber: number): { state: GameState; events: GameEvent[] } {
+  const found = findBoardUnit(state, instanceId);
+  if (!found || found.unit.pendingRemoval) return { state, events: [] };
+  const def = getCardDefinition(found.unit.cardId);
+  // Pas d'Éveil, ou une carte que la Marée rend inactive : rien ne s'Éveille.
+  if (!hasEveil(def) || isInactive(state, found.unit)) return { state, events: [] };
+  if (profondeurEveil >= PROFONDEUR_EVEIL_MAX) return { state, events: [] };
+
+  const count = eveilsThisTurn(found.unit, turnNumber) + 1;
+  let nextState: GameState = {
+    ...state,
+    players: state.players.map((p) =>
+      p.id === found.playerId
+        ? { ...p, board: p.board.map((u) => (u.instanceId === instanceId ? { ...u, eveils: { turn: turnNumber, count } } : u)) }
+        : p
+    ) as [PlayerState, PlayerState],
+  };
+  const events: GameEvent[] = [
+    { type: "EVEIL", turnNumber, timestamp: Date.now(), playerId: found.playerId, instanceId, cardId: def.id, count },
+  ];
+
+  profondeurEveil += 1;
+  try {
+    const resolved = processTrigger(
+      nextState,
+      { trigger: "onEveil", playerId: found.playerId, cardId: def.id, sourceInstanceId: instanceId },
+      turnNumber,
+      1
+    );
+    nextState = resolved.state;
+    events.push(...resolved.events);
+  } finally {
+    profondeurEveil -= 1;
+  }
+  return { state: nextState, events };
+}
+
+setEveilRunner(runEveil);
+
+/**
+ * L'Éveil d'une carte qui ARRIVE en jeu (« Éveil — … » se résout à son
+ * arrivée), suivi des balayages qu'un effet de premier niveau appelle : ses
+ * invocations arrivent, ses renvois et ses défausses se voient. Sans objet
+ * pour une carte sans Éveil.
+ */
+export function runEveilOnArrival(state: GameState, instanceId: string, turnNumber: number): { state: GameState; events: GameEvent[] } {
+  const eveil = runEveil(state, instanceId, turnNumber);
+  if (eveil.events.length === 0) return eveil;
+  const swept = sweepAfterEffects(eveil.state, eveil.events, turnNumber, 0);
+  return { state: swept.state, events: [...eveil.events, ...swept.events] };
 }
 
 /**
@@ -1117,6 +1222,7 @@ export function collectReactionCandidates(
   return [
     ...collectReactionCandidatesOnBoard(state, triggerEvents, forPlayerId, turnNumber),
     ...handBreakReactionCandidates(state, triggerEvents, forPlayerId, turnNumber),
+    ...handPlayedReactionCandidates(state, triggerEvents, forPlayerId, turnNumber),
   ];
 }
 
@@ -1267,6 +1373,42 @@ function handBreakReactionCandidates(
       const tax = objectBreakTax(state, forPlayerId, turnNumber);
       if (breakTaxBlocks(state, forPlayerId, tax.blocksIfUnpayable, reasonCost, turnNumber)) continue;
       found.push({ ...candidate, fromHand: true, reasonCost });
+    }
+  }
+  return found;
+}
+
+/**
+ * Cartes EN MAIN qui se JOUENT en réaction (`TriggeredAbility.playedFromHand`,
+ * Propagation — Lot 16). Même lecture que les Objets réactifs : la carte est
+ * posée hypothétiquement sur le plateau, et ses capacités d'observateur
+ * répondent aux déclencheurs de la fenêtre comme si elle y était. Le coût de
+ * la carte s'ajoute à celui de la capacité : l'activer, c'est la jouer.
+ */
+function handPlayedReactionCandidates(
+  state: GameState,
+  triggerEvents: TriggerEvent[],
+  forPlayerId: PlayerId,
+  turnNumber: number
+): PendingReactionCandidate[] {
+  const player = state.players.find((p) => p.id === forPlayerId);
+  if (!player) return [];
+
+  const found: PendingReactionCandidate[] = [];
+  for (const card of player.hand) {
+    const def = getCardDefinition(card.cardId);
+    if (def.type === "objet" || !(def.abilities ?? []).some((ability) => ability.playedFromHand)) continue;
+
+    const hypothetical: GameState = {
+      ...state,
+      players: state.players.map((p) =>
+        p.id === forPlayerId ? { ...p, hand: p.hand.filter((c) => c.instanceId !== card.instanceId), board: [...p.board, card] } : p
+      ) as [PlayerState, PlayerState],
+    };
+    for (const candidate of collectReactionCandidatesOnBoard(hypothetical, triggerEvents, forPlayerId, turnNumber)) {
+      if (candidate.sourceInstanceId !== card.instanceId) continue;
+      if (!def.abilities?.[candidate.abilityIndex]?.playedFromHand) continue;
+      found.push({ ...candidate, fromHand: true, reasonCost: candidate.reasonCost + def.cost });
     }
   }
   return found;

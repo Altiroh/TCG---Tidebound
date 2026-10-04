@@ -24,6 +24,7 @@ import { nextInt, type RngState } from "@/game/rng";
 import { reasonAfterLoss, reasonCeiling } from "@/game/state/reason";
 import { markOncePerTurnUsed, oncePerTurnAvailable } from "@/game/state/oncePerTurn";
 import { chromaticColorsOf, chromaticShardCardId } from "@/game/rules/chromatic";
+import { eveilsThisTurn } from "@/game/rules/eveil";
 import {
   applyOpponentRemovalShield,
   consumeEquippedEffectDamageShield,
@@ -375,6 +376,8 @@ function passesTargetFilter(
   if (filter.excludeSelf && unit.instanceId === context.sourceInstanceId) return false;
 
   if (filter.excludeChosenTarget && unit.instanceId === context.chosenTargetInstanceId) return false;
+  if (filter.excludeTriggerSource && unit.instanceId === context.triggerSourceInstanceId) return false;
+  if (filter.eveilledThisTurn && eveilsThisTurn(unit, context.turnNumber) === 0) return false;
 
   const def = getCardDefinition(unit.cardId);
   if (filter.archetype && (def.archetype !== filter.archetype || !UNIT_CARD_TYPES.includes(def.type))) return false;
@@ -586,6 +589,59 @@ function chosenTargetSurvives(state: GameState, context: EffectContext): boolean
   return !stats.destroyedByTide && unit.damageMarked < stats.health;
 }
 
+/** Une carte EN JEU et le joueur qui la contrôle — `undefined` si elle n'est plus sur un plateau. */
+function boardUnit(state: GameState, instanceId: string | undefined): { unit: CardInstance; owner: PlayerState } | undefined {
+  if (!instanceId) return undefined;
+  const owner = findUnitOwner(state, instanceId);
+  const unit = owner?.board.find((u) => u.instanceId === instanceId);
+  return owner && unit ? { unit, owner } : undefined;
+}
+
+/**
+ * « Si elle est détruite ainsi » (Lot 16) : la carte a quitté le jeu, est
+ * condamnée, ou ses dégâts atteignent sa Résistance effective — la passe de
+ * morts n'a pas encore eu lieu quand l'effet suivant se lit.
+ */
+function isDoomed(state: GameState, instanceId: string | undefined): boolean {
+  if (!instanceId) return false;
+  const found = boardUnit(state, instanceId);
+  if (!found) return true;
+  if (found.unit.pendingRemoval) return true;
+  const stats = computeEffectiveStats(found.unit, state.environment.tideState, auraContextOf(state, found.owner.id));
+  return Boolean(stats.destroyedByTide) || found.unit.damageMarked >= stats.health;
+}
+
+/**
+ * Résolution d'un Éveil (Lot 16), branchée au chargement par le bus de
+ * déclencheurs (`setEveilRunner`) : ce module ne peut pas l'importer, le bus
+ * importe déjà la résolution d'effets. Sans branchement, `triggerEveil`
+ * reste sans objet plutôt que de planter.
+ */
+export type EveilRunner = (
+  state: GameState,
+  instanceId: string,
+  turnNumber: number
+) => { state: GameState; events: GameEvent[] };
+
+let eveilRunner: EveilRunner | undefined;
+
+/**
+ * Pose une question au joueur — ou la met en FILE si une autre attend déjà
+ * sa réponse (`pendingChoiceQueue`, dépilée par `dispatch`). Une chaîne
+ * d'Éveils (Lot 16) pose plusieurs questions dans la même résolution : sans
+ * file, la seconde écrasait la première, et le joueur perdait un choix que
+ * le texte lui donnait.
+ */
+function openChoice(state: GameState, choice: NonNullable<GameState["pendingChoice"]>): GameState {
+  return state.pendingChoice
+    ? { ...state, pendingChoiceQueue: [...(state.pendingChoiceQueue ?? []), choice] }
+    : { ...state, pendingChoice: choice };
+}
+
+export function setEveilRunner(runner: EveilRunner): void {
+  eveilRunner = runner;
+}
+
 /**
  * Harnais de Retenue : « la première fois que l'unité équipée devrait être
  * renvoyée en main par un effet adverse, détruisez cet Équipement à la
@@ -735,6 +791,30 @@ export function resolveEffect(
     if (getPlayer(state, context.controllerId).hand.length < effect.conditionControllerHandAtLeast) return { state, events };
   }
   if (effect.conditionChosenTargetSurvives && !chosenTargetSurvives(state, context)) return { state, events };
+  if (effect.conditionEveils) {
+    const { of, min, max } = effect.conditionEveils;
+    const lue = boardUnit(state, of === "source" ? context.sourceInstanceId : context.triggerSourceInstanceId);
+    if (!lue) return { state, events };
+    const compte = eveilsThisTurn(lue.unit, context.turnNumber);
+    if ((min !== undefined && compte < min) || (max !== undefined && compte > max)) return { state, events };
+  }
+  if (effect.conditionTriggerSourceDoomed && !isDoomed(state, context.triggerSourceInstanceId)) return { state, events };
+  if (effect.conditionTriggerSourcePowerAtMost !== undefined) {
+    const lue = boardUnit(state, context.triggerSourceInstanceId);
+    if (!lue) return { state, events };
+    const stats = computeEffectiveStats(lue.unit, state.environment.tideState, auraContextOf(state, lue.owner.id));
+    if (stats.attack > effect.conditionTriggerSourcePowerAtMost) return { state, events };
+  }
+  if (effect.conditionTriggerSourceIsOpponents) {
+    const lue = boardUnit(state, context.triggerSourceInstanceId);
+    if (!lue || lue.owner.id === context.controllerId) return { state, events };
+  }
+  if (effect.conditionSourceRemainingResistanceAtMost !== undefined) {
+    const lue = boardUnit(state, context.sourceInstanceId);
+    if (!lue) return { state, events };
+    const stats = computeEffectiveStats(lue.unit, state.environment.tideState, auraContextOf(state, lue.owner.id));
+    if (stats.health - lue.unit.damageMarked > effect.conditionSourceRemainingResistanceAtMost) return { state, events };
+  }
 
   // « est ciblée par un effet adverse » (Signal Violet, Lot 15) : le fait est
   // consigné ici, au seul endroit où une cible désignée est LUE par un effet,
@@ -855,11 +935,14 @@ export function resolveEffect(
       let nextState = { ...state, rngState: healTargets.rngState };
 
       for (const { unit, ownerId } of healTargets.targets) {
+        // « toute sa Résistance » : le montant est ce qu'elle a perdu, et
+        // c'est lui qui se journalise.
+        const soin = effect.healFully ? unit.damageMarked : amount;
         nextState = replaceUnit(nextState, ownerId, unit.instanceId, (u) => ({
           ...u,
-          damageMarked: Math.max(0, u.damageMarked - amount),
+          damageMarked: Math.max(0, u.damageMarked - soin),
         }));
-        events.push({ ...base, type: "HEAL", targetInstanceId: unit.instanceId, amount });
+        events.push({ ...base, type: "HEAL", targetInstanceId: unit.instanceId, amount: soin });
       }
 
       for (const player of resolvePlayerTargets(state, effect, context)) {
@@ -1572,6 +1655,24 @@ export function resolveEffect(
       return { state: nextState, events };
     }
 
+    case "triggerEveil": {
+      // Cibles lues UNE fois, avant le premier Éveil : « déclenchez l'Éveil de
+      // tous vos autres Altérés » vise ceux qui sont là maintenant, pas ceux
+      // qu'un Éveil ferait arriver en cours de route.
+      const { targets, rngState } = resolveUnitTargets(state, effect, context);
+      let nextState: GameState = { ...state, rngState };
+      if (!eveilRunner) return { state: nextState, events };
+      const fois = Math.max(1, effect.count ?? 1);
+      for (const { unit } of targets) {
+        for (let i = 0; i < fois; i += 1) {
+          const eveil = eveilRunner(nextState, unit.instanceId, context.turnNumber);
+          nextState = eveil.state;
+          events.push(...eveil.events);
+        }
+      }
+      return { state: nextState, events };
+    }
+
     case "repeatEnterEffects": {
       /*
        * On ne rejoue pas les effets ICI : on annonce que l'arrivée de la
@@ -1688,10 +1789,7 @@ export function resolveEffect(
       const eligibles = resolveUnitTargets(state, effect, context);
       if (eligibles.targets.length === 0) return { state, events };
       return {
-        state: {
-          ...state,
-          rngState: eligibles.rngState,
-          pendingChoice: {
+        state: openChoice({ ...state, rngState: eligibles.rngState }, {
             kind: "pickUnits",
             playerId: context.controllerId,
             controllerId: context.controllerId,
@@ -1711,8 +1809,7 @@ export function resolveEffect(
                 })()
               : {}),
             turnNumber: context.turnNumber,
-          },
-        },
+          }),
         events,
       };
     }
@@ -1818,15 +1915,16 @@ export function resolveEffect(
       // les rendrait obsolètes.
       const reste = player.deck.slice(regardees.length);
       return {
-        state: {
-          ...replacePlayer(state, { ...player, deck: reste }),
-          pendingChoice: {
+        state: openChoice(replacePlayer(state, { ...player, deck: reste }), {
             kind: "deckLook",
             playerId: player.id,
             revealed: regardees,
             take: effect.uses ?? 1,
             ...(effect.filter?.cardTypes ? { takeableCardTypes: effect.filter.cardTypes } : {}),
             ...(effect.filter?.archetype ? { takeableArchetype: effect.filter.archetype } : {}),
+            ...(effect.filter?.subtype ? { takeableSubtype: effect.filter.subtype } : {}),
+            ...(effect.filter?.maxCost !== undefined ? { takeableMaxCost: effect.filter.maxCost } : {}),
+            ...(effect.restTo ? { restTo: effect.restTo } : {}),
             // « une Sentinelle de cette couleur » : la couleur de l'Éclat
             // désigné, lue AVANT qu'il ne soit Sabordé par l'effet suivant.
             ...(effect.takeableColorFrom === "chosenUnit"
@@ -1835,8 +1933,47 @@ export function resolveEffect(
             refusable: effect.refusable === true,
             sourceInstanceId: context.sourceInstanceId,
             turnNumber: context.turnNumber,
-          },
-        },
+          }),
+        events,
+      };
+    }
+
+    case "pickFromGraveyard": {
+      const player = getPlayer(state, context.controllerId);
+      const prenables = player.graveyard.filter((card) => {
+        const def = getCardDefinition(card.cardId);
+        if (!matchesCardTypeFilter(effect.filter, def.type)) return false;
+        if (effect.filter?.subtype && def.subtype !== effect.filter.subtype) return false;
+        if (effect.filter?.archetype && def.archetype !== effect.filter.archetype) return false;
+        return effect.filter?.maxCost === undefined || def.cost <= effect.filter.maxCost;
+      });
+      // Rien à reprendre : le texte est sans objet, pas de question sans réponse possible.
+      if (prenables.length === 0) return { state, events };
+      const ids = new Set(prenables.map((card) => card.instanceId));
+      return {
+        state: openChoice(replacePlayer(state, { ...player, graveyard: player.graveyard.filter((card) => !ids.has(card.instanceId)) }), {
+          kind: "deckLook",
+          playerId: player.id,
+          zone: "graveyard",
+          revealed: prenables,
+          take: effect.uses ?? 1,
+          refusable: effect.refusable === true,
+          ...(effect.thenEffects?.length
+            ? {
+                continuation: {
+                  effects: [...effect.thenEffects],
+                  context: {
+                    controllerId: context.controllerId,
+                    ...(context.sourceInstanceId ? { sourceInstanceId: context.sourceInstanceId } : {}),
+                    ...(context.triggerSourceInstanceId ? { triggerSourceInstanceId: context.triggerSourceInstanceId } : {}),
+                    turnNumber: context.turnNumber,
+                  },
+                },
+              }
+            : {}),
+          sourceInstanceId: context.sourceInstanceId,
+          turnNumber: context.turnNumber,
+        }),
         events,
       };
     }

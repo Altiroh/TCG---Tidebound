@@ -315,7 +315,9 @@ export function resolveChoice(state: GameState, action: ResolveChoiceAction): Ac
           ? action.choice.takeInstanceIds
           : undefined;
     if (prises === undefined) return { ok: false, error: "Ce choix attend les cartes à prendre en main." };
-    if (prises.length === 0 && !choice.refusable && choice.revealed.length > 0) {
+    // Rien n'est prenable parmi les cartes regardées : ne rien prendre est
+    // alors la seule réponse possible, même quand le texte impose d'en prendre.
+    if (prises.length === 0 && !choice.refusable && choice.revealed.some((c) => deckLookRefusal(choice, c) === null)) {
       return { ok: false, error: "Ce choix n'est pas refusable : le texte dit d'en prendre une." };
     }
     if (new Set(prises).size !== prises.length) return { ok: false, error: "Une même carte ne peut être prise deux fois." };
@@ -329,21 +331,61 @@ export function resolveChoice(state: GameState, action: ResolveChoiceAction): Ac
       if (refus === "type") return { ok: false, error: "Ce texte ne permet pas de prendre une carte de ce type." };
       if (refus === "archetype") return { ok: false, error: "Ce texte ne permet pas de prendre une carte de cette famille." };
       if (refus === "color") return { ok: false, error: "Ce texte ne permet de prendre qu'une carte de cette couleur." };
+      if (refus === "subtype") return { ok: false, error: "Ce texte ne permet pas de prendre une carte de ce sous-type." };
+      if (refus === "cost") return { ok: false, error: "Ce texte ne permet pas de prendre une carte aussi chère." };
     }
 
     const player = getPlayer(nextState, choice.playerId);
     const gardees = regardees.filter((c) => prises.includes(c.instanceId));
     // « Placez les autres SOUS votre pioche », dans l'ordre où elles
     // étaient : le joueur a vu cet ordre, il doit le retrouver.
-    const rendues = regardees.filter((c) => !prises.includes(c.instanceId));
+    let rendues = regardees.filter((c) => !prises.includes(c.instanceId));
+    // « Remettez les autres au-dessus dans l'ordre de votre choix » : l'ordre
+    // donné doit nommer chacune des cartes rendues, une fois.
+    const ordre = typeof action.choice === "object" && "restOrder" in action.choice ? action.choice.restOrder : undefined;
+    if (ordre && choice.restTo === "deckTopChosenOrder") {
+      const attendues = new Set(rendues.map((c) => c.instanceId));
+      if (ordre.length !== attendues.size || new Set(ordre).size !== ordre.length || ordre.some((id) => !attendues.has(id))) {
+        return { ok: false, error: "L'ordre donné doit nommer chacune des cartes remises, une seule fois." };
+      }
+      rendues = ordre.map((id) => rendues.find((c) => c.instanceId === id)!);
+    }
+    const depuisCimetiere = choice.zone === "graveyard";
+    const joueur = depuisCimetiere
+      ? { ...player, hand: [...player.hand, ...gardees], graveyard: [...player.graveyard, ...rendues] }
+      : {
+          ...player,
+          hand: [...player.hand, ...gardees],
+          deck: choice.restTo === "deckTopChosenOrder" ? [...rendues, ...player.deck] : [...player.deck, ...rendues],
+        };
     nextState = {
       ...nextState,
-      players: nextState.players.map((p) =>
-        p.id === choice.playerId ? { ...player, hand: [...player.hand, ...gardees], deck: [...player.deck, ...rendues] } : p
-      ) as [PlayerState, PlayerState],
+      players: nextState.players.map((p) => (p.id === choice.playerId ? joueur : p)) as [PlayerState, PlayerState],
     };
     for (const carte of gardees) {
-      events.push({ ...base, type: "DRAW_CARD", playerId: choice.playerId, instanceId: carte.instanceId });
+      // Repêchée au Cimetière : c'est un déplacement, pas une pioche — les
+      // déclencheurs de récupération (Maman revient) doivent la voir.
+      events.push(
+        depuisCimetiere
+          ? { ...base, type: "CARD_MOVED", instanceId: carte.instanceId, cardId: carte.cardId, ownerId: choice.playerId, fromZone: "graveyard", toZone: "hand" }
+          : { ...base, type: "DRAW_CARD", playerId: choice.playerId, instanceId: carte.instanceId }
+      );
+    }
+    // La suite du texte, sur la carte prise (« s'il coûtait 2 ou moins, vous
+    // pouvez le jouer pour 1 de moins ce tour »).
+    const prise = gardees[0];
+    if (prise && choice.continuation) {
+      const suite = resolveEffectSequence(nextState, choice.continuation.effects, {
+        ...choice.continuation.context,
+        chosenGraveyardInstanceId: prise.instanceId,
+      });
+      nextState = suite.state;
+      events.push(...suite.events);
+    }
+    if (depuisCimetiere && gardees.length > 0) {
+      const repechees = processGraveyardRecoveryTriggers(nextState, events, choice.turnNumber);
+      nextState = repechees.state;
+      events.push(...repechees.events);
     }
     return { ok: true, state: nextState, events };
   }

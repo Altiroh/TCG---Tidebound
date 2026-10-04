@@ -698,6 +698,36 @@ export interface DeckLookChoice {
   takeableArchetype?: import("@/game/cards/archetypes").ArchetypeId;
   /** Et de l'une de ces couleurs (« une Sentinelle de cette couleur », Coffret aux Cinq Pierres). */
   takeableChromaticColors?: ChromaticColor[];
+  /** Et de ce sous-type (« un Altéré », La Revenante — Lot 16). */
+  takeableSubtype?: string;
+  /** Et de ce coût IMPRIMÉ au plus (« coûtant 2 ou moins », Ils Étaient Déjà Là — Lot 16). */
+  takeableMaxCost?: number;
+  /**
+   * D'où viennent les cartes regardées. `"deck"` (défaut) : le dessus de la
+   * pioche. `"graveyard"` : les cartes PRENABLES du Cimetière du joueur
+   * (« renvoyez dans votre main un Altéré […] depuis votre Cimetière », La
+   * Revenante) — elles en sortent le temps de la question, et celles qu'il
+   * ne prend pas y retournent.
+   */
+  zone?: "deck" | "graveyard";
+  /**
+   * Où retournent les cartes regardées et non prises, pour une pioche.
+   * `"deckBottom"` (défaut) : sous la pioche, dans l'ordre où elles étaient.
+   * `"deckTopChosenOrder"` : AU-DESSUS, dans l'ordre que le joueur donne
+   * (`restOrder` de la réponse) — « remettez les autres au-dessus de votre
+   * pioche dans l'ordre de votre choix » (Ils Étaient Déjà Là, Lot 16).
+   */
+  restTo?: "deckBottom" | "deckTopChosenOrder";
+  /**
+   * Effets à résoudre une fois la carte prise, avec
+   * `chosenGraveyardInstanceId` = la carte prise (« s'il coûtait 2 ou
+   * moins, vous pouvez le jouer pour 1 de moins ce tour », La Revenante).
+   * Rien ne se résout si rien n'est pris.
+   */
+  continuation?: {
+    effects: EffectDefinition[];
+    context: { controllerId: PlayerId; sourceInstanceId?: string; triggerSourceInstanceId?: string; turnNumber: number };
+  };
   /** « vous POUVEZ ajouter » : ne rien prendre est une réponse valable. */
   refusable: boolean;
   sourceInstanceId?: string;
