@@ -18,8 +18,17 @@ const ABILITIES = SHIP_SET.filter((ship) => ship.activatableAbility).map((ship) 
 }));
 
 describe("présentation des capacités de Navire", () => {
+  /** Navires sans capacité activable PAR DESIGN, chacun avec son motif. */
+  const SANS_CAPACITE: Record<string, string> = {
+    "ile-tortue-opaline":
+      "Notion (Lot 17, 05/10/2026) ne lui donne que deux passifs — réduction Opaline et Armure à l'arrivée d'un Opalin.",
+  };
+
   it("chaque Navire du roster porte une capacité activable", () => {
-    expect(ABILITIES).toHaveLength(SHIP_SET.length);
+    const sans = SHIP_SET.filter((ship) => !ship.activatableAbility).map((ship) => ship.id);
+    expect(sans.filter((id) => SANS_CAPACITE[id] === undefined)).toEqual([]);
+    // Une exception ne survit pas à la capacité qui la rendait nécessaire.
+    expect(Object.keys(SANS_CAPACITE).filter((id) => !sans.includes(id))).toEqual([]);
   });
 
   it.each(ABILITIES)("$ship.name — son hublot a une illustration, et le fichier existe", ({ ability }) => {

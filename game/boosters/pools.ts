@@ -39,6 +39,8 @@ export const BOOSTER_NECESSAIRE_DU_MARIN = "necessaire-du-marin";
 export const BOOSTER_ECLATS_EN_SELLE = "eclats-en-selle";
 /** B7 — La mutation mondiale (Lot 16). Les Altérés et leur Éveil (« Booster 4 — Altérations du Large » dans Notion avant son nom définitif). */
 export const BOOSTER_LA_MUTATION_MONDIALE = "la-mutation-mondiale";
+/** B8 — Lot 17 : Dungeon et Ladalle / Opalins. Nom commercial PROVISOIRE (Notion n'en prévoit aucun au 05/10/2026). */
+export const BOOSTER_DUNGEON_ET_LADALLE = "dungeon-et-ladalle";
 
 /**
  * B1 — Défaut. 63 entrées (61 + les deux anti-swarm du 21/09/2026, qui
@@ -465,6 +467,15 @@ const LA_MUTATION_MONDIALE_POOL: readonly string[] = CORE_SET.filter((card) => c
   (card) => card.id
 );
 
+/**
+ * B8 — Lot 17, Dungeon et Ladalle / Opalins. Même règle que B7 : les cartes
+ * du lot et elles seules. Son Abyssale : Eidolon Opalin LVX, sommet de la
+ * lignée LV (migration `20261026120000_booster_dungeon_et_ladalle.sql`).
+ */
+const DUNGEON_ET_LADALLE_POOL: readonly string[] = CORE_SET.filter((card) => card.setCode === BOOSTER_DUNGEON_ET_LADALLE).map(
+  (card) => card.id
+);
+
 const BIENVENUE: readonly string[] = DEFAUT.filter((cardId) => {
   const def = CORE_SET.find((card) => card.id === cardId);
   if (!def) return false;
@@ -487,6 +498,7 @@ export const BOOSTER_POOLS: Readonly<Record<string, readonly string[]>> = {
   [BOOSTER_NECESSAIRE_DU_MARIN]: NECESSAIRE_DU_MARIN,
   [BOOSTER_ECLATS_EN_SELLE]: ECLATS_EN_SELLE_POOL,
   [BOOSTER_LA_MUTATION_MONDIALE]: LA_MUTATION_MONDIALE_POOL,
+  [BOOSTER_DUNGEON_ET_LADALLE]: DUNGEON_ET_LADALLE_POOL,
   [BOOSTER_BIENVENUE]: BIENVENUE,
 };
 
@@ -503,6 +515,7 @@ export const PURCHASABLE_BOOSTER_IDS: readonly string[] = [
   BOOSTER_VEILLEE_DES_DISPARUS,
   BOOSTER_ECLATS_EN_SELLE,
   BOOSTER_LA_MUTATION_MONDIALE,
+  BOOSTER_DUNGEON_ET_LADALLE,
 ];
 
 /**

@@ -714,6 +714,8 @@ export interface CardDefinition {
      * revendiquées compris (`controlledChromaticColors`).
      */
     controllerChromaticColorsAtLeast?: number;
+    /** « Ne peut être joué normalement que si vous contrôlez une unité [famille] » (Eidolon Opalin LV5, Lot 17). */
+    controlsArchetypeUnit?: import("@/game/cards/archetypes").ArchetypeId;
   };
 
   /**
@@ -1350,7 +1352,7 @@ export interface CardDefinition {
    * `ifCriticalFailure` : effets (source : la carte) si le jet ajusté
    * devient un Échec critique.
    */
-  dieAdjust?: { amount: number; extraUseOnCriticalSuccess?: boolean; ifCriticalFailure?: import("@/game/effects/types").EffectDefinition[] };
+  dieAdjustOncePerTurn?: { amount: number; extraUseOnCriticalSuccess?: boolean; ifCriticalFailure?: import("@/game/effects/types").EffectDefinition[] };
   /**
    * « Si [Lande] est active, la première relance que vous effectuez à chacun
    * de vos tours gagne +N » (Maître de Ladalle).
@@ -1786,6 +1788,8 @@ export interface StatModifier {
    * imprimées, et elle peut attaquer. Lu par `isTextIgnored`.
    */
   textIgnored?: boolean;
+  /** « Elle ne peut pas être renvoyée en main ce tour » (Sommeil de Pierre, Lot 17). */
+  preventsReturnToHand?: boolean;
   /**
    * « elle perd Garde jusqu'à la fin du tour » (Bête de Percée, Débusquer) :
    * mots-clés RETIRÉS tant que le modificateur tient, quelle que soit leur

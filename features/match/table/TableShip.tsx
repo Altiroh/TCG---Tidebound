@@ -28,6 +28,8 @@ export interface ShipView {
   maxReason: number;
   /** Dégâts d'Ancrage que la Déraison infligera en fin de tour (0 = rien à annoncer). */
   deraisonDamage?: number;
+  /** Armure (Lot 17) : réserve qui absorbe les dégâts du Navire avant l'Ancrage. 0 = rien à montrer. */
+  armor?: number;
   /** Capacité activable du Navire, quand il en porte une de câblée (Le Goliath — Canon de proue). */
   ability?: ShipAbilityPanelView;
 }
@@ -302,14 +304,14 @@ function ShipGauge({ kind, value, max, ownerId }: { kind: keyof typeof GAUGE_ASS
  * La géométrie de l'arche vient de `features/ships/shipFrame.ts` (aucun
  * import de `@/game`).
  */
-export function TableShip({ name, ownerId, illustration, hull, maxHull, reason, maxReason, deraisonDamage = 0, ability }: ShipView) {
+export function TableShip({ name, ownerId, illustration, hull, maxHull, reason, maxReason, deraisonDamage = 0, armor = 0, ability }: ShipView) {
   const frame = useShipFrameGeometryFor(ownerId);
   return (
     <div
       className={styles.ship}
       style={{ "--frame-aspect": frame.aspect, "--plate-top": frame.plateTop } as CSSProperties}
       role="img"
-      aria-label={`${name} — Ancrage ${hull}/${maxHull}, Raison ${reason}/${maxReason}`}
+      aria-label={`${name} — Ancrage ${hull}/${maxHull}, Raison ${reason}/${maxReason}${armor > 0 ? `, Armure ${armor}` : ""}`}
     >
       <div className={styles.shipArt} style={{ ...frame.zone, clipPath: frame.clip }}>
         {illustration && (
@@ -324,6 +326,12 @@ export function TableShip({ name, ownerId, illustration, hull, maxHull, reason, 
         <ShipGauge kind="anchor" value={hull} max={maxHull} />
         <ShipGauge kind="reason" value={reason} max={maxReason} ownerId={ownerId} />
       </div>
+      {/* Armure : posée au-dessus des médaillons, elle part la première. */}
+      {armor > 0 && (
+        <span className={styles.shipArmor} title={`Armure ${armor} : absorbe les dégâts du Navire avant l'Ancrage.`}>
+          🛡 {armor}
+        </span>
+      )}
       {/* Dette de Déraison : la conséquence à venir, lisible sans survol (comme `ShipInstrumentCluster`). */}
       {reason < 0 && deraisonDamage > 0 && (
         <span className={styles.shipDebt} title="Déraison : chaque point sous 0 inflige 1 dégât d'Ancrage à la fin du tour si la Raison n'est pas remontée.">

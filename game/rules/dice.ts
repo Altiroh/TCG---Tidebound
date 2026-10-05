@@ -147,7 +147,7 @@ export function chainBreakables(state: GameState, playerId: PlayerId): Array<{ c
 /** Cartes en jeu de ce joueur dont l'ajustement (« +1 ou -1 ») est encore disponible ce tour. */
 export function dieAdjusters(state: GameState, playerId: PlayerId, turnNumber: number): CardInstance[] {
   return getPlayer(state, playerId).board.filter((unit) => {
-    const spec = getCardDefinition(unit.cardId).dieAdjust;
+    const spec = getCardDefinition(unit.cardId).dieAdjustOncePerTurn;
     if (!spec || unit.pendingRemoval) return false;
     if (flagTurn(unit, CLE_AJUSTEMENT) !== turnNumber) return true;
     // Utilisation de plus, gagnée par une Réussite critique.
@@ -215,7 +215,7 @@ export function shiftPending(state: GameState, choice: DieRollChoice, delta: num
 export function adjustPending(state: GameState, choice: DieRollChoice, sourceInstanceId: string, delta: number): { ok: true; state: GameState } | { ok: false; error: string } {
   const unit = dieAdjusters(state, choice.playerId, choice.turnNumber).find((u) => u.instanceId === sourceInstanceId);
   if (!unit) return { ok: false, error: "Cette carte ne peut plus ajuster de jet ce tour." };
-  const spec = getCardDefinition(unit.cardId).dieAdjust!;
+  const spec = getCardDefinition(unit.cardId).dieAdjustOncePerTurn!;
   if (Math.abs(delta) !== spec.amount) return { ok: false, error: `L'ajustement est de +${spec.amount} ou -${spec.amount}.` };
   if (choice.value === undefined) return { ok: false, error: "Choisissez d'abord le dé à garder." };
   const bonus = flagTurn(unit, CLE_AJUSTEMENT) === choice.turnNumber;
@@ -293,7 +293,7 @@ export function closeDieRoll(state: GameState, choice: DieRollChoice): DieResolu
     const owner = next.players.find((p) => p.board.some((u) => u.instanceId === id));
     const unit = owner?.board.find((u) => u.instanceId === id);
     if (!owner || !unit) continue;
-    const spec = getCardDefinition(unit.cardId).dieAdjust;
+    const spec = getCardDefinition(unit.cardId).dieAdjustOncePerTurn;
     if (!spec) continue;
     if (critique === "success" && spec.extraUseOnCriticalSuccess) {
       next = replaceBoardUnit(next, owner.id, id, (u) => ({ ...u, oncePerTurnFlags: { ...(u.oncePerTurnFlags ?? {}), [CLE_AJUSTEMENT_BONUS]: choice.turnNumber } }));
@@ -360,7 +360,7 @@ export function sensibleDieAnswer(
   if (!choice.landeRerollUsed && (issue === "failure" || issue === "criticalFailure")) return { dieReroll: true };
   const ajusteur = dieAdjusters(state, choice.playerId, choice.turnNumber)[0];
   if (ajusteur) {
-    const pas = getCardDefinition(ajusteur.cardId).dieAdjust!.amount;
+    const pas = getCardDefinition(ajusteur.cardId).dieAdjustOncePerTurn!.amount;
     const monte = dieOutcomeOf(choice, borne(value + pas, choice.die));
     const rang = (o: DieOutcome) => ["criticalFailure", "failure", "success", "criticalSuccess"].indexOf(o);
     if (rang(monte) > rang(issue)) return { dieAdjust: { sourceInstanceId: ajusteur.instanceId, delta: pas } };

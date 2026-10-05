@@ -1,3 +1,5 @@
+import { getShipDefinition } from "@/game/environment/shipData";
+import { shuffle } from "@/game/rng";
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { deckLookRefusal } from "@/game/rules/deckLook";
 import { UNIT_CARD_TYPES } from "@/game/cards/types";
@@ -287,13 +289,14 @@ export function resolveChoice(state: GameState, action: ResolveChoiceAction): Ac
   // sur chaque unité. Le moteur vérifie seulement que le total tient dans
   // le budget et que les cibles sont bien les siennes.
   if (choice.kind === "healAllocation") {
-    const repartition =
+    const reponse =
       action.choice === "pass"
         ? []
         : typeof action.choice === "object" && "healAllocation" in action.choice
           ? action.choice.healAllocation
           : undefined;
-    if (repartition === undefined) return { ok: false, error: "Ce choix attend une répartition de Résistance." };
+    if (reponse === undefined) return { ok: false, error: "Ce choix attend une répartition de Résistance." };
+    let repartition = [...reponse];
 
     const total = repartition.reduce((somme, part) => somme + part.amount, 0);
     if (repartition.some((part) => part.amount <= 0)) return { ok: false, error: "Une part de soin doit être positive." };
@@ -303,6 +306,9 @@ export function resolveChoice(state: GameState, action: ResolveChoiceAction): Ac
     }
 
     const player = getPlayer(nextState, choice.playerId);
+    // « … et votre Navire » (Frère Michel, Lot 17) : la part du Navire est mise à part.
+    const partNavire = choice.includeShip ? repartition.find((part) => part.instanceId === "ship")?.amount ?? 0 : 0;
+    if (choice.includeShip) repartition = repartition.filter((part) => part.instanceId !== "ship");
     if (repartition.some((part) => !player.board.some((u) => u.instanceId === part.instanceId))) {
       return { ok: false, error: "Cette unité n'est pas sur votre plateau." };
     }
@@ -333,6 +339,15 @@ export function resolveChoice(state: GameState, action: ResolveChoiceAction): Ac
     };
     for (const part of repartition) {
       events.push({ ...base, type: "HEAL", targetInstanceId: part.instanceId, amount: part.amount });
+    }
+    // La part du Navire : de l'Ancrage, jusqu'à son Ancrage de départ.
+    if (partNavire > 0) {
+      const coque = getPlayer(nextState, choice.playerId);
+      const soigne = Math.max(0, Math.min(getShipDefinition(coque.shipId).startingAnchor, coque.anchor + partNavire) - coque.anchor);
+      if (soigne > 0) {
+        nextState = { ...nextState, players: nextState.players.map((p) => (p.id === coque.id ? { ...coque, anchor: coque.anchor + soigne } : p)) as [PlayerState, PlayerState] };
+        events.push({ ...base, type: "HEAL", targetPlayerId: coque.id, amount: soigne });
+      }
     }
     return { ok: true, state: nextState, events };
   }
@@ -370,7 +385,9 @@ export function resolveChoice(state: GameState, action: ResolveChoiceAction): Ac
     }
 
     const player = getPlayer(nextState, choice.playerId);
-    const gardees = regardees.filter((c) => prises.includes(c.instanceId));
+    // Dans l'ordre de la RÉPONSE : « placez-les sous votre pioche dans l'ordre de votre choix ».
+    const gardees = prises.map((id) => regardees.find((c) => c.instanceId === id)!);
+    const versMain = (choice.takeTo ?? "hand") === "hand";
     // « Placez les autres SOUS votre pioche », dans l'ordre où elles
     // étaient : le joueur a vu cet ordre, il doit le retrouver.
     let rendues = regardees.filter((c) => !prises.includes(c.instanceId));
@@ -385,13 +402,28 @@ export function resolveChoice(state: GameState, action: ResolveChoiceAction): Ac
       rendues = ordre.map((id) => rendues.find((c) => c.instanceId === id)!);
     }
     const depuisCimetiere = choice.zone === "graveyard";
-    const joueur = depuisCimetiere
-      ? { ...player, hand: [...player.hand, ...gardees], graveyard: [...player.graveyard, ...rendues] }
-      : {
-          ...player,
-          hand: [...player.hand, ...gardees],
-          deck: choice.restTo === "deckTopChosenOrder" ? [...rendues, ...player.deck] : [...player.deck, ...rendues],
-        };
+    // « Mélangez les autres dans votre pioche » (Meraï, Lot 17).
+    let rng = nextState.rngState;
+    const pioche = (() => {
+      if (depuisCimetiere) return player.deck;
+      if (choice.restTo === "deckTopChosenOrder") return [...rendues, ...player.deck];
+      if (choice.restTo === "shuffle") {
+        const melange = shuffle([...player.deck, ...rendues], rng);
+        rng = melange.nextState;
+        return melange.value;
+      }
+      return [...player.deck, ...rendues];
+    })();
+    // Où vont les cartes PRISES (Lot 17) : la main, le dessus, ou le dessous de la pioche.
+    const piocheFinale =
+      choice.takeTo === "deckTop" ? [...gardees, ...pioche] : choice.takeTo === "deckBottom" ? [...pioche, ...gardees] : pioche;
+    const joueur = {
+      ...player,
+      hand: versMain ? [...player.hand, ...gardees] : player.hand,
+      deck: piocheFinale,
+      ...(depuisCimetiere ? { graveyard: [...player.graveyard, ...rendues] } : {}),
+    };
+    nextState = { ...nextState, rngState: rng };
     nextState = {
       ...nextState,
       players: nextState.players.map((p) => (p.id === choice.playerId ? joueur : p)) as [PlayerState, PlayerState],
@@ -399,6 +431,19 @@ export function resolveChoice(state: GameState, action: ResolveChoiceAction): Ac
     for (const carte of gardees) {
       // Repêchée au Cimetière : c'est un déplacement, pas une pioche — les
       // déclencheurs de récupération (Maman revient) doivent la voir.
+      if (!versMain) {
+        events.push({
+          ...base,
+          type: "CARD_MOVED",
+          instanceId: carte.instanceId,
+          cardId: carte.cardId,
+          ownerId: choice.playerId,
+          fromZone: depuisCimetiere ? "graveyard" : "deck",
+          toZone: "deck",
+          deckPosition: choice.takeTo === "deckBottom" ? "bottom" : "top",
+        });
+        continue;
+      }
       events.push(
         depuisCimetiere
           ? { ...base, type: "CARD_MOVED", instanceId: carte.instanceId, cardId: carte.cardId, ownerId: choice.playerId, fromZone: "graveyard", toZone: "hand" }
@@ -406,7 +451,7 @@ export function resolveChoice(state: GameState, action: ResolveChoiceAction): Ac
       );
     }
     // Les cartes regardées qui repartent SOUS la pioche y sont « placées » (Lot 17 — Meraï).
-    if (!depuisCimetiere && choice.restTo !== "deckTopChosenOrder") {
+    if (!depuisCimetiere && choice.restTo !== "deckTopChosenOrder" && choice.restTo !== "shuffle") {
       for (const carte of rendues) {
         events.push({ ...base, type: "CARD_MOVED", instanceId: carte.instanceId, cardId: carte.cardId, ownerId: choice.playerId, fromZone: "deck", toZone: "deck", deckPosition: "bottom" });
       }

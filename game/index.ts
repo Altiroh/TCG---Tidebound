@@ -129,7 +129,7 @@ export { canActivateAbility } from "@/game/actions/activateAbility";
 export { ARCHETYPE_LABELS } from "@/game/cards/archetypes";
 export type { ArchetypeId } from "@/game/cards/archetypes";
 export type { PendingReactionCandidate, TriggerEvent, TriggerType } from "@/game/triggers/types";
-export type { PendingReactionState, PendingChoice, HandDiscardChoice, DeckLookChoice, HealAllocationChoice, KeepUnitsChoice, PickUnitsChoice } from "@/game/state/types";
+export type { PendingReactionState, PendingChoice, HandDiscardChoice, DeckLookChoice, HealAllocationChoice, KeepUnitsChoice, PickUnitsChoice, DieRollChoice } from "@/game/state/types";
 export type { ResolveChoiceAction } from "@/game/actions/types";
 export { eligibleCandidatesFor } from "@/game/reactions/reactionWindow";
 
@@ -227,3 +227,5 @@ export {
   type CollectableFamily,
   type CollectableGrant,
 } from "@/game/cosmetics/collectables";
+export { dieOutcomeOf, dieRollOptions, pendingDieRoll } from "@/game/rules/dice";
+export { armorOf } from "@/game/state/armor";

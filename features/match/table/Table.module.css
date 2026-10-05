@@ -992,6 +992,23 @@
   color: #ffffff;
 }
 
+/* Armure (Lot 17) : pastille d'acier au-dessus de la plaque. */
+.shipArmor {
+  position: absolute;
+  top: 2%;
+  left: 50%;
+  z-index: 10;
+  transform: translateX(-50%);
+  padding: 0.15em 0.6em;
+  border-radius: 999px;
+  background: rgba(100, 116, 139, 0.9);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+  font-size: calc(var(--fs-label) * 0.9);
+  font-weight: 700;
+  white-space: nowrap;
+  color: #ffffff;
+}
+
 .shipGaugeValue {
   position: relative;
   font-size: var(--fs-value);

@@ -40,6 +40,15 @@ export type EffectType =
    * visé (le contrôleur par défaut) — `game/state/armor.ts`.
    */
   | "gainArmor"
+  /**
+   * « Choisissez : … » au milieu d'une séquence (Lot 17 — Morhal, Nerhal,
+   * Marée imprévisible, Eidolon Opalin LVX) : pose la question des
+   * capacités de la carte SOURCE dont le `choiceGroup` vaut
+   * `optionGroup` — des capacités `trigger: "onChosenOption"`, qu'aucun
+   * événement ne déclenche. `uses` : combien d'options DIFFÉRENTES prendre.
+   * Le joueur peut toujours ne rien appliquer.
+   */
+  | "chooseAbilityOption"
   /** « La prochaine fois qu'une de vos unités inflige des dégâts ce tour, augmentez ces dégâts de N » (Lot 17 — `game/state/damageBonus.ts`). */
   | "nextUnitDamageBonus"
   /** Marque la cible pour CE tour (`flagKey`) — lu par `condition.selfFlaggedThisTurn` (« lorsqu'il attaque ce tour », Lot 17). */
@@ -741,7 +750,11 @@ export interface EffectDefinition {
    * Pour `lookAtDeckTop` : où retournent les cartes regardées et non prises
    * (`DeckLookChoice.restTo`). Défaut : sous la pioche.
    */
-  restTo?: "deckBottom" | "deckTopChosenOrder";
+  restTo?: "deckBottom" | "deckTopChosenOrder" | "shuffle";
+  /** `lookAtDeckTop` / `pickFromGraveyard` : où vont les cartes PRISES (`DeckLookChoice.takeTo`). */
+  takeTo?: "hand" | "deckTop" | "deckBottom";
+  /** `lookAtDeckTop` : regarder les cartes du DESSOUS de la pioche (Meraï, Opalin des Profondeurs). */
+  fromBottom?: boolean;
   /**
    * Pour `heal` sur une unité : « restaurez TOUTE sa Résistance » (Le
    * Recousu, Lot 16) — tous les dégâts marqués s'effacent, quel qu'en soit
@@ -858,6 +871,20 @@ export interface EffectDefinition {
   nextRoll?: import("@/game/state/types").NextRollModifier;
   /** `modifyNextRoll` : « votre prochain jet CE TOUR » — tombe en fin de tour s'il n'a pas servi. */
   nextRollThisTurn?: boolean;
+  /** `chooseAbilityOption` : le `choiceGroup` des capacités proposées. */
+  optionGroup?: string;
+  /** `summon` : le corps invoqué reçoit `amount` en Puissance ET en Résistance, permanent (« une Bestiole ?/? », Lot 17). */
+  summonStatsFromAmount?: boolean;
+  /** `healDistributed` : le Navire peut recevoir une part (`HealAllocationChoice.includeShip`). */
+  includeShip?: boolean;
+  /** `discard` : les cartes désignées vont SOUS la pioche plutôt qu'au Cimetière (Ylenn, Lot 17). */
+  discardToDeckBottom?: boolean;
+  /** Ne résout cet effet que si une Lande est active (Cartographe du Large, Lot 17). */
+  conditionLandeActive?: boolean;
+  /** Ne résout cet effet que si la cible désignée porte cette étiquette (« Si elle est LV », Sommeil de Pierre). */
+  conditionChosenTargetTag?: string;
+  /** `buff` : la cible ne peut pas être renvoyée en main tant que le modificateur tient (Sommeil de Pierre, Lot 17). */
+  preventsReturnToHand?: boolean;
   /** `flagThisTurn` : la marque posée. */
   flagKey?: string;
   /** `shortenLande` : « s'il disparaît ainsi, … » — effets résolus si la Lande vient de partir à cause de cet effet (Route barrée). */

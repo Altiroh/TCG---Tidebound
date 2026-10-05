@@ -987,6 +987,7 @@ export function TableBoard(props: TableBoardProps) {
     // réduisent, et la courbe de début de partie le plafonne encore.
     maxReason: reasonCeiling(player),
     deraisonDamage: deraisonAnchorDamage(player, player.reason),
+    armor: player.armor ?? 0,
   });
 
   return (

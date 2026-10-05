@@ -81,6 +81,8 @@ function returnPermanentToHand(
   const owner = getPlayer(state, ownerId);
   const unit = owner.board.find((u) => u.instanceId === instanceId);
   if (!unit) return { state, events: [], returned: null };
+  // « Elle ne peut pas être renvoyée en main ce tour » (Sommeil de Pierre, Lot 17).
+  if (unit.modifiers.some((m) => m.preventsReturnToHand)) return { state, events: [], returned: null };
 
   const fresh: CardInstance = {
     instanceId: recalledInstanceId(unit.instanceId, state.turnNumber),
@@ -817,6 +819,13 @@ export function resolveEffect(
       return { state, events };
     }
   }
+  // « Si une Lande est active » (Lot 17).
+  if (effect.conditionLandeActive && !state.environment.lande) return { state, events };
+  // « Si elle est LV » (Lot 17) : la cible désignée porte l'étiquette.
+  if (effect.conditionChosenTargetTag) {
+    const cible = context.chosenTargetInstanceId ? findUnitOwner(state, context.chosenTargetInstanceId)?.board.find((u) => u.instanceId === context.chosenTargetInstanceId) : undefined;
+    if (!cible || !getCardDefinition(cible.cardId).tags?.includes(effect.conditionChosenTargetTag)) return { state, events };
+  }
   // « Si vous avez joué ou Brisé un Objet ce tour » (Aventurière en retard, Lot 17).
   if (effect.conditionObjectPlayedOrBrokenThisTurn) {
     const joueur = getPlayer(state, context.controllerId);
@@ -1087,6 +1096,8 @@ export function resolveEffect(
             playerId: player.id,
             count: Math.min(amount, player.hand.length),
             refusable: effect.refusable === true,
+            // « Place une carte de sa main sous sa pioche » (Ylenn, Lot 17) : même question, autre destination.
+            ...(effect.discardToDeckBottom ? { destination: "deckBottom" as const } : {}),
             sourceInstanceId: context.sourceInstanceId,
             turnNumber: context.turnNumber,
           },
@@ -1217,8 +1228,18 @@ export function resolveEffect(
           }))
         : summoned;
 
+      // « Une Bestiole ?/? » (Lot 17) : ses statistiques sont le montant de l'effet.
+      const statsDuMontant = effect.summonStatsFromAmount ? amountValue(effect.amount, state, context.controllerId, context) : undefined;
       // Bonus accordé aux corps qui viennent d'arriver (ex: Le Grand Saut).
-      const buffed = effect.summonBuff
+      const buffed = statsDuMontant !== undefined
+        ? withPiedMarin.map((token) => ({
+            ...token,
+            modifiers: [
+              ...token.modifiers,
+              { id: `mod_summon_${token.instanceId}`, source: summonCardId, attack: statsDuMontant, health: statsDuMontant, duration: "permanent" as StatModifierDuration },
+            ],
+          }))
+        : effect.summonBuff
         ? withPiedMarin.map((token) => ({
             ...token,
             modifiers: [
@@ -1271,6 +1292,7 @@ export function resolveEffect(
               ...(effect.removeKeywords ? { removesKeywords: effect.removeKeywords } : {}),
               ...(effect.ignoresLande ? { ignoresLande: true } : {}),
               ...(effect.ignoresText ? { textIgnored: true } : {}),
+              ...(effect.preventsReturnToHand ? { preventsReturnToHand: true } : {}),
               ...(differe ? { nextCombatBonusVsKeyword: { keyword: effect.nextCombatVsKeyword!, amount: attackDelta } } : {}),
             },
           ],
@@ -1399,6 +1421,30 @@ export function resolveEffect(
         nextState = replaceUnit(nextState, ownerId, unit.instanceId, (u) => markOncePerTurnUsed(u, cle, context.turnNumber));
       }
       return { state: nextState, events };
+    }
+
+    case "chooseAbilityOption": {
+      const source = context.sourceInstanceId
+        ? state.players.flatMap((p) => [...p.board, ...p.hand, ...p.graveyard]).find((c) => c.instanceId === context.sourceInstanceId)
+        : undefined;
+      if (!source || !effect.optionGroup) return { state, events };
+      const indexes = (getCardDefinition(source.cardId).abilities ?? []).flatMap((a, i) =>
+        a.trigger === "onChosenOption" && a.choiceGroup === effect.optionGroup ? [i] : []
+      );
+      if (indexes.length === 0) return { state, events };
+      const prises = Math.min(Math.max(1, effect.uses ?? 1), indexes.length);
+      return {
+        state: openChoice(state, {
+          kind: "abilityOption",
+          playerId: context.controllerId,
+          sourceInstanceId: source.instanceId,
+          cardId: source.cardId,
+          abilityIndexes: indexes,
+          ...(prises > 1 ? { remainingPicks: prises - 1 } : {}),
+          turnNumber: context.turnNumber,
+        }),
+        events,
+      };
     }
 
     case "addLevelMarker": {
@@ -2079,7 +2125,8 @@ export function resolveEffect(
       // Rien à réparer, ou rien à répartir : on ne pose pas une question
       // sans réponse utile. « Répartie entre les UNITÉS » : une Structure
       // blessée n'entre pas dans la répartition (cf. `resolveChoice`).
-      if (budget <= 0 || !player.board.some((u) => u.damageMarked > 0 && UNIT_CARD_TYPES.includes(getCardDefinition(u.cardId).type))) {
+      const navireBlesse = effect.includeShip === true && player.anchor < getShipDefinition(player.shipId).startingAnchor;
+      if (budget <= 0 || (!navireBlesse && !player.board.some((u) => u.damageMarked > 0 && UNIT_CARD_TYPES.includes(getCardDefinition(u.cardId).type)))) {
         return { state, events };
       }
       return {
@@ -2089,6 +2136,7 @@ export function resolveEffect(
             kind: "healAllocation",
             playerId: player.id,
             budget,
+            ...(effect.includeShip ? { includeShip: true } : {}),
             sourceInstanceId: context.sourceInstanceId,
             turnNumber: context.turnNumber,
           },
@@ -2131,7 +2179,9 @@ export function resolveEffect(
     case "lookAtDeckTop": {
       const amount = amountValue(effect.amount, state, context.controllerId, context);
       const player = resolveSinglePlayerTarget(state, effect, context) ?? getPlayer(state, context.controllerId);
-      const regardees = player.deck.slice(0, Math.max(0, amount));
+      // « Regardez les N cartes du DESSOUS de votre pioche » (Meraï, Lot 17).
+      const combien = Math.max(0, amount);
+      const regardees = effect.fromBottom ? player.deck.slice(Math.max(0, player.deck.length - combien)) : player.deck.slice(0, combien);
       // Pioche vide : le texte est sans objet, on ne pose pas une question
       // dont aucune réponse n'existe.
       if (regardees.length === 0) return { state, events };
@@ -2139,7 +2189,7 @@ export function resolveEffect(
       // Les cartes SORTENT de la pioche maintenant : elles vivent dans le
       // choix jusqu'à la réponse, sans quoi une pioche résolue entre-temps
       // les rendrait obsolètes.
-      const reste = player.deck.slice(regardees.length);
+      const reste = effect.fromBottom ? player.deck.slice(0, player.deck.length - regardees.length) : player.deck.slice(regardees.length);
       return {
         state: openChoice(replacePlayer(state, { ...player, deck: reste }), {
             kind: "deckLook",
@@ -2151,6 +2201,7 @@ export function resolveEffect(
             ...(effect.filter?.subtype ? { takeableSubtype: effect.filter.subtype } : {}),
             ...(effect.filter?.maxCost !== undefined ? { takeableMaxCost: effect.filter.maxCost } : {}),
             ...(effect.restTo ? { restTo: effect.restTo } : {}),
+            ...(effect.takeTo ? { takeTo: effect.takeTo } : {}),
             // « une Sentinelle de cette couleur » : la couleur de l'Éclat
             // désigné, lue AVANT qu'il ne soit Sabordé par l'effet suivant.
             ...(effect.takeableColorFrom === "chosenUnit"
@@ -2171,7 +2222,9 @@ export function resolveEffect(
         if (!matchesCardTypeFilter(effect.filter, def.type)) return false;
         if (effect.filter?.subtype && def.subtype !== effect.filter.subtype) return false;
         if (effect.filter?.archetype && def.archetype !== effect.filter.archetype) return false;
-        return effect.filter?.maxCost === undefined || def.cost <= effect.filter.maxCost;
+        // « coût ≤ moitié du résultat » (Norbert, Lot 17) : un plafond lu sur le jet en cours.
+        const plafond = effect.amount?.kind === "dieResult" ? amountValue(effect.amount, state, context.controllerId, context) : effect.filter?.maxCost;
+        return plafond === undefined || def.cost <= plafond;
       });
       // Rien à reprendre : le texte est sans objet, pas de question sans réponse possible.
       if (prenables.length === 0) return { state, events };
@@ -2183,6 +2236,7 @@ export function resolveEffect(
           zone: "graveyard",
           revealed: prenables,
           take: effect.uses ?? 1,
+          ...(effect.takeTo ? { takeTo: effect.takeTo } : {}),
           refusable: effect.refusable === true,
           ...(effect.thenEffects?.length
             ? {
@@ -2407,10 +2461,20 @@ export function resolveEffect(
       };
     }
 
-    case "searchDeck":
-      // Prévus par le modèle de données pour de futures extensions ;
-      // pas encore nécessaires pour le catalogue actuel.
-      return { state, events };
+    case "searchDeck": {
+      // « Cherchez [carte] dans votre pioche, révélez-la et ajoutez-la à
+      // votre main » (Plan du Donjon mal dessiné, Lot 17) : le premier
+      // exemplaire de `cardId`. Absent : sans effet.
+      const joueur = getPlayer(state, context.controllerId);
+      const trouvee = effect.cardId ? joueur.deck.find((c) => c.cardId === effect.cardId) : undefined;
+      if (!trouvee) return { state, events };
+      events.push({ ...base, type: "CARD_MOVED", instanceId: trouvee.instanceId, cardId: trouvee.cardId, ownerId: joueur.id, fromZone: "deck", toZone: "hand" });
+      events.push({ ...base, type: "HAND_CARD_REVEALED", ownerId: joueur.id, instanceId: trouvee.instanceId, cardId: trouvee.cardId });
+      return {
+        state: replacePlayer(state, { ...joueur, deck: joueur.deck.filter((c) => c.instanceId !== trouvee.instanceId), hand: [...joueur.hand, trouvee] }),
+        events,
+      };
+    }
 
     default:
       return { state, events };

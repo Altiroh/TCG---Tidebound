@@ -236,6 +236,15 @@ export function assertPlayableCondition(
   if (couleurs !== undefined && controlledChromaticColors(player, state.turnNumber).length < couleurs) {
     return fail(`Il vous faut au moins ${couleurs} couleurs chromatiques en jeu pour jouer cette carte.`);
   }
+  // « si vous contrôlez une unité Opaline » (Lot 17).
+  if (gate.controlsArchetypeUnit) {
+    const famille = gate.controlsArchetypeUnit;
+    const present = player.board.some((u) => {
+      const d = getCardDefinition(u.cardId);
+      return d.archetype === famille && (d.type === "marin" || d.type === "creature");
+    });
+    if (!present) return fail("Il vous faut une unité de cette famille en jeu pour jouer cette carte normalement.");
+  }
   return ok();
 }
 

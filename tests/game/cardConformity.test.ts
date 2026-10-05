@@ -58,6 +58,12 @@ type RuleId =
 // Dérive, Sabordée d'office au changement de Marée — avait disparu avec la
 // fenêtre `onTideAnnounced`.
 const EXCEPTIONS: Record<string, string> = {
+  "miss-franche-comte-1987-roublarde-aux-des-pipes:optional":
+    "« Vous pouvez ajouter ou retirer 1 » est une OPTION offerte pendant le jet (`dieAdjustOncePerTurn`) : le " +
+    "jet reste ouvert, le joueur choisit +1, -1 ou de valider sans rien changer. Rien ne s'applique d'office.",
+  "le-donjon-de-ladalle:optional":
+    "« Vous pouvez relancer » est une option du jet ouvert (`firstRollRerollEachTurn` de la Lande) : le joueur " +
+    "relance ou garde son résultat ; rien ne se relance d'office.",
   "bete-de-halage:optional":
     "Le remplacement se décide AU MILIEU de l'effet adverse qui renvoie ou détruit la Bête, là où aucune fenêtre " +
     "de réaction ne peut s'ouvrir. Il est appliqué d'office, une fois par tour : refuser reviendrait à perdre " +
@@ -96,12 +102,18 @@ const TIDE_WORDS: Array<[RegExp, "calme" | "houle" | "tempete" | "abysses"]> = [
 ];
 
 function allEffects(def: CardDefinition): EffectDefinition[] {
-  return [
+  const racines = [
     ...(def.onPlayEffects ?? []),
     ...(def.onBreakEffects ?? []),
     ...(def.abilities ?? []).flatMap((a) => a.effects),
     ...(def.activatableOncePerTurn?.effects ?? []),
   ];
+  // Les branches d'un jet de dé (« Réussite critique : … ») réalisent elles aussi le texte.
+  const avecBranches = (e: EffectDefinition): EffectDefinition[] => [
+    e,
+    ...(e.dieBranches ?? []).flatMap((b) => b.effects.flatMap(avecBranches)),
+  ];
+  return racines.flatMap(avecBranches);
 }
 
 function triggers(def: CardDefinition): TriggerType[] {

@@ -2,6 +2,7 @@ import { existsSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { CORE_SET } from "@/game/cards/sets/core";
+import { LOT17_SET } from "@/game/cards/sets/lot17";
 import { SHELF_BOOSTER_IDS } from "@/game/boosters/extensions";
 import { DEFAULT_PACK_VISUAL, getBoosterPackVisual } from "@/features/boosters/opening/boosterPackVisuals";
 import { STANDARD_BOOSTER_ID } from "@/game/economy/constants";
@@ -37,9 +38,12 @@ const DOSSIER = path.join(process.cwd(), "public", "assets", "cards", "illustrat
  * de son visuel — le troisième test le refuse.
  */
 const SANS_VISUEL: Record<string, string> = {
-  // VIDE depuis le 04/10/2026 : le Lot 16 — Les Altérés — a reçu ses
-  // derniers visuels (La Revenante et les deux variantes Abyssales). Les
-  // trois Landes du 05/10/2026 sont arrivées avec les leurs.
+  // Le Lot 16 — Les Altérés — a reçu ses derniers visuels le 04/10/2026 et
+  // les trois Landes du 05/10/2026 sont arrivées avec les leurs.
+  // Le Lot 17 (Dungeon et Ladalle / Opalins, 05/10/2026) est livré sans visuels.
+  ...Object.fromEntries(
+    LOT17_SET.map((def) => def.id).map((id) => [id, "Lot 17 livré sans visuels (05/10/2026)"])
+  ),
 };
 
 const fichiers = new Set(readdirSync(DOSSIER));
@@ -110,9 +114,19 @@ describe("visuels de sachet", () => {
    * Marin a vécu une journée avec les images du Défaut, et rien ne l'aurait
    * signalé.
    */
+  /** Sachets livrés sans planches, chacun avec son motif — même règle que `SANS_VISUEL`. */
+  const SACHET_SANS_VISUEL: Record<string, string> = {
+    "dungeon-et-ladalle": "Booster du Lot 17 créé le 05/10/2026 sans planches de sachet : visuel du Défaut en attendant.",
+  };
+
   it("chaque booster du rayon a ses trois images, et ne les emprunte à personne", () => {
     for (const boosterId of SHELF_BOOSTER_IDS) {
       const visual = getBoosterPackVisual(boosterId);
+      if (SACHET_SANS_VISUEL[boosterId] !== undefined) {
+        // Le visuel est arrivé : l'exception doit partir avec lui.
+        expect(visual.id, `${boosterId} a son visuel — retire-le de SACHET_SANS_VISUEL`).toBe(DEFAULT_PACK_VISUAL.id);
+        continue;
+      }
 
       // Retomber sur le visuel par défaut, c'est n'en avoir aucun. Seul le
       // Défaut lui-même a le droit d'être le défaut — et son dossier

@@ -44,6 +44,7 @@ export type TriggerType =
   | "onExtraCardDrawn" // Lot 17 — FAIT DE JOUEUR : ce joueur vient de piocher EN DEHORS de sa pioche de début de tour (Ylenn, Opalin de la Main close)
   | "onCardLeftGraveyard" // Lot 17 — FAIT DE JOUEUR : une carte vient de quitter le Cimetière de ce joueur, vers n'importe quelle zone (Orram, Opalin des Mémoires)
   | "onLandePlaced" // Lot 17 — FAIT DE JOUEUR : une Lande vient d'arriver dans l'emplacement partagé, posée par ce joueur (Tour de guet mobile)
+  | "onChosenOption" // Lot 17 — JAMAIS déclenché par un événement : la capacité n'est qu'une OPTION, proposée par l'effet `chooseAbilityOption` de sa carte (« Choisissez : … »)
   | "onAbilityResolved" // Lot 17 — une carte EN JEU (`sourceInstanceId`) vient de résoudre une capacité déclenchée (`ABILITY_RESOLVED`) : observateur avec `triggeredBy` (Eidolon Opalin LVX)
   | "onDealtDamage" // Lot 17 — une carte EN JEU (`sourceInstanceId`) vient d'INFLIGER des dégâts — combat ou effet : personnel, ou observateur avec `triggeredBy` (Dhar, Opalin du Premier Coup)
   | "onCondition"; // condition arbitraire évaluée par un `ConditionExpression`

@@ -533,6 +533,76 @@ const LANDES_RARITY: Record<string, CardRarity> = {
 };
 
 /**
+ * LOT 17 — Dungeon et Ladalle / Opalins (Notion « Lot 15 — Dungeon et
+ * Ladalle / Opalins — VALIDÉ », 05/10/2026). Eidolon Opalin LVX est une
+ * version ABYSSALE dans Notion : son identifiant porte le suffixe
+ * `-abyssal`, qui suffit (elle n'est pas listée ici).
+ */
+const LOT17_RARITY: Record<string, CardRarity> = {
+  "gaston-aventurier-de-ladalle": "common",
+  "miss-franche-comte-1987-roublarde-aux-des-pipes": "rare",
+  "balthazar-mage-approximatif": "rare",
+  "frere-michel-clerc-de-secours": "common",
+  "hubert-paladin-persuade-d-etre-l-elu": "rare",
+  "gege-rodeur-du-mauvais-chemin": "uncommon",
+  "barnabe-barde-insupportable": "uncommon",
+  "maurice-ecuyer-de-troisieme-choix": "common",
+  "gnome-du-sac-sans-fond": "uncommon",
+  "le-nain-qui-connait-un-raccourci": "common",
+  "brigitte-druidesse-des-caves": "uncommon",
+  "norbert-necromancien-amateur": "rare",
+  "dede-moine-du-premier-degre": "common",
+  "rita-sorciere-sous-contrat": "rare",
+  "le-geant-qui-croyait-etre-discret": "rare",
+  "le-mimique-du-coffre-evidemment-piege": "uncommon",
+  "maitre-de-ladalle": "legendary",
+  "l-aventurier-de-niveau-beaucoup-trop-eleve": "legendary",
+  "de-pipe": "common",
+  "relance-j-te-jure": "common",
+  "c-etait-presque-un-six": "uncommon",
+  "double-tentative": "uncommon",
+  "de-du-destin-tres-officiel": "rare",
+  "on-retourne-a-l-auberge": "uncommon",
+  "j-avais-oublie-mon-sac": "common",
+  "plan-du-donjon-mal-dessine": "uncommon",
+  "le-donjon-de-ladalle": "rare",
+  "la-taverne-avant-le-donjon": "uncommon",
+  "nerhal-opalin-des-marees": "rare",
+  "orram-opalin-des-memoires": "rare",
+  "kaor-opalin-des-reliques": "rare",
+  "velm-opalin-des-armures": "uncommon",
+  "seren-opalin-du-silence": "rare",
+  "tharos-opalin-des-brisants": "rare",
+  "elyor-opalin-du-retour": "uncommon",
+  "merai-opalin-des-profondeurs": "rare",
+  "avar-opalin-des-structures": "rare",
+  "sila-opalin-du-large": "uncommon",
+  "morhal-opalin-des-navires": "legendary",
+  "ylenn-opalin-de-la-main-close": "rare",
+  "dhar-opalin-du-premier-coup": "rare",
+  "astel-opalin-de-la-derniere-veille": "legendary",
+  "eidolon-opalin-lv1": "rare",
+  "eidolon-opalin-lv5": "epic",
+  "veille-des-niveaux": "uncommon",
+  "fragment-d-eveil": "rare",
+  "sommeil-de-pierre": "uncommon",
+  "cartographe-du-large": "common",
+  "aventuriere-en-retard": "common",
+  "mousse-superstitieux": "uncommon",
+  "gardien-des-balises": "common",
+  "boussole-fendue": "common",
+  "piece-porte-bonheur": "uncommon",
+  "carte-detrempee": "common",
+  "corde-de-rappel-legere": "uncommon",
+  "campement-provisoire": "uncommon",
+  "tour-de-guet-mobile": "common",
+  "maree-imprevisible": "uncommon",
+  "route-barree": "uncommon",
+  "calme-trompeur": "rare",
+  "terres-inconnues": "rare",
+};
+
+/**
  * Rareté d'une carte. Les variantes Abyssales sont déduites de leur slug
  * plutôt que listées une par une : c'est une règle de design, pas une
  * décision carte par carte, et ça évite d'oublier une variante ajoutée
@@ -549,6 +619,7 @@ export function rarityForCardId(cardId: string): CardRarity | null {
     ECLATS_EN_SELLE_RARITY[cardId] ??
     ALTERES_RARITY[cardId] ??
     LANDES_RARITY[cardId] ??
+    LOT17_RARITY[cardId] ??
     PROVISIONAL_RARITY[cardId] ??
     null
   );

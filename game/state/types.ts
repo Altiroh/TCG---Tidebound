@@ -764,7 +764,14 @@ export interface DeckLookChoice {
    * (`restOrder` de la réponse) — « remettez les autres au-dessus de votre
    * pioche dans l'ordre de votre choix » (Ils Étaient Déjà Là, Lot 16).
    */
-  restTo?: "deckBottom" | "deckTopChosenOrder";
+  restTo?: "deckBottom" | "deckTopChosenOrder" | "shuffle";
+  /**
+   * Où vont les cartes PRISES (Lot 17). `"hand"` (défaut) ; `"deckTop"` :
+   * « gardez-en une au-dessus » (Boussole fendue) ; `"deckBottom"` :
+   * « placez-les sous votre pioche dans l'ordre de votre choix » — l'ordre
+   * de la réponse (Orram, Carte détrempée).
+   */
+  takeTo?: "hand" | "deckTop" | "deckBottom";
   /**
    * Effets à résoudre une fois la carte prise, avec
    * `chosenGraveyardInstanceId` = la carte prise (« s'il coûtait 2 ou
@@ -798,6 +805,12 @@ export interface HealAllocationChoice {
   playerId: PlayerId;
   /** Points de Résistance à répartir, au plus. */
   budget: number;
+  /**
+   * « … répartie entre vos unités ET votre Navire » (Frère Michel, Lot 17) :
+   * une part peut aller au Navire (`instanceId: "ship"`), qui récupère
+   * autant d'Ancrage, dans la limite de son Ancrage de départ.
+   */
+  includeShip?: boolean;
   sourceInstanceId?: string;
   turnNumber: number;
 }

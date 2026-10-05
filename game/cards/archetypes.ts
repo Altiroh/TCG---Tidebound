@@ -18,7 +18,15 @@
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { UNIT_CARD_TYPES, type CardInstance } from "@/game/cards/types";
 
-export type ArchetypeId = "cra-poiscail" | "un-dead" | "cavalerie" | "equipage-de-verre" | "sentinelle-chromatique" | "alteres" | "opalin";
+export type ArchetypeId =
+  | "cra-poiscail"
+  | "un-dead"
+  | "cavalerie"
+  | "equipage-de-verre"
+  | "sentinelle-chromatique"
+  | "alteres"
+  | "opalin"
+  | "dungeon-et-ladalle";
 
 /** Libellé humain — outils de design, journaux, tests. Jamais rendu sur une carte. */
 export const ARCHETYPE_LABELS: Record<ArchetypeId, string> = {
@@ -49,6 +57,10 @@ export const ARCHETYPE_LABELS: Record<ArchetypeId, string> = {
   // son archétype peut apparaître sur la carte. Les Opalins utilisent cette
   // exception. »
   opalin: "Opalin",
+  // Lot 17 (Notion, 05/10/2026) : la troupe d'aventuriers de « Dungeon et
+  // Ladalle », dont les cartes lancent des dés (`game/rules/dice.ts`). Les
+  // Opalins y reçoivent leur banc.
+  "dungeon-et-ladalle": "Dungeon et Ladalle",
 };
 
 /**

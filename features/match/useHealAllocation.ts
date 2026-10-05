@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getCardDefinition, UNIT_CARD_TYPES, type GameState, type PlayerId } from "@/game";
+import { getCardDefinition, getShipDefinition, UNIT_CARD_TYPES, type GameState, type PlayerId } from "@/game";
 import type { ChoiceBannerAction } from "@/features/match/ChoiceBanner";
 
 /** Ce que le plateau doit savoir pendant une répartition de soins. */
@@ -15,6 +15,9 @@ export interface BoardAllocationMode {
 }
 
 type Allocation = Array<{ instanceId: string; amount: number }>;
+
+/** Part versée au Navire (`HealAllocationChoice.includeShip`) — l'identifiant que le moteur attend. */
+const SHIP = "ship";
 
 /**
  * « Restaurez jusqu'à N Résistance répartie entre les unités que vous
@@ -34,7 +37,11 @@ export function useHealAllocation(state: GameState, viewerId: PlayerId, submit: 
 
   if (!active || !key) return { mode: null as BoardAllocationMode | null, banner: null };
 
-  const board = state.players.find((p) => p.id === viewerId)?.board ?? [];
+  const viewer = state.players.find((p) => p.id === viewerId);
+  const board = viewer?.board ?? [];
+  // « … entre vos unités et votre Navire » (Frère Michel) : le Navire reçoit sa part par un bouton du bandeau.
+  const shipRoom = active.includeShip && viewer ? Math.max(0, getShipDefinition(viewer.shipId).startingAnchor - viewer.anchor) : 0;
+  const shipPart = parts[SHIP] ?? 0;
   const spent = Object.values(parts).reduce((sum, n) => sum + n, 0);
   const left = active.budget - spent;
   // Les UNITÉS blessées seulement : une Structure n'entre pas dans la répartition.
@@ -72,13 +79,17 @@ export function useHealAllocation(state: GameState, viewerId: PlayerId, submit: 
     : undefined;
   const actions: ChoiceBannerAction[] = [];
   if (spent > 0) actions.push({ label: "Reprendre", onClick: () => setParts({}) });
-  actions.push({ label: wounded.length === 0 ? "Continuer" : "Réparer", primary: true, onClick: send });
+  if (shipRoom > 0 && left > 0 && shipPart < shipRoom) {
+    actions.push({ label: `Navire +1${shipPart > 0 ? ` (${shipPart})` : ""}`, onClick: () => setParts((current) => ({ ...current, [SHIP]: (current[SHIP] ?? 0) + 1 })) });
+  }
+  const rienAReparer = wounded.length === 0 && shipRoom === 0;
+  actions.push({ label: rienAReparer ? "Continuer" : "Réparer", primary: true, onClick: send });
 
   const banner = {
     choiceKey: key,
     source: source ? getCardDefinition(source.cardId).name : "Réparations",
     title:
-      wounded.length === 0
+      rienAReparer
         ? "Aucune de tes unités n'est blessée."
         : left > 0
           ? `Touche tes unités blessées : ${left} Résistance à répartir.`

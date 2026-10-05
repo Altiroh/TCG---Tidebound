@@ -2,6 +2,7 @@ import { ARCHETYPE_LABELS, type ArchetypeId } from "@/game/cards/archetypes";
 import {
   BOOSTER_BIENVENUE,
   BOOSTER_DEFAUT,
+  BOOSTER_DUNGEON_ET_LADALLE,
   BOOSTER_ECLATS_EN_SELLE,
   BOOSTER_ETRANGETE_SOUS_MARINE,
   BOOSTER_LA_MUTATION_MONDIALE,
@@ -200,6 +201,22 @@ const EXTENSIONS: readonly BoosterExtension[] = [
       "Ils ont l'air de marins jusqu'à ce que quelque chose remue sous leur peau. La mutation mondiale réunit les " +
       "Altérés : des corps que la mer a réécrits, qui s'éveillent les uns les autres, et dont chaque réveil en appelle " +
       "un autre — jusqu'à ce qu'il ne reste plus personne à bord pour compter.",
+  },
+  {
+    // BROUILLON (05/10/2026) : Notion ne prévoit ni nom, ni accroche, ni lore
+    // pour le booster du Lot 17 — tout est à valider, puis à reporter dans
+    // « Boosters & économie ». Deux familles à parts proches : le rayon
+    // annonce le LOT sous son titre Notion, pas l'une des deux.
+    boosterId: BOOSTER_DUNGEON_ET_LADALLE,
+    name: "Le Donjon et l'Opale",
+    kind: "extension",
+    archetype: null,
+    familyLabel: "Dungeon et Ladalle · Opalins",
+    tagline: "Des dés pipés, des gardiens",
+    lore:
+      "D'un côté, une compagnie d'aventuriers qui jure connaître le chemin, lance les dés à chaque porte et rentre " +
+      "à l'auberge plus souvent qu'au trésor. De l'autre, des Opalins qui veillent depuis toujours, s'éveillent " +
+      "niveau après niveau et cuirassent le Navire qui les porte. Le hasard d'un côté, la patience de l'autre.",
   },
 ];
 
