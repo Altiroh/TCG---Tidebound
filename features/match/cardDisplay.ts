@@ -23,6 +23,16 @@ export const CARD_TYPE_LABELS: Record<CardType, string> = {
   lande: "Lande",
 };
 
+/**
+ * Glyphe BLANC d'un type de carte — celui du nouveau cadre
+ * (`cards/frames/nouveau/types/`). Seule icône de type des écrans de
+ * Collection et de deck : les anciens bandeaux « glyphe + mot »
+ * (`cards/icons/type-*.webp`) ne servent plus qu'à l'ancien cadre.
+ */
+export function typeGlyphUrl(type: CardType): string {
+  return `/assets/cards/frames/nouveau/types/${type}.webp`;
+}
+
 export const TIDE_STATE_LABELS: Record<TideStateName, string> = {
   calme: "Calme",
   houle: "Houle",

@@ -662,11 +662,14 @@ export function CardTile({
       onDragStart={onDragStart}
       className={`${widthClassName} relative rounded-xl text-left ${
         liftOnHover
-          ? "transition-[transform,box-shadow,filter] duration-[160ms] ease-[cubic-bezier(.2,.8,.2,1)] hover:z-10 hover:-translate-y-2 hover:scale-[1.035] hover:-rotate-[0.7deg] hover:brightness-[1.06] hover:shadow-[0_22px_44px_-10px_rgba(0,0,0,0.78),0_6px_14px_-6px_rgba(0,0,0,0.5)]"
-          : "transition-shadow duration-200"
+          ? // Ombres en `drop-shadow` et non en `box-shadow` : elles suivent la
+            // silhouette de la carte. Une ombre de boîte dessinait autour du
+            // nouveau cadre, plus étroit, le rectangle arrondi de l'ancien.
+            "transition-[transform,filter] duration-[160ms] ease-[cubic-bezier(.2,.8,.2,1)] hover:z-10 hover:-translate-y-2 hover:scale-[1.035] hover:-rotate-[0.7deg] hover:[filter:brightness(1.06)_drop-shadow(0_16px_16px_rgba(0,0,0,0.6))]"
+          : "transition-[filter] duration-200"
       } ${selected ? "ring-2 ring-board-accent" : ""} ${disabled ? "opacity-40" : ""} ${
         onClick ? "cursor-pointer" : "cursor-default"
-      } ${hoverable && !liftOnHover ? "hover:shadow-[0_0_35px_rgba(62,166,255,0.6)]" : ""}`}
+      } ${hoverable && !liftOnHover ? "hover:[filter:drop-shadow(0_0_16px_rgba(62,166,255,0.6))]" : ""}`}
     >
       <div
         className={`relative aspect-[5/7] w-full overflow-hidden rounded-xl transition-transform duration-150 ease-out ${

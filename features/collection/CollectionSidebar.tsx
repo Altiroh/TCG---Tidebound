@@ -7,7 +7,7 @@ import { useCardShelf } from "@/features/collection/shelf/CardShelfProvider";
 import { FAVORITES_FILTER, notebookFilter } from "@/features/collection/shelf/shelf";
 import { BOOSTER_EXTENSIONS, boostersContaining, rarityForCardId } from "@/game/boosters";
 import type { CardRarity } from "@/game/boosters/types";
-import { CARD_RARITY_LABELS, CARD_TYPE_LABELS } from "@/features/match/cardDisplay";
+import { CARD_RARITY_LABELS, CARD_TYPE_LABELS, typeGlyphUrl } from "@/features/match/cardDisplay";
 import { TYPE_FILTERS } from "@/features/collection/cardFilters";
 import {
   COST_BUCKETS,
@@ -333,7 +333,7 @@ export function CollectionSidebar({
             <FilterRow
               key={type}
               label={CARD_TYPE_LABELS[type]}
-              icon={`/assets/cards/icons/type-${type}.webp`}
+              icon={typeGlyphUrl(type)}
               active={filters.type === type}
               count={countFor("type", (def) => def.type === type)}
               onClick={() => onChange({ type: filters.type === type ? null : type })}

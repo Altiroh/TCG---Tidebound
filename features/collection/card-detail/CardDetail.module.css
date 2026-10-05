@@ -45,7 +45,9 @@
     calc(clamp(8px, 2vmin, 40px) + var(--tb-safe-left));
   /* Voile bleu nuit plutôt qu'un aplat noir : les cartes du catalogue
      restent devinables, ce qui garde le contexte de navigation. */
-  background: radial-gradient(120% 90% at 50% 40%, rgba(6, 18, 32, 0.66), rgba(3, 9, 18, 0.86));
+  /* Plus dense depuis que la fiche n'a plus de panneau (05/10/2026) : c'est
+     le voile seul qui porte la lisibilité du texte. */
+  background: radial-gradient(120% 90% at 50% 40%, rgba(6, 18, 32, 0.78), rgba(3, 9, 18, 0.92));
   backdrop-filter: blur(14px) saturate(0.9);
   animation: detail-fade 200ms ease-out both;
 }
@@ -132,12 +134,8 @@
   max-width: min(100%, 1180px);
   max-height: 100%;
   padding: clamp(14px, 2.4vmin, 34px);
-  border: 1px solid var(--line-strong);
-  border-radius: clamp(12px, 1.6vmin, var(--tb-radius-xl));
-  background: linear-gradient(150deg, var(--tb-surface-solid-raised), var(--surface) 55%);
-  box-shadow:
-    var(--tb-shadow-lg),
-    inset 0 1px 0 var(--tb-border-light);
+  /* Pas de panneau (décision du 05/10/2026 : « trop pour pas grand-chose ») :
+     la carte et ses informations se posent directement sur le voile. */
   color: var(--ink);
   font-family: var(--font-card-body), Georgia, serif;
   animation: detail-rise 220ms cubic-bezier(0.2, 0.8, 0.3, 1) both;
@@ -150,30 +148,6 @@
   --line-strong: var(--tb-abyssal-line);
 }
 
-/* Halo de variante : une seule nappe très diffuse DERRIÈRE le panneau —
-   pas une bordure lumineuse, pas un aplat coloré par-dessus le contenu. */
-.panel::before {
-  content: "";
-  position: absolute;
-  inset: -14%;
-  z-index: -1;
-  border-radius: inherit;
-  background: radial-gradient(60% 60% at 28% 45%, var(--glow), transparent 70%);
-  opacity: 0.85;
-  pointer-events: none;
-}
-
-/* Filet de lumière sur l'arête haute — le seul "reflet" de la fiche. */
-.panel::after {
-  content: "";
-  position: absolute;
-  inset-inline: 12%;
-  top: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--accent), transparent);
-  opacity: 0.7;
-  pointer-events: none;
-}
 
 /* ──────────────────────────────────────────────────────────────
  * COLONNE GAUCHE — la carte

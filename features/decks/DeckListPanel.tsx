@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { isAbyssalVariant, RULES, type CardType } from "@/game";
-import { CARD_TYPE_LABELS } from "@/features/match/cardDisplay";
+import { CARD_TYPE_LABELS, typeGlyphUrl } from "@/features/match/cardDisplay";
 import {
   CURVE_BUCKETS,
   CURVE_OVERFLOW,
@@ -128,7 +128,7 @@ export function DeckListPanel({
               return (
                 <li key={type} data-empty={typeCount === 0 || undefined}>
                   {/* eslint-disable-next-line @next/next/no-img-element -- icône locale de type */}
-                  <img src={`/assets/cards/icons/type-${type}.webp`} alt="" />
+                  <img src={typeGlyphUrl(type)} alt="" />
                   <span>{TYPE_PLURALS[type] ?? CARD_TYPE_LABELS[type]}</span>
                   <strong>{typeCount}</strong>
                 </li>
