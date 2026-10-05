@@ -1,6 +1,6 @@
 "use client";
 
-import { isAbyssalVariant, type CardDefinition } from "@/game";
+import { ARCHETYPE_LABELS, isAbyssalVariant, type CardDefinition } from "@/game";
 import { CARD_TYPE_LABELS } from "@/features/match/cardDisplay";
 import { useImageOk } from "@/features/match/useImageOk";
 import styles from "@/features/cadre-preview/NouveauCadreCard.module.css";
@@ -150,6 +150,8 @@ export function NouveauCadreFace({ def, legendaire = false, attack, health, atta
           style={{ fontSize: "3.4cqw", letterSpacing: "0.04em" }}
         >
           {CARD_TYPE_LABELS[def.type]}
+          {/* Famille conçue pour se reconnaître (Opalin) : « Créature · Opalin ». */}
+          {def.showsArchetype && def.archetype ? ` · ${ARCHETYPE_LABELS[def.archetype]}` : null}
         </span>
       </div>
 

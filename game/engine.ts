@@ -5,7 +5,7 @@ import { advancePhase } from "@/game/actions/advancePhase";
 import { attack } from "@/game/actions/attack";
 import { breakObject, resumeObjectBreakEffects } from "@/game/actions/breakObject";
 import { concede } from "@/game/actions/concede";
-import { endTurn, entameDeTour } from "@/game/actions/endTurn";
+import { endTurn, entameDeTour, finirTour } from "@/game/actions/endTurn";
 import { fireShipAbility } from "@/game/actions/fireShipAbility";
 import { passReaction } from "@/game/actions/passReaction";
 import { playCard } from "@/game/actions/playCard";
@@ -167,6 +167,16 @@ export function dispatch(state: GameState, action: PlayerAction): ActionResult {
   // faut pour la reprendre à l'identique.
   if (result.state.status === "active" && !result.state.pendingReaction && result.state.pendingTideStep) {
     const repris = entameDeTour(result.state);
+    if (repris.ok) result = { ok: true, state: repris.state, events: [...result.events, ...repris.events] };
+  }
+
+  // --- REPRISE D'UNE FIN DE TOUR SUSPENDUE AVANT LE COUP DE LA LANDE ---
+  //
+  // `finirTour` s'est arrêtée juste avant le coup de la Vallée de verre pour
+  // laisser désigner les permanents à l'abri (Zone de repli). La fenêtre
+  // refermée, la fin du tour reprend — coup, Déraison, Marée, entame.
+  if (result.state.status === "active" && !result.state.pendingReaction && result.state.pendingLandeStrike) {
+    const repris = finirTour(result.state, result.state.pendingLandeStrike.endingPlayerId);
     if (repris.ok) result = { ok: true, state: repris.state, events: [...result.events, ...repris.events] };
   }
 

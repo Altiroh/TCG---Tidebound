@@ -526,6 +526,10 @@ const LANDES_RARITY: Record<string, CardRarity> = {
   "pluie-corrosive": "legendary",
   "chaine-de-construction": "legendary",
   "vallee-de-verre": "legendary",
+  // Réponses aux Landes (Notion, 05/10/2026).
+  "lever-lancre": "rare",
+  "cartographe-opalin-mefiant": "uncommon",
+  "zone-de-repli": "rare",
 };
 
 /**

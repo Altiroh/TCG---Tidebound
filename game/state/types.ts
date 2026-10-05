@@ -441,6 +441,13 @@ export interface GameState {
    * fenêtre se referme, exactement comme une attaque suspendue.
    */
   pendingTideStep?: PendingTideStep;
+  /**
+   * Fin de tour suspendue juste AVANT le coup de la Lande (Vallée de verre),
+   * le temps de la fenêtre `onLandeStrike` : le joueur désigne le permanent
+   * qui l'ignore (Zone de repli). `dispatch` reprend `finirTour` dès que la
+   * fenêtre se referme ; le coup tombe alors, abris compris.
+   */
+  pendingLandeStrike?: { endingPlayerId: PlayerId; turnNumber: number };
 
   /**
    * Destruction suspendue le temps d'une fenêtre de SAUVETAGE (Lot 14).

@@ -102,6 +102,13 @@ describe("La mutation mondiale — achat et ouverture", () => {
     const pool = new Set(BOOSTER_POOLS[MUTATION]);
     crediterBoosters(10);
     for (let i = 0; i < 10; i++) {
+      // La garantie de nouveauté (3 sachets sans carte nouvelle) remplace
+      // légitimement un slot : sur un pool de 22 cartes, dix ouvertures
+      // d'affilée finissent par la déclencher au hasard des tirages. Ce test
+      // vérifie les raretés des SLOTS — on remet son compteur à zéro.
+      db.upsert("player_pity", { user_id: USER, booster_definition_id: MUTATION, packs_since_abyssal: 0, packs_since_new_card: 0 }, (row) => {
+        row.packs_since_new_card = 0;
+      });
       const result = await openBooster(MUTATION);
       expect(result.ok).toBe(true);
       const cards = result.data!.cards;

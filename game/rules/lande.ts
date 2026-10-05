@@ -166,6 +166,17 @@ export function placeLande(
   };
 }
 
+/**
+ * La fin du tour de joueur qui commence va-t-elle faire frapper la Lande
+ * (« à la fin de chaque tour de table, … subissent N dégâts ») ? Lu par
+ * `finirTour` pour ouvrir la fenêtre `onLandeStrike` AVANT le coup.
+ */
+export function landeStrikesAtEndOfTurn(environment: EnvironmentState): boolean {
+  const lande = environment.lande;
+  if (!lande || !activeLandeRules(environment)?.damageAllPermanentsEachTableTurn) return false;
+  return (lande.remainingPlayerTurns - 1) % 2 === 0;
+}
+
 /** Tours de table restants à la Lande en jeu, arrondis au tour entamé (ce qu'affiche le plateau). */
 export function landeRemainingTableTurns(environment: EnvironmentState): number {
   return environment.lande ? Math.ceil(environment.lande.remainingPlayerTurns / 2) : 0;

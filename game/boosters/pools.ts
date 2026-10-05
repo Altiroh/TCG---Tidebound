@@ -49,6 +49,7 @@ export const BOOSTER_LA_MUTATION_MONDIALE = "la-mutation-mondiale";
  */
 const DEFAUT: readonly string[] = [
   "pluie-corrosive", // Pluie corrosive — Lande Légendaire (05/10/2026)
+  "zone-de-repli", // Zone de repli — réponse aux Landes (05/10/2026)
   "marin-des-jetees", // Marin des Jetées
   "vieux-loup-de-mer", // Vieux Loup de Mer
   "murene-aveugle", // Murène Aveugle
@@ -178,6 +179,7 @@ const POISSONS_PAS_FRAIS: readonly string[] = [
  * branche pseudo-médiévale Cra-Poiscail.
  */
 const ETRANGETE_SOUS_MARINE: readonly string[] = [
+  "cartographe-opalin-mefiant", // Cartographe Opalin méfiant — teaser Opalin, réponse aux Landes (05/10/2026)
   "masse-sombre", // Masse-Sombre
   "masse-sombre-abyssal", // Masse-Sombre — ABYSSALE
   "ce-qui-suit-le-navire", // Ce Qui Suit le Navire
@@ -316,8 +318,9 @@ const VEILLEE_DES_DISPARUS: readonly string[] = [
  *    jour où le design donne des Abyssales au lot.
  */
 const NECESSAIRE_DU_MARIN: readonly string[] = [
-  // --- Lande Légendaire (05/10/2026) ---
+  // --- Lande Légendaire et sa réponse (05/10/2026) ---
   "chaine-de-construction",
+  "lever-lancre",
   // --- Les 48 du lot (La Nasse Trop Pleine est déjà au catalogue) ---
   "la-nasse-trop-pleine",
   "jugement-du-phare",

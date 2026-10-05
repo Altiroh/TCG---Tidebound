@@ -10,7 +10,7 @@ import { describe, expect, it } from "vitest";
 import { dispatch } from "@/game/engine";
 import { hasEffectiveKeyword, assertValidDefender } from "@/game/rules/validation";
 import { landeRemainingTableTurns } from "@/game/rules/lande";
-import { instance, testEnvironment, testGameState, testPlayer } from "./testHelpers";
+import { activateReactionFor, instance, testEnvironment, testGameState, testPlayer } from "./testHelpers";
 import type { GameState } from "@/game/state/types";
 
 const PLUIE = "pluie-corrosive";
@@ -213,5 +213,91 @@ describe("Vallée de verre — 1 dégât à tous les permanents à chaque fin de
     expect(blessure(state, "p1", a.instanceId)).toBe(2);
     expect(blessure(state, "p2", b.instanceId)).toBe(2);
     expect(state.environment.lande).toBeUndefined();
+  });
+});
+
+describe("Réponses aux Landes", () => {
+  const enJeu = (cardId: string, ownerId: string, remainingPlayerTurns: number) =>
+    testEnvironment({ tideState: "houle", lande: { instanceId: `lande_${cardId}`, cardId, ownerId, remainingPlayerTurns } });
+
+  it("Lever l'Ancre : briser l'Objet détruit la Lande active, au Cimetière de son propriétaire", () => {
+    const ancre = instance("lever-lancre", "p1");
+    const state = partie([], { environment: enJeu(PLUIE, "p2", 5) }, { p1: [ancre] });
+    const result = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: ancre.instanceId });
+    ok(result);
+    expect(result.state.environment.lande).toBeUndefined();
+    const cimetiere = player(result.state, "p2").graveyard.find((c) => c.cardId === PLUIE);
+    expect(cimetiere?.graveyardCause).toBe("destroyed");
+  });
+
+  it("Cartographe Opalin méfiant : retire un tour de table à la Lande active, et l'achève à zéro", () => {
+    const [c1, c2] = [instance("cartographe-opalin-mefiant", "p1"), instance("cartographe-opalin-mefiant", "p1")];
+    let state = partie([c1, c2], { environment: enJeu(PLUIE, "p2", 4) });
+    const premier = dispatch(state, { type: "playCard", playerId: "p1", instanceId: c1.instanceId });
+    ok(premier);
+    expect(landeRemainingTableTurns(premier.state.environment)).toBe(1);
+    state = premier.state;
+    const second = dispatch(state, { type: "playCard", playerId: "p1", instanceId: c2.instanceId });
+    ok(second);
+    expect(second.state.environment.lande).toBeUndefined();
+    expect(player(second.state, "p2").graveyard.map((c) => c.cardId)).toContain(PLUIE);
+  });
+
+  it("Cartographe Opalin méfiant : sans Lande, il arrive sans rien faire", () => {
+    const c = instance("cartographe-opalin-mefiant", "p1");
+    const result = dispatch(partie([c]), { type: "playCard", playerId: "p1", instanceId: c.instanceId });
+    ok(result);
+    expect(result.state.environment.lande).toBeUndefined();
+  });
+
+  it("Zone de repli : avant le coup de la Vallée, une fenêtre laisse désigner le permanent épargné", () => {
+    const zone = instance("zone-de-repli", "p1");
+    const crabe = instance("crabe-de-fer", "p1");
+    const autre = instance("marin-des-jetees", "p1");
+    // Dernier demi-tour du premier tour de table : la fin de ce tour frappe.
+    const state = partie([], { activePlayerId: "p1", environment: enJeu(VALLEE, "p2", 3) }, { p1: [zone, crabe, autre] });
+    const fin = dispatch(state, { type: "endTurn", playerId: "p1" });
+    ok(fin);
+    expect(fin.state.pendingReaction?.awaitingPlayerId).toBe("p1");
+    expect(fin.state.pendingLandeStrike).toBeDefined();
+    // Rien n'est encore tombé : la fenêtre précède le coup.
+    expect(player(fin.state, "p1").board.every((u) => u.damageMarked === 0)).toBe(true);
+
+    const abri = activateReactionFor(fin.state, "zone-de-repli", crabe.instanceId);
+    ok(abri);
+    const apres = abri.state.pendingReaction
+      ? dispatch(abri.state, { type: "passReaction", playerId: abri.state.pendingReaction.awaitingPlayerId })
+      : abri;
+    ok(apres);
+    const board = player(apres.state, "p1").board;
+    expect(board.find((u) => u.instanceId === crabe.instanceId)?.damageMarked).toBe(0);
+    expect(board.find((u) => u.instanceId === zone.instanceId)?.damageMarked).toBe(1);
+    expect(apres.state.activePlayerId).toBe("p2");
+    expect(apres.state.pendingLandeStrike).toBeUndefined();
+  });
+
+  it("Zone de repli : passer la fenêtre laisse le coup tomber partout", () => {
+    const zone = instance("zone-de-repli", "p1");
+    const crabe = instance("crabe-de-fer", "p1");
+    const state = partie([], { environment: enJeu(VALLEE, "p2", 3) }, { p1: [zone, crabe] });
+    const fin = dispatch(state, { type: "endTurn", playerId: "p1" });
+    ok(fin);
+    const passe = dispatch(fin.state, { type: "passReaction", playerId: "p1" });
+    ok(passe);
+    expect(player(passe.state, "p1").board.find((u) => u.instanceId === crabe.instanceId)?.damageMarked).toBe(1);
+  });
+
+  it("Zone de repli contre la Pluie corrosive : à l'entame du tour, le permanent désigné garde Garde", () => {
+    const zone = instance("zone-de-repli", "p2");
+    const crabe = instance("crabe-de-fer", "p2");
+    const state = partie([], { environment: enJeu(PLUIE, "p1", 5) }, { p2: [zone, crabe] });
+    const fin = dispatch(state, { type: "endTurn", playerId: "p1" });
+    ok(fin);
+    expect(fin.state.activePlayerId).toBe("p2");
+    expect(fin.state.pendingReaction?.awaitingPlayerId).toBe("p2");
+    const abri = activateReactionFor(fin.state, "zone-de-repli", crabe.instanceId);
+    ok(abri);
+    const p2 = player(abri.state, "p2");
+    expect(hasEffectiveKeyword(abri.state, p2, p2.board.find((u) => u.instanceId === crabe.instanceId)!, "garde")).toBe(true);
   });
 });
