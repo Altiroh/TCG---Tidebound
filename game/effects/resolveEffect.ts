@@ -1,3 +1,4 @@
+import { boardPermanents, slotsUsed } from "@/game/rules/ongoing";
 import {
   CHROMATIC_COLORS,
   hasResistance,
@@ -277,7 +278,7 @@ function amountValue(
   }
   if (amount.kind === "freeSlots") {
     const joueur = getPlayer(state, controllerId);
-    const libres = Math.max(0, getShipDefinition(joueur.shipId).slotCount - joueur.board.length);
+    const libres = Math.max(0, getShipDefinition(joueur.shipId).slotCount - slotsUsed(joueur.board));
     const brut = libres * (amount.per ?? 1);
     return amount.max === undefined ? brut : Math.min(amount.max, brut);
   }
@@ -518,25 +519,29 @@ function resolveUnitTargetsUnfiltered(
       const unit = owner?.board.find((u) => u.instanceId === context.chosenTargetInstanceId);
       return noDraw(unit && owner ? [{ unit, ownerId: owner.id }] : []);
     }
+    // Les effets en cours (Anomalies) ne sont pas des permanents : « toutes
+    // les unités » et « au hasard » ne les voient pas (`game/rules/ongoing.ts`).
     case "allAllyUnits":
-      return noDraw(controller.board.map((unit) => ({ unit, ownerId: controller.id })));
+      return noDraw(boardPermanents(controller.board).map((unit) => ({ unit, ownerId: controller.id })));
     case "allEnemyUnits":
-      return noDraw(opponent.board.map((unit) => ({ unit, ownerId: opponent.id })));
+      return noDraw(boardPermanents(opponent.board).map((unit) => ({ unit, ownerId: opponent.id })));
     case "allUnits":
       return noDraw([
-        ...controller.board.map((unit) => ({ unit, ownerId: controller.id })),
-        ...opponent.board.map((unit) => ({ unit, ownerId: opponent.id })),
+        ...boardPermanents(controller.board).map((unit) => ({ unit, ownerId: controller.id })),
+        ...boardPermanents(opponent.board).map((unit) => ({ unit, ownerId: opponent.id })),
       ]);
     case "randomAllyUnit": {
-      if (controller.board.length === 0) return noDraw([]);
-      const draw = nextInt(state.rngState, controller.board.length);
-      const unit = controller.board[draw.value]!;
+      const pool = boardPermanents(controller.board);
+      if (pool.length === 0) return noDraw([]);
+      const draw = nextInt(state.rngState, pool.length);
+      const unit = pool[draw.value]!;
       return { targets: [{ unit, ownerId: controller.id }], rngState: draw.nextState };
     }
     case "randomEnemyUnit": {
-      if (opponent.board.length === 0) return noDraw([]);
-      const draw = nextInt(state.rngState, opponent.board.length);
-      const unit = opponent.board[draw.value]!;
+      const pool = boardPermanents(opponent.board);
+      if (pool.length === 0) return noDraw([]);
+      const draw = nextInt(state.rngState, pool.length);
+      const unit = pool[draw.value]!;
       return { targets: [{ unit, ownerId: opponent.id }], rngState: draw.nextState };
     }
     default:
@@ -1101,7 +1106,7 @@ export function resolveEffect(
       // plus qu'il n'en tient", décision du 2026-09-14). Une invocation qui
       // ne tient pas du tout n'est pas une erreur — elle ne produit
       // simplement aucun corps.
-      const freeSlots = Math.max(0, getShipDefinition(player.shipId).slotCount - player.board.length);
+      const freeSlots = Math.max(0, getShipDefinition(player.shipId).slotCount - slotsUsed(player.board));
       const wanted = Math.max(0, effect.count ?? 1);
       // « Aucun effet ne peut dépasser cette limite » (Lande, Chaîne de
       // construction) : l'invocation s'arrête aux arrivées encore permises,
@@ -2065,6 +2070,21 @@ export function resolveEffect(
           for (const cle of cles) if (flags[cle] === context.turnNumber) delete flags[cle];
           return { ...u, oncePerTurnFlags: flags };
         });
+      }
+      return { state: nextState, events };
+    }
+
+    case "consumeOncePerTurn": {
+      // La marque se lit sur la cible, préfixée par la source (même
+      // forme que `oncePerTurnSlot`, `game/triggers/triggerBus.ts`).
+      const cle = effect.consumesOncePerTurnKey;
+      if (!cle || !context.sourceInstanceId) return { state, events };
+      const { targets, rngState } = resolveUnitTargets(state, effect, context);
+      let nextState: GameState = { ...state, rngState };
+      for (const { unit, ownerId } of targets) {
+        nextState = replaceUnit(nextState, ownerId, unit.instanceId, (u) =>
+          markOncePerTurnUsed(u, `${context.sourceInstanceId}:${cle}`, context.turnNumber)
+        );
       }
       return { state: nextState, events };
     }

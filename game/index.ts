@@ -75,6 +75,7 @@ export { CARD_DATABASE, CORE_SET, getCardDefinition, canBeEquipTarget, hasAnyVal
 export { isAbyssalVariant } from "@/game/cards/types";
 export { isLandeCard, type LandeRules } from "@/game/cards/types";
 export { landeRemainingTableTurns, unitArrivalsLeft } from "@/game/rules/lande";
+export { boardPermanents, isOngoingEffect, slotsUsed } from "@/game/rules/ongoing";
 export { canUnitAttack, hasKeywordInContext, type KeywordContext } from "@/game/rules/validation";
 export { auraContextOf, collectAuraContributions } from "@/game/cards/stats";
 export type { AuraContext, AuraContribution } from "@/game/cards/stats";

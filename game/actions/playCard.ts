@@ -1,3 +1,4 @@
+import { isOngoingEffect } from "@/game/rules/ongoing";
 import { canBeEquipTarget, getCardDefinition, hasAnyValidEquipTarget } from "@/game/cards/sets/core";
 import { isLandeCard, isPermanentCard, isVisibleDuringTide, UNIT_CARD_TYPES, type CardDefinition } from "@/game/cards/types";
 import { placeLande, recordUnitArrivals, unitArrivalRefusal } from "@/game/rules/lande";
@@ -214,7 +215,8 @@ function validatePlayability(state: GameState, action: PlayCardAction) {
   if (!costCheck.ok) return costCheck;
 
   // Un Assemblage libère au moins une place avant de poser la carte.
-  if (isPermanentCard(def) && !action.assemblage) {
+  // Un effet en cours (Anomalie) ne prend pas de Slot : plateau plein ou non, il se joue.
+  if (isPermanentCard(def) && !isOngoingEffect(def) && !action.assemblage) {
     // Slots universels : tout permanent (unité, Structure, Objet, Équipement,
     // Anomalie) occupe un Slot, pas seulement les unités.
     const boardCheck = assertBoardNotFull(state, action.playerId);
@@ -412,7 +414,8 @@ export function playCard(state: GameState, action: PlayCardAction): ActionResult
       (def.onPlayEffects ?? []).some((e) => e.type === "attachEquipment") && action.targetInstanceId
         ? owner.board.findIndex((u) => u.instanceId === action.targetInstanceId)
         : -1;
-    const wanted = action.boardIndex ?? (hostIndex >= 0 ? hostIndex + 1 : owner.board.length);
+    // Un effet en cours (Anomalie) ne prend pas de place dans le rang : toujours en fin de liste.
+    const wanted = isOngoingEffect(def) ? owner.board.length : (action.boardIndex ?? (hostIndex >= 0 ? hostIndex + 1 : owner.board.length));
     const at = Math.max(0, Math.min(Math.trunc(wanted), owner.board.length));
     const board = [...owner.board.slice(0, at), boardUnit, ...owner.board.slice(at)];
     nextState = {

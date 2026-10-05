@@ -282,6 +282,15 @@ export type EffectType =
    */
   | "rearmTriggers"
   /**
+   * Inscrit sur la cible le « une fois par tour » d'une capacité de la
+   * SOURCE qui se compte par carte déclencheuse (`oncePerTurnPerTriggerSource`,
+   * clé `consumesOncePerTurnKey`), comme si cette capacité venait de s'en
+   * servir. Pour un texte qui agit à la pose PUIS « la première fois que
+   * chacune de vos unités… » : l'unité touchée à la pose a déjà eu son tour
+   * (Jusqu'à ce que ça casse, 05/10/2026).
+   */
+  | "consumeOncePerTurn"
+  /**
    * Donne une identité chromatique à la cible (Lot 15) : une couleur
    * (`chromaticColor`, ou lue ailleurs avec `chromaticColorFrom`), le
    * Signal correspondant (`chromaticEmits`), ou le droit de bénéficier de
@@ -790,6 +799,8 @@ export interface EffectDefinition {
   conditionChosenTargetSurvives?: boolean;
   /** `rearmTriggers` : le déclencheur dont les capacités sont réarmées. */
   rearmTrigger?: import("@/game/triggers/types").TriggerType;
+  /** `consumeOncePerTurn` : la clé (`oncePerTurnKey`) de la capacité de la source à marquer. */
+  consumesOncePerTurnKey?: string;
   /** `chromaticModify` / `claimChromaticColor` : couleur fixe. */
   chromaticColor?: import("@/game/cards/types").ChromaticColor;
   /**

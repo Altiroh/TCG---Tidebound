@@ -335,6 +335,33 @@
   text-shadow: 0 0 6px rgba(var(--lande-rgb, 126, 224, 208), 0.9), 0 1px 2px rgba(0, 0, 0, 0.9);
 }
 
+/* ── Effets en cours (Anomalies durables), à côté du hublot de Lande ── */
+
+.cargoRow {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+/* Le hublot de Lande garde sa place même entouré d'effets en cours. */
+.cargoRow > .badgeSlot {
+  height: auto;
+}
+
+.ongoingList {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* Un peu plus petits que la Lande : c'est elle qui change la partie entière. */
+.ongoingBadge {
+  --badge: clamp(30px, 6.4cqh, 66px);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .landeScene,
   .landeEdge[data-sway],

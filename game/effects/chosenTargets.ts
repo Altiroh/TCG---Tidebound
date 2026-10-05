@@ -8,6 +8,7 @@
  * Séparé de `resolveEffect.ts` pour que `triggerBus.ts` puisse s'en
  * servir sans dépendre de la résolution d'effets elle-même.
  */
+import { isOngoingEffect } from "@/game/rules/ongoing";
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { KEYWORD_INCIBLABLE, UNIT_CARD_TYPES, type CardInstance } from "@/game/cards/types";
 import { chromaticColorsOf, isOtherColorSentinel } from "@/game/rules/chromatic";
@@ -16,6 +17,8 @@ import type { GameState, PlayerId } from "@/game/state/types";
 
 /** Cette carte, contrôlée par `ownerId`, échappe-t-elle à une désignation par `chooserId` ? */
 export function isUntargetableBy(unit: CardInstance, ownerId: PlayerId, chooserId: PlayerId): boolean {
+  // Un effet en cours (Anomalie) n'est pas un permanent : personne ne le désigne.
+  if (isOngoingEffect(getCardDefinition(unit.cardId))) return true;
   return ownerId !== chooserId && unit.modifiers.some((m) => m.keywords?.includes(KEYWORD_INCIBLABLE));
 }
 

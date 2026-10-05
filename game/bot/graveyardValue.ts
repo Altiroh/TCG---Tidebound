@@ -1,3 +1,4 @@
+import { slotsUsed } from "@/game/rules/ongoing";
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { eligibleGraveyardCards } from "@/game/effects/graveyardChoices";
 import type { EffectDefinition } from "@/game/effects/types";
@@ -174,7 +175,7 @@ function judgmentLead(me: PlayerState, opponent: PlayerState): number {
   if (lead !== 0) return lead;
   // Départages : l'Ancrage, puis les permanents — une demi-unité suffit à dire qui passe devant.
   if (me.anchor !== opponent.anchor) return me.anchor > opponent.anchor ? 0.5 : -0.5;
-  if (me.board.length !== opponent.board.length) return me.board.length > opponent.board.length ? 0.5 : -0.5;
+  if (slotsUsed(me.board) !== slotsUsed(opponent.board)) return slotsUsed(me.board) > slotsUsed(opponent.board) ? 0.5 : -0.5;
   return 0;
 }
 

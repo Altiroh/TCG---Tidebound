@@ -2,7 +2,10 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
+  boardPermanents,
   canActivateAbility,
+  isOngoingEffect,
+  slotsUsed,
   findAssemblage,
   playCardRefusal,
   previewBreakReason,
@@ -42,6 +45,8 @@ import { BackgroundLayer } from "@/features/match/table/BackgroundLayer";
 import { CenterZone } from "@/features/match/table/CenterZone";
 import { LandeArrival, LANDE_ARRIVAL } from "@/features/match/landes/LandeArrival";
 import { LandeBadge } from "@/features/match/landes/LandeBadge";
+import landeStyles from "@/features/match/landes/Landes.module.css";
+import { OngoingEffects } from "@/features/match/table/OngoingEffects";
 import { LandeLayer } from "@/features/match/landes/LandeLayer";
 import { DecorLayer } from "@/features/match/table/DecorLayer";
 import { DragLayer, type AimTone } from "@/features/match/table/DragLayer";
@@ -413,7 +418,8 @@ export function TableBoard(props: TableBoardProps) {
     return entry.owner.id === viewerId || isVisibleDuringTide(getCardDefinition(entry.instance.cardId), tideState);
   };
 
-  const slotsFree = viewer.board.length < viewerShip.slotCount;
+  // Les effets en cours (Anomalies) ne prennent pas de Slot.
+  const slotsFree = slotsUsed(viewer.board) < viewerShip.slotCount;
   /** La carte est-elle jouable, restriction du tutoriel comprise ? */
   const isPlayable = (instanceId: string) => canPlayCards && (props.playableHandCards?.has(instanceId) ?? true);
   const discardMode = props.handLimitDiscard ?? null;
@@ -428,7 +434,13 @@ export function TableBoard(props: TableBoardProps) {
    * (`board`, entre deux cases) garde le comportement d'avant : fin de rang.
    */
   const slotOf = (drop: string): number | undefined => {
-    if (drop.startsWith("board:")) return Number(drop.slice("board:".length));
+    if (drop.startsWith("board:")) {
+      // La case k du RANG (sans les effets en cours) : rendue en indice
+      // dans la liste complète du moteur, où les Anomalies durables vivent aussi.
+      const k = Number(drop.slice("board:".length));
+      const rang = boardPermanents(viewer.board);
+      return k < rang.length ? viewer.board.indexOf(rang[k]!) : viewer.board.length;
+    }
     if (drop.startsWith("own:")) {
       const index = viewer.board.findIndex((u) => u.instanceId === dropId(drop));
       return index >= 0 ? index : undefined;
@@ -1007,7 +1019,7 @@ export function TableBoard(props: TableBoardProps) {
           <TableOpponentHand count={opponent.hand.length} ownerId={opponent.id} />
           <OpponentZone
             ship={shipView(opponent, opponentShip)}
-            board={opponent.board.map(toModel)}
+            board={boardPermanents(opponent.board).map(toModel)}
             capacity={opponentShip.slotCount}
             deck={opponent.deck.length}
             graveyard={opponent.graveyard.length}
@@ -1038,11 +1050,27 @@ export function TableBoard(props: TableBoardProps) {
           <CenterZone
             tide={tide}
             cargo={
-              <LandeBadge
-                environment={state.environment}
-                tideState={tideState}
-                dropState={placingLande ? (hover === "lande" ? "over" : "ready") : "idle"}
-              />
+              // Effets en cours de l'adversaire AU-DESSUS du hublot de Lande, les tiens EN DESSOUS :
+              // chacun du côté de son camp.
+              <div className={landeStyles.cargoRow}>
+                <OngoingEffects
+                  effects={opponent.board.filter((card) => isOngoingEffect(getCardDefinition(card.cardId))).map((card) => ({ card, ownerId: opponent.id }))}
+                  viewerId={viewerId}
+                  tideState={tideState}
+                  pulsingIds={props.reactionSourceIds}
+                />
+                <LandeBadge
+                  environment={state.environment}
+                  tideState={tideState}
+                  dropState={placingLande ? (hover === "lande" ? "over" : "ready") : "idle"}
+                />
+                <OngoingEffects
+                  effects={viewer.board.filter((card) => isOngoingEffect(getCardDefinition(card.cardId))).map((card) => ({ card, ownerId: viewer.id }))}
+                  viewerId={viewerId}
+                  tideState={tideState}
+                  pulsingIds={props.reactionSourceIds}
+                />
+              </div>
             }
             hint={
               dropError ? (
@@ -1071,7 +1099,7 @@ export function TableBoard(props: TableBoardProps) {
           />
           <PlayerZone
             ship={shipView(viewer, viewerShip)}
-            board={viewer.board.map(toModel)}
+            board={boardPermanents(viewer.board).map(toModel)}
             capacity={viewerShip.slotCount}
             deck={viewer.deck.length}
             graveyard={viewer.graveyard.length}
