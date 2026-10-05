@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { createPortal } from "react-dom";
-import { DECK_STYLES, deckProfile, deckStyleFromText, type BotDifficulty, type DeckList, type DeckStyleId } from "@/game";
+import type { BotDifficulty, DeckList } from "@/game";
 import { DeckBox } from "@/features/decks/DeckBox";
+import { DeckPicker } from "@/features/match/DeckPicker";
+import { deckFacts, type DeckSource } from "@/features/match/deckFacts";
 import { nameplateArtUrl } from "@/features/decks/nameplateArt";
 import { LEAVE_MS, prefersReducedMotion } from "@/features/match/ModeTable";
 import styles from "@/features/match/BotSetup.module.css";
@@ -32,25 +33,6 @@ export type SetupFoe =
 
 /** Durée du geste de la poignée (`BotSetup.module.css`, `pull`). */
 const PULL_MS = 720;
-
-/** Une source de decks du panneau « Changer de deck » (Mes decks, Préconstruits). */
-export interface DeckSource {
-  id: string;
-  label: string;
-  decks: readonly DeckList[];
-  /** Pourquoi un deck n'est pas jouable — la tuile reste visible, éteinte, avec la raison. */
-  issueFor: (deck: DeckList) => string | null;
-}
-
-/** Style (énumération), libellé écrit et difficulté (1 à 5) d'un deck — écrits pour le catalogue, lus dans la liste sinon. */
-export function deckFacts(deck: DeckList): { styleId: DeckStyleId | null; style: string; difficulty: number } {
-  const meta = deck as Partial<{ style: string; difficulty: number }>;
-  if (typeof meta.style === "string" && typeof meta.difficulty === "number") {
-    return { styleId: deckStyleFromText(meta.style), style: meta.style, difficulty: meta.difficulty };
-  }
-  const profile = deckProfile(deck.cardIds);
-  return { styleId: profile?.styleId ?? null, style: profile?.style ?? "Deck personnel", difficulty: profile?.difficulty ?? 3 };
-}
 
 function Stars({ value }: { value: number }) {
   const filled = Math.min(5, Math.max(0, Math.round(value)));
@@ -337,132 +319,5 @@ export function BotSetup({
         />
       )}
     </div>
-  );
-}
-
-/**
- * CHANGER DE DECK : un panneau à gauche de l'écran, sur son décor, comme la
- * scène des Mécènes. Les sources (Mes decks, Préconstruits) en onglets, un
- * filtre par type de deck (les six styles et leurs emblèmes), les decks en
- * boîtes. Un deck qui ne se joue pas reste visible, éteint, avec la raison.
- */
-function DeckPicker({
-  sources,
-  selectedId,
-  onPick,
-  onClose,
-}: {
-  sources: readonly DeckSource[];
-  selectedId: string | null;
-  onPick: (deck: DeckList) => void;
-  onClose: () => void;
-}) {
-  const [mounted, setMounted] = useState(false);
-  const initialSource =
-    sources.find((source) => source.decks.some((deck) => deck.id === selectedId)) ?? sources.find((source) => source.decks.length > 0) ?? sources[0]!;
-  const [sourceId, setSourceId] = useState(initialSource.id);
-  const [style, setStyle] = useState<DeckStyleId | "tous">("tous");
-  const source = sources.find((entry) => entry.id === sourceId) ?? sources[0]!;
-
-  useEffect(() => setMounted(true), []);
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => event.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
-  const withFacts = useMemo(() => source.decks.map((deck) => ({ deck, facts: deckFacts(deck), issue: source.issueFor(deck) })), [source]);
-  const counts = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const entry of withFacts) if (entry.facts.styleId) map.set(entry.facts.styleId, (map.get(entry.facts.styleId) ?? 0) + 1);
-    return map;
-  }, [withFacts]);
-  const shown = style === "tous" ? withFacts : withFacts.filter((entry) => entry.facts.styleId === style);
-
-  if (!mounted) return null;
-  return createPortal(
-    <div className={styles.pickerBackdrop} onClick={onClose} role="presentation">
-      <div className={styles.picker} role="dialog" aria-modal aria-label="Changer de deck" onClick={(event) => event.stopPropagation()}>
-        <header className={styles.pickerHead}>
-          <h2 className={styles.pickerTitle}>Changer de deck</h2>
-          <button type="button" className={styles.pickerClose} onClick={onClose} aria-label="Fermer">
-            ×
-          </button>
-        </header>
-
-        <div className={styles.sourceTabs} role="tablist" aria-label="Decks">
-          {sources.map((entry) => (
-            <button
-              key={entry.id}
-              type="button"
-              role="tab"
-              aria-selected={entry.id === source.id}
-              className={styles.sourceTab}
-              onClick={() => {
-                playTabClick();
-                setSourceId(entry.id);
-                setStyle("tous");
-              }}
-            >
-              {entry.label} <span className={styles.count}>{entry.decks.length}</span>
-            </button>
-          ))}
-        </div>
-
-        <div className={styles.styleFilter} role="radiogroup" aria-label="Type de deck">
-          <button type="button" role="radio" aria-checked={style === "tous"} className={styles.styleChip} onClick={() => setStyle("tous")}>
-            Tous <span className={styles.count}>{withFacts.length}</span>
-          </button>
-          {DECK_STYLES.map((entry) => (
-            <button
-              key={entry.id}
-              type="button"
-              role="radio"
-              aria-checked={style === entry.id}
-              className={styles.styleChip}
-              disabled={!counts.get(entry.id)}
-              onClick={() => {
-                playTabClick();
-                setStyle(entry.id);
-              }}
-              title={entry.hint}
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element -- emblème de style local */}
-              <img src={`/assets/decks/styles/style-${entry.id}.webp`} alt="" draggable={false} />
-              {entry.label} <span className={styles.count}>{counts.get(entry.id) ?? 0}</span>
-            </button>
-          ))}
-        </div>
-
-        {shown.length === 0 ? (
-          <p className={styles.pickerEmpty}>{source.decks.length === 0 ? "Aucun deck ici pour l'instant." : "Aucun deck de ce type."}</p>
-        ) : (
-          <ul className={styles.pickerGrid}>
-            {shown.map(({ deck, facts, issue }, index) => (
-              <li key={deck.id} className={styles.tileSlot} style={{ "--i": Math.min(index, 12) } as React.CSSProperties}>
-                <button
-                  type="button"
-                  className={styles.tile}
-                  data-selected={deck.id === selectedId || undefined}
-                  disabled={Boolean(issue)}
-                  title={issue ?? deck.description}
-                  onClick={() => {
-                    playButtonClick();
-                    onPick(deck);
-                  }}
-                >
-                  <DeckBox art={nameplateArtUrl(deck.cardIds, deck.shipId)} facing="right" className={styles.tileBox} />
-                  <span className={styles.tileName}>{deck.name}</span>
-                  <span className={styles.tileStyle}>{facts.style.split("/")[0]?.trim()}</span>
-                  <Stars value={facts.difficulty} />
-                  {issue && <span className={styles.tileIssue}>{issue}</span>}
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-    </div>,
-    document.body,
   );
 }
