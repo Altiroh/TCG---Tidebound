@@ -77,6 +77,13 @@ export interface PlayerState {
    */
   unitsPlayedThisTurn?: number;
   /**
+   * Unités arrivées en jeu sous le contrôle de ce joueur pendant le tour
+   * `turnNumber` — jouées depuis la main OU invoquées par un effet, jetons
+   * compris. Daté plutôt que remis à zéro, comme `reasonLostThisTurn`. Lu
+   * par la limite d'arrivées d'une Lande (`LandeRules.unitArrivalsPerTurn`).
+   */
+  unitArrivalsThisTurn?: { turnNumber: number; count: number };
+  /**
    * Où en est la capacité activable du Navire
    * (`ShipDefinition.activatableAbility`) pour ce joueur. Absent : jamais
    * activée. Porté par le JOUEUR et non par une carte — le Navire n'est pas

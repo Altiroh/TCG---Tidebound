@@ -9,7 +9,7 @@ import { NouveauCadreCard } from "@/features/cadre-preview/NouveauCadreCard";
 
 /** La carte de la maquette d'abord, puis une carte par type (une sans stats, une Résistance seule…), puis deux Abyssales, puis le texte le plus long du catalogue (zone qui défile). */
 const MAQUETTE_ID = "la-bete-quon-nattend-plus";
-const TYPES: CardType[] = ["creature", "marin", "equipement", "structure", "objet", "anomalie"];
+const TYPES: CardType[] = ["creature", "marin", "equipement", "structure", "objet", "anomalie", "lande"];
 
 function echantillon(): CardDefinition[] {
   const maquette = CORE_SET.find((card) => card.id === MAQUETTE_ID);

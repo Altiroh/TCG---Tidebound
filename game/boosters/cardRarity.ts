@@ -517,6 +517,18 @@ const ALTERES_RARITY: Record<string, CardRarity> = {
 };
 
 /**
+ * Landes (05/10/2026, Notion « Boosters & économie » § Terrains
+ * Légendaires) : Légendaires toutes trois — elles transforment la partie
+ * entière. Leur limite de deck (×2) est portée par la carte, pas par le
+ * palier.
+ */
+const LANDES_RARITY: Record<string, CardRarity> = {
+  "pluie-corrosive": "legendary",
+  "chaine-de-construction": "legendary",
+  "vallee-de-verre": "legendary",
+};
+
+/**
  * Rareté d'une carte. Les variantes Abyssales sont déduites de leur slug
  * plutôt que listées une par une : c'est une règle de design, pas une
  * décision carte par carte, et ça évite d'oublier une variante ajoutée
@@ -532,6 +544,7 @@ export function rarityForCardId(cardId: string): CardRarity | null {
     NECESSAIRE_DU_MARIN_RARITY[cardId] ??
     ECLATS_EN_SELLE_RARITY[cardId] ??
     ALTERES_RARITY[cardId] ??
+    LANDES_RARITY[cardId] ??
     PROVISIONAL_RARITY[cardId] ??
     null
   );

@@ -45,7 +45,7 @@ export interface ChromaticIdentity {
  * leur effet. Briser ≠ Saborder : ça ne déclenche ni `onDeath` ni
  * `onSaborde` sauf texte contraire.
  */
-export type CardType = "marin" | "creature" | "equipement" | "structure" | "objet" | "anomalie";
+export type CardType = "marin" | "creature" | "equipement" | "structure" | "objet" | "anomalie" | "lande";
 
 /** Types de carte considérés comme des unités (peuvent occuper un Slot de combat, attaquer). */
 export const UNIT_CARD_TYPES: readonly CardType[] = ["marin", "creature"];
@@ -1275,6 +1275,15 @@ export interface CardDefinition {
   activatableOncePerTurn?: { cost: { reason?: number }; effects: EffectDefinition[] };
 
   /**
+   * Pour une Lande UNIQUEMENT (`type: "lande"`) : ce qu'elle change aux
+   * règles de la partie tant qu'elle est en jeu (`game/rules/lande.ts`).
+   * Une Lande n'occupe aucun Slot : elle se pose dans l'emplacement PARTAGÉ
+   * du centre du plateau (`EnvironmentState.lande`), un seul pour les deux
+   * joueurs, et ses règles valent pour les deux camps.
+   */
+  lande?: LandeRules;
+
+  /**
    * Nombre maximum d'exemplaires de cette carte dans un deck personnel —
    * donnée propre à chaque carte, jamais dérivée de la rareté (cadrage
    * `TCG_DATABASE.md` "max_copies canonique"). Défaut : 3.
@@ -1283,6 +1292,48 @@ export interface CardDefinition {
 }
 
 export const DEFAULT_MAX_COPIES = 3;
+
+/**
+ * Règles d'une Lande (`CardDefinition.lande`). Chaque champ est une
+ * primitive GÉNÉRIQUE, relue par le moteur tant que la Lande est en jeu —
+ * jamais un branchement sur l'identifiant d'une carte.
+ *
+ * Cycle de vie (`game/rules/lande.ts`) : jouer une Lande remplace celle déjà
+ * en jeu, qui part au Cimetière de SON propriétaire. Elle reste
+ * `durationTableTurns` tours de table — comptés à partir de sa pose, en
+ * tours de joueur deux par deux —, puis part au Cimetière de son
+ * propriétaire.
+ */
+export interface LandeRules {
+  /** « Durée : N tours de table ». */
+  durationTableTurns: number;
+  /**
+   * « Les permanents perdent Garde » (Pluie corrosive) : mots-clés retirés
+   * à TOUS les permanents, des deux camps, tant que la Lande est en jeu. Lu
+   * par `hasKeywordInContext` : le retrait l'emporte sur tout octroi.
+   */
+  removesKeywords?: string[];
+  /**
+   * « Chaque joueur ne peut invoquer qu'un seul Marin ou une seule Créature
+   * par tour. Aucun effet ne peut dépasser cette limite. » (Chaîne de
+   * construction) : nombre maximal d'unités qui arrivent en jeu sous le
+   * contrôle d'un même joueur pendant un même tour — jouées depuis la main
+   * OU invoquées par un effet, jetons compris. Une carte au-delà ne se joue
+   * pas ; un effet au-delà n'invoque que ce qui reste permis.
+   */
+  unitArrivalsPerTurn?: number;
+  /**
+   * « À la fin de chaque tour de table, tous les permanents en jeu
+   * subissent N dégâts » (Vallée de verre) : dégâts d'effet de la Lande,
+   * à tous les permanents dotés de Résistance, des deux camps.
+   */
+  damageAllPermanentsEachTableTurn?: number;
+}
+
+/** La carte est-elle une Lande ? */
+export function isLandeCard(def: CardDefinition): boolean {
+  return def.type === "lande";
+}
 
 /**
  * Statut "MALADE" (Notion "Moteur de partie", section "Malus globaux des
@@ -1320,7 +1371,9 @@ export type GraveyardCause =
   | "scuttled"
   | "expired"
   /** Placée au Cimetière pour un Assemblage Chromatique : ni détruite, ni Sabordée (Lot 15). */
-  | "assembled";
+  | "assembled"
+  /** Lande chassée par une autre Lande : ni détruite, ni expirée. */
+  | "replaced";
 
 /**
  * COMMENT une carte a quitté le plateau — plus fin que `GraveyardCause`, qui

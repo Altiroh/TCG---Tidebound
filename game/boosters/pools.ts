@@ -48,6 +48,7 @@ export const BOOSTER_LA_MUTATION_MONDIALE = "la-mutation-mondiale";
  * cartes Cra-Poiscail et un teaser Marionnette.
  */
 const DEFAUT: readonly string[] = [
+  "pluie-corrosive", // Pluie corrosive — Lande Légendaire (05/10/2026)
   "marin-des-jetees", // Marin des Jetées
   "vieux-loup-de-mer", // Vieux Loup de Mer
   "murene-aveugle", // Murène Aveugle
@@ -315,6 +316,8 @@ const VEILLEE_DES_DISPARUS: readonly string[] = [
  *    jour où le design donne des Abyssales au lot.
  */
 const NECESSAIRE_DU_MARIN: readonly string[] = [
+  // --- Lande Légendaire (05/10/2026) ---
+  "chaine-de-construction",
   // --- Les 48 du lot (La Nasse Trop Pleine est déjà au catalogue) ---
   "la-nasse-trop-pleine",
   "jugement-du-phare",
@@ -440,6 +443,8 @@ const ECLATS_EN_SELLE_POOL: readonly string[] = [
   "la-premiere-pierre",
   "le-geant-chromatique",
   "le-geant-chromatique-abyssal",
+  // --- Lande Légendaire, rattachée à l'Équipage de Verre (05/10/2026) ---
+  "vallee-de-verre",
 ];
 
 /**
@@ -462,6 +467,8 @@ const BIENVENUE: readonly string[] = DEFAUT.filter((cardId) => {
   if (!def) return false;
   if (cardId.endsWith("-abyssal")) return false;
   if (def.archetype) return false;
+  // Une Lande change la partie entière : pas dans le sachet de l'onboarding.
+  if (def.type === "lande") return false;
   return def.setCode === undefined || def.setCode === "core";
 });
 

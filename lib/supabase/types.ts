@@ -1038,7 +1038,7 @@ export interface Database {
 }
 
 /** Miroir de l'enum SQL `public.card_type`. */
-type CardTypeEnum = "marin" | "creature" | "equipement" | "structure" | "objet" | "anomalie";
+type CardTypeEnum = "marin" | "creature" | "equipement" | "structure" | "objet" | "anomalie" | "lande";
 
 /** Miroir de l'enum SQL `public.card_rarity`. */
 /**

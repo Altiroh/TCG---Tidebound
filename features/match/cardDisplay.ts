@@ -20,6 +20,7 @@ export const CARD_TYPE_LABELS: Record<CardType, string> = {
   structure: "Structure",
   objet: "Objet",
   anomalie: "Anomalie",
+  lande: "Lande",
 };
 
 export const TIDE_STATE_LABELS: Record<TideStateName, string> = {
@@ -43,6 +44,7 @@ export const GRAVEYARD_CAUSE_LABELS: Record<GraveyardCause, string> = {
   scuttled: "Sabordée",
   expired: "Expirée",
   assembled: "Assemblée",
+  replaced: "Remplacée",
 };
 
 export const GRAVEYARD_CAUSE_COLORS: Record<GraveyardCause, string> = {
@@ -51,6 +53,7 @@ export const GRAVEYARD_CAUSE_COLORS: Record<GraveyardCause, string> = {
   scuttled: "text-amber-300",
   expired: "text-cyan-300",
   assembled: "text-violet-300",
+  replaced: "text-emerald-300",
 };
 
 /**

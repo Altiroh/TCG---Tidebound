@@ -5,6 +5,7 @@ import { getShipDefinition } from "@/game/environment/shipData";
 import type { TideStateName } from "@/game/environment/types";
 import { PHASE_LABELS, phaseRefusal } from "@/game/rules/phaseLabels";
 import { chromaticColorsOf, controlledChromaticColors, isOtherColorSentinel } from "@/game/rules/chromatic";
+import { landeRemovedKeywords } from "@/game/rules/lande";
 import { isMainPhase, type GamePhase, type GameState, type PlayerId, type PlayerState } from "@/game/state/types";
 
 /**
@@ -18,6 +19,7 @@ export function hasEffectiveKeyword(state: GameState, controller: PlayerState, u
     tideState: state.environment.tideState,
     controllerBoard: controller.board,
     controllerReason: controller.reason,
+    removedKeywords: landeRemovedKeywords(state.environment),
   });
 }
 
@@ -27,6 +29,12 @@ export interface KeywordContext {
   /** Plateau du contrôleur de l'unité (elle y figure elle-même). */
   controllerBoard: readonly CardInstance[];
   controllerReason: number;
+  /**
+   * Mots-clés retirés à TOUS les permanents par la Lande en jeu
+   * (`landeRemovedKeywords`, « les permanents perdent Garde »). Le retrait
+   * l'emporte sur tout octroi.
+   */
+  removedKeywords?: readonly string[];
 }
 
 /**
@@ -72,6 +80,7 @@ export function hasKeywordInContext(unit: CardInstance, keyword: string, context
   // un retrait posé par modificateur l'emporte sur TOUT octroi, imprimé,
   // conditionnel ou transmis — c'est exactement ce que le texte promet.
   if (unit.modifiers.some((m) => m.removesKeywords?.includes(keyword))) return false;
+  if (context.removedKeywords?.includes(keyword)) return false;
   if ((def.conditionalKeywordSuppressions ?? []).some(matches)) return false;
   if (hasKeyword(def, keyword)) return true;
   if ((def.conditionalKeywords ?? []).some(matches)) return true;

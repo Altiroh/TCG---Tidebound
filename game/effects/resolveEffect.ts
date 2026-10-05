@@ -25,6 +25,7 @@ import { reasonAfterLoss, reasonCeiling } from "@/game/state/reason";
 import { markOncePerTurnUsed, oncePerTurnAvailable } from "@/game/state/oncePerTurn";
 import { chromaticColorsOf, chromaticShardCardId } from "@/game/rules/chromatic";
 import { eveilsThisTurn } from "@/game/rules/eveil";
+import { recordUnitArrivals, unitArrivalsLeft } from "@/game/rules/lande";
 import {
   applyOpponentRemovalShield,
   consumeEquippedEffectDamageShield,
@@ -1102,7 +1103,13 @@ export function resolveEffect(
       // simplement aucun corps.
       const freeSlots = Math.max(0, getShipDefinition(player.shipId).slotCount - player.board.length);
       const wanted = Math.max(0, effect.count ?? 1);
-      const toSummon = Math.min(wanted, freeSlots);
+      // « Aucun effet ne peut dépasser cette limite » (Lande, Chaîne de
+      // construction) : l'invocation s'arrête aux arrivées encore permises,
+      // comme elle s'arrête aux Slots libres.
+      const arrivalsLeft = (UNIT_CARD_TYPES as readonly string[]).includes(summonedDef.type)
+        ? unitArrivalsLeft(state, player.id, context.turnNumber)
+        : Infinity;
+      const toSummon = Math.min(wanted, freeSlots, arrivalsLeft);
       if (toSummon === 0) return { state, events };
 
       let rngState = state.rngState;
@@ -1177,7 +1184,13 @@ export function resolveEffect(
         : withPiedMarin;
 
       const board = [...player.board, ...buffed];
-      return { state: { ...replacePlayer(state, { ...player, board }), rngState }, events };
+      const withArrivals = recordUnitArrivals(
+        { ...replacePlayer(state, { ...player, board }), rngState },
+        player.id,
+        buffed.map(() => summonedDef),
+        context.turnNumber
+      );
+      return { state: withArrivals, events };
     }
 
     case "buff": {

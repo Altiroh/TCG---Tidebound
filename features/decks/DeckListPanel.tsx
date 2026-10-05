@@ -47,6 +47,7 @@ const TYPE_PLURALS: Record<CardType, string> = {
   structure: "Structures",
   objet: "Objets",
   anomalie: "Anomalies",
+  lande: "Landes",
 };
 
 /**

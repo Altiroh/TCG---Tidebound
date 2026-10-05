@@ -2,6 +2,7 @@ import { HIDDEN_CARD_DEFINITION, HIDDEN_CARD_ID } from "@/game/cards/hiddenCard"
 import { TOKEN_SET } from "@/game/cards/sets/tokens";
 import { ECLATS_EN_SELLE_SET } from "@/game/cards/sets/eclatsEnSelle";
 import { ALTERES_SET } from "@/game/cards/sets/alteres";
+import { LANDES_SET } from "@/game/cards/sets/landes";
 import { EQUIPPABLE_CARD_TYPES, type CardDefinition, type CardInstance } from "@/game/cards/types";
 
 /**
@@ -5344,6 +5345,8 @@ export const CORE_SET: CardDefinition[] = [
   ...ECLATS_EN_SELLE_SET,
   // Lot 16 — Les Altérés : leur propre module (`game/cards/sets/alteres.ts`).
   ...ALTERES_SET,
+  // Landes (05/10/2026) : leur propre module (`game/cards/sets/landes.ts`).
+  ...LANDES_SET,
 ];
 
 /**

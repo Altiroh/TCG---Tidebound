@@ -1,5 +1,6 @@
 import { canBeEquipTarget, getCardDefinition, hasAnyValidEquipTarget } from "@/game/cards/sets/core";
-import { isPermanentCard, isVisibleDuringTide, UNIT_CARD_TYPES, type CardDefinition } from "@/game/cards/types";
+import { isLandeCard, isPermanentCard, isVisibleDuringTide, UNIT_CARD_TYPES, type CardDefinition } from "@/game/cards/types";
+import { placeLande, recordUnitArrivals, unitArrivalRefusal } from "@/game/rules/lande";
 import { validateGraveyardChoice } from "@/game/effects/graveyardChoices";
 import { isEligibleChosenUnit } from "@/game/effects/chosenTargets";
 import type { EffectContext } from "@/game/effects/resolveEffect";
@@ -187,6 +188,11 @@ function validatePlayability(state: GameState, action: PlayCardAction) {
     return { ok: false as const, error: `Cette carte ne peut être jouée qu'avec exactement ${def.requiresControllerReasonExactly} Raison.` };
   }
 
+  // Lande « un seul Marin ou une seule Créature par tour » (Chaîne de
+  // construction) : refusé avant le coût, comme une condition de pose.
+  const arrivalRefusal = unitArrivalRefusal(state, action.playerId, def);
+  if (arrivalRefusal) return { ok: false as const, error: arrivalRefusal };
+
   // « Jouable uniquement si… » : avant le coût, puisque la carte ne se pose
   // pas du tout — rien ne doit être dépensé pour un refus.
   const playableCheck = assertPlayableCondition(state, action.playerId, def);
@@ -373,7 +379,13 @@ export function playCard(state: GameState, action: PlayCardAction): ActionResult
 
   const asPermanent = isPermanentCard(def);
 
-  if (isUnitCard(def.type) || asPermanent) {
+  if (isLandeCard(def)) {
+    // Lande : l'emplacement PARTAGÉ du centre, pas le plateau du joueur.
+    // Celle qui y était part au Cimetière de son propriétaire.
+    const posee = placeLande(nextState, player.id, instance, state.turnNumber);
+    nextState = posee.state;
+    events.push(...posee.events);
+  } else if (isUnitCard(def.type) || asPermanent) {
     const boardUnit = {
       ...instance,
       summoningSick: isUnitCard(def.type),
@@ -408,6 +420,7 @@ export function playCard(state: GameState, action: PlayCardAction): ActionResult
       players: nextState.players.map((p) => (p.id === owner.id ? { ...owner, board } : p)) as [PlayerState, PlayerState],
     };
     events.push({ ...base, type: "SUMMON", playerId: player.id, instanceId: boardUnit.instanceId, cardId: def.id, played: true });
+    nextState = recordUnitArrivals(nextState, player.id, [def], state.turnNumber);
   } else {
     // Équipement consommable (`permanent: false`) : part directement au
     // cimetière après résolution. Aucune autre carte ne prend cette voie —

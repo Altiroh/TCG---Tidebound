@@ -6,6 +6,7 @@ import type { GameEvent } from "@/game/events/types";
 import { processTrigger } from "@/game/triggers/triggerBus";
 import { markArrivalsBeforeTurnStart, pruneGraveyardArrivals } from "@/game/state/discard";
 import { RULES } from "@/game/rules/constants";
+import { tickLande } from "@/game/rules/landeTick";
 import { assertGameActive, assertIsActivePlayer, assertPlayerInGame, combine } from "@/game/rules/validation";
 import { findAnomalyForcedChoices, recordForcedChoicesImposed } from "@/game/state/anomalies";
 import { ouvrirFenetrePour } from "@/game/reactions/reactionWindow";
@@ -153,6 +154,13 @@ export function finirTour(state: GameState, endingPlayerId: PlayerId, eventsAvan
   const events: GameEvent[] = [...eventsAvant];
   const base = { turnNumber: state.turnNumber, timestamp: Date.now() };
   let nextState = state;
+
+  // --- Lande en jeu : un demi-tour de table de plus. Ses dégâts de fin de
+  // tour de table tombent ici, AVANT le règlement de la Déraison, qui reste
+  // le tout dernier geste du tour.
+  const lande = tickLande(nextState, state.turnNumber);
+  nextState = lande.state;
+  events.push(...lande.events);
 
   // --- Règlement de la Déraison CHOISIE, à la fin du tour de celui qui l'a
   // prise, en tout dernier (plus aucun effet de fin de tour ne peut encore

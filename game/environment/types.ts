@@ -81,6 +81,28 @@ export interface EnvironmentState {
   tideOrientation: TideOrientation;
   tideIntensity: number;
   pendingTideModifiers: PendingTideModifier[];
+  /**
+   * La Lande en jeu — emplacement PARTAGÉ, un seul pour les deux joueurs
+   * (`game/rules/lande.ts`). Absent : aucune Lande. Optionnel pour que les
+   * états déjà sérialisés (parties en cours) restent valides.
+   */
+  lande?: ActiveLande;
+}
+
+/** Lande posée au centre du plateau. */
+export interface ActiveLande {
+  /** La carte elle-même, telle qu'elle a quitté la main. */
+  instanceId: string;
+  cardId: string;
+  /** Joueur qui l'a jouée : c'est dans SON Cimetière qu'elle repartira. */
+  ownerId: string;
+  /**
+   * Tours de JOUEUR restants avant son départ : deux par tour de table
+   * (`2 × durationTableTurns` à la pose), décomptés à la fin de chaque
+   * tour. Les tours de table se comptent donc à partir de SA pose, quel que
+   * soit le joueur qui l'a posée.
+   */
+  remainingPlayerTurns: number;
 }
 
 /**
