@@ -41,11 +41,11 @@ interface CardTileProps {
   /** `false` pour désactiver l'agrandissement léger au survol (ex: cartes de plateau — l'utilisateur clique désormais pour voir le détail plutôt que de survoler). Défaut : `true`. */
   scaleOnHover?: boolean;
   /**
-   * `false` retire les badges de statut flottants (Inactive, Mal
+   * `false` retire les badges de statut flottants (Immobilisé, Mal
    * d'invocation, Garde, Durée…). Ces badges décrivent l'état d'une carte
    * EN PARTIE ; hors partie — fiche de Collection — ils sont calculés à
    * partir d'une Marée arbitraire et racontent donc n'importe quoi (une
-   * carte marquée « Inactive » parce que l'aperçu suppose Calme). Défaut :
+   * carte marquée « Immobilisé » parce que l'aperçu suppose Calme). Défaut :
    * `true`, aucun appelant existant ne change de comportement.
    */
   showStatusBadges?: boolean;
@@ -141,12 +141,7 @@ export function cardStatusLegend(
   const isUnit = (UNIT_CARD_TYPES as readonly string[]).includes(def.type);
   const legend: Array<{ label: string; description: string }> = [];
   if (computeEffectiveStats(instance, tideState, auraContext).inactive) {
-    legend.push({
-      label: "Inactive",
-      description: instance.modifiers.some((modifier) => modifier.silenced)
-        ? "Un effet l'entrave : elle ne peut ni attaquer, ni utiliser ses capacités."
-        : "La Marée actuelle la met hors d'état : ni attaque, ni capacité tant que la Marée ne change pas.",
-    });
+    legend.push(immobiliseInfo(instance));
   }
   if (instance.summoningSick && isUnit && !has("pied-marin")) legend.push(ENGOURDI_ICON_INFO);
   if (piedMarinUtile(instance, isUnit, has("pied-marin"))) legend.push(PIED_MARIN_INFO);
@@ -210,10 +205,10 @@ const TOUR_ICON = "/assets/status/tour.webp";
 /**
  * Pied marin, montré quand il compte : l'unité vient d'arriver (mot-clé
  * imprimé) ou l'a reçu pour le tour (« ils gagnent Pied marin jusqu'à la fin
- * du tour », Fesses en Avant !). Pas d'icône dédiée : une pastille texte,
- * comme « Inactive ».
+ * du tour », Fesses en Avant !).
  */
 const PIED_MARIN_INFO = {
+  icon: "/assets/status/pied-marin.webp",
   label: "Pied marin",
   description: "Peut attaquer dès son arrivée en jeu.",
 };
@@ -221,6 +216,23 @@ const PIED_MARIN_INFO = {
 /** Le badge Pied marin a-t-il un sens sur cette carte en ce moment ? */
 function piedMarinUtile(instance: CardInstance, isUnit: boolean, hasPiedMarin: boolean): boolean {
   return isUnit && hasPiedMarin && (instance.summoningSick || instance.modifiers.some((m) => m.keywords?.includes("pied-marin")));
+}
+
+/**
+ * Inactivité (`EffectiveStats.inactive`) : la carte ne peut ni attaquer ni
+ * utiliser ses capacités, que la Marée actuelle la mette hors d'état ou
+ * qu'un effet l'entrave (`StatModifier.silenced`). C'est la définition de
+ * l'Immobilisé (`STATUS_IMMOBILISE`) : même icône, même nom à l'écran ; seule
+ * la cause change dans l'explication.
+ */
+function immobiliseInfo(instance: CardInstance): { icon: string; label: string; description: string } {
+  return {
+    icon: STATUS_ICON_INFO[STATUS_IMMOBILISE]!.icon,
+    label: "Immobilisé",
+    description: instance.modifiers.some((modifier) => modifier.silenced)
+      ? "Un effet l'entrave : elle ne peut ni attaquer, ni utiliser ses capacités."
+      : "La Marée actuelle la met hors d'état : ni attaque, ni capacité tant que la Marée ne change pas.",
+  };
 }
 
 /** Maladie d'invocation (`instance.summoningSick`) — distincte des statuts à durée (`instance.statuses`). */
@@ -1020,26 +1032,14 @@ export function CardTile({
         (instance.statuses && instance.statuses.length > 0)) && (
         <div
           // Une seule ligne, toujours au-dessus de la carte : en passant à la
-          // ligne (« Inactive » + deux médaillons), le dernier badge tombait
+          // ligne (trois médaillons ou plus), le dernier badge tombait
           // SUR l'illustration — la pastille de couleur au milieu de la carte.
           // `data-status-row` : le plateau téléphone la rentre dans la carte.
           data-status-row
           className="pointer-events-none absolute inset-x-0 z-20 flex flex-nowrap items-center justify-center whitespace-nowrap px-1"
           style={{ top: -(badgeSize / 2 + 12), gap: badgeSize / 16 + 1.5 }}
         >
-          {stats.inactive && (
-            <span
-              className="pointer-events-auto shrink-0 cursor-help rounded-full border border-amber-400/60 bg-black/90 font-semibold uppercase text-amber-300 shadow-md"
-              style={{ padding: `${badgeSize / 38}px ${(badgeSize / 38) * 2.5}px`, fontSize: badgeSize / 3.2 }}
-              title={
-                instance.modifiers.some((modifier) => modifier.silenced)
-                  ? "Inactive — un effet l'entrave : elle ne peut ni attaquer, ni utiliser ses capacités."
-                  : "Inactive — la Marée actuelle la met hors d'état : elle ne peut ni attaquer, ni utiliser ses capacités tant que la Marée ne change pas."
-              }
-            >
-              Inactive
-            </span>
-          )}
+          {stats.inactive && <StatusBadge {...immobiliseInfo(instance)} size={badgeSize} />}
           {engourdi && (
             <StatusBadge
               icon={ENGOURDI_ICON_INFO.icon}
@@ -1049,13 +1049,12 @@ export function CardTile({
             />
           )}
           {piedMarinVisible && (
-            <span
-              className="pointer-events-auto shrink-0 cursor-help rounded-full border border-sky-400/60 bg-black/90 font-semibold uppercase text-sky-300 shadow-md"
-              style={{ padding: `${badgeSize / 38}px ${(badgeSize / 38) * 2.5}px`, fontSize: badgeSize / 3.2 }}
-              title={`${PIED_MARIN_INFO.label} — ${PIED_MARIN_INFO.description}`}
-            >
-              {PIED_MARIN_INFO.label}
-            </span>
+            <StatusBadge
+              icon={PIED_MARIN_INFO.icon}
+              label={PIED_MARIN_INFO.label}
+              description={PIED_MARIN_INFO.description}
+              size={badgeSize}
+            />
           )}
           {hasGarde && (
             <span className={gardeGained ? "animate-badge-arrive" : undefined} style={{ display: "inline-flex" }}>

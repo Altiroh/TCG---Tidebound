@@ -36,7 +36,7 @@ export function CardDetailArtwork({ cardId }: { cardId: string }) {
         tideState="calme"
         widthClassName="w-full"
         scaleOnHover={false}
-        // Hors partie, « Inactive » / « Engourdi » seraient déduits d'une
+        // Hors partie, « Immobilisé » / « Engourdi » seraient déduits d'une
         // Marée arbitraire : la fiche montre la carte, pas un état de jeu.
         showStatusBadges={false}
       />
