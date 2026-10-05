@@ -29,8 +29,8 @@ import { StatusBadge } from "@/features/match/StatusBadge";
 import { useDecreaseFlash } from "@/features/match/useDecreaseFlash";
 import { useImageOk } from "@/features/match/useImageOk";
 import { NouveauCadreFace } from "@/features/cadre-preview/NouveauCadreCard";
+import { NOUVEAU_CADRE } from "@/features/match/cardFrame";
 import { rarityForCardId } from "@/game/boosters";
-import { useInterfaceSettings } from "@/lib/settings";
 
 interface CardTileProps {
   instance: CardInstance;
@@ -632,11 +632,9 @@ export function CardTile({
   const illustrationOk = illustrationFailed !== illustrationUrl;
   const debordOk = useImageOk(debordUrl);
   const isBoardTile = variant === "board";
-  // Nouveau cadre (test, activé dans les Options) : seulement la carte
-  // complète d'une vraie carte — ni la tuile de plateau, ni un jeton, ni
-  // une carte cachée.
-  const { nouveauCadre } = useInterfaceSettings();
-  const nouveauCadreActif = nouveauCadre && !isBoardTile && def.token !== true && instance.cardId !== HIDDEN_CARD_ID;
+  // Nouveau cadre (`cardFrame.ts`) : seulement la carte complète d'une
+  // vraie carte — ni la tuile de plateau, ni un jeton, ni une carte cachée.
+  const nouveauCadreActif = NOUVEAU_CADRE && !isBoardTile && def.token !== true && instance.cardId !== HIDDEN_CARD_ID;
   // Assets d'habillage de la tuile : sondés seulement quand la tuile est rendue.
   const reasonBannerOk = useImageOk(isBoardTile ? BOARD_REASON_BANNER : null);
   const underlineOk = useImageOk(isBoardTile ? BOARD_UNDERLINE : null);
