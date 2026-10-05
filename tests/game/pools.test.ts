@@ -32,7 +32,8 @@ describe("pools de boosters", () => {
     // 01/10/2026 : Ce que la Marée Rend et Les Coulisses Inondées quittent
     // B3 (64 → 62). Passe de nettoyage du 02/10/2026 : 28 cartes retirées du
     // catalogue, sans remplaçant — B1 63 → 57, B2 65 → 54, B3 62 → 51.
-    expect(BOOSTER_POOLS[BOOSTER_DEFAUT]).toHaveLength(57);
+    // 05/10/2026 : Pluie corrosive, Lande Légendaire, rejoint B1 (57 → 58).
+    expect(BOOSTER_POOLS[BOOSTER_DEFAUT]).toHaveLength(58);
     expect(BOOSTER_POOLS[BOOSTER_POISSONS_PAS_FRAIS]).toHaveLength(54);
     expect(BOOSTER_POOLS[BOOSTER_ETRANGETE_SOUS_MARINE]).toHaveLength(51);
   });

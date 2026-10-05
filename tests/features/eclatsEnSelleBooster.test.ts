@@ -78,10 +78,11 @@ beforeEach(() => {
 
 describe("Éclats en Selle — le pool", () => {
   // 59 → 58 : le Coffret aux Cinq Pierres a été supprimé du catalogue le 01/10/2026.
-  it("porte les 58 cartes du lot et les deux cartes rattachées, rien d'autre", () => {
+  // 58 → 59 : Vallée de verre, Lande Légendaire rattachée à l'Équipage de Verre (05/10/2026).
+  it("porte les 59 cartes du lot et les deux cartes rattachées, rien d'autre", () => {
     const pool = new Set(BOOSTER_POOLS[ECLATS]);
     const lot = CORE_SET.filter((def) => def.setCode === "eclats-en-selle").map((def) => def.id);
-    expect(lot).toHaveLength(58);
+    expect(lot).toHaveLength(59);
     for (const id of lot) expect(pool.has(id), id).toBe(true);
     expect([...pool].filter((id) => !lot.includes(id)).sort()).toEqual(["le-brise-ligne", "le-dernier-rempart"]);
   });

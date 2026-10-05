@@ -7,6 +7,8 @@ interface CenterZoneProps {
   tide: TableTideModel;
   /** Consigne ponctuelle sous la piste (« Choisissez une cible… »), avec son éventuel bouton. */
   hint?: ReactNode;
+  /** Colonne de droite, à droite de la piste : le hublot de la Lande en jeu (`LandeBadge`). */
+  cargo?: ReactNode;
 }
 
 /**
@@ -24,7 +26,7 @@ interface CenterZoneProps {
  * se relaient en pivotant quand l'orientation change — même mouvement que
  * `TideOrientationTile` (fondu + légère rotation + zoom).
  */
-export function CenterZone({ tide, hint }: CenterZoneProps) {
+export function CenterZone({ tide, hint, cargo }: CenterZoneProps) {
   const rising = tide.orientation === "rising";
   return (
     <div className={`${styles.zone} ${styles.centerZone}`} data-zone="CenterZone">
@@ -52,9 +54,9 @@ export function CenterZone({ tide, hint }: CenterZoneProps) {
           {hint}
         </div>
       </div>
-      {/* La colonne des piles reste vide : les hublots de la piste montrent
-          déjà la mer de chaque état, le grand hublot a été retiré. */}
-      <div className={styles.zoneSlotCargo} />
+      {/* La colonne des piles accueille la Lande en jeu : son hublot se lit
+          sur la même ligne que la Marée, juste après elle. */}
+      <div className={styles.zoneSlotCargo}>{cargo}</div>
     </div>
   );
 }

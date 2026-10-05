@@ -2,7 +2,7 @@ import { getShipDefinition } from "@/game/environment/shipData";
 import { advanceTideState } from "@/game/environment/types";
 import { computeEffectiveStats } from "@/game/cards/stats";
 import { getCardDefinition } from "@/game/cards/sets/core";
-import { UNIT_CARD_TYPES, type CardInstance } from "@/game/cards/types";
+import { hasResistance, UNIT_CARD_TYPES, type CardInstance } from "@/game/cards/types";
 import { hasEffectiveKeyword } from "@/game/rules/validation";
 import { deraisonAnchorDamage } from "@/game/state/reason";
 import { isShipArmed, shipAbilityOf } from "@/game/state/shipAbility";
@@ -305,6 +305,51 @@ function tideOutlook(state: GameState, me: PlayerState, opponent: PlayerState): 
 }
 
 /**
+ * LA LANDE EN JEU — ce que ses règles feront dans les tours qui restent,
+ * lu dans ses données (`LandeRules`), jamais dans son nom.
+ *
+ *  - Retrait de mot-clé (Pluie corrosive) : rien à faire ici, la Garde
+ *    passe déjà par `hasEffectiveKeyword`, qui lit la Lande.
+ *  - Dégâts à chaque tour de table (Vallée de verre) : le plateau de chaque
+ *    camp, relu comme s'il avait déjà encaissé les tours restants. Les
+ *    corps fragiles valent ce qu'il en restera.
+ *  - Limite d'arrivées (Chaîne de construction) : chaque unité en main
+ *    au-delà de ce que la limite laisse passer est un tempo perdu.
+ */
+const LANDE_LOOKAHEAD = 0.5;
+const LANDE_BLOCKED_UNIT = 0.8;
+
+function landeOutlook(state: GameState, me: PlayerState, opponent: PlayerState): number {
+  const lande = state.environment.lande;
+  const rules = lande ? getCardDefinition(lande.cardId).lande : undefined;
+  if (!lande || !rules) return 0;
+  const tableTurns = Math.ceil(lande.remainingPlayerTurns / 2);
+  let value = 0;
+
+  if (rules.damageAllPermanentsEachTableTurn) {
+    const hit = rules.damageAllPermanentsEachTableTurn * tableTurns;
+    // Ce que vaudra le plateau une fois les coups encaissés : un corps qui
+    // n'y survit pas ne vaut plus rien.
+    const after = (player: PlayerState) =>
+      player.board.reduce((sum, unit) => {
+        if (!hasResistance(getCardDefinition(unit.cardId))) return sum + permanentValue(state, unit, player);
+        const hurt = { ...unit, damageMarked: unit.damageMarked + hit };
+        const stats = computeEffectiveStats(hurt, state.environment.tideState, { controllerBoard: player.board, controllerReason: player.reason });
+        return sum + (stats.health > hurt.damageMarked ? permanentValue(state, hurt, player) : 0);
+      }, 0);
+    const loss = (player: PlayerState) => boardValue(state, player) - after(player);
+    value += LANDE_LOOKAHEAD * (loss(opponent) - loss(me));
+  }
+
+  if (rules.unitArrivalsPerTurn !== undefined) {
+    const blocked = (player: PlayerState) =>
+      Math.max(0, player.hand.filter((c) => (UNIT_CARD_TYPES as readonly string[]).includes(getCardDefinition(c.cardId).type)).length - rules.unitArrivalsPerTurn! * tableTurns);
+    value += LANDE_BLOCKED_UNIT * (blocked(opponent) - blocked(me));
+  }
+  return value;
+}
+
+/**
  * Score une position du point de vue de `forPlayerId` : plus c'est élevé,
  * meilleure est la position. Comparable d'un état à l'autre, jamais lu
  * comme une valeur absolue.
@@ -334,5 +379,8 @@ export function evaluateState(state: GameState, forPlayerId: PlayerId): number {
   // La Marée qui vient : qui y gagne, qui y perd (`tideOutlook`).
   const tide = tideOutlook(state, me, opponent);
 
-  return material + pressure + judgment + tide;
+  // La Lande en jeu : ce qu'elle fera encore à chaque camp (`landeOutlook`).
+  const lande = landeOutlook(state, me, opponent);
+
+  return material + pressure + judgment + tide + lande;
 }

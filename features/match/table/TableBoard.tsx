@@ -37,6 +37,9 @@ import { THICK_TEXT_OUTLINE } from "@/features/match/cardDisplay";
 import styles from "@/features/match/table/Table.module.css";
 import { BackgroundLayer } from "@/features/match/table/BackgroundLayer";
 import { CenterZone } from "@/features/match/table/CenterZone";
+import { LandeArrival, LANDE_ARRIVAL } from "@/features/match/landes/LandeArrival";
+import { LandeBadge } from "@/features/match/landes/LandeBadge";
+import { LandeLayer } from "@/features/match/landes/LandeLayer";
 import { DecorLayer } from "@/features/match/table/DecorLayer";
 import { DragLayer, type AimTone } from "@/features/match/table/DragLayer";
 import { EquipLinks } from "@/features/match/table/EquipLinks";
@@ -235,6 +238,20 @@ export function TableBoard(props: TableBoardProps) {
   const viewerShip = getShipDefinition(viewer.shipId);
   const opponentShip = getShipDefinition(opponent.shipId);
   const tideState = state.environment.tideState;
+
+  // ── Lande ──────────────────────────────────────────────────────────
+  // Une Lande qui ARRIVE sous les yeux du joueur se joue en grand
+  // (`LandeArrival`) ; celle déjà en jeu au chargement de la partie est là
+  // d'emblée, sans animation.
+  const lande = state.environment.lande;
+  const [landeArrival, setLandeArrival] = useState<NonNullable<typeof lande> | null>(null);
+  const seenLande = useRef(lande?.instanceId);
+  useEffect(() => {
+    if (lande && lande.instanceId !== seenLande.current) setLandeArrival(lande);
+    seenLande.current = lande?.instanceId;
+    // Seule l'identité de la Lande compte : son décompte change à chaque tour.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lande?.instanceId]);
   /** Navire dont la fiche est ouverte (clic sur un Navire hors ciblage d'attaque). */
   const [shipInfoFor, setShipInfoFor] = useState<PlayerId | null>(null);
 
@@ -455,6 +472,9 @@ export function TableBoard(props: TableBoardProps) {
 
       if (kind === "place") {
         if (!canPlayCards) return false;
+        // Une Lande se pose au centre, dans l'emplacement partagé — ou
+        // n'importe où sur son rang : elle ne prend pas de Slot.
+        if (getCardDefinition(instance.cardId).type === "lande") return drop === "lande" || isBoardDrop(drop);
         // Sur une Sentinelle d'un Assemblage possible : même plateau plein,
         // l'Assemblage libère ses places.
         if (drop.startsWith("own:") && assemblageSentinels(sourceId)?.has(dropId(drop))) return true;
@@ -492,6 +512,10 @@ export function TableBoard(props: TableBoardProps) {
         }
         if (drop.startsWith("own:") && assemblageSentinels(sourceId)?.has(dropId(drop))) {
           props.onAssemblageDrop?.(sourceId, dropId(drop));
+          return;
+        }
+        if (drop === "lande") {
+          props.onPlayCard(sourceId);
           return;
         }
         // La carte part d'où le fantôme était lâché : centré sous la souris,
@@ -590,6 +614,7 @@ export function TableBoard(props: TableBoardProps) {
   });
 
   const placing = gesture?.kind === "place" ? gesture : null;
+  const placingLande = placing ? getCardDefinition(byId.get(placing.sourceId)?.instance.cardId ?? "").type === "lande" : false;
   const abilityDrag = gesture?.kind === "ability" ? gesture : null;
   const casting = gesture?.kind === "cast" ? gesture : null;
   const aiming = gesture?.kind === "aim" ? gesture : null;
@@ -897,6 +922,13 @@ export function TableBoard(props: TableBoardProps) {
       <GameViewport>
         <BackgroundLayer tideState={tideState} />
         <RainLayer tideState={tideState} />
+        <LandeLayer
+          lande={lande}
+          // Lue au rendu même où la Lande change (l'effet qui arme l'arrivée
+          // passe après) : sa scène doit naître « en attente de la carte ».
+          entering={(lande !== undefined && lande.instanceId !== seenLande.current) || landeArrival?.instanceId === lande?.instanceId}
+          enterDelayMs={LANDE_ARRIVAL.DISSOLVE_AT}
+        />
         <DecorLayer />
 
         {/* `gesturing` : un glisser est en cours quelque part. Il coupe
@@ -945,6 +977,13 @@ export function TableBoard(props: TableBoardProps) {
           />
           <CenterZone
             tide={tide}
+            cargo={
+              <LandeBadge
+                environment={state.environment}
+                tideState={tideState}
+                dropState={placingLande ? (hover === "lande" ? "over" : "ready") : "idle"}
+              />
+            }
             hint={
               dropError ? (
                 <div className={`${styles.centerHint} ${styles.centerHintError}`} role="alert">
@@ -1007,7 +1046,7 @@ export function TableBoard(props: TableBoardProps) {
                   : "ready"
                 : "idle"
             }
-            dropState={placing && slotsFree ? (hover !== null && isBoardDrop(hover) ? "over" : "ready") : "idle"}
+            dropState={placing && slotsFree && !placingLande ? (hover !== null && isBoardDrop(hover) ? "over" : "ready") : "idle"}
             dropSlot={placing && hover !== null && isBoardDrop(hover) ? slotOf(hover) : undefined}
             renderCard={(card) => renderBoardCard(card, viewer)}
           />
@@ -1091,6 +1130,16 @@ export function TableBoard(props: TableBoardProps) {
             <HoverCardPreview anchor={preview.rect}>{renderFace(found.instance, found.owner)}</HoverCardPreview>
           ) : null;
         })()}
+        {landeArrival && (
+          <LandeArrival
+            key={landeArrival.instanceId}
+            cardId={landeArrival.cardId}
+            instanceId={landeArrival.instanceId}
+            ownerId={landeArrival.ownerId}
+            tideState={tideState}
+            onDone={() => setLandeArrival(null)}
+          />
+        )}
         <DragLayer
           gesture={gesture}
           onTarget={hover !== null}
