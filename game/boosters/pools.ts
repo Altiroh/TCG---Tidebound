@@ -471,7 +471,10 @@ const BIENVENUE: readonly string[] = DEFAUT.filter((cardId) => {
   if (cardId.endsWith("-abyssal")) return false;
   if (def.archetype) return false;
   // Une Lande change la partie entière : pas dans le sachet de l'onboarding.
+  // Ni ce qui ne sert QU'À répondre à une Lande (Zone de repli) : sans Lande
+  // en jeu, la carte ne fait rien, et le nouveau joueur n'en a aucune.
   if (def.type === "lande") return false;
+  if ((def.abilities ?? []).some((ability) => ability.trigger === "onLandeStrike")) return false;
   return def.setCode === undefined || def.setCode === "core";
 });
 
