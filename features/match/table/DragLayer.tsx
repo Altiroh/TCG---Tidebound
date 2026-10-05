@@ -5,7 +5,8 @@ import styles from "@/features/match/table/Table.module.css";
 import type { Gesture } from "@/features/match/table/useTableGestures";
 
 /** Couleur du trait : `attack` rouge, `effect` turquoise (Équipement), `sabotage` gris cendre. */
-export type AimTone = "attack" | "effect" | "sabotage";
+/** `effect` : effet nuisible (rouge orangé) ; `boon` : effet bienfaisant (bleu). */
+export type AimTone = "attack" | "effect" | "boon" | "sabotage";
 
 interface DragLayerProps {
   gesture: Gesture | null;

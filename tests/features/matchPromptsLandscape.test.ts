@@ -19,8 +19,6 @@ function read(file: string): string {
 const CAROUSEL_PROMPTS = [
   "features/match/DeckLookPrompt.tsx",
   "features/match/HandDiscardPrompt.tsx",
-  "features/match/PickUnitsPrompt.tsx",
-  "features/match/KeepUnitsPrompt.tsx",
   "features/match/GraveyardPickPrompt.tsx",
   "features/match/AssemblagePrompt.tsx",
 ];

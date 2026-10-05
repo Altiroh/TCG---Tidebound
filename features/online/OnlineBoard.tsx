@@ -33,12 +33,12 @@ import { ShipAbilityPrompt } from "@/features/match/ShipAbilityPrompt";
 import { PendingChoicePrompt } from "@/features/match/PendingChoicePrompt";
 import { graveyardPickView } from "@/features/match/graveyardPickRequest";
 import { DeckLookPrompt } from "@/features/match/DeckLookPrompt";
-import { KeepUnitsPrompt } from "@/features/match/KeepUnitsPrompt";
-import { PickUnitsPrompt } from "@/features/match/PickUnitsPrompt";
 import { HandDiscardPrompt } from "@/features/match/HandDiscardPrompt";
 import { ChoiceBanner } from "@/features/match/ChoiceBanner";
 import { useHandLimitDiscard } from "@/features/match/useHandLimitDiscard";
 import { useHealAllocation } from "@/features/match/useHealAllocation";
+import { useBoardPick } from "@/features/match/useBoardPick";
+import { useHeldTarget } from "@/features/match/useHeldTarget";
 import { PhaseBanner } from "@/features/match/PhaseBanner";
 import { ReactionPrompt } from "@/features/match/ReactionPrompt";
 import { ShipWindowHint } from "@/features/match/ShipWindowHint";
@@ -107,6 +107,10 @@ export function OnlineBoard({
   const healAllocation = useHealAllocation(state, myUserId, (allocation) =>
     act({ type: "resolveChoice", playerId: myUserId, choice: { healAllocation: allocation } })
   );
+  // Plusieurs unités à désigner : sur le plateau, toucher = désigner / reprendre.
+  const boardPick = useBoardPick(state, myUserId, (answer) => act({ type: "resolveChoice", playerId: myUserId, choice: answer }));
+  // La première cible d'une action qui n'est pas allée au bout reste marquée.
+  const heldTarget = useHeldTarget(state);
   const myShip = getShipDefinition(me.shipId);
   const isMyTurn = state.activePlayerId === myUserId;
   const canRespondToReaction = state.pendingReaction?.awaitingPlayerId === myUserId;
@@ -145,6 +149,7 @@ export function OnlineBoard({
     canPlayCards,
     canAct: canPlay,
     act: (action) => {
+      heldTarget.note(liveState, action);
       onAction(action);
       board.clearSelection();
     },
@@ -175,6 +180,7 @@ export function OnlineBoard({
 
   /** Envoie une action au serveur, et referme la sélection en cours. */
   function act(action: PlayerAction) {
+    heldTarget.note(liveState, action);
     onAction(action);
     board.clearSelection();
   }
@@ -261,6 +267,8 @@ export function OnlineBoard({
         onCancelHint={board.clearSelection}
         handLimitDiscard={handLimit.mode}
         boardAllocation={healAllocation.mode}
+        boardPick={boardPick.mode}
+        heldTargets={[...boardPick.locked, ...(heldTarget.held ? [heldTarget.held] : [])]}
         phaseButton={{
           label: phase.label,
           // La phase EN COURS, pas celle vers laquelle le bouton mène :
@@ -359,22 +367,14 @@ export function OnlineBoard({
           onChoose={(choice) => act({ type: "resolveChoice", playerId: myUserId, choice })}
         />
       )}
-      {!state.pendingReaction && state.pendingChoice?.kind === "pickUnits" && state.pendingChoice.playerId === myUserId && (
-        <PickUnitsPrompt
-          choice={state.pendingChoice}
-          allUnits={state.players.flatMap((p) => p.board)}
-          onConfirm={(pickInstanceIds) =>
-            act({ type: "resolveChoice", playerId: myUserId, choice: { pickInstanceIds } })
-          }
-        />
-      )}
-      {!state.pendingReaction && state.pendingChoice?.kind === "keepUnits" && state.pendingChoice.playerId === myUserId && (
-        <KeepUnitsPrompt
-          choice={state.pendingChoice}
-          board={me.board}
-          onConfirm={(keepInstanceIds) =>
-            act({ type: "resolveChoice", playerId: myUserId, choice: { keepInstanceIds } })
-          }
+      {boardPick.banner && (
+        <ChoiceBanner
+          choiceKey={boardPick.banner.choiceKey}
+          source={boardPick.banner.source}
+          title={boardPick.banner.title}
+          detail={boardPick.banner.detail}
+          actions={boardPick.banner.actions}
+          onExpire={boardPick.banner.onExpire}
         />
       )}
       {healAllocation.banner && (

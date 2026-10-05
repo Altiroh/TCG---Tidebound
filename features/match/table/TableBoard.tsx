@@ -27,11 +27,14 @@ import { useCardBackSrcFor } from "@/features/cosmetics/MatchCosmeticsProvider";
 import { CardTile, cardStatusLegend } from "@/features/match/CardTile";
 import { TIDE_STATE_LABELS } from "@/features/match/cardDisplay";
 import { legalTargetsFor, type TableTargeting } from "@/features/match/table/legalTargets";
+import { sourcePolarity, type TargetPolarity } from "@/features/match/table/targetPolarity";
 import { targetingHint } from "@/features/match/table/tableLabels";
 import type { AttackAnimation } from "@/features/match/useAttackPresentation";
 import type { EffectVolley } from "@/features/match/effectPresentation";
 import type { HandLimitDiscardMode } from "@/features/match/useHandLimitDiscard";
 import type { BoardAllocationMode } from "@/features/match/useHealAllocation";
+import type { BoardPickMode } from "@/features/match/useBoardPick";
+import type { HeldTarget } from "@/features/match/useHeldTarget";
 import { EffectFxLayer, reasonAnchor, reasonGaugeOf } from "@/features/match/EffectFxLayer";
 import { THICK_TEXT_OUTLINE } from "@/features/match/cardDisplay";
 import styles from "@/features/match/table/Table.module.css";
@@ -131,6 +134,13 @@ export interface TableBoardProps {
   handLimitDiscard?: HandLimitDiscardMode | null;
   /** Répartition de soins sur le plateau (`useHealAllocation`) : toucher = +1, clic droit = −1. */
   boardAllocation?: BoardAllocationMode | null;
+  /** Désignation de plusieurs unités sur le plateau (`useBoardPick`) : toucher = désigner / reprendre. */
+  boardPick?: BoardPickMode | null;
+  /**
+   * Cibles déjà désignées par une action qui n'est pas allée au bout
+   * (`useHeldTarget`, `useBoardPick`) : elles gardent leur marque de cible.
+   */
+  heldTargets?: readonly HeldTarget[];
   /** Clic sur une carte en jeu quand un ciblage est en cours (le conteneur résout). */
   onBoardCardClick: (instanceId: string, ownerId: PlayerId) => void;
   /**
@@ -635,7 +645,30 @@ export function TableBoard(props: TableBoardProps) {
     if (zoomGone) setZoom(null);
   }, [zoomGone]);
 
-  const tone: AimTone = casting || abilityDrag || (aimSource && !aimAttacks) ? "effect" : hover === "graveyard" ? "sabotage" : "attack";
+  // SENS du ciblage en cours : rouge s'il nuit à la cible, bleu s'il l'aide.
+  const polarityOf = (id: string, kind: "playCard" | "break" | "ability" | "reaction", abilityIndex?: number): TargetPolarity => {
+    const cardId = byId.get(id)?.instance.cardId;
+    return cardId ? sourcePolarity(cardId, kind, abilityIndex) : "friendly";
+  };
+  const activePolarity: TargetPolarity = casting
+    ? polarityOf(casting.sourceId, "playCard")
+    : abilityDrag
+      ? polarityOf(abilityDrag.sourceId, "ability")
+      : aimSource && !aimAttacks
+        ? polarityOf(aimSource.instanceId, "break")
+        : targeting?.kind === "playCard" || targeting?.kind === "break" || targeting?.kind === "ability"
+          ? polarityOf(targeting.sourceInstanceId, targeting.kind)
+          : targeting?.kind === "reaction"
+            ? polarityOf(targeting.sourceInstanceId, "reaction", targeting.abilityIndex)
+            : "friendly";
+  const tone: AimTone =
+    casting || abilityDrag || (aimSource && !aimAttacks)
+      ? activePolarity === "hostile"
+        ? "effect"
+        : "boon"
+      : hover === "graveyard"
+        ? "sabotage"
+        : "attack";
   // Le tir du canon désigne exactement les mêmes cibles qu'une attaque —
   // même mise en évidence, donc, plutôt qu'un second vocabulaire visuel.
   const attackTargeting = targeting?.kind === "attack" || targeting?.kind === "shipShot" || aimAttacks;
@@ -690,16 +723,23 @@ export function TableBoard(props: TableBoardProps) {
     const allocation = mine ? (props.boardAllocation ?? null) : null;
     const allocated = allocation?.amounts.get(card.id) ?? 0;
     const allocatable = allocation?.eligible.has(card.id) ?? false;
-    const targetable = effectTarget || attackTarget || allocatable;
+    const pick = props.boardPick ?? null;
+    const pickable = pick?.eligible.has(card.id) ?? false;
+    const picked = pick?.picked.has(card.id) ?? false;
+    // Marque de cible persistante : désignée dans la sélection en cours, ou
+    // tenue par une action qui attend encore sa suite.
+    const held = picked ? (pick!.polarity as HeldTarget["tone"]) : props.heldTargets?.find((t) => t.instanceId === card.id)?.tone;
+    const targetable = effectTarget || attackTarget || allocatable || pickable;
     // Pendant un ciblage, ce qui n'est pas une cible s'estompe : l'œil va
     // droit aux cartes éclairées, et le doigt aussi.
     const targetingActive =
+      pick !== null ||
       (targeting !== null && selectionTargets !== null) ||
       casting !== null ||
       abilityDrag !== null ||
       (aiming !== null && (aimAttacks || aimBreakTargets !== null));
     const dimmed =
-      targetingActive && !targetable && targeting?.sourceInstanceId !== card.id && aiming?.sourceId !== card.id && abilityDrag?.sourceId !== card.id;
+      targetingActive && !targetable && !held && targeting?.sourceInstanceId !== card.id && aiming?.sourceId !== card.id && abilityDrag?.sourceId !== card.id;
 
     return (
       <div
@@ -717,7 +757,14 @@ export function TableBoard(props: TableBoardProps) {
                 event.stopPropagation();
                 allocation.onAdd(card.id);
               }
-            : startGesture(mine ? "aim" : "inspect", card.id)
+            : pick && pickable
+              ? (event) => {
+                  // Désignation en cours : un toucher désigne ou reprend, rien d'autre.
+                  if (event.button !== 0) return;
+                  event.stopPropagation();
+                  pick.onToggle(card.id);
+                }
+              : startGesture(mine && !pick ? "aim" : "inspect", card.id)
         }
         onContextMenu={(e) => {
           e.preventDefault();
@@ -730,7 +777,10 @@ export function TableBoard(props: TableBoardProps) {
           mine ? styles.boardGrab : "",
           ready && !gesture ? styles.attacker : "",
           aiming?.sourceId === card.id ? styles.aimSource : "",
-          targetable ? `${styles.targetable} ${effectTarget || allocatable ? styles.effectTone : ""}` : "",
+          // Ciblage bienfaisant (soin, bonus, Équipement) : bleu ; nuisible : le rouge de l'attaque.
+          targetable && !held
+            ? `${styles.targetable} ${(effectTarget && activePolarity === "friendly") || allocatable || (pickable && pick?.polarity === "friendly") ? styles.effectTone : ""}`
+            : "",
           targetable && hover === drop ? styles.targetHover : "",
           targeting?.sourceInstanceId === card.id ? styles.aimSource : "",
           dimmed ? styles.targetDim : "",
@@ -753,6 +803,15 @@ export function TableBoard(props: TableBoardProps) {
             turnNumber={state.turnNumber}
             variant="board"
           />
+        )}
+        {held && (
+          <span className={styles.heldMark} data-tone={held} aria-label="Cible désignée">
+            <svg viewBox="0 0 40 40" aria-hidden>
+              <circle cx="20" cy="20" r="13" />
+              <circle cx="20" cy="20" r="3.2" className={styles.heldCore} />
+              <path d="M20 2v9M20 29v9M2 20h9M29 20h9" />
+            </svg>
+          </span>
         )}
         {allocated > 0 && (
           <span className={styles.allocationBadge} aria-label={`${allocated} point${allocated > 1 ? "s" : ""} de Résistance versé${allocated > 1 ? "s" : ""}`}>
