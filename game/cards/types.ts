@@ -86,6 +86,8 @@ export interface TriggerSourceFilter {
   cardIds?: string[];
   /** Ou porte ce SOUS-TYPE (ex: "marionnette" — Lot 11, qui raisonne en sous-type et non en archétype). */
   subtype?: string;
+  /** Coût IMPRIMÉ minimal (« la première unité coûtant 5 ou plus que vous jouez », Lot 17). */
+  minCost?: number;
   /** Ou est de l'un de ces TYPES de carte (ex: "quand une Structure est détruite" — Mécanicien aux Mains Noires). */
   cardTypes?: CardType[];
   /** Le déclencheur doit être contrôlé par le contrôleur de la capacité. Défaut : `true`. */
@@ -465,6 +467,25 @@ export interface TriggeredAbility {
      */
     duringOpponentTurn?: boolean;
     /**
+     * FAITS DE JOUEUR (Lot 17 — `onArmorGained`, `onDieResolved`,
+     * `onCardPutUnderDeck`, `onExtraCardDrawn`, `onCardLeftGraveyard`,
+     * `onLandePlaced`) : de QUI le fait doit être. `"self"` (défaut) : le
+     * contrôleur de la capacité ; `"opponent"` : son adversaire (« la
+     * première fois que l'adversaire pioche… ») ; `"any"` : l'un ou l'autre
+     * (« la première fois qu'une Lande arrive en jeu »).
+     */
+    factOf?: "self" | "opponent" | "any";
+    /** `onDieResolved` : issues qui déclenchent (« Réussite critique », « Échec critique », « vous avantage »). */
+    dieOutcomes?: import("@/game/triggers/types").DieOutcome[];
+    /** « si une Lande est active » (Lot 17) : la capacité ne se déclenche que si une Lande est en jeu. */
+    landeActive?: boolean;
+    /** « S'il entre en jeu par l'effet de [carte] » (Lot 17 — lignée LV) : la porteuse est arrivée en remplaçant cette carte. */
+    selfArrivedVia?: string;
+    /** La porteuse a été MARQUÉE ce tour par `flagThisTurn` (« lorsqu'il attaque ce tour », après une Réussite critique). */
+    selfFlaggedThisTurn?: string;
+    /** « si vous contrôlez une carte [étiquette] » (Lot 17 — « une carte LV »). */
+    controlsTag?: string;
+    /**
      * « si vous contrôlez au moins N autres unités » (Le Déserteur Gris) :
      * compte les UNITÉS du contrôleur, la porteuse exclue.
      */
@@ -524,6 +545,12 @@ export interface TriggeredAbility {
    * (Colombina) repropose le choix.
    */
   choiceGroup?: string;
+  /**
+   * « Choisissez N effets DIFFÉRENTS » (Lot 17 — Eidolon Opalin LVX) : la
+   * question du `choiceGroup` (automatique) se repose jusqu'à N fois, sans
+   * les options déjà prises. Lu sur la première capacité du groupe.
+   */
+  choiceGroupPicks?: number;
   /**
    * "auto" (défaut) : résolution automatique par le moteur, aucune
    * décision du joueur (Notion "Moteur de partie", "Effets déclenchés
@@ -1291,6 +1318,53 @@ export interface CardDefinition {
    */
   lande?: LandeRules;
 
+  // --- DÉS (Lot 17, `game/rules/dice.ts`) ------------------------------
+
+  /**
+   * LIGNÉE LV (Lot 17, `game/rules/levels.ts`) : à `markers` marqueurs
+   * Niveau, la carte est REMPLACÉE par `into`, prise dans la main de son
+   * propriétaire, sinon dans sa pioche. Elle part au Cimetière ; la nouvelle
+   * arrive à sa place (`arrivedViaCardId`). Sans exemplaire disponible, rien
+   * ne se passe et les marqueurs restent.
+   */
+  levelUp?: { markers: number; into: CardId };
+  /**
+   * « Ne peut entrer en jeu que par l'effet de … » (Eidolon Opalin LVX) :
+   * la carte ne se joue pas depuis la main.
+   */
+  cannotBePlayed?: boolean;
+
+  /** Le dé de la carte (« · D6 ») : celui que lancent ses effets `rollDie`. */
+  die?: 4 | 6 | 8;
+  /**
+   * « Chaîne — Brisez : … » : cet Objet ne se Brise que PENDANT un jet de dé
+   * de son contrôleur (`DieRollChoice`), avant sa résolution — même hors de
+   * sa Phase principale. Ses effets de Bris agissent sur le jet en cours.
+   */
+  chaine?: boolean;
+  /**
+   * « Une fois par tour, après l'un de vos jets, modifiez son résultat de +1
+   * ou -1 » (Miss Franche-Comté 1987) : capacité EN JEU, utilisable pendant
+   * un jet de son contrôleur. `extraUseOnCriticalSuccess` : si le jet ajusté
+   * devient une Réussite critique, une utilisation de plus ce tour.
+   * `ifCriticalFailure` : effets (source : la carte) si le jet ajusté
+   * devient un Échec critique.
+   */
+  dieAdjust?: { amount: number; extraUseOnCriticalSuccess?: boolean; ifCriticalFailure?: import("@/game/effects/types").EffectDefinition[] };
+  /**
+   * « Si [Lande] est active, la première relance que vous effectuez à chacun
+   * de vos tours gagne +N » (Maître de Ladalle).
+   */
+  rerollBonusWhileLande?: { landeCardId: string; bonus: number };
+  /**
+   * « La première carte que vous rejouez depuis votre main après qu'elle y
+   * soit revenue à chacun de vos tours coûte N de moins » (Campement
+   * provisoire, Lot 17) — tant que cette carte est en jeu.
+   */
+  replayedCardDiscount?: number;
+  /** « Tant qu'une Lande est active, il gagne +A/+B » (Gardien des Balises, Lot 17). */
+  selfBuffWhileLandeActive?: { attackAmount?: number; healthAmount?: number };
+
   /**
    * Nombre maximum d'exemplaires de cette carte dans un deck personnel —
    * donnée propre à chaque carte, jamais dérivée de la rareté (cadrage
@@ -1336,6 +1410,23 @@ export interface LandeRules {
    * à tous les permanents dotés de Résistance, des deux camps.
    */
   damageAllPermanentsEachTableTurn?: number;
+  /**
+   * « La première fois que vous lancez un dé à chacun de vos tours, vous
+   * pouvez le relancer. Vous devez garder le nouveau résultat. » (Le Donjon
+   * de Ladalle, Lot 17) — pour les deux joueurs, comme toute Lande.
+   */
+  firstRollRerollEachTurn?: boolean;
+  /**
+   * « La première unité coûtant N ou moins que chaque joueur joue à son tour
+   * gagne +A/+B » (Calme trompeur, Lot 17).
+   */
+  firstCheapUnitEachTurnBuff?: { maxCost: number; attack: number; health: number };
+  /**
+   * « La première carte que vous rejouez depuis votre main après qu'elle y
+   * soit revenue à chacun de vos tours coûte 1 de moins » (Terres inconnues,
+   * Lot 17) — pour les deux joueurs.
+   */
+  replayedCardDiscount?: number;
 }
 
 /** La carte est-elle une Lande ? */
@@ -1466,6 +1557,13 @@ export interface CardInstance {
   instanceId: string;
   cardId: CardId;
   ownerId: string;
+  /** Marqueurs Niveau posés sur cette carte en jeu (Lot 17 — lignée LV, `game/rules/levels.ts`). */
+  levelMarkers?: number;
+  /**
+   * La carte est arrivée en REMPLAÇANT celle-ci, par son effet de lignée
+   * (« S'il entre en jeu par l'effet d'Eidolon Opalin LV1… », Lot 17).
+   */
+  arrivedViaCardId?: CardId;
 
   /**
    * Dégâts marqués sur l'unité. Les statistiques effectives (attaque/vie,
@@ -1681,6 +1779,14 @@ export interface StatModifier {
    */
   ignoresLande?: boolean;
   /**
+   * « Son texte est ignoré jusqu'au début de votre prochain tour » (Lot 17 —
+   * Seren, Astel) : tant que ce modificateur tient, la carte n'a plus de
+   * TEXTE — ni capacité déclenchée ou activable, ni effet de Bris, ni bonus
+   * ou bouclier qu'elle porte. Elle garde son corps : Puissance, Résistance
+   * imprimées, et elle peut attaquer. Lu par `isTextIgnored`.
+   */
+  textIgnored?: boolean;
+  /**
    * « elle perd Garde jusqu'à la fin du tour » (Bête de Percée, Débusquer) :
    * mots-clés RETIRÉS tant que le modificateur tient, quelle que soit leur
    * source (imprimés, conditionnels, transmis). Prioritaire sur tout octroi.
@@ -1723,4 +1829,9 @@ export const KEYWORD_INCIBLABLE = "inciblable";
 
 export function isAbyssalVariant(def: CardDefinition): boolean {
   return def.variant === "abyssale";
+}
+
+/** « Son texte est ignoré » (Lot 17) : un modificateur `textIgnored` tient sur cette carte. */
+export function isTextIgnored(unit: Pick<CardInstance, "modifiers">): boolean {
+  return unit.modifiers.some((m) => m.textIgnored);
 }

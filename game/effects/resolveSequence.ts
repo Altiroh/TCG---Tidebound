@@ -2,7 +2,8 @@ import type { EffectContext } from "@/game/effects/resolveEffect";
 import { resolveEffect } from "@/game/effects/resolveEffect";
 import type { EffectDefinition } from "@/game/effects/types";
 import type { GameEvent } from "@/game/events/types";
-import type { GameState } from "@/game/state/types";
+import { closeDieRoll, dieRollHasOptions } from "@/game/rules/dice";
+import type { DieRollChoice, GameState } from "@/game/state/types";
 
 /**
  * Résout une SUITE d'effets — et sait s'interrompre.
@@ -55,6 +56,7 @@ export function resolveEffectSequence(
       }
     }
 
+    const questionAvant = nextState.pendingChoice;
     const result = resolveEffect(nextState, effect, context);
     nextState = result.state;
     events.push(...result.events);
@@ -63,6 +65,22 @@ export function resolveEffectSequence(
       const avant = new Set(mainAvant);
       const nouvelles = nextState.players.find((p) => p.id === piocheur)!.hand.map((card) => card.instanceId).filter((id) => !avant.has(id));
       piochees.set(piocheur, nouvelles);
+    }
+
+    // UN JET DE DÉ vient d'être lancé (Lot 17) : s'il n'y a rien à y faire,
+    // la Chaîne se ferme aussitôt et la suite se résout avec le résultat ;
+    // sinon le jet attend le joueur, la suite accrochée à la question.
+    if (nextState.pendingChoice?.kind === "dieRoll" && !nextState.pendingChoice.continuation && nextState.pendingChoice !== questionAvant) {
+      const jet = nextState.pendingChoice;
+      const rest = effects.slice(i + 1);
+      if (!dieRollHasOptions(nextState, jet)) {
+        const ferme = closeAndResolveDieRoll(nextState, { ...jet, continuation: { effects: [...rest] } });
+        nextState = ferme.state;
+        events.push(...ferme.events);
+        break;
+      }
+      nextState = { ...nextState, pendingChoice: { ...jet, continuation: { effects: [...rest] } } };
+      break;
     }
 
     let choice = nextState.pendingChoice;
@@ -121,4 +139,32 @@ function lootPlayerId(
         : undefined;
   const piocheur = joueur(draw);
   return piocheur && piocheur === joueur(discard) ? piocheur : undefined;
+}
+
+/**
+ * FERMETURE D'UN JET (Lot 17) : le résultat retenu, son issue, puis ses
+ * branches et la suite de la séquence — avec « ? » = le résultat — et enfin
+ * les suites de critique d'autres cartes (Maurice, Miss Franche-Comté 1987),
+ * chacune avec sa propre source. Appelé par la séquence (jet sans option),
+ * par `resolveChoice` (« Valider le jet ») et par un Bris de Chaîne qui
+ * laisse le joueur sans plus rien à faire.
+ */
+export function closeAndResolveDieRoll(state: GameState, choice: DieRollChoice): { state: GameState; events: GameEvent[] } {
+  const fermeture = closeDieRoll(state, choice);
+  let nextState = fermeture.state;
+  const events: GameEvent[] = [...fermeture.events];
+  for (const hook of fermeture.hooks) {
+    const r = resolveEffectSequence(nextState, hook.effects, hook.context);
+    nextState = r.state;
+    events.push(...r.events);
+  }
+  const suite = resolveEffectSequence(nextState, fermeture.effects, fermeture.context);
+  return { state: suite.state, events: [...events, ...suite.events] };
+}
+
+/** Après un geste sur un jet en cours : s'il ne reste rien à décider, la Chaîne se ferme d'elle-même. */
+export function closeDieRollIfIdle(state: GameState): { state: GameState; events: GameEvent[] } {
+  const jet = state.pendingChoice?.kind === "dieRoll" ? state.pendingChoice : undefined;
+  if (!jet || jet.candidates !== undefined || dieRollHasOptions(state, jet)) return { state, events: [] };
+  return closeAndResolveDieRoll(state, jet);
 }

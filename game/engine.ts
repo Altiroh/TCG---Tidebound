@@ -25,6 +25,7 @@ import {
   processForcedTideTransitions,
   processLoneCreatureChanges,
   processPowerGains,
+  processPlayerFacts,
   processReasonGained,
   processSurvivedDamage,
   processUnitTargetedTriggers,
@@ -79,6 +80,9 @@ export function dispatch(state: GameState, action: PlayerAction): ActionResult {
     state.pendingChoice &&
     !state.pendingReaction &&
     action.type !== "resolveChoice" &&
+    // CHAÎNE (Lot 17) : pendant un jet de dé, son joueur peut Briser ses
+    // Objets « Chaîne » — `breakObject` vérifie le reste.
+    !(action.type === "breakObject" && state.pendingChoice.kind === "dieRoll" && state.pendingChoice.playerId === action.playerId) &&
     action.type !== "concede" &&
     action.type !== "timeout"
   ) {
@@ -257,12 +261,15 @@ export function dispatch(state: GameState, action: PlayerAction): ActionResult {
     const ciblees = processUnitTargetedTriggers(signaux.state, [...result.events, ...deaths.events], tour);
     const survies = processSurvivedDamage(ciblees.state, [...coupsReportes, ...result.events, ...deaths.events], tour);
     const raison = processReasonGained(survies.state, [...result.events, ...signaux.events, ...ciblees.events, ...survies.events], tour);
-    const produits = [...signaux.events, ...ciblees.events, ...survies.events, ...raison.events];
+    // Lot 17 : Armure gagnée, jet résolu, carte sous la pioche, pioche hors
+    // tour, carte sortie du Cimetière, Lande posée, dégâts infligés.
+    const faits = processPlayerFacts(raison.state, [...result.events, ...deaths.events, ...signaux.events, ...ciblees.events, ...survies.events, ...raison.events], tour);
+    const produits = [...signaux.events, ...ciblees.events, ...survies.events, ...raison.events, ...faits.events];
     if (produits.length > 0) {
-      const encore = processDeaths(raison.state, state.turnNumber);
+      const encore = processDeaths(faits.state, state.turnNumber);
       deaths = { state: encore.state, events: [...deaths.events, ...produits, ...encore.events] };
     } else {
-      deaths = { ...deaths, state: raison.state };
+      deaths = { ...deaths, state: faits.state };
     }
   } else {
     // Toujours en suspens : les coups de CETTE action rejoignent ceux déjà

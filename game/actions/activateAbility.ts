@@ -1,3 +1,4 @@
+import { isTextIgnored } from "@/game/cards/types";
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { computeEffectiveStats } from "@/game/cards/stats";
 import type { EffectContext } from "@/game/effects/resolveEffect";
@@ -34,6 +35,8 @@ function validate(state: GameState, action: ActivateAbilityAction) {
   const player = getPlayer(state, action.playerId);
   const unit = player.board.find((u) => u.instanceId === action.sourceInstanceId)!;
   const def = getCardDefinition(unit.cardId);
+  // « Son texte est ignoré » (Lot 17).
+  if (isTextIgnored(unit)) return { ok: false as const, error: "Le texte de cette carte est ignoré pour l'instant." };
   const spec = def.activatableOncePerTurn;
   if (!spec) return { ok: false as const, error: "Cette carte n'a pas de capacité activable." };
 

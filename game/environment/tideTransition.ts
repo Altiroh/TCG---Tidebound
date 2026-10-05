@@ -1,3 +1,4 @@
+import { damageShip } from "@/game/state/armor";
 import { getShipDefinition } from "@/game/environment/shipData";
 import type { TideStateName } from "@/game/environment/types";
 import { STATUS_MALADE } from "@/game/cards/types";
@@ -75,15 +76,18 @@ export function applyAbyssesEntryOrExit(
       const loss = computeAbyssesEntryLoss(player);
       const reasonMax = Math.max(0, player.reasonMax - RULES.ABYSSES_REASON_MAX_PENALTY);
       const reason = Math.min(player.reason, reasonMax);
-      return { ...player, anchor: player.anchor - loss.anchor, reasonMax, reason };
+      // L'Armure du Navire (Lot 17) encaisse le choc des Abysses avant l'Ancrage.
+      const coup = damageShip(player, loss.anchor, turnNumber);
+      events.push(...coup.events);
+      return { ...coup.player, reasonMax, reason };
     }) as [PlayerState, PlayerState];
 
     for (let i = 0; i < state.players.length; i++) {
       const before = state.players[i]!;
       const after = players[i]!;
       const loss = computeAbyssesEntryLoss(before);
-      if (loss.anchor > 0) {
-        events.push({ ...base, type: "DAMAGE", targetPlayerId: before.id, amount: loss.anchor, targetAnchorAfter: after.anchor });
+      if (before.anchor - after.anchor > 0) {
+        events.push({ ...base, type: "DAMAGE", targetPlayerId: before.id, amount: before.anchor - after.anchor, targetAnchorAfter: after.anchor });
       }
       if (after.reason !== before.reason) {
         events.push({ ...base, type: "REASON_CHANGED", playerId: before.id, delta: after.reason - before.reason });

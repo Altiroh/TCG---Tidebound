@@ -1,3 +1,4 @@
+import { sensibleDieAnswer } from "@/game/rules/dice";
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { isDeckLookTakeable } from "@/game/rules/deckLook";
 import { hasResistance, UNIT_CARD_TYPES } from "@/game/cards/types";
@@ -131,6 +132,11 @@ export function enumerateCandidateActions(state: GameState, playerId: PlayerId):
         })),
         { type: "resolveChoice" as const, playerId, choice: { healAllocation: [] as Array<{ instanceId: string; amount: number }> } },
       ];
+    }
+
+    // Jet de dé (Lot 17) : un seul geste raisonnable, sans recherche.
+    if (state.pendingChoice.kind === "dieRoll") {
+      return [{ type: "resolveChoice" as const, playerId, choice: sensibleDieAnswer(state, state.pendingChoice) }];
     }
 
     // Regard de pioche : chaque carte prenable est un coup distinct, plus

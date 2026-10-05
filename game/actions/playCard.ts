@@ -1,3 +1,5 @@
+import { activeLandeRules } from "@/game/rules/lande";
+import { markTurnDiscountsUsed, turnDiscounts } from "@/game/rules/costReductions";
 import { isOngoingEffect } from "@/game/rules/ongoing";
 import { canBeEquipTarget, getCardDefinition, hasAnyValidEquipTarget } from "@/game/cards/sets/core";
 import { isLandeCard, isPermanentCard, isVisibleDuringTide, UNIT_CARD_TYPES, type CardDefinition } from "@/game/cards/types";
@@ -71,7 +73,9 @@ function effectiveCost(def: CardDefinition, state: GameState, playerId?: PlayerI
   // « sans payer son coût de Raison » (Changement de rôle !) : ni le
   // plancher des réductions ni une majoration ne s'appliquent.
   if (applicables.some((discount) => discount.free)) return 0;
-  const reduction = applicables.reduce((sum, discount) => sum + discount.amount, 0);
+  // « La première … à chacun de vos tours » (Lot 17) : lues sur le jeu.
+  const duTour = turnDiscounts(state, playerId, def, instanceId).reduce((sum, d) => sum + d.amount, 0);
+  const reduction = applicables.reduce((sum, discount) => sum + discount.amount, 0) + duTour;
   if (reduction === 0) return printed;
   // Une MAJORATION (`amount` négatif, Pas Tous à la Fois !) n'est bornée
   // par rien : le plancher existe pour empêcher une réduction de rendre une
@@ -187,6 +191,11 @@ function validatePlayability(state: GameState, action: PlayCardAction) {
   }
   if (def.requiresControllerReasonExactly !== undefined && player!.reason !== def.requiresControllerReasonExactly) {
     return { ok: false as const, error: `Cette carte ne peut être jouée qu'avec exactement ${def.requiresControllerReasonExactly} Raison.` };
+  }
+
+  // « Ne peut entrer en jeu que par l'effet de … » (Eidolon Opalin LVX, Lot 17).
+  if (def.cannotBePlayed) {
+    return { ok: false as const, error: "Cette carte ne se joue pas depuis la main : elle n'entre en jeu que par l'effet de sa lignée." };
   }
 
   // Lande « un seul Marin ou une seule Créature par tour » (Chaîne de
@@ -364,6 +373,7 @@ export function playCard(state: GameState, action: PlayCardAction): ActionResult
   // La réduction est dépensée en même temps que la Raison, jamais avant :
   // une pose refusée plus haut ne doit pas avoir consommé la charge.
   nextState = assemblage ? payment.state : consumeCostDiscounts(payment.state, player.id, def, instance.instanceId);
+  if (!assemblage) nextState = markTurnDiscountsUsed(nextState, player.id, turnDiscounts(state, player.id, def, instance.instanceId).map((d) => d.key));
   // Compté APRÈS le paiement : « après la troisième unité jouée », c'est la
   // quatrième qui paie, donc la carte en cours ne doit pas s'être déjà
   // comptée quand son propre coût est calculé.
@@ -424,6 +434,19 @@ export function playCard(state: GameState, action: PlayCardAction): ActionResult
     };
     events.push({ ...base, type: "SUMMON", playerId: player.id, instanceId: boardUnit.instanceId, cardId: def.id, played: true });
     nextState = recordUnitArrivals(nextState, player.id, [def], state.turnNumber);
+    // « La première unité coûtant N ou moins que chaque joueur joue à son
+    // tour gagne +A/+B » (Calme trompeur, Lot 17).
+    const calme = activeLandeRules(nextState.environment)?.firstCheapUnitEachTurnBuff;
+    const joueurPose = getPlayer(nextState, player.id);
+    if (calme && isUnitCard(def.type) && def.cost <= calme.maxCost && joueurPose.cheapUnitBuffTurn !== state.turnNumber && state.activePlayerId === player.id) {
+      const renforce = resolveEffect(
+        { ...nextState, players: nextState.players.map((p) => (p.id === player.id ? { ...p, cheapUnitBuffTurn: state.turnNumber } : p)) as [PlayerState, PlayerState] },
+        { type: "buff", target: { kind: "self" }, attackAmount: { kind: "flat", value: calme.attack }, healthAmount: { kind: "flat", value: calme.health }, permanent: true },
+        { controllerId: player.id, sourceInstanceId: boardUnit.instanceId, turnNumber: state.turnNumber }
+      );
+      nextState = renforce.state;
+      events.push(...renforce.events);
+    }
   } else {
     // Équipement consommable (`permanent: false`) : part directement au
     // cimetière après résolution. Aucune autre carte ne prend cette voie —

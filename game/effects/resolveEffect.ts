@@ -1,3 +1,8 @@
+import { addLevelMarkers } from "@/game/rules/levels";
+import { addNextRollModifier, pendingDieRoll, rerollPending, rollDie, shiftPending } from "@/game/rules/dice";
+import { consumeUnitDamageBonus } from "@/game/state/damageBonus";
+import { armorEvents, armorOf } from "@/game/state/armor";
+import { damageShip } from "@/game/state/armor";
 import { boardPermanents, slotsUsed } from "@/game/rules/ongoing";
 import {
   CHROMATIC_COLORS,
@@ -146,6 +151,8 @@ export function discountApplies(
   // « ELLE coûte 1 de moins » : seule la carte désignée en profite.
   if (discount.onlyInstanceIds && !(instanceId !== undefined && discount.onlyInstanceIds.includes(instanceId))) return false;
   if (discount.maxCost !== undefined && def.cost > discount.maxCost) return false;
+  if (discount.minCost !== undefined && def.cost < discount.minCost) return false;
+  if (discount.archetype && def.archetype !== discount.archetype) return false;
   if (turnNumber > discount.expiresAfterTurn) return false;
   if (discount.subtype && def.subtype !== discount.subtype) return false;
   if (discount.cardTypes && !discount.cardTypes.includes(def.type)) return false;
@@ -191,6 +198,13 @@ export interface EffectContext {
   directDamageCap?: number;
   /** Couleur désignée par le joueur (`chooseChromaticColor`), lue par `chromaticColorFrom: "chosenColor"`. */
   chosenColor?: ChromaticColor;
+  /** Bris d'un Objet « Chaîne » : la modification choisie par le joueur parmi `dieDeltas` (« +1 ou -1 »). */
+  dieDelta?: number;
+  /**
+   * Résultat du jet de dé en cours de résolution (Lot 17, `rollDie`) : lu par
+   * le montant `dieResult` (« gagne +?/+0 », « restaurez ? Résistance »).
+   */
+  dieResult?: number;
   turnNumber: number;
 }
 
@@ -257,9 +271,17 @@ export interface EffectResolution {
 function amountValue(
   amount: EffectAmount | undefined,
   state: GameState,
-  controllerId: PlayerId
+  controllerId: PlayerId,
+  context?: Pick<EffectContext, "dieResult">
 ): number {
   if (amount === undefined) return 0;
+  if (amount.kind === "dieResult") {
+    // « ? » sur la carte : le résultat du jet en cours (Lot 17). Hors jet, 0.
+    const brut = context?.dieResult ?? 0;
+    const lu = amount.half ? Math.ceil(brut / 2) : brut;
+    const avec = lu + (amount.plus ?? 0);
+    return Math.max(0, amount.max === undefined ? avec : Math.min(amount.max, avec));
+  }
   if (amount.kind === "incomingAttackDamage") return state.pendingAttack?.attackerPower ?? 0;
   if (amount.kind === "unitCount") {
     const plateau = amount.of === "opponent" ? getOpponent(state, controllerId) : getPlayer(state, controllerId);
@@ -387,6 +409,8 @@ function passesTargetFilter(
   if (filter.cardTypes && !filter.cardTypes.includes(def.type)) return false;
   if (filter.subtype && def.subtype !== filter.subtype) return false;
   if (filter.maxCost !== undefined && def.cost > filter.maxCost) return false;
+  if (filter.minCost !== undefined && def.cost < filter.minCost) return false;
+  if (filter.tag && !def.tags?.includes(filter.tag)) return false;
   if (filter.damaged && unit.damageMarked <= 0) return false;
   // « ce tour » = le tour de TABLE courant, celui que porte l'action en
   // cours de résolution.
@@ -793,6 +817,15 @@ export function resolveEffect(
       return { state, events };
     }
   }
+  // « Si vous avez joué ou Brisé un Objet ce tour » (Aventurière en retard, Lot 17).
+  if (effect.conditionObjectPlayedOrBrokenThisTurn) {
+    const joueur = getPlayer(state, context.controllerId);
+    const brise = (joueur.objectsBrokenThisTurn?.turnNumber === context.turnNumber ? joueur.objectsBrokenThisTurn.names.length : 0) > 0;
+    const joue = state.eventLog.some(
+      (e) => e.type === "PLAY_CARD" && e.playerId === context.controllerId && e.turnNumber === context.turnNumber && getCardDefinition(e.cardId).type === "objet"
+    );
+    if (!brise && !joue) return { state, events };
+  }
   if (effect.conditionControllerHandAtLeast !== undefined) {
     if (getPlayer(state, context.controllerId).hand.length < effect.conditionControllerHandAtLeast) return { state, events };
   }
@@ -851,9 +884,17 @@ export function resolveEffect(
       // Seul appel à passer l'état : « autant de dégâts » (Cylindre
       // flottant) lit la Puissance de l'attaque qui vient d'être
       // interceptée.
-      const amount = amountValue(effect.amount, state, context.controllerId);
-      const damageTargets = resolveUnitTargets(state, effect, context);
-      let nextState = { ...state, rngState: damageTargets.rngState };
+      // Une UNITÉ en jeu qui frappe par son effet : c'est elle qui inflige
+      // ces dégâts (Lot 17 — `onDealtDamage`, bonus de Dhar).
+      const frappeur = boardUnit(state, context.sourceInstanceId);
+      const dealerInstanceId =
+        frappeur && frappeur.owner.id === context.controllerId && UNIT_CARD_TYPES.includes(getCardDefinition(frappeur.unit.cardId).type)
+          ? frappeur.unit.instanceId
+          : undefined;
+      const bonusDhar = dealerInstanceId ? consumeUnitDamageBonus(state, context.controllerId, context.turnNumber) : { state, bonus: 0 };
+      const amount = amountValue(effect.amount, state, context.controllerId, context) + bonusDhar.bonus;
+      const damageTargets = resolveUnitTargets(bonusDhar.state, effect, context);
+      let nextState = { ...bonusDhar.state, rngState: damageTargets.rngState };
 
       for (const { unit, ownerId } of damageTargets.targets) {
         // Sans Résistance (un Objet), il n'y a rien à marquer : les
@@ -912,6 +953,7 @@ export function resolveEffect(
           cause: "effect",
           sourcePlayerId: context.controllerId,
           origin: originOf(context),
+          ...(dealerInstanceId ? { dealerInstanceId } : {}),
         });
         // Wood Vy : la Structure a perdu de la Résistance, elle en récupère 1.
         const rendu = restoreStructureResistanceAfterLoss(nextState, ownerId, unit.instanceId, finalAmount, context.turnNumber);
@@ -928,15 +970,19 @@ export function resolveEffect(
         const plafonne = context.directDamageCap === undefined ? amount : Math.min(amount, context.directDamageCap);
         const reduit = Math.max(0, plafonne - (context.directDamageReduction ?? 0));
         if (reduit <= 0) continue;
-        const current = getPlayer(nextState, player.id);
-        nextState = replacePlayer(nextState, { ...current, anchor: current.anchor - reduit });
+        // L'Armure du Navire (Lot 17) encaisse avant l'Ancrage.
+        const coup = damageShip(getPlayer(nextState, player.id), reduit, context.turnNumber);
+        nextState = replacePlayer(nextState, coup.player);
+        events.push(...coup.events);
+        if (coup.anchorLoss <= 0) continue;
         events.push({
           ...base,
           type: "DAMAGE",
           targetPlayerId: player.id,
-          amount: reduit,
-          targetAnchorAfter: current.anchor - reduit,
+          amount: coup.anchorLoss,
+          targetAnchorAfter: coup.player.anchor,
           origin: originOf(context),
+          ...(dealerInstanceId ? { dealerInstanceId } : {}),
         });
       }
 
@@ -944,7 +990,7 @@ export function resolveEffect(
     }
 
     case "heal": {
-      const amount = amountValue(effect.amount, state, context.controllerId);
+      const amount = amountValue(effect.amount, state, context.controllerId, context);
       const healTargets = resolveUnitTargets(state, effect, context);
       let nextState = { ...state, rngState: healTargets.rngState };
 
@@ -979,7 +1025,7 @@ export function resolveEffect(
     }
 
     case "draw": {
-      const amount = amountValue(effect.amount, state, context.controllerId);
+      const amount = amountValue(effect.amount, state, context.controllerId, context);
       const player = resolveSinglePlayerTarget(state, effect, context) ?? getPlayer(state, context.controllerId);
       let deck = [...player.deck];
       const hand = [...player.hand];
@@ -1004,7 +1050,7 @@ export function resolveEffect(
     }
 
     case "mill": {
-      const amount = amountValue(effect.amount, state, context.controllerId);
+      const amount = amountValue(effect.amount, state, context.controllerId, context);
       const player = resolveSinglePlayerTarget(state, effect, context) ?? getPlayer(state, context.controllerId);
       const partent = player.deck.slice(0, Math.max(0, amount));
       if (partent.length === 0) return { state, events };
@@ -1021,7 +1067,7 @@ export function resolveEffect(
     }
 
     case "discard": {
-      const amount = amountValue(effect.amount, state, context.controllerId);
+      const amount = amountValue(effect.amount, state, context.controllerId, context);
       const player = resolveSinglePlayerTarget(state, effect, context) ?? getPlayer(state, context.controllerId);
       // Rien à défausser : le texte est déjà satisfait, on n'ouvre pas une
       // question sans réponse possible.
@@ -1199,9 +1245,9 @@ export function resolveEffect(
     }
 
     case "buff": {
-      const fallback = amountValue(effect.amount, state, context.controllerId);
-      const attackDelta = effect.attackAmount ? amountValue(effect.attackAmount, state, context.controllerId) : fallback;
-      const healthDelta = effect.healthAmount ? amountValue(effect.healthAmount, state, context.controllerId) : fallback;
+      const fallback = amountValue(effect.amount, state, context.controllerId, context);
+      const attackDelta = effect.attackAmount ? amountValue(effect.attackAmount, state, context.controllerId, context) : fallback;
+      const healthDelta = effect.healthAmount ? amountValue(effect.healthAmount, state, context.controllerId, context) : fallback;
       const duration = effect.duration ?? (effect.permanent ? "permanent" : "endOfTurn");
       const buffTargets = resolveUnitTargets(state, effect, context);
       let nextState = { ...state, rngState: buffTargets.rngState };
@@ -1224,6 +1270,7 @@ export function resolveEffect(
               ...(effect.grantKeywords ? { keywords: effect.grantKeywords } : {}),
               ...(effect.removeKeywords ? { removesKeywords: effect.removeKeywords } : {}),
               ...(effect.ignoresLande ? { ignoresLande: true } : {}),
+              ...(effect.ignoresText ? { textIgnored: true } : {}),
               ...(differe ? { nextCombatBonusVsKeyword: { keyword: effect.nextCombatVsKeyword!, amount: attackDelta } } : {}),
             },
           ],
@@ -1241,9 +1288,9 @@ export function resolveEffect(
     }
 
     case "debuff": {
-      const fallback = amountValue(effect.amount, state, context.controllerId);
-      const attackDelta = effect.attackAmount ? amountValue(effect.attackAmount, state, context.controllerId) : fallback;
-      const healthDelta = effect.healthAmount ? amountValue(effect.healthAmount, state, context.controllerId) : 0;
+      const fallback = amountValue(effect.amount, state, context.controllerId, context);
+      const attackDelta = effect.attackAmount ? amountValue(effect.attackAmount, state, context.controllerId, context) : fallback;
+      const healthDelta = effect.healthAmount ? amountValue(effect.healthAmount, state, context.controllerId, context) : 0;
       const duration = effect.duration ?? (effect.permanent ? "permanent" : "endOfTurn");
       const debuffTargets = resolveUnitTargets(state, effect, context);
       let nextState = { ...state, rngState: debuffTargets.rngState };
@@ -1273,7 +1320,7 @@ export function resolveEffect(
     }
 
     case "reasonGain": {
-      const amount = amountValue(effect.amount, state, context.controllerId);
+      const amount = amountValue(effect.amount, state, context.controllerId, context);
       const targets = resolvePlayerTargets(state, effect, context);
       const players = targets.length > 0 ? targets : [getPlayer(state, context.controllerId)];
       let nextState = state;
@@ -1290,8 +1337,123 @@ export function resolveEffect(
       return { state: nextState, events };
     }
 
+    case "rollDie": {
+      // Le jet est lancé ; sa résolution (branches, suite) attend la
+      // fermeture de la Chaîne — cf. `resolveEffectSequence`.
+      const lance = rollDie(state, effect, {
+        controllerId: context.controllerId,
+        turnNumber: context.turnNumber,
+        ...(context.sourceInstanceId ? { sourceInstanceId: context.sourceInstanceId } : {}),
+        ...(context.chosenTargetInstanceId ? { chosenTargetInstanceId: context.chosenTargetInstanceId } : {}),
+        ...(context.chosenGraveyardInstanceId ? { chosenGraveyardInstanceId: context.chosenGraveyardInstanceId } : {}),
+        ...(context.triggerSourceInstanceId ? { triggerSourceInstanceId: context.triggerSourceInstanceId } : {}),
+        ...(context.brokenFromHand ? { brokenFromHand: true } : {}),
+      });
+      return { state: openChoice(lance.state, lance.choice), events };
+    }
+
+    case "modifyPendingDie": {
+      const jet = pendingDieRoll(state);
+      if (!jet) return { state, events };
+      const permis = effect.dieDeltas ?? [1];
+      const delta = context.dieDelta !== undefined && permis.includes(context.dieDelta) ? context.dieDelta : permis[0]!;
+      return { state: shiftPending(state, jet, delta), events };
+    }
+
+    case "rerollPendingDie": {
+      const jet = pendingDieRoll(state);
+      return { state: jet ? rerollPending(state, jet) : state, events };
+    }
+
+    case "pendingDieNoCriticalFailure": {
+      const jet = pendingDieRoll(state);
+      return { state: jet ? { ...state, pendingChoice: { ...jet, noCriticalFailure: true } } : state, events };
+    }
+
+    case "modifyNextRoll": {
+      if (!effect.nextRoll) return { state, events };
+      return {
+        state: addNextRollModifier(state, context.controllerId, {
+          ...effect.nextRoll,
+          controllerId: context.controllerId,
+          ...(context.sourceInstanceId ? { sourceInstanceId: context.sourceInstanceId } : {}),
+          ...(effect.nextRollThisTurn ? { thisTurnOnly: context.turnNumber } : {}),
+        }),
+        events,
+      };
+    }
+
+    case "nextUnitDamageBonus": {
+      const montant = amountValue(effect.amount, state, context.controllerId, context);
+      if (montant <= 0) return { state, events };
+      const joueur = getPlayer(state, context.controllerId);
+      return { state: replacePlayer(state, { ...joueur, nextUnitDamageBonus: { amount: montant, turnNumber: context.turnNumber } }), events };
+    }
+
+    case "flagThisTurn": {
+      const cle = effect.flagKey;
+      if (!cle) return { state, events };
+      const { targets, rngState } = resolveUnitTargets(state, effect, context);
+      let nextState: GameState = { ...state, rngState };
+      for (const { unit, ownerId } of targets) {
+        nextState = replaceUnit(nextState, ownerId, unit.instanceId, (u) => markOncePerTurnUsed(u, cle, context.turnNumber));
+      }
+      return { state: nextState, events };
+    }
+
+    case "addLevelMarker": {
+      const combien = effect.amount ? amountValue(effect.amount, state, context.controllerId, context) : 1;
+      const { targets, rngState } = resolveUnitTargets(state, effect, context);
+      let nextState: GameState = { ...state, rngState };
+      for (const { unit, ownerId } of targets) {
+        const r = addLevelMarkers(nextState, ownerId, unit.instanceId, combien, context.turnNumber);
+        nextState = r.state;
+        events.push(...r.events);
+      }
+      return { state: nextState, events };
+    }
+
+    case "gainArmor": {
+      const amount = amountValue(effect.amount, state, context.controllerId, context);
+      if (amount <= 0) return { state, events };
+      const targets = resolvePlayerTargets(state, effect, context);
+      let nextState = state;
+      for (const target of targets.length > 0 ? targets : [getPlayer(state, context.controllerId)]) {
+        const player = getPlayer(nextState, target.id);
+        const apres = armorOf(player) + amount;
+        nextState = replacePlayer(nextState, { ...player, armor: apres });
+        events.push(...armorEvents(player.id, amount, apres, context.turnNumber));
+      }
+      return { state: nextState, events };
+    }
+
+    case "loseArmor": {
+      const amount = amountValue(effect.amount, state, context.controllerId, context);
+      if (amount <= 0) return { state, events };
+      const targets = resolvePlayerTargets(state, effect, context);
+      let nextState = state;
+      for (const target of targets.length > 0 ? targets : [getPlayer(state, context.controllerId)]) {
+        const player = getPlayer(nextState, target.id);
+        const retire = Math.min(armorOf(player), amount);
+        const manque = amount - retire;
+        nextState = replacePlayer(nextState, { ...player, armor: armorOf(player) - retire });
+        events.push(...armorEvents(player.id, -retire, armorOf(player) - retire, context.turnNumber));
+        // « Si vous n'avez pas assez d'Armure, [la carte] subit les dégâts restants. »
+        if (manque > 0 && effect.armorShortfallDamagesSource && context.sourceInstanceId) {
+          const coup = resolveEffect(
+            nextState,
+            { type: "damage", target: { kind: "self" }, amount: { kind: "flat", value: manque } },
+            context
+          );
+          nextState = coup.state;
+          events.push(...coup.events);
+        }
+      }
+      return { state: nextState, events };
+    }
+
     case "reasonLoss": {
-      const amount = amountValue(effect.amount, state, context.controllerId);
+      const amount = amountValue(effect.amount, state, context.controllerId, context);
       const targets = resolvePlayerTargets(state, effect, context);
       const players = targets.length > 0 ? targets : [getPlayer(state, context.controllerId)];
       let nextState = state;
@@ -1320,7 +1482,7 @@ export function resolveEffect(
 
     case "reduceIncomingDamage": {
       if (!state.pendingAttack) return { state, events };
-      const reduction = amountValue(effect.amount, state, context.controllerId);
+      const reduction = amountValue(effect.amount, state, context.controllerId, context);
       if (reduction <= 0) return { state, events };
       return {
         state: {
@@ -1336,7 +1498,7 @@ export function resolveEffect(
 
     case "modifyAttackerPower": {
       if (!state.pendingAttack) return { state, events };
-      const perte = amountValue(effect.amount, state, context.controllerId);
+      const perte = amountValue(effect.amount, state, context.controllerId, context);
       if (perte <= 0) return { state, events };
       const apres = Math.max(0, state.pendingAttack.attackerPower - perte);
       return {
@@ -1355,7 +1517,7 @@ export function resolveEffect(
     }
 
     case "durationLoss": {
-      const amount = amountValue(effect.amount, state, context.controllerId);
+      const amount = amountValue(effect.amount, state, context.controllerId, context);
       const durationTargets = resolveUnitTargets(state, effect, context);
       let nextState = { ...state, rngState: durationTargets.rngState };
 
@@ -1399,7 +1561,7 @@ export function resolveEffect(
 
     case "tideReduceDuration":
     case "tideExtendDuration": {
-      const amount = amountValue(effect.amount, state, context.controllerId) || 1;
+      const amount = amountValue(effect.amount, state, context.controllerId, context) || 1;
       const nextState = state;
       const delta = effect.type === "tideReduceDuration" ? -amount : amount;
       const rawRemaining = nextState.environment.tideRemainingTurns + delta;
@@ -1454,7 +1616,7 @@ export function resolveEffect(
     }
 
     case "tideSetIntensity": {
-      const value = Math.max(1, amountValue(effect.amount, state, context.controllerId));
+      const value = Math.max(1, amountValue(effect.amount, state, context.controllerId, context));
       events.push({ ...base, type: "TIDE_MODIFIED", change: "intensity", value });
       return {
         state: { ...state, environment: { ...state.environment, tideIntensity: value } },
@@ -1463,7 +1625,7 @@ export function resolveEffect(
     }
 
     case "tideModifyIntensity": {
-      const delta = amountValue(effect.amount, state, context.controllerId);
+      const delta = amountValue(effect.amount, state, context.controllerId, context);
       const tideIntensity = Math.max(1, state.environment.tideIntensity + delta);
       events.push({ ...base, type: "TIDE_MODIFIED", change: "intensity", value: tideIntensity });
       return {
@@ -1475,7 +1637,7 @@ export function resolveEffect(
     case "tideMaintain":
     case "tideAmplifyNext": {
       const kind = effect.type === "tideMaintain" ? "maintain" : "amplify";
-      const remainingTriggers = amountValue(effect.amount, state, context.controllerId) || 1;
+      const remainingTriggers = amountValue(effect.amount, state, context.controllerId, context) || 1;
       events.push({ ...base, type: "TIDE_MODIFIED", change: kind, value: remainingTriggers });
       return {
         state: {
@@ -1543,11 +1705,19 @@ export function resolveEffect(
     case "shortenLande": {
       const lande = state.environment.lande;
       if (!lande) return { state, events };
-      const tableTurns = amountValue(effect.amount, state, context.controllerId);
+      const tableTurns = amountValue(effect.amount, state, context.controllerId, context);
       const remainingPlayerTurns = lande.remainingPlayerTurns - 2 * tableTurns;
       if (remainingPlayerTurns <= 0) {
         const gone = sendLandeToGraveyard(state, "expired", context.turnNumber);
-        return { state: gone.state, events: [...events, ...gone.events] };
+        let apres = gone.state;
+        events.push(...gone.events);
+        // « S'il disparaît ainsi, … » (Route barrée, Lot 17).
+        for (const suite of effect.ifLandeEnds ?? []) {
+          const r = resolveEffect(apres, suite, context);
+          apres = r.state;
+          events.push(...r.events);
+        }
+        return { state: apres, events };
       }
       return { state: { ...state, environment: { ...state.environment, lande: { ...lande, remainingPlayerTurns } } }, events };
     }
@@ -1576,7 +1746,7 @@ export function resolveEffect(
     }
 
     case "revealRandomHandCards": {
-      const amount = amountValue(effect.amount, state, context.controllerId) || 1;
+      const amount = amountValue(effect.amount, state, context.controllerId, context) || 1;
       let nextState = state;
       for (const target of resolvePlayerTargets(state, effect, context)) {
         const result = revealRandomHandCards(nextState, target.id, amount, context.turnNumber);
@@ -1587,7 +1757,7 @@ export function resolveEffect(
     }
 
     case "tideForceJumpToAbysses": {
-      const extraDurationTurns = amountValue(effect.amount, state, context.controllerId) || 0;
+      const extraDurationTurns = amountValue(effect.amount, state, context.controllerId, context) || 0;
       const tick = forceTideJumpToAbysses(state.environment, {
         extraDurationTurns,
         forceOrientation: effect.forceTideOrientation,
@@ -1739,7 +1909,7 @@ export function resolveEffect(
     }
 
     case "surchargeCards": {
-      const majoration = amountValue(effect.amount, state, context.controllerId);
+      const majoration = amountValue(effect.amount, state, context.controllerId, context);
       if (majoration <= 0) return { state, events };
 
       // « chaque joueur » : la taxe se pose sur les deux, chacun avec son
@@ -1766,7 +1936,7 @@ export function resolveEffect(
     }
 
     case "discountNextCards": {
-      const reduction = effect.free ? 0 : amountValue(effect.amount, state, context.controllerId);
+      const reduction = effect.free ? 0 : amountValue(effect.amount, state, context.controllerId, context);
       if (!effect.free && reduction <= 0) return { state, events };
       // « une AUTRE Marionnette » : la cible désignée par le joueur — et
       // l'exemplaire qu'elle est devenue si l'effet précédent l'a renvoyée
@@ -1794,6 +1964,15 @@ export function resolveEffect(
         ...(effect.free ? { free: true } : {}),
         ...(chosen ? { excludeInstanceIds: [chosen, recalledInstanceId(chosen, state.turnNumber)] } : {}),
         ...(recovered ? { onlyInstanceIds: [recovered] } : {}),
+        // « Réduisez SON coût de 1 » : la cible désignée, devenue un nouvel exemplaire en main.
+        ...(effect.discountOnlySource && context.sourceInstanceId
+          ? { onlyInstanceIds: [context.sourceInstanceId, recalledInstanceId(context.sourceInstanceId, state.turnNumber)] }
+          : {}),
+        ...(effect.discountOnlyChosenTarget && context.chosenTargetInstanceId
+          ? { onlyInstanceIds: [context.chosenTargetInstanceId, recalledInstanceId(context.chosenTargetInstanceId, state.turnNumber)] }
+          : {}),
+        ...(effect.filter?.minCost !== undefined ? { minCost: effect.filter.minCost } : {}),
+        ...(effect.filter?.archetype ? { archetype: effect.filter.archetype } : {}),
         ...(effect.filter?.maxCost !== undefined ? { maxCost: effect.filter.maxCost } : {}),
       };
 
@@ -1895,7 +2074,7 @@ export function resolveEffect(
     }
 
     case "healDistributed": {
-      const budget = amountValue(effect.amount, state, context.controllerId);
+      const budget = amountValue(effect.amount, state, context.controllerId, context);
       const player = resolveSinglePlayerTarget(state, effect, context) ?? getPlayer(state, context.controllerId);
       // Rien à réparer, ou rien à répartir : on ne pose pas une question
       // sans réponse utile. « Répartie entre les UNITÉS » : une Structure
@@ -1922,7 +2101,7 @@ export function resolveEffect(
       // « empêchez cette destruction : elle reste en jeu avec N Résistance ».
       // On ramène les dégâts marqués juste assez bas pour qu'elle passe le
       // contrôle de morts, pas plus : ce n'est pas un soin.
-      const restante = Math.max(1, amountValue(effect.amount, state, context.controllerId));
+      const restante = Math.max(1, amountValue(effect.amount, state, context.controllerId, context));
       const rescapes = resolveUnitTargets(state, effect, context);
       let nextState = { ...state, rngState: rescapes.rngState };
       for (const { unit, ownerId } of rescapes.targets) {
@@ -1950,7 +2129,7 @@ export function resolveEffect(
     }
 
     case "lookAtDeckTop": {
-      const amount = amountValue(effect.amount, state, context.controllerId);
+      const amount = amountValue(effect.amount, state, context.controllerId, context);
       const player = resolveSinglePlayerTarget(state, effect, context) ?? getPlayer(state, context.controllerId);
       const regardees = player.deck.slice(0, Math.max(0, amount));
       // Pioche vide : le texte est sans objet, on ne pose pas une question
@@ -2026,7 +2205,7 @@ export function resolveEffect(
     }
 
     case "handToDeckBottomThenDraw": {
-      const amount = amountValue(effect.amount, state, context.controllerId);
+      const amount = amountValue(effect.amount, state, context.controllerId, context);
       const player = resolveSinglePlayerTarget(state, effect, context) ?? getPlayer(state, context.controllerId);
       if (amount <= 0 || player.hand.length === 0) return { state, events };
 

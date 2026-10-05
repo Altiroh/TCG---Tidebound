@@ -1,3 +1,4 @@
+import { isTextIgnored } from "@/game/cards/types";
 import { countArchetypeUnits } from "@/game/cards/archetypes";
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { isVisibleDuringTide, UNIT_CARD_TYPES, type CardInstance } from "@/game/cards/types";
@@ -42,6 +43,8 @@ export interface AuraContext {
    * tort sur le tour adverse.
    */
   controllerIsActive?: boolean;
+  /** Une Lande est-elle en jeu ? (« Tant qu'une Lande est active », Lot 17.) Absent : non. */
+  landeActive?: boolean;
 }
 
 /**
@@ -59,6 +62,7 @@ export function auraContextOf(state: Pick<GameState, "players" | "activePlayerId
     controllerReason: controller?.reason ?? 0,
     tideOrientation: state.environment.tideOrientation,
     controllerIsActive: state.activePlayerId === controllerId,
+    landeActive: state.environment.lande !== undefined,
   };
 }
 
@@ -125,6 +129,9 @@ export function collectAuraContributions(
   ) {
     addSelf(visibleStructureBuff);
   }
+
+  // Gardien des Balises (Lot 17) : bonus sur soi tant qu'une Lande est active.
+  if (def.selfBuffWhileLandeActive && aura.landeActive) addSelf(def.selfBuffWhileLandeActive);
 
   // Matelot Insomniaque : bonus sur soi tant que la Raison du contrôleur est sous le seuil.
   const reasonSelfBuff = def.selfBuffWhileControllerReasonAtMost;
@@ -273,11 +280,16 @@ function auraTotals(unit: CardInstance, tideState: TideStateName, aura: AuraCont
     byContext = new Map();
     byUnit.set(unit, byContext);
   }
-  const key = `${tideState}|${aura.controllerReason}|${aura.tideOrientation ?? ""}|${aura.controllerIsActive ?? ""}`;
+  const key = `${tideState}|${aura.controllerReason}|${aura.tideOrientation ?? ""}|${aura.controllerIsActive ?? ""}|${aura.landeActive ?? ""}`;
   const cached = byContext.get(key);
   if (cached) return cached;
 
-  const contributions = collectAuraContributions(unit, tideState, aura);
+  // « Son texte est ignoré » (Lot 17) : ni ses bonus sur elle-même, ni ceux
+  // qu'elle donne aux autres.
+  const muettes = new Set(aura.controllerBoard.filter(isTextIgnored).map((u) => u.instanceId));
+  const contributions = collectAuraContributions(unit, tideState, aura).filter(
+    (c) => !(c.sourceInstanceId && muettes.has(c.sourceInstanceId)) && !(c.sourceInstanceId === unit.instanceId && isTextIgnored(unit))
+  );
   const totals = {
     attack: contributions.reduce((sum, c) => sum + c.attack, 0),
     health: contributions.reduce((sum, c) => sum + c.health, 0),

@@ -1,3 +1,4 @@
+import { expireNextRollModifiers } from "@/game/rules/dice";
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { annoncerMaree, appliquerMareeAnnoncee } from "@/game/environment/resolveEnvironment";
 import { getShipDefinition } from "@/game/environment/shipData";
@@ -170,6 +171,11 @@ export function finirTour(state: GameState, endingPlayerId: PlayerId, eventsAvan
     }
   }
   let nextState: GameState = state.pendingLandeStrike ? { ...state, pendingLandeStrike: undefined } : state;
+  // « Votre prochain jet CE TOUR » (Lot 17) : ce qui n'a pas servi tombe.
+  nextState = {
+    ...nextState,
+    players: nextState.players.map((p) => expireNextRollModifiers(p, state.turnNumber)) as GameState["players"],
+  };
 
   // --- Lande en jeu : un demi-tour de table de plus. Ses dégâts de fin de
   // tour de table tombent ici, AVANT le règlement de la Déraison, qui reste
@@ -392,7 +398,7 @@ export function entameDeTour(state: GameState, eventsAvant: GameEvent[] = []): A
   if (drawnCard) {
     deck = deck.slice(1);
     hand = [...hand, drawnCard];
-    events.push({ ...newBase, type: "DRAW_CARD", playerId: nextPlayer.id, instanceId: drawnCard.instanceId });
+    events.push({ ...newBase, type: "DRAW_CARD", playerId: nextPlayer.id, instanceId: drawnCard.instanceId, turnDraw: true });
   } else {
     // Deck vide : "Jugement de l'Océan" plutôt qu'une défaite instantanée
     // (résolu en fin d'action par `game/engine.ts`).

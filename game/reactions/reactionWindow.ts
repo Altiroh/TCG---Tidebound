@@ -1,3 +1,4 @@
+import { playerFactTriggerEvents } from "@/game/triggers/playerFacts";
 import { aSurvecuAuxDegats, collectReactionCandidates } from "@/game/triggers/triggerBus";
 import { shipWindowAbilityFor } from "@/game/state/shipAbility";
 import type { TriggerEvent } from "@/game/triggers/types";
@@ -14,7 +15,8 @@ import { findCardInstance, type GameState, type PendingReactionState, type Playe
  * inclus : "le combat n'exclut pas l'activation d'effet, ex. dégât reçu").
  */
 export function deriveReactionTriggerEvents(state: GameState, events: GameEvent[]): TriggerEvent[] {
-  const derived: TriggerEvent[] = [];
+  // Faits de joueur et dégâts infligés (Lot 17) : mêmes faits que la résolution automatique.
+  const derived: TriggerEvent[] = [...playerFactTriggerEvents(state, events)];
 
   for (const event of events) {
     switch (event.type) {

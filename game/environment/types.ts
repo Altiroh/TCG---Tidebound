@@ -291,4 +291,14 @@ export interface ShipDefinition {
    * La Raison rendue ne dépasse jamais la Raison maximale.
    */
   refundTurnReasonOnFirstDepletion?: boolean;
+  /**
+   * « La première carte [famille] coûtant N ou plus que vous jouez à chacun
+   * de vos tours coûte A de moins » (Île-Tortue Opaline, Lot 17).
+   */
+  firstArchetypeCardDiscountEachTurn?: { archetype: import("@/game/cards/archetypes").ArchetypeId; minCost: number; amount: number };
+  /**
+   * « La première fois qu'un [famille] arrive en jeu à chacun de vos tours,
+   * gagnez A Armure » (Île-Tortue Opaline, Lot 17).
+   */
+  armorOnFirstArchetypeArrivalEachTurn?: { archetype: import("@/game/cards/archetypes").ArchetypeId; amount: number };
 }

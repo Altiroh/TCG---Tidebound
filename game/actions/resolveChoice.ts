@@ -2,7 +2,8 @@ import { getCardDefinition } from "@/game/cards/sets/core";
 import { deckLookRefusal } from "@/game/rules/deckLook";
 import { UNIT_CARD_TYPES } from "@/game/cards/types";
 import { chromaticColorsOf } from "@/game/rules/chromatic";
-import { resolveEffectSequence } from "@/game/effects/resolveSequence";
+import { closeAndResolveDieRoll, closeDieRollIfIdle, resolveEffectSequence } from "@/game/effects/resolveSequence";
+import { adjustPending, keepCandidate, landeReroll } from "@/game/rules/dice";
 import { discardFromHand } from "@/game/state/discard";
 import { processGraveyardEntryTriggers, processGraveyardRecoveryTriggers, processTrigger } from "@/game/triggers/triggerBus";
 import { finirTour } from "@/game/actions/endTurn";
@@ -43,6 +44,29 @@ export function resolveChoice(state: GameState, action: ResolveChoiceAction): Ac
   const base = { turnNumber: choice.turnNumber, timestamp: Date.now() };
   let nextState: GameState = { ...state, pendingChoice: undefined };
 
+  // JET DE DÉ EN COURS (Lot 17) : un geste sur le jet, ou la fermeture de la
+  // Chaîne. Après un geste, s'il ne reste rien à décider, le jet se résout.
+  if (choice.kind === "dieRoll") {
+    const reponse = action.choice;
+    if (typeof reponse !== "object") return { ok: false, error: "Ce choix attend une décision sur le jet de dé." };
+    if ("dieResolve" in reponse) {
+      if (choice.candidates !== undefined) return { ok: false, error: "Choisissez d'abord le dé à garder." };
+      const ferme = closeAndResolveDieRoll(state, choice);
+      return { ok: true, state: ferme.state, events: ferme.events };
+    }
+    const geste =
+      "dieKeep" in reponse
+        ? keepCandidate(state, choice, reponse.dieKeep)
+        : "dieReroll" in reponse
+          ? landeReroll(state, choice)
+          : "dieAdjust" in reponse
+            ? adjustPending(state, choice, reponse.dieAdjust.sourceInstanceId, reponse.dieAdjust.delta)
+            : { ok: false as const, error: "Ce choix attend une décision sur le jet de dé." };
+    if (!geste.ok) return geste;
+    const suite = closeDieRollIfIdle(geste.state);
+    return { ok: true, state: suite.state, events: suite.events };
+  }
+
   // Option d'une capacité (« choisissez : A ou B », ex: Horloge de Marée) :
   // seule la capacité désignée se résout, avec le contexte de la carte source.
   if (choice.kind === "abilityOption") {
@@ -68,6 +92,14 @@ export function resolveChoice(state: GameState, action: ResolveChoiceAction): Ac
     const recovered = processGraveyardRecoveryTriggers(nextState, applied.events, choice.turnNumber);
     nextState = recovered.state;
     events.push(...recovered.events);
+    // « Choisissez N effets DIFFÉRENTS » (Lot 17) : la question se repose, sans l'option prise.
+    const restantes = choice.abilityIndexes.filter((i) => i !== abilityIndex);
+    if ((choice.remainingPicks ?? 0) > 0 && restantes.length > 0) {
+      const encore = { ...choice, abilityIndexes: restantes, remainingPicks: (choice.remainingPicks ?? 0) - 1 };
+      nextState = nextState.pendingChoice
+        ? { ...nextState, pendingChoiceQueue: [encore, ...(nextState.pendingChoiceQueue ?? [])] }
+        : { ...nextState, pendingChoice: encore };
+    }
     return { ok: true, state: nextState, events };
   }
   // « Choisissez une couleur » (Lot 15) : la suite du texte se résout avec
@@ -139,6 +171,7 @@ export function resolveChoice(state: GameState, action: ResolveChoiceAction): Ac
           instanceId: choice.card.instanceId,
           fromZone: "deck",
           toZone: "deck",
+          deckPosition: "bottom",
         });
       }
     }
@@ -369,8 +402,14 @@ export function resolveChoice(state: GameState, action: ResolveChoiceAction): Ac
       events.push(
         depuisCimetiere
           ? { ...base, type: "CARD_MOVED", instanceId: carte.instanceId, cardId: carte.cardId, ownerId: choice.playerId, fromZone: "graveyard", toZone: "hand" }
-          : { ...base, type: "DRAW_CARD", playerId: choice.playerId, instanceId: carte.instanceId }
+          : { ...base, type: "DRAW_CARD", playerId: choice.playerId, instanceId: carte.instanceId, viaLook: true }
       );
+    }
+    // Les cartes regardées qui repartent SOUS la pioche y sont « placées » (Lot 17 — Meraï).
+    if (!depuisCimetiere && choice.restTo !== "deckTopChosenOrder") {
+      for (const carte of rendues) {
+        events.push({ ...base, type: "CARD_MOVED", instanceId: carte.instanceId, cardId: carte.cardId, ownerId: choice.playerId, fromZone: "deck", toZone: "deck", deckPosition: "bottom" });
+      }
     }
     // La suite du texte, sur la carte prise (« s'il coûtait 2 ou moins, vous
     // pouvez le jouer pour 1 de moins ce tour »).
@@ -435,7 +474,7 @@ export function resolveChoice(state: GameState, action: ResolveChoiceAction): Ac
       const restante = player.hand.filter((c) => !chosen.includes(c.instanceId));
       let apres: PlayerState = { ...player, hand: restante, deck: [...player.deck, ...rendues] };
       for (const carte of rendues) {
-        events.push({ ...base, type: "CARD_MOVED", ownerId: choice.playerId, instanceId: carte.instanceId, cardId: carte.cardId, fromZone: "hand", toZone: "deck" });
+        events.push({ ...base, type: "CARD_MOVED", ownerId: choice.playerId, instanceId: carte.instanceId, cardId: carte.cardId, fromZone: "hand", toZone: "deck", deckPosition: "bottom" });
       }
       // « puis piochez-en autant » : exactement ce qui vient d'être rendu.
       if (choice.drawBackAfterwards) {

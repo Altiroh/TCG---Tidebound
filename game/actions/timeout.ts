@@ -54,6 +54,11 @@ function defaultActionFor(state: GameState, playerId: string): PlayerAction {
     if (choice.kind === "deckLook") return { type: "resolveChoice", playerId, choice: { takeInstanceIds: [] } };
     // « JUSQU'À N » : ne rien répartir est une réponse légale.
     if (choice.kind === "healAllocation") return { type: "resolveChoice", playerId, choice: { healAllocation: [] } };
+    // Jet de dé (Lot 17) : le délai ferme la Chaîne — avec le meilleur dé s'il faut en garder un.
+    if (choice.kind === "dieRoll") {
+      if (choice.candidates !== undefined) return { type: "resolveChoice", playerId, choice: { dieKeep: choice.candidates.indexOf(Math.max(...choice.candidates)) } };
+      return { type: "resolveChoice", playerId, choice: { dieResolve: true } };
+    }
     if (choice.kind === "keepUnits") return { type: "resolveChoice", playerId, choice: { keepInstanceIds: [] } };
     if (choice.kind === "pickUnits") return { type: "resolveChoice", playerId, choice: { pickInstanceIds: [] } };
     if (choice.kind === "handDiscard") {

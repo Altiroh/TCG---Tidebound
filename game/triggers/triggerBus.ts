@@ -1,3 +1,6 @@
+import { applyShipArrivalPassives } from "@/game/rules/shipPassives";
+import { isTextIgnored } from "@/game/cards/types";
+import { playerFactTriggerEvents } from "@/game/triggers/playerFacts";
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { computeEffectiveStats } from "@/game/cards/stats";
 import { isVisibleDuringTide, UNIT_CARD_TYPES, type CardInstance, type TriggeredAbility, type TriggerSourceFilter } from "@/game/cards/types";
@@ -49,6 +52,8 @@ const TRIGGERS_HORS_MASQUAGE = new Set(["onDeath", "onSaborde", "onExpire", "onT
  * et l'exception doit se déclarer — `hiddenReaction`.
  */
 function blocqueParMasquage(state: GameState, unit: CardInstance, ability: TriggeredAbility): boolean {
+  // « Son texte est ignoré » (Lot 17) : aucune capacité, masquée ou non.
+  if (isTextIgnored(unit)) return true;
   if (ability.hiddenReaction) return false;
   if (TRIGGERS_HORS_MASQUAGE.has(ability.trigger)) return false;
   return !isVisibleDuringTide(getCardDefinition(unit.cardId), state.environment.tideState);
@@ -244,6 +249,8 @@ function matchesLot15Condition(
   if (condition.duringOwnTurn && state.activePlayerId !== controllerId) return false;
   // « pendant le tour adverse » (Bouclier d'Écume).
   if (condition.duringOpponentTurn && state.activePlayerId === controllerId) return false;
+  // « si une Lande est active » (Lot 17).
+  if (condition.landeActive && !state.environment.lande) return false;
   const moi = state.players.find((p) => p.id === controllerId);
   const adversaire = state.players.find((p) => p.id !== controllerId);
   // « si vous contrôlez au moins N AUTRES unités » (Le Déserteur Gris).
@@ -255,6 +262,18 @@ function matchesLot15Condition(
   }
   // « si votre Navire a moins d'Ancrage que le Navire adverse ».
   if (condition.controllerAnchorBelowOpponent && !((moi?.anchor ?? 0) < (adversaire?.anchor ?? 0))) return false;
+  // « S'il entre en jeu par l'effet de [carte] » (Lot 17).
+  if (condition.selfArrivedVia) {
+    const porteuse = sourceInstanceId ? findBoardUnit(state, sourceInstanceId) : undefined;
+    if (porteuse?.unit.arrivedViaCardId !== condition.selfArrivedVia) return false;
+  }
+  // Marquée ce tour (`flagThisTurn`, Lot 17).
+  if (condition.selfFlaggedThisTurn) {
+    const porteuse = sourceInstanceId ? findBoardUnit(state, sourceInstanceId) : undefined;
+    if ((porteuse?.unit.oncePerTurnFlags ?? {})[condition.selfFlaggedThisTurn] !== state.turnNumber) return false;
+  }
+  // « si vous contrôlez une carte LV » (Lot 17).
+  if (condition.controlsTag && !(moi?.board ?? []).some((u) => getCardDefinition(u.cardId).tags?.includes(condition.controlsTag!))) return false;
   // « À son arrivée par Assemblage ».
   if (condition.selfArrivedByAssemblage) {
     const porteuse = sourceInstanceId ? findBoardUnit(state, sourceInstanceId) : undefined;
@@ -384,6 +403,7 @@ function matchesTriggerSource(
   if (filter.archetype && !(event.cardId && getCardDefinition(event.cardId).archetype === filter.archetype)) return false;
   // Même logique pour le sous-type (Lot 11, « une autre Marionnette alliée »).
   if (filter.subtype && !(event.cardId && getCardDefinition(event.cardId).subtype === filter.subtype)) return false;
+  if (filter.minCost !== undefined && !(event.cardId && getCardDefinition(event.cardId).cost >= filter.minCost)) return false;
   // « quand une Structure... » : type de la carte déclencheuse.
   if (filter.cardTypes && !(event.cardId && filter.cardTypes.includes(getCardDefinition(event.cardId).type))) return false;
   // « des dégâts infligés par l'un de VOS effets » (Maître Verrier, Pont de
@@ -445,6 +465,16 @@ function collectObserverWork(
  * automatique) ou "optional" (réactions facultatives, jamais résolues
  * ici : seulement recensées, voir `collectReactionCandidates`).
  */
+/** Déclencheurs de FAITS DE JOUEUR (Lot 17) — cf. leur branche dans `collectTriggeredWork`. */
+const PLAYER_FACT_TRIGGERS = new Set<string>([
+  "onArmorGained",
+  "onDieResolved",
+  "onCardPutUnderDeck",
+  "onExtraCardDrawn",
+  "onCardLeftGraveyard",
+  "onLandePlaced",
+]);
+
 function collectTriggeredWork(
   state: GameState,
   event: TriggerEvent,
@@ -548,6 +578,31 @@ function collectTriggeredWork(
         if (ability.oncePerTurnKey && !oncePerTurnAvailable(unit, ability.oncePerTurnKey, turnNumber)) return;
         result.push(work(ability, abilityIndex, def.id, player.id, unit.instanceId, turnNumber));
       });
+    }
+    return result;
+  }
+
+  // FAITS DE JOUEUR (Lot 17) : l'événement nomme un joueur (`playerId`), pas
+  // une carte. Les capacités se lisent sur les DEUX plateaux, et
+  // `condition.factOf` dit de qui le fait doit être (soi par défaut).
+  if (PLAYER_FACT_TRIGGERS.has(event.trigger)) {
+    if (!event.playerId) return result;
+    for (const player of playersActiveFirst(state)) {
+      for (const unit of player.board) {
+        if (isInactive(state, unit)) continue;
+        const def = getCardDefinition(unit.cardId);
+        (def.abilities ?? []).forEach((ability, abilityIndex) => {
+          if (ability.trigger !== event.trigger || !matchesMode(ability)) return;
+          if (blocqueParMasquage(state, unit, ability)) return;
+          const de = ability.condition?.factOf ?? "self";
+          if (de === "self" && event.playerId !== player.id) return;
+          if (de === "opponent" && event.playerId === player.id) return;
+          const issues = ability.condition?.dieOutcomes;
+          if (issues && !(event.dieOutcome && issues.includes(event.dieOutcome))) return;
+          if (ability.oncePerTurnKey && !oncePerTurnAvailable(unit, ability.oncePerTurnKey, turnNumber)) return;
+          result.push(work(ability, abilityIndex, def.id, player.id, unit.instanceId, turnNumber));
+        });
+      }
     }
     return result;
   }
@@ -1053,12 +1108,14 @@ export function processTrigger(
       const abilityIndexes = (getCardDefinition(item.cardId).abilities ?? []).flatMap((ability, index) =>
         ability.choiceGroup === item.ability.choiceGroup && (ability.mode ?? "auto") === "auto" ? [index] : []
       );
+      const picks = item.ability.choiceGroupPicks ?? 1;
       const option: PendingChoice = {
         kind: "abilityOption",
         playerId: item.context.controllerId,
         sourceInstanceId: item.context.sourceInstanceId,
         cardId: item.cardId,
         abilityIndexes,
+        ...(picks > 1 ? { remainingPicks: Math.min(picks, abilityIndexes.length) - 1 } : {}),
         turnNumber,
       };
       nextState = nextState.pendingChoice
@@ -1095,6 +1152,10 @@ export function processTrigger(
     const resolved = resolveEffectSequence(nextState, item.effects, context);
     nextState = resolved.state;
     events.push(...resolved.events);
+    // Une capacité vient de se résoudre (Lot 17 — `onAbilityResolved`).
+    if (item.context.sourceInstanceId && findBoardUnit(nextState, item.context.sourceInstanceId)) {
+      events.push({ type: "ABILITY_RESOLVED", turnNumber, timestamp: Date.now(), playerId: item.context.controllerId, instanceId: item.context.sourceInstanceId, cardId: item.cardId });
+    }
   }
 
   if (depth === 0) {
@@ -1577,6 +1638,10 @@ export function resolveReaction(
     playerId: candidate.controllerId,
     sourceInstanceId: candidate.sourceInstanceId,
   });
+  // Une capacité vient de se résoudre (Lot 17 — `onAbilityResolved`).
+  if (findBoardUnit(nextState, candidate.sourceInstanceId)) {
+    events.push({ ...base, type: "ABILITY_RESOLVED", playerId: candidate.controllerId, instanceId: candidate.sourceInstanceId, cardId: candidate.cardId });
+  }
 
   return { state: nextState, events };
 }
@@ -1660,6 +1725,30 @@ export function processSurvivedDamage(
  * Raison par un effet pendant l'action. La régénération de début de tour ne
  * porte pas `source: "card"`, elle ne compte donc pas.
  */
+/**
+ * Faits de joueur et dégâts infligés (Lot 17) : leurs capacités AUTOMATIQUES
+ * se résolvent ici, après les morts — les facultatives passent par la
+ * fenêtre de réaction (`deriveReactionTriggerEvents`), à partir des mêmes
+ * faits (`playerFactTriggerEvents`).
+ */
+export function processPlayerFacts(
+  state: GameState,
+  events: readonly GameEvent[],
+  turnNumber: number
+): { state: GameState; events: GameEvent[] } {
+  // Passifs de Navire liés aux arrivées (Île-Tortue Opaline) : leur Armure
+  // gagnée est un fait comme un autre.
+  const navire = applyShipArrivalPassives(state, events, turnNumber);
+  let nextState = navire.state;
+  const produced: GameEvent[] = [...navire.events];
+  for (const fait of playerFactTriggerEvents(nextState, [...events, ...navire.events])) {
+    const result = processTrigger(nextState, fait, turnNumber, 1);
+    nextState = result.state;
+    produced.push(...result.events);
+  }
+  return { state: nextState, events: produced };
+}
+
 export function processReasonGained(
   state: GameState,
   events: readonly GameEvent[],

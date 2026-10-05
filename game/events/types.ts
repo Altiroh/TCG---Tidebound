@@ -21,6 +21,9 @@ export type GameEventType =
   | "DEBUFF_APPLIED"
   | "RESOURCE_CHANGED"
   | "REASON_CHANGED"
+  | "ARMOR_CHANGED"
+  | "ABILITY_RESOLVED"
+  | "DIE_RESOLVED"
   | "CARD_MOVED"
   | "DURATION_CHANGED"
   | "ATTACK_INTERCEPTED"
@@ -77,6 +80,10 @@ export interface DrawCardEvent extends BaseGameEvent {
   type: "DRAW_CARD";
   playerId: PlayerId;
   instanceId: string;
+  /** La pioche de DÉBUT DE TOUR (Lot 17) : toute autre pioche est « en dehors de la pioche normale ». */
+  turnDraw?: boolean;
+  /** Carte PRISE parmi des cartes regardées (« ajoutez-en une à votre main ») : ce n'est pas une pioche. */
+  viaLook?: boolean;
 }
 
 export interface PlayCardEvent extends BaseGameEvent {
@@ -134,6 +141,13 @@ export interface DamageEvent extends BaseGameEvent {
    * la source lisent `cause` / `sourcePlayerId`).
    */
   origin?: EffectOrigin;
+  /**
+   * Carte EN JEU qui inflige ces dégâts (Lot 17 — « une unité que vous
+   * contrôlez inflige des dégâts ») : l'attaquant pour un coup porté, le
+   * défenseur pour une riposte, la carte source pour un effet. Absent quand
+   * aucun permanent ne frappe (Marée, sort joué depuis la main, Navire).
+   */
+  dealerInstanceId?: string;
 }
 
 /** Lanceur d'un effet : le joueur qui le contrôle et, s'il y en a une, la carte d'où il part. */
@@ -219,6 +233,42 @@ export interface ResourceChangedEvent extends BaseGameEvent {
   delta: number;
 }
 
+/**
+ * Un jet de dé résolu (Lot 17), Chaîne fermée : la valeur retenue et son
+ * issue. Réveille `onDieResolved`.
+ */
+export interface DieResolvedEvent extends BaseGameEvent {
+  type: "DIE_RESOLVED";
+  playerId: PlayerId;
+  sourceInstanceId?: string;
+  cardId?: string;
+  die: number;
+  value: number;
+  outcome: import("@/game/triggers/types").DieOutcome;
+  /** Les faces tirées, dans l'ordre (relances et dés doublés compris) — pour l'écran et le journal. */
+  rolls: number[];
+}
+
+/**
+ * Une carte en jeu vient de résoudre une capacité déclenchée (Lot 17 —
+ * « la première fois à chaque tour qu'un autre Opalin que vous contrôlez
+ * déclenche un effet », Eidolon Opalin LVX). Réveille `onAbilityResolved`.
+ */
+export interface AbilityResolvedEvent extends BaseGameEvent {
+  type: "ABILITY_RESOLVED";
+  playerId: PlayerId;
+  instanceId: string;
+  cardId: string;
+}
+
+/** Variation de l'Armure du Navire (Lot 17) : gagnée par un effet, entamée par des dégâts, perdue par un effet. */
+export interface ArmorChangedEvent extends BaseGameEvent {
+  type: "ARMOR_CHANGED";
+  playerId: PlayerId;
+  delta: number;
+  armorAfter: number;
+}
+
 /** Variation de Raison (LA ressource du jeu — pas une piste de mana séparée). */
 export interface ReasonChangedEvent extends BaseGameEvent {
   type: "REASON_CHANGED";
@@ -279,6 +329,8 @@ export interface CardMovedEvent extends BaseGameEvent {
   discardByEffect?: boolean;
   /** Défausse d'effet qui SUIT une pioche du même joueur dans la même suite d'effets (`HandDiscardChoice.afterDraw`). */
   discardAfterDraw?: boolean;
+  /** `toZone: "deck"` : où dans la pioche (Lot 17 — « placez-la sous votre pioche » réveille `onCardPutUnderDeck`). */
+  deckPosition?: "top" | "bottom" | "shuffled";
 }
 
 /**
@@ -563,6 +615,9 @@ export type GameEvent =
   | DebuffAppliedEvent
   | ResourceChangedEvent
   | ReasonChangedEvent
+  | ArmorChangedEvent
+  | AbilityResolvedEvent
+  | DieResolvedEvent
   | CardMovedEvent
   | TurnStartedEvent
   | EndTurnEvent

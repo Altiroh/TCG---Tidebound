@@ -93,6 +93,7 @@ export function eligibleChosenUnits(
     // déclare avec `unitsOnly` (nomenclature Notion : « unité » = Marin ou
     // Créature, « carte » = tout type).
     if (filter.subtype && getCardDefinition(unit.cardId).subtype !== filter.subtype) return false;
+    if (filter.tag && !getCardDefinition(unit.cardId).tags?.includes(filter.tag)) return false;
     if (filter.maxCost !== undefined && getCardDefinition(unit.cardId).cost > filter.maxCost) return false;
     if (filter.damaged && unit.damageMarked <= 0) return false;
     if (filter.damagedThisTurn && (unit.damageMarked <= 0 || unit.lastDamageTurn !== state.turnNumber)) return false;

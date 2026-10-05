@@ -162,7 +162,20 @@ export function placeLande(
         },
       },
     },
-    events: replaced.events,
+    // L'arrivée de la Lande (Lot 17 — `onLandePlaced`).
+    events: [
+      ...replaced.events,
+      {
+        type: "CARD_MOVED",
+        turnNumber,
+        timestamp: Date.now(),
+        instanceId: instance.instanceId,
+        cardId: instance.cardId,
+        ownerId: playerId,
+        fromZone: "hand",
+        toZone: "lande",
+      },
+    ],
   };
 }
 

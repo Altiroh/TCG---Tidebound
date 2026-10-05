@@ -1,3 +1,4 @@
+import { isTextIgnored } from "@/game/cards/types";
 import { getCardDefinition } from "@/game/cards/sets/core";
 import type { GameEvent } from "@/game/events/types";
 import { isVisibleDuringTide, type CardDefinition, type CardInstance, type CardType } from "@/game/cards/types";
@@ -33,6 +34,8 @@ function findAvailableShield<T>(
     // Brise-Vague de Fortune protégeaient donc leur Navire alors qu'elles
     // étaient invisibles, ce que leur texte ne promet nulle part.
     if (!isVisibleDuringTide(def, state.environment.tideState)) continue;
+    // « Son texte est ignoré » (Lot 17) : son bouclier aussi.
+    if (isTextIgnored(unit)) continue;
     if (!oncePerTurnAvailable(unit, key, turnNumber)) continue;
     return { unit, spec };
   }

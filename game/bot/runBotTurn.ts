@@ -69,6 +69,11 @@ export function applyBotAction(state: GameState, playerId: PlayerId, action: Pla
             choice:
               state.pendingChoice.kind === "abilityOption"
                 ? { abilityIndex: state.pendingChoice.abilityIndexes[0] ?? 0 }
+                : state.pendingChoice.kind === "dieRoll"
+                  ? // Un jet se ferme toujours ; s'il attend un dé à garder, le premier.
+                    state.pendingChoice.candidates !== undefined
+                    ? { dieKeep: 0 }
+                    : { dieResolve: true as const }
                 : state.pendingChoice.kind === "pickUnits"
                   ? { pickInstanceIds: [] as string[] }
                 : state.pendingChoice.kind === "chromaticColor"

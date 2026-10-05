@@ -59,6 +59,26 @@ export interface PlayerState {
    */
   statusFlags: string[];
   /**
+   * ARMURE du Navire (Lot 17, `game/state/armor.ts`) : réserve durable qui
+   * absorbe les dégâts au Navire avant l'Ancrage. Absente = 0.
+   */
+  armor?: number;
+  /**
+   * « La prochaine fois qu'une de vos unités inflige des dégâts ce tour,
+   * augmentez ces dégâts de N » (Lot 17 — `game/state/damageBonus.ts`).
+   */
+  nextUnitDamageBonus?: { amount: number; turnNumber: number };
+  /** Ce qui attend le prochain jet de dé de ce joueur (Lot 17 — `game/rules/dice.ts`). */
+  nextRoll?: NextRollModifier[];
+  /** Tour où ce joueur a pris la relance de Lande (« la première fois que vous lancez un dé à chacun de vos tours »). */
+  landeRerollTurn?: number;
+  /** Réductions « la première … à chacun de vos tours » déjà prises ce tour (Lot 17 — `game/rules/costReductions.ts`). */
+  turnDiscountsUsed?: { turnNumber: number; keys: string[] };
+  /** Tour où ce joueur a reçu le bonus de « la première unité coûtant 2 ou moins » d'une Lande (Calme trompeur). */
+  cheapUnitBuffTurn?: number;
+  /** Tour du premier jet de ce joueur (« la première fois que vous lancez un dé à chacun de vos tours »). */
+  firstRollTurn?: number;
+  /**
    * Réductions de coût en attente, posées par un effet et consommées par
    * la prochaine carte jouée qui correspond (Lot 11 — « la prochaine
    * Marionnette que vous jouez ce tour coûte 1 de moins »).
@@ -277,6 +297,10 @@ export interface CostDiscount {
   onlyInstanceIds?: string[];
   /** Ne s'applique qu'aux cartes de coût IMPRIMÉ inférieur ou égal (`filter.maxCost` de l'effet). */
   maxCost?: number;
+  /** Ne s'applique qu'aux cartes de coût IMPRIMÉ supérieur ou égal (« votre prochaine unité coûtant 5 ou plus », Lot 17). */
+  minCost?: number;
+  /** Ne s'applique qu'aux cartes de cette famille. */
+  archetype?: import("@/game/cards/archetypes").ArchetypeId;
 }
 
 /**
@@ -608,6 +632,8 @@ export interface AbilityOptionChoice {
   sourceInstanceId: string;
   cardId: string;
   abilityIndexes: number[];
+  /** « Choisissez N effets différents » : options qu'il restera à prendre APRÈS celle-ci (`choiceGroupPicks`). */
+  remainingPicks?: number;
   turnNumber: number;
 }
 
@@ -882,7 +908,91 @@ export interface DeckTopDecisionChoice {
   turnNumber: number;
 }
 
+/** Face d'un dé du Lot 17. */
+export type DieSize = 4 | 6 | 8;
+
+/**
+ * Une branche d'issue d'un jet (Lot 17) : ses effets se résolvent si le jet
+ * retenu la satisfait. `critical` : Réussite critique (face max) ou Échec
+ * critique (face 1) ; `min`/`max` : plage de résultats (« sur 5+ »,
+ * « sur 1–3 ») ; `success`/`failure` : le jet atteint ou non son seuil.
+ * Sans condition : toujours (sauf si une branche `first` est déjà passée).
+ */
+export interface DieOutcomeBranch {
+  when?: { critical?: "success" | "failure"; min?: number; max?: number; success?: boolean; failure?: boolean; notCriticalFailure?: boolean };
+  effects: EffectDefinition[];
+}
+
+/** Ce qui attend le PROCHAIN jet d'un joueur (Lot 17 — Maurice, Dédé, Double tentative, Dé du destin). */
+export interface NextRollModifier {
+  /** Ajouté au résultat (« votre prochain jet ce tour gagne +1 »). */
+  delta?: number;
+  /** Deux dés identiques, le joueur choisit lequel garder (Double tentative). */
+  advantage?: boolean;
+  /** Le dé monte d'un niveau par cran : D4 → D6 → D8 (Dé du destin très officiel). */
+  upgradeSteps?: number;
+  /** « ce tour » : tombe à la fin de ce tour s'il n'a pas servi. */
+  thisTurnOnly?: number;
+  /** Carte qui l'a posé, et ce qui se passe si ce jet tourne au critique (« S'il devient une Réussite critique, Maurice gagne +1/+1 »). */
+  sourceInstanceId?: string;
+  controllerId?: PlayerId;
+  ifCriticalSuccess?: EffectDefinition[];
+  ifCriticalFailure?: EffectDefinition[];
+}
+
+/**
+ * UN JET DE DÉ EN COURS (Lot 17) — la Chaîne : le dé est lancé, son résultat
+ * n'est pas encore résolu. Tant que la question est ouverte, son joueur peut
+ * Briser des Objets « Chaîne » (`breakObject`, même hors de sa Phase
+ * principale), relancer (Le Donjon de Ladalle), ajuster (Miss Franche-Comté
+ * 1987) ou choisir entre deux dés. Réussite critique et Échec critique ne se
+ * jugent qu'à la FERMETURE de la Chaîne (`resolveChoice` : `{ dieResolve }`).
+ *
+ * Un jet sur lequel le joueur ne peut rien faire se résout tout seul, sans
+ * question (`game/rules/dice.ts`).
+ */
+export interface DieRollChoice {
+  kind: "dieRoll";
+  playerId: PlayerId;
+  die: DieSize;
+  /** Valeur courante ; absente tant qu'un dé doublé attend son choix (`candidates`). */
+  value?: number;
+  /** Deux dés tirés (Double tentative) : le joueur garde l'un d'eux. */
+  candidates?: number[];
+  /** Toutes les faces tirées, relances comprises. */
+  rolls: number[];
+  /** Seuil de Réussite (inclus) ; défaut : moitié haute du dé. */
+  successAt: number;
+  /** « Le jet en cours ne peut pas être considéré comme un Échec critique » (Pièce porte-bonheur). */
+  noCriticalFailure?: boolean;
+  /** Relance de Lande (Le Donjon de Ladalle) déjà prise sur ce jet. */
+  landeRerollUsed?: boolean;
+  /** Cartes qui ont ajusté ce jet par leur capacité (Miss Franche-Comté 1987) : leurs suites de critique s'y lisent. */
+  adjustedBy?: string[];
+  /** Ce qui attendait ce jet et se juge à sa fermeture (Maurice). */
+  hooks?: NextRollModifier[];
+  branches: DieOutcomeBranch[];
+  /** `"first"` : seule la première branche satisfaite se résout ; `"all"` (défaut) : toutes. */
+  branchMode?: "all" | "first";
+  sourceInstanceId?: string;
+  cardId?: string;
+  /** Contexte des effets des branches et de la suite. */
+  context: {
+    controllerId: PlayerId;
+    sourceInstanceId?: string;
+    chosenTargetInstanceId?: string;
+    chosenGraveyardInstanceId?: string;
+    triggerSourceInstanceId?: string;
+    brokenFromHand?: boolean;
+    turnNumber: number;
+  };
+  /** Effets de la séquence qui suivent le jet. */
+  continuation?: { effects: EffectDefinition[] };
+  turnNumber: number;
+}
+
 export type PendingChoice =
+  | DieRollChoice
   | ChromaticColorChoice
   | DeckTopDecisionChoice
   | PickUnitsChoice
