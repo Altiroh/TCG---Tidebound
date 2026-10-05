@@ -18,7 +18,7 @@
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { UNIT_CARD_TYPES, type CardInstance } from "@/game/cards/types";
 
-export type ArchetypeId = "cra-poiscail" | "un-dead" | "cavalerie" | "equipage-de-verre" | "sentinelle-chromatique" | "alteres";
+export type ArchetypeId = "cra-poiscail" | "un-dead" | "cavalerie" | "equipage-de-verre" | "sentinelle-chromatique" | "alteres" | "opalin";
 
 /** Libellé humain — outils de design, journaux, tests. Jamais rendu sur une carte. */
 export const ARCHETYPE_LABELS: Record<ArchetypeId, string> = {
@@ -42,6 +42,13 @@ export const ARCHETYPE_LABELS: Record<ArchetypeId, string> = {
   // Anomalies de soutien. « Un Altéré » désigne l'UNITÉ (sous-type
   // `altere`) ; « une carte Altéré », toute carte de la famille.
   alteres: "Altérés",
+  // Ouvert le 05/10/2026 par une seule carte teaser, Cartographe Opalin
+  // méfiant (Étrangeté sous-marine). Première famille dont l'appartenance
+  // se LIT sur la carte (`CardDefinition.showsArchetype`) : Notion, Catalogue
+  // — « lorsqu'une famille est conçue pour être explicitement identifiable,
+  // son archétype peut apparaître sur la carte. Les Opalins utilisent cette
+  // exception. »
+  opalin: "Opalin",
 };
 
 /**

@@ -61,8 +61,8 @@ export interface LandeScene {
   sprites?: string[];
   /** Petits débris projetés aux temps forts (éclats de verre). */
   debris?: string[];
-  /** Pièce d'ancrage aux extrémités (gros anneau de la chaîne). */
-  anchor?: string;
+  /** Pièces d'ancrage aux extrémités visibles (anneau, crochet), en alternance. */
+  anchors?: string[];
   layers?: LandeLayer[];
   /**
    * Calque montré un instant à chaque tour de table qui s'achève (fissures
@@ -97,8 +97,10 @@ export const LANDE_SCENES: Readonly<Record<string, LandeScene>> = {
       "linear-gradient(180deg, rgba(150, 210, 255, 0.16) 0%, transparent 40%, rgba(120, 190, 240, 0.2) 100%), " +
       "radial-gradient(120% 90% at 50% 45%, transparent 45%, rgba(8, 22, 40, 0.45) 100%)",
     fx: "glassSpikes",
-    sprites: ["pic-01.png", "pic-02.png", "pic-03.png", "pic-04.png", "pic-05.png", "pic-06.png", "pic-07.png", "pic-08.png"],
-    debris: ["eclat-01.png", "eclat-02.png", "eclat-03.png", "eclat-04.png"],
+    // Pics élancés et grappes plus larges (`eclat-*`) : les grappes donnent
+    // du corps aux bords, les pics la hauteur aux coins.
+    sprites: ["pic-01.png", "pic-02.png", "pic-03.png", "pic-04.png", "pic-05.png", "pic-06.png", "eclat-01.png", "eclat-02.png", "eclat-03.png"],
+    debris: ["eclat-01.png", "eclat-02.png", "eclat-03.png"],
     pulseLayer: "fissures.png",
   },
   "chaine-de-construction": {
@@ -109,7 +111,7 @@ export const LANDE_SCENES: Readonly<Record<string, LandeScene>> = {
       "radial-gradient(120% 90% at 50% 45%, transparent 45%, rgba(24, 12, 4, 0.5) 100%)",
     fx: "chains",
     sprites: ["chaine-segment-01.png", "chaine-segment-02.png", "chaine-segment-03.png"],
-    anchor: "anneau.png",
+    anchors: ["anneau.png", "crochet.png"],
     pulseLayer: "cadenas.png",
   },
 };

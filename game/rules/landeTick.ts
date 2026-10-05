@@ -32,12 +32,39 @@ export function tickLande(state: GameState, turnNumber: number): { state: GameSt
   if (remaining % 2 === 0) {
     const damage = activeLandeRules(state.environment)?.damageAllPermanentsEachTableTurn;
     if (damage) {
+      // À l'abri (Zone de repli) : le coup est ignoré pour ce permanent, et
+      // l'abri est consommé. Les permanents abrités sont mis de côté le
+      // temps du coup, puis rendus à leur place dans le rang.
+      const abrites = new Map<string, number>();
+      const sansAbrites: GameState = {
+        ...nextState,
+        players: nextState.players.map((p) => ({
+          ...p,
+          board: p.board.filter((u, index) => {
+            if (!u.modifiers.some((m) => m.ignoresLande)) return true;
+            abrites.set(u.instanceId, index);
+            return false;
+          }),
+        })) as GameState["players"],
+      };
       const hit = resolveEffect(
-        nextState,
+        sansAbrites,
         { type: "damage", target: { kind: "allUnits" }, amount: { kind: "flat", value: damage } },
         { controllerId: lande.ownerId, turnNumber }
       );
-      nextState = hit.state;
+      nextState = {
+        ...hit.state,
+        players: hit.state.players.map((p) => {
+          const avant = nextState.players.find((q) => q.id === p.id)!;
+          const board = [...p.board];
+          for (const unit of avant.board) {
+            const index = abrites.get(unit.instanceId);
+            if (index === undefined) continue;
+            board.splice(Math.min(index, board.length), 0, { ...unit, modifiers: unit.modifiers.filter((m) => !m.ignoresLande) });
+          }
+          return { ...p, board };
+        }) as GameState["players"],
+      };
       events.push(...hit.events);
     }
   }

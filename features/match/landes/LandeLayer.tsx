@@ -61,7 +61,7 @@ function LandeScene({ lande, state, delayMs }: { lande: ActiveLande; state: "ent
   const [entry] = useState({ state, delayMs });
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fxRef = useRef<LandeFx | null>(null);
-  const spritesRef = useRef<LandeSprites>({ pieces: [], debris: [] });
+  const spritesRef = useRef<LandeSprites>({ pieces: [], debris: [], anchors: [] });
   const [pulse, setPulse] = useState(0);
   const runFx = Boolean(scene.fx);
   const sprites = useLandeSprites(lande.cardId);
@@ -150,11 +150,11 @@ function LandeScene({ lande, state, delayMs }: { lande: ActiveLande; state: "ent
 }
 
 /**
- * Charge les pièces illustrées de la Lande (`sprites`, `debris`, `anchor`).
+ * Charge les pièces illustrées de la Lande (`sprites`, `debris`, `anchors`).
  * Un fichier absent est ignoré sans bruit : l'effet dessine les siennes.
  */
 function useLandeSprites(cardId: string): LandeSprites {
-  const [sprites, setSprites] = useState<LandeSprites>({ pieces: [], debris: [] });
+  const [sprites, setSprites] = useState<LandeSprites>({ pieces: [], debris: [], anchors: [] });
   useEffect(() => {
     const scene = landeScene(cardId);
     let alive = true;
@@ -169,10 +169,10 @@ function useLandeSprites(cardId: string): LandeSprites {
     void Promise.all([
       Promise.all((scene.sprites ?? []).map(load)),
       Promise.all((scene.debris ?? []).map(load)),
-      scene.anchor ? load(scene.anchor) : Promise.resolve(null),
-    ]).then(([pieces, debris, anchor]) => {
+      Promise.all((scene.anchors ?? []).map(load)),
+    ]).then(([pieces, debris, anchors]) => {
       if (!alive) return;
-      setSprites({ pieces: present(pieces), debris: present(debris), anchor: anchor ?? undefined });
+      setSprites({ pieces: present(pieces), debris: present(debris), anchors: present(anchors) });
     });
     return () => {
       alive = false;

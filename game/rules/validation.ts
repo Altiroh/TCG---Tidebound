@@ -80,7 +80,7 @@ export function hasKeywordInContext(unit: CardInstance, keyword: string, context
   // un retrait posé par modificateur l'emporte sur TOUT octroi, imprimé,
   // conditionnel ou transmis — c'est exactement ce que le texte promet.
   if (unit.modifiers.some((m) => m.removesKeywords?.includes(keyword))) return false;
-  if (context.removedKeywords?.includes(keyword)) return false;
+  if (context.removedKeywords?.includes(keyword) && !unit.modifiers.some((m) => m.ignoresLande)) return false;
   if ((def.conditionalKeywordSuppressions ?? []).some(matches)) return false;
   if (hasKeyword(def, keyword)) return true;
   if ((def.conditionalKeywords ?? []).some(matches)) return true;

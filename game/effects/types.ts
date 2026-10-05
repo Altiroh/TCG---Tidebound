@@ -125,6 +125,18 @@ export type EffectType =
   | "tideAmplifyNext"
   /** Inverse l'orientation courante de la Marée (Montante ↔ Descendante). */
   | "tideInvertOrientation"
+  /**
+   * « Détruisez la Lande active » (Lever l'Ancre) : elle part au Cimetière
+   * de son propriétaire, cause `destroyed`. Sans Lande : rien.
+   */
+  | "destroyLande"
+  /**
+   * « Réduisez de N sa durée restante » (Cartographe Opalin méfiant) :
+   * retire `amount` TOURS DE TABLE à la Lande active. Ramenée à 0, elle part
+   * au Cimetière de son propriétaire, comme à la fin de sa durée. Sans
+   * Lande : rien.
+   */
+  | "shortenLande"
   /** Fixe l'orientation de la Marée à `forceTideOrientation` ("forcez son orientation à devenir descendante"). Sans effet si elle l'est déjà. */
   | "tideSetOrientation"
   /** Force une transition IMMÉDIATE d'un état vers les Abysses (jamais via le décompte normal). */
@@ -827,6 +839,8 @@ export interface EffectDefinition {
   expiresOnControllersTurn?: boolean;
   /** `buff`/`debuff` : mots-clés RETIRÉS pour la durée (« elle perd Garde »). */
   removeKeywords?: string[];
+  /** `buff` : la cible est à l'abri de la Lande pour la durée (`StatModifier.ignoresLande`, Zone de repli). */
+  ignoresLande?: boolean;
   /**
    * `buff` : la Puissance n'est accordée que pour le prochain combat contre
    * une cible portant ce mot-clé (Ouvrez la Ligne !). Le montant vient de

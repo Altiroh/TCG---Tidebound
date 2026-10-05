@@ -15,7 +15,7 @@ export interface LandeFx {
   pulse(): void;
   resize(width: number, height: number): void;
   /**
-   * Pièces illustrées chargées (`LandeScene.sprites`, `debris`, `anchor`) :
+   * Pièces illustrées chargées (`LandeScene.sprites`, `debris`, `anchors`) :
    * dès qu'il y en a, l'effet les place à la place de ses propres dessins.
    */
   setSprites(sprites: LandeSprites): void;
@@ -24,7 +24,7 @@ export interface LandeFx {
 export interface LandeSprites {
   pieces: HTMLImageElement[];
   debris: HTMLImageElement[];
-  anchor?: HTMLImageElement;
+  anchors: HTMLImageElement[];
 }
 
 const rand = (min: number, max: number) => min + Math.random() * (max - min);
@@ -235,7 +235,7 @@ function glassSpikes(ctx: CanvasRenderingContext2D, rgb: string, rgbHot: string)
   const sparks: Spark[] = [];
   let time = 0;
   let glint = -0.3;
-  let sprites: LandeSprites = { pieces: [], debris: [] };
+  let sprites: LandeSprites = { pieces: [], debris: [], anchors: [] };
 
   /**
    * Pic ILLUSTRÉ : la pièce sort de la mer pointe la première — on n'en
@@ -455,7 +455,7 @@ function chains(ctx: CanvasRenderingContext2D, rgb: string, rgbHot: string): Lan
   let time = 0;
   let tension = 0;
   const embers: Spark[] = [];
-  let sprites: LandeSprites = { pieces: [], debris: [] };
+  let sprites: LandeSprites = { pieces: [], debris: [], anchors: [] };
   const lines: ChainLine[] = [
     { from: [-0.05, 0.06], to: [1.05, 0.1], sag: 0.07, phase: 0 },
     { from: [-0.05, 0.94], to: [1.05, 0.9], sag: -0.05, phase: 1.7 },
@@ -533,14 +533,15 @@ function chains(ctx: CanvasRenderingContext2D, rgb: string, rgbHot: string): Lan
       t = t2;
       piece += 1;
     }
-    if (sprites.anchor) {
-      const a = sprites.anchor;
-      const aw = (size * 4 * a.naturalWidth) / a.naturalHeight;
-      for (const end of [line.from, line.to]) {
+    if (sprites.anchors.length) {
+      [line.from, line.to].forEach((end, i) => {
         const [x, y] = [end[0] * w, end[1] * h];
-        if (x < 0 || x > w || y < 0 || y > h) continue;
-        ctx.drawImage(a, x - aw / 2, y - size * 2, aw, size * 4);
-      }
+        if (x < 0 || x > w || y < 0 || y > h) return;
+        const a = sprites.anchors[i % sprites.anchors.length]!;
+        const ah = size * 5;
+        const aw = (ah * a.naturalWidth) / a.naturalHeight;
+        ctx.drawImage(a, x - aw / 2, y - ah / 2, aw, ah);
+      });
     }
   }
 

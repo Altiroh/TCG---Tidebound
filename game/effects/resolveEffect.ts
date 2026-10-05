@@ -25,7 +25,7 @@ import { reasonAfterLoss, reasonCeiling } from "@/game/state/reason";
 import { markOncePerTurnUsed, oncePerTurnAvailable } from "@/game/state/oncePerTurn";
 import { chromaticColorsOf, chromaticShardCardId } from "@/game/rules/chromatic";
 import { eveilsThisTurn } from "@/game/rules/eveil";
-import { recordUnitArrivals, unitArrivalsLeft } from "@/game/rules/lande";
+import { recordUnitArrivals, sendLandeToGraveyard, unitArrivalsLeft } from "@/game/rules/lande";
 import {
   applyOpponentRemovalShield,
   consumeEquippedEffectDamageShield,
@@ -1218,6 +1218,7 @@ export function resolveEffect(
               ...(effect.expiresOnControllersTurn ? { appliedBy: context.controllerId } : {}),
               ...(effect.grantKeywords ? { keywords: effect.grantKeywords } : {}),
               ...(effect.removeKeywords ? { removesKeywords: effect.removeKeywords } : {}),
+              ...(effect.ignoresLande ? { ignoresLande: true } : {}),
               ...(differe ? { nextCombatBonusVsKeyword: { keyword: effect.nextCombatVsKeyword!, amount: attackDelta } } : {}),
             },
           ],
@@ -1527,6 +1528,23 @@ export function resolveEffect(
         state: { ...state, environment: { ...state.environment, tideOrientation } },
         events,
       };
+    }
+
+    case "destroyLande": {
+      const gone = sendLandeToGraveyard(state, "destroyed", context.turnNumber);
+      return { state: gone.state, events: [...events, ...gone.events] };
+    }
+
+    case "shortenLande": {
+      const lande = state.environment.lande;
+      if (!lande) return { state, events };
+      const tableTurns = amountValue(effect.amount, state, context.controllerId);
+      const remainingPlayerTurns = lande.remainingPlayerTurns - 2 * tableTurns;
+      if (remainingPlayerTurns <= 0) {
+        const gone = sendLandeToGraveyard(state, "expired", context.turnNumber);
+        return { state: gone.state, events: [...events, ...gone.events] };
+      }
+      return { state: { ...state, environment: { ...state.environment, lande: { ...lande, remainingPlayerTurns } } }, events };
     }
 
     case "tideSetOrientation": {

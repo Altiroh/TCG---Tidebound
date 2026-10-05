@@ -616,9 +616,17 @@ export interface CardDefinition {
   /**
    * Famille de cartes à laquelle appartient cette carte
    * (`game/cards/archetypes.ts`). Lue par le moteur pour compter/cibler
-   * les membres d'un archétype ; JAMAIS affichée sur la carte.
+   * les membres d'un archétype ; JAMAIS affichée sur la carte — sauf
+   * `showsArchetype`.
    */
   archetype?: ArchetypeId;
+
+  /**
+   * Exception à la règle ci-dessus (Notion, Catalogue, 05/10/2026) : la
+   * famille est conçue pour se reconnaître, sa ligne de type l'affiche
+   * (« Créature · Opalin »).
+   */
+  showsArchetype?: boolean;
 
   /**
    * Carte JETON (Péon) : créée uniquement par un effet d'invocation, jamais
@@ -1664,6 +1672,14 @@ export interface StatModifier {
    * l'entrave au bon moment.
    */
   silenced?: boolean;
+  /**
+   * « ignorez cet effet pour ce permanent » (Zone de repli) : tant que ce
+   * modificateur tient, la Lande en jeu n'a pas prise sur la carte — elle
+   * garde ses mots-clés (`LandeRules.removesKeywords`), et le PREMIER coup
+   * de Lande qui la viserait (`damageAllPermanentsEachTableTurn`) est
+   * annulé, ce qui consomme le modificateur.
+   */
+  ignoresLande?: boolean;
   /**
    * « elle perd Garde jusqu'à la fin du tour » (Bête de Percée, Débusquer) :
    * mots-clés RETIRÉS tant que le modificateur tient, quelle que soit leur

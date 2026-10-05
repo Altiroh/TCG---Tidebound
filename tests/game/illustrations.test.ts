@@ -37,11 +37,9 @@ const DOSSIER = path.join(process.cwd(), "public", "assets", "cards", "illustrat
  * de son visuel — le troisième test le refuse.
  */
 const SANS_VISUEL: Record<string, string> = {
-  // Vide du 04/10 au 05/10/2026. Les trois premières Landes sont arrivées
-  // avant leurs illustrations, annoncées par la propriétaire du projet.
-  "pluie-corrosive": "Lande du 05/10/2026 — illustration en cours de livraison.",
-  "chaine-de-construction": "Lande du 05/10/2026 — illustration en cours de livraison.",
-  "vallee-de-verre": "Lande du 05/10/2026 — illustration en cours de livraison.",
+  // VIDE depuis le 04/10/2026 : le Lot 16 — Les Altérés — a reçu ses
+  // derniers visuels (La Revenante et les deux variantes Abyssales). Les
+  // trois Landes du 05/10/2026 sont arrivées avec les leurs.
 };
 
 const fichiers = new Set(readdirSync(DOSSIER));

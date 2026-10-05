@@ -86,11 +86,12 @@ export function recordUnitArrivals(state: GameState, playerId: PlayerId, cards: 
 /**
  * Renvoie la Lande en jeu au Cimetière de son propriétaire, avec la cause
  * donnée (`replaced` quand une autre la chasse, `expired` à la fin de sa
- * durée). Sans Lande : état inchangé.
+ * durée, `destroyed` quand un effet la détruit — Lever l'Ancre). Sans
+ * Lande : état inchangé.
  */
 export function sendLandeToGraveyard(
   state: GameState,
-  cause: "replaced" | "expired",
+  cause: "replaced" | "expired" | "destroyed",
   turnNumber: number
 ): { state: GameState; events: GameEvent[] } {
   const lande = state.environment.lande;
