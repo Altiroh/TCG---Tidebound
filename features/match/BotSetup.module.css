@@ -24,11 +24,13 @@
   container-type: size;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr) minmax(0, 1fr);
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  grid-template-areas:
-    "levels vs foe"
-    "deck vs foe"
-    "deck vs foe";
+  /*
+   * Deux camps en miroir autour du VS (05/10/2026 : l'écran « faisait
+   * désordonné ») : ton deck à gauche, l'adversaire à droite — sa photo, son
+   * niveau, sa fiche —, la poignée pendue au centre, au-dessus du VS.
+   */
+  grid-template-rows: minmax(0, 1fr);
+  grid-template-areas: "deck vs foe";
   column-gap: calc(var(--u) * 3);
   /* Même marge des deux côtés : ton deck et l'adversaire à la même distance du VS. */
   padding: calc(var(--u) * 2) max(11cqw, calc(var(--u) * 18)) calc(var(--u) * 2.5);
@@ -88,15 +90,11 @@
  * trois plaques posées sur la table, dessous.
  */
 .levelsPanel {
-  grid-area: levels;
   justify-self: center;
-  translate: calc(var(--u) * 6) 0;
-  align-self: start;
   display: grid;
   justify-items: center;
   gap: calc(var(--u) * 0.4);
-  width: min(100%, var(--u) * 70);
-  margin-top: calc(var(--u) * 1);
+  width: min(100%, var(--u) * 58);
   filter: drop-shadow(0 calc(var(--u) * 1) calc(var(--u) * 1.4) rgba(0, 0, 0, 0.55));
 }
 
@@ -177,7 +175,9 @@
   grid-area: deck;
   display: grid;
   justify-items: center;
-  align-content: center;
+  /* Les deux camps partent de la même hauteur, sous le bandeau. */
+  align-content: start;
+  padding-top: 14cqh;
   gap: calc(var(--u) * 1.2);
   min-height: 0;
 }
@@ -330,7 +330,10 @@
 /* ── Au centre : VS, peint (`play/mode/vs`) ── */
 .versus {
   grid-area: vs;
-  place-self: center;
+  /* Sous la poignée, au milieu des deux camps. */
+  justify-self: center;
+  align-self: start;
+  margin-top: 46cqh;
   width: min(100% + var(--u) * 6, var(--u) * 62);
   height: auto;
   filter: drop-shadow(0 calc(var(--u) * 0.8) calc(var(--u) * 1.4) rgba(0, 0, 0, 0.5));
@@ -356,16 +359,15 @@
   grid-area: foe;
   display: grid;
   justify-items: center;
-  /* Sous la poignée pendue en haut à droite. */
-  align-content: end;
-  padding-top: 38cqh;
+  align-content: start;
+  padding-top: 14cqh;
   gap: calc(var(--u) * 1.2);
   min-height: 0;
 }
 
 .polaroid {
   position: relative;
-  height: 42cqh;
+  height: 36cqh;
   aspect-ratio: 419 / 454;
   rotate: 4deg;
   filter: drop-shadow(0 calc(var(--u) * 1.6) calc(var(--u) * 2) rgba(0, 0, 0, 0.6));
@@ -489,10 +491,12 @@
 
 /* Sous la photo : ce qu'il faut savoir de lui, sur un parchemin. */
 .foeCard {
+  /* Sous les plaques de niveau : plus de chevauchement avec la photo. */
+  position: relative;
   display: grid;
   gap: calc(var(--u) * 0.8);
   width: min(100%, var(--u) * 58);
-  margin-top: calc(var(--u) * -2);
+  margin-top: calc(var(--u) * 0.6);
   padding: calc(var(--u) * 0.8) calc(var(--u) * 2);
   border-style: solid;
   border-width: calc(var(--u) * 1.2);
@@ -562,7 +566,9 @@
 .lever {
   position: absolute;
   z-index: 4;
-  right: calc(max(11cqw, var(--u) * 18) - 3cqw);
+  /* Au centre, entre les deux camps : c'est la décision de l'écran. */
+  left: 50%;
+  margin-left: calc(-25cqh * 1100 / 1005);
   /*
    * Assez haut pour que, même tirée (elle descend de 9 % de sa hauteur), le
    * bout des chaînes reste AU-DESSUS du bord de l'écran : 80 px couvrent le
@@ -976,8 +982,28 @@
   /* Les trois niveaux : plaques plus larges, donc plus hautes (~45 px) et
      lisibles au pouce. */
   .levelsPanel {
-    width: min(100%, calc(var(--u) * 110));
-    translate: calc(var(--u) * 3) 0;
+    width: min(100%, calc(var(--u) * 100));
+  }
+
+  /* Couché, la place se prend en hauteur : les deux camps remontent, et la
+     photo garde sa taille — plus petite, sa légende débordait du papier. */
+  .deckSide,
+  .foe {
+    padding-top: 8cqh;
+  }
+
+  .polaroid {
+    height: 40cqh;
+  }
+
+  /* La légende tient sur le papier : à 13 px minimum, « Bot moyen » et ses
+     têtes de mort débordaient à gauche. */
+  .foeName {
+    font-size: 11px;
+  }
+
+  .skulls span {
+    width: 11px;
   }
 
   .levels {

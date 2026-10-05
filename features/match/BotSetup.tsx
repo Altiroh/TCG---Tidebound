@@ -70,13 +70,15 @@ function Stars({ value }: { value: number }) {
  * 28/09/2026) : les cartes des modes sont parties, les éléments de cette
  * étape arrivent.
  *
- *  - en haut, l'illustration du niveau choisi, qui ÉVOLUE avec lui ;
- *  - à gauche, le niveau (trois plaques qui s'enfoncent), puis le deck,
- *    présenté en boîte comme au Market — le deck par défaut du joueur,
- *    présélectionné — et « Changer de deck », qui ouvre un panneau latéral ;
- *  - à droite, l'adversaire en photo : le bot du niveau choisi, ou — en
- *    ligne — un point d'interrogation, puisqu'on ne sait pas encore qui ;
- *  - en haut à droite, la poignée qui lance la partie (ou la recherche).
+ * Deux camps en miroir autour du VS (réorganisé le 05/10/2026) :
+ *  - à gauche, ton deck, présenté en boîte comme au Market — le dernier
+ *    joué, sinon le deck par défaut — et « Changer de deck », qui ouvre un
+ *    panneau latéral ;
+ *  - à droite, l'adversaire : sa photo (le bot du niveau choisi, ou — en
+ *    ligne — un point d'interrogation), son NIVEAU juste dessous (trois
+ *    plaques qui s'enfoncent), puis sa fiche ;
+ *  - au centre, la poignée qui lance la partie (ou la recherche), pendue
+ *    au-dessus du VS.
  */
 export function BotSetup({
   foe,
@@ -132,16 +134,12 @@ export function BotSetup({
 
   const skulls = levelIndex + 1;
 
-  return (
-    <div
-      className={styles.scene}
-      data-leaving={leaving || undefined}
-      data-level={level?.id ?? "online"}
-      style={{ "--level": levelIndex } as React.CSSProperties}
-    >
-
-      {/* ── En haut, à droite de la lanterne : le niveau du bot, trois plaques qui s'enfoncent ── */}
-      {foe.kind === "bot" && level ? (
+  /*
+   * Le NIVEAU du bot se règle SOUS sa photo (05/10/2026) : tout ce qui
+   * concerne l'adversaire est d'un même côté, au lieu d'un panneau isolé en
+   * haut à gauche.
+   */
+  const levelsPanel = foe.kind === "bot" && level ? (
         <section className={styles.levelsPanel} aria-label="Niveau du bot">
           <h2 className={styles.levelsTitle}>Niveau du bot</h2>
           <div className={styles.levels} role="radiogroup" aria-label="Niveau du bot">
@@ -172,7 +170,15 @@ export function BotSetup({
           <h2 className={styles.levelsTitle}>Recherche rapide</h2>
           <p className={styles.levelsNote}>Partie classée · XP, Tides et quêtes</p>
         </section>
-      )}
+      );
+
+  return (
+    <div
+      className={styles.scene}
+      data-leaving={leaving || undefined}
+      data-level={level?.id ?? "online"}
+      style={{ "--level": levelIndex } as React.CSSProperties}
+    >
 
       {/* ── À gauche : ton deck, en boîte, sa plaque, et « Changer de deck » ── */}
       <section className={styles.deckSide} aria-label="Ton deck" data-pending={!deckArtReady || undefined}>
@@ -248,6 +254,7 @@ export function BotSetup({
               </span>
             </span>
           </span>
+          {levelsPanel}
           <div className={styles.foeCard}>
             <p className={styles.foeText}>{level.description}</p>
             <p className={styles.foeFact}>
@@ -278,6 +285,7 @@ export function BotSetup({
               <span className={styles.foeName}>Adversaire ?</span>
             </span>
           </span>
+          {levelsPanel}
           <div className={styles.foeCard}>
             <p className={styles.foeText}>Le premier capitaine en file sera ton adversaire.</p>
             <p className={styles.foeFact}>
