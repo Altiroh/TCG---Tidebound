@@ -198,20 +198,27 @@ function acidRain(ctx: CanvasRenderingContext2D, rgb: string, rgbHot: string): L
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// VALLÉE DE VERRE — pics cristallins qui sortent des bords, reflets qui
-// glissent, éclats qui scintillent.
+// VALLÉE DE VERRE — un CHAMP de pics cristallins planté dans tout le
+// terrain, en perspective : loin (haut de l'écran) petits et noyés de
+// brume, près (bas) grands et nets. Ombres portées, reflets dans l'eau,
+// lente dérive de parallaxe — c'est elle qui donne la profondeur. Le
+// centre du plateau garde des pics plus discrets : les cartes s'y lisent.
 // ─────────────────────────────────────────────────────────────────────────
 
 interface Spike {
-  /** Base, sur le bord. */
+  /** Pied du pic, au sol (pixels du canvas). */
   x: number;
-  edge: "top" | "bottom";
+  baseY: number;
+  /** Profondeur : 0 à l'horizon, 1 au premier plan. */
+  z: number;
   width: number;
   height: number;
   lean: number;
   grown: number;
   delay: number;
   facet: number;
+  /** Atténuation sur la zone de jeu (1 : pleine présence). */
+  presence: number;
   /** Pièce illustrée qui le dessine, quand il y en a (indice dans `sprites.pieces`). */
   sprite: number;
 }
@@ -228,6 +235,9 @@ interface Spark {
   spin?: number;
 }
 
+/** Hauteur de l'horizon, en fraction de la scène : au-dessus, plus rien ne pousse. */
+const HORIZON = 0.04;
+
 function glassSpikes(ctx: CanvasRenderingContext2D, rgb: string, rgbHot: string): LandeFx {
   let w = 0;
   let h = 0;
@@ -237,71 +247,121 @@ function glassSpikes(ctx: CanvasRenderingContext2D, rgb: string, rgbHot: string)
   let glint = -0.3;
   let sprites: LandeSprites = { pieces: [], debris: [], anchors: [] };
 
+  /** Dérive de parallaxe : le premier plan glisse plus que le fond. */
+  const drift = (s: Spike) => Math.sin(time * 0.11) * w * 0.012 * (s.z - 0.35);
+  /** Reflet qui balaie la vallée, de gauche à droite. */
+  const litOf = (s: Spike) => Math.max(0, 1 - Math.abs(s.x / w - glint) * 7);
+  /** Opacité d'un pic : la brume mange le fond, la zone de jeu l'adoucit. */
+  const alphaOf = (s: Spike) => (0.32 + 0.68 * s.z) * s.presence;
+
+  /** Ombre portée au sol, couchée vers la droite, et reflet renversé dans l'eau. */
+  function drawGround(s: Spike, x: number, visible: number, width: number) {
+    const a = alphaOf(s);
+    ctx.save();
+    ctx.globalAlpha = a * 0.5;
+    ctx.fillStyle = "rgba(4, 14, 26, 0.9)";
+    ctx.beginPath();
+    ctx.ellipse(x + visible * 0.18, s.baseY + 2, width * 0.75 + visible * 0.2, Math.max(2, width * 0.22), -0.08, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
   /**
-   * Pic ILLUSTRÉ : la pièce sort de la mer pointe la première — on n'en
-   * montre que la partie haute, qui grandit — légèrement penchée, et un
-   * second passage additif fait le reflet qui balaie le plateau.
+   * Pic ILLUSTRÉ : la pièce sort du sol pointe la première, légèrement
+   * penchée, puis son reflet renversé, et un passage additif pour l'éclat.
    */
   function drawSpriteSpike(s: Spike, img: HTMLImageElement) {
-    const total = s.height * 1.35;
+    const total = s.height;
     const visible = total * Math.max(0, easeOutBack(s.grown));
     if (visible <= 1) return;
     const dw = (total * img.naturalWidth) / img.naturalHeight;
     const shown = Math.min(1, visible / total);
-    ctx.save();
-    ctx.translate(s.x, s.edge === "bottom" ? h + 4 : -4);
-    if (s.edge === "top") ctx.scale(1, -1);
-    ctx.rotate(s.lean * 0.35);
+    const x = s.x + drift(s);
+    drawGround(s, x, visible, dw * 0.5);
     const draw = () => ctx.drawImage(img, 0, 0, img.naturalWidth, img.naturalHeight * shown, -dw / 2, -visible, dw, visible);
+    const a = alphaOf(s);
+
+    // Reflet dans l'eau : renversé, écrasé, très pâle.
+    ctx.save();
+    ctx.translate(x, s.baseY);
+    ctx.rotate(-s.lean * 0.3);
+    ctx.scale(1, -0.32);
+    ctx.globalAlpha = a * 0.22;
     draw();
-    const lit = Math.max(0, 1 - Math.abs(s.x / w - glint) * 9);
+    ctx.restore();
+
+    ctx.save();
+    ctx.translate(x, s.baseY);
+    ctx.rotate(s.lean * 0.3);
+    ctx.globalAlpha = a;
+    draw();
+    const lit = litOf(s);
     if (lit > 0.05) {
       ctx.globalCompositeOperation = "lighter";
-      ctx.globalAlpha = lit * 0.55;
+      ctx.globalAlpha = a * lit * 0.5;
       draw();
     }
     ctx.restore();
-    if (lit > 0.6 && s.grown >= 1 && Math.random() < 0.08) {
-      const dir = s.edge === "bottom" ? -1 : 1;
-      sparks.push({ x: s.x + s.lean * 0.35 * visible, y: (s.edge === "bottom" ? h : 0) + dir * visible * 0.92, age: 0, life: 0.5, size: rand(4, 9) * (h / 900) });
+    if (lit > 0.6 && s.grown >= 1 && Math.random() < 0.05 * s.z) {
+      sparks.push({ x: x + s.lean * 0.3 * visible, y: s.baseY - visible * 0.92, age: 0, life: 0.5, size: rand(3, 8) * (0.4 + s.z) * (h / 900) });
     }
   }
 
   function seed() {
     spikes = [];
-    for (const edge of ["bottom", "top"] as const) {
-      const count = Math.round((w / 1600) * (edge === "bottom" ? 34 : 22));
-      for (let i = 0; i < count; i++) {
-        // Plus hauts vers les coins, plus bas au centre : le plateau reste dégagé.
-        const x = rand(-0.02, 1.02) * w;
-        const centre = Math.abs(x / w - 0.5) * 2;
-        const scale = (edge === "bottom" ? 0.16 : 0.1) * h * (0.35 + 0.9 * centre * centre);
+    // Des BOSQUETS plutôt qu'une pluie de pics isolés : un pic maître
+    // entouré de plus petits, comme le verre qui cristallise en grappes.
+    const clusters = Math.round((w / 1600) * 42);
+    for (let c = 0; c < clusters; c++) {
+      // Plus dense au loin (la perspective tasse le sol), jamais au-dessus de l'horizon.
+      const z = Math.pow(Math.random(), 0.8);
+      const cx = rand(-0.04, 1.04) * w;
+      const baseY = (HORIZON + (1 - HORIZON) * Math.pow(z, 1.25)) * h + 6;
+      // Zone de jeu (les deux rangées et le centre) : pics plus bas et plus pâles.
+      const fx = cx / w;
+      const fy = baseY / h;
+      const inPlay = Math.abs(fx - 0.5) < 0.36 && fy > 0.12 && fy < 0.9;
+      const presence = inPlay ? 0.78 : 1;
+      const size = (0.05 + 0.24 * z) * h * (inPlay ? 0.75 : 1);
+      const members = 1 + Math.floor(rand(1, 5));
+      for (let m = 0; m < members; m++) {
+        const main = m === 0;
+        const spread = size * (main ? 0 : rand(0.25, 0.7)) * (Math.random() < 0.5 ? -1 : 1);
+        const k = main ? rand(0.9, 1.15) : rand(0.35, 0.7);
         spikes.push({
-          x,
-          edge,
-          width: rand(0.012, 0.03) * w,
-          height: scale * rand(0.6, 1.25),
-          lean: rand(-0.35, 0.35),
+          x: cx + spread,
+          baseY: baseY + (main ? 0 : rand(-3, 6) * (0.5 + z)),
+          z,
+          width: size * rand(0.16, 0.26) * (main ? 1 : 0.8),
+          height: size * k,
+          // Les satellites s'écartent du maître.
+          lean: main ? rand(-0.15, 0.15) : Math.sign(spread) * rand(0.15, 0.45),
           grown: 0,
-          delay: rand(0, 0.9),
+          // Ça pousse du premier plan vers le fond : la vague part du joueur.
+          delay: (1 - z) * 0.7 + rand(0, 0.35),
           facet: rand(0.35, 0.65),
+          presence,
           sprite: Math.floor(Math.random() * 1000),
         });
       }
     }
-    // Les plus grands derrière : ils ne mangent pas les petits.
-    spikes.sort((a, b) => b.height - a.height);
+    // Du fond vers l'avant : le premier plan recouvre l'horizon.
+    spikes.sort((a, b) => a.baseY - b.baseY);
   }
 
   function drawSpike(s: Spike) {
-    const dir = s.edge === "bottom" ? -1 : 1;
-    const baseY = s.edge === "bottom" ? h + 4 : -4;
+    const baseY = s.baseY;
     const height = s.height * easeOutBack(s.grown);
-    const tipX = s.x + s.lean * height;
-    const tipY = baseY + dir * height;
-    const left = s.x - s.width / 2;
-    const right = s.x + s.width / 2;
+    if (height <= 1) return;
+    const x = s.x + drift(s);
+    drawGround(s, x, height, s.width);
+    const tipX = x + s.lean * height;
+    const tipY = baseY - height;
+    const left = x - s.width / 2;
+    const right = x + s.width / 2;
     const midX = left + s.width * s.facet;
+    ctx.save();
+    ctx.globalAlpha = alphaOf(s);
 
     // Deux facettes : l'une claire, l'autre sombre — c'est ce qui fait du verre et pas un triangle.
     const light = ctx.createLinearGradient(left, baseY, tipX, tipY);
@@ -327,15 +387,15 @@ function glassSpikes(ctx: CanvasRenderingContext2D, rgb: string, rgbHot: string)
     ctx.closePath();
     ctx.fill();
 
-    // Arête vive, et reflet qui balaie le plateau de gauche à droite.
-    const lit = Math.max(0, 1 - Math.abs(s.x / w - glint) * 9);
+    const lit = litOf(s);
     ctx.strokeStyle = `rgba(${rgbHot}, ${0.35 + 0.65 * lit})`;
-    ctx.lineWidth = 1 + lit * 1.5;
+    ctx.lineWidth = (1 + lit * 1.5) * (0.5 + s.z);
     ctx.beginPath();
     ctx.moveTo(midX, baseY);
     ctx.lineTo(tipX, tipY);
     ctx.stroke();
-    if (lit > 0.6 && s.grown >= 1 && Math.random() < 0.08) sparks.push({ x: tipX, y: tipY, age: 0, life: 0.5, size: rand(4, 9) * (h / 900) });
+    ctx.restore();
+    if (lit > 0.6 && s.grown >= 1 && Math.random() < 0.05 * s.z) sparks.push({ x: tipX, y: tipY, age: 0, life: 0.5, size: rand(3, 8) * (0.4 + s.z) * (h / 900) });
   }
 
   return {
@@ -348,20 +408,18 @@ function glassSpikes(ctx: CanvasRenderingContext2D, rgb: string, rgbHot: string)
       seed();
     },
     pulse() {
-      // Un tour de table de plus : la vallée se fend — éclats projetés depuis les pointes.
-      for (const s of spikes.slice(0, 18)) {
-        const dir = s.edge === "bottom" ? -1 : 1;
-        const tipY = (s.edge === "bottom" ? h : 0) + dir * s.height;
+      // Un tour de table de plus : la vallée se fend — éclats projetés depuis les pointes du premier plan.
+      for (const s of [...spikes].sort((a, b) => b.height - a.height).slice(0, 18)) {
         for (let i = 0; i < 4; i++) {
           const image = sprites.debris.length ? sprites.debris[Math.floor(Math.random() * sprites.debris.length)] : undefined;
           sparks.push({
-            x: s.x + s.lean * s.height,
-            y: tipY,
+            x: s.x + drift(s) + s.lean * s.height,
+            y: s.baseY - s.height,
             age: 0,
             life: rand(0.6, 1.1),
-            size: (image ? rand(14, 28) : rand(2, 5)) * (h / 900),
+            size: (image ? rand(14, 28) : rand(2, 5)) * (0.4 + s.z) * (h / 900),
             vx: rand(-90, 90),
-            vy: rand(-60, 60) - dir * 40,
+            vy: rand(-110, -20),
             image,
             spin: rand(-6, 6),
           });
@@ -372,24 +430,30 @@ function glassSpikes(ctx: CanvasRenderingContext2D, rgb: string, rgbHot: string)
     step(dt) {
       time += dt;
       ctx.clearRect(0, 0, w, h);
-      glint += dt * 0.22;
+      glint += dt * 0.18;
       if (glint > 1.4) glint = -0.4;
 
+      // Brume au ras de l'horizon : le fond se noie, la profondeur se lit.
+      const haze = ctx.createLinearGradient(0, 0, 0, h * 0.45);
+      haze.addColorStop(0, `rgba(${rgb}, 0.16)`);
+      haze.addColorStop(1, `rgba(${rgb}, 0)`);
+
       for (const s of spikes) {
-        if (time > s.delay) s.grown = Math.min(1, s.grown + dt * 1.6);
+        if (time > s.delay) s.grown = Math.min(1, s.grown + dt * 1.4);
         if (s.grown <= 0) continue;
         const img = sprites.pieces.length ? sprites.pieces[s.sprite % sprites.pieces.length] : undefined;
         if (img) drawSpriteSpike(s, img);
         else drawSpike(s);
       }
+      ctx.fillStyle = haze;
+      ctx.fillRect(0, 0, w, h * 0.45);
 
       // Scintillements : croix fines, comme un reflet de soleil sur un tesson.
       if (Math.random() < dt * 6) {
         const s = spikes[Math.floor(Math.random() * spikes.length)];
         if (s && s.grown >= 1) {
-          const dir = s.edge === "bottom" ? -1 : 1;
           const k = rand(0.3, 0.95);
-          sparks.push({ x: s.x + s.lean * s.height * k, y: (s.edge === "bottom" ? h : 0) + dir * s.height * k, age: 0, life: rand(0.4, 0.8), size: rand(3, 7) * (h / 900) });
+          sparks.push({ x: s.x + drift(s) + s.lean * 0.3 * s.height * k, y: s.baseY - s.height * k, age: 0, life: rand(0.4, 0.8), size: rand(3, 7) * (0.4 + s.z) * (h / 900) });
         }
       }
       ctx.lineCap = "round";

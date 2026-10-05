@@ -83,7 +83,7 @@ export function LandeBadge({ environment, tideState, dropState }: LandeBadgeProp
         {lande && <span className={styles.badgeCount}>{remaining}</span>}
       </div>
       {preview && lande && (
-        <HoverCardPreview anchor={preview}>
+        <HoverCardPreview anchor={preview} portal>
           <CardTile instance={asInstance(lande)} tideState={tideState} widthClassName="w-full" scaleOnHover={false} showStatusBadges={false} />
         </HoverCardPreview>
       )}

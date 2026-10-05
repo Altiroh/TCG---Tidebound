@@ -1,6 +1,7 @@
 "use client";
 
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import styles from "@/features/match/table/Table.module.css";
 
 interface HoverCardPreviewProps {
@@ -8,6 +9,12 @@ interface HoverCardPreviewProps {
   anchor: DOMRect;
   /** La carte, rendue en grand (`CardTile` à pleine largeur du calque). */
   children: ReactNode;
+  /**
+   * Rendu dans `document.body` : pour un aperçu ouvert depuis un élément
+   * pris dans un contexte d'empilement plus bas que les piles et la main
+   * (le hublot de Lande, au centre) — sinon il passe dessous.
+   */
+  portal?: boolean;
 }
 
 /** Marge au bord de la fenêtre, et écart entre la carte survolée et son aperçu. */
@@ -29,7 +36,7 @@ const GAP = 14;
  * Souris seulement : au doigt il n'y a pas de survol, et c'est l'appui long
  * qui pose la carte en grand au milieu de l'écran (`TableCardZoom`).
  */
-export function HoverCardPreview({ anchor, children }: HoverCardPreviewProps) {
+export function HoverCardPreview({ anchor, children, portal = false }: HoverCardPreviewProps) {
   const ref = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState<{ left: number; top: number } | null>(null);
 
@@ -51,7 +58,7 @@ export function HoverCardPreview({ anchor, children }: HoverCardPreviewProps) {
     setPosition({ left, top });
   }, [anchor]);
 
-  return (
+  const layer = (
     <div
       ref={ref}
       className={styles.hoverPreview}
@@ -62,4 +69,5 @@ export function HoverCardPreview({ anchor, children }: HoverCardPreviewProps) {
       {children}
     </div>
   );
+  return portal ? createPortal(layer, document.body) : layer;
 }
