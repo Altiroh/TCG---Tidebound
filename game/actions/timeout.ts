@@ -2,6 +2,7 @@ import { concede } from "@/game/actions/concede";
 import type { ActionResult, PlayerAction, TimeoutAction } from "@/game/actions/types";
 import type { GameEvent } from "@/game/events/types";
 import { RULES } from "@/game/rules/constants";
+import { discardableHand } from "@/game/state/discard";
 import { nextTimeoutEndsGame, turnTimerExpired } from "@/game/rules/turnTimer";
 import type { GameState, PlayerState } from "@/game/state/types";
 
@@ -60,7 +61,7 @@ function defaultActionFor(state: GameState, playerId: string): PlayerAction {
       // défausser » n'est permis que si le texte le permet.
       if (choice.refusable) return { type: "resolveChoice", playerId, choice: "pass" };
       if (choice.atMost) return { type: "resolveChoice", playerId, choice: { discardInstanceIds: [] } };
-      const hand = state.players.find((p) => p.id === playerId)?.hand ?? [];
+      const hand = discardableHand(state.players.find((p) => p.id === playerId)?.hand ?? [], choice);
       return {
         type: "resolveChoice",
         playerId,

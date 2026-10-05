@@ -18,6 +18,7 @@ export type {
 export { getPlayer, getOpponent, findCardInstance, isMainPhase, MAIN_PHASES } from "@/game/state/types";
 export { hiddenZoneCards, toPlayerView } from "@/game/state/playerView";
 export { shipAbilityView, isShipArmed } from "@/game/state/shipAbility";
+export { discardableHand } from "@/game/state/discard";
 export type { ShipAbilityView } from "@/game/state/shipAbility";
 export { HIDDEN_CARD_ID } from "@/game/cards/hiddenCard";
 

@@ -12,6 +12,7 @@ import { eligibleBreakTargets, eligibleChosenUnits } from "@/game/effects/chosen
 import { findAssemblage } from "@/game/rules/chromatic";
 import { eligibleCandidatesFor } from "@/game/reactions/reactionWindow";
 import { canUnitAttack } from "@/game/rules/validation";
+import { discardableHand } from "@/game/state/discard";
 import { shipAbilityView } from "@/game/state/shipAbility";
 import { isMainPhase, type GameState, type PlayerId } from "@/game/state/types";
 
@@ -148,7 +149,7 @@ export function enumerateCandidateActions(state: GameState, playerId: PlayerId):
     }
     if (state.pendingChoice.kind === "handDiscard") {
       const choice = state.pendingChoice;
-      const hand = player.hand;
+      const hand = discardableHand(player.hand, choice);
       // Une carte à défausser : chaque carte de la main est un coup
       // distinct, et `evaluateState` tranche. Plusieurs : on se contente de
       // fenêtres glissantes — énumérer toutes les combinaisons ferait

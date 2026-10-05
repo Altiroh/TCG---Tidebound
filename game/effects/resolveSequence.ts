@@ -33,14 +33,53 @@ export function resolveEffectSequence(
   // Joueurs qui ont PIOCHÉ par un effet de cette même suite : leur défausse
   // qui suit est un « piochez puis défaussez » (Oracle d'Améthyste).
   const ontPioche = new Set<string>();
+  // « PIOCHEZ PUIS DÉFAUSSEZ » (règle du 05/10/2026) : cartes que la pioche
+  // vient d'apporter, par joueur — la défausse qui suit ne peut pas les
+  // désigner.
+  const piochees = new Map<string, string[]>();
 
   for (let i = 0; i < effects.length; i += 1) {
-    const result = resolveEffect(nextState, effects[i]!, context);
+    const effect = effects[i]!;
+    const suivant = effects[i + 1];
+    const piocheur = effect.type === "draw" && suivant?.type === "discard" ? lootPlayerId(nextState, effect, suivant, context) : undefined;
+    let mainAvant: string[] | undefined;
+    if (piocheur) {
+      mainAvant = nextState.players.find((p) => p.id === piocheur)!.hand.map((card) => card.instanceId);
+      // Rien d'autre à défausser que ce qu'on piocherait : l'effet ne
+      // s'applique pas — ni la pioche, ni la défausse. Une défausse
+      // facultative (« vous pouvez ») n'impose rien : la pioche a lieu.
+      const aDefausser = suivant!.amount?.kind === "flat" ? suivant!.amount.value : 1;
+      if (!suivant!.refusable && mainAvant.length < aDefausser) {
+        i += 1;
+        continue;
+      }
+    }
+
+    const result = resolveEffect(nextState, effect, context);
     nextState = result.state;
     events.push(...result.events);
     for (const event of result.events) if (event.type === "DRAW_CARD") ontPioche.add(event.playerId);
+    if (piocheur && mainAvant) {
+      const avant = new Set(mainAvant);
+      const nouvelles = nextState.players.find((p) => p.id === piocheur)!.hand.map((card) => card.instanceId).filter((id) => !avant.has(id));
+      piochees.set(piocheur, nouvelles);
+    }
 
     let choice = nextState.pendingChoice;
+    // La défausse qui suit la pioche : les cartes piochées sont hors d'atteinte.
+    const exclues = choice?.kind === "handDiscard" && !choice.continuation ? piochees.get(choice.playerId) : undefined;
+    if (choice?.kind === "handDiscard" && exclues && exclues.length > 0 && !choice.excludedInstanceIds) {
+      const main = nextState.players.find((p) => p.id === choice!.playerId)!.hand;
+      const count = Math.min(choice.count, main.length - exclues.length);
+      if (count <= 0) {
+        // Seule la pioche est en main (défausse facultative) : rien à
+        // désigner, la question ne se pose pas.
+        nextState = { ...nextState, pendingChoice: undefined };
+        continue;
+      }
+      choice = { ...choice, excludedInstanceIds: exclues, count };
+      nextState = { ...nextState, pendingChoice: choice };
+    }
     if (choice?.kind === "handDiscard" && !choice.continuation && !choice.afterDraw && ontPioche.has(choice.playerId)) {
       choice = { ...choice, afterDraw: true };
       nextState = { ...nextState, pendingChoice: choice };
@@ -61,4 +100,25 @@ export function resolveEffectSequence(
   }
 
   return { state: nextState, events };
+}
+
+/**
+ * Le joueur d'un « piochez puis défaussez » : la pioche et la défausse qui
+ * la suit visent le même joueur (soi-même, le plus souvent). `undefined`
+ * sinon — deux effets sans rapport l'un avec l'autre.
+ */
+function lootPlayerId(
+  state: GameState,
+  draw: EffectDefinition,
+  discard: EffectDefinition,
+  context: EffectContext
+): string | undefined {
+  const joueur = (effect: EffectDefinition) =>
+    effect.target.kind === "controllerPlayer"
+      ? context.controllerId
+      : effect.target.kind === "opponentPlayer"
+        ? state.players.find((p) => p.id !== context.controllerId)?.id
+        : undefined;
+  const piocheur = joueur(draw);
+  return piocheur && piocheur === joueur(discard) ? piocheur : undefined;
 }

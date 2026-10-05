@@ -636,6 +636,13 @@ export interface HandDiscardChoice {
   /** Nombre de cartes à défausser — déjà borné à la taille de la main. */
   count: number;
   /**
+   * Cartes de la main qu'on NE PEUT PAS désigner : celles que l'effet vient
+   * de faire piocher (« piochez 1 carte puis défaussez-en 1 » — on ne
+   * défausse pas la carte qu'on vient de piocher, règle du 05/10/2026).
+   * Lu par `discardableHand`, seul filtre de toutes les réponses.
+   */
+  excludedInstanceIds?: string[];
+  /**
    * « Placez JUSQU'À 2 cartes » (Mauvaise Main, Lot 14) : `count` devient
    * un maximum et non un compte exact. Absent = le texte dit combien, et
    * le moteur exige ce nombre-là.

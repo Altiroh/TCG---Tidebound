@@ -467,7 +467,7 @@ export function TableBoard(props: TableBoardProps) {
       // gestes qui partent du plateau (attaquer, Saborder) n'y sont pas.
       const fromHand = viewer.hand.some((card) => card.instanceId === sourceId);
       // Main trop pleine en fin de tour : la carte ne va qu'au Cimetière.
-      if (fromHand && discardMode) return kind === "place" && drop === "graveyard" && !discardMode.staged.has(sourceId);
+      if (fromHand && discardMode) return kind === "place" && drop === "graveyard" && !discardMode.staged.has(sourceId) && !discardMode.locked.has(sourceId);
       if (fromHand && !isPlayable(sourceId)) return false;
 
       if (kind === "place") {
@@ -811,6 +811,7 @@ export function TableBoard(props: TableBoardProps) {
     if (inHand) {
       // Main trop pleine en fin de tour : la seule chose à faire d'une carte, c'est la jeter.
       if (discardMode) {
+        if (discardMode.locked.has(id)) return [{ label: "Défausser", disabled: true, note: "Tu viens de la piocher : elle reste en main." }];
         return discardMode.staged.has(id)
           ? []
           : [{ label: "Défausser", tone: "neutral", onAction: () => { close(); discardMode.onDiscard(id); } }];
@@ -1060,7 +1061,11 @@ export function TableBoard(props: TableBoardProps) {
               // Carte écartée par le tutoriel : elle reste lisible et
               // consultable (clic droit), mais visiblement hors-jeu —
               // sinon le joueur la tire en vain et croit à une panne.
-              const muted = props.playableHandCards ? !props.playableHandCards.has(card.id) : false;
+              // Idem pour la carte qu'un « piochez puis défaussez » vient
+              // d'apporter : elle ne peut pas repartir aussitôt.
+              const muted = props.playableHandCards
+                ? !props.playableHandCards.has(card.id)
+                : discardMode?.locked.has(card.id) === true;
               return (
                 <div
                   data-card-id={card.id}

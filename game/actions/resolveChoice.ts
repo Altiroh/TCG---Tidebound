@@ -417,6 +417,12 @@ export function resolveChoice(state: GameState, action: ResolveChoiceAction): Ac
     if (chosen.some((id) => !hand.some((card) => card.instanceId === id))) {
       return { ok: false, error: "Cette carte n'est pas dans votre main." };
     }
+    // « Piochez puis défaussez » : la carte qu'on vient de piocher ne peut
+    // pas repartir aussitôt (règle du 05/10/2026).
+    const exclues = choice.excludedInstanceIds ?? [];
+    if (chosen.some((id) => exclues.includes(id))) {
+      return { ok: false, error: "Vous ne pouvez pas défausser la carte que cet effet vient de vous faire piocher." };
+    }
 
     // SOUS LA PIOCHE plutôt qu'au Cimetière (Mauvaise Main) : ce n'est pas
     // une défausse, donc `processGraveyardEntryTriggers` n'a rien à y

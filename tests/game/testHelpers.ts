@@ -3,6 +3,7 @@ import { dispatch } from "@/game/engine";
 import { eligibleCandidatesFor } from "@/game/reactions/reactionWindow";
 import { getShipDefinition, SHIP_DATABASE } from "@/game/environment/shipData";
 import { RULES } from "@/game/rules/constants";
+import { discardableHand } from "@/game/state/discard";
 import type { EnvironmentState, ShipDefinition } from "@/game/environment/types";
 import type { GameState, PlayerState } from "@/game/state/types";
 
@@ -146,7 +147,7 @@ export function activateReactionFor(state: GameState, cardId: string, targetInst
 export function answerHandDiscard(state: GameState, instanceIds?: string[]) {
   const choice = state.pendingChoice;
   if (choice?.kind !== "handDiscard") throw new Error("Aucune défausse en attente de réponse.");
-  const hand = state.players.find((p) => p.id === choice.playerId)!.hand;
+  const hand = discardableHand(state.players.find((p) => p.id === choice.playerId)!.hand, choice);
   return dispatch(state, {
     type: "resolveChoice",
     playerId: choice.playerId,
