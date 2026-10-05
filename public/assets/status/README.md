@@ -1,7 +1,7 @@
 # Icônes d'état
 
 Petits médaillons posés **sur une carte en jeu** pour signaler un état ou un
-mot-clé actif : Garde, Pied marin, Malade (mal d'invocation), Silence,
+mot-clé actif : Garde, Pied marin, Éveil, Malade (mal d'invocation), Silence,
 Immobilisé, Engourdi, plus le compteur de tours restants d'une Structure.
 
 Posées par `features/match/StatusBadge.tsx`, superposées au cadre par
@@ -15,6 +15,7 @@ Posées par `features/match/StatusBadge.tsx`, superposées au cadre par
 | `immobilise.webp` | Immobilisé — ni attaque ni capacité ; sert aussi à toute carte inactive (Marée qui la met hors d'état, effet qui l'entrave) |
 | `engourdi.webp` | Engourdi |
 | `pied-marin.webp` | Pied marin — peut attaquer dès son arrivée |
+| `eveil.webp` | Éveil (Lot 16) — la carte a un effet « Éveil — » ; le nombre d'Éveils du tour s'y inscrit |
 | `tour.webp` | Médaillon du compteur de tours restants (Structures à durée) |
 
 `tour.webp` porte un médaillon CLAIR : le texte superposé y est sombre, là

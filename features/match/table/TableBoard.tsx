@@ -725,6 +725,7 @@ export function TableBoard(props: TableBoardProps) {
             badgeSize={badgeSize}
             faceDown={mine && !visible}
             auraContext={auraContextFor(owner)}
+            turnNumber={state.turnNumber}
             variant="board"
           />
         )}
@@ -1021,10 +1022,6 @@ export function TableBoard(props: TableBoardProps) {
               // consultable (clic droit), mais visiblement hors-jeu —
               // sinon le joueur la tire en vain et croit à une panne.
               const muted = props.playableHandCards ? !props.playableHandCards.has(card.id) : false;
-              // Carte qui ferait entrer (ou s'enfoncer) en Déraison : on le voit
-              // dès la main, avant de la toucher — l'Ancrage qu'elle coûterait.
-              const price = canPlayCards && !discardMode && !muted ? previewPlayCardReason(state, viewerId, card.id) : undefined;
-              const debt = price && price.cost > 0 && price.reasonAfter < 0 ? deraisonAnchorDamage(viewer, price.reasonAfter) : 0;
               return (
                 <div
                   data-card-id={card.id}
@@ -1046,11 +1043,6 @@ export function TableBoard(props: TableBoardProps) {
                   ].join(" ")}
                 >
                   <CardTile instance={instance} tideState={tideState} widthClassName="w-full" scaleOnHover={false} showStatusBadges={false} />
-                  {debt > 0 && (
-                    <span className={styles.handDebt} title={`Déraison : ⚓ −${debt} en fin de tour`}>
-                      ⚓ −{debt}
-                    </span>
-                  )}
                 </div>
               );
             }}
@@ -1129,7 +1121,7 @@ export function TableBoard(props: TableBoardProps) {
             key={found.instance.instanceId}
             onClose={() => setZoomId(null)}
             actions={zoomActions(found.instance, found.owner.id, inHand, zoom?.confirmSaborder ?? false)}
-            legend={inHand ? [] : cardStatusLegend(found.instance, tideState, auraContextFor(found.owner))}
+            legend={inHand ? [] : cardStatusLegend(found.instance, tideState, auraContextFor(found.owner), state.turnNumber)}
             onPrev={neighbour(-1)}
             onNext={neighbour(1)}
             position={handIndex >= 0 ? { index: handIndex, count: handList.length } : undefined}

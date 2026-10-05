@@ -490,6 +490,7 @@ export function OnlineBoard({
           instance={detailInstance}
           tideState={state.environment.tideState}
           boardUnits={state.players.flatMap((p) => p.board)}
+          turnNumber={state.turnNumber}
           auraContext={auraContextFor(me.board.some((u) => u.instanceId === detailInstance.instanceId) ? me : opponent)}
           onClose={() => board.setDetailInstance(null)}
         />

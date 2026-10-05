@@ -2133,27 +2133,6 @@
   filter: saturate(0.55);
 }
 
-/*
- * Carte de main qui ferait entrer en Déraison : l'Ancrage qu'elle coûterait,
- * en haut à droite — dans la partie visible de l'éventail.
- */
-.handDebt {
-  position: absolute;
-  top: 3%;
-  right: 4%;
-  z-index: 2;
-  padding: 1px 5px;
-  border: 1px solid rgba(254, 205, 211, 0.8);
-  border-radius: 999px;
-  background: rgba(76, 5, 25, 0.92);
-  color: #ffe4e6;
-  font-size: max(11px, calc(var(--hand-card-w, 60px) * 0.12));
-  font-weight: 700;
-  line-height: 1.2;
-  white-space: nowrap;
-  pointer-events: none;
-}
-
 /* Enveloppe du Navire adverse : garde la hauteur de la cellule. */
 .shipTarget {
   position: relative;

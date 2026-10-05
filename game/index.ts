@@ -163,6 +163,7 @@ export { SHIP_DATABASE, SHIP_SET, getShipDefinition } from "@/game/environment/s
 export { resolveOceanJudgment } from "@/game/rules/oceanJudgment";
 
 export { RULES } from "@/game/rules/constants";
+export { eveilsThisTurn, hasEveil } from "@/game/rules/eveil";
 
 // --- Déraison (Raison négative, piste à prototyper du 2026-09-12) --------
 export { reasonCeiling, deraisonDebt, deraisonAnchorDamage } from "@/game/state/reason";

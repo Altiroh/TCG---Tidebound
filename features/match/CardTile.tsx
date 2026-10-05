@@ -10,6 +10,8 @@ import {
   HIDDEN_CARD_ID,
   hasKeyword,
   hasKeywordInContext,
+  eveilsThisTurn,
+  hasEveil,
   STATUS_IMMOBILISE,
   STATUS_MALADE,
   STATUS_SILENCE,
@@ -59,6 +61,12 @@ interface CardTileProps {
    * combat, lui, les compte. À fournir dès que la carte est EN JEU.
    */
   auraContext?: AuraContext;
+  /**
+   * Tour de table en cours (`GameState.turnNumber`) : le médaillon d'Éveil
+   * y lit le nombre d'Éveils de la carte CE tour (« si c'est son deuxième
+   * Éveil ce tour »). Sans lui, le médaillon reste vierge de chiffre.
+   */
+  turnNumber?: number;
   /**
    * Structure actuellement invisible pour l'adversaire (`visibleDuringTide`) SUR SON PROPRE plateau — même
    * son propriétaire ne voit alors que le dos de carte pour l'illustration/le texte/les stats, mais garde les
@@ -131,7 +139,8 @@ const GARDE_ICON_INFO = {
 export function cardStatusLegend(
   instance: CardInstance,
   tideState: TideStateName,
-  auraContext?: AuraContext
+  auraContext?: AuraContext,
+  turnNumber?: number
 ): Array<{ label: string; description: string }> {
   const def = getCardDefinition(instance.cardId);
   const context = auraContext
@@ -146,6 +155,7 @@ export function cardStatusLegend(
   if (instance.summoningSick && isUnit && !has("pied-marin")) legend.push(ENGOURDI_ICON_INFO);
   if (piedMarinUtile(instance, isUnit, has("pied-marin"))) legend.push(PIED_MARIN_INFO);
   if (has("garde")) legend.push(GARDE_ICON_INFO);
+  if (hasEveil(def)) legend.push(eveilInfo(instance, turnNumber));
   for (const status of instance.statuses ?? []) {
     const info = STATUS_ICON_INFO[status];
     if (info) legend.push(info);
@@ -232,6 +242,27 @@ function immobiliseInfo(instance: CardInstance): { icon: string; label: string; 
     description: instance.modifiers.some((modifier) => modifier.silenced)
       ? "Un effet l'entrave : elle ne peut ni attaquer, ni utiliser ses capacités."
       : "La Marée actuelle la met hors d'état : ni attaque, ni capacité tant que la Marée ne change pas.",
+  };
+}
+
+/**
+ * Éveil (Lot 16) : la carte porte un effet « Éveil — », que d'autres cartes
+ * savent déclencher — le médaillon dit quoi viser. Le nombre d'Éveils du
+ * tour s'y inscrit dès le premier, puisque des textes en dépendent.
+ */
+const EVEIL_ICON = "/assets/status/eveil.webp";
+
+function eveilCount(instance: CardInstance, turnNumber: number | undefined): number {
+  return turnNumber === undefined ? 0 : eveilsThisTurn(instance, turnNumber);
+}
+
+function eveilInfo(instance: CardInstance, turnNumber: number | undefined): { label: string; description: string } {
+  const n = eveilCount(instance, turnNumber);
+  return {
+    label: "Éveil",
+    description:
+      "Son effet « Éveil » se résout à son arrivée, et chaque fois qu'un effet déclenche son Éveil." +
+      (n > 0 ? ` ${n === 1 ? "Déjà Éveillée une fois" : `Déjà Éveillée ${n} fois`} ce tour.` : ""),
   };
 }
 
@@ -523,6 +554,7 @@ export function CardTile({
   badgeSize = 38,
   showStatusBadges = true,
   auraContext,
+  turnNumber,
   draggable = false,
   onDragStart,
   liftOnHover = false,
@@ -561,6 +593,8 @@ export function CardTile({
     : hasKeyword(def, "pied-marin");
   const engourdi = instance.summoningSick && isUnit && !hasPiedMarin;
   const piedMarinVisible = piedMarinUtile(instance, isUnit, hasPiedMarin);
+  const eveilVisible = hasEveil(def);
+  const eveils = eveilCount(instance, turnNumber);
   // Couleurs chromatiques EN JEU (Lot 15) : celle qu'un Émissaire a choisie,
   // qu'un Héraut a prise, qu'un Bracelet prête — rien ne les montrait.
   const couleursChromatiques = auraContext ? chromaticColorsOf(instance, auraContext.controllerBoard) : [];
@@ -1026,6 +1060,7 @@ export function CardTile({
         (stats.inactive ||
         engourdi ||
         piedMarinVisible ||
+        eveilVisible ||
         instance.turnsRemaining !== undefined ||
         hasGarde ||
         couleursChromatiques.length > 0 ||
@@ -1065,6 +1100,14 @@ export function CardTile({
                 size={badgeSize}
               />
             </span>
+          )}
+          {eveilVisible && (
+            <StatusBadge
+              icon={EVEIL_ICON}
+              {...eveilInfo(instance, turnNumber)}
+              overlayText={eveils > 0 ? String(eveils) : undefined}
+              size={badgeSize}
+            />
           )}
           {instance.statuses?.map((status) => {
             const info = STATUS_ICON_INFO[status];

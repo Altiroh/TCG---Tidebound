@@ -701,6 +701,7 @@ export function MatchBoard({
           instance={detailInstance}
           tideState={state.environment.tideState}
           boardUnits={state.players.flatMap((p) => p.board)}
+          turnNumber={state.turnNumber}
           auraContext={auraContextFor(viewerPlayer.board.some((u) => u.instanceId === detailInstance.instanceId) ? viewerPlayer : otherPlayer)}
           onClose={() => board.setDetailInstance(null)}
         />
