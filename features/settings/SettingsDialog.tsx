@@ -26,7 +26,7 @@ interface SettingsDialogProps {
  * cyan en tête, la même croix, les mêmes sorties (Échap, voile, croix). Il
  * ne restait de l'ancienne version qu'une matière de plus à entretenir.
  *
- * Trois sections (Audio, Interface, Compte) séparées par un filet : tout ce
+ * Sections (Audio, Interface, Tutoriel, Compte) séparées par un filet : tout ce
  * qui se règle aujourd'hui tient sur un écran, sans onglets ni page dédiée.
  */
 export function SettingsDialog({ isSignedIn, onClose }: SettingsDialogProps) {
@@ -46,6 +46,29 @@ export function SettingsDialog({ isSignedIn, onClose }: SettingsDialogProps) {
         </section>
 
         <hr className={styles.divider} />
+
+        {isSignedIn && (
+          <>
+            <section className={styles.section}>
+              <h3 className={styles.sectionTitle}>Tutoriel</h3>
+              <p className={styles.signedOut}>
+                Rejouer la partie guidée. Chaque étape peut se passer si elle bloque.{" "}
+                <Link
+                  href="/tutoriel?lancer=1"
+                  className={`${AUTH_LINK_CLASS} hover:underline`}
+                  onClick={() => {
+                    playButtonClick();
+                    onClose();
+                  }}
+                >
+                  Lancer le tutoriel
+                </Link>
+              </p>
+            </section>
+
+            <hr className={styles.divider} />
+          </>
+        )}
 
         <section className={styles.section}>
           <h3 className={styles.sectionTitle}>Compte</h3>

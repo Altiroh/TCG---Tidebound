@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { PRECON_DECKS, TUTORIAL_OPENING_TYPES, TUTORIAL_STEPS, tutorialProgress, type GameState } from "@/game";
 import { beginTutorial, completeTutorial } from "@/features/onboarding/actions";
@@ -33,7 +33,7 @@ import { playButtonClick, playGameStart } from "@/lib/sound";
  * avec deux préconstruits : le joueur apprend sur le matériel qu'il
  * s'apprête à recevoir, pas sur une main truquée.
  */
-export function TutorialScreen() {
+export function TutorialScreen({ autoStart = false }: { autoStart?: boolean } = {}) {
   const router = useRouter();
   const [match, setMatch] = useState<GameState | null>(null);
   /** État VIVANT de la partie guidée, publié par `MatchBoard`. */
@@ -89,6 +89,16 @@ export function TutorialScreen() {
     setMatch(created);
     setLiveState(created);
   }
+
+  // Lancé depuis les Options (`/tutoriel?lancer=1`) : droit dans la partie
+  // guidée, sans l'écran de proposition.
+  const autoStarted = useRef(false);
+  useEffect(() => {
+    if (!autoStart || autoStarted.current) return;
+    autoStarted.current = true;
+    startTutorial();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- une fois, au montage
+  }, [autoStart]);
 
   function skip() {
     playButtonClick();

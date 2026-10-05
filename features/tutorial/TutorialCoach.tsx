@@ -42,6 +42,8 @@ const HINT_DELAY_MS = 5000;
  * Aucun bouton « Suivant », aucune modale : la spec demande une partie
  * jouable, « pas une succession de fenêtres techniques ». Le joueur peut
  * ignorer la consigne, jouer autre chose, se tromper — la fiche attend.
+ * Seule exception : « Passer l'étape », pour qu'une étape qui ne se
+ * valide pas (05/10/2026) ne bloque jamais la suite.
  *
  * L'avancement ne recule jamais : `furthest` retient le rang le plus loin
  * atteint, sinon perdre sa dernière Créature ramènerait la consigne « pose
@@ -132,6 +134,11 @@ export function TutorialCoach({ state, playerId, furthest, onFurthest, onSkip, o
       </div>
 
       <div className={styles.coachActions}>
+        {/* Échappatoire : une étape qui ne se valide pas (bug, main
+            impossible) ne bloque pas la suite du tutoriel. */}
+        <button type="button" className={styles.coachGhost} onClick={() => onFurthest(progress.index + 1)}>
+          Passer l&apos;étape
+        </button>
         <button type="button" className={styles.coachGhost} onClick={onSkip}>
           Passer le tutoriel
         </button>
