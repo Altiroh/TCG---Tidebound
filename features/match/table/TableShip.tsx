@@ -325,13 +325,16 @@ export function TableShip({ name, ownerId, illustration, hull, maxHull, reason, 
       <div className={styles.shipGauges}>
         <ShipGauge kind="anchor" value={hull} max={maxHull} />
         <ShipGauge kind="reason" value={reason} max={maxReason} ownerId={ownerId} />
+        {/* Armure : un écusson posé sur l'illustration, juste au-dessus et entre
+            l'Ancrage et la Raison — elle part la première, avant l'Ancrage. */}
+        {armor > 0 && (
+          <span className={styles.shipArmor} title={`Armure ${armor} : absorbe les dégâts du Navire avant l'Ancrage.`}>
+            {/* eslint-disable-next-line @next/next/no-img-element -- icône locale */}
+            <img src="/assets/cards/frames/nouveau/bouclier.webp" alt="" aria-hidden draggable={false} className={styles.shipArmorIcon} />
+            <span className={styles.shipArmorValue}>{armor}</span>
+          </span>
+        )}
       </div>
-      {/* Armure : posée au-dessus des médaillons, elle part la première. */}
-      {armor > 0 && (
-        <span className={styles.shipArmor} title={`Armure ${armor} : absorbe les dégâts du Navire avant l'Ancrage.`}>
-          🛡 {armor}
-        </span>
-      )}
       {/* Dette de Déraison : la conséquence à venir, lisible sans survol (comme `ShipInstrumentCluster`). */}
       {reason < 0 && deraisonDamage > 0 && (
         <span className={styles.shipDebt} title="Déraison : chaque point sous 0 inflige 1 dégât d'Ancrage à la fin du tour si la Raison n'est pas remontée.">

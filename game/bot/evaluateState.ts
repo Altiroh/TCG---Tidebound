@@ -2,7 +2,8 @@ import { getShipDefinition } from "@/game/environment/shipData";
 import { advanceTideState } from "@/game/environment/types";
 import { computeEffectiveStats } from "@/game/cards/stats";
 import { getCardDefinition } from "@/game/cards/sets/core";
-import { hasResistance, UNIT_CARD_TYPES, type CardInstance } from "@/game/cards/types";
+import { hasResistance, isPermanentCard, UNIT_CARD_TYPES, type CardInstance } from "@/game/cards/types";
+import { isOngoingEffect, slotsUsed } from "@/game/rules/ongoing";
 import { hasEffectiveKeyword } from "@/game/rules/validation";
 import { deraisonAnchorDamage } from "@/game/state/reason";
 import { isShipArmed, shipAbilityOf } from "@/game/state/shipAbility";
@@ -241,6 +242,40 @@ function armedShotValue(state: GameState, player: PlayerState): number {
   return armedShotDamage(player) * ARMED_SHOT_VALUE;
 }
 
+/**
+ * PLATEAU ENGORGÉ. Tous les Slots sont pris et la main tient un permanent
+ * qu'on pourrait payer : il est coincé. Relevé du 06/10/2026, Sentinelles
+ * Chromatiques : les Éclats (des Structures 0/1 nées des Sentinelles
+ * détruites) remplissaient les Slots, et le bot passait ses tours au lieu de
+ * saborder une pierre pour reposer une Sentinelle — saborder lui coûtait
+ * toujours le plancher d'un permanent, rien ne disait qu'un Slot libre vaut
+ * quelque chose.
+ *
+ * La pénalité dépasse le plancher d'un permanent (2,5) : libérer la place
+ * en sabordant ce qui pèse le moins devient intéressant, sans jamais justifier
+ * de détruire une vraie carte (qui vaut bien plus).
+ */
+const CLOGGED_BOARD_PENALTY = 3.5;
+
+export function cloggedPenalty(player: PlayerState): number {
+  let slots = 0;
+  try {
+    slots = getShipDefinition(player.shipId).slotCount;
+  } catch {
+    return 0;
+  }
+  if (slotsUsed(player.board) < slots) return 0;
+  const coince = player.hand.some((card) => {
+    try {
+      const def = getCardDefinition(card.cardId);
+      return isPermanentCard(def) && !isOngoingEffect(def) && def.cost <= Math.max(0, player.reason);
+    } catch {
+      return false;
+    }
+  });
+  return coince ? CLOGGED_BOARD_PENALTY : 0;
+}
+
 function playerValue(state: GameState, player: PlayerState): number {
   const boardValue = player.board.reduce((sum, unit) => sum + permanentValue(state, unit, player), 0);
 
@@ -264,7 +299,8 @@ function playerValue(state: GameState, player: PlayerState): number {
     armedShotValue(state, player) +
     handValue(player) +
     // Cimetière : ce que les cartes tenues sauront en tirer (`graveyardValue.ts`).
-    graveyardValue(state, player)
+    graveyardValue(state, player) -
+    cloggedPenalty(player)
   );
 }
 
