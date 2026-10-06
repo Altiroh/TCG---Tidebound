@@ -38,7 +38,7 @@ import { ShipAbilityPrompt } from "@/features/match/ShipAbilityPrompt";
 import { PendingChoicePrompt } from "@/features/match/PendingChoicePrompt";
 import { graveyardPickView } from "@/features/match/graveyardPickRequest";
 import { DeckLookPrompt } from "@/features/match/DeckLookPrompt";
-import { DieRollPrompt } from "@/features/match/DieRollPrompt";
+import { TableDice } from "@/features/match/dice/TableDice";
 import { HandDiscardPrompt } from "@/features/match/HandDiscardPrompt";
 import { ChoiceBanner } from "@/features/match/ChoiceBanner";
 import { useHandLimitDiscard } from "@/features/match/useHandLimitDiscard";
@@ -595,9 +595,8 @@ export function MatchBoard({
           onExpire={healAllocation.banner.onExpire}
         />
       )}
-      {!state.pendingReaction && state.pendingChoice?.kind === "dieRoll" && state.pendingChoice.playerId === viewerPlayerId && (
-        <DieRollPrompt state={state} choice={state.pendingChoice} onAction={runReactionAction} />
-      )}
+      {/* Les dés se lancent SUR la table, pour les deux joueurs ; le jet ouvert y garde ses gestes. */}
+      <TableDice state={state} viewerId={viewerPlayerId} onAction={runReactionAction} />
       {!state.pendingReaction && state.pendingChoice?.kind === "deckLook" && state.pendingChoice.playerId === viewerPlayerId && (
         <DeckLookPrompt
           choice={state.pendingChoice}

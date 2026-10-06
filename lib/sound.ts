@@ -83,6 +83,8 @@ const SOUNDS = {
   magicImpact: { src: "/assets/sound/magic-impact.mp3", gain: 0.35 }, // -16.6 dB · 8 s
   cardDraw: { src: "/assets/sound/card-pioche.mp3", gain: 0.58 }, // -23.3 dB · 0,4 s
   cardPlaced: { src: "/assets/sound/card-placment.mp3", gain: 0.62 }, // -23.8 dB · 0,6 s
+  // Dé qui tombe sur la table : le « clac » de la pose de carte, plus bas, en attendant un son de dé.
+  diceLanded: { src: "/assets/sound/card-placment.mp3", gain: 0.45 },
   cardToGraveyard: { src: "/assets/sound/card-saborde.mp3", gain: 1 }, // -28.6 dB · 0,5 s
   cardDiscarded: { src: "/assets/sound/card-defausse.mp3", gain: 1 }, // -30.3 dB · 1 s
   // Capacités de Navire, une sonorité par FAMILLE d'effet — pas une par
@@ -316,6 +318,11 @@ export function playCardDraw(): void {
 /** Une carte est jouée : elle se pose sur le plateau. */
 export function playCardPlaced(): void {
   playSound("cardPlaced");
+}
+
+/** Un dé lancé retombe sur la table (`TableDice`). */
+export function playDiceLanded(): void {
+  playSound("diceLanded");
 }
 
 /** Une carte part au Cimetière depuis le plateau (sabordée, détruite, brisée, expirée). */
