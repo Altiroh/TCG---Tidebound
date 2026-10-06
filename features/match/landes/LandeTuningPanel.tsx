@@ -6,9 +6,6 @@ import { LANDE_TUNING_DEFAULTS, setLandeTuning, useLandeTuning, type LandeTuning
 const CURSEURS: Array<{ key: keyof LandeTuning; label: string; min: number; max: number; step: number }> = [
   { key: "floorBrightness", label: "Luminosité du sol", min: 0.5, max: 2.5, step: 0.05 },
   { key: "tintOpacity", label: "Teinte de scène", min: 0, max: 1, step: 0.05 },
-  { key: "veilOpacity", label: "Voile haut / bas", min: 0, max: 1, step: 0.05 },
-  { key: "deckOpacity", label: "Pont du navire", min: 0, max: 1, step: 0.05 },
-  { key: "decorOpacity", label: "Décor du navire (bas, coins)", min: 0, max: 1, step: 0.05 },
   { key: "propScale", label: "Taille des pièces", min: 0.5, max: 3, step: 0.05 },
   { key: "propMax", label: "Taille max (px)", min: 150, max: 700, step: 10 },
   { key: "propFree", label: "Pièces libres (0 / 1)", min: 0, max: 1, step: 1 },

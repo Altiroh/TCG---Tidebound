@@ -49,7 +49,6 @@ import landeStyles from "@/features/match/landes/Landes.module.css";
 import { OngoingEffects } from "@/features/match/table/OngoingEffects";
 import { LandeLayer } from "@/features/match/landes/LandeLayer";
 import { landeAsset, landeScene } from "@/features/match/landes/landeScenes";
-import { DecorLayer } from "@/features/match/table/DecorLayer";
 import { DragLayer, type AimTone } from "@/features/match/table/DragLayer";
 import { EquipLinks } from "@/features/match/table/EquipLinks";
 import { GameStage } from "@/features/match/table/GameStage";
@@ -996,12 +995,16 @@ export function TableBoard(props: TableBoardProps) {
     <>
       <GameViewport>
         <BackgroundLayer
-          tideState={tideState}
           floor={(() => {
-            const sol = lande ? landeScene(lande.cardId).floor : undefined;
-            if (!lande || !sol) return null;
+            const scene = lande ? landeScene(lande.cardId) : undefined;
+            if (!lande || !scene?.floor) return null;
             const arriving = lande.instanceId !== seenLande.current || landeArrival?.instanceId === lande.instanceId;
-            return { src: landeAsset(lande.cardId, sol), key: lande.instanceId, delayMs: arriving ? LANDE_ARRIVAL.DISSOLVE_AT : 0 };
+            return {
+              src: landeAsset(lande.cardId, scene.floor),
+              key: lande.instanceId,
+              delayMs: arriving ? LANDE_ARRIVAL.DISSOLVE_AT : 0,
+              frame: (scene.frame ?? []).map((wall) => ({ src: landeAsset(lande.cardId, wall.file), box: wall.box })),
+            };
           })()}
         />
         <RainLayer tideState={tideState} />
@@ -1012,7 +1015,6 @@ export function TableBoard(props: TableBoardProps) {
           entering={(lande !== undefined && lande.instanceId !== seenLande.current) || landeArrival?.instanceId === lande?.instanceId}
           enterDelayMs={LANDE_ARRIVAL.DISSOLVE_AT}
         />
-        <DecorLayer onFloor={Boolean(lande && landeScene(lande.cardId).floor)} />
 
         {/* `gesturing` : un glisser est en cours quelque part. Il coupe
             l'agrandissement au survol sur TOUT le plateau — une carte qui

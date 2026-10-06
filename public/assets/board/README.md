@@ -5,9 +5,13 @@ Board principal + variantes visuelles selon les Eaux et les états de Marée.
 - Racine : illustration du board principal (neutre, sans Eaux/Marée spécifique).
 - `water-variants/` : une variante par Eaux (voir `game/environment/waterData.ts`
   pour la liste des `WaterDefinition` — id, nom).
-- `tide-states/` : un état visuel par état de Marée — Calme, Houle, Tempête,
-  Abysses (`game/environment/types.ts` `TideStateName`). Format panoramique
-  (1672×941), posé en fond de scène par `table/BackgroundLayer.tsx`.
+- `table-classique/` : le fond de la partie (maquette du 06/10/2026) — table de
+  bois, tapis de parchemin et objets peints dans les coins (`fond.webp`,
+  1672×941), et la bougie posée par-dessus dans le coin haut gauche
+  (`bougie.webp`). Posés par `table/BackgroundLayer.tsx` ; un sol de Lande
+  (`LandeScene.floor`) remplace le fond tant que la Lande est en jeu.
+- `tide-states/` : l'ancien fond de scène, une mer par état de Marée
+  (1672×941). Plus affiché depuis la table classique.
 - `tide-porthole-frame.webp` + `tide-portholes/` : le **hublot de Marée** de
   la bande centrale (`table/TidePorthole.tsx`). Le cadre est détourré, carré,
   avec une fenêtre ronde **mesurée** dans l'image — centre 49,5 % / 49,8 %,

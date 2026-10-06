@@ -14,12 +14,6 @@ export interface LandeTuning {
   floorBrightness: number;
   /** Opacité de la teinte de scène (`LandeScene.tint`). */
   tintOpacity: number;
-  /** Opacité du voile qui assombrit le haut et le bas de la scène. */
-  veilOpacity: number;
-  /** Opacité du pont du navire quand un sol le remplace. */
-  deckOpacity: number;
-  /** Opacité du décor de la table (lanternes, tonneaux, barre) quand un sol remplace la mer. */
-  decorOpacity: number;
   /** Multiplicateur de taille des pièces de décor (`LandeProps`). */
   propScale: number;
   /** Taille maximale (px) d'une pièce de décor. */
@@ -34,9 +28,6 @@ export interface LandeTuning {
 export const LANDE_TUNING_DEFAULTS: Readonly<LandeTuning> = {
   floorBrightness: 1,
   tintOpacity: 1,
-  veilOpacity: 1,
-  deckOpacity: 1,
-  decorOpacity: 1,
   propScale: 1,
   propMax: 300,
   propFree: 0,

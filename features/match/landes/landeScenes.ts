@@ -92,11 +92,17 @@ export interface LandeScene {
   anchors?: string[];
   layers?: LandeLayer[];
   /**
-   * SOL qui remplace la mer tant que la Lande est active (Le Donjon de
-   * Ladalle : des pavés). Même format et même cadrage que les fonds de Marée
-   * (1672 × 941) : posé entre la mer et le pont, il fait partie du décor.
+   * SOL qui remplace la table tant que la Lande est active (Le Donjon de
+   * Ladalle : des pavés). Même format et même cadrage que le fond de la
+   * table (1672 × 941) : il fait partie du décor.
    */
   floor?: string;
+  /**
+   * Murs qui encadrent le sol, posés SUR lui (`BackgroundLayer`) : boîte
+   * `[gauche, haut, largeur, hauteur]` en fractions du fond. Ils se dressent
+   * l'un après l'autre, une fois le sol apparu.
+   */
+  frame?: { file: string; box: readonly [number, number, number, number] }[];
   /** Pièces de décor posées autour du plateau (`LandeProps`). */
   props?: LandeProp[];
   /**
@@ -142,21 +148,26 @@ export const LANDE_SCENES: Readonly<Record<string, LandeScene>> = {
   "le-donjon-de-ladalle": {
     rgb: "236, 170, 84",
     rgbHot: "255, 226, 160",
-    tint:
-      "linear-gradient(180deg, rgba(30, 20, 10, 0.4) 0%, rgba(20, 14, 8, 0.15) 40%, rgba(30, 20, 10, 0.4) 100%), " +
-      "radial-gradient(120% 90% at 50% 45%, transparent 40%, rgba(8, 5, 2, 0.55) 100%)",
+    // Le sol porte déjà sa lumière chaude et son ombre de bord : la teinte
+    // ne fait plus qu'un voile léger sur les coins.
+    tint: "radial-gradient(120% 90% at 50% 45%, transparent 55%, rgba(8, 5, 2, 0.35) 100%)",
     frontFx: true,
-    floor: "donjon-sol.png",
-    // Murs, arche, étal et latrines sortent du plateau à l'arrivée de la Lande.
+    // Maquette du 06/10/2026 : le sol dallé entre quatre murs, boîtes
+    // relevées sur la maquette (fond de 1672 × 941).
+    floor: "plateau-sol.png",
+    frame: [
+      { file: "mur-haut.png", box: [245 / 1672, 80 / 941, 1300 / 1672, 150 / 941] },
+      { file: "mur-gauche.png", box: [38 / 1672, 145 / 941, 110 / 1672, 560 / 941] },
+      { file: "mur-droite.png", box: [1505 / 1672, 145 / 941, 130 / 1672, 560 / 941] },
+      { file: "mur-bas.png", box: [140 / 1672, 680 / 941, 1420 / 1672, 125 / 941] },
+    ],
+    // L'étal et les latrines sortent du plateau à l'arrivée de la Lande.
     // `at` est une position VOULUE : `LandeProps` cherche autour la plus
     // grande place libre, sans jamais toucher l'interface.
     props: [
-      { file: "arche.png", zone: "sea", at: 0.18, scale: 1, layer: "front", lights: [{ x: 0.825, y: 0.33 }] },
-      { file: "etal.png", zone: "desk", at: 0.12, scale: 1, layer: "front", lights: [{ x: 0.83, y: 0.38 }] },
-      { file: "latrines.png", zone: "desk", at: 0.82, scale: 1, layer: "front", stench: { x: 0.45, y: 0.42 } },
-      { file: "mur-fenetre.png", zone: "sky", at: 0.08, scale: 1, layer: "front", lights: [{ x: 0.465, y: 0.48, size: 0.42 }] },
-      { file: "mur-echelle.png", zone: "sky", at: 0.28, scale: 1, layer: "front" },
-      { file: "mur-torche.png", zone: "sky", at: 0.84, scale: 1, layer: "front", lights: [{ x: 0.275, y: 0.33 }] },
+      { file: "etal-poissons.png", zone: "sea", at: 0.18, scale: 1, layer: "front" },
+      { file: "latrines-doubles.png", zone: "desk", at: 0.88, scale: 1, layer: "front", stench: { x: 0.5, y: 0.5 } },
+      { file: "latrines-simples.png", zone: "desk", at: 0.14, scale: 1, layer: "front", stench: { x: 0.45, y: 0.5 } },
     ],
   },
   "chaine-de-construction": {

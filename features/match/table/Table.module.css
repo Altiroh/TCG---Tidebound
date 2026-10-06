@@ -64,27 +64,91 @@
 }
 
 /* ──────────────────────────────────────────────────────────────
- * BACKGROUND LAYER — mer de l'état de Marée (`tide-states/*.webp`) + pont
- * (`board-deck.webp`), tous au même format et au même cadrage.
- * `cover` recadre le décor selon le format d'écran SANS jamais déplacer le
- * gameplay (qui vit dans `.stage`, au-dessus). Cadré sur le bas : c'est le
- * pont, sous la main du joueur, qu'on veut garder.
+ * BACKGROUND LAYER — la table classique (`table-classique/fond.webp`), ou le
+ * sol d'une Lande, au format 1672 × 941.
+ * `.coverBox` reproduit un `object-fit: cover` calé à 50 % / 70 % : tout ce
+ * qui est posé dedans (bougie, murs) reste à sa place sur le fond, quel que
+ * soit le format d'écran — SANS jamais déplacer le gameplay (`.stage`).
  * ────────────────────────────────────────────────────────────── */
 .background {
   position: absolute;
   inset: 0;
   z-index: 0;
-  background-color: #07111c;
+  overflow: hidden;
+  background-color: #2a1a10;
 }
 
-.backgroundImage {
+.coverBox {
+  --cover-w: max(100cqw, calc(100cqh * 1672 / 941));
+  --cover-h: max(100cqh, calc(100cqw * 941 / 1672));
+  position: absolute;
+  left: calc((100cqw - var(--cover-w)) * 0.5);
+  top: calc((100cqh - var(--cover-h)) * 0.7);
+  width: var(--cover-w);
+  height: var(--cover-h);
+}
+
+.coverImage {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  object-position: 50% 70%;
   user-select: none;
+}
+
+/* La bougie du coin haut gauche (maquette du 06/10/2026). Boîte en
+   fractions du fond ; la flamme est à 50 % / 19 % de l'image. */
+.bougie {
+  position: absolute;
+  left: 0.5%;
+  top: -2.2%;
+  width: 10.8%;
+  aspect-ratio: 478 / 512;
+}
+
+.bougieImage {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  user-select: none;
+  filter: drop-shadow(0.4cqh 0.8cqh 0.8cqh rgba(20, 10, 4, 0.55));
+}
+
+/* Lueur sur la table, autour de la bougie : elle respire avec la flamme. */
+.bougieLueur {
+  position: absolute;
+  left: 50%;
+  top: 19%;
+  width: 360%;
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 190, 110, 0.32) 0%, rgba(255, 160, 80, 0.12) 35%, rgba(255, 150, 70, 0) 65%);
+  mix-blend-mode: screen;
+  animation: bougieVacille 3.2s ease-in-out infinite;
+}
+
+/* Halo serré sur la flamme. */
+.bougieFlamme {
+  position: absolute;
+  left: 50%;
+  top: 19%;
+  width: 55%;
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 236, 190, 0.55) 0%, rgba(255, 190, 110, 0.18) 40%, rgba(255, 170, 90, 0) 70%);
+  mix-blend-mode: screen;
+  animation: bougieVacille 1.7s ease-in-out infinite reverse;
+}
+
+@keyframes bougieVacille {
+  0%, 100% { opacity: 0.85; scale: 1; }
+  23% { opacity: 1; scale: 1.04; }
+  41% { opacity: 0.72; scale: 0.97; }
+  63% { opacity: 0.95; scale: 1.02; }
+  82% { opacity: 0.78; scale: 0.99; }
 }
 
 /* Calque du sol d'une Lande : porte sa luminosité (`landeTuning.ts`). */
@@ -93,9 +157,9 @@
   inset: 0;
 }
 
-/* Pont et voile s'effacent en douceur quand un sol remplace la mer. */
-.backgroundTuned {
-  transition: opacity 600ms ease;
+.landeFloorScene {
+  position: absolute;
+  inset: 0;
 }
 
 /* Sol d'une Lande (le Donjon : des pavés) : il surgit du centre en une
@@ -123,70 +187,32 @@
   to { opacity: 0; }
 }
 
+/* Murs du sol (`LandeScene.frame`) : chacun se dresse depuis le sol, après
+   l'onde, dans un léger tremblement. */
+.landeWall {
+  position: absolute;
+  user-select: none;
+  filter: drop-shadow(0.3cqh 0.9cqh 0.8cqh rgba(15, 8, 3, 0.6));
+  animation: landeWallIn 700ms cubic-bezier(0.25, 1.4, 0.5, 1) both;
+}
+
+@keyframes landeWallIn {
+  0% { opacity: 0; transform: translateY(12%) scale(0.96); }
+  60% { opacity: 1; }
+  100% { opacity: 1; transform: none; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .landeFloor,
-  .landeFloorOut {
+  .landeFloorOut,
+  .landeWall {
     animation-duration: 1ms;
   }
-}
 
-/* Les quatre mers restent montées et se relaient en fondu enchaîné. */
-.backgroundTide {
-  opacity: 0;
-  transition: opacity 1200ms ease-in-out;
-}
-
-.backgroundTideActive {
-  opacity: 1;
-}
-
-/* Voile léger : assombrit le ciel (main adverse) et le pont (main du joueur)
-   sans éteindre la mer, que la bande de Marée laisse voir. */
-.backgroundVeil {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg, rgba(4, 9, 15, 0.45) 0%, rgba(4, 9, 15, 0.1) 30%, rgba(4, 9, 15, 0.05) 60%, rgba(4, 9, 15, 0.35) 100%);
-}
-
-/* ──────────────────────────────────────────────────────────────
- * DÉCORS D'ANGLE — accessoires posés sur le fond, derrière le gameplay.
- * Dimensionnés en hauteur d'écran, calés sur leur coin et légèrement
- * rognés par le bord, comme sur l'ancien `board.webp`.
- * ────────────────────────────────────────────────────────────── */
-.decor {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  overflow: hidden;
-  pointer-events: none;
-}
-
-.decorItem {
-  position: absolute;
-  height: auto;
-  user-select: none;
-  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.6));
-}
-
-/* Cordage, bouée et lanterne : au-dessus de la colonne boussole. */
-.decorTopRight {
-  top: -3cqh;
-  right: -2cqh;
-  width: min(46cqh, 30cqw);
-}
-
-/* Gouvernails : coupés par le bord droit et le bas. */
-.decorBottomRight {
-  right: -7cqh;
-  bottom: -9cqh;
-  width: min(44cqh, 27cqw);
-}
-
-/* Lanterne, tonneau, filet : sur le pont, à gauche de la main. */
-.decorBottomLeft {
-  left: -3cqh;
-  bottom: -5cqh;
-  width: min(58cqh, 34cqw);
+  .bougieLueur,
+  .bougieFlamme {
+    animation: none;
+  }
 }
 
 /* ──────────────────────────────────────────────────────────────
@@ -1416,8 +1442,10 @@
   font-weight: 600;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.6);
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.95), 0 0 6px rgba(0, 0, 0, 0.9);
+  /* Encre sur le tapis de parchemin (table classique) ou les dalles d'une
+     Lande : les deux fonds sont clairs. */
+  color: rgba(52, 32, 16, 0.78);
+  text-shadow: 0 1px 0 rgba(255, 240, 210, 0.45);
 }
 
 /* Décompte après le nom : téléphone seulement (ailleurs, il est dans le hublot). */
@@ -1426,12 +1454,13 @@
 }
 
 .tideStepPast .tideName {
-  color: rgba(255, 255, 255, 0.9);
+  color: rgba(52, 32, 16, 0.92);
 }
 
 .tideStepActive .tideName {
   color: rgb(var(--tide-rgb));
   filter: brightness(1.15);
+  text-shadow: 0 0 2px rgba(30, 16, 6, 0.95), 0 1px 3px rgba(30, 16, 6, 0.85);
 }
 
 /*

@@ -152,6 +152,10 @@ const RULES = [
   // Tuile d'orientation de la Marée : posée dans l'emplacement du Navire,
   // jamais plus de ~380 px de haut. 1254 → 760 px (audit du 24/09).
   { match: /\/board\/tide-orientation\//, maxSize: 760, quality: 86 },
+  // Table classique : le fond (table et tapis de parchemin) couvre l'écran,
+  // pleine taille ; la bougie, posée dans le coin, ne dépasse pas ~200 px.
+  { match: /\/board\/table-classique\/fond\./, maxSize: 1672, quality: 84 },
+  { match: /\/board\/table-classique\/bougie\./, maxSize: 512, quality: 90 },
   // Ombre de transition de page : étirée à 140 % de la hauteur d'écran, elle
   // est déjà agrandie à l'affichage. Ramenée de 1672 à 1254 px (audit du
   // 24/09, 330 → 134 Ko) : c'est une ombre floue qui traverse l'écran en
@@ -228,6 +232,9 @@ const RULES = [
   // en plein écran, même format et même taille que les fonds de Marée
   // (1672 × 941). À tester AVANT la règle des pièces du Donjon.
   { match: /\/landes\/[^/]+\/[^/]*-sol\./, maxSize: 1672, quality: 84 },
+  // Murs du Donjon : ils encadrent le sol sur toute sa largeur (~1300 px du
+  // fond) ou sa hauteur — même échelle que lui.
+  { match: /\/landes\/le-donjon-de-ladalle\/mur-(haut|bas|gauche|droite)\./, maxSize: 1600, quality: 86 },
   // Pièces du Donjon de Ladalle : décor isométrique posé jusqu'à ~260 px de haut.
   { match: /\/landes\/le-donjon-de-ladalle\//, maxSize: 768, quality: 86 },
   { match: /\/landes\//, maxSize: 700, quality: 86 },

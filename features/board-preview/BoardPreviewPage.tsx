@@ -9,7 +9,6 @@ import { BackgroundLayer } from "@/features/match/table/BackgroundLayer";
 import { CardZoom } from "@/features/board-preview/CardZoom";
 import { CenterZone } from "@/features/match/table/CenterZone";
 import { DebugOverlay } from "@/features/board-preview/DebugOverlay";
-import { DecorLayer } from "@/features/match/table/DecorLayer";
 import { DragLayer, type AimTone } from "@/features/match/table/DragLayer";
 import { EquipLinks } from "@/features/match/table/EquipLinks";
 import { EffectsLayer } from "@/features/board-preview/EffectsLayer";
@@ -328,8 +327,7 @@ export function BoardPreviewPage() {
 
   return (
     <GameViewport debugZones={zonesVisible}>
-      <BackgroundLayer tideState={tideState} />
-      <DecorLayer />
+      <BackgroundLayer />
 
       <GameStage ref={stageRef} className={gesture ? styles.gesturing : undefined}>
         {/* Cadres des deux rangées de plateau, derrière les zones. La bande de Marée n'en a pas : on y voit le décor. */}

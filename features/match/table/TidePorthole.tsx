@@ -2,8 +2,8 @@ import type { TideStateName } from "@/game";
 
 /**
  * La mer de chaque état, telle qu'on la voit PAR LE HUBLOT — image carrée,
- * cadrée pour tenir dans un disque, et non le fond panoramique du plateau
- * (`BackgroundLayer`, `tide-states/*.webp`), qui est un autre cadrage.
+ * cadrée pour tenir dans un disque, et non l'ancien fond panoramique du
+ * plateau (`tide-states/*.webp`), qui est un autre cadrage.
  */
 export const PORTHOLE_SEAS: Record<TideStateName, string> = {
   calme: "/assets/board/tide-portholes/calme.webp",

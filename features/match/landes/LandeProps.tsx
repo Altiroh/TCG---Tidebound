@@ -117,13 +117,13 @@ function place(prop: LandeProp, l: Layout, taken: Rect[], tuning: Pick<LandeTuni
 }
 
 /**
- * Les deux LANTERNES du décor de la table (`DecorLayer` : en haut à droite
- * et en bas à gauche), en fractions de l'écran : chaque pièce est éclairée
- * du côté de la plus proche, et son ombre part à l'opposé.
+ * Les deux FEUX du sol du Donjon (`plateau-sol.webp` : le brasero en haut à
+ * gauche, les bougies en bas à droite), en fractions de l'écran : chaque
+ * pièce est éclairée du côté du plus proche, et son ombre part à l'opposé.
  */
 const DECOR_LANTERNS = [
-  { x: 0.95, y: 0.13 },
-  { x: 0.03, y: 0.9 },
+  { x: 0.1, y: 0.05 },
+  { x: 0.97, y: 0.82 },
 ];
 
 function lightingFor(x: number, y: number, l: Layout): { angle: number; strength: number; away: [number, number] } {
