@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { createPortal } from "react-dom";
 import { getCardDefinition } from "@/game";
+import { RARITY_ORDER } from "@/game/boosters";
 import styles from "@/features/boosters/opening/BoosterOpening.module.css";
 import { useCardBackSrc } from "@/features/cosmetics/CardBackProvider";
 import { CardDetailModal } from "@/features/collection/card-detail/CardDetailModal";
@@ -147,7 +148,11 @@ function timingVariables(timings: BoosterOpeningTimings, cardCount: number): CSS
  *   - ce composant            : QUAND ça se passe (minuteries, sons, focus)
  *   - `BoosterOpening.module.css` : COMMENT ça bouge (transform/opacity)
  */
-export function BoosterOpeningScene({ cards, visual, origin = null, closeLabel = "Fermer", onClose }: BoosterOpeningSceneProps) {
+export function BoosterOpeningScene({ cards: tirage, visual, origin = null, closeLabel = "Fermer", onClose }: BoosterOpeningSceneProps) {
+  // Les cartes sortent et se retournent par RARETÉ CROISSANTE : la plus rare
+  // (une Abyssale, au mieux) est toujours la dernière retournée. Tri stable :
+  // à rareté égale, l'ordre du tirage est gardé.
+  const cards = useMemo(() => [...tirage].sort((a, b) => RARITY_ORDER.indexOf(a.rarity) - RARITY_ORDER.indexOf(b.rarity)), [tirage]);
   const [reducedMotion] = useState(prefersReducedMotion);
   const [coarsePointer] = useState(hasCoarsePointer);
   const timings = reducedMotion ? BOOSTER_OPENING_TIMINGS_REDUCED : BOOSTER_OPENING_TIMINGS;
