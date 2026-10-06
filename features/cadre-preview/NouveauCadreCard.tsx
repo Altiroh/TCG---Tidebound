@@ -71,7 +71,7 @@ export function NouveauCadreFace({ def, legendaire = false, attack, health, atta
   const nomRef = useRef<HTMLHeadingElement>(null);
   const effetRef = useRef<HTMLParagraphElement>(null);
   useFitText(nomRef, def.name, nameSizeCqw(def.name), 6.5);
-  useFitText(effetRef, def.text ?? "", rulesSizeCqw(def.text ?? ""), 2.6);
+  useFitText(effetRef, def.text ?? "", rulesSizeCqw(def.text ?? ""), 2.6, EFFET_LISIBLE_CQW);
 
   const cadre = frameName(def, legendaire);
   const calage = CALAGES[cadre];
@@ -314,6 +314,9 @@ function EffetAbyssal() {
   );
 }
 
+/** En dessous de cette taille, l'effet se lit mal même en aperçu : l'encart de lecture prend le relais. */
+const EFFET_LISIBLE_CQW = 3.4;
+
 /** Hauteur de la zone du nom : deux lignes à la plus grande taille, jambages compris. */
 const NOM_HAUTEUR_CQW = 30;
 
@@ -325,7 +328,7 @@ const NOM_HAUTEUR_CQW = 30;
  * pas de la taille de la carte : on ne le recalcule qu'au changement de
  * texte et une fois les polices chargées.
  */
-function useFitText(ref: React.RefObject<HTMLElement | null>, text: string, baseCqw: number, minCqw: number) {
+function useFitText(ref: React.RefObject<HTMLElement | null>, text: string, baseCqw: number, minCqw: number, smallCqw?: number) {
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el || !text) return;
@@ -341,6 +344,9 @@ function useFitText(ref: React.RefObject<HTMLElement | null>, text: string, base
         size = Math.max(minCqw, size - 0.25);
         el.style.fontSize = `${size}cqw`;
       }
+      // Texte devenu PETIT pour tenir : l'aperçu ajoute alors l'encart de
+      // lecture (`CardRulesPanel`, affiché par `:has([data-fit-small])`).
+      if (smallCqw !== undefined) el.toggleAttribute("data-fit-small", size < smallCqw || deborde());
     };
     fit();
     let alive = true;
@@ -348,7 +354,7 @@ function useFitText(ref: React.RefObject<HTMLElement | null>, text: string, base
     return () => {
       alive = false;
     };
-  }, [ref, text, baseCqw, minCqw]);
+  }, [ref, text, baseCqw, minCqw, smallCqw]);
 }
 
 function nameSizeCqw(name: string): number {

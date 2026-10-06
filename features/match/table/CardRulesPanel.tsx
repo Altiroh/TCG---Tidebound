@@ -1,29 +1,26 @@
 "use client";
 
-import { ARCHETYPE_LABELS, getCardDefinition } from "@/game";
-import { CARD_TYPE_LABELS } from "@/features/match/cardDisplay";
+import { getCardDefinition } from "@/game";
 import styles from "@/features/match/table/Table.module.css";
 
 /**
- * L'EFFET d'une carte, en texte de lecture — à côté de la carte en grand.
+ * L'EFFET d'une carte, en texte de lecture — un prolongement de la carte en
+ * grand, en verre liquide, qui sort de derrière son bord.
  *
- * Sur la face, un effet long rétrécit pour tenir dans sa zone : même en
- * aperçu, il finit en petits caractères. Cet encart le reprend en entier, à
- * une taille de lecture fixe, avec le nom et la ligne de type. Posé contre
- * l'aperçu au survol (`HoverCardPreview`) et dans la carte en grand au doigt
- * (`TableCardZoom`).
+ * Sur la face, un effet long rétrécit pour tenir dans sa zone. Seul celui-là
+ * a besoin d'être repris : l'encart n'apparaît que si la face a dû réduire
+ * son texte sous une taille confortable (`data-fit-small`, posé par la face ;
+ * règle `:has` dans `Table.module.css`). Un effet court se lit déjà sur la
+ * carte et n'est pas répété.
+ *
+ * Posé contre l'aperçu au survol (`HoverCardPreview`) et dans la carte en
+ * grand au doigt (`TableCardZoom`).
  */
 export function CardRulesPanel({ cardId }: { cardId: string }) {
   const def = getCardDefinition(cardId);
   if (!def.text) return null;
-  const famille = def.archetype ? ARCHETYPE_LABELS[def.archetype] : null;
   return (
     <section className={styles.rulesPanel} aria-label={`Effet de ${def.name}`}>
-      <h4 className={styles.rulesPanelName}>{def.name}</h4>
-      <p className={styles.rulesPanelType}>
-        {CARD_TYPE_LABELS[def.type]}
-        {famille && <span className={styles.rulesPanelFamily}> · {famille}</span>}
-      </p>
       <p className={styles.rulesPanelText}>{def.text}</p>
     </section>
   );

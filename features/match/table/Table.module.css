@@ -2042,7 +2042,6 @@
   position: fixed;
   z-index: 70;
   pointer-events: none;
-  filter: drop-shadow(0 18px 40px rgba(0, 0, 0, 0.78));
   opacity: 0;
   transform: translateY(6px) scale(0.97);
 }
@@ -2059,11 +2058,11 @@
   }
 }
 
-/* Aperçu + encart de règles, côte à côte ; l'encart passe du côté libre de l'écran. */
+/* Aperçu + encart de lecture, côte à côte ; l'encart sort de derrière la
+   carte, du côté libre de l'écran, calé sur la zone d'effet (en bas). */
 .hoverPreviewRow {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  align-items: flex-end;
 }
 
 .hoverPreviewRow[data-side="left"] {
@@ -2071,57 +2070,113 @@
 }
 
 .hoverPreviewCard {
+  position: relative;
+  z-index: 1;
   flex: none;
   width: calc(var(--preview-h) * 5 / 7);
+  /* L'ombre sur la carte seule : un « filter » sur tout le calque
+     empêcherait le verre de flouter le plateau derrière lui. */
+  filter: drop-shadow(0 18px 40px rgba(0, 0, 0, 0.78));
 }
 
-/* L'EFFET en texte de lecture (`CardRulesPanel`) : taille fixe, jamais rétrécie. */
+/* L'effet n'est repris que s'il est devenu PETIT sur la face. */
+.hoverPreviewRow:not(:has([data-fit-small])) .rulesPanel,
+.cardZoom:not(:has([data-fit-small])) .rulesPanel {
+  display: none;
+}
+
+/*
+ * VERRE LIQUIDE : une lame translucide qui floute et sature ce qu'elle
+ * couvre, un reflet en haut, un liseré clair, et un fond qui s'éclaircit
+ * vers la carte. Elle part de DERRIÈRE la carte (marge négative, sous elle)
+ * et s'arrondit seulement du côté libre.
+ */
 .rulesPanel {
-  width: min(300px, 30vw);
-  max-height: var(--preview-h, 70vh);
+  --glass-tuck: 22px;
+  position: relative;
+  width: min(300px, 28vw);
+  max-height: calc(var(--preview-h, 70vh) * 0.62);
+  margin-bottom: calc(var(--preview-h, 70vh) * 0.07);
+  margin-left: calc(-1 * var(--glass-tuck));
+  padding: 16px 18px 18px calc(16px + var(--glass-tuck));
   overflow-y: auto;
-  padding: 14px 16px 16px;
-  border: 1px solid rgba(232, 200, 140, 0.45);
-  border-radius: 10px;
-  background: linear-gradient(180deg, rgba(20, 30, 42, 0.96), rgba(10, 16, 24, 0.96));
-  color: #eef3f7;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-left: 0;
+  border-radius: 0 22px 22px 0;
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.06) 38%, rgba(255, 255, 255, 0.02) 62%, rgba(255, 255, 255, 0.1) 100%),
+    rgba(14, 26, 38, 0.38);
+  backdrop-filter: blur(18px) saturate(1.7) brightness(1.05);
+  -webkit-backdrop-filter: blur(18px) saturate(1.7) brightness(1.05);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.12),
+    inset -10px 0 24px rgba(255, 255, 255, 0.05),
+    0 18px 40px rgba(0, 0, 0, 0.45);
+  color: #f4f8fb;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.4) transparent;
+  animation: glassOut 220ms cubic-bezier(0.2, 0.8, 0.25, 1) both;
 }
 
-/* Dans la carte en grand (au doigt), l'encart prend la largeur de la colonne d'actions. */
-.cardZoomSide .rulesPanel {
-  width: auto;
-  max-height: none;
-  flex: none;
+/* Le reflet : une courbe de lumière qui glisse sur la lame. */
+.rulesPanel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(120% 60% at 70% -10%, rgba(255, 255, 255, 0.28), transparent 60%);
+  pointer-events: none;
 }
 
-.rulesPanelName {
-  margin: 0;
-  color: #f3dcae;
-  font-family: var(--font-card-new-title, Georgia, serif);
-  font-size: 17px;
-  line-height: 1.15;
+.hoverPreviewRow[data-side="left"] .rulesPanel {
+  margin-left: 0;
+  margin-right: calc(-1 * var(--glass-tuck));
+  padding: 16px calc(18px + var(--glass-tuck)) 18px 16px;
+  border-left: 1px solid rgba(255, 255, 255, 0.28);
+  border-right: 0;
+  border-radius: 22px 0 0 22px;
+  animation-name: glassOutLeft;
 }
 
-.rulesPanelType {
-  margin: 4px 0 10px;
-  color: rgba(232, 220, 196, 0.75);
-  font-family: var(--tb-font-ui);
-  font-size: 11px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+@keyframes glassOut {
+  from { opacity: 0; transform: translateX(-24px); }
+  to { opacity: 1; transform: none; }
 }
 
-.rulesPanelFamily {
-  color: rgba(232, 220, 196, 0.55);
+@keyframes glassOutLeft {
+  from { opacity: 0; transform: translateX(24px); }
+  to { opacity: 1; transform: none; }
 }
 
 .rulesPanelText {
+  position: relative;
   margin: 0;
   font-family: var(--font-card-body, Georgia, serif);
   font-size: calc(15px * var(--tb-text-scale, 1));
+  font-weight: 600;
   line-height: 1.45;
   white-space: pre-line;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+}
+
+/* Dans la carte en grand (au doigt), la lame prend la largeur de la colonne d'actions. */
+.cardZoomSide .rulesPanel {
+  width: auto;
+  max-height: none;
+  margin: 0;
+  padding: 14px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 18px;
+  flex: none;
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rulesPanel,
+  .hoverPreviewRow[data-side="left"] .rulesPanel {
+    animation: none;
+  }
 }
 
 /* `CardTile` est un <button> désactivé quand il n'a pas d'`onClick` : un
