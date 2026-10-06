@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import {
   dieOutcomeOf,
@@ -13,9 +13,9 @@ import {
   type PlayerAction,
   type PlayerId,
 } from "@/game";
-import { DIE_GEOMETRY, dieBodyUrl, dieFaceUrl, faceMatrix, visibleFaceValues } from "@/features/match/dice/diceAssets";
+import { dieFaceUrl, dieTextureFit, dieTextureUrl } from "@/features/match/dice/diceAssets";
+import { eulerMatrix, multiply, placeFaces, restMatrix, rotate, slerp, toCss, type Mat4 } from "@/features/match/dice/polyhedra";
 import { useDiceThrow, type DiceThrow } from "@/features/match/dice/useDiceThrow";
-import { useImageOk } from "@/features/match/useImageOk";
 import { loadImageStatus } from "@/features/match/imageStatusCache";
 import { playButtonClick, playDiceLanded } from "@/lib/sound";
 import styles from "@/features/match/dice/TableDice.module.css";
@@ -36,8 +36,6 @@ const ISSUES: Record<DieOutcome, string> = {
 
 /** Durée du vol, de la main au tapis. */
 const FLIGHT_MS = 950;
-/** Les faces défilent pendant le vol : une toutes les… */
-const TUMBLE_TICK_MS = 70;
 
 function signe(delta: number): string {
   return delta > 0 ? `+${delta}` : `${delta}`;
@@ -58,8 +56,8 @@ function prefersReducedMotion(): boolean {
  * LES DÉS SUR LA TABLE (Lot 17) — sans fenêtre.
  *
  * Quand un jet a lieu, un dé part du côté de celui qui le lance, traverse la
- * table en tournoyant (les faces défilent, déformées comme un objet qui
- * roule), rebondit et se pose. Le résultat s'éclaire sous lui ; un jet fermé
+ * table en tournoyant sur lui-même (un vrai solide, en CSS 3D), rebondit et
+ * se pose, la face obtenue tournée vers le joueur. Le résultat s'éclaire ; un jet fermé
  * s'efface au bout de quelques secondes.
  *
  * Tant que le jet est OUVERT (la Chaîne), le dé reste posé et les gestes
@@ -75,7 +73,7 @@ export function TableDice({ state, viewerId, onAction }: TableDiceProps) {
   // partait avec le dé de repli, le temps que les images arrivent.
   useEffect(() => {
     for (const die of [4, 6, 8] as const) {
-      void loadImageStatus(dieBodyUrl(die));
+      void loadImageStatus(dieTextureUrl(die));
       for (let value = 1; value <= die; value++) void loadImageStatus(dieFaceUrl(die, value));
     }
   }, []);
@@ -124,6 +122,7 @@ function DiceOnTable({ throwInfo, state, viewerId, onAction }: { throwInfo: Dice
 
       <p className={styles.caption} data-outcome={throwInfo.open ? undefined : throwInfo.outcome}>
         {source && <span className={styles.source}>{source} · </span>}
+        {!throwInfo.choice?.candidates && throwInfo.faces.length === 1 && issue && <strong className={styles.value}>{throwInfo.faces[0]} · </strong>}
         {throwInfo.choice?.candidates
           ? fromViewer
             ? "Deux dés : touche celui que tu gardes."
@@ -217,90 +216,188 @@ interface ThrownDieProps {
   onPick?: () => void;
 }
 
-/** Un dé : il vole jusqu'à sa place en tournoyant, puis montre sa face. */
+/** Arête du solide, en fraction de la taille du dé à l'écran : un cube incliné paraît plus grand que son arête. */
+const EDGE_RATIO: Record<DieSize, number> = { 4: 0.98, 6: 0.6, 8: 0.74 };
+/**
+ * Inclinaison au repos : la face obtenue reste face au joueur, on voit juste
+ * le volume autour. Plus douce sur le D4 et le D8, dont les faces voisines
+ * sont très pentues et voleraient la vedette à la face obtenue.
+ */
+const TILT: Record<DieSize, { x: number; y: number }> = { 4: { x: -10, y: 12 }, 6: { x: -16, y: 20 }, 8: { x: -8, y: 10 } };
+/** D'où vient la lumière (haut gauche, devant) : chaque face s'éclaire selon sa pente. */
+const LIGHT: readonly [number, number, number] = (() => {
+  const v = [-0.35, -0.6, 0.72];
+  const n = Math.hypot(...v);
+  return [v[0]! / n, v[1]! / n, v[2]! / n];
+})();
+/** Durée du roulis vers une nouvelle face, quand un ajustement change le jet. */
+const ROLL_MS = 450;
+
+function dieSizePx(): number {
+  return typeof window === "undefined" ? 96 : Math.round(Math.min(124, Math.max(72, window.innerWidth * 0.08)));
+}
+
+/** `cubic-bezier(x1, y1, x2, y2)` pour un avancement 0 → 1 (Newton, puis dichotomie). */
+function bezier(x1: number, y1: number, x2: number, y2: number): (t: number) => number {
+  const at = (a: number, b: number, u: number) => 3 * a * u * (1 - u) ** 2 + 3 * b * u * u * (1 - u) + u ** 3;
+  return (t) => {
+    let lo = 0;
+    let hi = 1;
+    let u = t;
+    for (let i = 0; i < 20; i++) {
+      const x = at(x1, x2, u);
+      if (Math.abs(x - t) < 1e-4) break;
+      if (x < t) lo = u;
+      else hi = u;
+      u = (lo + hi) / 2;
+    }
+    return at(y1, y2, u);
+  };
+}
+
+const SPIN_EASING = bezier(0.15, 0.65, 0.25, 1);
+const ROLL_EASING = bezier(0.3, 0.7, 0.3, 1);
+
+/**
+ * Un dé EN VOLUME : il vole jusqu'à sa place en tournoyant sur ses trois axes,
+ * puis s'arrête la face obtenue tournée vers le joueur. Un ajustement du jet
+ * (+1, Chaîne) fait rouler le dé jusqu'à la nouvelle face.
+ *
+ * Chaque tuile reçoit sa matrice FINALE (repos · roulis · face), recalculée à
+ * chaque image : pas de `preserve-3d`, qui rendait les faces floues sur les
+ * écrans denses. Le solide est convexe et ses faces de dos sont masquées
+ * (`backface-visibility`) : les faces vues ne se chevauchent jamais, l'ordre
+ * du DOM suffit.
+ */
 function ThrownDie({ throwKey, die, face, fromViewer, outcome, onPick }: ThrownDieProps) {
   const flightRef = useRef<HTMLDivElement | null>(null);
-  const [tumbling, setTumbling] = useState(!prefersReducedMotion());
-  const [tick, setTick] = useState(0);
-  const bodyOk = useImageOk(dieBodyUrl(die));
-  const shownFace = tumbling ? 1 + Math.floor(hash(`${throwKey}:${tick}`) * die) : face;
+  const faceRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const [size] = useState(dieSizePx);
+  const edge = Math.round(size * EDGE_RATIO[die]);
+  const faces = useMemo(() => placeFaces(die, edge), [die, edge]);
+  const tilt = useMemo(() => ({ x: TILT[die].x, y: (hash(`${throwKey}:y`) > 0.5 ? 1 : -1) * TILT[die].y }), [throwKey, die]);
+  const rest = useMemo(() => restMatrix(die, face, tilt), [die, face, tilt]);
+  /** Orientation affichée en ce moment (point de départ d'un roulis vers une nouvelle face). */
+  const shownRef = useRef<Mat4>(rest);
 
-  // Le vol : parti du bord de celui qui lance, une courbe, deux rebonds.
+  const draw = useCallback(
+    (orientation: Mat4) => {
+      shownRef.current = orientation;
+      faces.forEach((placed, index) => {
+        const el = faceRefs.current[index];
+        if (!el) return;
+        const n = rotate(orientation, placed.normal);
+        const lumiere = Math.max(0, n[0] * LIGHT[0] + n[1] * LIGHT[1] + n[2] * LIGHT[2]);
+        el.style.transform = toCss(multiply(orientation, placed.matrix));
+        // Éclairage par un voile (ombre ou reflet), jamais par `filter` : un
+        // filtre sur une tuile transformée en 3D la rastérise à ×1, donc floue.
+        const clarte = 0.55 + 0.55 * lumiere;
+        const voile = el.lastElementChild as SVGElement | null;
+        if (voile) voile.style.fill = clarte < 1 ? `rgba(8, 4, 2, ${(1 - clarte).toFixed(2)})` : `rgba(255, 244, 220, ${((clarte - 1) * 0.6).toFixed(2)})`;
+      });
+    },
+    [faces]
+  );
+
+  // Le vol : parti du bord de celui qui lance, une courbe, deux rebonds — et le dé qui roule sur lui-même.
   useEffect(() => {
-    const element = flightRef.current;
-    if (!element || prefersReducedMotion()) return;
+    const flight = flightRef.current;
+    const final = restMatrix(die, face, tilt);
+    if (!flight || prefersReducedMotion()) {
+      draw(final);
+      return;
+    }
     const side = fromViewer ? 1 : -1;
     const startX = (hash(`${throwKey}:x`) - 0.5) * 320;
     const startY = side * window.innerHeight * 0.55;
-    // Des tours COMPLETS : le dé se pose presque droit (planches vues de trois quarts), à ±15° près.
-    const spin = (hash(`${throwKey}:r`) > 0.5 ? 1 : -1) * (hash(`${throwKey}:s`) > 0.5 ? 1080 : 720);
-    const rest = (hash(`${throwKey}:t`) - 0.5) * 30;
-    const animation = element.animate(
+    const vol = flight.animate(
       [
-        { transform: `translate(${startX}px, ${startY}px) scale(1.7) rotate(0deg)`, opacity: 0, offset: 0 },
-        { transform: `translate(${startX * 0.55}px, ${startY * 0.35 - 90 * side}px) scale(1.45) rotate(${spin * 0.45}deg)`, opacity: 1, offset: 0.35 },
-        { transform: `translate(0px, 0px) scale(1) rotate(${spin * 0.85}deg)`, offset: 0.68 },
-        { transform: `translate(${-startX * 0.04}px, ${-22 * side}px) scale(1.06) rotate(${spin * 0.95}deg)`, offset: 0.8 },
-        { transform: `translate(0px, 0px) scale(1) rotate(${spin + rest}deg)`, offset: 0.9 },
-        { transform: `translate(0px, ${-5 * side}px) scale(1.01) rotate(${spin + rest}deg)`, offset: 0.95 },
-        { transform: `translate(0px, 0px) scale(1) rotate(${spin + rest}deg)`, offset: 1 },
+        { transform: `translate(${startX}px, ${startY}px) scale(1.6)`, opacity: 0, offset: 0 },
+        { transform: `translate(${startX * 0.55}px, ${startY * 0.35 - 90 * side}px) scale(1.4)`, opacity: 1, offset: 0.35 },
+        { transform: "translate(0px, 0px) scale(1)", offset: 0.68 },
+        { transform: `translate(${-startX * 0.04}px, ${-22 * side}px) scale(1.05)`, offset: 0.8 },
+        { transform: "translate(0px, 0px) scale(1)", offset: 0.9 },
+        { transform: `translate(0px, ${-5 * side}px) scale(1.01)`, offset: 0.95 },
+        { transform: "translate(0px, 0px) scale(1)", offset: 1 },
       ],
       { duration: FLIGHT_MS, easing: "cubic-bezier(0.22, 0.7, 0.3, 1)", fill: "forwards" }
     );
-    return () => animation.cancel();
-  }, [throwKey, fromViewer]);
-
-  // Les faces défilent pendant le vol, puis la vraie se pose — avec le bruit du dé sur le bois.
-  useEffect(() => {
-    if (!tumbling) return;
-    const interval = window.setInterval(() => setTick((t) => t + 1), TUMBLE_TICK_MS);
-    const landing = window.setTimeout(() => {
-      window.clearInterval(interval);
-      setTumbling(false);
-      playDiceLanded();
-    }, FLIGHT_MS * 0.7);
-    return () => {
-      window.clearInterval(interval);
-      window.clearTimeout(landing);
+    // Des tours entiers sur les trois axes, qui s'amortissent jusqu'à la face obtenue.
+    const tour = (k: string) => (hash(`${throwKey}:${k}`) > 0.5 ? 1 : -1) * (2 + Math.floor(hash(`${throwKey}:${k}n`) * 2)) * 360;
+    const [rx, ry, rz] = [tour("rx"), tour("ry"), tour("rz") / 2];
+    const duree = FLIGHT_MS * 0.92;
+    const t0 = performance.now();
+    let frame = 0;
+    const step = (now: number) => {
+      const k = Math.min(1, (now - t0) / duree);
+      const reste = 1 - SPIN_EASING(k);
+      draw(multiply(final, eulerMatrix(rx * reste, ry * reste, rz * reste)));
+      if (k < 1) frame = requestAnimationFrame(step);
     };
-  }, [tumbling]);
+    step(t0);
+    const clac = window.setTimeout(playDiceLanded, FLIGHT_MS * 0.68);
+    return () => {
+      vol.cancel();
+      cancelAnimationFrame(frame);
+      window.clearTimeout(clac);
+    };
+    // Le vol ne se rejoue qu'à un NOUVEAU jet ; un ajustement de la face roule (effet suivant).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [throwKey, fromViewer, draw]);
 
-  // En vol, la face se couche et se tord à chaque tic : le dé roule sur lui-même.
-  const wobble = tumbling
-    ? `rotate(${(hash(`${throwKey}:w${tick}`) - 0.5) * 70}deg) scale(${0.78 + hash(`${throwKey}:a${tick}`) * 0.3}, ${0.7 + hash(`${throwKey}:b${tick}`) * 0.35}) skew(${(hash(`${throwKey}:k${tick}`) - 0.5) * 24}deg)`
-    : undefined;
-  const geometry = DIE_GEOMETRY[die];
-  // Les faces visibles : le résultat dessus, des voisines cohérentes à côté (tirées au hasard en vol).
-  const values = visibleFaceValues(die, shownFace, geometry.faces.length, hash(`${throwKey}:n${tumbling ? tick : "pose"}`));
+  // Un ajustement change la face : le dé roule de son orientation actuelle vers la nouvelle.
+  const premiere = useRef(true);
+  useEffect(() => {
+    if (premiere.current) {
+      premiere.current = false;
+      return;
+    }
+    const from = shownRef.current;
+    if (prefersReducedMotion()) {
+      draw(rest);
+      return;
+    }
+    const t0 = performance.now();
+    let frame = 0;
+    const step = (now: number) => {
+      const k = Math.min(1, (now - t0) / ROLL_MS);
+      draw(slerp(from, rest, ROLL_EASING(k)));
+      if (k < 1) frame = requestAnimationFrame(step);
+    };
+    frame = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(frame);
+  }, [rest, draw]);
 
   const content = (
-    <div className={styles.die} data-die={die} data-outcome={outcome} style={{ transform: wobble } as CSSProperties}>
-      {bodyOk ? (
-        // Le corps et, projetés sur chaque face visible, ses points (`faceMatrix`).
-        <svg className={styles.body} viewBox={`0 0 ${geometry.width} ${geometry.height}`} aria-hidden>
-          <image href={dieBodyUrl(die)} width={geometry.width} height={geometry.height} />
-          <g key={tumbling ? "vol" : `pose:${face}`} className={tumbling ? undefined : styles.faceSettle}>
-            {geometry.faces.map((faceShape, index) => (
-              <image
-                key={index}
-                href={dieFaceUrl(die, values[index]!)}
-                width={1}
-                height={1}
-                preserveAspectRatio="none"
-                transform={faceMatrix(geometry, faceShape)}
-                opacity={faceShape.shade}
-              />
-            ))}
-          </g>
-        </svg>
-      ) : (
-        <>
-          <span className={styles.fallbackBody} data-die={die} aria-hidden />
-          <span key={shownFace} className={`${styles.fallbackFace} ${tumbling ? "" : styles.faceSettle}`}>
-            {shownFace}
-          </span>
-        </>
-      )}
+    <div className={styles.die} data-die={die} data-outcome={outcome} style={{ "--die": `${size}px` } as CSSProperties}>
+      <div className={styles.scene}>
+        {faces.map((placed, index) => (
+          <div
+            key={placed.value}
+            ref={(el) => {
+              faceRefs.current[index] = el;
+            }}
+            className={styles.face}
+            data-shape={placed.shape}
+            data-result={placed.value === face ? "" : undefined}
+            style={
+              {
+                width: placed.width,
+                height: placed.height,
+                transform: toCss(multiply(shownRef.current, placed.matrix)),
+                backgroundImage: `url(${dieTextureUrl(die)})`,
+                ...dieTextureFit(die, placed.width, placed.height),
+              } as CSSProperties
+            }
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element -- points de la face, planche locale */}
+            <img className={styles.pips} src={dieFaceUrl(die, placed.value)} alt="" draggable={false} />
+            <svg className={styles.shade} viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden>
+              <polygon points={placed.shape === "triangle" ? "50,0 0,100 100,100" : "0,0 100,0 100,100 0,100"} />
+            </svg>
+          </div>
+        ))}
+      </div>
     </div>
   );
 

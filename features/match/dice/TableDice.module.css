@@ -66,7 +66,7 @@
   position: relative;
   width: 100%;
   height: 100%;
-  transition: transform 60ms linear, filter 300ms ease-out;
+  transition: filter 300ms ease-out;
   filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.55));
 }
 
@@ -83,70 +83,60 @@
   filter: drop-shadow(0 0 10px rgba(235, 70, 60, 0.95)) drop-shadow(0 0 20px rgba(200, 40, 40, 0.55));
 }
 
-.body {
+/*
+ * Le solide (`polyhedra.ts`). `.scene` porte la perspective ; chaque face y
+ * est posée depuis le CENTRE du dé, avec sa matrice finale (calculée en JS).
+ * Pas de `preserve-3d` : ses couches imbriquées sortent floues sur un écran
+ * dense.
+ */
+.scene {
+  position: absolute;
+  inset: 0;
+  perspective: 700px;
+}
+
+.face {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform-origin: 0 0;
+  backface-visibility: hidden;
+  background-color: #3b2417;
+  background-repeat: no-repeat;
+}
+
+/* Triangle : la texture est déjà détourée. Pas de `clip-path` — comme un
+ * filtre, il rastérise la tuile transformée en 3D à ×1. */
+.face[data-shape="triangle"] {
+  background-color: transparent;
+}
+
+/* L'éclairage de la face : un voile sombre ou clair (SVG à la forme de la tuile), posé par `TableDice` selon sa pente. */
+.shade {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  overflow: visible;
+  fill: transparent;
+  pointer-events: none;
 }
 
-
-/* La face qui se pose, ou qui change sous un ajustement : un petit coup de pouce. */
-.faceSettle {
-  animation: face-settle 260ms ease-out;
-}
-
-@keyframes face-settle {
-  0% { opacity: 0.2; }
-  100% { opacity: 1; }
-}
-
-/* Dé dessiné, tant que les planches ne sont pas livrées. */
-.fallbackBody {
+/* Les points, peints dans un cadre carré commun à toutes les valeurs du dé. */
+.pips {
   position: absolute;
-  inset: 4%;
-  border-radius: 18%;
-  background: linear-gradient(145deg, #f3e6c8, #c9b088);
-  box-shadow: inset 0 -6px 10px rgba(80, 50, 20, 0.35), inset 0 3px 6px rgba(255, 255, 255, 0.5);
+  left: 50%;
+  top: 50%;
+  width: 74%;
+  height: auto;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  user-select: none;
 }
 
-.fallbackBody[data-die="4"] {
-  inset: 0;
-  border-radius: 0;
-  clip-path: polygon(50% 4%, 97% 92%, 3% 92%);
-  background: linear-gradient(160deg, #6b8fb8, #2c4a6e);
-}
-
-.fallbackBody[data-die="8"] {
-  inset: 0;
-  border-radius: 0;
-  clip-path: polygon(50% 0%, 96% 50%, 50% 100%, 4% 50%);
-  background: linear-gradient(160deg, #d24a3d, #7c1c18);
-}
-
-.fallbackFace {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding-top: 0;
-  color: #2a1c12;
-  font-family: var(--tb-font-display, Georgia, serif);
-  font-size: calc(var(--die) * 0.46);
-  font-weight: 700;
-}
-
-.die[data-die="4"] .fallbackFace {
-  padding-top: 22%;
-  font-size: calc(var(--die) * 0.34);
-  color: #f6efe0;
-}
-
-.die[data-die="8"] .fallbackFace {
-  color: #f6efe0;
-  font-size: calc(var(--die) * 0.38);
+/* Sur un triangle, les points se groupent autour du centre de gravité (aux 2/3 de la hauteur). */
+.face[data-shape="triangle"] .pips {
+  top: 65%;
+  width: 46%;
 }
 
 .caption {
@@ -167,6 +157,10 @@
 
 .caption[data-outcome="criticalSuccess"] { color: #ffd76a; }
 .caption[data-outcome="criticalFailure"] { color: #ff8a7a; }
+
+.value {
+  font-size: 14px;
+}
 
 .source {
   color: var(--tb-text-muted, #9fb0c0);
@@ -230,7 +224,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .faceSettle,
   .caption,
   .controls {
     animation: none;

@@ -58,10 +58,10 @@ const RULES = [
   // Icônes d'interface (pièce de Tides, Jeton de Préconstruit) : affichées
   // de 13 à ~64 px. Qualité haute, ce sont des objets détourés sur alpha.
   { match: /\/ui\/icons\//, maxSize: 256, quality: 92 },
-  // Dés (Lot 17, `features/match/dice/`) : affichés à ~90 px au plus, sur
-  // alpha. Recadrés à leur silhouette avant conversion : le placement des
-  // points sur le corps se règle en % de l'image recadrée.
-  { match: /\/dice\//, maxSize: 256, quality: 92 },
+  // Dés (Lot 17, `features/match/dice/`) : faces d'un solide CSS 3D jusqu'à
+  // ~120 px d'arête, nettes sur un écran ×3. Textures rognées à leur plaque,
+  // points dans un cadre carré commun à toutes les valeurs du dé.
+  { match: /\/dice\//, maxSize: 512, quality: 92 },
   // Plaques de dégâts : elles s'envolent au-dessus de la cible à ~130 px de
   // haut, jamais plus de 264 sur un écran dense. Qualité haute — corde et
   // rivets sont détourés sur alpha, et ce sont leurs bords qui se
