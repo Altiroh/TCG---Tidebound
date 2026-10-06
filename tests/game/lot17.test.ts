@@ -196,6 +196,23 @@ describe("la lignée LV et l'Île-Tortue Opaline", () => {
     expect(p1.armor).toBe(2);
   });
 
+  it("Eidolon LV5 évolue en LVX standard ou Abyssale : la variante compte comme la même carte", () => {
+    for (const lvxId of ["eidolon-opalin-lvx", "eidolon-opalin-lvx-abyssal"]) {
+      const lv5 = instance("eidolon-opalin-lv5", "p1");
+      const lvx = instance(lvxId, "p1");
+      // Fin de tour p1, puis tour p2 vide : l'entame du tour suivant de p1 pose le marqueur.
+      let state = table({ board: [lv5], deck: [lvx, ...Array.from({ length: 5 }, () => instance("marin-des-jetees", "p1"))] });
+      let r = dispatch(state, { type: "endTurn", playerId: "p1" });
+      ok(r);
+      r = dispatch(r.state, { type: "endTurn", playerId: "p2" });
+      ok(r);
+      state = r.state;
+      const p1 = joueur(state);
+      expect(p1.board.some((u) => u.cardId === lvxId), lvxId).toBe(true);
+      expect(p1.graveyard.some((c) => c.instanceId === lv5.instanceId), lvxId).toBe(true);
+    }
+  });
+
   it("Eidolon LVX ne se joue pas depuis la main", () => {
     const lvx = instance("eidolon-opalin-lvx-abyssal", "p1");
     const r = jouer(table({ hand: [lvx], reason: 10 }), lvx);

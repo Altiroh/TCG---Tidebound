@@ -729,6 +729,61 @@ const opalin = (card: Omit<CardDefinition, "archetype" | "showsArchetype" | "set
   setCode: DUNGEON_ET_LADALLE,
 });
 
+/**
+ * Eidolon Opalin LVX — sommet de la lignée LV, en deux versions : la
+ * STANDARDE (06/10/2026) et la variante ABYSSALE de Notion. Même carte,
+ * même effet ; la variante seule ajoute l'entrée « par un effet qui invoque
+ * explicitement une carte Abyssale ». La lignée accepte l'une ou l'autre
+ * (`game/rules/levels.ts`).
+ */
+function eidolonLvx(abyssale: boolean): CardDefinition {
+  return opalin({
+    id: abyssale ? "eidolon-opalin-lvx-abyssal" : "eidolon-opalin-lvx",
+    name: "Eidolon Opalin LVX",
+    type: "creature",
+    ...(abyssale ? { variant: "abyssale" as const } : {}),
+    tags: ["lv"],
+    cost: 8,
+    attack: 8,
+    health: 10,
+    maxCopies: 1,
+    cannotBePlayed: true,
+    text:
+      (abyssale
+        ? "Ne peut entrer en jeu que par l'effet d'Eidolon Opalin LV5 ou par un effet qui invoque explicitement une carte Abyssale. "
+        : "Ne peut entrer en jeu que par l'effet d'Eidolon Opalin LV5. ") +
+      "À son arrivée, choisissez 2 effets différents : infligez 4 dégâts à une unité ; détruisez un Objet ; " +
+      "infligez 3 dégâts à une Structure ; récupérez 2 Raison ; gagnez 3 Armure ; ajoutez une carte de votre Cimetière à " +
+      "votre main. La première fois à chaque tour qu'un autre Opalin que vous contrôlez déclenche un effet, gagnez 1 Armure.",
+    abilities: [
+      {
+        trigger: "onEnterPlay",
+        description: "À son arrivée : choisissez 2 effets différents.",
+        effects: [{ type: "chooseAbilityOption", target: { kind: "controllerPlayer" }, optionGroup: "lvxArrivee", uses: 2 }],
+      },
+      option("lvxArrivee", "Infligez 4 dégâts à une unité.", [
+        { type: "pickUnits", target: { kind: "allUnits" }, filter: { cardTypes: [...UNITES] }, uses: 1, thenEffects: [{ type: "damage", target: { kind: "triggerSource" }, amount: flat(4) }] },
+      ]),
+      option("lvxArrivee", "Détruisez un Objet.", [
+        { type: "pickUnits", target: { kind: "allUnits" }, filter: { cardTypes: ["objet"] }, uses: 1, thenEffects: [{ type: "destroy", target: { kind: "triggerSource" } }] },
+      ]),
+      option("lvxArrivee", "Infligez 3 dégâts à une Structure.", [
+        { type: "pickUnits", target: { kind: "allUnits" }, filter: { cardTypes: ["structure"] }, uses: 1, thenEffects: [{ type: "damage", target: { kind: "triggerSource" }, amount: flat(3) }] },
+      ]),
+      option("lvxArrivee", "Récupérez 2 Raison.", [{ type: "reasonGain", target: { kind: "controllerPlayer" }, amount: flat(2) }]),
+      option("lvxArrivee", "Gagnez 3 Armure.", [{ type: "gainArmor", target: { kind: "controllerPlayer" }, amount: flat(3) }]),
+      option("lvxArrivee", "Ajoutez une carte de votre Cimetière à votre main.", [{ type: "pickFromGraveyard", target: { kind: "controllerPlayer" }, uses: 1 }]),
+      {
+        trigger: "onAbilityResolved",
+        triggeredBy: { archetype: OPALIN, excludeSelf: true },
+        oncePerTurnKey: "lvxVeille",
+        description: "Un autre Opalin que vous contrôlez déclenche un effet : gagnez 1 Armure.",
+        effects: [{ type: "gainArmor", target: { kind: "controllerPlayer" }, amount: flat(1) }],
+      },
+    ],
+  });
+}
+
 const OPALINS: CardDefinition[] = [
   opalin({
     id: "nerhal-opalin-des-marees",
@@ -1093,7 +1148,7 @@ const OPALINS: CardDefinition[] = [
       "Opalin LV1, gagnez 2 Armure. Au début de votre tour, s'il est toujours en jeu, placez 1 marqueur Niveau sur lui. À " +
       "1 marqueur Niveau, remplacez-le par Eidolon Opalin LVX depuis votre main ou votre pioche.",
     playableOnlyIf: { controlsArchetypeUnit: OPALIN },
-    levelUp: { markers: 1, into: "eidolon-opalin-lvx-abyssal" },
+    levelUp: { markers: 1, into: "eidolon-opalin-lvx" },
     abilities: [
       {
         trigger: "onEnterPlay",
@@ -1108,50 +1163,8 @@ const OPALINS: CardDefinition[] = [
       },
     ],
   }),
-  opalin({
-    id: "eidolon-opalin-lvx-abyssal",
-    name: "Eidolon Opalin LVX",
-    type: "creature",
-    // Notion : version ABYSSALE, sans carte de base — c'est le sommet de la lignée LV.
-    variant: "abyssale",
-    tags: ["lv"],
-    cost: 8,
-    attack: 8,
-    health: 10,
-    maxCopies: 1,
-    cannotBePlayed: true,
-    text:
-      "Ne peut entrer en jeu que par l'effet d'Eidolon Opalin LV5 ou par un effet qui invoque explicitement une carte " +
-      "Abyssale. À son arrivée, choisissez 2 effets différents : infligez 4 dégâts à une unité ; détruisez un Objet ; " +
-      "infligez 3 dégâts à une Structure ; récupérez 2 Raison ; gagnez 3 Armure ; ajoutez une carte de votre Cimetière à " +
-      "votre main. La première fois à chaque tour qu'un autre Opalin que vous contrôlez déclenche un effet, gagnez 1 Armure.",
-    abilities: [
-      {
-        trigger: "onEnterPlay",
-        description: "À son arrivée : choisissez 2 effets différents.",
-        effects: [{ type: "chooseAbilityOption", target: { kind: "controllerPlayer" }, optionGroup: "lvxArrivee", uses: 2 }],
-      },
-      option("lvxArrivee", "Infligez 4 dégâts à une unité.", [
-        { type: "pickUnits", target: { kind: "allUnits" }, filter: { cardTypes: [...UNITES] }, uses: 1, thenEffects: [{ type: "damage", target: { kind: "triggerSource" }, amount: flat(4) }] },
-      ]),
-      option("lvxArrivee", "Détruisez un Objet.", [
-        { type: "pickUnits", target: { kind: "allUnits" }, filter: { cardTypes: ["objet"] }, uses: 1, thenEffects: [{ type: "destroy", target: { kind: "triggerSource" } }] },
-      ]),
-      option("lvxArrivee", "Infligez 3 dégâts à une Structure.", [
-        { type: "pickUnits", target: { kind: "allUnits" }, filter: { cardTypes: ["structure"] }, uses: 1, thenEffects: [{ type: "damage", target: { kind: "triggerSource" }, amount: flat(3) }] },
-      ]),
-      option("lvxArrivee", "Récupérez 2 Raison.", [{ type: "reasonGain", target: { kind: "controllerPlayer" }, amount: flat(2) }]),
-      option("lvxArrivee", "Gagnez 3 Armure.", [{ type: "gainArmor", target: { kind: "controllerPlayer" }, amount: flat(3) }]),
-      option("lvxArrivee", "Ajoutez une carte de votre Cimetière à votre main.", [{ type: "pickFromGraveyard", target: { kind: "controllerPlayer" }, uses: 1 }]),
-      {
-        trigger: "onAbilityResolved",
-        triggeredBy: { archetype: OPALIN, excludeSelf: true },
-        oncePerTurnKey: "lvxVeille",
-        description: "Un autre Opalin que vous contrôlez déclenche un effet : gagnez 1 Armure.",
-        effects: [{ type: "gainArmor", target: { kind: "controllerPlayer" }, amount: flat(1) }],
-      },
-    ],
-  }),
+  eidolonLvx(false),
+  eidolonLvx(true),
   opalin({
     id: "veille-des-niveaux",
     name: "Veille des Niveaux",

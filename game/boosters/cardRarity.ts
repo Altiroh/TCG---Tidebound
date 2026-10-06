@@ -534,9 +534,9 @@ const LANDES_RARITY: Record<string, CardRarity> = {
 
 /**
  * LOT 17 — Dungeon et Ladalle / Opalins (Notion « Lot 15 — Dungeon et
- * Ladalle / Opalins — VALIDÉ », 05/10/2026). Eidolon Opalin LVX est une
- * version ABYSSALE dans Notion : son identifiant porte le suffixe
- * `-abyssal`, qui suffit (elle n'est pas listée ici).
+ * Ladalle / Opalins — VALIDÉ », 05/10/2026). Eidolon Opalin LVX existe en
+ * deux versions : la variante ABYSSALE de Notion (suffixe `-abyssal`, qui
+ * suffit) et la version standard ajoutée le 06/10/2026.
  */
 const LOT17_RARITY: Record<string, CardRarity> = {
   "gaston-aventurier-de-ladalle": "common",
@@ -583,6 +583,8 @@ const LOT17_RARITY: Record<string, CardRarity> = {
   "astel-opalin-de-la-derniere-veille": "legendary",
   "eidolon-opalin-lv1": "rare",
   "eidolon-opalin-lv5": "epic",
+  // Version STANDARD (06/10/2026) : le plafond d'une carte sans suffixe ; sa variante `-abyssal` est l'Abyssale du lot.
+  "eidolon-opalin-lvx": "legendary",
   "veille-des-niveaux": "uncommon",
   "fragment-d-eveil": "rare",
   "sommeil-de-pierre": "uncommon",

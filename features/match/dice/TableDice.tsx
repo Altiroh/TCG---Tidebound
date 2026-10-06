@@ -16,6 +16,7 @@ import {
 import { DIE_FACE_PLACEMENT, dieBodyUrl, dieFaceUrl } from "@/features/match/dice/diceAssets";
 import { useDiceThrow, type DiceThrow } from "@/features/match/dice/useDiceThrow";
 import { useImageOk } from "@/features/match/useImageOk";
+import { loadImageStatus } from "@/features/match/imageStatusCache";
 import { playButtonClick, playDiceLanded } from "@/lib/sound";
 import styles from "@/features/match/dice/TableDice.module.css";
 
@@ -70,6 +71,14 @@ export function TableDice({ state, viewerId, onAction }: TableDiceProps) {
   const current = useDiceThrow(state);
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
+  // Planches chargées dès l'arrivée à table : sans cela, le PREMIER lancer
+  // partait avec le dé de repli, le temps que les images arrivent.
+  useEffect(() => {
+    for (const die of [4, 6, 8] as const) {
+      void loadImageStatus(dieBodyUrl(die));
+      for (let value = 1; value <= die; value++) void loadImageStatus(dieFaceUrl(die, value));
+    }
+  }, []);
   if (!mounted || !current) return null;
   return createPortal(<DiceOnTable throwInfo={current} state={state} viewerId={viewerId} onAction={onAction} />, document.body);
 }
@@ -218,14 +227,6 @@ function ThrownDie({ throwKey, die, face, fromViewer, outcome, onPick }: ThrownD
   const bodyOk = useImageOk(dieBodyUrl(die));
   const shownFace = tumbling ? 1 + Math.floor(hash(`${throwKey}:${tick}`) * die) : face;
   const faceOk = useImageOk(dieFaceUrl(die, shownFace));
-
-  // Toutes les faces du dé, chargées dès le lancer : elles défilent en vol.
-  useEffect(() => {
-    for (let value = 1; value <= die; value++) {
-      const image = new Image();
-      image.src = dieFaceUrl(die, value);
-    }
-  }, [die]);
 
   // Le vol : parti du bord de celui qui lance, une courbe, deux rebonds.
   useEffect(() => {

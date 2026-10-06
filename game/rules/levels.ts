@@ -42,11 +42,20 @@ function replaceOwner(state: GameState, owner: PlayerState): GameState {
   return { ...state, players: state.players.map((p) => (p.id === owner.id ? owner : p)) as GameState["players"] };
 }
 
+/** Même carte au sens des règles : identiques, ou l'une est la variante `-abyssal` de l'autre. */
+function memeCarte(a: string, b: string): boolean {
+  const base = (id: string) => id.replace(/-abyssal$/, "");
+  return base(a) === base(b);
+}
+
 function evolve(state: GameState, ownerId: PlayerId, instanceId: string, intoCardId: string, turnNumber: number): { state: GameState; events: GameEvent[] } {
   const owner = state.players.find((p) => p.id === ownerId)!;
   const ancienne = owner.board.find((u) => u.instanceId === instanceId)!;
-  const depuisMain = owner.hand.find((c) => c.cardId === intoCardId);
-  const depuisPioche = depuisMain ? undefined : owner.deck.find((c) => c.cardId === intoCardId);
+  // « Remplacez-le par X » : X ou sa variante Abyssale — une variante reste
+  // la même carte pour toute condition qui nomme une carte (Règles, 17/09/2026).
+  const estX = (c: CardInstance) => memeCarte(c.cardId, intoCardId);
+  const depuisMain = owner.hand.find(estX);
+  const depuisPioche = depuisMain ? undefined : owner.deck.find(estX);
   const prise = depuisMain ?? depuisPioche;
   if (!prise) return { state, events: [] };
   if (unitArrivalsLeft(state, ownerId, turnNumber) <= 0) return { state, events: [] };
