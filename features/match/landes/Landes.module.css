@@ -3,7 +3,8 @@
  *
  * Profondeur (cf. `Table.module.css`) : la scène vit à 6, entre la pluie de
  * Marée (5) et la scène de jeu (10) — sous les cartes, qu'elle ne masque
- * jamais. L'arrivée vit à 32, avec les effets.
+ * jamais. Un calque frontal (11) porte ce qui PERCE le plateau, aux bords
+ * des cadres seulement. L'arrivée vit à 32, avec les effets.
  */
 
 /* ── Scène d'environnement ─────────────────────────────────────────── */
@@ -12,6 +13,16 @@
   position: absolute;
   inset: 0;
   z-index: 6;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* Devant les rangées (au-dessus du plateau, 10), sous les effets (30) : ce
+   qui perce le plateau. N'y dessiner QUE hors des emplacements de cartes. */
+.landeFrontHost {
+  position: absolute;
+  inset: 0;
+  z-index: 11;
   overflow: hidden;
   pointer-events: none;
 }

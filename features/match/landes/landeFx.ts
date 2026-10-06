@@ -19,6 +19,12 @@ export interface LandeFx {
    * dès qu'il y en a, l'effet les place à la place de ses propres dessins.
    */
   setSprites(sprites: LandeSprites): void;
+  /**
+   * Où sont les rangées du plateau, en pixels du canvas : les effets qui
+   * PLANTENT quelque chose (pics de verre) ne poussent que là où il y a un
+   * sol. Facultatif — sans lui, des proportions par défaut.
+   */
+  setLayout?(layout: LandeLayout): void;
 }
 
 export interface LandeSprites {
@@ -198,29 +204,43 @@ function acidRain(ctx: CanvasRenderingContext2D, rgb: string, rgbHot: string): L
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// VALLÉE DE VERRE — un CHAMP de pics cristallins planté dans tout le
-// terrain, en perspective : loin (haut de l'écran) petits et noyés de
-// brume, près (bas) grands et nets. Ombres portées, reflets dans l'eau,
-// lente dérive de parallaxe — c'est elle qui donne la profondeur. Le
-// centre du plateau garde des pics plus discrets : les cartes s'y lisent.
+// VALLÉE DE VERRE — des bosquets de pics cristallins qui PERCENT la table.
+//
+// Retour du 06/10/2026 : semés partout (ciel, mer, bureau), les pics
+// faisaient un calque collé sur l'image. Ils ne poussent plus que là où il
+// y a un SOL, lu dans la mise en page (`setLayout`) :
+//   - « mer »  : la bande d'eau entre les deux rangées, surtout sur ses
+//                côtés — reflet renversé, ride qui s'élargit au pied ;
+//   - « bureau » : le bois sous la rangée du joueur, aux deux coins — le
+//                pic sort d'une fissure, ombre portée couchée sur le bois ;
+//   - « rebord » : derrière le bord haut de la rangée adverse, aux coins —
+//                le pied est caché par le cadre, le pic semble en sortir.
+// Chaque pic a son OMBRE PORTÉE (sa silhouette floutée, couchée à l'opposé
+// de la lumière), un pied assombri (occlusion) et une lueur de verre sur le
+// sol. Le centre reste libre : les cartes s'y lisent.
 // ─────────────────────────────────────────────────────────────────────────
+
+type Ground = "sea" | "desk" | "rim";
 
 interface Spike {
   /** Pied du pic, au sol (pixels du canvas). */
   x: number;
   baseY: number;
-  /** Profondeur : 0 à l'horizon, 1 au premier plan. */
+  /** Profondeur : 0 au loin, 1 au premier plan (taille, netteté, ombre). */
   z: number;
+  ground: Ground;
   width: number;
   height: number;
   lean: number;
   grown: number;
   delay: number;
   facet: number;
-  /** Atténuation sur la zone de jeu (1 : pleine présence). */
-  presence: number;
   /** Pièce illustrée qui le dessine, quand il y en a (indice dans `sprites.pieces`). */
   sprite: number;
+  /** Fissures dans le bois, autour du pied (angle, longueur relative). */
+  cracks: { a: number; l: number }[];
+  /** Phase de la ride, sur l'eau. */
+  phase: number;
 }
 interface Spark {
   x: number;
@@ -235,10 +255,62 @@ interface Spark {
   spin?: number;
 }
 
-/** Hauteur de l'horizon, en fraction de la scène : au-dessus, plus rien ne pousse. */
-const HORIZON = 0.04;
+/** Une zone du plateau, en pixels du canvas. */
+export interface LandeRect {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+}
 
-function glassSpikes(ctx: CanvasRenderingContext2D, rgb: string, rgbHot: string): LandeFx {
+/** Où sont les rangées : c'est autour d'elles que le sol existe. */
+export interface LandeLayout {
+  opponent?: LandeRect;
+  center?: LandeRect;
+  player?: LandeRect;
+}
+
+/** Direction de l'ombre portée (lumière en haut à gauche) : vers la droite, couchée sur le sol. */
+const SHADOW_LEAN: Record<Ground, [number, number]> = { sea: [0.4, 0.12], desk: [0.95, 0.3], rim: [0.3, 0.06] };
+
+/** Silhouette floutée d'une pièce, faite une fois : l'ombre portée la reprend à chaque image. */
+interface Silhouette {
+  canvas: HTMLCanvasElement;
+  pad: number;
+}
+
+function silhouetteOf(img: HTMLImageElement): Silhouette | null {
+  if (typeof document === "undefined") return null;
+  const pad = Math.round(Math.max(img.naturalWidth, img.naturalHeight) * 0.06);
+  const sharp = document.createElement("canvas");
+  sharp.width = img.naturalWidth + pad * 2;
+  sharp.height = img.naturalHeight + pad * 2;
+  const sctx = sharp.getContext("2d");
+  if (!sctx) return null;
+  sctx.drawImage(img, pad, pad);
+  sctx.globalCompositeOperation = "source-in";
+  sctx.fillStyle = "rgb(3, 8, 14)";
+  sctx.fillRect(0, 0, sharp.width, sharp.height);
+  // Flou fait main (tous les navigateurs n'ont pas `ctx.filter`) : la
+  // silhouette répétée en couronne, à faible opacité.
+  const soft = document.createElement("canvas");
+  soft.width = sharp.width;
+  soft.height = sharp.height;
+  const bctx = soft.getContext("2d");
+  if (!bctx) return null;
+  const r = pad * 0.6;
+  const taps = 12;
+  bctx.globalAlpha = 1 / 6;
+  for (let i = 0; i < taps; i++) {
+    const a = (i / taps) * Math.PI * 2;
+    bctx.drawImage(sharp, Math.cos(a) * r, Math.sin(a) * r);
+  }
+  bctx.globalAlpha = 0.5;
+  bctx.drawImage(sharp, 0, 0);
+  return { canvas: soft, pad };
+}
+
+function glassSpikes(ctx: CanvasRenderingContext2D, rgb: string, rgbHot: string, layer: LandeFxLayer): LandeFx {
   let w = 0;
   let h = 0;
   let spikes: Spike[] = [];
@@ -246,103 +318,229 @@ function glassSpikes(ctx: CanvasRenderingContext2D, rgb: string, rgbHot: string)
   let time = 0;
   let glint = -0.3;
   let sprites: LandeSprites = { pieces: [], debris: [], anchors: [] };
+  let silhouettes: (Silhouette | null)[] = [];
+  let layout: LandeLayout = {};
 
-  /** Dérive de parallaxe : le premier plan glisse plus que le fond. */
-  const drift = (s: Spike) => Math.sin(time * 0.11) * w * 0.012 * (s.z - 0.35);
   /** Reflet qui balaie la vallée, de gauche à droite. */
   const litOf = (s: Spike) => Math.max(0, 1 - Math.abs(s.x / w - glint) * 7);
-  /** Opacité d'un pic : la brume mange le fond, la zone de jeu l'adoucit. */
-  const alphaOf = (s: Spike) => (0.32 + 0.68 * s.z) * s.presence;
+  /** Opacité d'un pic : un voile de brume sur le lointain. */
+  const alphaOf = (s: Spike) => 0.62 + 0.38 * s.z;
 
-  /** Ombre portée au sol, couchée vers la droite, et reflet renversé dans l'eau. */
-  function drawGround(s: Spike, x: number, visible: number, width: number) {
+  /** Zones par défaut (proportions du plateau), tant que la mise en page n'est pas lue. */
+  function zones(): Required<LandeLayout> {
+    return {
+      opponent: layout.opponent ?? { left: w * 0.01, top: h * 0.14, right: w * 0.9, bottom: h * 0.36 },
+      center: layout.center ?? { left: w * 0.01, top: h * 0.37, right: w * 0.9, bottom: h * 0.63 },
+      player: layout.player ?? { left: w * 0.01, top: h * 0.64, right: w * 0.9, bottom: h * 0.85 },
+    };
+  }
+
+  /** Le sol sous le pic : ombre portée, pied assombri, lueur de verre — puis fissures ou ride. */
+  function drawGround(s: Spike, x: number, visible: number, width: number, img?: HTMLImageElement, sil?: Silhouette | null, shown = 1) {
     const a = alphaOf(s);
+    const grown = Math.min(1, visible / s.height);
+    // Ombre portée : la silhouette du pic, couchée sur le sol à l'opposé de la lumière.
+    const [kx, ky] = SHADOW_LEAN[s.ground];
     ctx.save();
-    ctx.globalAlpha = a * 0.5;
-    ctx.fillStyle = "rgba(4, 14, 26, 0.9)";
+    ctx.translate(x, s.baseY);
+    ctx.globalAlpha = a * (s.ground === "sea" ? 0.35 : s.ground === "rim" ? 0.45 : 0.8) * grown;
+    ctx.transform(1, 0, -kx, -ky, 0, 0);
+    if (img && sil) {
+      const k = s.height / img.naturalHeight;
+      const dw = img.naturalWidth * k;
+      ctx.drawImage(sil.canvas, 0, 0, sil.canvas.width, img.naturalHeight * shown + sil.pad * 2, -dw / 2 - sil.pad * k, -visible - sil.pad * k, sil.canvas.width * k, (img.naturalHeight * shown + sil.pad * 2) * k);
+    } else {
+      ctx.fillStyle = "rgba(3, 8, 14, 0.8)";
+      ctx.beginPath();
+      ctx.moveTo(-width / 2, 0);
+      ctx.lineTo(s.lean * visible, -visible);
+      ctx.lineTo(width / 2, 0);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
+
+    // Pied assombri : le verre s'enfonce DANS le sol.
+    const r = width * 0.9 + 4;
+    ctx.save();
+    ctx.translate(x, s.baseY);
+    ctx.scale(1, 0.3);
+    const ao = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
+    ao.addColorStop(0, `rgba(2, 6, 12, ${0.75 * a * grown})`);
+    ao.addColorStop(1, "rgba(2, 6, 12, 0)");
+    ctx.fillStyle = ao;
     ctx.beginPath();
-    ctx.ellipse(x + visible * 0.18, s.baseY + 2, width * 0.75 + visible * 0.2, Math.max(2, width * 0.22), -0.08, 0, Math.PI * 2);
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.fill();
+    // Lueur du verre sur le sol, de l'autre côté de l'ombre.
+    ctx.globalCompositeOperation = "lighter";
+    const glow = ctx.createRadialGradient(-r * 0.35, 0, 0, -r * 0.35, 0, r * 1.5);
+    glow.addColorStop(0, `rgba(${rgb}, ${0.22 * a * grown})`);
+    glow.addColorStop(1, `rgba(${rgb}, 0)`);
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(-r * 0.35, 0, r * 1.5, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
+
+    if (s.ground !== "sea" && s.cracks.length) {
+      // Le bois (ou le cadre) s'est fendu là où le verre a percé.
+      ctx.save();
+      ctx.strokeStyle = `rgba(28, 16, 8, ${0.5 * grown})`;
+      ctx.lineWidth = Math.max(1, width * 0.025);
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      for (const c of s.cracks) {
+        const len = c.l * width * 1.6 * grown;
+        ctx.moveTo(x, s.baseY);
+        ctx.lineTo(x + Math.cos(c.a) * len, s.baseY + Math.sin(c.a) * len * 0.3);
+      }
+      ctx.stroke();
+      ctx.restore();
+    }
+    if (s.ground === "sea") {
+      // Une ride qui s'élargit au pied, sans fin.
+      const k = (time * 0.45 + s.phase) % 1;
+      ctx.save();
+      ctx.translate(x, s.baseY);
+      ctx.scale(1, 0.28);
+      ctx.strokeStyle = `rgba(${rgbHot}, ${0.35 * (1 - k) * a * grown})`;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(0, 0, r * (0.7 + k * 1.4), 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
   }
 
   /**
    * Pic ILLUSTRÉ : la pièce sort du sol pointe la première, légèrement
-   * penchée, puis son reflet renversé, et un passage additif pour l'éclat.
+   * penchée ; reflet renversé sur l'eau ; passage additif pour l'éclat.
    */
-  function drawSpriteSpike(s: Spike, img: HTMLImageElement) {
+  function drawSpriteSpike(s: Spike, img: HTMLImageElement, sil: Silhouette | null) {
     const total = s.height;
     const visible = total * Math.max(0, easeOutBack(s.grown));
     if (visible <= 1) return;
     const dw = (total * img.naturalWidth) / img.naturalHeight;
     const shown = Math.min(1, visible / total);
-    const x = s.x + drift(s);
-    drawGround(s, x, visible, dw * 0.5);
+    const x = s.x;
+    drawGround(s, x, visible, dw * 0.5, img, sil, shown);
     const draw = () => ctx.drawImage(img, 0, 0, img.naturalWidth, img.naturalHeight * shown, -dw / 2, -visible, dw, visible);
     const a = alphaOf(s);
 
-    // Reflet dans l'eau : renversé, écrasé, très pâle.
-    ctx.save();
-    ctx.translate(x, s.baseY);
-    ctx.rotate(-s.lean * 0.3);
-    ctx.scale(1, -0.32);
-    ctx.globalAlpha = a * 0.22;
-    draw();
-    ctx.restore();
+    if (s.ground === "sea") {
+      // Reflet dans l'eau : renversé, écrasé, très pâle.
+      ctx.save();
+      ctx.translate(x, s.baseY);
+      ctx.rotate(-s.lean * 0.3);
+      ctx.scale(1, -0.32);
+      ctx.globalAlpha = a * 0.38;
+      draw();
+      ctx.restore();
+    }
 
     ctx.save();
     ctx.translate(x, s.baseY);
     ctx.rotate(s.lean * 0.3);
     ctx.globalAlpha = a;
     draw();
+    ctx.restore();
+    // Le pied, plus sombre — la lumière n'y descend pas : la silhouette sombre
+    // repassée sur la base, en trois bandes de plus en plus légères.
+    if (sil) {
+      const k = s.height / img.naturalHeight;
+      for (const [from, to, alpha] of [[0, 0.1, 0.5], [0.1, 0.2, 0.32], [0.2, 0.32, 0.15]] as const) {
+        ctx.save();
+        ctx.translate(x, s.baseY);
+        ctx.rotate(s.lean * 0.3);
+        ctx.beginPath();
+        ctx.rect(-dw, -visible * to, dw * 2, visible * (to - from) + (from === 0 ? 2 : 0));
+        ctx.clip();
+        ctx.globalAlpha = a * alpha;
+        ctx.drawImage(sil.canvas, sil.pad, sil.pad, img.naturalWidth, img.naturalHeight * shown, -dw / 2, -visible, img.naturalWidth * k, img.naturalHeight * shown * k);
+        ctx.restore();
+      }
+    }
+
     const lit = litOf(s);
     if (lit > 0.05) {
+      ctx.save();
+      ctx.translate(x, s.baseY);
+      ctx.rotate(s.lean * 0.3);
       ctx.globalCompositeOperation = "lighter";
       ctx.globalAlpha = a * lit * 0.5;
       draw();
+      ctx.restore();
     }
-    ctx.restore();
     if (lit > 0.6 && s.grown >= 1 && Math.random() < 0.05 * s.z) {
       sparks.push({ x: x + s.lean * 0.3 * visible, y: s.baseY - visible * 0.92, age: 0, life: 0.5, size: rand(3, 8) * (0.4 + s.z) * (h / 900) });
     }
   }
 
+  /** Un bosquet : un pic maître et ses satellites, plantés sur un sol donné. */
+  /** `side` : les satellites ne s'écartent que de ce côté (-1 à gauche, 1 à droite), pour un bosquet en bout de cadre. */
+  function plant(ground: Ground, cx: number, baseY: number, size: number, z: number, delay: number, maxMembers = 4, side: -1 | 0 | 1 = 0) {
+    const members = 1 + Math.floor(rand(1, maxMembers));
+    for (let m = 0; m < members; m++) {
+      const main = m === 0;
+      const spread = size * (main ? 0 : rand(0.22, 0.55)) * (side || (Math.random() < 0.5 ? -1 : 1));
+      const k = main ? rand(0.9, 1.1) : rand(0.35, 0.65);
+      spikes.push({
+        x: cx + spread,
+        baseY: baseY + (main ? 0 : rand(-2, 5) * (0.5 + z)),
+        z,
+        ground,
+        width: size * rand(0.16, 0.24) * (main ? 1 : 0.8),
+        height: size * k,
+        lean: main ? rand(-0.12, 0.12) : Math.sign(spread) * rand(0.15, 0.4),
+        grown: 0,
+        delay: delay + rand(0, 0.3) + (main ? 0 : 0.12),
+        facet: rand(0.35, 0.65),
+        sprite: Math.floor(Math.random() * 1000),
+        cracks: ground !== "sea" ? Array.from({ length: 3 + Math.floor(rand(0, 3)) }, () => ({ a: rand(0, Math.PI * 2), l: rand(0.4, 1) })) : [],
+        phase: Math.random(),
+      });
+    }
+  }
+
   function seed() {
     spikes = [];
-    // Des BOSQUETS plutôt qu'une pluie de pics isolés : un pic maître
-    // entouré de plus petits, comme le verre qui cristallise en grappes.
-    const clusters = Math.round((w / 1600) * 42);
-    for (let c = 0; c < clusters; c++) {
-      // Plus dense au loin (la perspective tasse le sol), jamais au-dessus de l'horizon.
-      const z = Math.pow(Math.random(), 0.8);
-      const cx = rand(-0.04, 1.04) * w;
-      const baseY = (HORIZON + (1 - HORIZON) * Math.pow(z, 1.25)) * h + 6;
-      // Zone de jeu (les deux rangées et le centre) : pics plus bas et plus pâles.
-      const fx = cx / w;
-      const fy = baseY / h;
-      const inPlay = Math.abs(fx - 0.5) < 0.36 && fy > 0.12 && fy < 0.9;
-      const presence = inPlay ? 0.78 : 1;
-      const size = (0.05 + 0.24 * z) * h * (inPlay ? 0.75 : 1);
-      const members = 1 + Math.floor(rand(1, 5));
-      for (let m = 0; m < members; m++) {
-        const main = m === 0;
-        const spread = size * (main ? 0 : rand(0.25, 0.7)) * (Math.random() < 0.5 ? -1 : 1);
-        const k = main ? rand(0.9, 1.15) : rand(0.35, 0.7);
-        spikes.push({
-          x: cx + spread,
-          baseY: baseY + (main ? 0 : rand(-3, 6) * (0.5 + z)),
-          z,
-          width: size * rand(0.16, 0.26) * (main ? 1 : 0.8),
-          height: size * k,
-          // Les satellites s'écartent du maître.
-          lean: main ? rand(-0.15, 0.15) : Math.sign(spread) * rand(0.15, 0.45),
-          grown: 0,
-          // Ça pousse du premier plan vers le fond : la vague part du joueur.
-          delay: (1 - z) * 0.7 + rand(0, 0.35),
-          facet: rand(0.35, 0.65),
-          presence,
-          sprite: Math.floor(Math.random() * 1000),
-        });
+    const { opponent, center, player } = zones();
+    const scale = Math.min(w, h * 1.9) / 1600;
+    const seaH = center.bottom - center.top;
+    const span = (r: LandeRect, fx: number) => r.left + (r.right - r.left) * (fx + rand(-0.012, 0.012));
+    if (layer === "back") {
+      // Côtés de la bande de mer, près du bord des rangées : jamais au milieu
+      // de la piste de Marée. Le fond (près de la rangée adverse) plus petit.
+      [0.04, 0.12, 0.2, 0.8, 0.88, 0.96].forEach((fx, i) => {
+        const far = i % 2 === 0;
+        const z = far ? 0.45 : 0.75;
+        const y = center.top + seaH * (far ? rand(0.55, 0.7) : rand(0.8, 0.95));
+        plant("sea", span(center, fx), y, seaH * (far ? rand(0.55, 0.75) : rand(0.8, 1.05)), z, (1 - z) * 0.6);
+      });
+    } else {
+      // Bureau, aux deux coins, sous la rangée du joueur : DEVANT, entiers —
+      // la pointe s'arrête sur le bord du cadre (jamais coupée par lui).
+      const deskH = h - player.bottom;
+      if (deskH > h * 0.04) {
+        for (const fx of [0.05, 0.16, 0.85, 0.96]) {
+          const y = player.bottom + deskH * rand(0.6, 0.85);
+          const roof = y - (player.bottom - (player.bottom - player.top) * 0.05);
+          plant("desk", span(player, fx), y, Math.min(roof, Math.max(deskH * rand(1, 1.3), 90 * scale)), 1, rand(0, 0.15), 3, fx < 0.5 ? 1 : -1);
+        }
+      }
+      // DEVANT le plateau : le verre PERCE le bord haut des cadres, à leurs
+      // extrémités — là où il n'y a jamais de carte (portrait du Navire,
+      // Cimetière), hors de la piste de Marée et de la main adverse.
+      const border = (r: LandeRect) => r.top + (r.bottom - r.top) * 0.045;
+      for (const fx of [0.15, 0.2, 0.955, 0.985]) {
+        plant("rim", span(player, fx), border(player), Math.max(seaH * rand(0.5, 0.8), 70 * scale), 0.9, 0.35 + rand(0, 0.2), 3, fx < 0.5 ? 1 : -1);
+      }
+      // Au-dessus de la rangée adverse, seulement s'il y a du ciel (pas sur
+      // téléphone, où le cadre touche le haut de l'écran et ses boutons).
+      const sky = opponent.top;
+      for (const fx of sky > h * 0.12 ? [0.02, 0.075, 0.93, 0.985] : []) {
+        plant("rim", span(opponent, fx), border(opponent), Math.max(sky * rand(0.75, 1.05), 60 * scale), 0.7, 0.6 + rand(0, 0.2), 3, fx < 0.5 ? 1 : -1);
       }
     }
     // Du fond vers l'avant : le premier plan recouvre l'horizon.
@@ -353,7 +551,7 @@ function glassSpikes(ctx: CanvasRenderingContext2D, rgb: string, rgbHot: string)
     const baseY = s.baseY;
     const height = s.height * easeOutBack(s.grown);
     if (height <= 1) return;
-    const x = s.x + drift(s);
+    const x = s.x;
     drawGround(s, x, height, s.width);
     const tipX = x + s.lean * height;
     const tipY = baseY - height;
@@ -401,6 +599,11 @@ function glassSpikes(ctx: CanvasRenderingContext2D, rgb: string, rgbHot: string)
   return {
     setSprites(next) {
       sprites = next;
+      silhouettes = next.pieces.map(silhouetteOf);
+    },
+    setLayout(next) {
+      layout = next;
+      if (w && h) seed();
     },
     resize(width, height) {
       w = width;
@@ -409,11 +612,11 @@ function glassSpikes(ctx: CanvasRenderingContext2D, rgb: string, rgbHot: string)
     },
     pulse() {
       // Un tour de table de plus : la vallée se fend — éclats projetés depuis les pointes du premier plan.
-      for (const s of [...spikes].sort((a, b) => b.height - a.height).slice(0, 18)) {
+      for (const s of [...spikes].sort((a, b) => b.height - a.height).slice(0, 14)) {
         for (let i = 0; i < 4; i++) {
           const image = sprites.debris.length ? sprites.debris[Math.floor(Math.random() * sprites.debris.length)] : undefined;
           sparks.push({
-            x: s.x + drift(s) + s.lean * s.height,
+            x: s.x + s.lean * s.height,
             y: s.baseY - s.height,
             age: 0,
             life: rand(0.6, 1.1),
@@ -433,27 +636,21 @@ function glassSpikes(ctx: CanvasRenderingContext2D, rgb: string, rgbHot: string)
       glint += dt * 0.18;
       if (glint > 1.4) glint = -0.4;
 
-      // Brume au ras de l'horizon : le fond se noie, la profondeur se lit.
-      const haze = ctx.createLinearGradient(0, 0, 0, h * 0.45);
-      haze.addColorStop(0, `rgba(${rgb}, 0.16)`);
-      haze.addColorStop(1, `rgba(${rgb}, 0)`);
-
       for (const s of spikes) {
         if (time > s.delay) s.grown = Math.min(1, s.grown + dt * 1.4);
         if (s.grown <= 0) continue;
-        const img = sprites.pieces.length ? sprites.pieces[s.sprite % sprites.pieces.length] : undefined;
-        if (img) drawSpriteSpike(s, img);
+        const index = sprites.pieces.length ? s.sprite % sprites.pieces.length : -1;
+        const img = index >= 0 ? sprites.pieces[index] : undefined;
+        if (img) drawSpriteSpike(s, img, silhouettes[index] ?? null);
         else drawSpike(s);
       }
-      ctx.fillStyle = haze;
-      ctx.fillRect(0, 0, w, h * 0.45);
 
       // Scintillements : croix fines, comme un reflet de soleil sur un tesson.
-      if (Math.random() < dt * 6) {
+      if (Math.random() < dt * 4) {
         const s = spikes[Math.floor(Math.random() * spikes.length)];
         if (s && s.grown >= 1) {
           const k = rand(0.3, 0.95);
-          sparks.push({ x: s.x + drift(s) + s.lean * 0.3 * s.height * k, y: s.baseY - s.height * k, age: 0, life: rand(0.4, 0.8), size: rand(3, 7) * (0.4 + s.z) * (h / 900) });
+          sparks.push({ x: s.x + s.lean * 0.3 * s.height * k, y: s.baseY - s.height * k, age: 0, life: rand(0.4, 0.8), size: rand(3, 7) * (0.4 + s.z) * (h / 900) });
         }
       }
       ctx.lineCap = "round";
@@ -671,12 +868,18 @@ function chains(ctx: CanvasRenderingContext2D, rgb: string, rgbHot: string): Lan
   };
 }
 
-export function createLandeFx(kind: LandeFxKind, ctx: CanvasRenderingContext2D, rgb: string, rgbHot: string): LandeFx {
+/**
+ * Calque d'un effet : « back » sous les cartes (le décor), « front » au-dessus
+ * des rangées — seulement là où aucune carte ne se pose (bords des cadres).
+ */
+export type LandeFxLayer = "back" | "front";
+
+export function createLandeFx(kind: LandeFxKind, ctx: CanvasRenderingContext2D, rgb: string, rgbHot: string, layer: LandeFxLayer = "back"): LandeFx {
   switch (kind) {
     case "acidRain":
       return acidRain(ctx, rgb, rgbHot);
     case "glassSpikes":
-      return glassSpikes(ctx, rgb, rgbHot);
+      return glassSpikes(ctx, rgb, rgbHot, layer);
     case "chains":
       return chains(ctx, rgb, rgbHot);
   }

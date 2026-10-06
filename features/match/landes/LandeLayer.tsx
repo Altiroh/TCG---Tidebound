@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import type { ActiveLande } from "@/game";
-import { createLandeFx, type LandeFx, type LandeSprites } from "@/features/match/landes/landeFx";
+import { createLandeFx, type LandeFx, type LandeFxLayer, type LandeLayout, type LandeRect, type LandeSprites } from "@/features/match/landes/landeFx";
 import { landeAsset, landeScene, type LandeLayer as SceneLayer } from "@/features/match/landes/landeScenes";
 import styles from "@/features/match/landes/Landes.module.css";
 
@@ -45,16 +45,29 @@ export function LandeLayer({ lande, entering, enterDelayMs }: LandeLayerProps) {
   }, [lande]);
 
   return (
-    <div aria-hidden className={styles.landeHost}>
-      {leaving.map((old) => (
-        <LandeScene key={old.instanceId} lande={old} state="leaving" delayMs={0} />
-      ))}
-      {lande && <LandeScene key={lande.instanceId} lande={lande} state={entering ? "entering" : "shown"} delayMs={entering ? enterDelayMs : 0} />}
-    </div>
+    <>
+      <div aria-hidden className={styles.landeHost}>
+        {leaving.map((old) => (
+          <LandeScene key={old.instanceId} lande={old} state="leaving" delayMs={0} layer="back" />
+        ))}
+        {lande && <LandeScene key={lande.instanceId} lande={lande} state={entering ? "entering" : "shown"} delayMs={entering ? enterDelayMs : 0} layer="back" />}
+      </div>
+      {/* Devant les rangées : ce qui PERCE le plateau (bords des cadres seulement). */}
+      <div aria-hidden className={styles.landeFrontHost}>
+        {leaving
+          .filter((old) => landeScene(old.cardId).frontFx)
+          .map((old) => (
+            <LandeScene key={old.instanceId} lande={old} state="leaving" delayMs={0} layer="front" />
+          ))}
+        {lande && landeScene(lande.cardId).frontFx && (
+          <LandeScene key={lande.instanceId} lande={lande} state={entering ? "entering" : "shown"} delayMs={entering ? enterDelayMs : 0} layer="front" />
+        )}
+      </div>
+    </>
   );
 }
 
-function LandeScene({ lande, state, delayMs }: { lande: ActiveLande; state: "entering" | "shown" | "leaving"; delayMs: number }) {
+function LandeScene({ lande, state, delayMs, layer }: { lande: ActiveLande; state: "entering" | "shown" | "leaving"; delayMs: number; layer: LandeFxLayer }) {
   const scene = landeScene(lande.cardId);
   // L'entrée se décide une fois, au montage : la fin de l'arrivée ne doit
   // pas relancer le fondu d'une scène déjà installée.
@@ -79,7 +92,7 @@ function LandeScene({ lande, state, delayMs }: { lande: ActiveLande; state: "ent
     if (!runFx || !canvas || !scene.fx) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    const fx = createLandeFx(scene.fx, ctx, scene.rgb, scene.rgbHot);
+    const fx = createLandeFx(scene.fx, ctx, scene.rgb, scene.rgbHot, layer);
     fx.setSprites(spritesRef.current);
     fxRef.current = fx;
     const dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -87,15 +100,21 @@ function LandeScene({ lande, state, delayMs }: { lande: ActiveLande; state: "ent
       canvas.width = Math.round(canvas.clientWidth * dpr);
       canvas.height = Math.round(canvas.clientHeight * dpr);
       fx.resize(canvas.width, canvas.height);
+      fx.setLayout?.(boardLayout(canvas, dpr));
     };
     fit();
     const observer = new ResizeObserver(fit);
     observer.observe(canvas);
+    // Les rangées se posent après la scène (polices, images) : on relit leur place un peu plus tard.
+    const relire = window.setTimeout(() => fx.setLayout?.(boardLayout(canvas, dpr)), 600);
 
     if (prefersReducedMotion()) {
       // Une image posée, sans mouvement : la scène se reconnaît quand même.
       for (let i = 0; i < 90; i++) fx.step(1 / 30);
-      return () => observer.disconnect();
+      return () => {
+        observer.disconnect();
+        window.clearTimeout(relire);
+      };
     }
     let frame = 0;
     let last = performance.now();
@@ -108,9 +127,10 @@ function LandeScene({ lande, state, delayMs }: { lande: ActiveLande; state: "ent
     return () => {
       cancelAnimationFrame(frame);
       observer.disconnect();
+      window.clearTimeout(relire);
       fxRef.current = null;
     };
-  }, [runFx, scene]);
+  }, [runFx, scene, layer]);
 
   // Un tour de table de la Lande qui s'achève : temps fort (fissures,
   // cadenas, averse). Le décompte retombe alors sur un nombre pair.
@@ -130,12 +150,11 @@ function LandeScene({ lande, state, delayMs }: { lande: ActiveLande; state: "ent
       data-state={state === "leaving" ? "leaving" : entry.state}
       style={{ "--lande-delay": `${entry.delayMs}ms`, "--lande-rgb": scene.rgb } as CSSProperties}
     >
-      <div className={styles.landeTint} style={{ background: scene.tint }} />
+      {layer === "back" && <div className={styles.landeTint} style={{ background: scene.tint }} />}
       {scene.fx && <canvas ref={canvasRef} className={styles.landeCanvas} data-off={runFx ? undefined : ""} />}
-      {(scene.layers ?? []).map((layer) => (
-        <SceneLayerImage key={layer.file} cardId={lande.cardId} layer={layer} />
-      ))}
-      {scene.pulseLayer && pulse > 0 && (
+      {layer === "back" &&
+        (scene.layers ?? []).map((edge) => <SceneLayerImage key={edge.file} cardId={lande.cardId} layer={edge} />)}
+      {layer === "back" && scene.pulseLayer && pulse > 0 && (
         // eslint-disable-next-line @next/next/no-img-element -- calque local optionnel
         <img
           key={pulse}
@@ -147,6 +166,22 @@ function LandeScene({ lande, state, delayMs }: { lande: ActiveLande; state: "ent
       )}
     </div>
   );
+}
+
+/**
+ * Place des rangées du plateau, en pixels du canvas : les pics de verre ne
+ * poussent que là où il y a un sol (bande de mer, bureau, rebord adverse).
+ */
+function boardLayout(canvas: HTMLCanvasElement, dpr: number): LandeLayout {
+  const host = canvas.getBoundingClientRect();
+  const rect = (zone: string): LandeRect | undefined => {
+    const el = canvas.ownerDocument.querySelector(`[data-zone="${zone}"]`);
+    if (!el) return undefined;
+    const r = el.getBoundingClientRect();
+    if (r.width === 0 || r.height === 0) return undefined;
+    return { left: (r.left - host.left) * dpr, top: (r.top - host.top) * dpr, right: (r.right - host.left) * dpr, bottom: (r.bottom - host.top) * dpr };
+  };
+  return { opponent: rect("OpponentZone"), center: rect("CenterZone"), player: rect("PlayerZone") };
 }
 
 /**

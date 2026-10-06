@@ -52,6 +52,11 @@ export interface LandeScene {
   tint: string;
   fx?: LandeFxKind;
   /**
+   * L'effet a aussi un calque DEVANT les rangées (pics qui percent le bord
+   * des cadres), posé au-dessus du plateau mais jamais sur une carte.
+   */
+  frontFx?: boolean;
+  /**
    * Pièces illustrées que l'effet animé place lui-même (`landeFx.ts`) :
    * pics de verre (base en bas de l'image, pointe en haut), segments de
    * chaîne (horizontaux, qui se répètent sans couture). Relatives au
@@ -97,6 +102,7 @@ export const LANDE_SCENES: Readonly<Record<string, LandeScene>> = {
       "linear-gradient(180deg, rgba(150, 210, 255, 0.16) 0%, transparent 40%, rgba(120, 190, 240, 0.2) 100%), " +
       "radial-gradient(120% 90% at 50% 45%, transparent 45%, rgba(8, 22, 40, 0.45) 100%)",
     fx: "glassSpikes",
+    frontFx: true,
     // Pics élancés et grappes plus larges (`eclat-*`) : les grappes donnent
     // du corps aux bords, les pics la hauteur aux coins.
     sprites: ["pic-01.png", "pic-02.png", "pic-03.png", "pic-04.png", "pic-05.png", "pic-06.png", "eclat-01.png", "eclat-02.png", "eclat-03.png"],
