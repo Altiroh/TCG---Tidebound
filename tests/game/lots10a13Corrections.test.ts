@@ -396,13 +396,14 @@ describe("morts d'unités Un Dead : Tout le monde à table, Doudou", () => {
     const a = instance("ptit-bout", "p1");
     const b = instance("cache-cache", "p1");
     let state = testGameState({
-      players: [testPlayer("p1", { board: [table, a, b], deck: filler("p1") }), testPlayer("p2", { shipId: "le-goliath" })],
+      // Une carte en main : la défausse ne peut pas viser la carte piochée.
+      players: [testPlayer("p1", { board: [table, a, b], hand: [instance("crabe-de-fer", "p1")], deck: filler("p1") }), testPlayer("p2", { shipId: "le-goliath" })],
     });
     state = ok(dispatch(detruire(state, [a.instanceId, b.instanceId]), { type: "advancePhase", playerId: "p1" }));
-    expect(p(state, "p1").hand).toHaveLength(1);
+    expect(p(state, "p1").hand).toHaveLength(2);
     expect(state.pendingChoice?.kind).toBe("handDiscard");
     state = passAll(ok(answerHandDiscard(state)));
-    expect(p(state, "p1").hand).toHaveLength(0);
+    expect(p(state, "p1").hand).toHaveLength(1);
     expect(p(state, "p1").deck).toHaveLength(3);
   });
 
@@ -410,12 +411,12 @@ describe("morts d'unités Un Dead : Tout le monde à table, Doudou", () => {
     const porteur = instance("ptit-bout", "p1");
     const doudou = instance("doudou", "p1", { attachedToInstanceId: porteur.instanceId });
     let state = testGameState({
-      players: [testPlayer("p1", { board: [porteur, doudou], deck: filler("p1") }), testPlayer("p2", { shipId: "le-goliath" })],
+      players: [testPlayer("p1", { board: [porteur, doudou], hand: [instance("crabe-de-fer", "p1")], deck: filler("p1") }), testPlayer("p2", { shipId: "le-goliath" })],
     });
     state = ok(dispatch(detruire(state, [porteur.instanceId]), { type: "advancePhase", playerId: "p1" }));
-    expect(p(state, "p1").hand).toHaveLength(1);
+    expect(p(state, "p1").hand).toHaveLength(2);
     expect(state.pendingChoice?.kind).toBe("handDiscard");
     state = ok(answerHandDiscard(state));
-    expect(p(state, "p1").hand).toHaveLength(0);
+    expect(p(state, "p1").hand).toHaveLength(1);
   });
 });

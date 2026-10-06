@@ -149,7 +149,7 @@ function collectAppliedEffects(
           <>
             <StatDelta attack={attack} health={health} />
             {delta && tideEntry.inactive && <span className="text-slate-400">, </span>}
-            {tideEntry.inactive && <span className="text-rose-300">Inactive</span>}
+            {tideEntry.inactive && <span className="text-rose-300">Immobilisé</span>}
           </>
         ),
         detail: "Tant que la Marée reste dans cet état",

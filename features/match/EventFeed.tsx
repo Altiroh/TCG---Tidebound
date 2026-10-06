@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { getCardDefinition, getShipDefinition, HIDDEN_CARD_ID, type GameEvent, type GameState, type PlayerId } from "@/game";
 import { CardThumb } from "@/features/match/CardThumb";
+import { cardIllustrationUrl } from "@/features/decks/cardArtUrl";
 import { findInstanceCardId } from "@/features/match/formatEvent";
 import railStyles from "@/features/match/EventFeed.module.css";
 
@@ -329,7 +330,7 @@ function RailThumb({ src, glyph, badge, badgeTone, faded }: { src?: string; glyp
 }
 
 function cardIllu(cardId: string | undefined): string | undefined {
-  return cardId && cardId !== HIDDEN_CARD_ID ? `/assets/cards/illustrations/${cardId}.webp` : undefined;
+  return cardId && cardId !== HIDDEN_CARD_ID ? cardIllustrationUrl(cardId) : undefined;
 }
 
 /** Le médaillon entre les deux illustrations : ce qui s'est passé (combat, magie, Marée…). */

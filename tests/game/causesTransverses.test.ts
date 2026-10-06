@@ -317,7 +317,7 @@ describe("transition de Marée FORCÉE : mêmes déclencheurs qu'une transition 
     const state = testGameState({
       environment: { ...testGameState().environment, tideState: "houle", tideRemainingTurns: 2 },
       players: [
-        testPlayer("p1", { board: [sonde, compas], deck: [instance("murene-aveugle", "p1")] }),
+        testPlayer("p1", { board: [sonde, compas], hand: [instance("crabe-de-fer", "p1")], deck: [instance("murene-aveugle", "p1")] }),
         testPlayer("p2", { shipId: "le-goliath" }),
       ],
     });

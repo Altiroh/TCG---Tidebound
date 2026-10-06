@@ -470,12 +470,31 @@ const EQUIPAGE_DE_VERRE: CardDefinition[] = [
     setCode: ECLATS_EN_SELLE,
     cost: 5,
     maxCopies: 1,
+    // Texte revu le 05/10/2026 (décision de design) : elle agit DÈS la pose
+    // sur les unités déjà blessées, puis sur chaque survie jusqu'à la fin
+    // du tour — une fois par unité en tout.
     text:
-      "Jusqu'à la fin du tour, la première fois que chacune de vos unités survit à des dégâts, vous pouvez lui " +
-      "infliger 1 dégât supplémentaire. Si elle survit encore, déclenchez à nouveau ses effets liés au fait de " +
-      "survivre à des dégâts.",
-    // Reste en jeu le temps du tour pour que sa capacité puisse répondre,
-    // puis part au Cimetière à la fin du tour.
+      "Vous pouvez infliger 1 dégât supplémentaire à chacune de vos unités blessées ce tour-ci, puis, jusqu'à la fin " +
+      "du tour, à chacune de vos unités la première fois qu'elle survit à des dégâts — une fois par unité. Si elle " +
+      "survit encore, déclenchez à nouveau ses effets liés au fait de survivre à des dégâts.",
+    // À la pose : le joueur désigne celles de ses unités blessées ce tour-ci
+    // qui prennent le dégât (aucune, s'il le veut). Chacune a alors eu son
+    // tour — la capacité ci-dessous ne la reprendra pas.
+    onPlayEffects: [
+      {
+        type: "pickUnits",
+        target: { kind: "allAllyUnits" },
+        filter: { cardTypes: [...UNITES], damagedThisTurn: true },
+        uses: 6,
+        thenEffects: [
+          { type: "consumeOncePerTurn", target: { kind: "triggerSource" }, consumesOncePerTurnKey: "jusquaCeQueCaCasse" },
+          { type: "rearmTriggers", target: { kind: "triggerSource" }, rearmTrigger: "onSurvivedDamage" },
+          { type: "damage", target: { kind: "triggerSource" }, amount: { kind: "flat", value: 1 } },
+        ],
+      },
+    ],
+    // Effet en cours le temps du tour (hors Slot, `game/rules/ongoing.ts`)
+    // pour que sa capacité puisse répondre, puis Cimetière à la fin du tour.
     expiresAtEndOfTurn: true,
     abilities: [
       {

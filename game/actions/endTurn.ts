@@ -1,3 +1,4 @@
+import { expireNextRollModifiers } from "@/game/rules/dice";
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { annoncerMaree, appliquerMareeAnnoncee } from "@/game/environment/resolveEnvironment";
 import { getShipDefinition } from "@/game/environment/shipData";
@@ -6,6 +7,8 @@ import type { GameEvent } from "@/game/events/types";
 import { processTrigger } from "@/game/triggers/triggerBus";
 import { markArrivalsBeforeTurnStart, pruneGraveyardArrivals } from "@/game/state/discard";
 import { RULES } from "@/game/rules/constants";
+import { landeRemovedKeywords, landeStrikesAtEndOfTurn } from "@/game/rules/lande";
+import { tickLande } from "@/game/rules/landeTick";
 import { assertGameActive, assertIsActivePlayer, assertPlayerInGame, combine } from "@/game/rules/validation";
 import { findAnomalyForcedChoices, recordForcedChoicesImposed } from "@/game/state/anomalies";
 import { ouvrirFenetrePour } from "@/game/reactions/reactionWindow";
@@ -152,7 +155,34 @@ export function endTurn(state: GameState, action: EndTurnAction): ActionResult {
 export function finirTour(state: GameState, endingPlayerId: PlayerId, eventsAvant: GameEvent[] = []): ActionResult {
   const events: GameEvent[] = [...eventsAvant];
   const base = { turnNumber: state.turnNumber, timestamp: Date.now() };
-  let nextState = state;
+
+  // --- Fenêtre AVANT le coup de la Lande (Vallée de verre) : « ignorez cet
+  // effet pour ce permanent » (Zone de repli) se décide ici, le coup n'a pas
+  // encore eu lieu. La fin du tour s'arrête ; `dispatch` la reprend par
+  // `finirTour` dès que la fenêtre se referme — `pendingLandeStrike` dit
+  // alors que la question a déjà été posée.
+  if (!state.pendingLandeStrike && landeStrikesAtEndOfTurn(state.environment)) {
+    const evenement: TriggerEvent = { trigger: "onLandeStrike" };
+    const suspendu: GameState = { ...state, pendingLandeStrike: { endingPlayerId, turnNumber: state.turnNumber } };
+    const fenetre = ouvrirFenetrePour(suspendu, [evenement], state.turnNumber);
+    if (fenetre) {
+      events.push({ type: "REACTION_WINDOW_OPENED", turnNumber: state.turnNumber, timestamp: Date.now(), playerId: fenetre.awaitingPlayerId });
+      return { ok: true, state: { ...suspendu, pendingReaction: fenetre }, events };
+    }
+  }
+  let nextState: GameState = state.pendingLandeStrike ? { ...state, pendingLandeStrike: undefined } : state;
+  // « Votre prochain jet CE TOUR » (Lot 17) : ce qui n'a pas servi tombe.
+  nextState = {
+    ...nextState,
+    players: nextState.players.map((p) => expireNextRollModifiers(p, state.turnNumber)) as GameState["players"],
+  };
+
+  // --- Lande en jeu : un demi-tour de table de plus. Ses dégâts de fin de
+  // tour de table tombent ici, AVANT le règlement de la Déraison, qui reste
+  // le tout dernier geste du tour.
+  const lande = tickLande(nextState, state.turnNumber);
+  nextState = lande.state;
+  events.push(...lande.events);
 
   // --- Règlement de la Déraison CHOISIE, à la fin du tour de celui qui l'a
   // prise, en tout dernier (plus aucun effet de fin de tour ne peut encore
@@ -368,7 +398,7 @@ export function entameDeTour(state: GameState, eventsAvant: GameEvent[] = []): A
   if (drawnCard) {
     deck = deck.slice(1);
     hand = [...hand, drawnCard];
-    events.push({ ...newBase, type: "DRAW_CARD", playerId: nextPlayer.id, instanceId: drawnCard.instanceId });
+    events.push({ ...newBase, type: "DRAW_CARD", playerId: nextPlayer.id, instanceId: drawnCard.instanceId, turnDraw: true });
   } else {
     // Deck vide : "Jugement de l'Océan" plutôt qu'une défaite instantanée
     // (résolu en fin d'action par `game/engine.ts`).
@@ -459,6 +489,18 @@ export function entameDeTour(state: GameState, eventsAvant: GameEvent[] = []): A
       pendingChoice: nextState.pendingChoice ?? forcedChoices[0],
       ...(file.length > 0 ? { pendingChoiceQueue: [...(nextState.pendingChoiceQueue ?? []), ...file] } : {}),
     };
+  }
+
+  // Lande qui retire des mots-clés (Pluie corrosive) : elle « affecte » les
+  // permanents à chaque tour. La fenêtre `onLandeStrike` s'ouvre à l'entame,
+  // pour qui peut ignorer son effet (Zone de repli) — seulement quand
+  // aucune autre question n'attend.
+  if (!nextState.pendingChoice && !nextState.pendingReaction && landeRemovedKeywords(nextState.environment).length > 0) {
+    const fenetre = ouvrirFenetrePour(nextState, [{ trigger: "onLandeStrike" }], newTurnNumber);
+    if (fenetre) {
+      events.push({ type: "REACTION_WINDOW_OPENED", turnNumber: newTurnNumber, timestamp: Date.now(), playerId: fenetre.awaitingPlayerId });
+      nextState = { ...nextState, pendingReaction: fenetre };
+    }
   }
 
   return { ok: true, state: nextState, events };

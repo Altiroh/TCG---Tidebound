@@ -2,6 +2,7 @@ import { concede } from "@/game/actions/concede";
 import type { ActionResult, PlayerAction, TimeoutAction } from "@/game/actions/types";
 import type { GameEvent } from "@/game/events/types";
 import { RULES } from "@/game/rules/constants";
+import { discardableHand } from "@/game/state/discard";
 import { nextTimeoutEndsGame, turnTimerExpired } from "@/game/rules/turnTimer";
 import type { GameState, PlayerState } from "@/game/state/types";
 
@@ -53,6 +54,11 @@ function defaultActionFor(state: GameState, playerId: string): PlayerAction {
     if (choice.kind === "deckLook") return { type: "resolveChoice", playerId, choice: { takeInstanceIds: [] } };
     // « JUSQU'À N » : ne rien répartir est une réponse légale.
     if (choice.kind === "healAllocation") return { type: "resolveChoice", playerId, choice: { healAllocation: [] } };
+    // Jet de dé (Lot 17) : le délai ferme la Chaîne — avec le meilleur dé s'il faut en garder un.
+    if (choice.kind === "dieRoll") {
+      if (choice.candidates !== undefined) return { type: "resolveChoice", playerId, choice: { dieKeep: choice.candidates.indexOf(Math.max(...choice.candidates)) } };
+      return { type: "resolveChoice", playerId, choice: { dieResolve: true } };
+    }
     if (choice.kind === "keepUnits") return { type: "resolveChoice", playerId, choice: { keepInstanceIds: [] } };
     if (choice.kind === "pickUnits") return { type: "resolveChoice", playerId, choice: { pickInstanceIds: [] } };
     if (choice.kind === "handDiscard") {
@@ -60,7 +66,7 @@ function defaultActionFor(state: GameState, playerId: string): PlayerAction {
       // défausser » n'est permis que si le texte le permet.
       if (choice.refusable) return { type: "resolveChoice", playerId, choice: "pass" };
       if (choice.atMost) return { type: "resolveChoice", playerId, choice: { discardInstanceIds: [] } };
-      const hand = state.players.find((p) => p.id === playerId)?.hand ?? [];
+      const hand = discardableHand(state.players.find((p) => p.id === playerId)?.hand ?? [], choice);
       return {
         type: "resolveChoice",
         playerId,

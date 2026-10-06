@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, type CSSProperties } from "react";
-import { reasonCeiling, type PlayerState, type ShipDefinition, type TideStateName } from "@/game";
+import { reasonCeiling, slotsUsed, type PlayerState, type ShipDefinition, type TideStateName } from "@/game";
 import { TIDE_STATE_LABELS } from "@/features/match/cardDisplay";
 import { shipIllustrationUrl } from "@/features/ships/shipFrame";
 import { shipTraits } from "@/features/ships/shipText";
@@ -122,10 +122,10 @@ export function ShipInfoSheet({ player, ship, ownerLabel, onClose }: ShipInfoShe
                 <div className={sheet.gauge} data-kind="slots">
                   <span className={sheet.gaugeLabel}>Emplacements</span>
                   <span className={sheet.gaugeValue}>
-                    {player.board.length} <small>/ {ship.slotCount}</small>
+                    {slotsUsed(player.board)} <small>/ {ship.slotCount}</small>
                   </span>
                   <span className={sheet.gaugeBar}>
-                    <span className={sheet.gaugeFill} style={{ width: ratio(player.board.length, ship.slotCount) }} />
+                    <span className={sheet.gaugeFill} style={{ width: ratio(slotsUsed(player.board), ship.slotCount) }} />
                   </span>
                 </div>
               </div>

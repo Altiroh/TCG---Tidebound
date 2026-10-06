@@ -1,8 +1,11 @@
+import { getShipDefinition } from "@/game/environment/shipData";
+import { shuffle } from "@/game/rng";
 import { getCardDefinition } from "@/game/cards/sets/core";
-import { deckLookRefusal } from "@/game/rules/deckLook";
+import { deckLookRefusal, deckLookSelectionFits, deckLookTakeLimit } from "@/game/rules/deckLook";
 import { UNIT_CARD_TYPES } from "@/game/cards/types";
 import { chromaticColorsOf } from "@/game/rules/chromatic";
-import { resolveEffectSequence } from "@/game/effects/resolveSequence";
+import { closeAndResolveDieRoll, closeDieRollIfIdle, resolveEffectSequence } from "@/game/effects/resolveSequence";
+import { adjustPending, keepCandidate, landeReroll } from "@/game/rules/dice";
 import { discardFromHand } from "@/game/state/discard";
 import { processGraveyardEntryTriggers, processGraveyardRecoveryTriggers, processTrigger } from "@/game/triggers/triggerBus";
 import { finirTour } from "@/game/actions/endTurn";
@@ -43,6 +46,29 @@ export function resolveChoice(state: GameState, action: ResolveChoiceAction): Ac
   const base = { turnNumber: choice.turnNumber, timestamp: Date.now() };
   let nextState: GameState = { ...state, pendingChoice: undefined };
 
+  // JET DE DÉ EN COURS (Lot 17) : un geste sur le jet, ou la fermeture de la
+  // Chaîne. Après un geste, s'il ne reste rien à décider, le jet se résout.
+  if (choice.kind === "dieRoll") {
+    const reponse = action.choice;
+    if (typeof reponse !== "object") return { ok: false, error: "Ce choix attend une décision sur le jet de dé." };
+    if ("dieResolve" in reponse) {
+      if (choice.candidates !== undefined) return { ok: false, error: "Choisissez d'abord le dé à garder." };
+      const ferme = closeAndResolveDieRoll(state, choice);
+      return { ok: true, state: ferme.state, events: ferme.events };
+    }
+    const geste =
+      "dieKeep" in reponse
+        ? keepCandidate(state, choice, reponse.dieKeep)
+        : "dieReroll" in reponse
+          ? landeReroll(state, choice)
+          : "dieAdjust" in reponse
+            ? adjustPending(state, choice, reponse.dieAdjust.sourceInstanceId, reponse.dieAdjust.delta)
+            : { ok: false as const, error: "Ce choix attend une décision sur le jet de dé." };
+    if (!geste.ok) return geste;
+    const suite = closeDieRollIfIdle(geste.state);
+    return { ok: true, state: suite.state, events: suite.events };
+  }
+
   // Option d'une capacité (« choisissez : A ou B », ex: Horloge de Marée) :
   // seule la capacité désignée se résout, avec le contexte de la carte source.
   if (choice.kind === "abilityOption") {
@@ -68,6 +94,14 @@ export function resolveChoice(state: GameState, action: ResolveChoiceAction): Ac
     const recovered = processGraveyardRecoveryTriggers(nextState, applied.events, choice.turnNumber);
     nextState = recovered.state;
     events.push(...recovered.events);
+    // « Choisissez N effets DIFFÉRENTS » (Lot 17) : la question se repose, sans l'option prise.
+    const restantes = choice.abilityIndexes.filter((i) => i !== abilityIndex);
+    if ((choice.remainingPicks ?? 0) > 0 && restantes.length > 0) {
+      const encore = { ...choice, abilityIndexes: restantes, remainingPicks: (choice.remainingPicks ?? 0) - 1 };
+      nextState = nextState.pendingChoice
+        ? { ...nextState, pendingChoiceQueue: [encore, ...(nextState.pendingChoiceQueue ?? [])] }
+        : { ...nextState, pendingChoice: encore };
+    }
     return { ok: true, state: nextState, events };
   }
   // « Choisissez une couleur » (Lot 15) : la suite du texte se résout avec
@@ -139,6 +173,7 @@ export function resolveChoice(state: GameState, action: ResolveChoiceAction): Ac
           instanceId: choice.card.instanceId,
           fromZone: "deck",
           toZone: "deck",
+          deckPosition: "bottom",
         });
       }
     }
@@ -254,13 +289,14 @@ export function resolveChoice(state: GameState, action: ResolveChoiceAction): Ac
   // sur chaque unité. Le moteur vérifie seulement que le total tient dans
   // le budget et que les cibles sont bien les siennes.
   if (choice.kind === "healAllocation") {
-    const repartition =
+    const reponse =
       action.choice === "pass"
         ? []
         : typeof action.choice === "object" && "healAllocation" in action.choice
           ? action.choice.healAllocation
           : undefined;
-    if (repartition === undefined) return { ok: false, error: "Ce choix attend une répartition de Résistance." };
+    if (reponse === undefined) return { ok: false, error: "Ce choix attend une répartition de Résistance." };
+    let repartition = [...reponse];
 
     const total = repartition.reduce((somme, part) => somme + part.amount, 0);
     if (repartition.some((part) => part.amount <= 0)) return { ok: false, error: "Une part de soin doit être positive." };
@@ -270,6 +306,9 @@ export function resolveChoice(state: GameState, action: ResolveChoiceAction): Ac
     }
 
     const player = getPlayer(nextState, choice.playerId);
+    // « … et votre Navire » (Frère Michel, Lot 17) : la part du Navire est mise à part.
+    const partNavire = choice.includeShip ? repartition.find((part) => part.instanceId === "ship")?.amount ?? 0 : 0;
+    if (choice.includeShip) repartition = repartition.filter((part) => part.instanceId !== "ship");
     if (repartition.some((part) => !player.board.some((u) => u.instanceId === part.instanceId))) {
       return { ok: false, error: "Cette unité n'est pas sur votre plateau." };
     }
@@ -301,6 +340,15 @@ export function resolveChoice(state: GameState, action: ResolveChoiceAction): Ac
     for (const part of repartition) {
       events.push({ ...base, type: "HEAL", targetInstanceId: part.instanceId, amount: part.amount });
     }
+    // La part du Navire : de l'Ancrage, jusqu'à son Ancrage de départ.
+    if (partNavire > 0) {
+      const coque = getPlayer(nextState, choice.playerId);
+      const soigne = Math.max(0, Math.min(getShipDefinition(coque.shipId).startingAnchor, coque.anchor + partNavire) - coque.anchor);
+      if (soigne > 0) {
+        nextState = { ...nextState, players: nextState.players.map((p) => (p.id === coque.id ? { ...coque, anchor: coque.anchor + soigne } : p)) as [PlayerState, PlayerState] };
+        events.push({ ...base, type: "HEAL", targetPlayerId: coque.id, amount: soigne });
+      }
+    }
     return { ok: true, state: nextState, events };
   }
 
@@ -322,7 +370,7 @@ export function resolveChoice(state: GameState, action: ResolveChoiceAction): Ac
       return { ok: false, error: "Ce choix n'est pas refusable : le texte dit d'en prendre une." };
     }
     if (new Set(prises).size !== prises.length) return { ok: false, error: "Une même carte ne peut être prise deux fois." };
-    if (prises.length > choice.take) return { ok: false, error: `Ce choix permet d'en prendre au plus ${choice.take}.` };
+    if (prises.length > deckLookTakeLimit(choice)) return { ok: false, error: `Ce choix permet d'en prendre au plus ${deckLookTakeLimit(choice)}.` };
 
     const regardees = choice.revealed;
     for (const id of prises) {
@@ -336,15 +384,22 @@ export function resolveChoice(state: GameState, action: ResolveChoiceAction): Ac
       if (refus === "cost") return { ok: false, error: "Ce texte ne permet pas de prendre une carte aussi chère." };
     }
 
+    // Paniers (Banquet ancestral) : chaque carte prise doit trouver sa place dans un panier distinct.
+    if (choice.takeGroups && !deckLookSelectionFits(choice, prises.map((id) => regardees.find((c) => c.instanceId === id)!))) {
+      return { ok: false, error: "Ces cartes ne tiennent pas ensemble dans ce que le texte permet de prendre." };
+    }
+
     const player = getPlayer(nextState, choice.playerId);
-    const gardees = regardees.filter((c) => prises.includes(c.instanceId));
+    // Dans l'ordre de la RÉPONSE : « placez-les sous votre pioche dans l'ordre de votre choix ».
+    const gardees = prises.map((id) => regardees.find((c) => c.instanceId === id)!);
+    const versMain = (choice.takeTo ?? "hand") === "hand";
     // « Placez les autres SOUS votre pioche », dans l'ordre où elles
     // étaient : le joueur a vu cet ordre, il doit le retrouver.
     let rendues = regardees.filter((c) => !prises.includes(c.instanceId));
     // « Remettez les autres au-dessus dans l'ordre de votre choix » : l'ordre
     // donné doit nommer chacune des cartes rendues, une fois.
     const ordre = typeof action.choice === "object" && "restOrder" in action.choice ? action.choice.restOrder : undefined;
-    if (ordre && choice.restTo === "deckTopChosenOrder") {
+    if (ordre && (choice.restTo === "deckTopChosenOrder" || choice.restTo === "deckBottomChosenOrder")) {
       const attendues = new Set(rendues.map((c) => c.instanceId));
       if (ordre.length !== attendues.size || new Set(ordre).size !== ordre.length || ordre.some((id) => !attendues.has(id))) {
         return { ok: false, error: "L'ordre donné doit nommer chacune des cartes remises, une seule fois." };
@@ -352,13 +407,28 @@ export function resolveChoice(state: GameState, action: ResolveChoiceAction): Ac
       rendues = ordre.map((id) => rendues.find((c) => c.instanceId === id)!);
     }
     const depuisCimetiere = choice.zone === "graveyard";
-    const joueur = depuisCimetiere
-      ? { ...player, hand: [...player.hand, ...gardees], graveyard: [...player.graveyard, ...rendues] }
-      : {
-          ...player,
-          hand: [...player.hand, ...gardees],
-          deck: choice.restTo === "deckTopChosenOrder" ? [...rendues, ...player.deck] : [...player.deck, ...rendues],
-        };
+    // « Mélangez les autres dans votre pioche » (Meraï, Lot 17).
+    let rng = nextState.rngState;
+    const pioche = (() => {
+      if (depuisCimetiere) return player.deck;
+      if (choice.restTo === "deckTopChosenOrder") return [...rendues, ...player.deck];
+      if (choice.restTo === "shuffle") {
+        const melange = shuffle([...player.deck, ...rendues], rng);
+        rng = melange.nextState;
+        return melange.value;
+      }
+      return [...player.deck, ...rendues];
+    })();
+    // Où vont les cartes PRISES (Lot 17) : la main, le dessus, ou le dessous de la pioche.
+    const piocheFinale =
+      choice.takeTo === "deckTop" ? [...gardees, ...pioche] : choice.takeTo === "deckBottom" ? [...pioche, ...gardees] : pioche;
+    const joueur = {
+      ...player,
+      hand: versMain ? [...player.hand, ...gardees] : player.hand,
+      deck: piocheFinale,
+      ...(depuisCimetiere ? { graveyard: [...player.graveyard, ...rendues] } : {}),
+    };
+    nextState = { ...nextState, rngState: rng };
     nextState = {
       ...nextState,
       players: nextState.players.map((p) => (p.id === choice.playerId ? joueur : p)) as [PlayerState, PlayerState],
@@ -366,11 +436,30 @@ export function resolveChoice(state: GameState, action: ResolveChoiceAction): Ac
     for (const carte of gardees) {
       // Repêchée au Cimetière : c'est un déplacement, pas une pioche — les
       // déclencheurs de récupération (Maman revient) doivent la voir.
+      if (!versMain) {
+        events.push({
+          ...base,
+          type: "CARD_MOVED",
+          instanceId: carte.instanceId,
+          cardId: carte.cardId,
+          ownerId: choice.playerId,
+          fromZone: depuisCimetiere ? "graveyard" : "deck",
+          toZone: "deck",
+          deckPosition: choice.takeTo === "deckBottom" ? "bottom" : "top",
+        });
+        continue;
+      }
       events.push(
         depuisCimetiere
           ? { ...base, type: "CARD_MOVED", instanceId: carte.instanceId, cardId: carte.cardId, ownerId: choice.playerId, fromZone: "graveyard", toZone: "hand" }
-          : { ...base, type: "DRAW_CARD", playerId: choice.playerId, instanceId: carte.instanceId }
+          : { ...base, type: "DRAW_CARD", playerId: choice.playerId, instanceId: carte.instanceId, viaLook: true }
       );
+    }
+    // Les cartes regardées qui repartent SOUS la pioche y sont « placées » (Lot 17 — Meraï).
+    if (!depuisCimetiere && choice.restTo !== "deckTopChosenOrder" && choice.restTo !== "shuffle") {
+      for (const carte of rendues) {
+        events.push({ ...base, type: "CARD_MOVED", instanceId: carte.instanceId, cardId: carte.cardId, ownerId: choice.playerId, fromZone: "deck", toZone: "deck", deckPosition: "bottom" });
+      }
     }
     // La suite du texte, sur la carte prise (« s'il coûtait 2 ou moins, vous
     // pouvez le jouer pour 1 de moins ce tour »).
@@ -417,6 +506,12 @@ export function resolveChoice(state: GameState, action: ResolveChoiceAction): Ac
     if (chosen.some((id) => !hand.some((card) => card.instanceId === id))) {
       return { ok: false, error: "Cette carte n'est pas dans votre main." };
     }
+    // « Piochez puis défaussez » : la carte qu'on vient de piocher ne peut
+    // pas repartir aussitôt (règle du 05/10/2026).
+    const exclues = choice.excludedInstanceIds ?? [];
+    if (chosen.some((id) => exclues.includes(id))) {
+      return { ok: false, error: "Vous ne pouvez pas défausser la carte que cet effet vient de vous faire piocher." };
+    }
 
     // SOUS LA PIOCHE plutôt qu'au Cimetière (Mauvaise Main) : ce n'est pas
     // une défausse, donc `processGraveyardEntryTriggers` n'a rien à y
@@ -429,7 +524,7 @@ export function resolveChoice(state: GameState, action: ResolveChoiceAction): Ac
       const restante = player.hand.filter((c) => !chosen.includes(c.instanceId));
       let apres: PlayerState = { ...player, hand: restante, deck: [...player.deck, ...rendues] };
       for (const carte of rendues) {
-        events.push({ ...base, type: "CARD_MOVED", ownerId: choice.playerId, instanceId: carte.instanceId, cardId: carte.cardId, fromZone: "hand", toZone: "deck" });
+        events.push({ ...base, type: "CARD_MOVED", ownerId: choice.playerId, instanceId: carte.instanceId, cardId: carte.cardId, fromZone: "hand", toZone: "deck", deckPosition: "bottom" });
       }
       // « puis piochez-en autant » : exactement ce qui vient d'être rendu.
       if (choice.drawBackAfterwards) {

@@ -13,11 +13,11 @@ export function DecorLayer() {
   return (
     <div aria-hidden className={styles.decor}>
       {/* eslint-disable-next-line @next/next/no-img-element -- décor fixe */}
-      <img src="/assets/board/decor-corner-top-right.webp" alt="" draggable={false} className={`${styles.decorItem} ${styles.decorTopRight}`} />
+      <img data-decor-obstacle="" src="/assets/board/decor-corner-top-right.webp" alt="" draggable={false} className={`${styles.decorItem} ${styles.decorTopRight}`} />
       {/* eslint-disable-next-line @next/next/no-img-element -- décor fixe */}
-      <img src="/assets/board/decor-corner-bottom-right.webp" alt="" draggable={false} className={`${styles.decorItem} ${styles.decorBottomRight}`} />
+      <img data-decor-obstacle="" src="/assets/board/decor-corner-bottom-right.webp" alt="" draggable={false} className={`${styles.decorItem} ${styles.decorBottomRight}`} />
       {/* eslint-disable-next-line @next/next/no-img-element -- décor fixe */}
-      <img src="/assets/board/decor-corner-bottom-left.webp" alt="" draggable={false} className={`${styles.decorItem} ${styles.decorBottomLeft}`} />
+      <img data-decor-obstacle="" src="/assets/board/decor-corner-bottom-left.webp" alt="" draggable={false} className={`${styles.decorItem} ${styles.decorBottomLeft}`} />
     </div>
   );
 }

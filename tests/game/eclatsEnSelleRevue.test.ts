@@ -221,7 +221,8 @@ describe("Veilleuse de l'Ombre : Signal Violet", () => {
     const heros = instance("heros-de-la-flamme", "p2");
     const carte = instance("murene-aveugle", "p2");
     const occupee: GameState = {
-      ...table({}, { board: [veilleuse, heros], deck: [carte] }),
+      // Une carte en main : la défausse ne peut pas viser la carte piochée.
+      ...table({}, { board: [veilleuse, heros], deck: [carte], hand: [instance("murene-aveugle", "p2")] }),
       pendingChoice: { kind: "handDiscard", playerId: "p1", count: 1, refusable: false, turnNumber: 1 },
     };
     const vise = processChromaticSignals(
@@ -229,12 +230,12 @@ describe("Veilleuse de l'Ombre : Signal Violet", () => {
       [{ type: "UNIT_TARGETED", instanceId: heros.instanceId, byPlayerId: "p1", turnNumber: 1, timestamp: 0 }],
       1
     );
-    expect(joueur(vise.state, "p2").hand).toHaveLength(0);
+    expect(joueur(vise.state, "p2").hand).toHaveLength(1);
     expect(vise.state.signauxVioletsEnAttente).toHaveLength(1);
 
     const { pendingChoice: _repondu, ...libre } = vise.state;
     const suite = processChromaticSignals(libre, [], 1);
-    expect(joueur(suite.state, "p2").hand.map((c) => c.instanceId)).toEqual([carte.instanceId]);
+    expect(joueur(suite.state, "p2").hand.map((c) => c.instanceId)).toContain(carte.instanceId);
     expect(suite.state.signauxVioletsEnAttente).toBeUndefined();
   });
 });

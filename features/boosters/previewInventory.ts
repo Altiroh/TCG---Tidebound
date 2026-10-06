@@ -32,6 +32,7 @@ const OWNED: Readonly<Record<string, number>> = {
   "la-veillee-des-disparus": 7,
   "eclats-en-selle": 3,
   "la-mutation-mondiale": 2,
+  "dungeon-et-ladalle": 1,
 };
 
 /** Boosters ouverts depuis la dernière Abyssale, pour voir le compteur de pity. */

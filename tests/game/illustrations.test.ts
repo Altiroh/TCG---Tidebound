@@ -37,8 +37,20 @@ const DOSSIER = path.join(process.cwd(), "public", "assets", "cards", "illustrat
  * de son visuel — le troisième test le refuse.
  */
 const SANS_VISUEL: Record<string, string> = {
-  // VIDE depuis le 04/10/2026 : le Lot 16 — Les Altérés — a reçu ses
-  // derniers visuels (La Revenante et les deux variantes Abyssales).
+  // Le Lot 17 a reçu ses visuels le 06/10/2026 ; les passerelles encore
+  // obtenables ou rattachées à un archétype ont suivi le même jour. Restent
+  // sans visuel les sept passerelles sorties des pools à l'audit du 06/10.
+  ...Object.fromEntries(
+    [
+      "cartographe-du-large",
+      "gardien-des-balises",
+      "boussole-fendue",
+      "campement-provisoire",
+      "tour-de-guet-mobile",
+      "maree-imprevisible",
+      "terres-inconnues",
+    ].map((id) => [id, "Passerelle du Lot 17 livrée sans visuel (06/10/2026)"])
+  ),
 };
 
 const fichiers = new Set(readdirSync(DOSSIER));
@@ -81,6 +93,15 @@ describe("vignettes d'illustration", () => {
   const MINI = path.join(DOSSIER, "mini");
   const illustrations = [...fichiers].filter((nom) => nom.endsWith(".webp"));
 
+  // Une Abyssale montrée SEULE (pile de deck, liste, contenu de booster)
+  // passe par sa vignette composée décor + débord (`cardIllustrationUrl`).
+  it("chaque Abyssale a sa vignette composée", () => {
+    const sans = CORE_SET.filter((def) => def.id.endsWith("-abyssal") && fichiers.has(`${def.id}.webp`) && !fichiers.has(`${def.id}-vignette.webp`)).map(
+      (def) => def.id
+    );
+    expect(sans, "\nÀ composer : node scripts/optimizeImages.mjs\n").toEqual([]);
+  });
+
   // Présence seulement, pas fraîcheur : Git ne conserve pas les dates de
   // fichiers, un clone les remet toutes à l'heure du checkout.
   it("chaque illustration a sa vignette", () => {
@@ -109,9 +130,18 @@ describe("visuels de sachet", () => {
    * Marin a vécu une journée avec les images du Défaut, et rien ne l'aurait
    * signalé.
    */
+  /** Sachets livrés sans planches, chacun avec son motif — même règle que `SANS_VISUEL`. */
+  const SACHET_SANS_VISUEL: Record<string, string> = {
+  };
+
   it("chaque booster du rayon a ses trois images, et ne les emprunte à personne", () => {
     for (const boosterId of SHELF_BOOSTER_IDS) {
       const visual = getBoosterPackVisual(boosterId);
+      if (SACHET_SANS_VISUEL[boosterId] !== undefined) {
+        // Le visuel est arrivé : l'exception doit partir avec lui.
+        expect(visual.id, `${boosterId} a son visuel — retire-le de SACHET_SANS_VISUEL`).toBe(DEFAULT_PACK_VISUAL.id);
+        continue;
+      }
 
       // Retomber sur le visuel par défaut, c'est n'en avoir aucun. Seul le
       // Défaut lui-même a le droit d'être le défaut — et son dossier

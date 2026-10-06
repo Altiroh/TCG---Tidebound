@@ -47,3 +47,37 @@ export function PreconToken({ size = 15 }: { size?: number }) {
     />
   );
 }
+
+/** Étoile de métal peinte, pleine ou vide (`ui/icons/etoile-*.webp`). */
+export function StarIcon({ filled, className }: { filled: boolean; className?: string }) {
+  return (
+    // eslint-disable-next-line @next/next/no-img-element -- icône locale, taille fixée par l'appelant
+    <img
+      src={filled ? "/assets/ui/icons/etoile-pleine.webp" : "/assets/ui/icons/etoile-vide.webp"}
+      alt=""
+      aria-hidden
+      draggable={false}
+      className={className}
+      style={{ width: "var(--tb-star, 1em)", height: "var(--tb-star, 1em)", objectFit: "contain", flex: "none", userSelect: "none" }}
+    />
+  );
+}
+
+/**
+ * La DIFFICULTÉ d'un deck en cinq étoiles peintes. La taille d'une étoile se
+ * règle chez l'appelant par `--tb-star` (1em par défaut) ; l'écart, par `gap`.
+ */
+export function DifficultyStars({ value, className, decorative = false }: { value: number; className?: string; decorative?: boolean }) {
+  const filled = Math.min(5, Math.max(0, Math.round(value)));
+  return (
+    <span
+      className={className}
+      style={{ display: "inline-flex", alignItems: "center", gap: "0.1em", lineHeight: 1 }}
+      {...(decorative ? { "aria-hidden": true } : { role: "img", "aria-label": `Difficulté ${filled} sur 5`, title: `Difficulté ${filled} sur 5` })}
+    >
+      {Array.from({ length: 5 }, (_, index) => (
+        <StarIcon key={index} filled={index < filled} />
+      ))}
+    </span>
+  );
+}

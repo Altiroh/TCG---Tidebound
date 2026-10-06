@@ -35,6 +35,47 @@ export type EffectType =
   | "moveZone"
   | "transform"
   | "reasonGain"
+  /**
+   * « Gagnez X Armure » (Lot 17) : X points d'Armure sur le Navire du joueur
+   * visé (le contrôleur par défaut) — `game/state/armor.ts`.
+   */
+  | "gainArmor"
+  /**
+   * « Choisissez : … » au milieu d'une séquence (Lot 17 — Morhal, Nerhal,
+   * Marée imprévisible, Eidolon Opalin LVX) : pose la question des
+   * capacités de la carte SOURCE dont le `choiceGroup` vaut
+   * `optionGroup` — des capacités `trigger: "onChosenOption"`, qu'aucun
+   * événement ne déclenche. `uses` : combien d'options DIFFÉRENTES prendre.
+   * Le joueur peut toujours ne rien appliquer.
+   */
+  | "chooseAbilityOption"
+  /** « La prochaine fois qu'une de vos unités inflige des dégâts ce tour, augmentez ces dégâts de N » (Lot 17 — `game/state/damageBonus.ts`). */
+  | "nextUnitDamageBonus"
+  /** Marque la cible pour CE tour (`flagKey`) — lu par `condition.selfFlaggedThisTurn` (« lorsqu'il attaque ce tour », Lot 17). */
+  | "flagThisTurn"
+  /** « Placez N marqueurs Niveau sur [cible] » (Lot 17, `game/rules/levels.ts`) : au seuil de sa lignée, la carte est remplacée. */
+  | "addLevelMarker"
+  /**
+   * « Lancez » (Lot 17, `game/rules/dice.ts`) : lance le dé de la carte
+   * source (`CardDefinition.die`, ou `die`) et résout les branches
+   * (`dieBranches`) que le jet retenu satisfait, avec « ? » = le résultat
+   * (montant `dieResult`). Entre le lancer et la résolution, la Chaîne.
+   */
+  | "rollDie"
+  /** Chaîne — « modifiez le jet en cours de +1 ou -1 » / « augmentez-le de 2 sans dépasser son maximum » (`dieDeltas`). */
+  | "modifyPendingDie"
+  /** Chaîne — « relancez le dé en cours ; le nouveau résultat remplace l'ancien ». */
+  | "rerollPendingDie"
+  /** Chaîne — « le jet en cours ne peut pas être considéré comme un Échec critique ». */
+  | "pendingDieNoCriticalFailure"
+  /** « Votre prochain jet [ce tour] … » : pose un `NextRollModifier` (`nextRoll`) sur le joueur. */
+  | "modifyNextRoll"
+  /**
+   * « Perdez X Armure » (Lot 17). Ce qui manque peut retomber en dégâts sur
+   * la carte source (`armorShortfallDamagesSource` — Hubert : « si vous
+   * n'avez pas assez d'Armure, Hubert subit les dégâts restants »).
+   */
+  | "loseArmor"
   | "reasonLoss"
   /** Attache la source (un Équipement) au permanent choisi (`target: { kind: "chosenUnit" }`) — cf. `EQUIPPABLE_CARD_TYPES`, un seul Équipement par permanent. */
   | "attachEquipment"
@@ -125,6 +166,18 @@ export type EffectType =
   | "tideAmplifyNext"
   /** Inverse l'orientation courante de la Marée (Montante ↔ Descendante). */
   | "tideInvertOrientation"
+  /**
+   * « Détruisez la Lande active » (Lever l'Ancre) : elle part au Cimetière
+   * de son propriétaire, cause `destroyed`. Sans Lande : rien.
+   */
+  | "destroyLande"
+  /**
+   * « Réduisez de N sa durée restante » (Cartographe Opalin méfiant) :
+   * retire `amount` TOURS DE TABLE à la Lande active. Ramenée à 0, elle part
+   * au Cimetière de son propriétaire, comme à la fin de sa durée. Sans
+   * Lande : rien.
+   */
+  | "shortenLande"
   /** Fixe l'orientation de la Marée à `forceTideOrientation` ("forcez son orientation à devenir descendante"). Sans effet si elle l'est déjà. */
   | "tideSetOrientation"
   /** Force une transition IMMÉDIATE d'un état vers les Abysses (jamais via le décompte normal). */
@@ -270,6 +323,15 @@ export type EffectType =
    */
   | "rearmTriggers"
   /**
+   * Inscrit sur la cible le « une fois par tour » d'une capacité de la
+   * SOURCE qui se compte par carte déclencheuse (`oncePerTurnPerTriggerSource`,
+   * clé `consumesOncePerTurnKey`), comme si cette capacité venait de s'en
+   * servir. Pour un texte qui agit à la pose PUIS « la première fois que
+   * chacune de vos unités… » : l'unité touchée à la pose a déjà eu son tour
+   * (Jusqu'à ce que ça casse, 05/10/2026).
+   */
+  | "consumeOncePerTurn"
+  /**
    * Donne une identité chromatique à la cible (Lot 15) : une couleur
    * (`chromaticColor`, ou lue ailleurs avec `chromaticColorFrom`), le
    * Signal correspondant (`chromaticEmits`), ou le droit de bénéficier de
@@ -328,6 +390,13 @@ export type EffectType =
  * être étendue vers des formules (ex: "= nombre d'unités contrôlées"). */
 export type EffectAmount =
   | { kind: "flat"; value: number }
+  /**
+   * « ? » sur une carte à dé (Lot 17) : le RÉSULTAT du jet en cours
+   * (`EffectContext.dieResult`), éventuellement divisé par deux arrondi au
+   * supérieur (`half` — « moitié du résultat »), augmenté de `plus`, et
+   * plafonné à `max` (« une Bestiole ?/?, plafonnée à 4/4 »).
+   */
+  | { kind: "dieResult"; half?: boolean; plus?: number; max?: number }
   /**
    * « autant de dégâts » : la Puissance de l'attaquant dont l'attaque vient
    * d'être interceptée (`pendingAttack.attackerPower`). 0 hors fenêtre
@@ -437,6 +506,8 @@ export interface ChosenUnitFilter {
    * Créature, pas une famille au sens `archetypes.ts`.
    */
   subtype?: string;
+  /** Porte cette ÉTIQUETTE (`CardDefinition.tags` — « une carte LV », Lot 17). */
+  tag?: string;
   /**
    * "un AUTRE Cra-Poiscail" : exclut la source de l'effet et — si cette
    * source est un Équipement — le permanent qu'elle équipe. C'est LUI que
@@ -679,7 +750,30 @@ export interface EffectDefinition {
    * Pour `lookAtDeckTop` : où retournent les cartes regardées et non prises
    * (`DeckLookChoice.restTo`). Défaut : sous la pioche.
    */
-  restTo?: "deckBottom" | "deckTopChosenOrder";
+  restTo?: "deckBottom" | "deckTopChosenOrder" | "deckBottomChosenOrder" | "shuffle";
+  /**
+   * `lookAtDeckTop` : « cherchez X dans votre pioche » — on regarde TOUTE la
+   * pioche, mais seules les cartes qui conviennent au `filter` sont
+   * montrées ; les autres ne bougent pas, et la pioche est mélangée ensuite
+   * (sauf `restTo` contraire). Corne du Rassemblement (Lot 17).
+   */
+  searchWholeDeck?: boolean;
+  /**
+   * `lookAtDeckTop` : plusieurs PANIERS de prise (`DeckLookChoice.takeGroups`),
+   * chacun avec son filtre et, au besoin, sa condition de plateau — « un
+   * Opalin parmi elles ; si vous contrôlez au moins 2 Opalins, vous pouvez
+   * également ajouter un Objet » (Banquet ancestral, Lot 17). Un panier dont
+   * la condition n'est pas remplie n'est pas proposé.
+   */
+  takeGroups?: Array<{
+    uses: number;
+    filter?: { cardTypes?: import("@/game/cards/types").CardType[]; archetype?: import("@/game/cards/archetypes").ArchetypeId };
+    conditionControlledArchetypeAtLeast?: { archetype: import("@/game/cards/archetypes").ArchetypeId; count: number };
+  }>;
+  /** `lookAtDeckTop` / `pickFromGraveyard` : où vont les cartes PRISES (`DeckLookChoice.takeTo`). */
+  takeTo?: "hand" | "deckTop" | "deckBottom";
+  /** `lookAtDeckTop` : regarder les cartes du DESSOUS de la pioche (Meraï, Opalin des Profondeurs). */
+  fromBottom?: boolean;
   /**
    * Pour `heal` sur une unité : « restaurez TOUTE sa Résistance » (Le
    * Recousu, Lot 16) — tous les dégâts marqués s'effacent, quel qu'en soit
@@ -719,6 +813,10 @@ export interface EffectDefinition {
     /** Sous-type exact (ex: "marionnette") — `discountNextCards` et la récupération au Cimetière (`moveGraveyardCardToHand`, ex: Rappel du Public). */
     subtype?: string;
     maxCost?: number;
+    /** Coût IMPRIMÉ minimal (« coûtant 5 ou plus », Lot 17). */
+    minCost?: number;
+    /** Porte cette ÉTIQUETTE (`CardDefinition.tags` — « une carte LV », Lot 17). */
+    tag?: string;
     /**
      * Plafond de PUISSANCE EFFECTIVE de la cible — modificateurs et auras
      * compris, pas la valeur imprimée (« toutes les unités de Puissance 2
@@ -778,6 +876,48 @@ export interface EffectDefinition {
   conditionChosenTargetSurvives?: boolean;
   /** `rearmTriggers` : le déclencheur dont les capacités sont réarmées. */
   rearmTrigger?: import("@/game/triggers/types").TriggerType;
+  /** `rollDie` : dé lancé — défaut : celui de la carte source (`CardDefinition.die`). */
+  die?: 4 | 6 | 8;
+  /** `rollDie` : les branches d'issue, dans l'ordre. */
+  dieBranches?: import("@/game/state/types").DieOutcomeBranch[];
+  /** `rollDie` : `"first"` — seule la première branche satisfaite se résout. Défaut : toutes. */
+  dieBranchMode?: "all" | "first";
+  /** `rollDie` : seuil de Réussite (inclus). Défaut : moitié haute du dé (4+ sur D6). */
+  successAt?: number;
+  /** `modifyPendingDie` : les modifications permises, au choix du joueur (`[1, -1]`, `[2]`). Le résultat reste entre 1 et la face max. */
+  dieDeltas?: number[];
+  /** `modifyNextRoll` : ce qui attend le prochain jet. */
+  nextRoll?: import("@/game/state/types").NextRollModifier;
+  /** `modifyNextRoll` : « votre prochain jet CE TOUR » — tombe en fin de tour s'il n'a pas servi. */
+  nextRollThisTurn?: boolean;
+  /** `chooseAbilityOption` : le `choiceGroup` des capacités proposées. */
+  optionGroup?: string;
+  /** `summon` : le corps invoqué reçoit `amount` en Puissance ET en Résistance, permanent (« une Bestiole ?/? », Lot 17). */
+  summonStatsFromAmount?: boolean;
+  /** `healDistributed` : le Navire peut recevoir une part (`HealAllocationChoice.includeShip`). */
+  includeShip?: boolean;
+  /** `discard` : les cartes désignées vont SOUS la pioche plutôt qu'au Cimetière (Ylenn, Lot 17). */
+  discardToDeckBottom?: boolean;
+  /** Ne résout cet effet que si une Lande est active (Cartographe du Large, Lot 17). */
+  conditionLandeActive?: boolean;
+  /** Ne résout cet effet que si la cible désignée porte cette étiquette (« Si elle est LV », Sommeil de Pierre). */
+  conditionChosenTargetTag?: string;
+  /** `buff` : la cible ne peut pas être renvoyée en main tant que le modificateur tient (Sommeil de Pierre, Lot 17). */
+  preventsReturnToHand?: boolean;
+  /** `flagThisTurn` : la marque posée. */
+  flagKey?: string;
+  /** `shortenLande` : « s'il disparaît ainsi, … » — effets résolus si la Lande vient de partir à cause de cet effet (Route barrée). */
+  ifLandeEnds?: EffectDefinition[];
+  /** `discountNextCards` : seule la cible désignée (et l'exemplaire qu'elle devient en main) en profite (« réduisez SON coût de 1 »). */
+  discountOnlyChosenTarget?: boolean;
+  /** `discountNextCards` : seule la carte SOURCE, renvoyée en main, en profite (« réduisez son prochain coût de 1 », Le Mimique). */
+  discountOnlySource?: boolean;
+  /** Ne résout cet effet que si le contrôleur a joué OU Brisé un Objet ce tour (Aventurière en retard, Lot 17). */
+  conditionObjectPlayedOrBrokenThisTurn?: boolean;
+  /** `loseArmor` : l'Armure qui manque devient des dégâts infligés à la carte source. */
+  armorShortfallDamagesSource?: boolean;
+  /** `consumeOncePerTurn` : la clé (`oncePerTurnKey`) de la capacité de la source à marquer. */
+  consumesOncePerTurnKey?: string;
   /** `chromaticModify` / `claimChromaticColor` : couleur fixe. */
   chromaticColor?: import("@/game/cards/types").ChromaticColor;
   /**
@@ -827,6 +967,10 @@ export interface EffectDefinition {
   expiresOnControllersTurn?: boolean;
   /** `buff`/`debuff` : mots-clés RETIRÉS pour la durée (« elle perd Garde »). */
   removeKeywords?: string[];
+  /** `buff` : la cible est à l'abri de la Lande pour la durée (`StatModifier.ignoresLande`, Zone de repli). */
+  ignoresLande?: boolean;
+  /** `buff` : « son texte est ignoré » pour la durée (`StatModifier.textIgnored`, Lot 17 — Seren, Astel). */
+  ignoresText?: boolean;
   /**
    * `buff` : la Puissance n'est accordée que pour le prochain combat contre
    * une cible portant ce mot-clé (Ouvrez la Ligne !). Le montant vient de

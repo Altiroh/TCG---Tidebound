@@ -1,5 +1,5 @@
 import { enumerateCandidateActions } from "@/game/bot/enumerateActions";
-import { evaluateState } from "@/game/bot/evaluateState";
+import { cloggedPenalty, evaluateState } from "@/game/bot/evaluateState";
 import { dispatch } from "@/game/engine";
 import type { ActionResult, PlayerAction } from "@/game/actions/types";
 import { canUnitAttack } from "@/game/rules/validation";
@@ -294,6 +294,8 @@ export function searchBestAction(
   // pour un gain que personne ne voit. C'est la seule préférence de STYLE
   // de cette recherche, et elle est là parce qu'un bot qui se saborde a
   // l'air bête même quand il a mathématiquement raison.
+  const me = state.players.find((p) => p.id === playerId);
+  const engorge = me ? cloggedPenalty(me) > 0 : false;
   let best: { line: Line; score: number } | null = null;
   for (const line of topLines(candidates, options.beamWidth * 2)) {
     // Toutes les suites sont ramenées au MÊME point de comparaison : fin du
@@ -301,7 +303,9 @@ export function searchBestAction(
     const ownTurnDone = line.closed ? line.state : finishOwnTurn(line.state, playerId, options.maxDepth);
     const settled = afterOpponentReply(ownTurnDone, playerId, options.opponentReplyDepth);
     const raw = evaluateState(settled, playerId);
-    const score = line.first.type === "saborder" ? raw - SCUTTLE_MARGIN : raw;
+    // Sauf pour DÉGAGER un plateau plein quand une carte attend en main : là,
+    // saborder est le coup juste, pas un caprice (Éclats chromatiques).
+    const score = line.first.type === "saborder" && !engorge ? raw - SCUTTLE_MARGIN : raw;
     if (!best || score > best.score) best = { line, score };
   }
 

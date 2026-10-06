@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, type ReactNode } from "react";
+import { CardRulesPanel } from "@/features/match/table/CardRulesPanel";
 import styles from "@/features/match/table/Table.module.css";
 
 /** Une action proposée à côté de la carte agrandie. */
@@ -30,6 +31,8 @@ interface TableCardZoomProps {
    * MONTRE ; c'est ici qu'on agit, d'un bouton, jamais d'un toucher pour lire.
    */
   actions?: ZoomAction[];
+  /** Carte dont l'effet se lit en grand à côté (`CardRulesPanel`). */
+  rulesCardId?: string;
   /** Ce que disent ses badges de statut, en toutes lettres (`cardStatusLegend`). */
   legend?: Array<{ label: string; description: string }>;
   /**
@@ -65,7 +68,7 @@ const TAP_PX = 12;
  * doigt qui vient de l'ouvrir (appui long) ne doit pas la refermer
  * aussitôt, et un balayage change de carte au lieu de refermer.
  */
-export function TableCardZoom({ children, onDetail, onClose, actions = [], legend = [], onPrev, onNext, position }: TableCardZoomProps) {
+export function TableCardZoom({ children, onDetail, onClose, actions = [], legend = [], onPrev, onNext, position, rulesCardId }: TableCardZoomProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const press = useRef<{ x: number; y: number } | null>(null);
   const handlers = useRef({ onClose, onPrev, onNext });
@@ -132,6 +135,7 @@ export function TableCardZoom({ children, onDetail, onClose, actions = [], legen
 
       {/* Les seuls contrôles du calque : tout le reste referme. */}
       <div className={styles.cardZoomSide} onPointerDown={stop} onPointerUp={stop}>
+        {rulesCardId && <CardRulesPanel cardId={rulesCardId} />}
         {actions.map((action) => (
           <div key={action.label} className={styles.cardZoomActionItem}>
             <button

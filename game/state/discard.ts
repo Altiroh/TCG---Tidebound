@@ -27,6 +27,19 @@ import type { GameState, GraveyardArrival, PlayerId, PlayerState } from "@/game/
  * en main et les invocations.
  */
 
+/**
+ * Cartes de la main qu'une défausse peut désigner : toute la main, moins
+ * les cartes que l'effet vient de faire piocher (`excludedInstanceIds`).
+ * Lu par la validation, le délai de tour, le bot et l'écran.
+ */
+export function discardableHand<T extends { instanceId: string }>(
+  hand: readonly T[],
+  choice: { excludedInstanceIds?: readonly string[] }
+): T[] {
+  const excluded = choice.excludedInstanceIds;
+  return excluded && excluded.length > 0 ? hand.filter((card) => !excluded.includes(card.instanceId)) : [...hand];
+}
+
 /** Ce que la défausse retire de la main : les N premières cartes, ou des exemplaires désignés. */
 export type DiscardSelection = { count: number } | { instanceIds: readonly string[] };
 

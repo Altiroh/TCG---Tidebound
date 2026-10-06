@@ -94,6 +94,12 @@ export function formatEvent(state: GameState, event: GameEvent, playerLabel: (pl
         : `${playerLabel(event.playerId)} tire avec ${event.abilityName} sur le Navire adverse.`;
     case "DERAISON_SETTLED":
       return `${playerLabel(event.playerId)} règle sa Déraison (-${event.debt}) : ${event.anchorDamage} dégât(s) d'Ancrage.`;
+    case "ARMOR_CHANGED":
+      return `${playerLabel(event.playerId)} : ${event.delta >= 0 ? "+" : ""}${event.delta} Armure (${event.armorAfter}).`;
+    case "DIE_RESOLVED": {
+      const issue = { criticalSuccess: " — Réussite critique", success: " — Réussite", failure: " — Échec", criticalFailure: " — Échec critique" }[event.outcome];
+      return `${event.cardId ? cardName(state, event.cardId) : playerLabel(event.playerId)} : D${event.die} → ${event.value}${issue}.`;
+    }
     case "REASON_CHANGED":
       return `${playerLabel(event.playerId)} : ${event.delta >= 0 ? "+" : ""}${event.delta} Raison.`;
     case "TIDE_ADVANCED":

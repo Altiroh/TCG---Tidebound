@@ -26,7 +26,10 @@ function theatreApresCombat(): { state: GameState; dottoreId: string; masqueId: 
       testPlayer("p1", {
         reason: 10,
         board: [dottore],
-        hand: [masque],
+        // Une carte à défausser : « piochez puis défaussez » ne peut pas
+        // viser la carte piochée, et sans elle le Dottore rappelé serait la
+        // seule défausse possible (règle du 05/10/2026).
+        hand: [masque, instance("tetard-fesse", "p1")],
         // Une vraie pioche des deux côtés : vide, elle annoncerait le Jugement
         // de l'Océan au prochain tour, et le bot le lit (`graveyardValue.ts`).
         deck: [instance("pulcinella-gonfle", "p1"), instance("pulcinella-gonfle", "p1"), ...pioche(20, "p1")],

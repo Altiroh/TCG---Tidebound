@@ -144,6 +144,17 @@ const DECK_META: Record<string, DeckMeta> = {
     difficulty: 4,
     mechanics: ["Déclencher l'Éveil", "Répéter et propager", "Réactions depuis la main"],
   },
+  // Lot 17 — Dungeon et Ladalle / Opalins (05/10/2026).
+  "les-veilleurs-d-opale": {
+    style: "Midrange lourd / valeur récurrente",
+    difficulty: 3,
+    mechanics: ["Armure du Navire", "Lignée LV", "Texte ignoré"],
+  },
+  "la-quete-etait-pourtant-simple": {
+    style: "Aggro-hasard / dés et Chaîne",
+    difficulty: 3,
+    mechanics: ["Jets de dé", "Chaîne", "Retour en main"],
+  },
 };
 
 const FALLBACK_META: DeckMeta = { style: "Polyvalent", difficulty: 3, mechanics: [] };

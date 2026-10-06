@@ -1,10 +1,12 @@
 import { computeEffectiveStats } from "@/game/cards/stats";
+import { slotsUsed } from "@/game/rules/ongoing";
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { hasKeyword, hasResistance, UNIT_CARD_TYPES, type CardDefinition, type CardInstance } from "@/game/cards/types";
 import { getShipDefinition } from "@/game/environment/shipData";
 import type { TideStateName } from "@/game/environment/types";
 import { PHASE_LABELS, phaseRefusal } from "@/game/rules/phaseLabels";
 import { chromaticColorsOf, controlledChromaticColors, isOtherColorSentinel } from "@/game/rules/chromatic";
+import { landeRemovedKeywords } from "@/game/rules/lande";
 import { isMainPhase, type GamePhase, type GameState, type PlayerId, type PlayerState } from "@/game/state/types";
 
 /**
@@ -18,6 +20,7 @@ export function hasEffectiveKeyword(state: GameState, controller: PlayerState, u
     tideState: state.environment.tideState,
     controllerBoard: controller.board,
     controllerReason: controller.reason,
+    removedKeywords: landeRemovedKeywords(state.environment),
   });
 }
 
@@ -27,6 +30,12 @@ export interface KeywordContext {
   /** Plateau du contrôleur de l'unité (elle y figure elle-même). */
   controllerBoard: readonly CardInstance[];
   controllerReason: number;
+  /**
+   * Mots-clés retirés à TOUS les permanents par la Lande en jeu
+   * (`landeRemovedKeywords`, « les permanents perdent Garde »). Le retrait
+   * l'emporte sur tout octroi.
+   */
+  removedKeywords?: readonly string[];
 }
 
 /**
@@ -72,6 +81,7 @@ export function hasKeywordInContext(unit: CardInstance, keyword: string, context
   // un retrait posé par modificateur l'emporte sur TOUT octroi, imprimé,
   // conditionnel ou transmis — c'est exactement ce que le texte promet.
   if (unit.modifiers.some((m) => m.removesKeywords?.includes(keyword))) return false;
+  if (context.removedKeywords?.includes(keyword) && !unit.modifiers.some((m) => m.ignoresLande)) return false;
   if ((def.conditionalKeywordSuppressions ?? []).some(matches)) return false;
   if (hasKeyword(def, keyword)) return true;
   if ((def.conditionalKeywords ?? []).some(matches)) return true;
@@ -226,6 +236,15 @@ export function assertPlayableCondition(
   if (couleurs !== undefined && controlledChromaticColors(player, state.turnNumber).length < couleurs) {
     return fail(`Il vous faut au moins ${couleurs} couleurs chromatiques en jeu pour jouer cette carte.`);
   }
+  // « si vous contrôlez une unité Opaline » (Lot 17).
+  if (gate.controlsArchetypeUnit) {
+    const famille = gate.controlsArchetypeUnit;
+    const present = player.board.some((u) => {
+      const d = getCardDefinition(u.cardId);
+      return d.archetype === famille && (d.type === "marin" || d.type === "creature");
+    });
+    if (!present) return fail("Il vous faut une unité de cette famille en jeu pour jouer cette carte normalement.");
+  }
   return ok();
 }
 
@@ -233,7 +252,8 @@ export function assertBoardNotFull(state: GameState, playerId: PlayerId): Valida
   const player = state.players.find((p) => p.id === playerId);
   if (!player) return fail("Joueur introuvable.");
   const ship = getShipDefinition(player.shipId);
-  if (player.board.length >= ship.slotCount) {
+  // Les effets en cours (Anomalies) n'occupent aucun Slot.
+  if (slotsUsed(player.board) >= ship.slotCount) {
     return fail("Le plateau de ce joueur est déjà plein (emplacements limités par le Navire).");
   }
   return ok();

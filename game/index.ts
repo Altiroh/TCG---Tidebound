@@ -18,6 +18,7 @@ export type {
 export { getPlayer, getOpponent, findCardInstance, isMainPhase, MAIN_PHASES } from "@/game/state/types";
 export { hiddenZoneCards, toPlayerView } from "@/game/state/playerView";
 export { shipAbilityView, isShipArmed } from "@/game/state/shipAbility";
+export { discardableHand } from "@/game/state/discard";
 export type { ShipAbilityView } from "@/game/state/shipAbility";
 export { HIDDEN_CARD_ID } from "@/game/cards/hiddenCard";
 
@@ -72,6 +73,9 @@ export {
 } from "@/game/cards/types";
 export { CARD_DATABASE, CORE_SET, getCardDefinition, canBeEquipTarget, hasAnyValidEquipTarget } from "@/game/cards/sets/core";
 export { isAbyssalVariant } from "@/game/cards/types";
+export { isLandeCard, type LandeRules } from "@/game/cards/types";
+export { landeRemainingTableTurns, unitArrivalsLeft } from "@/game/rules/lande";
+export { boardPermanents, isOngoingEffect, slotsUsed } from "@/game/rules/ongoing";
 export { canUnitAttack, hasKeywordInContext, type KeywordContext } from "@/game/rules/validation";
 export { auraContextOf, collectAuraContributions } from "@/game/cards/stats";
 export type { AuraContext, AuraContribution } from "@/game/cards/stats";
@@ -109,7 +113,7 @@ export { BOOSTER_STANDARD_PRICE, CURRENCY_NAME, STANDARD_BOOSTER_ID, TIDE_REWARD
 export type { TideRewardTier } from "@/game/economy";
 
 // --- Tutoriel (Notion « Progression joueur » §2) ------------------------
-export { TUTORIAL_OPENING_TYPES, TUTORIAL_STEPS, tutorialProgress } from "@/game/tutorial";
+export { TUTORIAL_CARDS, TUTORIAL_START_TURN, TUTORIAL_STEPS, applyTutorialScenario, tutorialAnchor, tutorialProgress } from "@/game/tutorial";
 export type { TutorialProgress, TutorialStep } from "@/game/tutorial";
 
 // --- Exploits (Notion « Progression joueur » §10) -----------------------
@@ -117,7 +121,7 @@ export { ACHIEVEMENT_CATALOG, achievementByCode, unlockedAchievements } from "@/
 export type { AchievementDefinition, AchievementStats } from "@/game/achievements";
 
 export type { EffectOrigin, GameEvent, GameEventType } from "@/game/events/types";
-export { deckLookRefusal, isDeckLookTakeable, type DeckLookRefusal } from "@/game/rules/deckLook";
+export { deckLookRefusal, deckLookSelectionFits, deckLookTakeLimit, isDeckLookTakeable, type DeckLookRefusal } from "@/game/rules/deckLook";
 
 export type { ChosenUnitFilter, EffectDefinition, EffectType, TargetSelector } from "@/game/effects/types";
 export { chosenTargetFilter, eligibleBreakTargets, eligibleChosenUnits } from "@/game/effects/chosenTargets";
@@ -125,7 +129,7 @@ export { canActivateAbility } from "@/game/actions/activateAbility";
 export { ARCHETYPE_LABELS } from "@/game/cards/archetypes";
 export type { ArchetypeId } from "@/game/cards/archetypes";
 export type { PendingReactionCandidate, TriggerEvent, TriggerType } from "@/game/triggers/types";
-export type { PendingReactionState, PendingChoice, HandDiscardChoice, DeckLookChoice, HealAllocationChoice, KeepUnitsChoice, PickUnitsChoice } from "@/game/state/types";
+export type { PendingReactionState, PendingChoice, HandDiscardChoice, DeckLookChoice, HealAllocationChoice, KeepUnitsChoice, PickUnitsChoice, DieRollChoice, DieSize } from "@/game/state/types";
 export type { ResolveChoiceAction } from "@/game/actions/types";
 export { eligibleCandidatesFor } from "@/game/reactions/reactionWindow";
 
@@ -149,6 +153,7 @@ export type {
   TideStateName,
   TideOrientation,
   EnvironmentState,
+  ActiveLande,
   ShipDefinition,
   ShipActivatableAbility,
   ShipArmedShot,
@@ -163,6 +168,7 @@ export { SHIP_DATABASE, SHIP_SET, getShipDefinition } from "@/game/environment/s
 export { resolveOceanJudgment } from "@/game/rules/oceanJudgment";
 
 export { RULES } from "@/game/rules/constants";
+export { eveilsThisTurn, hasEveil } from "@/game/rules/eveil";
 
 // --- Déraison (Raison négative, piste à prototyper du 2026-09-12) --------
 export { reasonCeiling, deraisonDebt, deraisonAnchorDamage } from "@/game/state/reason";
@@ -221,3 +227,6 @@ export {
   type CollectableFamily,
   type CollectableGrant,
 } from "@/game/cosmetics/collectables";
+export { dieOutcomeOf, dieRollOptions, pendingDieRoll } from "@/game/rules/dice";
+export { armorOf } from "@/game/state/armor";
+export type { DieOutcome } from "@/game/triggers/types";

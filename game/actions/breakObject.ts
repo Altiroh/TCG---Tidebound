@@ -1,3 +1,6 @@
+import { isTextIgnored } from "@/game/cards/types";
+import { closeDieRollIfIdle } from "@/game/effects/resolveSequence";
+import { pendingDieRoll } from "@/game/rules/dice";
 import { consumeObjectBreakTax, handBreakCost, objectBreakTax } from "@/game/rules/objectBreak";
 
 export { objectBreakTax };
@@ -286,11 +289,26 @@ function objectsBrokenThisTurn(player: PlayerState, turnNumber: number): string[
 }
 
 function validate(state: GameState, action: BreakObjectAction) {
+  // CHAÎNE (Lot 17) : pendant un jet de SON joueur, un Objet « Chaîne » se
+  // Brise à tout moment — même hors de sa Phase principale, même pendant le
+  // tour adverse. Hors d'un jet, il n'a rien à modifier : il ne se Brise pas.
+  const proprietaire = state.players.find((p) => p.id === action.playerId);
+  const carte = proprietaire && (action.fromHand ? proprietaire.hand : proprietaire.board).find((u) => u.instanceId === action.instanceId);
+  const estChaine = carte ? getCardDefinition(carte.cardId).chaine === true : false;
+  const jet = pendingDieRoll(state);
+  if (estChaine && !(jet && jet.playerId === action.playerId)) {
+    return { ok: false as const, error: "Chaîne : cet Objet ne se Brise que pendant l'un de vos jets de dé, avant sa résolution." };
+  }
+  if (!estChaine && jet) {
+    return { ok: false as const, error: "Un jet de dé est en cours : seuls les Objets « Chaîne » peuvent s'y Briser." };
+  }
+  if (estChaine && jet?.candidates !== undefined) {
+    return { ok: false as const, error: "Choisissez d'abord le dé à garder." };
+  }
   const generalChecks = combine(
     assertGameActive(state),
     assertPlayerInGame(state, action.playerId),
-    assertIsActivePlayer(state, action.playerId),
-    assertInMainPhase(state, action.playerId),
+    ...(estChaine ? [] : [assertIsActivePlayer(state, action.playerId), assertInMainPhase(state, action.playerId)]),
     action.fromHand
       ? assertCardInHand(state, action.playerId, action.instanceId)
       : assertIsObjectCard(state, action.playerId, action.instanceId)
@@ -446,6 +464,7 @@ export function breakObject(state: GameState, action: BreakObjectAction): Action
     // Certains Objets font plus quand on les brise directement de la main
     // (ex: Le Seau) : l'info doit descendre jusqu'aux effets.
     brokenFromHand: action.fromHand === true,
+    ...(action.dieDelta !== undefined ? { dieDelta: action.dieDelta } : {}),
     turnNumber: state.turnNumber,
   };
 
@@ -490,6 +509,9 @@ export function breakObject(state: GameState, action: BreakObjectAction): Action
     };
   }
 
-  const suite = resoudreEffetsDeBris(nextState, def, context, false);
-  return { ok: true, state: suite.state, events: [...events, ...suite.events] };
+  // « Son texte est ignoré » (Lot 17) : l'Objet se Brise, mais rien ne se résout.
+  const suite = !action.fromHand && isTextIgnored(unit) ? { state: nextState, events: [] } : resoudreEffetsDeBris(nextState, def, context, false);
+  // Un Bris de Chaîne qui laisse le joueur sans plus rien à faire sur le jet le ferme.
+  const ferme = def.chaine ? closeDieRollIfIdle(suite.state) : { state: suite.state, events: [] };
+  return { ok: true, state: ferme.state, events: [...events, ...suite.events, ...ferme.events] };
 }

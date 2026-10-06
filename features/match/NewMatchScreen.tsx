@@ -14,6 +14,7 @@ import { nameplateArtUrl } from "@/features/decks/nameplateArt";
 import { BotSetup } from "@/features/match/BotSetup";
 import { ModeTable, PlayTable } from "@/features/match/ModeTable";
 import { GameScreen } from "@/features/shell/GameScreen";
+import { DifficultyStars } from "@/features/shell/GameIcons";
 import { shipNameOf } from "@/features/ships/ShipPortrait";
 import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/match/NewMatch.module.css";
@@ -117,6 +118,31 @@ const ONLINE_KINDS: { id: OnlineKind; label: string; description: string }[] = [
 function normalizeInviteCode(raw: string): string {
   return raw.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
 }
+/**
+ * Dernier deck lancé, retenu sur l'appareil. Écrit directement au
+ * lancement, sans passer par un état : l'écran est démonté dans la foulée
+ * (la partie le remplace), et un effet n'aurait jamais eu le temps de
+ * l'écrire.
+ */
+const LAST_DECK_KEY = "tidebound:nouvelle-partie:dernier-deck";
+
+function readLastPlayedDeckId(): string | null {
+  try {
+    const raw = window.localStorage.getItem(LAST_DECK_KEY);
+    return raw && raw.length < 200 ? raw : null;
+  } catch {
+    return null;
+  }
+}
+
+function rememberLastPlayedDeckId(deckId: string): void {
+  try {
+    window.localStorage.setItem(LAST_DECK_KEY, deckId);
+  } catch {
+    // Stockage indisponible : la partie se lance, le choix n'est simplement pas retenu.
+  }
+}
+
 /** 1 : mode · 2 : deck du joueur 1 (ou le sien contre le bot) · 3 : deck du joueur 2 (local à deux seulement). */
 type Step = 1 | 2 | 3;
 
@@ -164,11 +190,6 @@ function difficultyWord(difficulty: number): string {
   return DIFFICULTY_WORDS[Math.min(DIFFICULTY_WORDS.length, Math.max(1, Math.round(difficulty))) - 1]!;
 }
 
-function stars(difficulty: number): string {
-  const filled = Math.min(5, Math.max(0, Math.round(difficulty)));
-  return "★".repeat(filled) + "☆".repeat(5 - filled);
-}
-
 /**
  * Jouer — un parcours en étapes, pas un formulaire : d'abord le mode (en
  * ligne ; local à deux ; contre un bot), puis le deck, choisi par
@@ -208,6 +229,7 @@ export function NewMatchScreen({
   const botBackRef = useRef<(() => void) | null>(null);
   // Le deck PAR DÉFAUT du joueur (écran Decks) est présélectionné : on
   // arrive prêt à jouer, pas devant une liste à relire à chaque partie.
+  // Le DERNIER deck lancé passe devant, dès qu'il est relu (effet plus bas).
   const [deck1, setDeck1] = useState<DeckList | null>(() => personalDecks.find((deck) => deck.isDefault) ?? null);
   const [deck2, setDeck2] = useState<DeckList | null>(null);
 
@@ -257,6 +279,26 @@ export function NewMatchScreen({
   );
   const activeTab = tabs.find((tab) => tab.id === deckTab) ?? tabs[0]!;
 
+  /*
+   * DERNIER DECK JOUÉ (05/10/2026) : la partie suivante le repropose, avec
+   * son onglet ouvert — toujours le plus récent, devant le deck par défaut.
+   * Relu après le montage (le rendu serveur ne connaît pas l'appareil), une
+   * seule fois : ce que le joueur choisit ensuite n'est jamais écrasé. Un
+   * deck supprimé ou devenu injouable est ignoré, le deck par défaut reste.
+   */
+  const lastDeckRestored = useRef(false);
+  useEffect(() => {
+    if (lastDeckRestored.current) return;
+    lastDeckRestored.current = true;
+    const lastId = readLastPlayedDeckId();
+    if (!lastId) return;
+    const tab = tabs.find((candidate) => candidate.decks.some((deck) => deck.id === lastId && candidate.issueFor(deck) === null));
+    const deck = tab?.decks.find((candidate) => candidate.id === lastId);
+    if (!tab || !deck) return;
+    setDeck1(deck);
+    setDeckTab(tab.id);
+  }, [tabs, setDeckTab]);
+
   const current = step === 3 ? deck2 : deck1;
   const setCurrent = step === 3 ? setDeck2 : setDeck1;
 
@@ -297,6 +339,8 @@ export function NewMatchScreen({
 
   function handleLaunch() {
     if (!deck1) return;
+    // Ce deck sera celui proposé à la prochaine partie (cf. plus haut).
+    if (step !== 3) rememberLastPlayedDeckId(deck1.id);
     if (mode === "pvp") {
       if (step === 2) {
         playButtonClick();
@@ -685,7 +729,7 @@ export function NewMatchScreen({
                                   <span className={styles.rowIssue}>{issue}</span>
                                 ) : meta ? (
                                   <span className={styles.rowStars} aria-label={`Difficulté : ${difficultyWord(meta.difficulty)}`}>
-                                    {stars(meta.difficulty)}
+                                    <DifficultyStars value={meta.difficulty} decorative />
                                   </span>
                                 ) : (
                                   <span className={styles.rowStars}>{deck.cardIds.length} cartes</span>
@@ -950,9 +994,7 @@ function DeckSheet({ deck, family, issue }: { deck: DeckList | null; family: str
               </span>
               <span className={styles.statLines}>
                 <span className={styles.statLabel}>
-                  <span className={styles.statStars} aria-hidden>
-                    {stars(meta.difficulty)}
-                  </span>{" "}
+                  <DifficultyStars value={meta.difficulty} className={styles.statStars} decorative />{" "}
                   Difficulté
                 </span>
                 <span className={styles.statValue}>{difficultyWord(meta.difficulty)}</span>

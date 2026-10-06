@@ -1055,6 +1055,85 @@ export const DECK_LES_ALTERES: DeckList = {
   ],
 };
 
+/**
+ * 17 — Les Veilleurs d'Opale (Lot 17, 05/10/2026). Installer des Opalins qui
+ * produisent une valeur récurrente, puis faire évoluer LV1 vers LV5 et LVX.
+ *
+ * Liste et Navire de Notion (« Lot 15 — Dungeon et Ladalle / Opalins »,
+ * Préconstruit Opalin) : Île-Tortue Opaline. ÉCART SIGNALÉ, NON CORRIGÉ
+ * D'AUTORITÉ : la liste Notion met 2 Morhal (Max deck 1) et 3 Eidolon LV1
+ * (Max deck 2). Ramenée aux limites des cartes, elle complète ses 40 avec
+ * +1 Veille des Niveaux et +1 Sommeil de Pierre (tous deux limités à 3).
+ */
+export const DECK_LES_VEILLEURS_D_OPALE: DeckList = {
+  id: "les-veilleurs-d-opale",
+  name: "Les Veilleurs d'Opale",
+  shipId: "ile-tortue-opaline",
+  description: "Des gardiens qui ne cèdent rien, et une lignée qui s'éveille si on la laisse vivre.",
+  cardIds: [
+    ...repeat("cartographe-opalin-mefiant", 3),
+    ...repeat("velm-opalin-des-armures", 3),
+    ...repeat("sila-opalin-du-large", 3),
+    ...repeat("orram-opalin-des-memoires", 2),
+    ...repeat("kaor-opalin-des-reliques", 2),
+    ...repeat("seren-opalin-du-silence", 2),
+    ...repeat("tharos-opalin-des-brisants", 2),
+    ...repeat("elyor-opalin-du-retour", 2),
+    ...repeat("morhal-opalin-des-navires", 1),
+    ...repeat("dhar-opalin-du-premier-coup", 2),
+    ...repeat("astel-opalin-de-la-derniere-veille", 1),
+    ...repeat("eidolon-opalin-lv1", 2),
+    ...repeat("eidolon-opalin-lv5", 2),
+    ...repeat("eidolon-opalin-lvx-abyssal", 1),
+    ...repeat("fragment-d-eveil", 2),
+    ...repeat("sommeil-de-pierre", 3),
+    ...repeat("veille-des-niveaux", 3),
+    ...repeat("boussole-fendue", 2),
+    ...repeat("bouclier-decume", 2),
+    ...repeat("coup-de-harpon", 2),
+  ],
+};
+
+/**
+ * 18 — La Quête était pourtant simple (Lot 17, 05/10/2026). Apprendre D4, D6
+ * et D8, puis utiliser la Chaîne pour transformer les jets importants.
+ *
+ * Liste de Notion, telle quelle. Notion ne nomme PAS de Navire : L'Errant,
+ * la coque polyvalente sans faiblesse, en attendant l'arbitrage.
+ */
+export const DECK_LA_QUETE_ETAIT_POURTANT_SIMPLE: DeckList = {
+  id: "la-quete-etait-pourtant-simple",
+  name: "La Quête était pourtant simple",
+  shipId: "lerrant",
+  description: "Une compagnie qui lance les dés à chaque porte — et triche quand il le faut.",
+  cardIds: [
+    ...repeat("gaston-aventurier-de-ladalle", 3),
+    ...repeat("miss-franche-comte-1987-roublarde-aux-des-pipes", 2),
+    ...repeat("balthazar-mage-approximatif", 2),
+    ...repeat("frere-michel-clerc-de-secours", 2),
+    ...repeat("hubert-paladin-persuade-d-etre-l-elu", 2),
+    ...repeat("gege-rodeur-du-mauvais-chemin", 2),
+    ...repeat("barnabe-barde-insupportable", 2),
+    ...repeat("maurice-ecuyer-de-troisieme-choix", 3),
+    ...repeat("gnome-du-sac-sans-fond", 2),
+    ...repeat("le-nain-qui-connait-un-raccourci", 2),
+    ...repeat("brigitte-druidesse-des-caves", 2),
+    ...repeat("rita-sorciere-sous-contrat", 1),
+    ...repeat("le-geant-qui-croyait-etre-discret", 1),
+    ...repeat("le-mimique-du-coffre-evidemment-piege", 1),
+    ...repeat("maitre-de-ladalle", 1),
+    ...repeat("l-aventurier-de-niveau-beaucoup-trop-eleve", 1),
+    ...repeat("de-pipe", 3),
+    ...repeat("relance-j-te-jure", 2),
+    ...repeat("c-etait-presque-un-six", 1),
+    ...repeat("double-tentative", 1),
+    ...repeat("de-du-destin-tres-officiel", 1),
+    ...repeat("on-retourne-a-l-auberge", 1),
+    ...repeat("plan-du-donjon-mal-dessine", 1),
+    ...repeat("le-donjon-de-ladalle", 1),
+  ],
+};
+
 export const PRECON_DECK_LISTS: readonly DeckList[] = [
   DECK_LE_GRAND_BANC,
   DECK_CHEVALIERS_DU_GRAND_ETANG,
@@ -1074,4 +1153,7 @@ export const PRECON_DECK_LISTS: readonly DeckList[] = [
   DECK_SENTINELLES_CHROMATIQUES,
   // Lot 16 — Les Altérés (04/10/2026).
   DECK_LES_ALTERES,
+  // Lot 17 — Dungeon et Ladalle / Opalins (05/10/2026).
+  DECK_LES_VEILLEURS_D_OPALE,
+  DECK_LA_QUETE_ETAIT_POURTANT_SIMPLE,
 ];

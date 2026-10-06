@@ -1,3 +1,4 @@
+import { slotsUsed } from "@/game/rules/ongoing";
 import type { GameEvent } from "@/game/events/types";
 import type { GameState, PlayerId, PlayerState } from "@/game/state/types";
 
@@ -28,8 +29,8 @@ export function resolveOceanJudgment(
   else if (resilienceByPlayer[p2.id]! > resilienceByPlayer[p1.id]!) winner = p2;
   else if (p1.anchor > p2.anchor) winner = p1;
   else if (p2.anchor > p1.anchor) winner = p2;
-  else if (p1.board.length > p2.board.length) winner = p1;
-  else if (p2.board.length > p1.board.length) winner = p2;
+  else if (slotsUsed(p1.board) > slotsUsed(p2.board)) winner = p1;
+  else if (slotsUsed(p2.board) > slotsUsed(p1.board)) winner = p2;
   // Égalité totale (y compris pioche) : match nul, pas de vainqueur.
 
   const base = { turnNumber: state.turnNumber, timestamp: Date.now() };

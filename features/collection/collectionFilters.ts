@@ -67,7 +67,7 @@ export const EMPTY_FILTERS: CollectionFilterState = {
   search: "",
 };
 
-const CARD_TYPES: readonly (CardType | null)[] = [null, "marin", "creature", "equipement", "structure", "objet", "anomalie"];
+const CARD_TYPES: readonly (CardType | null)[] = [null, "marin", "creature", "equipement", "structure", "objet", "anomalie", "lande"];
 
 /**
  * Relecture des filtres MÉMORISÉS (`lib/persistedState.ts`). La recherche

@@ -36,8 +36,21 @@ export type TriggerType =
   | "onChromaticColorChosen" // une carte EN JEU vient de recevoir la couleur choisie pour elle par une question (« À son arrivée, choisissez sa couleur » — Émissaire de Quartz) : personnel ou observateur ; `fromSummon` vaut vrai si elle n'a pas été JOUÉE (Lot 15 — Poste Chromatique)
   | "onEveil" // Lot 16 — l'Éveil d'une carte se résout : personnel (la carte résout SON Éveil, « Éveil — … »), ou observateur avec `triggeredBy` (« quand un autre Altéré s'Éveille »). Émis à l'arrivée d'une carte qui a un Éveil et par l'effet `triggerEveil` (`runEveil`, `triggerBus.ts`)
   | "onUnitTargeted" // Lot 16 — une unité vient d'être DÉSIGNÉE par un effet adverse (`UNIT_TARGETED`) : l'événement porte la cible (`sourceInstanceId`) et son contrôleur (`playerId`). Observateur, avec `triggeredBy` (L'Intangible : « quand un effet adverse cible une autre unité que vous contrôlez »). Balayé par `processUnitTargetedTriggers`
+  | "onLandeStrike" // la Lande en jeu VA agir sur les permanents (Vallée de verre : juste avant le coup de fin de tour de table ; Lande qui retire des mots-clés : à l'entame de chaque tour). Fenêtre globale : « ignorez cet effet pour ce permanent » (Zone de repli)
   | "onReasonGained" // le contrôleur vient de récupérer de la Raison GRÂCE À UNE CARTE — jamais la régénération de début de tour (Lot 15 — Survivant de la Mousse)
+  | "onArmorGained" // Lot 17 — FAIT DE JOUEUR : un Navire vient de gagner de l'Armure (`ARMOR_CHANGED`, delta > 0). Lu sur les deux plateaux, filtré par `condition.factOf`
+  | "onDieResolved" // Lot 17 — FAIT DE JOUEUR : un jet de dé vient d'être résolu, Chaîne fermée (`DIE_RESOLVED`). `dieOutcome` porte son issue ; filtré par `condition.dieOutcomes` / `factOf`
+  | "onCardPutUnderDeck" // Lot 17 — FAIT DE JOUEUR : une carte vient d'être placée SOUS la pioche de ce joueur (Meraï, Opalin des Profondeurs)
+  | "onExtraCardDrawn" // Lot 17 — FAIT DE JOUEUR : ce joueur vient de piocher EN DEHORS de sa pioche de début de tour (Ylenn, Opalin de la Main close)
+  | "onCardLeftGraveyard" // Lot 17 — FAIT DE JOUEUR : une carte vient de quitter le Cimetière de ce joueur, vers n'importe quelle zone (Orram, Opalin des Mémoires)
+  | "onLandePlaced" // Lot 17 — FAIT DE JOUEUR : une Lande vient d'arriver dans l'emplacement partagé, posée par ce joueur (Tour de guet mobile)
+  | "onChosenOption" // Lot 17 — JAMAIS déclenché par un événement : la capacité n'est qu'une OPTION, proposée par l'effet `chooseAbilityOption` de sa carte (« Choisissez : … »)
+  | "onAbilityResolved" // Lot 17 — une carte EN JEU (`sourceInstanceId`) vient de résoudre une capacité déclenchée (`ABILITY_RESOLVED`) : observateur avec `triggeredBy` (Eidolon Opalin LVX)
+  | "onDealtDamage" // Lot 17 — une carte EN JEU (`sourceInstanceId`) vient d'INFLIGER des dégâts — combat ou effet : personnel, ou observateur avec `triggeredBy` (Dhar, Opalin du Premier Coup)
   | "onCondition"; // condition arbitraire évaluée par un `ConditionExpression`
+
+/** Issue d'un jet de dé (Lot 17) — une Réussite critique est AUSSI une Réussite. */
+export type DieOutcome = "criticalSuccess" | "success" | "failure" | "criticalFailure";
 
 export interface TriggerEvent {
   trigger: TriggerType;
@@ -56,6 +69,8 @@ export interface TriggerEvent {
    * `matchesTriggerSource` : invisible des observateurs, sauf `includeRepeatedArrival`.
    */
   repeatedArrival?: boolean;
+  /** `onDieResolved` : issue du jet (Lot 17). */
+  dieOutcome?: DieOutcome;
   /** `onDiscarded` / `onCardDiscardedFromHand` : propriétaire de la carte défaussée. */
   discardedOwnerId?: string;
   /**

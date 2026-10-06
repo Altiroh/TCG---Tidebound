@@ -10,6 +10,8 @@ import {
   HIDDEN_CARD_ID,
   hasKeyword,
   hasKeywordInContext,
+  eveilsThisTurn,
+  hasEveil,
   STATUS_IMMOBILISE,
   STATUS_MALADE,
   STATUS_SILENCE,
@@ -27,8 +29,9 @@ import { StatusBadge } from "@/features/match/StatusBadge";
 import { useDecreaseFlash } from "@/features/match/useDecreaseFlash";
 import { useImageOk } from "@/features/match/useImageOk";
 import { NouveauCadreFace } from "@/features/cadre-preview/NouveauCadreCard";
+import { useDebordPleinCadre } from "@/features/match/useDebordPleinCadre";
+import { NOUVEAU_CADRE } from "@/features/match/cardFrame";
 import { rarityForCardId } from "@/game/boosters";
-import { useInterfaceSettings } from "@/lib/settings";
 
 interface CardTileProps {
   instance: CardInstance;
@@ -41,11 +44,11 @@ interface CardTileProps {
   /** `false` pour désactiver l'agrandissement léger au survol (ex: cartes de plateau — l'utilisateur clique désormais pour voir le détail plutôt que de survoler). Défaut : `true`. */
   scaleOnHover?: boolean;
   /**
-   * `false` retire les badges de statut flottants (Inactive, Mal
+   * `false` retire les badges de statut flottants (Immobilisé, Mal
    * d'invocation, Garde, Durée…). Ces badges décrivent l'état d'une carte
    * EN PARTIE ; hors partie — fiche de Collection — ils sont calculés à
    * partir d'une Marée arbitraire et racontent donc n'importe quoi (une
-   * carte marquée « Inactive » parce que l'aperçu suppose Calme). Défaut :
+   * carte marquée « Immobilisé » parce que l'aperçu suppose Calme). Défaut :
    * `true`, aucun appelant existant ne change de comportement.
    */
   showStatusBadges?: boolean;
@@ -59,6 +62,12 @@ interface CardTileProps {
    * combat, lui, les compte. À fournir dès que la carte est EN JEU.
    */
   auraContext?: AuraContext;
+  /**
+   * Tour de table en cours (`GameState.turnNumber`) : le médaillon d'Éveil
+   * y lit le nombre d'Éveils de la carte CE tour (« si c'est son deuxième
+   * Éveil ce tour »). Sans lui, le médaillon reste vierge de chiffre.
+   */
+  turnNumber?: number;
   /**
    * Structure actuellement invisible pour l'adversaire (`visibleDuringTide`) SUR SON PROPRE plateau — même
    * son propriétaire ne voit alors que le dos de carte pour l'illustration/le texte/les stats, mais garde les
@@ -131,7 +140,8 @@ const GARDE_ICON_INFO = {
 export function cardStatusLegend(
   instance: CardInstance,
   tideState: TideStateName,
-  auraContext?: AuraContext
+  auraContext?: AuraContext,
+  turnNumber?: number
 ): Array<{ label: string; description: string }> {
   const def = getCardDefinition(instance.cardId);
   const context = auraContext
@@ -141,16 +151,12 @@ export function cardStatusLegend(
   const isUnit = (UNIT_CARD_TYPES as readonly string[]).includes(def.type);
   const legend: Array<{ label: string; description: string }> = [];
   if (computeEffectiveStats(instance, tideState, auraContext).inactive) {
-    legend.push({
-      label: "Inactive",
-      description: instance.modifiers.some((modifier) => modifier.silenced)
-        ? "Un effet l'entrave : elle ne peut ni attaquer, ni utiliser ses capacités."
-        : "La Marée actuelle la met hors d'état : ni attaque, ni capacité tant que la Marée ne change pas.",
-    });
+    legend.push(immobiliseInfo(instance));
   }
   if (instance.summoningSick && isUnit && !has("pied-marin")) legend.push(ENGOURDI_ICON_INFO);
   if (piedMarinUtile(instance, isUnit, has("pied-marin"))) legend.push(PIED_MARIN_INFO);
   if (has("garde")) legend.push(GARDE_ICON_INFO);
+  if (hasEveil(def)) legend.push(eveilInfo(instance, turnNumber));
   for (const status of instance.statuses ?? []) {
     const info = STATUS_ICON_INFO[status];
     if (info) legend.push(info);
@@ -210,10 +216,10 @@ const TOUR_ICON = "/assets/status/tour.webp";
 /**
  * Pied marin, montré quand il compte : l'unité vient d'arriver (mot-clé
  * imprimé) ou l'a reçu pour le tour (« ils gagnent Pied marin jusqu'à la fin
- * du tour », Fesses en Avant !). Pas d'icône dédiée : une pastille texte,
- * comme « Inactive ».
+ * du tour », Fesses en Avant !).
  */
 const PIED_MARIN_INFO = {
+  icon: "/assets/status/pied-marin.webp",
   label: "Pied marin",
   description: "Peut attaquer dès son arrivée en jeu.",
 };
@@ -221,6 +227,44 @@ const PIED_MARIN_INFO = {
 /** Le badge Pied marin a-t-il un sens sur cette carte en ce moment ? */
 function piedMarinUtile(instance: CardInstance, isUnit: boolean, hasPiedMarin: boolean): boolean {
   return isUnit && hasPiedMarin && (instance.summoningSick || instance.modifiers.some((m) => m.keywords?.includes("pied-marin")));
+}
+
+/**
+ * Inactivité (`EffectiveStats.inactive`) : la carte ne peut ni attaquer ni
+ * utiliser ses capacités, que la Marée actuelle la mette hors d'état ou
+ * qu'un effet l'entrave (`StatModifier.silenced`). C'est la définition de
+ * l'Immobilisé (`STATUS_IMMOBILISE`) : même icône, même nom à l'écran ; seule
+ * la cause change dans l'explication.
+ */
+function immobiliseInfo(instance: CardInstance): { icon: string; label: string; description: string } {
+  return {
+    icon: STATUS_ICON_INFO[STATUS_IMMOBILISE]!.icon,
+    label: "Immobilisé",
+    description: instance.modifiers.some((modifier) => modifier.silenced)
+      ? "Un effet l'entrave : elle ne peut ni attaquer, ni utiliser ses capacités."
+      : "La Marée actuelle la met hors d'état : ni attaque, ni capacité tant que la Marée ne change pas.",
+  };
+}
+
+/**
+ * Éveil (Lot 16) : la carte porte un effet « Éveil — », que d'autres cartes
+ * savent déclencher — le médaillon dit quoi viser. Le nombre d'Éveils du
+ * tour s'y inscrit dès le premier, puisque des textes en dépendent.
+ */
+const EVEIL_ICON = "/assets/status/eveil.webp";
+
+function eveilCount(instance: CardInstance, turnNumber: number | undefined): number {
+  return turnNumber === undefined ? 0 : eveilsThisTurn(instance, turnNumber);
+}
+
+function eveilInfo(instance: CardInstance, turnNumber: number | undefined): { label: string; description: string } {
+  const n = eveilCount(instance, turnNumber);
+  return {
+    label: "Éveil",
+    description:
+      "Son effet « Éveil » se résout à son arrivée, et chaque fois qu'un effet déclenche son Éveil." +
+      (n > 0 ? ` ${n === 1 ? "Déjà Éveillée une fois" : `Déjà Éveillée ${n} fois`} ce tour.` : ""),
+  };
 }
 
 /** Maladie d'invocation (`instance.summoningSick`) — distincte des statuts à durée (`instance.statuses`). */
@@ -511,6 +555,7 @@ export function CardTile({
   badgeSize = 38,
   showStatusBadges = true,
   auraContext,
+  turnNumber,
   draggable = false,
   onDragStart,
   liftOnHover = false,
@@ -549,6 +594,8 @@ export function CardTile({
     : hasKeyword(def, "pied-marin");
   const engourdi = instance.summoningSick && isUnit && !hasPiedMarin;
   const piedMarinVisible = piedMarinUtile(instance, isUnit, hasPiedMarin);
+  const eveilVisible = hasEveil(def);
+  const eveils = eveilCount(instance, turnNumber);
   // Couleurs chromatiques EN JEU (Lot 15) : celle qu'un Émissaire a choisie,
   // qu'un Héraut a prise, qu'un Bracelet prête — rien ne les montrait.
   const couleursChromatiques = auraContext ? chromaticColorsOf(instance, auraContext.controllerBoard) : [];
@@ -585,12 +632,12 @@ export function CardTile({
   const [illustrationFailed, setIllustrationFailed] = useState<string | null>(null);
   const illustrationOk = illustrationFailed !== illustrationUrl;
   const debordOk = useImageOk(debordUrl);
+  // Calque peint sur le canevas de l'illustration : posé comme elle, pas dans la zone d'une silhouette.
+  const debordPlein = useDebordPleinCadre(debordOk ? debordUrl : null);
   const isBoardTile = variant === "board";
-  // Nouveau cadre (test, activé dans les Options) : seulement la carte
-  // complète d'une vraie carte — ni la tuile de plateau, ni un jeton, ni
-  // une carte cachée.
-  const { nouveauCadre } = useInterfaceSettings();
-  const nouveauCadreActif = nouveauCadre && !isBoardTile && def.token !== true && instance.cardId !== HIDDEN_CARD_ID;
+  // Nouveau cadre (`cardFrame.ts`) : seulement la carte complète d'une
+  // vraie carte — ni la tuile de plateau, ni un jeton, ni une carte cachée.
+  const nouveauCadreActif = NOUVEAU_CADRE && !isBoardTile && def.token !== true && instance.cardId !== HIDDEN_CARD_ID;
   // Assets d'habillage de la tuile : sondés seulement quand la tuile est rendue.
   const reasonBannerOk = useImageOk(isBoardTile ? BOARD_REASON_BANNER : null);
   const underlineOk = useImageOk(isBoardTile ? BOARD_UNDERLINE : null);
@@ -618,11 +665,14 @@ export function CardTile({
       onDragStart={onDragStart}
       className={`${widthClassName} relative rounded-xl text-left ${
         liftOnHover
-          ? "transition-[transform,box-shadow,filter] duration-[160ms] ease-[cubic-bezier(.2,.8,.2,1)] hover:z-10 hover:-translate-y-2 hover:scale-[1.035] hover:-rotate-[0.7deg] hover:brightness-[1.06] hover:shadow-[0_22px_44px_-10px_rgba(0,0,0,0.78),0_6px_14px_-6px_rgba(0,0,0,0.5)]"
-          : "transition-shadow duration-200"
+          ? // Ombres en `drop-shadow` et non en `box-shadow` : elles suivent la
+            // silhouette de la carte. Une ombre de boîte dessinait autour du
+            // nouveau cadre, plus étroit, le rectangle arrondi de l'ancien.
+            "transition-[transform,filter] duration-[160ms] ease-[cubic-bezier(.2,.8,.2,1)] hover:z-10 hover:-translate-y-2 hover:scale-[1.035] hover:-rotate-[0.7deg] hover:[filter:brightness(1.06)_drop-shadow(0_16px_16px_rgba(0,0,0,0.6))]"
+          : "transition-[filter] duration-200"
       } ${selected ? "ring-2 ring-board-accent" : ""} ${disabled ? "opacity-40" : ""} ${
         onClick ? "cursor-pointer" : "cursor-default"
-      } ${hoverable && !liftOnHover ? "hover:shadow-[0_0_35px_rgba(62,166,255,0.6)]" : ""}`}
+      } ${hoverable && !liftOnHover ? "hover:[filter:drop-shadow(0_0_16px_rgba(62,166,255,0.6))]" : ""}`}
     >
       <div
         className={`relative aspect-[5/7] w-full overflow-hidden rounded-xl transition-transform duration-150 ease-out ${
@@ -676,15 +726,15 @@ export function CardTile({
               {/* Couche 1.5 : le débord Abyssal. Pour une Abyssale, l'illustration n'est que le DÉCOR ;
                   le sujet (Bat-marin encapuchonné…) vit dans ce calque. Sans lui, la tuile montrait un
                   paysage vide. Il se tient debout au-dessus du nom, sous le voile qui garde nom et stats lisibles. */}
-              {isAbyssal && !isToken && debordOk && debordUrl && (
+              {isAbyssal && !isToken && debordOk && debordUrl && debordPlein !== null && (
                 // eslint-disable-next-line @next/next/no-img-element -- asset local, calque optionnel par carte Abyssale
                 <img
                   src={debordUrl}
                   alt=""
                   loading="lazy"
                   decoding="async"
-                  className="pointer-events-none absolute object-contain object-bottom"
-                  style={zoneStyle(BOARD_DEBORD_ZONE)}
+                  className={`pointer-events-none absolute ${debordPlein ? "h-full w-full object-cover" : "object-contain object-bottom"}`}
+                  style={debordPlein ? { inset: 0 } : zoneStyle(BOARD_DEBORD_ZONE)}
                 />
               )}
               {/* Couche 2 : un voile sombre en pied, pour que nom et stats se lisent sur n'importe quelle illustration. */}
@@ -883,7 +933,18 @@ export function CardTile({
         )}
 
         {/* Couche 2.5 : débord Abyssal — silhouette à fond transparent qui déborde du cadre, posée par-dessus */}
-        {isAbyssal && debordOk && debordUrl && (
+        {isAbyssal && debordOk && debordUrl && debordPlein === true && (
+          // eslint-disable-next-line @next/next/no-img-element -- calque peint sur le canevas de l'illustration : posé comme elle
+          <img
+            src={debordUrl}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            className="pointer-events-none absolute object-cover"
+            style={zoneStyle(illustrationZone)}
+          />
+        )}
+        {isAbyssal && debordOk && debordUrl && debordPlein === false && (
           // eslint-disable-next-line @next/next/no-img-element -- asset local, calque optionnel par carte Abyssale
           <img
             src={debordUrl}
@@ -1014,32 +1075,21 @@ export function CardTile({
         (stats.inactive ||
         engourdi ||
         piedMarinVisible ||
+        eveilVisible ||
         instance.turnsRemaining !== undefined ||
         hasGarde ||
         couleursChromatiques.length > 0 ||
         (instance.statuses && instance.statuses.length > 0)) && (
         <div
           // Une seule ligne, toujours au-dessus de la carte : en passant à la
-          // ligne (« Inactive » + deux médaillons), le dernier badge tombait
+          // ligne (trois médaillons ou plus), le dernier badge tombait
           // SUR l'illustration — la pastille de couleur au milieu de la carte.
           // `data-status-row` : le plateau téléphone la rentre dans la carte.
           data-status-row
           className="pointer-events-none absolute inset-x-0 z-20 flex flex-nowrap items-center justify-center whitespace-nowrap px-1"
           style={{ top: -(badgeSize / 2 + 12), gap: badgeSize / 16 + 1.5 }}
         >
-          {stats.inactive && (
-            <span
-              className="pointer-events-auto shrink-0 cursor-help rounded-full border border-amber-400/60 bg-black/90 font-semibold uppercase text-amber-300 shadow-md"
-              style={{ padding: `${badgeSize / 38}px ${(badgeSize / 38) * 2.5}px`, fontSize: badgeSize / 3.2 }}
-              title={
-                instance.modifiers.some((modifier) => modifier.silenced)
-                  ? "Inactive — un effet l'entrave : elle ne peut ni attaquer, ni utiliser ses capacités."
-                  : "Inactive — la Marée actuelle la met hors d'état : elle ne peut ni attaquer, ni utiliser ses capacités tant que la Marée ne change pas."
-              }
-            >
-              Inactive
-            </span>
-          )}
+          {stats.inactive && <StatusBadge {...immobiliseInfo(instance)} size={badgeSize} />}
           {engourdi && (
             <StatusBadge
               icon={ENGOURDI_ICON_INFO.icon}
@@ -1049,13 +1099,12 @@ export function CardTile({
             />
           )}
           {piedMarinVisible && (
-            <span
-              className="pointer-events-auto shrink-0 cursor-help rounded-full border border-sky-400/60 bg-black/90 font-semibold uppercase text-sky-300 shadow-md"
-              style={{ padding: `${badgeSize / 38}px ${(badgeSize / 38) * 2.5}px`, fontSize: badgeSize / 3.2 }}
-              title={`${PIED_MARIN_INFO.label} — ${PIED_MARIN_INFO.description}`}
-            >
-              {PIED_MARIN_INFO.label}
-            </span>
+            <StatusBadge
+              icon={PIED_MARIN_INFO.icon}
+              label={PIED_MARIN_INFO.label}
+              description={PIED_MARIN_INFO.description}
+              size={badgeSize}
+            />
           )}
           {hasGarde && (
             <span className={gardeGained ? "animate-badge-arrive" : undefined} style={{ display: "inline-flex" }}>
@@ -1066,6 +1115,14 @@ export function CardTile({
                 size={badgeSize}
               />
             </span>
+          )}
+          {eveilVisible && (
+            <StatusBadge
+              icon={EVEIL_ICON}
+              {...eveilInfo(instance, turnNumber)}
+              overlayText={eveils > 0 ? String(eveils) : undefined}
+              size={badgeSize}
+            />
           )}
           {instance.statuses?.map((status) => {
             const info = STATUS_ICON_INFO[status];

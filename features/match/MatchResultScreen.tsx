@@ -9,7 +9,7 @@ import type { MatchAudienceSummary } from "@/features/audience/actions";
 import { RollingNumber } from "@/features/audience/RollingNumber";
 import { useMatchAudience } from "@/features/audience/useMatchAudience";
 import { weightiestSignals, type MatchAudienceVerdict } from "@/features/audience/verdict";
-import { cardIllustrationUrl } from "@/features/decks/cardArtUrl";
+import { cardDecorUrl, cardIllustrationUrl } from "@/features/decks/cardArtUrl";
 import type { MatchRewardSummary } from "@/features/progression/actions";
 import { useMatchReward } from "@/features/progression/useMatchReward";
 import type { QuestRecapEntry } from "@/features/quests/actions";
@@ -64,7 +64,21 @@ const OUTCOMES = {
   },
 } as const;
 
+/**
+ * Fin de partie RACONTÉE (tutoriel) : un mot personnalisé à la place des
+ * quêtes, et deux boutons qui mènent où il faut plutôt qu'à « Nouvelle partie ».
+ */
+export interface MatchEpilogue {
+  title: string;
+  text: string;
+  /** Bouton sombre, à gauche. */
+  back: { label: string; onClick: () => void };
+  /** Bouton bleu, à droite : la suite conseillée. */
+  next: { label: string; onClick: () => void };
+}
+
 interface MatchResultScreenProps {
+  epilogue?: MatchEpilogue;
   outcome: "victory" | "defeat";
   player: { name: string; ship: ShipDefinition; title?: string | null; avatarCardId?: string | null };
   matchId?: string;
@@ -96,7 +110,8 @@ function photoLayers(player: MatchResultScreenProps["player"]): { src: string | 
       // Carte retirée du catalogue : son illustration seule, si elle existe encore.
     }
     return {
-      src: cardIllustrationUrl(player.avatarCardId),
+      // Le décor seul : le débord est empilé par-dessus, ici même.
+      src: abyssal ? cardDecorUrl(player.avatarCardId) : cardIllustrationUrl(player.avatarCardId),
       // Une Abyssale n'a que son décor dans l'illustration : le sujet vit dans le calque de débord.
       debord: abyssal ? `/assets/cards/illustrations/${player.avatarCardId}-debord.webp` : null,
     };
@@ -122,7 +137,7 @@ function photoLayers(player: MatchResultScreenProps["player"]): { src: string | 
  * (`useMatchReward`), quêtes et Traversée (`useMatchQuestRecap`),
  * illustration choisie, Navire, nom et titre du joueur.
  */
-export function MatchResultScreen({ outcome, player, matchId, preview, audience, onExit, exitHref }: MatchResultScreenProps) {
+export function MatchResultScreen({ outcome, player, matchId, preview, audience, onExit, exitHref, epilogue }: MatchResultScreenProps) {
   const look = OUTCOMES[outcome];
   const isVictory = outcome === "victory";
   const { shown } = useMatchAudience({ matchId, preview: preview?.audience });
@@ -252,8 +267,16 @@ export function MatchResultScreen({ outcome, player, matchId, preview, audience,
           </section>
         )}
 
+        {/* ── Le mot de la fin (tutoriel) ── */}
+        {epilogue && (
+          <section className={styles.epilogue} aria-label={epilogue.title}>
+            <h2 className={styles.recapTitle}>{epilogue.title}</h2>
+            <p className={styles.epilogueText}>{epilogue.text}</p>
+          </section>
+        )}
+
         {/* ── Les quêtes ── */}
-        {slots.length > 0 && (
+        {!epilogue && slots.length > 0 && (
           <>
             <span className={styles.rule} aria-hidden />
             <header className={styles.questsHead}>
@@ -329,6 +352,17 @@ export function MatchResultScreen({ outcome, player, matchId, preview, audience,
 
         {/* ── Les deux boutons peints ── */}
         <nav className={styles.actions} aria-label="Suite">
+          {epilogue ? (
+            <>
+              <button type="button" onClick={epilogue.back.onClick} className={styles.buttonBack}>
+                <span>{epilogue.back.label}</span>
+              </button>
+              <button type="button" onClick={epilogue.next.onClick} className={styles.buttonNew}>
+                <span>{epilogue.next.label}</span>
+              </button>
+            </>
+          ) : (
+            <>
           <Link href="/" className={styles.buttonBack}>
             <span>Retour au menu</span>
           </Link>
@@ -340,6 +374,8 @@ export function MatchResultScreen({ outcome, player, matchId, preview, audience,
             <button type="button" onClick={onExit} className={styles.buttonNew}>
               <span>Nouvelle partie</span>
             </button>
+          )}
+            </>
           )}
         </nav>
       </div>

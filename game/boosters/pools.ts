@@ -39,6 +39,8 @@ export const BOOSTER_NECESSAIRE_DU_MARIN = "necessaire-du-marin";
 export const BOOSTER_ECLATS_EN_SELLE = "eclats-en-selle";
 /** B7 — La mutation mondiale (Lot 16). Les Altérés et leur Éveil (« Booster 4 — Altérations du Large » dans Notion avant son nom définitif). */
 export const BOOSTER_LA_MUTATION_MONDIALE = "la-mutation-mondiale";
+/** B8 — Perturbation dimensionnelle (Lot 17 : Dungeon et Ladalle / Opalins). L'identifiant de lancement est resté. */
+export const BOOSTER_DUNGEON_ET_LADALLE = "dungeon-et-ladalle";
 
 /**
  * B1 — Défaut. 63 entrées (61 + les deux anti-swarm du 21/09/2026, qui
@@ -48,6 +50,8 @@ export const BOOSTER_LA_MUTATION_MONDIALE = "la-mutation-mondiale";
  * cartes Cra-Poiscail et un teaser Marionnette.
  */
 const DEFAUT: readonly string[] = [
+  "pluie-corrosive", // Pluie corrosive — Lande Légendaire (05/10/2026)
+  "zone-de-repli", // Zone de repli — réponse aux Landes (05/10/2026)
   "marin-des-jetees", // Marin des Jetées
   "vieux-loup-de-mer", // Vieux Loup de Mer
   "murene-aveugle", // Murène Aveugle
@@ -106,6 +110,12 @@ const DEFAUT: readonly string[] = [
   "pelican-des-cales",
   "mouette-du-brise-lames",
   "harnois-de-vigie",
+  // Passerelles du Lot 17 (06/10/2026). Audit du même jour : seules Carte
+  // détrempée et Calme trompeur restent obtenables ; Cartographe du Large,
+  // Gardien des Balises, Boussole fendue, Campement provisoire et Tour de
+  // guet mobile sont sorties des pools (définitions conservées).
+  "carte-detrempee",
+  "calme-trompeur",
 ];
 
 /**
@@ -169,6 +179,9 @@ const POISSONS_PAS_FRAIS: readonly string[] = [
   "albatros-de-mauvais-temps",
   "charpentier-des-epaves",
   "barge-de-reparation",
+  // Passerelle du Lot 17 (06/10/2026) : Dungeon et Ladalle par sa famille,
+  // obtenue ici. Marée imprévisible est sortie des pools à l'audit du 06/10.
+  "aventuriere-en-retard",
 ];
 
 /**
@@ -177,6 +190,7 @@ const POISSONS_PAS_FRAIS: readonly string[] = [
  * branche pseudo-médiévale Cra-Poiscail.
  */
 const ETRANGETE_SOUS_MARINE: readonly string[] = [
+  "cartographe-opalin-mefiant", // Cartographe Opalin méfiant — teaser Opalin, réponse aux Landes (05/10/2026)
   "masse-sombre", // Masse-Sombre
   "masse-sombre-abyssal", // Masse-Sombre — ABYSSALE
   "ce-qui-suit-le-navire", // Ce Qui Suit le Navire
@@ -229,6 +243,7 @@ const ETRANGETE_SOUS_MARINE: readonly string[] = [
   "clous-de-recuperation",
   "etau-du-calfat",
   "sonde-des-courants-perdus",
+  // Terres inconnues (passerelle du Lot 17) : sortie des pools à l'audit du 06/10/2026.
 ];
 
 /**
@@ -315,6 +330,9 @@ const VEILLEE_DES_DISPARUS: readonly string[] = [
  *    jour où le design donne des Abyssales au lot.
  */
 const NECESSAIRE_DU_MARIN: readonly string[] = [
+  // --- Lande Légendaire et sa réponse (05/10/2026) ---
+  "chaine-de-construction",
+  "lever-lancre",
   // --- Les 48 du lot (La Nasse Trop Pleine est déjà au catalogue) ---
   "la-nasse-trop-pleine",
   "jugement-du-phare",
@@ -440,6 +458,8 @@ const ECLATS_EN_SELLE_POOL: readonly string[] = [
   "la-premiere-pierre",
   "le-geant-chromatique",
   "le-geant-chromatique-abyssal",
+  // --- Lande Légendaire, rattachée à l'Équipage de Verre (05/10/2026) ---
+  "vallee-de-verre",
 ];
 
 /**
@@ -457,13 +477,45 @@ const LA_MUTATION_MONDIALE_POOL: readonly string[] = CORE_SET.filter((card) => c
   (card) => card.id
 );
 
+/**
+ * B8 — Lot 17, Dungeon et Ladalle / Opalins. Même règle que B7 : les cartes
+ * du lot et elles seules — 54 depuis le nettoyage du 06/10/2026 (les
+ * passerelles sont parties dans les anciens boosters). Son Abyssale : Eidolon Opalin LVX, sommet de la
+ * lignée LV (migration `20261026120000_booster_dungeon_et_ladalle.sql`).
+ */
+const DUNGEON_ET_LADALLE_POOL: readonly string[] = CORE_SET.filter((card) => card.setCode === BOOSTER_DUNGEON_ET_LADALLE).map(
+  (card) => card.id
+);
+
 const BIENVENUE: readonly string[] = DEFAUT.filter((cardId) => {
   const def = CORE_SET.find((card) => card.id === cardId);
   if (!def) return false;
   if (cardId.endsWith("-abyssal")) return false;
   if (def.archetype) return false;
+  // Une Lande change la partie entière : pas dans le sachet de l'onboarding.
+  // Ni ce qui ne sert QU'À répondre à une Lande (Zone de repli) : sans Lande
+  // en jeu, la carte ne fait rien, et le nouveau joueur n'en a aucune.
+  if (def.type === "lande") return false;
+  if ((def.abilities ?? []).some((ability) => ability.trigger === "onLandeStrike")) return false;
   return def.setCode === undefined || def.setCode === "core";
 });
+
+/**
+ * Cartes du catalogue VOLONTAIREMENT hors de tout booster : les passerelles
+ * du Lot 17 sorties des pools à l'audit du 06/10/2026. Leurs définitions
+ * restent (les joueurs qui les possèdent les gardent ; Boussole fendue reste
+ * dans le préconstruit Les Veilleurs d'Opale), mais aucun sachet ne les
+ * donne plus. Toute AUTRE carte hors booster est une erreur (tests).
+ */
+export const CARTES_HORS_POOLS: readonly string[] = [
+  "boussole-fendue",
+  "campement-provisoire",
+  "cartographe-du-large",
+  "gardien-des-balises",
+  "maree-imprevisible",
+  "terres-inconnues",
+  "tour-de-guet-mobile",
+];
 
 /** Cartes éligibles par booster. La base en est le miroir (`booster_pool_cards`). */
 export const BOOSTER_POOLS: Readonly<Record<string, readonly string[]>> = {
@@ -474,6 +526,7 @@ export const BOOSTER_POOLS: Readonly<Record<string, readonly string[]>> = {
   [BOOSTER_NECESSAIRE_DU_MARIN]: NECESSAIRE_DU_MARIN,
   [BOOSTER_ECLATS_EN_SELLE]: ECLATS_EN_SELLE_POOL,
   [BOOSTER_LA_MUTATION_MONDIALE]: LA_MUTATION_MONDIALE_POOL,
+  [BOOSTER_DUNGEON_ET_LADALLE]: DUNGEON_ET_LADALLE_POOL,
   [BOOSTER_BIENVENUE]: BIENVENUE,
 };
 
@@ -490,6 +543,7 @@ export const PURCHASABLE_BOOSTER_IDS: readonly string[] = [
   BOOSTER_VEILLEE_DES_DISPARUS,
   BOOSTER_ECLATS_EN_SELLE,
   BOOSTER_LA_MUTATION_MONDIALE,
+  BOOSTER_DUNGEON_ET_LADALLE,
 ];
 
 /**

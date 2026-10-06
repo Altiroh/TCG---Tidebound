@@ -33,7 +33,7 @@ const MEDALLION_GLASS_INSET = "14%";
 /**
  * Icône de statut/mot-clé posée sur une carte (`status/malade.webp`,
  * `status/garde.webp`, `status/immobilise.webp`, `status/silence.webp`,
- * `status/tour.webp`, `status/engourdi.webp` — `public/assets/`), avec une
+ * `status/tour.webp`, `status/engourdi.webp`, `status/pied-marin.webp`, `status/eveil.webp` — `public/assets/`), avec une
  * info-bulle explicative au survol/focus (agrandissement léger de l'icône
  * elle-même en prime, pour que l'interaction soit évidente). La bulle est
  * rendue via un portail (`createPortal` dans `document.body`) plutôt qu'en

@@ -2,6 +2,7 @@ import { ARCHETYPE_LABELS, type ArchetypeId } from "@/game/cards/archetypes";
 import {
   BOOSTER_BIENVENUE,
   BOOSTER_DEFAUT,
+  BOOSTER_DUNGEON_ET_LADALLE,
   BOOSTER_ECLATS_EN_SELLE,
   BOOSTER_ETRANGETE_SOUS_MARINE,
   BOOSTER_LA_MUTATION_MONDIALE,
@@ -200,6 +201,22 @@ const EXTENSIONS: readonly BoosterExtension[] = [
       "Ils ont l'air de marins jusqu'à ce que quelque chose remue sous leur peau. La mutation mondiale réunit les " +
       "Altérés : des corps que la mer a réécrits, qui s'éveillent les uns les autres, et dont chaque réveil en appelle " +
       "un autre — jusqu'à ce qu'il ne reste plus personne à bord pour compter.",
+  },
+  {
+    // Nom repris des planches du sachet (06/10/2026). Accroche et lore restent
+    // un BROUILLON à valider, puis à reporter dans « Boosters & économie ».
+    // Deux familles à parts proches : le rayon annonce le LOT sous son titre
+    // Notion, pas l'une des deux.
+    boosterId: BOOSTER_DUNGEON_ET_LADALLE,
+    name: "Perturbation dimensionnelle",
+    kind: "extension",
+    archetype: null,
+    familyLabel: "Dungeon et Ladalle · Opalins",
+    tagline: "Un trou dans le ciel",
+    lore:
+      "Le ciel s'est ouvert au-dessus de la jungle, et il en tombe des aventuriers qui jurent connaître le chemin, " +
+      "lancent les dés à chaque porte et rentrent à l'auberge plus souvent qu'au trésor. En bas, les Opalins les " +
+      "regardent tomber : ils veillent depuis toujours, s'éveillent niveau après niveau, et ne laissent rien passer.",
   },
 ];
 

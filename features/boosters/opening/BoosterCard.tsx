@@ -8,7 +8,7 @@ import { useCardBackSrc } from "@/features/cosmetics/CardBackProvider";
 import type { BoosterCardRevealState } from "@/features/boosters/opening/boosterOpeningMachine";
 import { BoosterParticles } from "@/features/boosters/opening/BoosterParticles";
 import { OPENING_RARITY_LABEL, type BoosterOpeningCard } from "@/features/boosters/opening/types";
-import { useInterfaceSettings } from "@/lib/settings";
+import { NOUVEAU_CADRE } from "@/features/match/cardFrame";
 
 export type BoosterCardStyle = CSSProperties & Record<`--${string}`, string | number>;
 
@@ -77,7 +77,6 @@ export const BoosterCard = memo(function BoosterCard({
   const cardName = card.cardId ? getCardDefinition(card.cardId).name : "Carte test";
   const cardBack = useCardBackSrc();
   const showBackImage = cardBackAvailable && !backFailed;
-  const { nouveauCadre } = useInterfaceSettings();
   const highRarity = card.rarity === "rare" || card.rarity === "epic" || card.rarity === "legendary" || card.rarity === "abyssal";
 
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
@@ -125,9 +124,9 @@ export const BoosterCard = memo(function BoosterCard({
       data-card-index={index}
       data-state={state}
       data-rarity={card.rarity}
-      // Nouveau cadre (Options) : sa silhouette est plus étroite que la boîte
+      // Nouveau cadre (`cardFrame.ts`) : sa silhouette est plus étroite que la boîte
       // de la carte — la face et le halo s'y calent (`BoosterOpening.module.css`).
-      data-cadre={nouveauCadre && card.cardId ? "nouveau" : undefined}
+      data-cadre={NOUVEAU_CADRE && card.cardId ? "nouveau" : undefined}
       data-interactive={interactive || undefined}
       data-showcase={showcase}
       onPointerEnter={handlePointerEnter}

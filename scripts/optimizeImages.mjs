@@ -30,6 +30,66 @@ const ROOT = path.join(process.cwd(), "public", "assets");
 const DELETE_SOURCES = process.argv.includes("--delete-sources");
 
 /**
+ * VIGNETTES COMPOSÉES DES ABYSSALES (06/10/2026). L'illustration d'une
+ * Abyssale n'est que son DÉCOR : le sujet vit dans le débord, empilé par la
+ * face de carte. Partout où l'on montre l'illustration seule (fond de pile
+ * de deck, lignes de liste, contenu de booster…), on ne voyait que des
+ * nuages. `<id>-vignette.webp` = décor + débord, posé comme sur la carte :
+ *  - débord PLEIN CADRE (portrait au-delà de 1,35) : par-dessus, même cadrage ;
+ *  - SILHOUETTE : dans sa zone de l'ancien cadre (`DEBORD_ZONE` rapportée à
+ *    `ILLUSTRATION_ZONE`, `CardTile.tsx`), contenue et calée en haut.
+ * `cardIllustrationUrl` / `cardIllustrationThumbUrl` la servent pour toute
+ * carte `-abyssal`.
+ */
+const ILLUS_DIR = path.join(ROOT, "cards", "illustrations");
+const composed = { made: 0, skipped: 0 };
+for (const entry of await readdir(ILLUS_DIR)) {
+  if (!entry.endsWith("-abyssal.webp")) continue;
+  const base = path.join(ILLUS_DIR, entry);
+  const debord = base.replace(/\.webp$/, "-debord.webp");
+  const target = base.replace(/\.webp$/, "-vignette.webp");
+  if (!existsSync(debord)) continue;
+  const newest = Math.max((await stat(base)).mtimeMs, (await stat(debord)).mtimeMs);
+  if (existsSync(target) && (await stat(target)).mtimeMs >= newest) {
+    composed.skipped++;
+    continue;
+  }
+  const { width: W, height: H } = await sharp(base).metadata();
+  const meta = await sharp(debord).metadata();
+  let layer;
+  let left = 0;
+  let top = 0;
+  if (meta.height / meta.width > 1.35) {
+    layer = await sharp(debord).resize(W, H, { fit: "cover" }).toBuffer();
+  } else {
+    // Zone du débord rapportée à l'illustration (pourcentages de l'ancien cadre).
+    const bx = ((-4 - 7) / 87) * W;
+    const bw = (108 / 87) * W;
+    const by = ((0 - 4) / 51) * H;
+    const bh = (62 / 51) * H;
+    const k = Math.min(bw / meta.width, bh / meta.height);
+    const lw = Math.round(meta.width * k);
+    const lh = Math.round(meta.height * k);
+    left = Math.round(bx + (bw - lw) / 2);
+    top = Math.round(by);
+    layer = await sharp(debord).resize(lw, lh).toBuffer();
+  }
+  // Une couche qui dépasse du décor est rognée à ses bords (composite exige l'inclusion).
+  const lm = await sharp(layer).metadata();
+  const cropL = Math.max(0, -left);
+  const cropT = Math.max(0, -top);
+  const cw = Math.min(lm.width - cropL, W - Math.max(0, left));
+  const ch = Math.min(lm.height - cropT, H - Math.max(0, top));
+  const piece = await sharp(layer).extract({ left: cropL, top: cropT, width: cw, height: ch }).toBuffer();
+  await sharp(base)
+    .composite([{ input: piece, left: Math.max(0, left), top: Math.max(0, top) }])
+    .webp({ quality: 86, effort: 6 })
+    .toFile(target);
+  composed.made++;
+}
+console.log(`${composed.made} vignettes d'Abyssales composées (${composed.skipped} déjà à jour).`);
+
+/**
  * Règles par famille d'assets. `maxSize` borne le plus grand côté ; une
  * image déjà plus petite n'est jamais agrandie. La qualité monte pour les
  * calques posés par-dessus l'illustration (cadres, icônes) : leurs traits
@@ -58,6 +118,10 @@ const RULES = [
   // Icônes d'interface (pièce de Tides, Jeton de Préconstruit) : affichées
   // de 13 à ~64 px. Qualité haute, ce sont des objets détourés sur alpha.
   { match: /\/ui\/icons\//, maxSize: 256, quality: 92 },
+  // Dés (Lot 17, `features/match/dice/`) : faces d'un solide CSS 3D jusqu'à
+  // ~120 px d'arête, nettes sur un écran ×3. Textures rognées à leur plaque,
+  // points dans un cadre carré commun à toutes les valeurs du dé.
+  { match: /\/dice\//, maxSize: 512, quality: 92 },
   // Plaques de dégâts : elles s'envolent au-dessus de la cible à ~130 px de
   // haut, jamais plus de 264 sur un écran dense. Qualité haute — corde et
   // rivets sont détourés sur alpha, et ce sont leurs bords qui se
@@ -154,6 +218,15 @@ const RULES = [
   { match: /\/mecenes\/scene\/etoile-de-mer\./, maxSize: 400, quality: 88 },
   // Le harpon des projectiles d'effet : il vole à ~150 px de long au plus.
   { match: /\/fx\/harpon\./, maxSize: 512, quality: 90 },
+  // Landes : pièces de scène (pics, segments de chaîne, anneaux) que le
+  // code place le long des bords, jamais plus hautes qu'un tiers d'écran
+  // (`public/assets/landes/README.md`). Les segments de chaîne, en longueur,
+  // gardent 1400 px de large.
+  { match: /\/landes\/[^/]+\/chaine-segment-/, maxSize: 1400, quality: 86 },
+  { match: /\/landes\/[^/]+\/(fissures|cadenas|fumees|flaques)/, maxSize: 2560, quality: 84 },
+  // Pièces du Donjon de Ladalle : décor isométrique posé jusqu'à ~260 px de haut.
+  { match: /\/landes\/le-donjon-de-ladalle\//, maxSize: 768, quality: 86 },
+  { match: /\/landes\//, maxSize: 700, quality: 86 },
   { match: /\/(menu|ships|boosters|collection|decks|board)\//, maxSize: 1600, quality: 85 },
   { match: /.*/, maxSize: 1280, quality: 85 },
 ];

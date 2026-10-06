@@ -24,11 +24,13 @@
   container-type: size;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr) minmax(0, 1fr);
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  grid-template-areas:
-    "levels vs foe"
-    "deck vs foe"
-    "deck vs foe";
+  /*
+   * Deux camps en miroir autour du VS (05/10/2026 : l'écran « faisait
+   * désordonné ») : ton deck à gauche, l'adversaire à droite — sa photo, son
+   * niveau, sa fiche —, la poignée pendue au centre, au-dessus du VS.
+   */
+  grid-template-rows: minmax(0, 1fr);
+  grid-template-areas: "deck vs foe";
   column-gap: calc(var(--u) * 3);
   /* Même marge des deux côtés : ton deck et l'adversaire à la même distance du VS. */
   padding: calc(var(--u) * 2) max(11cqw, calc(var(--u) * 18)) calc(var(--u) * 2.5);
@@ -88,15 +90,11 @@
  * trois plaques posées sur la table, dessous.
  */
 .levelsPanel {
-  grid-area: levels;
   justify-self: center;
-  translate: calc(var(--u) * 6) 0;
-  align-self: start;
   display: grid;
   justify-items: center;
   gap: calc(var(--u) * 0.4);
-  width: min(100%, var(--u) * 70);
-  margin-top: calc(var(--u) * 1);
+  width: min(100%, var(--u) * 58);
   filter: drop-shadow(0 calc(var(--u) * 1) calc(var(--u) * 1.4) rgba(0, 0, 0, 0.55));
 }
 
@@ -177,7 +175,9 @@
   grid-area: deck;
   display: grid;
   justify-items: center;
-  align-content: center;
+  /* Les deux camps partent de la même hauteur, sous le bandeau. */
+  align-content: start;
+  padding-top: 14cqh;
   gap: calc(var(--u) * 1.2);
   min-height: 0;
 }
@@ -330,7 +330,10 @@
 /* ── Au centre : VS, peint (`play/mode/vs`) ── */
 .versus {
   grid-area: vs;
-  place-self: center;
+  /* Sous la poignée, au milieu des deux camps. */
+  justify-self: center;
+  align-self: start;
+  margin-top: 46cqh;
   width: min(100% + var(--u) * 6, var(--u) * 62);
   height: auto;
   filter: drop-shadow(0 calc(var(--u) * 0.8) calc(var(--u) * 1.4) rgba(0, 0, 0, 0.5));
@@ -356,16 +359,15 @@
   grid-area: foe;
   display: grid;
   justify-items: center;
-  /* Sous la poignée pendue en haut à droite. */
-  align-content: end;
-  padding-top: 38cqh;
+  align-content: start;
+  padding-top: 14cqh;
   gap: calc(var(--u) * 1.2);
   min-height: 0;
 }
 
 .polaroid {
   position: relative;
-  height: 42cqh;
+  height: 36cqh;
   aspect-ratio: 419 / 454;
   rotate: 4deg;
   filter: drop-shadow(0 calc(var(--u) * 1.6) calc(var(--u) * 2) rgba(0, 0, 0, 0.6));
@@ -489,10 +491,12 @@
 
 /* Sous la photo : ce qu'il faut savoir de lui, sur un parchemin. */
 .foeCard {
+  /* Sous les plaques de niveau : plus de chevauchement avec la photo. */
+  position: relative;
   display: grid;
   gap: calc(var(--u) * 0.8);
   width: min(100%, var(--u) * 58);
-  margin-top: calc(var(--u) * -2);
+  margin-top: calc(var(--u) * 0.6);
   padding: calc(var(--u) * 0.8) calc(var(--u) * 2);
   border-style: solid;
   border-width: calc(var(--u) * 1.2);
@@ -562,7 +566,9 @@
 .lever {
   position: absolute;
   z-index: 4;
-  right: calc(max(11cqw, var(--u) * 18) - 3cqw);
+  /* Au centre, entre les deux camps : c'est la décision de l'écran. */
+  left: 50%;
+  margin-left: calc(-25cqh * 1100 / 1005);
   /*
    * Assez haut pour que, même tirée (elle descend de 9 % de sa hauteur), le
    * bout des chaînes reste AU-DESSUS du bord de l'écran : 80 px couvrent le
@@ -701,256 +707,6 @@
   50% { translate: 0 -2.5%; }
 }
 
-.stars {
-  display: inline-flex;
-  gap: 0.15cqw;
-}
-
-.stars svg {
-  width: 1cqw;
-  height: 1cqw;
-  fill: none;
-  stroke: rgba(60, 38, 16, 0.55);
-  stroke-width: 1.6;
-}
-
-.stars svg[data-on] {
-  fill: #f2c24e;
-  stroke: #5a3a12;
-  filter: drop-shadow(0 0 0.2cqw rgba(242, 194, 78, 0.6));
-}
-
-
-/* ── Panneau « Changer de deck » : à gauche, sur son décor ── */
-.pickerBackdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 90;
-  display: grid;
-  place-items: stretch start;
-  background: linear-gradient(270deg, rgba(2, 6, 11, 0.25), rgba(2, 6, 11, 0.75));
-  animation: fade 180ms ease-out both;
-}
-
-.picker {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  width: min(52vw, 100%);
-  min-width: min(560px, 100vw);
-  height: 100dvh;
-  padding: calc(18px + var(--tb-safe-top)) 22px calc(18px + var(--tb-safe-bottom)) calc(22px + var(--tb-safe-left));
-  overflow: hidden;
-  background:
-    linear-gradient(180deg, rgba(20, 10, 4, 0.72) 0%, rgba(20, 10, 4, 0.35) 18%, rgba(20, 10, 4, 0.45) 75%, rgba(20, 10, 4, 0.85) 100%),
-    #1a0f08 url("/assets/play/mode/fond-table.webp") 20% center / cover no-repeat;
-  box-shadow: 30px 0 60px rgba(0, 0, 0, 0.55);
-  color: #f1e3c4;
-  animation: slideIn 280ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
-}
-
-.pickerHead {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.pickerTitle {
-  margin: 0;
-  font-family: var(--tb-font-display, Georgia, serif);
-  font-size: clamp(24px, 2.6vw, 38px);
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.6), 0 0 18px rgba(0, 0, 0, 0.7);
-}
-
-.pickerClose {
-  width: 38px;
-  height: 38px;
-  border: 1.5px solid rgba(241, 230, 207, 0.7);
-  border-radius: 50%;
-  background: rgba(8, 12, 18, 0.7);
-  color: #f1e6cf;
-  font-size: 22px;
-  line-height: 1;
-  cursor: var(--tb-cursor-pointer);
-}
-
-/* Les sources, sur les plaques d'onglet. */
-.sourceTabs {
-  display: flex;
-  gap: 10px;
-}
-
-.sourceTab {
-  padding: 10px 22px 12px;
-  border: 0;
-  background: url("/assets/ui/plaques/onglet.webp") center / 100% 100% no-repeat;
-  color: #2a1a0c;
-  font-family: var(--tb-font-display, Georgia, serif);
-  font-size: 15px;
-  font-weight: 700;
-  font-variant: small-caps;
-  filter: brightness(0.8) drop-shadow(0 4px 6px rgba(0, 0, 0, 0.5));
-  cursor: var(--tb-cursor-pointer);
-  transition: filter 160ms ease, transform 160ms ease;
-}
-
-.sourceTab[aria-selected="true"] {
-  transform: translateY(-3px);
-  filter: brightness(1.05) drop-shadow(0 6px 10px rgba(0, 0, 0, 0.55)) drop-shadow(0 0 8px rgba(255, 210, 140, 0.35));
-}
-
-.count {
-  display: inline-grid;
-  place-items: center;
-  min-width: 1.6em;
-  margin-left: 4px;
-  padding: 0 5px;
-  border-radius: 999px;
-  background: rgba(20, 12, 6, 0.75);
-  color: #f1e3c4;
-  font-size: 0.8em;
-  font-variant: normal;
-}
-
-/* Filtre par type : les six styles et leurs emblèmes. */
-.styleFilter {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.styleChip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 12px 5px 6px;
-  border: 1px solid rgba(201, 165, 90, 0.55);
-  border-radius: 999px;
-  background: rgba(20, 12, 6, 0.7);
-  color: #f1e3c4;
-  font-family: var(--tb-font-display, Georgia, serif);
-  font-size: 14px;
-  cursor: var(--tb-cursor-pointer);
-  transition: background 160ms ease, border-color 160ms ease;
-}
-
-.styleChip img {
-  width: 24px;
-  height: 24px;
-}
-
-.styleChip:hover:not(:disabled) {
-  border-color: #f3c86b;
-}
-
-.styleChip[aria-checked="true"] {
-  border-color: #f3c86b;
-  background: linear-gradient(180deg, #6b4a17, #3f2a0b);
-  box-shadow: 0 0 10px rgba(255, 190, 90, 0.35);
-}
-
-.styleChip:disabled {
-  opacity: 0.4;
-  cursor: var(--tb-cursor);
-}
-
-.pickerGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 14px;
-  min-height: 0;
-  margin: 0;
-  padding: 4px 6px 8px 0;
-  overflow-y: auto;
-  list-style: none;
-  scrollbar-width: thin;
-}
-
-.tile {
-  display: grid;
-  justify-items: center;
-  gap: 4px;
-  width: 100%;
-  padding: 10px 8px 12px;
-  border: 1px solid rgba(201, 165, 90, 0.35);
-  border-radius: 12px;
-  background: rgba(20, 12, 6, 0.6);
-  color: #f1e3c4;
-  font: inherit;
-  cursor: var(--tb-cursor-pointer);
-  transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
-}
-
-.tile:hover:not(:disabled) {
-  transform: translateY(-3px);
-  border-color: #f3c86b;
-  box-shadow: 0 0 14px rgba(255, 196, 110, 0.35);
-}
-
-.tile[data-selected] {
-  border-color: #5fd0e6;
-  box-shadow: 0 0 14px rgba(95, 208, 230, 0.45);
-}
-
-.tile:disabled {
-  cursor: not-allowed;
-  opacity: 0.55;
-}
-
-/* Les boîtes du panneau se posent une à une à son ouverture (ou d'un onglet à l'autre). */
-.tileSlot {
-  animation: deckPose 380ms var(--tb-ease, cubic-bezier(0.2, 0.8, 0.2, 1)) both;
-  animation-delay: calc(120ms + var(--i, 0) * 35ms);
-}
-
-.tileBox {
-  width: 62%;
-  aspect-ratio: 1024 / 1536;
-}
-
-.tileName {
-  font-family: var(--tb-font-display, Georgia, serif);
-  font-size: 15px;
-  font-weight: 700;
-  text-align: center;
-}
-
-.tileStyle {
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: rgba(241, 227, 196, 0.7);
-}
-
-.tile .stars svg {
-  width: 13px;
-  height: 13px;
-  stroke: rgba(241, 227, 196, 0.5);
-}
-
-.tileIssue {
-  font-size: 11px;
-  color: #f0a497;
-  text-align: center;
-}
-
-.pickerEmpty {
-  margin: 30px 0;
-  text-align: center;
-  color: rgba(241, 227, 196, 0.75);
-}
-
-@keyframes slideIn {
-  from { transform: translateX(-40%); opacity: 0; }
-  to { transform: none; opacity: 1; }
-}
-
-@keyframes fade {
-  from { opacity: 0; }
-}
-
 /* Écran bas (téléphone couché) : le récapitulatif garde l'essentiel, et son bouton. */
 
 /*
@@ -976,79 +732,32 @@
   /* Les trois niveaux : plaques plus larges, donc plus hautes (~45 px) et
      lisibles au pouce. */
   .levelsPanel {
-    width: min(100%, calc(var(--u) * 110));
-    translate: calc(var(--u) * 3) 0;
+    width: min(100%, calc(var(--u) * 100));
+  }
+
+  /* Couché, la place se prend en hauteur : les deux camps remontent, et la
+     photo garde sa taille — plus petite, sa légende débordait du papier. */
+  .deckSide,
+  .foe {
+    padding-top: 8cqh;
+  }
+
+  .polaroid {
+    height: 40cqh;
+  }
+
+  /* La légende tient sur le papier : à 13 px minimum, « Bot moyen » et ses
+     têtes de mort débordaient à gauche. */
+  .foeName {
+    font-size: 11px;
+  }
+
+  .skulls span {
+    width: 11px;
   }
 
   .levels {
     gap: calc(var(--u) * 1.6);
-  }
-
-  /* Tiroir des decks : l'en-tête se resserre, les filtres tiennent sur UNE
-     ligne qui défile, et la hauteur rendue va à la grille — trois rangées
-     de puces ne laissaient voir que le haut de deux boîtes. */
-  .picker {
-    width: min(70vw, 100%);
-    gap: 8px;
-    padding: calc(10px + var(--tb-safe-top)) 14px calc(8px + var(--tb-safe-bottom)) calc(14px + var(--tb-safe-left));
-  }
-
-  .pickerTitle {
-    font-size: 20px;
-  }
-
-  .pickerClose {
-    width: 40px;
-    height: 40px;
-  }
-
-  .sourceTab {
-    padding: 6px 16px 8px;
-    font-size: 13px;
-  }
-
-  .styleFilter {
-    flex-wrap: nowrap;
-    flex-shrink: 0;
-    overflow-x: auto;
-    overscroll-behavior-x: contain;
-    scrollbar-width: none;
-    padding-bottom: 2px;
-  }
-
-  .styleFilter::-webkit-scrollbar {
-    display: none;
-  }
-
-  .styleChip {
-    flex: none;
-    min-height: 40px;
-    padding: 3px 10px 3px 5px;
-    font-size: 13px;
-    white-space: nowrap;
-  }
-
-  .styleChip img {
-    width: 20px;
-    height: 20px;
-  }
-
-  .pickerGrid {
-    flex: 1 1 auto;
-    grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
-    gap: 10px;
-  }
-
-  .tile {
-    padding: 6px 6px 8px;
-  }
-
-  .tileBox {
-    width: 52%;
-  }
-
-  .tileName {
-    font-size: 13px;
   }
 }
 
@@ -1058,13 +767,10 @@
   .polaroid,
   .deckStack,
   .deckPlate,
-  .tileSlot,
   .skulls span,
   .foeMystery,
   .lever,
-  .lever[data-pulled] .leverArt,
-  .picker,
-  .pickerBackdrop {
+  .lever[data-pulled] .leverArt {
     animation: none;
   }
 }
@@ -1074,8 +780,7 @@
  * TÉLÉPHONE COUCHÉ / ÉCRAN TACTILE — cibles au pouce (audit mobile du
  * 30/09/2026). L'unité `--u` suit la hauteur : couché, « Changer de deck »
  * ne faisait plus que ~20 px de haut. Son dessin ne bouge pas, une zone
- * transparente débordante lui donne 44 px ; les puces de style du tiroir
- * de decks passent à 44 px.
+ * transparente débordante lui donne 44 px.
  */
 @media (max-height: 560px), (pointer: coarse) {
   .changeDeck {
@@ -1090,10 +795,6 @@
     right: 0;
     height: 44px;
     transform: translateY(-50%);
-  }
-
-  .styleChip {
-    min-height: 44px;
   }
 
   /* Les trois niveaux du bot (~30 px de haut) et la plaque de la poignée

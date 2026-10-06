@@ -104,4 +104,17 @@ export const TOKEN_SET: CardDefinition[] = [
     attack: 1,
     health: 1,
   },
+  {
+    // « Créez une Bestiole ?/?, plafonnée à 4/4 » (Brigitte, Druidesse des
+    // caves — Lot 17) : un corps nu, dont les statistiques sont le résultat
+    // du jet (`summonStatsFromAmount`).
+    id: "bestiole",
+    name: "Bestiole",
+    type: "creature",
+    archetype: "dungeon-et-ladalle",
+    token: true,
+    cost: 0,
+    attack: 0,
+    health: 0,
+  },
 ];

@@ -8,7 +8,7 @@ import type { CSSProperties } from "react";
 import Link from "next/link";
 import type { ShipDefinition } from "@/game";
 import { BoardBackdrop } from "@/features/match/BoardBackdrop";
-import { MatchResultScreen } from "@/features/match/MatchResultScreen";
+import { MatchResultScreen, type MatchEpilogue } from "@/features/match/MatchResultScreen";
 import { useImageOk } from "@/features/match/useImageOk";
 import { Fireworks } from "@/features/match/Fireworks";
 import { SwampHaze } from "@/features/match/SwampHaze";
@@ -20,6 +20,8 @@ import type { MatchRewardSummary } from "@/features/progression/actions";
 export type MatchOutcome = "victory" | "defeat";
 
 interface MatchEndScreenProps {
+  /** Fin racontée (tutoriel) : mot personnalisé et boutons dédiés, transmis à `MatchResultScreen`. */
+  epilogue?: MatchEpilogue;
   /**
    * Issue vue par le joueur qui regarde cet écran. `defeat` change le
    * bandeau, le cadre et l'ambiance de fond — jamais la chorégraphie.
@@ -115,7 +117,7 @@ const DEFEAT_TITLE_ZONE = { top: "84%", left: "27%", width: "46%", height: "7%" 
  * Le bandeau "VICTOIRE" (`victory.webp`) surmonte le cadre plutôt que
  * d'être incrusté dedans, pour rester lisible à toutes les tailles.
  */
-export function MatchEndScreen({ outcome, player, onExit, exitHref, matchId, preview, audience }: MatchEndScreenProps) {
+export function MatchEndScreen({ outcome, player, onExit, exitHref, matchId, preview, audience, epilogue }: MatchEndScreenProps) {
   const isDefeat = outcome === "defeat";
   const winner = player;
 
@@ -146,6 +148,7 @@ export function MatchEndScreen({ outcome, player, onExit, exitHref, matchId, pre
         audience={audience}
         onExit={onExit}
         exitHref={exitHref}
+        epilogue={epilogue}
       />
     );
   }

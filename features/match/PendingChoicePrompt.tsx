@@ -119,7 +119,9 @@ export function PendingChoicePrompt({ choice, onChoose }: PendingChoicePromptPro
     choice.kind === "deckLook" ||
     choice.kind === "healAllocation" ||
     choice.kind === "keepUnits" ||
-    choice.kind === "pickUnits"
+    choice.kind === "pickUnits" ||
+    // Le jet de dé se joue sur la table (`useDieRoll`) : bandeau et cartes « Chaîne ».
+    choice.kind === "dieRoll"
   ) {
     return null;
   }

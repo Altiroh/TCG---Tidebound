@@ -497,8 +497,8 @@
 }
 
 .rowStars {
+  --tb-star: 12px;
   font-size: 11px;
-  letter-spacing: 0.08em;
   color: #e5cf9e;
 }
 
@@ -671,8 +671,8 @@
 }
 
 .statStars {
-  letter-spacing: 0.02em;
-  color: #e5cf9e;
+  --tb-star: 1.05em;
+  vertical-align: -0.15em;
 }
 
 /* La valeur REVIENT À LA LIGNE plutôt que de se faire couper : « Tempo /

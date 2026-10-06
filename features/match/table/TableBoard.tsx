@@ -2,7 +2,10 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
+  boardPermanents,
   canActivateAbility,
+  isOngoingEffect,
+  slotsUsed,
   findAssemblage,
   playCardRefusal,
   previewBreakReason,
@@ -27,21 +30,31 @@ import { useCardBackSrcFor } from "@/features/cosmetics/MatchCosmeticsProvider";
 import { CardTile, cardStatusLegend } from "@/features/match/CardTile";
 import { TIDE_STATE_LABELS } from "@/features/match/cardDisplay";
 import { legalTargetsFor, type TableTargeting } from "@/features/match/table/legalTargets";
+import { sourcePolarity, type TargetPolarity } from "@/features/match/table/targetPolarity";
 import { targetingHint } from "@/features/match/table/tableLabels";
 import type { AttackAnimation } from "@/features/match/useAttackPresentation";
 import type { EffectVolley } from "@/features/match/effectPresentation";
 import type { HandLimitDiscardMode } from "@/features/match/useHandLimitDiscard";
 import type { BoardAllocationMode } from "@/features/match/useHealAllocation";
+import type { BoardPickMode } from "@/features/match/useBoardPick";
+import type { HeldTarget } from "@/features/match/useHeldTarget";
 import { EffectFxLayer, reasonAnchor, reasonGaugeOf } from "@/features/match/EffectFxLayer";
 import { THICK_TEXT_OUTLINE } from "@/features/match/cardDisplay";
 import styles from "@/features/match/table/Table.module.css";
 import { BackgroundLayer } from "@/features/match/table/BackgroundLayer";
 import { CenterZone } from "@/features/match/table/CenterZone";
+import { LandeArrival, LANDE_ARRIVAL } from "@/features/match/landes/LandeArrival";
+import { LandeBadge } from "@/features/match/landes/LandeBadge";
+import landeStyles from "@/features/match/landes/Landes.module.css";
+import { OngoingEffects } from "@/features/match/table/OngoingEffects";
+import { LandeLayer } from "@/features/match/landes/LandeLayer";
+import { landeAsset, landeScene } from "@/features/match/landes/landeScenes";
 import { DecorLayer } from "@/features/match/table/DecorLayer";
 import { DragLayer, type AimTone } from "@/features/match/table/DragLayer";
 import { EquipLinks } from "@/features/match/table/EquipLinks";
 import { GameStage } from "@/features/match/table/GameStage";
 import { GameViewport } from "@/features/match/table/GameViewport";
+import { CardRulesPanel } from "@/features/match/table/CardRulesPanel";
 import { HoverCardPreview } from "@/features/match/table/HoverCardPreview";
 import { MotionLayer } from "@/features/match/table/MotionLayer";
 import { OpponentZone } from "@/features/match/table/OpponentZone";
@@ -128,6 +141,13 @@ export interface TableBoardProps {
   handLimitDiscard?: HandLimitDiscardMode | null;
   /** Répartition de soins sur le plateau (`useHealAllocation`) : toucher = +1, clic droit = −1. */
   boardAllocation?: BoardAllocationMode | null;
+  /** Désignation de plusieurs unités sur le plateau (`useBoardPick`) : toucher = désigner / reprendre. */
+  boardPick?: BoardPickMode | null;
+  /**
+   * Cibles déjà désignées par une action qui n'est pas allée au bout
+   * (`useHeldTarget`, `useBoardPick`) : elles gardent leur marque de cible.
+   */
+  heldTargets?: readonly HeldTarget[];
   /** Clic sur une carte en jeu quand un ciblage est en cours (le conteneur résout). */
   onBoardCardClick: (instanceId: string, ownerId: PlayerId) => void;
   /**
@@ -235,6 +255,20 @@ export function TableBoard(props: TableBoardProps) {
   const viewerShip = getShipDefinition(viewer.shipId);
   const opponentShip = getShipDefinition(opponent.shipId);
   const tideState = state.environment.tideState;
+
+  // ── Lande ──────────────────────────────────────────────────────────
+  // Une Lande qui ARRIVE sous les yeux du joueur se joue en grand
+  // (`LandeArrival`) ; celle déjà en jeu au chargement de la partie est là
+  // d'emblée, sans animation.
+  const lande = state.environment.lande;
+  const [landeArrival, setLandeArrival] = useState<NonNullable<typeof lande> | null>(null);
+  const seenLande = useRef(lande?.instanceId);
+  useEffect(() => {
+    if (lande && lande.instanceId !== seenLande.current) setLandeArrival(lande);
+    seenLande.current = lande?.instanceId;
+    // Seule l'identité de la Lande compte : son décompte change à chaque tour.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lande?.instanceId]);
   /** Navire dont la fiche est ouverte (clic sur un Navire hors ciblage d'attaque). */
   const [shipInfoFor, setShipInfoFor] = useState<PlayerId | null>(null);
 
@@ -386,7 +420,8 @@ export function TableBoard(props: TableBoardProps) {
     return entry.owner.id === viewerId || isVisibleDuringTide(getCardDefinition(entry.instance.cardId), tideState);
   };
 
-  const slotsFree = viewer.board.length < viewerShip.slotCount;
+  // Les effets en cours (Anomalies) ne prennent pas de Slot.
+  const slotsFree = slotsUsed(viewer.board) < viewerShip.slotCount;
   /** La carte est-elle jouable, restriction du tutoriel comprise ? */
   const isPlayable = (instanceId: string) => canPlayCards && (props.playableHandCards?.has(instanceId) ?? true);
   const discardMode = props.handLimitDiscard ?? null;
@@ -401,7 +436,13 @@ export function TableBoard(props: TableBoardProps) {
    * (`board`, entre deux cases) garde le comportement d'avant : fin de rang.
    */
   const slotOf = (drop: string): number | undefined => {
-    if (drop.startsWith("board:")) return Number(drop.slice("board:".length));
+    if (drop.startsWith("board:")) {
+      // La case k du RANG (sans les effets en cours) : rendue en indice
+      // dans la liste complète du moteur, où les Anomalies durables vivent aussi.
+      const k = Number(drop.slice("board:".length));
+      const rang = boardPermanents(viewer.board);
+      return k < rang.length ? viewer.board.indexOf(rang[k]!) : viewer.board.length;
+    }
     if (drop.startsWith("own:")) {
       const index = viewer.board.findIndex((u) => u.instanceId === dropId(drop));
       return index >= 0 ? index : undefined;
@@ -450,11 +491,14 @@ export function TableBoard(props: TableBoardProps) {
       // gestes qui partent du plateau (attaquer, Saborder) n'y sont pas.
       const fromHand = viewer.hand.some((card) => card.instanceId === sourceId);
       // Main trop pleine en fin de tour : la carte ne va qu'au Cimetière.
-      if (fromHand && discardMode) return kind === "place" && drop === "graveyard" && !discardMode.staged.has(sourceId);
+      if (fromHand && discardMode) return kind === "place" && drop === "graveyard" && !discardMode.staged.has(sourceId) && !discardMode.locked.has(sourceId);
       if (fromHand && !isPlayable(sourceId)) return false;
 
       if (kind === "place") {
         if (!canPlayCards) return false;
+        // Une Lande se pose au centre, dans l'emplacement partagé — ou
+        // n'importe où sur son rang : elle ne prend pas de Slot.
+        if (getCardDefinition(instance.cardId).type === "lande") return drop === "lande" || isBoardDrop(drop);
         // Sur une Sentinelle d'un Assemblage possible : même plateau plein,
         // l'Assemblage libère ses places.
         if (drop.startsWith("own:") && assemblageSentinels(sourceId)?.has(dropId(drop))) return true;
@@ -492,6 +536,10 @@ export function TableBoard(props: TableBoardProps) {
         }
         if (drop.startsWith("own:") && assemblageSentinels(sourceId)?.has(dropId(drop))) {
           props.onAssemblageDrop?.(sourceId, dropId(drop));
+          return;
+        }
+        if (drop === "lande") {
+          props.onPlayCard(sourceId);
           return;
         }
         // La carte part d'où le fantôme était lâché : centré sous la souris,
@@ -590,6 +638,7 @@ export function TableBoard(props: TableBoardProps) {
   });
 
   const placing = gesture?.kind === "place" ? gesture : null;
+  const placingLande = placing ? getCardDefinition(byId.get(placing.sourceId)?.instance.cardId ?? "").type === "lande" : false;
   const abilityDrag = gesture?.kind === "ability" ? gesture : null;
   const casting = gesture?.kind === "cast" ? gesture : null;
   const aiming = gesture?.kind === "aim" ? gesture : null;
@@ -610,7 +659,30 @@ export function TableBoard(props: TableBoardProps) {
     if (zoomGone) setZoom(null);
   }, [zoomGone]);
 
-  const tone: AimTone = casting || abilityDrag || (aimSource && !aimAttacks) ? "effect" : hover === "graveyard" ? "sabotage" : "attack";
+  // SENS du ciblage en cours : rouge s'il nuit à la cible, bleu s'il l'aide.
+  const polarityOf = (id: string, kind: "playCard" | "break" | "ability" | "reaction", abilityIndex?: number): TargetPolarity => {
+    const cardId = byId.get(id)?.instance.cardId;
+    return cardId ? sourcePolarity(cardId, kind, abilityIndex) : "friendly";
+  };
+  const activePolarity: TargetPolarity = casting
+    ? polarityOf(casting.sourceId, "playCard")
+    : abilityDrag
+      ? polarityOf(abilityDrag.sourceId, "ability")
+      : aimSource && !aimAttacks
+        ? polarityOf(aimSource.instanceId, "break")
+        : targeting?.kind === "playCard" || targeting?.kind === "break" || targeting?.kind === "ability"
+          ? polarityOf(targeting.sourceInstanceId, targeting.kind)
+          : targeting?.kind === "reaction"
+            ? polarityOf(targeting.sourceInstanceId, "reaction", targeting.abilityIndex)
+            : "friendly";
+  const tone: AimTone =
+    casting || abilityDrag || (aimSource && !aimAttacks)
+      ? activePolarity === "hostile"
+        ? "effect"
+        : "boon"
+      : hover === "graveyard"
+        ? "sabotage"
+        : "attack";
   // Le tir du canon désigne exactement les mêmes cibles qu'une attaque —
   // même mise en évidence, donc, plutôt qu'un second vocabulaire visuel.
   const attackTargeting = targeting?.kind === "attack" || targeting?.kind === "shipShot" || aimAttacks;
@@ -665,16 +737,23 @@ export function TableBoard(props: TableBoardProps) {
     const allocation = mine ? (props.boardAllocation ?? null) : null;
     const allocated = allocation?.amounts.get(card.id) ?? 0;
     const allocatable = allocation?.eligible.has(card.id) ?? false;
-    const targetable = effectTarget || attackTarget || allocatable;
+    const pick = props.boardPick ?? null;
+    const pickable = pick?.eligible.has(card.id) ?? false;
+    const picked = pick?.picked.has(card.id) ?? false;
+    // Marque de cible persistante : désignée dans la sélection en cours, ou
+    // tenue par une action qui attend encore sa suite.
+    const held = picked ? (pick!.polarity as HeldTarget["tone"]) : props.heldTargets?.find((t) => t.instanceId === card.id)?.tone;
+    const targetable = effectTarget || attackTarget || allocatable || pickable;
     // Pendant un ciblage, ce qui n'est pas une cible s'estompe : l'œil va
     // droit aux cartes éclairées, et le doigt aussi.
     const targetingActive =
+      pick !== null ||
       (targeting !== null && selectionTargets !== null) ||
       casting !== null ||
       abilityDrag !== null ||
       (aiming !== null && (aimAttacks || aimBreakTargets !== null));
     const dimmed =
-      targetingActive && !targetable && targeting?.sourceInstanceId !== card.id && aiming?.sourceId !== card.id && abilityDrag?.sourceId !== card.id;
+      targetingActive && !targetable && !held && targeting?.sourceInstanceId !== card.id && aiming?.sourceId !== card.id && abilityDrag?.sourceId !== card.id;
 
     return (
       <div
@@ -692,7 +771,14 @@ export function TableBoard(props: TableBoardProps) {
                 event.stopPropagation();
                 allocation.onAdd(card.id);
               }
-            : startGesture(mine ? "aim" : "inspect", card.id)
+            : pick && pickable
+              ? (event) => {
+                  // Désignation en cours : un toucher désigne ou reprend, rien d'autre.
+                  if (event.button !== 0) return;
+                  event.stopPropagation();
+                  pick.onToggle(card.id);
+                }
+              : startGesture(mine && !pick ? "aim" : "inspect", card.id)
         }
         onContextMenu={(e) => {
           e.preventDefault();
@@ -705,7 +791,10 @@ export function TableBoard(props: TableBoardProps) {
           mine ? styles.boardGrab : "",
           ready && !gesture ? styles.attacker : "",
           aiming?.sourceId === card.id ? styles.aimSource : "",
-          targetable ? `${styles.targetable} ${effectTarget || allocatable ? styles.effectTone : ""}` : "",
+          // Ciblage bienfaisant (soin, bonus, Équipement) : bleu ; nuisible : le rouge de l'attaque.
+          targetable && !held
+            ? `${styles.targetable} ${(effectTarget && activePolarity === "friendly") || allocatable || (pickable && pick?.polarity === "friendly") ? styles.effectTone : ""}`
+            : "",
           targetable && hover === drop ? styles.targetHover : "",
           targeting?.sourceInstanceId === card.id ? styles.aimSource : "",
           dimmed ? styles.targetDim : "",
@@ -725,8 +814,18 @@ export function TableBoard(props: TableBoardProps) {
             badgeSize={badgeSize}
             faceDown={mine && !visible}
             auraContext={auraContextFor(owner)}
+            turnNumber={state.turnNumber}
             variant="board"
           />
+        )}
+        {held && (
+          <span className={styles.heldMark} data-tone={held} aria-label="Cible désignée">
+            <svg viewBox="0 0 40 40" aria-hidden>
+              <circle cx="20" cy="20" r="13" />
+              <circle cx="20" cy="20" r="3.2" className={styles.heldCore} />
+              <path d="M20 2v9M20 29v9M2 20h9M29 20h9" />
+            </svg>
+          </span>
         )}
         {allocated > 0 && (
           <span className={styles.allocationBadge} aria-label={`${allocated} point${allocated > 1 ? "s" : ""} de Résistance versé${allocated > 1 ? "s" : ""}`}>
@@ -785,6 +884,7 @@ export function TableBoard(props: TableBoardProps) {
     if (inHand) {
       // Main trop pleine en fin de tour : la seule chose à faire d'une carte, c'est la jeter.
       if (discardMode) {
+        if (discardMode.locked.has(id)) return [{ label: "Défausser", disabled: true, note: "Tu viens de la piocher : elle reste en main." }];
         return discardMode.staged.has(id)
           ? []
           : [{ label: "Défausser", tone: "neutral", onAction: () => { close(); discardMode.onDiscard(id); } }];
@@ -889,13 +989,29 @@ export function TableBoard(props: TableBoardProps) {
     // réduisent, et la courbe de début de partie le plafonne encore.
     maxReason: reasonCeiling(player),
     deraisonDamage: deraisonAnchorDamage(player, player.reason),
+    armor: player.armor ?? 0,
   });
 
   return (
     <>
       <GameViewport>
-        <BackgroundLayer tideState={tideState} />
+        <BackgroundLayer
+          tideState={tideState}
+          floor={(() => {
+            const sol = lande ? landeScene(lande.cardId).floor : undefined;
+            if (!lande || !sol) return null;
+            const arriving = lande.instanceId !== seenLande.current || landeArrival?.instanceId === lande.instanceId;
+            return { src: landeAsset(lande.cardId, sol), key: lande.instanceId, delayMs: arriving ? LANDE_ARRIVAL.DISSOLVE_AT : 0 };
+          })()}
+        />
         <RainLayer tideState={tideState} />
+        <LandeLayer
+          lande={lande}
+          // Lue au rendu même où la Lande change (l'effet qui arme l'arrivée
+          // passe après) : sa scène doit naître « en attente de la carte ».
+          entering={(lande !== undefined && lande.instanceId !== seenLande.current) || landeArrival?.instanceId === lande?.instanceId}
+          enterDelayMs={LANDE_ARRIVAL.DISSOLVE_AT}
+        />
         <DecorLayer />
 
         {/* `gesturing` : un glisser est en cours quelque part. Il coupe
@@ -914,7 +1030,7 @@ export function TableBoard(props: TableBoardProps) {
           <TableOpponentHand count={opponent.hand.length} ownerId={opponent.id} />
           <OpponentZone
             ship={shipView(opponent, opponentShip)}
-            board={opponent.board.map(toModel)}
+            board={boardPermanents(opponent.board).map(toModel)}
             capacity={opponentShip.slotCount}
             deck={opponent.deck.length}
             graveyard={opponent.graveyard.length}
@@ -944,6 +1060,29 @@ export function TableBoard(props: TableBoardProps) {
           />
           <CenterZone
             tide={tide}
+            cargo={
+              // Effets en cours de l'adversaire AU-DESSUS du hublot de Lande, les tiens EN DESSOUS :
+              // chacun du côté de son camp.
+              <div className={landeStyles.cargoRow}>
+                <OngoingEffects
+                  effects={opponent.board.filter((card) => isOngoingEffect(getCardDefinition(card.cardId))).map((card) => ({ card, ownerId: opponent.id }))}
+                  viewerId={viewerId}
+                  tideState={tideState}
+                  pulsingIds={props.reactionSourceIds}
+                />
+                <LandeBadge
+                  environment={state.environment}
+                  tideState={tideState}
+                  dropState={placingLande ? (hover === "lande" ? "over" : "ready") : "idle"}
+                />
+                <OngoingEffects
+                  effects={viewer.board.filter((card) => isOngoingEffect(getCardDefinition(card.cardId))).map((card) => ({ card, ownerId: viewer.id }))}
+                  viewerId={viewerId}
+                  tideState={tideState}
+                  pulsingIds={props.reactionSourceIds}
+                />
+              </div>
+            }
             hint={
               dropError ? (
                 <div className={`${styles.centerHint} ${styles.centerHintError}`} role="alert">
@@ -971,7 +1110,7 @@ export function TableBoard(props: TableBoardProps) {
           />
           <PlayerZone
             ship={shipView(viewer, viewerShip)}
-            board={viewer.board.map(toModel)}
+            board={boardPermanents(viewer.board).map(toModel)}
             capacity={viewerShip.slotCount}
             deck={viewer.deck.length}
             graveyard={viewer.graveyard.length}
@@ -1006,7 +1145,7 @@ export function TableBoard(props: TableBoardProps) {
                   : "ready"
                 : "idle"
             }
-            dropState={placing && slotsFree ? (hover !== null && isBoardDrop(hover) ? "over" : "ready") : "idle"}
+            dropState={placing && slotsFree && !placingLande ? (hover !== null && isBoardDrop(hover) ? "over" : "ready") : "idle"}
             dropSlot={placing && hover !== null && isBoardDrop(hover) ? slotOf(hover) : undefined}
             renderCard={(card) => renderBoardCard(card, viewer)}
           />
@@ -1020,11 +1159,11 @@ export function TableBoard(props: TableBoardProps) {
               // Carte écartée par le tutoriel : elle reste lisible et
               // consultable (clic droit), mais visiblement hors-jeu —
               // sinon le joueur la tire en vain et croit à une panne.
-              const muted = props.playableHandCards ? !props.playableHandCards.has(card.id) : false;
-              // Carte qui ferait entrer (ou s'enfoncer) en Déraison : on le voit
-              // dès la main, avant de la toucher — l'Ancrage qu'elle coûterait.
-              const price = canPlayCards && !discardMode && !muted ? previewPlayCardReason(state, viewerId, card.id) : undefined;
-              const debt = price && price.cost > 0 && price.reasonAfter < 0 ? deraisonAnchorDamage(viewer, price.reasonAfter) : 0;
+              // Idem pour la carte qu'un « piochez puis défaussez » vient
+              // d'apporter : elle ne peut pas repartir aussitôt.
+              const muted = props.playableHandCards
+                ? !props.playableHandCards.has(card.id)
+                : discardMode?.locked.has(card.id) === true;
               return (
                 <div
                   data-card-id={card.id}
@@ -1046,11 +1185,6 @@ export function TableBoard(props: TableBoardProps) {
                   ].join(" ")}
                 >
                   <CardTile instance={instance} tideState={tideState} widthClassName="w-full" scaleOnHover={false} showStatusBadges={false} />
-                  {debt > 0 && (
-                    <span className={styles.handDebt} title={`Déraison : ⚓ −${debt} en fin de tour`}>
-                      ⚓ −{debt}
-                    </span>
-                  )}
                 </div>
               );
             }}
@@ -1096,9 +1230,21 @@ export function TableBoard(props: TableBoardProps) {
         {preview && !gesture && (() => {
           const found = byId.get(preview.id);
           return found ? (
-            <HoverCardPreview anchor={preview.rect}>{renderFace(found.instance, found.owner)}</HoverCardPreview>
+            <HoverCardPreview anchor={preview.rect} aside={<CardRulesPanel cardId={found.instance.cardId} />}>
+              {renderFace(found.instance, found.owner)}
+            </HoverCardPreview>
           ) : null;
         })()}
+        {landeArrival && (
+          <LandeArrival
+            key={landeArrival.instanceId}
+            cardId={landeArrival.cardId}
+            instanceId={landeArrival.instanceId}
+            ownerId={landeArrival.ownerId}
+            tideState={tideState}
+            onDone={() => setLandeArrival(null)}
+          />
+        )}
         <DragLayer
           gesture={gesture}
           onTarget={hover !== null}
@@ -1127,9 +1273,10 @@ export function TableBoard(props: TableBoardProps) {
         return (
           <TableCardZoom
             key={found.instance.instanceId}
+            rulesCardId={found.instance.cardId}
             onClose={() => setZoomId(null)}
             actions={zoomActions(found.instance, found.owner.id, inHand, zoom?.confirmSaborder ?? false)}
-            legend={inHand ? [] : cardStatusLegend(found.instance, tideState, auraContextFor(found.owner))}
+            legend={inHand ? [] : cardStatusLegend(found.instance, tideState, auraContextFor(found.owner), state.turnNumber)}
             onPrev={neighbour(-1)}
             onNext={neighbour(1)}
             position={handIndex >= 0 ? { index: handIndex, count: handList.length } : undefined}

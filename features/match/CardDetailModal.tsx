@@ -13,6 +13,8 @@ interface CardDetailModalProps {
   boardUnits?: readonly CardInstance[];
   /** Plateau du contrôleur de CETTE carte : fait apparaître, nommés, les bonus qu'elle reçoit de ses voisines. */
   auraContext?: AuraContext;
+  /** Tour de table en cours : nombre d'Éveils du tour sur le médaillon d'Éveil. */
+  turnNumber?: number;
   onClose: () => void;
 }
 
@@ -28,7 +30,7 @@ interface CardDetailModalProps {
  * catalogue n'a précisément pas à montrer. Les deux ont donc divergé
  * volontairement.
  */
-export function CardDetailModal({ instance, tideState, boardUnits = [], auraContext, onClose }: CardDetailModalProps) {
+export function CardDetailModal({ instance, tideState, boardUnits = [], auraContext, turnNumber, onClose }: CardDetailModalProps) {
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") onClose();
@@ -75,7 +77,7 @@ export function CardDetailModal({ instance, tideState, boardUnits = [], auraCont
         style={{ width: "min(24rem, calc((100dvh - 9rem) * 5 / 7))" }}
         onClick={(e) => e.stopPropagation()}
       >
-        <CardTile instance={instance} tideState={tideState} auraContext={auraContext} widthClassName="w-full" scaleOnHover={false} badgeSize={90} />
+        <CardTile instance={instance} tideState={tideState} auraContext={auraContext} turnNumber={turnNumber} widthClassName="w-full" scaleOnHover={false} badgeSize={90} />
         <AppliedEffectsList instance={instance} tideState={tideState} boardUnits={boardUnits} auraContext={auraContext} />
       </div>
       {/* Colonne d'informations à hauteur de son contenu : elle ne

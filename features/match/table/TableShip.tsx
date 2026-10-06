@@ -28,6 +28,8 @@ export interface ShipView {
   maxReason: number;
   /** Dégâts d'Ancrage que la Déraison infligera en fin de tour (0 = rien à annoncer). */
   deraisonDamage?: number;
+  /** Armure (Lot 17) : réserve qui absorbe les dégâts du Navire avant l'Ancrage. 0 = rien à montrer. */
+  armor?: number;
   /** Capacité activable du Navire, quand il en porte une de câblée (Le Goliath — Canon de proue). */
   ability?: ShipAbilityPanelView;
 }
@@ -141,7 +143,7 @@ function ShipAbilityPanel(view: ShipAbilityPanelView) {
   const plankStyle = { backgroundImage: `url(${SHIP_ABILITY_PLANKS_URL})` };
   const content = (
     <>
-      <span aria-hidden className={styles.shipAbilityPort}>
+      <span aria-hidden className={styles.shipAbilityPort} data-ship-ability="">
         <span
           className={styles.shipAbilityArt}
           style={artUrl ? { backgroundImage: `url(${artUrl})` } : undefined}
@@ -302,14 +304,14 @@ function ShipGauge({ kind, value, max, ownerId }: { kind: keyof typeof GAUGE_ASS
  * La géométrie de l'arche vient de `features/ships/shipFrame.ts` (aucun
  * import de `@/game`).
  */
-export function TableShip({ name, ownerId, illustration, hull, maxHull, reason, maxReason, deraisonDamage = 0, ability }: ShipView) {
+export function TableShip({ name, ownerId, illustration, hull, maxHull, reason, maxReason, deraisonDamage = 0, armor = 0, ability }: ShipView) {
   const frame = useShipFrameGeometryFor(ownerId);
   return (
     <div
       className={styles.ship}
       style={{ "--frame-aspect": frame.aspect, "--plate-top": frame.plateTop } as CSSProperties}
       role="img"
-      aria-label={`${name} — Ancrage ${hull}/${maxHull}, Raison ${reason}/${maxReason}`}
+      aria-label={`${name} — Ancrage ${hull}/${maxHull}, Raison ${reason}/${maxReason}${armor > 0 ? `, Armure ${armor}` : ""}`}
     >
       <div className={styles.shipArt} style={{ ...frame.zone, clipPath: frame.clip }}>
         {illustration && (
@@ -323,6 +325,15 @@ export function TableShip({ name, ownerId, illustration, hull, maxHull, reason, 
       <div className={styles.shipGauges}>
         <ShipGauge kind="anchor" value={hull} max={maxHull} />
         <ShipGauge kind="reason" value={reason} max={maxReason} ownerId={ownerId} />
+        {/* Armure : un écusson posé sur l'illustration, juste au-dessus et entre
+            l'Ancrage et la Raison — elle part la première, avant l'Ancrage. */}
+        {armor > 0 && (
+          <span className={styles.shipArmor} title={`Armure ${armor} : absorbe les dégâts du Navire avant l'Ancrage.`}>
+            {/* eslint-disable-next-line @next/next/no-img-element -- icône locale */}
+            <img src="/assets/ui/icons/armure-navire.webp" alt="" aria-hidden draggable={false} className={styles.shipArmorIcon} />
+            <span className={styles.shipArmorValue}>{armor}</span>
+          </span>
+        )}
       </div>
       {/* Dette de Déraison : la conséquence à venir, lisible sans survol (comme `ShipInstrumentCluster`). */}
       {reason < 0 && deraisonDamage > 0 && (

@@ -1216,7 +1216,7 @@
 }
 
 /*
- * NOUVEAU CADRE (Options) : la silhouette du cadre est en retrait de la boîte
+ * NOUVEAU CADRE (`features/match/cardFrame.ts`) : la silhouette du cadre est en retrait de la boîte
  * de la carte (environ 1 % en haut et en bas, 3,6 % sur les côtés, mesurés
  * sur `frames/nouveau/cadre.webp`). La face perd sa plaque et son ombre
  * rectangulaires et se découpe à cette silhouette ; le halo l'épouse.

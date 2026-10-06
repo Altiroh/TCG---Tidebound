@@ -13,9 +13,10 @@ import { TutorialScreen } from "@/features/tutorial/TutorialScreen";
  * Un visiteur non connecté n'a pas d'onboarding à jouer : il est renvoyé
  * vers la connexion, puisque la récompense se persiste sur un compte.
  */
-export default async function TutorielPage() {
+export default async function TutorielPage({ searchParams }: { searchParams: { lancer?: string } }) {
   const onboarding = await fetchOnboarding();
-  if (!onboarding.isSignedIn) redirect("/connexion?redirect=/tutoriel");
+  if (!onboarding.isSignedIn) redirect(`/connexion?redirect=${encodeURIComponent(searchParams.lancer === "1" ? "/tutoriel?lancer=1" : "/tutoriel")}`);
 
-  return <TutorialScreen />;
+  // `?lancer=1` (bouton des Options) : la partie guidée démarre aussitôt.
+  return <TutorialScreen autoStart={searchParams.lancer === "1"} />;
 }

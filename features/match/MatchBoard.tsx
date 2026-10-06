@@ -38,12 +38,13 @@ import { ShipAbilityPrompt } from "@/features/match/ShipAbilityPrompt";
 import { PendingChoicePrompt } from "@/features/match/PendingChoicePrompt";
 import { graveyardPickView } from "@/features/match/graveyardPickRequest";
 import { DeckLookPrompt } from "@/features/match/DeckLookPrompt";
-import { KeepUnitsPrompt } from "@/features/match/KeepUnitsPrompt";
-import { PickUnitsPrompt } from "@/features/match/PickUnitsPrompt";
+import { TableDice } from "@/features/match/dice/TableDice";
 import { HandDiscardPrompt } from "@/features/match/HandDiscardPrompt";
 import { ChoiceBanner } from "@/features/match/ChoiceBanner";
 import { useHandLimitDiscard } from "@/features/match/useHandLimitDiscard";
 import { useHealAllocation } from "@/features/match/useHealAllocation";
+import { useBoardPick } from "@/features/match/useBoardPick";
+import { useHeldTarget } from "@/features/match/useHeldTarget";
 import { PhaseBanner } from "@/features/match/PhaseBanner";
 import { ReactionPrompt } from "@/features/match/ReactionPrompt";
 import { ShipWindowHint } from "@/features/match/ShipWindowHint";
@@ -163,6 +164,12 @@ export function MatchBoard({
   const healAllocation = useHealAllocation(state, viewerPlayerId, (allocation) =>
     runReactionAction({ type: "resolveChoice", playerId: viewerPlayerId, choice: { healAllocation: allocation } })
   );
+  // Plusieurs unités à désigner : sur le plateau, toucher = désigner / reprendre.
+  const boardPick = useBoardPick(state, viewerPlayerId, (answer) =>
+    runReactionAction({ type: "resolveChoice", playerId: viewerPlayerId, choice: answer })
+  );
+  // La première cible d'une action qui n'est pas allée au bout reste marquée.
+  const heldTarget = useHeldTarget(state);
   // Si aucune unité du joueur actif ne peut attaquer, le bouton unique saute directement à "Fin de tour".
   const activePlayerBoard = state.players.find((p) => p.id === activePlayerId)?.board ?? [];
   const hasAnyAttacker = activePlayerBoard.some((unit) => canUnitAttack(state, state.activePlayerId, unit.instanceId));
@@ -311,6 +318,7 @@ export function MatchBoard({
       setError(result.error);
       return;
     }
+    heldTarget.note(liveState, action);
     setError(null);
     setState(result.state);
     board.clearSelection();
@@ -323,6 +331,7 @@ export function MatchBoard({
       setError(result.error);
       return;
     }
+    heldTarget.note(liveState, action);
     setError(null);
     setState(result.state);
     board.clearSelection();
@@ -458,6 +467,8 @@ export function MatchBoard({
         onCancelHint={board.clearSelection}
         handLimitDiscard={handLimit.mode}
         boardAllocation={healAllocation.mode}
+        boardPick={boardPick.mode}
+        heldTargets={[...boardPick.locked, ...(heldTarget.held ? [heldTarget.held] : [])]}
         phaseButton={{
           label: phase.label,
           // La phase EN COURS, pas celle vers laquelle le bouton mène :
@@ -564,22 +575,14 @@ export function MatchBoard({
           onChoose={(choice) => runReactionAction({ type: "resolveChoice", playerId: viewerPlayerId, choice })}
         />
       )}
-      {!state.pendingReaction && state.pendingChoice?.kind === "pickUnits" && state.pendingChoice.playerId === viewerPlayerId && (
-        <PickUnitsPrompt
-          choice={state.pendingChoice}
-          allUnits={state.players.flatMap((p) => p.board)}
-          onConfirm={(pickInstanceIds) =>
-            runReactionAction({ type: "resolveChoice", playerId: viewerPlayerId, choice: { pickInstanceIds } })
-          }
-        />
-      )}
-      {!state.pendingReaction && state.pendingChoice?.kind === "keepUnits" && state.pendingChoice.playerId === viewerPlayerId && (
-        <KeepUnitsPrompt
-          choice={state.pendingChoice}
-          board={viewerPlayer.board}
-          onConfirm={(keepInstanceIds) =>
-            runReactionAction({ type: "resolveChoice", playerId: viewerPlayerId, choice: { keepInstanceIds } })
-          }
+      {boardPick.banner && (
+        <ChoiceBanner
+          choiceKey={boardPick.banner.choiceKey}
+          source={boardPick.banner.source}
+          title={boardPick.banner.title}
+          detail={boardPick.banner.detail}
+          actions={boardPick.banner.actions}
+          onExpire={boardPick.banner.onExpire}
         />
       )}
       {healAllocation.banner && (
@@ -592,6 +595,8 @@ export function MatchBoard({
           onExpire={healAllocation.banner.onExpire}
         />
       )}
+      {/* Les dés se lancent SUR la table, pour les deux joueurs ; le jet ouvert y garde ses gestes. */}
+      <TableDice state={state} viewerId={viewerPlayerId} onAction={runReactionAction} />
       {!state.pendingReaction && state.pendingChoice?.kind === "deckLook" && state.pendingChoice.playerId === viewerPlayerId && (
         <DeckLookPrompt
           choice={state.pendingChoice}
@@ -701,6 +706,7 @@ export function MatchBoard({
           instance={detailInstance}
           tideState={state.environment.tideState}
           boardUnits={state.players.flatMap((p) => p.board)}
+          turnNumber={state.turnNumber}
           auraContext={auraContextFor(viewerPlayer.board.some((u) => u.instanceId === detailInstance.instanceId) ? viewerPlayer : otherPlayer)}
           onClose={() => board.setDetailInstance(null)}
         />

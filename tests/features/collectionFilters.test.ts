@@ -9,7 +9,7 @@ import {
   type CollectionFilterState,
 } from "@/features/collection/collectionFilters";
 import { BOOSTER_EXTENSIONS, SHELF_BOOSTER_IDS, boostersContaining } from "@/game/boosters";
-import { BOOSTER_DEFAUT, BOOSTER_NECESSAIRE_DU_MARIN } from "@/game/boosters/pools";
+import { BOOSTER_DEFAUT, BOOSTER_NECESSAIRE_DU_MARIN, CARTES_HORS_POOLS } from "@/game/boosters/pools";
 
 /**
  * Filtres de la Collection.
@@ -173,8 +173,9 @@ describe("filtre par extension (22/09/2026)", () => {
     }
     // Un sachet sans nom donnerait une ligne vide dans la colonne ; une
     // carte hors rayon serait invisible dès qu'on coche une extension.
+    // Sauf les cartes VOLONTAIREMENT hors de tout booster (`CARTES_HORS_POOLS`).
     const horsRayon = CORE_SET.filter(
-      (def) => !boostersContaining(def.id).some((id) => SHELF_BOOSTER_IDS.includes(id))
+      (def) => !CARTES_HORS_POOLS.includes(def.id) && !boostersContaining(def.id).some((id) => SHELF_BOOSTER_IDS.includes(id))
     );
     expect(horsRayon.map((def) => def.id)).toEqual([]);
   });

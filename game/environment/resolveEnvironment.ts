@@ -1,3 +1,4 @@
+import { absorbShipDamage, armorEvents, armorOf } from "@/game/state/armor";
 import { consumeAmplify, tickTide } from "@/game/environment/tide";
 import { getShipDefinition } from "@/game/environment/shipData";
 import { reasonAfterLoss } from "@/game/state/reason";
@@ -277,6 +278,11 @@ export function applyTideTurnEffects(
       reasonLoss = Math.max(0, reasonLoss - shield.reduction);
     }
 
+    // L'Armure du Navire (Lot 17) encaisse la Marée avant l'Ancrage.
+    const armure = absorbShipDamage(player, anchorLoss);
+    anchorLoss = armure.rest;
+    events.push(...armorEvents(player.id, -armure.absorbed, armorOf(armure.player), turnNumber));
+
     // La défausse infligée par la Marée passe par la même voie que les
     // autres (`game/state/discard.ts`) : même cause, même journal
     // d'arrivées, mêmes événements complets — donc mêmes déclencheurs.
@@ -294,6 +300,7 @@ export function applyTideTurnEffects(
 
     players[i] = {
       ...discardedPlayer,
+      armor: armure.player.armor,
       board,
       anchor: player.anchor - anchorLoss,
       reason: reasonAfterLoss(player, reasonLoss),

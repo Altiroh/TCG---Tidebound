@@ -1,3 +1,5 @@
+import { consumeUnitDamageBonus } from "@/game/state/damageBonus";
+import { damageShip } from "@/game/state/armor";
 import type { CardInstance } from "@/game/cards/types";
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { auraContextOf, computeEffectiveStats } from "@/game/cards/stats";
@@ -460,7 +462,10 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
     // Respire), appliquée à la déclaration : elle est déjà dans
     // `attackerDamage`. L'ancien bouclier de données n'avait plus de porteur.
     const attackerCardType = getCardDefinition(attackerUnit.cardId).type;
-    const shieldedAttackerDamage = attackerDamage;
+    // « La prochaine fois qu'une de vos unités inflige des dégâts ce tour » (Dhar, Lot 17).
+    const bonusDhar = consumeUnitDamageBonus(nextState, attackerPlayer.id, etat.turnNumber);
+    nextState = bonusDhar.state;
+    const shieldedAttackerDamage = attackerDamage + bonusDhar.bonus;
 
     // Faiblesse d'attaque directe du DÉFENSEUR (`directAttackWeakness` —
     // ex-« Coque légère » du Courlis, retirée le 24/09/2026) : +N dégâts.
@@ -513,7 +518,12 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
       nextState = {
         ...nextState,
         players: nextState.players.map((p) => {
-          if (p.id === attackerPlayer.id) return { ...p, anchor: p.anchor - reflected };
+          // L'Armure du Navire (Lot 17) encaisse le contrecoup avant l'Ancrage.
+          if (p.id === attackerPlayer.id) {
+            const coup = damageShip(p, reflected, etat.turnNumber);
+            events.push(...coup.events);
+            return coup.player;
+          }
           if (p.id === opponent.id) {
             return recordGraveyardArrival(
               {
@@ -544,11 +554,16 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
       events.push(...contrecoupTrigger.events);
     }
 
+    // L'Armure du Navire (Lot 17) encaisse le coup avant l'Ancrage. Le coup,
+    // lui, a bien porté sur le Navire : `directDamage` reste ce qu'il a reçu.
     nextState = {
       ...nextState,
-      players: nextState.players.map((p) =>
-        p.id === opponent.id ? { ...p, anchor: p.anchor - directDamage } : p
-      ) as [PlayerState, PlayerState],
+      players: nextState.players.map((p) => {
+        if (p.id !== opponent.id) return p;
+        const coup = damageShip(p, directDamage, etat.turnNumber);
+        events.push(...coup.events);
+        return coup.player;
+      }) as [PlayerState, PlayerState],
     };
     // Le Contrecoup a tout annulé : pas de « coup porté » de 0 dans le
     // journal ni dans l'animation.
@@ -560,6 +575,7 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
         amount: directDamage,
         targetAnchorAfter: getPlayer(nextState, opponent.id).anchor,
         combat: "strike",
+        dealerInstanceId: attackerUnit.instanceId,
       });
     }
 
@@ -628,7 +644,10 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
     const defenderType = getCardDefinition(defenderUnit.cardId).type;
     const contreMotCle = bonusVsKeyword(nextState, attackerPlayer.id, attackerUnit, defenderUnit);
     nextState = contreMotCle.state;
-    const totalAttackerDamage = attackerDamage + bonusDamageAgainst(attackerUnit, defenderType, nextState) + contreMotCle.bonus;
+    // « La prochaine fois qu'une de vos unités inflige des dégâts ce tour » (Dhar, Lot 17).
+    const bonusDhar = consumeUnitDamageBonus(nextState, attackerPlayer.id, etat.turnNumber);
+    nextState = bonusDhar.state;
+    const totalAttackerDamage = attackerDamage + bonusDamageAgainst(attackerUnit, defenderType, nextState) + contreMotCle.bonus + bonusDhar.bonus;
 
     // Dégâts au défenseur, réduits, si c'est une Structure, par la
     // restauration de Résistance de Wood Vy.
@@ -642,6 +661,7 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
         amount: defenderDamageResult.amountApplied,
         combat: "strike",
         cause: "combat",
+        dealerInstanceId: attackerUnit.instanceId,
       });
       const rendu = restoreStructureResistanceAfterLoss(nextState, opponent.id, defenderUnit.instanceId, defenderDamageResult.amountApplied, etat.turnNumber);
       nextState = rendu.state;
@@ -663,7 +683,11 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
     // riposte, quand c'est la Garde qui attaque.
     const riposteMotCle = consumePendingBonusVsKeyword(nextState, opponent.id, defenderUnit, attackerUnit);
     nextState = riposteMotCle.state;
-    const retaliationDamage = effectiveAttack(defenderUnit, nextState) + riposteMotCle.bonus;
+    const riposteBrute = effectiveAttack(defenderUnit, nextState) + riposteMotCle.bonus;
+    // Une riposte est un coup porté : le bonus de Dhar du défenseur s'y applique (Lot 17).
+    const bonusRiposte = riposteBrute > 0 ? consumeUnitDamageBonus(nextState, opponent.id, etat.turnNumber) : { state: nextState, bonus: 0 };
+    nextState = bonusRiposte.state;
+    const retaliationDamage = riposteBrute + bonusRiposte.bonus;
     if (retaliationDamage > 0) {
       const attackerDamageResult = applyCombatDamageToUnit(nextState, attackerPlayer.id, attackerUnit, retaliationDamage, etat.turnNumber);
       nextState = attackerDamageResult.state;
@@ -675,6 +699,7 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
           amount: attackerDamageResult.amountApplied,
           combat: "retaliation",
           cause: "combat",
+          dealerInstanceId: defenderUnit.instanceId,
         });
         const rendu = restoreStructureResistanceAfterLoss(nextState, attackerPlayer.id, attackerUnit.instanceId, attackerDamageResult.amountApplied, etat.turnNumber);
         nextState = rendu.state;

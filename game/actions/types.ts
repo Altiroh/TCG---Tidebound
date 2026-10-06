@@ -86,6 +86,8 @@ export interface BreakObjectAction {
   targetInstanceId?: string;
   /** Requis si l'effet de bris de cet Objet est `moveGraveyardCardToHand` ET qu'au moins une carte éligible existe dans la défausse (ex: Grappin de Récupération). */
   chosenGraveyardInstanceId?: string;
+  /** Objet « Chaîne » (Lot 17) : la modification choisie pour le jet en cours, parmi celles de son texte (« +1 ou -1 »). */
+  dieDelta?: number;
 }
 
 /**
@@ -201,7 +203,17 @@ export interface ResolveChoiceAction {
     /** Réponse à « choisissez une couleur » (Lot 15). */
     | { color: ChromaticColor }
     /** Réponse au regard de la pioche adverse : la laisser dessus, ou la placer dessous (Éclaireur à Cornes). */
-    | { deckTop: "keep" | "bottom" };
+    | { deckTop: "keep" | "bottom" }
+    /**
+     * Jet de dé en cours (Lot 17, `DieRollChoice`) : garder l'un des deux dés
+     * tirés (`dieKeep`), prendre la relance de Lande (`dieReroll`), ajuster
+     * par une carte en jeu (`dieAdjust`), ou fermer la Chaîne (`dieResolve`).
+     * Les Objets « Chaîne » passent, eux, par `breakObject`.
+     */
+    | { dieKeep: number }
+    | { dieReroll: true }
+    | { dieAdjust: { sourceInstanceId: string; delta: number } }
+    | { dieResolve: true };
 }
 
 /**

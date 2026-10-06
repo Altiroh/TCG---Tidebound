@@ -261,6 +261,24 @@ export const SHIP_SET: ShipDefinition[] = [
     },
   },
   {
+    // Navire du Lot 17 (Notion « Lot 17 — Dungeon et Ladalle / Opalins »,
+    // 05/10/2026). Statistiques « à définir » dans Notion : coque LOURDE
+    // retenue le 05/10/2026 (celle du Brise-Lames), pour un deck de grosses
+    // Créatures Opalines à 5 et plus.
+    id: "ile-tortue-opaline",
+    name: "Île-Tortue Opaline",
+    startingAnchor: 36,
+    reasonMax: 8,
+    slotCount: 6,
+    illustration: "ile-tortue-opaline.webp",
+    text: "Profil : lourd / Opalins / valeur récurrente.",
+    passiveText:
+      "La première carte Opaline coûtant 5 ou plus que vous jouez à chacun de vos tours coûte 1 de moins. " +
+      "La première fois qu'un Opalin arrive en jeu à chacun de vos tours, gagnez 1 Armure.",
+    firstArchetypeCardDiscountEachTurn: { archetype: "opalin", minCost: 5, amount: 1 },
+    armorOnFirstArchetypeArrivalEachTurn: { archetype: "opalin", amount: 1 },
+  },
+  {
     // Sixième Navire (demande du 24/09/2026). Une coque de verre : aucune
     // armure, mais une pointe qui touche PARTOUT. Stats de prototype —
     // celles de la coque moyenne (L'Errant, Le Goliath) — et ni passif ni

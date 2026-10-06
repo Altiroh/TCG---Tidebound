@@ -1,6 +1,7 @@
 import { chooseBotAction } from "@/game/bot/chooseAction";
 import type { BotDifficulty } from "@/game/bot/types";
 import { dispatch } from "@/game/engine";
+import { discardableHand } from "@/game/state/discard";
 import type { GameState, PlayerId } from "@/game/state/types";
 import type { PlayerAction } from "@/game/actions/types";
 
@@ -68,6 +69,11 @@ export function applyBotAction(state: GameState, playerId: PlayerId, action: Pla
             choice:
               state.pendingChoice.kind === "abilityOption"
                 ? { abilityIndex: state.pendingChoice.abilityIndexes[0] ?? 0 }
+                : state.pendingChoice.kind === "dieRoll"
+                  ? // Un jet se ferme toujours ; s'il attend un dé à garder, le premier.
+                    state.pendingChoice.candidates !== undefined
+                    ? { dieKeep: 0 }
+                    : { dieResolve: true as const }
                 : state.pendingChoice.kind === "pickUnits"
                   ? { pickInstanceIds: [] as string[] }
                 : state.pendingChoice.kind === "chromaticColor"
@@ -94,7 +100,7 @@ export function applyBotAction(state: GameState, playerId: PlayerId, action: Pla
                     {
                       discardInstanceIds: state.pendingChoice.atMost
                         ? []
-                        : (state.players.find((p) => p.id === playerId)?.hand ?? [])
+                        : discardableHand(state.players.find((p) => p.id === playerId)?.hand ?? [], state.pendingChoice)
                             .slice(0, state.pendingChoice.count)
                             .map((card) => card.instanceId),
                     }

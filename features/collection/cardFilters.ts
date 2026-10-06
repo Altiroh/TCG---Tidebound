@@ -1,6 +1,6 @@
 import type { CardDefinition, CardType } from "@/game";
 
-export const TYPE_FILTERS: CardType[] = ["marin", "creature", "equipement", "structure", "objet", "anomalie"];
+export const TYPE_FILTERS: CardType[] = ["marin", "creature", "equipement", "structure", "objet", "anomalie", "lande"];
 
 /**
  * `name`/`cost`/`power` sont les tris historiques, partagés avec l'éditeur

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { deckLookRefusal, getCardDefinition, isDeckLookTakeable, type CardInstance, type DeckLookChoice } from "@/game";
+import { deckLookRefusal, deckLookSelectionFits, deckLookTakeLimit, getCardDefinition, isDeckLookTakeable, type CardInstance, type DeckLookChoice } from "@/game";
 import { CARD_TYPE_LABELS } from "@/features/match/cardDisplay";
 import { CardCarousel } from "@/features/match/CardCarousel";
 import { CarouselPromptFrame } from "@/features/match/CarouselPromptFrame";
@@ -45,7 +45,9 @@ interface DeckLookPromptProps {
  */
 export function DeckLookPrompt({ choice, onConfirm, onRefuse }: DeckLookPromptProps) {
   const [selected, setSelected] = useState<string[]>([]);
-  const ordonnable = choice.zone !== "graveyard" && choice.restTo === "deckTopChosenOrder";
+  const sousLaPioche = choice.restTo === "deckBottomChosenOrder";
+  const ordonnable = choice.zone !== "graveyard" && (choice.restTo === "deckTopChosenOrder" || sousLaPioche);
+  const limite = deckLookTakeLimit(choice);
   // Ordre des cartes remises : celui où elles étaient, tant que le joueur n'y touche pas.
   const [ordre, setOrdre] = useState<string[]>(() => choice.revealed.map((c) => c.instanceId));
   const rendues = ordre.filter((id) => !selected.includes(id));
@@ -74,6 +76,7 @@ export function DeckLookPrompt({ choice, onConfirm, onRefuse }: DeckLookPromptPr
   /** Ce que le texte demande, pour dire pourquoi une carte ne se prend pas. */
   function raison(card: CardInstance): string | null {
     const refus = deckLookRefusal(choice, card);
+    if (refus === "type" && choice.takeGroups) return "Ce texte ne permet pas de prendre une carte de ce type.";
     if (refus === "type") return `Ce texte ne permet de prendre que : ${choice.takeableCardTypes!.map((t) => CARD_TYPE_LABELS[t]).join(", ")}.`;
     if (refus === "archetype") return "Ce texte ne permet de prendre qu'une carte de cette famille.";
     if (refus === "color") return "Ce texte ne permet de prendre qu'une carte de cette couleur.";
@@ -88,26 +91,29 @@ export function DeckLookPrompt({ choice, onConfirm, onRefuse }: DeckLookPromptPr
       if (current.includes(card.instanceId)) return current.filter((id) => id !== card.instanceId);
       // Une carte de trop chasse la plus ancienne, comme à la défausse :
       // sélectionner reste un geste, jamais une erreur à corriger.
-      const next = [...current, card.instanceId];
-      return next.length > choice.take ? next.slice(next.length - choice.take) : next;
+      let next = [...current, card.instanceId];
+      // Paniers (Banquet ancestral) : on lâche les plus anciennes tant que la sélection ne tient pas.
+      const cartes = (ids: string[]) => ids.map((id) => choice.revealed.find((c) => c.instanceId === id)!);
+      while (next.length > 1 && (next.length > limite || !deckLookSelectionFits(choice, cartes(next)))) next = next.slice(1);
+      return next;
     });
   }
 
   const aucunePrenable = choice.revealed.every((c) => !prenable(c.instanceId));
-  const complete = selected.length === choice.take || (choice.refusable && selected.length > 0);
+  const complete = selected.length === limite || (choice.refusable && selected.length > 0);
 
   return (
     <CarouselPromptFrame
       ariaLabel={depuisCimetiere ? "Reprendre une carte de son Cimetière" : "Regarder le dessus de sa pioche"}
       eyebrow={depuisCimetiere ? "Ton Cimetière" : "Dessus de ta pioche"}
-      title={choice.take > 1 ? `Prends jusqu'à ${choice.take} cartes` : "Prends une carte"}
+      title={limite > 1 ? `Prends jusqu'à ${limite} cartes` : "Prends une carte"}
       description={
         depuisCimetiere
           ? "Les autres restent dans ton Cimetière."
           : ordonnable
             ? aucunePrenable
-              ? "Aucune de ces cartes ne correspond : elles retournent toutes au-dessus de ta pioche, dans l'ordre choisi ci-dessous."
-              : "Les autres retournent au-dessus de ta pioche, dans l'ordre choisi ci-dessous."
+              ? `Aucune de ces cartes ne correspond : elles retournent toutes ${sousLaPioche ? "sous" : "au-dessus de"} ta pioche, dans l'ordre choisi ci-dessous.`
+              : `Les autres retournent ${sousLaPioche ? "sous" : "au-dessus de"} ta pioche, dans l'ordre choisi ci-dessous.`
             : aucunePrenable
               ? "Aucune de ces cartes ne correspond : elles repassent toutes sous ta pioche."
               : "Les autres repassent sous ta pioche, dans l'ordre."
@@ -115,7 +121,7 @@ export function DeckLookPrompt({ choice, onConfirm, onRefuse }: DeckLookPromptPr
       status={
         selected.length > 0
           ? selected.map((id) => getCardDefinition(choice.revealed.find((c) => c.instanceId === id)!.cardId).name).join(", ")
-          : `${selected.length} / ${choice.take} sélectionnée${choice.take > 1 ? "s" : ""}`
+          : `${selected.length} / ${limite} sélectionnée${limite > 1 ? "s" : ""}`
       }
       actions={
         <>
@@ -147,12 +153,12 @@ export function DeckLookPrompt({ choice, onConfirm, onRefuse }: DeckLookPromptPr
         emptyLabel={depuisCimetiere ? "Ton Cimetière est vide." : "Ta pioche est vide."}
       />
       {ordonnable && rendues.length > 1 && (
-        <ol aria-label="Ordre des cartes remises sur ta pioche" className="mx-auto mt-3 flex max-w-md flex-col gap-1 text-sm text-slate-200">
+        <ol aria-label={sousLaPioche ? "Ordre des cartes remises sous ta pioche" : "Ordre des cartes remises sur ta pioche"} className="mx-auto mt-3 flex max-w-md flex-col gap-1 text-sm text-slate-200">
           {rendues.map((id, index) => {
             const carte = choice.revealed.find((c) => c.instanceId === id)!;
             return (
               <li key={id} className="flex items-center gap-2 rounded bg-white/5 px-2 py-1">
-                <span className="w-16 shrink-0 text-xs text-slate-400">{index === 0 ? "Dessus" : `${index + 1}e`}</span>
+                <span className="w-16 shrink-0 text-xs text-slate-400">{index === 0 ? (sousLaPioche ? "1re dessous" : "Dessus") : `${index + 1}e`}</span>
                 <span className="flex-1 truncate">{getCardDefinition(carte.cardId).name}</span>
                 <button
                   type="button"

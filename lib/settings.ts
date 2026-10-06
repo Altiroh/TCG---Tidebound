@@ -99,15 +99,9 @@ export interface InterfaceSettings {
    * compte (`RewardShortcuts`). Oui par défaut (décision du 25/09/2026).
    */
   rewardShortcuts: boolean;
-  /**
-   * Nouveau cadre de carte (test du 03/10/2026) : illustration plein cadre,
-   * scintillement des légendaires, reflet des Abyssales. Non par défaut —
-   * le joueur compare en jeu avant qu'on tranche.
-   */
-  nouveauCadre: boolean;
 }
 
-const INTERFACE_DEFAULTS: InterfaceSettings = { rewardShortcuts: true, nouveauCadre: false };
+const INTERFACE_DEFAULTS: InterfaceSettings = { rewardShortcuts: true };
 const INTERFACE_KEY = "tidebound:interface-settings";
 let interfaceCached: InterfaceSettings | null = null;
 const interfaceListeners = new Set<() => void>();
@@ -120,7 +114,6 @@ function readInterface(): InterfaceSettings {
     const parsed = JSON.parse(window.localStorage.getItem(INTERFACE_KEY) ?? "null") as Partial<InterfaceSettings> | null;
     interfaceCached = {
       rewardShortcuts: typeof parsed?.rewardShortcuts === "boolean" ? parsed.rewardShortcuts : INTERFACE_DEFAULTS.rewardShortcuts,
-      nouveauCadre: typeof parsed?.nouveauCadre === "boolean" ? parsed.nouveauCadre : INTERFACE_DEFAULTS.nouveauCadre,
     };
   } catch {
     // Stockage indisponible ou JSON corrompu : valeurs par défaut.

@@ -501,14 +501,15 @@
   color: #8fe8f7;
 }
 
-/* Les icônes de type retrouvent leur encre (sur panneau clair) ; blanches sur la ligne cochée. */
+/* Les icônes de type : glyphes BLANCS du nouveau cadre (`typeGlyphUrl`),
+   posés dans l'écusson sombre de la ligne — aucun filtre. */
 .left [class*="_filterIcon__"] {
   filter: none;
   opacity: 0.85;
 }
 
 .left [class*="_filterRowActive__"] [class*="_filterIcon__"] {
-  filter: invert(1) brightness(1.7);
+  filter: none;
   opacity: 1;
 }
 
@@ -958,11 +959,12 @@
   font-size: calc(clamp(11px, 1.35vh, 12.5px) * var(--tb-text-scale));
 }
 
+/* Glyphe blanc du nouveau cadre (`typeGlyphUrl`), teinté au parchemin du tableau. */
 .typeTable img {
   width: 14px;
   height: 14px;
   object-fit: contain;
-  filter: invert(0.85) sepia(0.4);
+  filter: sepia(0.6) brightness(0.95);
 }
 
 .typeTable strong {
@@ -1118,15 +1120,15 @@
   max-height: 4.2em;
 }
 
-/* Icônes du tableau des types : l'encre sombre des icônes passe au laiton clair sur le bois. */
+/* Icônes du tableau des types : le glyphe BLANC du nouveau cadre, teinté
+   au laiton clair sur le bois — sans inversion, il est déjà clair. */
 .typeTable img {
-  filter: invert(1) sepia(0.7) saturate(1.6) brightness(0.95);
+  filter: sepia(0.7) saturate(1.6) brightness(0.95);
 }
 /* Une seule marque par ligne, comme la maquette : l'écusson de la case.
-   Les petites étiquettes écrites des types (« MARIN ») feraient doublon. */
-.left [class*="_filterIcon__"] {
-  display: none;
-}
+   Les anciens bandeaux écrits (« MARIN ») y faisaient doublon avec le
+   libellé et restaient masqués ; le glyphe seul du nouveau cadre, lui, s'y
+   loge (règle `_filterMedallion__` plus bas). */
 
 /* Maquette : les colonnes vont presque au bord de l'écran, la grille presque
    au cadre — c'est ce qui laisse aux cartes leur taille (≈ 165 px en 1672). */
@@ -1307,8 +1309,8 @@
 }
 
 .left [class*="_filterMedallion__"] [class*="_filterIcon__"] {
-  height: 10px;
-  filter: invert(1) brightness(1.8);
+  height: 11px;
+  filter: none;
   opacity: 1;
 }
 

@@ -21,6 +21,7 @@ import type { EffectDefinition } from "@/game/effects/types";
 import type { TriggerType } from "@/game/triggers/types";
 
 type RuleId =
+  | "lande"
   | "once-per-turn"
   | "once-ever"
   | "optional"
@@ -57,6 +58,12 @@ type RuleId =
 // Dérive, Sabordée d'office au changement de Marée — avait disparu avec la
 // fenêtre `onTideAnnounced`.
 const EXCEPTIONS: Record<string, string> = {
+  "miss-franche-comte-1987-roublarde-aux-des-pipes:optional":
+    "« Vous pouvez ajouter ou retirer 1 » est une OPTION offerte pendant le jet (`dieAdjustOncePerTurn`) : le " +
+    "jet reste ouvert, le joueur choisit +1, -1 ou de valider sans rien changer. Rien ne s'applique d'office.",
+  "le-donjon-de-ladalle:optional":
+    "« Vous pouvez relancer » est une option du jet ouvert (`firstRollRerollEachTurn` de la Lande) : le joueur " +
+    "relance ou garde son résultat ; rien ne se relance d'office.",
   "bete-de-halage:optional":
     "Le remplacement se décide AU MILIEU de l'effet adverse qui renvoie ou détruit la Bête, là où aucune fenêtre " +
     "de réaction ne peut s'ouvrir. Il est appliqué d'office, une fois par tour : refuser reviendrait à perdre " +
@@ -95,12 +102,18 @@ const TIDE_WORDS: Array<[RegExp, "calme" | "houle" | "tempete" | "abysses"]> = [
 ];
 
 function allEffects(def: CardDefinition): EffectDefinition[] {
-  return [
+  const racines = [
     ...(def.onPlayEffects ?? []),
     ...(def.onBreakEffects ?? []),
     ...(def.abilities ?? []).flatMap((a) => a.effects),
     ...(def.activatableOncePerTurn?.effects ?? []),
   ];
+  // Les branches d'un jet de dé (« Réussite critique : … ») réalisent elles aussi le texte.
+  const avecBranches = (e: EffectDefinition): EffectDefinition[] => [
+    e,
+    ...(e.dieBranches ?? []).flatMap((b) => b.effects.flatMap(avecBranches)),
+  ];
+  return racines.flatMap(avecBranches);
 }
 
 function triggers(def: CardDefinition): TriggerType[] {
@@ -297,8 +310,34 @@ function check(def: CardDefinition): Violation[] {
     if (/cr[ée]ature/.test(target) && types.length > 0 && !types.includes("creature")) push("equip", "« Équipez une Créature » mais `equipTargetTypes` exclut les Créatures");
   }
 
+  // --- Lande ---------------------------------------------------------------
+  // Sa durée se compte en TOURS DE TABLE (`lande.durationTableTurns`), pas en
+  // tours de son contrôleur (`durationTurns`) ; ses règles sont des données
+  // de `lande`, relues par le moteur tant qu'elle est en jeu.
+  if (def.type === "lande") {
+    const rules = def.lande;
+    if (!rules) push("lande", "Lande sans règles `lande`");
+    const tableTurns = /Dur[ée]e\s*:\s*(\d+)\s*tours? de table/i.exec(text);
+    if (!tableTurns) push("lande", "Lande sans « Durée : N tours de table »");
+    else if (rules?.durationTableTurns !== Number(tableTurns[1])) {
+      push("lande", `« ${tableTurns[1]} tours de table » mais lande.durationTableTurns = ${rules?.durationTableTurns ?? "absent"}`);
+    }
+    if (def.durationTurns !== undefined) push("lande", "une Lande compte en tours de table : `durationTurns` ne s'y applique pas");
+    if (/perdent Garde/i.test(text) !== Boolean(rules?.removesKeywords?.includes("garde"))) {
+      push("lande", "« perdent Garde » et `lande.removesKeywords` ne disent pas la même chose");
+    }
+    const cap = /ne peut invoquer qu'un seul Marin ou une seule Cr[ée]ature par tour/i.test(text);
+    if (cap !== (rules?.unitArrivalsPerTurn === 1)) push("lande", "limite d'invocation du texte ≠ `lande.unitArrivalsPerTurn`");
+    const hit = /fin de chaque tour de table, tous les permanents en jeu subissent (\d+) d[ée]g[âa]ts?/i.exec(text);
+    if ((hit ? Number(hit[1]) : undefined) !== rules?.damageAllPermanentsEachTableTurn) {
+      push("lande", "dégâts de fin de tour de table du texte ≠ `lande.damageAllPermanentsEachTableTurn`");
+    }
+  } else if (def.lande) {
+    push("lande", "règles `lande` sur une carte qui n'est pas une Lande");
+  }
+
   // --- Durée / visibilité --------------------------------------------------
-  const duration = /(?:Dur[ée]e\s*:|Pendant)\s*(\d+)\s*tours?/i.exec(text);
+  const duration = def.type === "lande" ? null : /(?:Dur[ée]e\s*:|Pendant)\s*(\d+)\s*tours?/i.exec(text);
   if (duration && def.durationTurns !== Number(duration[1])) {
     push("duration", `« Durée : ${duration[1]} tours » mais durationTurns = ${def.durationTurns ?? "absent"}`);
   }
@@ -357,7 +396,8 @@ function check(def: CardDefinition): Violation[] {
       def.equipGrantsKeywords?.includes("garde") ||
       grants.includes("garde") ||
       effects.some((e) => e.removeKeywords?.includes("garde")) ||
-      def.bonusDamageVsKeyword?.keyword === "garde";
+      def.bonusDamageVsKeyword?.keyword === "garde" ||
+      Boolean(def.lande?.removesKeywords?.includes("garde"));
     if (!ok) push("keyword", "« Garde » cité sans mot-clé statique, conditionnel, transmis par Équipement ni accordé");
   }
   if (/\bRu[ée]e\b/.test(text)) push("pied-marin", "« Ruée » est proscrit : le mot-clé s'appelle « Pied marin »");

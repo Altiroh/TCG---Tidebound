@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { getCardDefinition, type CardInstance, type HandDiscardChoice } from "@/game";
+import { discardableHand, getCardDefinition, type CardInstance, type HandDiscardChoice } from "@/game";
 import { CardCarousel } from "@/features/match/CardCarousel";
 import { CarouselPromptFrame } from "@/features/match/CarouselPromptFrame";
 
@@ -95,7 +95,7 @@ export function HandDiscardPrompt({ choice, hand, onConfirm, onRefuse }: HandDis
         </>
       }
     >
-      <CardCarousel cards={hand} selectedInstanceIds={selected} onSelect={toggle} emptyLabel="Ta main est vide." />
+      <CardCarousel cards={discardableHand(hand, choice)} selectedInstanceIds={selected} onSelect={toggle} emptyLabel="Ta main est vide." />
     </CarouselPromptFrame>
   );
 }

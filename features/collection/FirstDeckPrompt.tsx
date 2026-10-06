@@ -8,6 +8,7 @@ import { chooseFreePreconDeck } from "@/features/decks/catalogActions";
 import { Dialog } from "@/features/shell/Dialog";
 import { shipNameOf } from "@/features/ships/ShipPortrait";
 import { ArtPlate } from "@/features/shell/ArtPlate";
+import { DifficultyStars } from "@/features/shell/GameIcons";
 import { nameplateArtUrl } from "@/features/decks/nameplateArt";
 import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/decks/DeckCatalog.module.css";
@@ -15,10 +16,6 @@ import { playButtonClick } from "@/lib/sound";
 
 interface FirstDeckPromptProps {
   catalog: DeckCatalogView;
-}
-
-function difficultyStars(difficulty: number): string {
-  return "★".repeat(difficulty) + "☆".repeat(Math.max(0, 5 - difficulty));
 }
 
 /**
@@ -77,7 +74,7 @@ export function FirstDeckPrompt({ catalog }: FirstDeckPromptProps) {
             </ArtPlate>
             <div className={styles.tileBody}>
               <span className={styles.tileStyle}>
-                {shipNameOf(deck.shipId)} · <span className={styles.difficulty}>{difficultyStars(deck.difficulty)}</span>
+                {shipNameOf(deck.shipId)} · <DifficultyStars value={deck.difficulty} className={styles.difficulty} />
               </span>
               <span className={styles.tileStyle}>{deck.style}</span>
               <ul className={styles.mechanics}>

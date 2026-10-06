@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getCardDefinition, type GameState, type PlayerId } from "@/game";
+import { discardableHand, getCardDefinition, type GameState, type PlayerId } from "@/game";
 import type { ChoiceBannerAction } from "@/features/match/ChoiceBanner";
 
 /** Ce que le plateau doit savoir pendant une défausse depuis la main. */
@@ -10,6 +10,8 @@ export interface HandLimitDiscardMode {
   count: number;
   /** Déjà glissées au Cimetière, pas encore envoyées au moteur (défausse de plusieurs cartes). */
   staged: ReadonlySet<string>;
+  /** Cartes que l'effet vient de faire piocher : elles restent en main, hors d'atteinte. */
+  locked: ReadonlySet<string>;
   /** Une carte de la main vient d'être lâchée sur le Cimetière. */
   onDiscard: (instanceId: string) => void;
 }
@@ -54,7 +56,7 @@ export function useHandLimitDiscard(state: GameState, viewerId: PlayerId, submit
 
   if (!active || !stableKey) return { mode: null, banner: null as HandDiscardBanner | null };
 
-  const hand = state.players.find((p) => p.id === viewerId)?.hand ?? [];
+  const hand = discardableHand(state.players.find((p) => p.id === viewerId)?.hand ?? [], active);
   const remaining = active.count - staged.length;
   const optional = active.atMost === true || active.refusable;
 
@@ -66,8 +68,9 @@ export function useHandLimitDiscard(state: GameState, viewerId: PlayerId, submit
   const mode: HandLimitDiscardMode = {
     count: active.count,
     staged: new Set(staged),
+    locked: new Set(active.excludedInstanceIds ?? []),
     onDiscard: (instanceId) => {
-      if (staged.includes(instanceId)) return;
+      if (staged.includes(instanceId) || active.excludedInstanceIds?.includes(instanceId)) return;
       const next = [...staged, instanceId];
       if (next.length >= active.count) send({ discardInstanceIds: next });
       else setStaged(next);
@@ -92,7 +95,9 @@ export function useHandLimitDiscard(state: GameState, viewerId: PlayerId, submit
       : active.atMost
         ? `Glisse jusqu'à ${remaining} carte${plural} de ta main dans ton Cimetière.`
         : `Glisse ${remaining} carte${plural} de ta main dans ton Cimetière.`,
-    detail: optional ? "Sans réponse, l'effet ne s'applique pas." : "Sans réponse, la défausse se fait au hasard.",
+    detail: active.excludedInstanceIds?.length
+      ? `Pas la carte que tu viens de piocher. ${optional ? "Sans réponse, l'effet ne s'applique pas." : "Sans réponse, la défausse se fait au hasard."}`
+      : optional ? "Sans réponse, l'effet ne s'applique pas." : "Sans réponse, la défausse se fait au hasard.",
     actions,
     onExpire: () => {
       if (optional) {

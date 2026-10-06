@@ -537,3 +537,27 @@ textarea {
   0%, 100% { filter: var(--tb-notif-filter); transform: scale(1); }
   50% { filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.65)) drop-shadow(0 0 6px rgba(255, 200, 90, 0.95)); transform: scale(1.1); }
 }
+
+/* Tutoriel : halo posé SUR l'élément désigné (`features/tutorial/useAnchorRect.ts`).
+   Contour et lueur de l'élément lui-même : il suit la carte au pixel et
+   passe sous le gros plan d'une carte survolée. */
+[data-tuto-halo] {
+  outline: 2px solid var(--tb-accent-bright, #5fd0e6);
+  outline-offset: 3px;
+  animation: tbTutoHalo 1.6s ease-in-out infinite;
+}
+
+/* Médaillons et hublots ronds : le halo épouse leur forme. */
+[data-tuto-halo][data-reason-gauge],
+[data-tuto-halo][data-ship-ability] {
+  border-radius: 50%;
+}
+
+@keyframes tbTutoHalo {
+  0%, 100% { box-shadow: 0 0 10px 2px rgba(95, 208, 230, 0.35); outline-color: rgba(95, 208, 230, 0.75); }
+  50% { box-shadow: 0 0 22px 6px rgba(95, 208, 230, 0.6); outline-color: rgba(150, 236, 250, 1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-tuto-halo] { animation: none; box-shadow: 0 0 14px 3px rgba(95, 208, 230, 0.45); }
+}

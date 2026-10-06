@@ -45,7 +45,7 @@ export interface ChromaticIdentity {
  * leur effet. Briser ≠ Saborder : ça ne déclenche ni `onDeath` ni
  * `onSaborde` sauf texte contraire.
  */
-export type CardType = "marin" | "creature" | "equipement" | "structure" | "objet" | "anomalie";
+export type CardType = "marin" | "creature" | "equipement" | "structure" | "objet" | "anomalie" | "lande";
 
 /** Types de carte considérés comme des unités (peuvent occuper un Slot de combat, attaquer). */
 export const UNIT_CARD_TYPES: readonly CardType[] = ["marin", "creature"];
@@ -86,6 +86,8 @@ export interface TriggerSourceFilter {
   cardIds?: string[];
   /** Ou porte ce SOUS-TYPE (ex: "marionnette" — Lot 11, qui raisonne en sous-type et non en archétype). */
   subtype?: string;
+  /** Coût IMPRIMÉ minimal (« la première unité coûtant 5 ou plus que vous jouez », Lot 17). */
+  minCost?: number;
   /** Ou est de l'un de ces TYPES de carte (ex: "quand une Structure est détruite" — Mécanicien aux Mains Noires). */
   cardTypes?: CardType[];
   /** Le déclencheur doit être contrôlé par le contrôleur de la capacité. Défaut : `true`. */
@@ -465,6 +467,25 @@ export interface TriggeredAbility {
      */
     duringOpponentTurn?: boolean;
     /**
+     * FAITS DE JOUEUR (Lot 17 — `onArmorGained`, `onDieResolved`,
+     * `onCardPutUnderDeck`, `onExtraCardDrawn`, `onCardLeftGraveyard`,
+     * `onLandePlaced`) : de QUI le fait doit être. `"self"` (défaut) : le
+     * contrôleur de la capacité ; `"opponent"` : son adversaire (« la
+     * première fois que l'adversaire pioche… ») ; `"any"` : l'un ou l'autre
+     * (« la première fois qu'une Lande arrive en jeu »).
+     */
+    factOf?: "self" | "opponent" | "any";
+    /** `onDieResolved` : issues qui déclenchent (« Réussite critique », « Échec critique », « vous avantage »). */
+    dieOutcomes?: import("@/game/triggers/types").DieOutcome[];
+    /** « si une Lande est active » (Lot 17) : la capacité ne se déclenche que si une Lande est en jeu. */
+    landeActive?: boolean;
+    /** « S'il entre en jeu par l'effet de [carte] » (Lot 17 — lignée LV) : la porteuse est arrivée en remplaçant cette carte. */
+    selfArrivedVia?: string;
+    /** La porteuse a été MARQUÉE ce tour par `flagThisTurn` (« lorsqu'il attaque ce tour », après une Réussite critique). */
+    selfFlaggedThisTurn?: string;
+    /** « si vous contrôlez une carte [étiquette] » (Lot 17 — « une carte LV »). */
+    controlsTag?: string;
+    /**
      * « si vous contrôlez au moins N autres unités » (Le Déserteur Gris) :
      * compte les UNITÉS du contrôleur, la porteuse exclue.
      */
@@ -524,6 +545,12 @@ export interface TriggeredAbility {
    * (Colombina) repropose le choix.
    */
   choiceGroup?: string;
+  /**
+   * « Choisissez N effets DIFFÉRENTS » (Lot 17 — Eidolon Opalin LVX) : la
+   * question du `choiceGroup` (automatique) se repose jusqu'à N fois, sans
+   * les options déjà prises. Lu sur la première capacité du groupe.
+   */
+  choiceGroupPicks?: number;
   /**
    * "auto" (défaut) : résolution automatique par le moteur, aucune
    * décision du joueur (Notion "Moteur de partie", "Effets déclenchés
@@ -616,9 +643,18 @@ export interface CardDefinition {
   /**
    * Famille de cartes à laquelle appartient cette carte
    * (`game/cards/archetypes.ts`). Lue par le moteur pour compter/cibler
-   * les membres d'un archétype ; JAMAIS affichée sur la carte.
+   * les membres d'un archétype. Affichée DISCRÈTEMENT sur la face, sous la
+   * ligne de type, pour toutes les familles (décision du 06/10/2026).
    */
   archetype?: ArchetypeId;
+
+  /**
+   * Famille conçue pour se reconnaître (Notion, Catalogue, 05/10/2026 :
+   * les Opalins). Depuis le 06/10/2026, toutes les familles s'affichent
+   * sous le type : ce marqueur ne change plus le rendu, il garde la trace
+   * de cette intention de design.
+   */
+  showsArchetype?: boolean;
 
   /**
    * Carte JETON (Péon) : créée uniquement par un effet d'invocation, jamais
@@ -679,6 +715,8 @@ export interface CardDefinition {
      * revendiquées compris (`controlledChromaticColors`).
      */
     controllerChromaticColorsAtLeast?: number;
+    /** « Ne peut être joué normalement que si vous contrôlez une unité [famille] » (Eidolon Opalin LV5, Lot 17). */
+    controlsArchetypeUnit?: import("@/game/cards/archetypes").ArchetypeId;
   };
 
   /**
@@ -1275,6 +1313,62 @@ export interface CardDefinition {
   activatableOncePerTurn?: { cost: { reason?: number }; effects: EffectDefinition[] };
 
   /**
+   * Pour une Lande UNIQUEMENT (`type: "lande"`) : ce qu'elle change aux
+   * règles de la partie tant qu'elle est en jeu (`game/rules/lande.ts`).
+   * Une Lande n'occupe aucun Slot : elle se pose dans l'emplacement PARTAGÉ
+   * du centre du plateau (`EnvironmentState.lande`), un seul pour les deux
+   * joueurs, et ses règles valent pour les deux camps.
+   */
+  lande?: LandeRules;
+
+  // --- DÉS (Lot 17, `game/rules/dice.ts`) ------------------------------
+
+  /**
+   * LIGNÉE LV (Lot 17, `game/rules/levels.ts`) : à `markers` marqueurs
+   * Niveau, la carte est REMPLACÉE par `into`, prise dans la main de son
+   * propriétaire, sinon dans sa pioche. Elle part au Cimetière ; la nouvelle
+   * arrive à sa place (`arrivedViaCardId`). Sans exemplaire disponible, rien
+   * ne se passe et les marqueurs restent.
+   */
+  levelUp?: { markers: number; into: CardId };
+  /**
+   * « Ne peut entrer en jeu que par l'effet de … » (Eidolon Opalin LVX) :
+   * la carte ne se joue pas depuis la main.
+   */
+  cannotBePlayed?: boolean;
+
+  /** Le dé de la carte (« · D6 ») : celui que lancent ses effets `rollDie`. */
+  die?: 4 | 6 | 8;
+  /**
+   * « Chaîne — Brisez : … » : cet Objet ne se Brise que PENDANT un jet de dé
+   * de son contrôleur (`DieRollChoice`), avant sa résolution — même hors de
+   * sa Phase principale. Ses effets de Bris agissent sur le jet en cours.
+   */
+  chaine?: boolean;
+  /**
+   * « Une fois par tour, après l'un de vos jets, modifiez son résultat de +1
+   * ou -1 » (Miss Franche-Comté 1987) : capacité EN JEU, utilisable pendant
+   * un jet de son contrôleur. `extraUseOnCriticalSuccess` : si le jet ajusté
+   * devient une Réussite critique, une utilisation de plus ce tour.
+   * `ifCriticalFailure` : effets (source : la carte) si le jet ajusté
+   * devient un Échec critique.
+   */
+  dieAdjustOncePerTurn?: { amount: number; extraUseOnCriticalSuccess?: boolean; ifCriticalFailure?: import("@/game/effects/types").EffectDefinition[] };
+  /**
+   * « Si [Lande] est active, la première relance que vous effectuez à chacun
+   * de vos tours gagne +N » (Maître de Ladalle).
+   */
+  rerollBonusWhileLande?: { landeCardId: string; bonus: number };
+  /**
+   * « La première carte que vous rejouez depuis votre main après qu'elle y
+   * soit revenue à chacun de vos tours coûte N de moins » (Campement
+   * provisoire, Lot 17) — tant que cette carte est en jeu.
+   */
+  replayedCardDiscount?: number;
+  /** « Tant qu'une Lande est active, il gagne +A/+B » (Gardien des Balises, Lot 17). */
+  selfBuffWhileLandeActive?: { attackAmount?: number; healthAmount?: number };
+
+  /**
    * Nombre maximum d'exemplaires de cette carte dans un deck personnel —
    * donnée propre à chaque carte, jamais dérivée de la rareté (cadrage
    * `TCG_DATABASE.md` "max_copies canonique"). Défaut : 3.
@@ -1283,6 +1377,65 @@ export interface CardDefinition {
 }
 
 export const DEFAULT_MAX_COPIES = 3;
+
+/**
+ * Règles d'une Lande (`CardDefinition.lande`). Chaque champ est une
+ * primitive GÉNÉRIQUE, relue par le moteur tant que la Lande est en jeu —
+ * jamais un branchement sur l'identifiant d'une carte.
+ *
+ * Cycle de vie (`game/rules/lande.ts`) : jouer une Lande remplace celle déjà
+ * en jeu, qui part au Cimetière de SON propriétaire. Elle reste
+ * `durationTableTurns` tours de table — comptés à partir de sa pose, en
+ * tours de joueur deux par deux —, puis part au Cimetière de son
+ * propriétaire.
+ */
+export interface LandeRules {
+  /** « Durée : N tours de table ». */
+  durationTableTurns: number;
+  /**
+   * « Les permanents perdent Garde » (Pluie corrosive) : mots-clés retirés
+   * à TOUS les permanents, des deux camps, tant que la Lande est en jeu. Lu
+   * par `hasKeywordInContext` : le retrait l'emporte sur tout octroi.
+   */
+  removesKeywords?: string[];
+  /**
+   * « Chaque joueur ne peut invoquer qu'un seul Marin ou une seule Créature
+   * par tour. Aucun effet ne peut dépasser cette limite. » (Chaîne de
+   * construction) : nombre maximal d'unités qui arrivent en jeu sous le
+   * contrôle d'un même joueur pendant un même tour — jouées depuis la main
+   * OU invoquées par un effet, jetons compris. Une carte au-delà ne se joue
+   * pas ; un effet au-delà n'invoque que ce qui reste permis.
+   */
+  unitArrivalsPerTurn?: number;
+  /**
+   * « À la fin de chaque tour de table, tous les permanents en jeu
+   * subissent N dégâts » (Vallée de verre) : dégâts d'effet de la Lande,
+   * à tous les permanents dotés de Résistance, des deux camps.
+   */
+  damageAllPermanentsEachTableTurn?: number;
+  /**
+   * « La première fois que vous lancez un dé à chacun de vos tours, vous
+   * pouvez le relancer. Vous devez garder le nouveau résultat. » (Le Donjon
+   * de Ladalle, Lot 17) — pour les deux joueurs, comme toute Lande.
+   */
+  firstRollRerollEachTurn?: boolean;
+  /**
+   * « La première unité coûtant N ou moins que chaque joueur joue à son tour
+   * gagne +A/+B » (Calme trompeur, Lot 17).
+   */
+  firstCheapUnitEachTurnBuff?: { maxCost: number; attack: number; health: number };
+  /**
+   * « La première carte que vous rejouez depuis votre main après qu'elle y
+   * soit revenue à chacun de vos tours coûte 1 de moins » (Terres inconnues,
+   * Lot 17) — pour les deux joueurs.
+   */
+  replayedCardDiscount?: number;
+}
+
+/** La carte est-elle une Lande ? */
+export function isLandeCard(def: CardDefinition): boolean {
+  return def.type === "lande";
+}
 
 /**
  * Statut "MALADE" (Notion "Moteur de partie", section "Malus globaux des
@@ -1320,7 +1473,9 @@ export type GraveyardCause =
   | "scuttled"
   | "expired"
   /** Placée au Cimetière pour un Assemblage Chromatique : ni détruite, ni Sabordée (Lot 15). */
-  | "assembled";
+  | "assembled"
+  /** Lande chassée par une autre Lande : ni détruite, ni expirée. */
+  | "replaced";
 
 /**
  * COMMENT une carte a quitté le plateau — plus fin que `GraveyardCause`, qui
@@ -1405,6 +1560,13 @@ export interface CardInstance {
   instanceId: string;
   cardId: CardId;
   ownerId: string;
+  /** Marqueurs Niveau posés sur cette carte en jeu (Lot 17 — lignée LV, `game/rules/levels.ts`). */
+  levelMarkers?: number;
+  /**
+   * La carte est arrivée en REMPLAÇANT celle-ci, par son effet de lignée
+   * (« S'il entre en jeu par l'effet d'Eidolon Opalin LV1… », Lot 17).
+   */
+  arrivedViaCardId?: CardId;
 
   /**
    * Dégâts marqués sur l'unité. Les statistiques effectives (attaque/vie,
@@ -1612,6 +1774,24 @@ export interface StatModifier {
    */
   silenced?: boolean;
   /**
+   * « ignorez cet effet pour ce permanent » (Zone de repli) : tant que ce
+   * modificateur tient, la Lande en jeu n'a pas prise sur la carte — elle
+   * garde ses mots-clés (`LandeRules.removesKeywords`), et le PREMIER coup
+   * de Lande qui la viserait (`damageAllPermanentsEachTableTurn`) est
+   * annulé, ce qui consomme le modificateur.
+   */
+  ignoresLande?: boolean;
+  /**
+   * « Son texte est ignoré jusqu'au début de votre prochain tour » (Lot 17 —
+   * Seren, Astel) : tant que ce modificateur tient, la carte n'a plus de
+   * TEXTE — ni capacité déclenchée ou activable, ni effet de Bris, ni bonus
+   * ou bouclier qu'elle porte. Elle garde son corps : Puissance, Résistance
+   * imprimées, et elle peut attaquer. Lu par `isTextIgnored`.
+   */
+  textIgnored?: boolean;
+  /** « Elle ne peut pas être renvoyée en main ce tour » (Sommeil de Pierre, Lot 17). */
+  preventsReturnToHand?: boolean;
+  /**
    * « elle perd Garde jusqu'à la fin du tour » (Bête de Percée, Débusquer) :
    * mots-clés RETIRÉS tant que le modificateur tient, quelle que soit leur
    * source (imprimés, conditionnels, transmis). Prioritaire sur tout octroi.
@@ -1654,4 +1834,9 @@ export const KEYWORD_INCIBLABLE = "inciblable";
 
 export function isAbyssalVariant(def: CardDefinition): boolean {
   return def.variant === "abyssale";
+}
+
+/** « Son texte est ignoré » (Lot 17) : un modificateur `textIgnored` tient sur cette carte. */
+export function isTextIgnored(unit: Pick<CardInstance, "modifiers">): boolean {
+  return unit.modifiers.some((m) => m.textIgnored);
 }

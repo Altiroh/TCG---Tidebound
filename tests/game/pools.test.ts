@@ -7,6 +7,7 @@ import {
   BOOSTER_POISSONS_PAS_FRAIS,
   BOOSTER_POOLS,
   BOOSTER_VEILLEE_DES_DISPARUS,
+  CARTES_HORS_POOLS,
   boostersContaining,
   PURCHASABLE_BOOSTER_IDS,
   unobtainableCardIds,
@@ -32,9 +33,15 @@ describe("pools de boosters", () => {
     // 01/10/2026 : Ce que la Marée Rend et Les Coulisses Inondées quittent
     // B3 (64 → 62). Passe de nettoyage du 02/10/2026 : 28 cartes retirées du
     // catalogue, sans remplaçant — B1 63 → 57, B2 65 → 54, B3 62 → 51.
-    expect(BOOSTER_POOLS[BOOSTER_DEFAUT]).toHaveLength(57);
-    expect(BOOSTER_POOLS[BOOSTER_POISSONS_PAS_FRAIS]).toHaveLength(54);
-    expect(BOOSTER_POOLS[BOOSTER_ETRANGETE_SOUS_MARINE]).toHaveLength(51);
+    // 05/10/2026 : Pluie corrosive (Lande) et Zone de repli rejoignent B1
+    // (57 → 59) ; Cartographe Opalin méfiant rejoint B3 (51 → 52).
+    // 06/10/2026 : les passerelles du Lot 17 sont redistribuées — 7 en B1
+    // (59 → 66), 2 en B2 (54 → 56), 1 en B3 (52 → 53). Audit du même jour :
+    // seules Carte détrempée, Calme trompeur (B1) et Aventurière en retard
+    // (B2) restent dans les pools — B1 61, B2 55, B3 52.
+    expect(BOOSTER_POOLS[BOOSTER_DEFAUT]).toHaveLength(61);
+    expect(BOOSTER_POOLS[BOOSTER_POISSONS_PAS_FRAIS]).toHaveLength(55);
+    expect(BOOSTER_POOLS[BOOSTER_ETRANGETE_SOUS_MARINE]).toHaveLength(52);
   });
 
   it("n'a que trois cartes passerelles ENTRE LES TROIS PREMIERS boosters, exactement celles que le cadrage nomme", () => {
@@ -116,6 +123,8 @@ describe("pools de boosters", () => {
     // Masse-Sombre — ABYSSALE en B3) : tout le catalogue est obtenable.
     // Une carte ajoutée sans booster échoue donc ici, au lieu de rester
     // inobtenable sans que rien ne le signale.
-    expect(unobtainableCardIds().sort()).toEqual([]);
+    //
+    // Seule exception, VOULUE et déclarée : `CARTES_HORS_POOLS`.
+    expect(unobtainableCardIds().sort()).toEqual([...CARTES_HORS_POOLS].sort());
   });
 });

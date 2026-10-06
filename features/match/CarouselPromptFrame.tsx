@@ -22,9 +22,10 @@ interface CarouselPromptFrameProps {
 }
 
 /**
- * Cadre commun des six invites à carrousel (`DeckLookPrompt`,
- * `HandDiscardPrompt`, `PickUnitsPrompt`, `KeepUnitsPrompt`,
- * `GraveyardPickPrompt`, `AssemblagePrompt`) : en-tête, rangée de grandes
+ * Cadre commun des invites à carrousel (`DeckLookPrompt`,
+ * `HandDiscardPrompt`, `GraveyardPickPrompt`, `AssemblagePrompt`) ; les
+ * désignations d'unités se font, elles, sur le plateau (`useBoardPick`,
+ * 05/10/2026) : en-tête, rangée de grandes
  * cartes, pied de validation. Même rendu qu'avant sur un écran de bureau ;
  * sur un téléphone couché, le pied reste visible quoi qu'il arrive — cf.
  * `CarouselPromptFrame.module.css`.

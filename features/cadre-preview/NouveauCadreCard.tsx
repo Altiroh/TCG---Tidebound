@@ -1,7 +1,9 @@
 "use client";
 
-import { isAbyssalVariant, type CardDefinition } from "@/game";
+import { ARCHETYPE_LABELS, isAbyssalVariant, type CardDefinition } from "@/game";
 import { CARD_TYPE_LABELS } from "@/features/match/cardDisplay";
+import { useLayoutEffect, useRef } from "react";
+import { useDebordPleinCadre } from "@/features/match/useDebordPleinCadre";
 import { useImageOk } from "@/features/match/useImageOk";
 import styles from "@/features/cadre-preview/NouveauCadreCard.module.css";
 
@@ -65,6 +67,11 @@ export function NouveauCadreFace({ def, legendaire = false, attack, health, atta
   const abyssale = isAbyssalVariant(def);
   const debord = abyssale ? `/assets/cards/illustrations/${def.id}-debord.webp` : null;
   const debordOk = useImageOk(debord);
+  const debordPlein = useDebordPleinCadre(debordOk ? debord : null);
+  const nomRef = useRef<HTMLHeadingElement>(null);
+  const effetRef = useRef<HTMLParagraphElement>(null);
+  useFitText(nomRef, def.name, nameSizeCqw(def.name), 6.5);
+  useFitText(effetRef, def.text ?? "", rulesSizeCqw(def.text ?? ""), 2.6, EFFET_LISIBLE_CQW);
 
   const cadre = frameName(def, legendaire);
   const calage = CALAGES[cadre];
@@ -96,7 +103,15 @@ export function NouveauCadreFace({ def, legendaire = false, attack, health, atta
       />
 
       {/* Couche 3 (Abyssales) : le sujet, qui déborde du liseré et se fond dans le voile en pied. */}
-      {abyssale && debordOk && debord && (
+      {abyssale && debordOk && debord && debordPlein === true && (
+        // Calque peint sur le canevas de l'illustration : il se pose exactement
+        // comme elle (même boîte, même cadrage), par-dessus le liseré.
+        <div className="pointer-events-none absolute" style={{ inset: "var(--illus-inset)" }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={debord} alt="" className={`h-full w-full object-cover ${styles.debord}`} draggable={false} />
+        </div>
+      )}
+      {abyssale && debordOk && debord && debordPlein === false && (
         // Il passe PAR-DESSUS le liseré, mais jamais hors de la carte : il est
         // contenu dans la silhouette extérieure du cadre.
         <div className="pointer-events-none absolute overflow-hidden" style={{ inset: calage.silhouette, borderRadius: calage.rayonSilhouette }}>
@@ -151,35 +166,49 @@ export function NouveauCadreFace({ def, legendaire = false, attack, health, atta
         >
           {CARD_TYPE_LABELS[def.type]}
         </span>
+        {/* La FAMILLE, discrète, juste sous le type (décision du 06/10/2026 :
+            toutes les familles, plus seulement les Opalins). */}
+        {def.archetype && (
+          <span
+            className="whitespace-nowrap italic leading-none [font-family:var(--font-card-title)]"
+            style={{ fontSize: "2.6cqw", letterSpacing: "0.03em", opacity: 0.72, marginTop: "-0.2cqw" }}
+          >
+            {ARCHETYPE_LABELS[def.archetype]}
+          </span>
+        )}
       </div>
 
       {/* Nom : ancré par le BAS juste au-dessus de la zone d'effet — même place
           sur toutes les cartes, deux lignes au plus, en Lora gras italique, légèrement incliné. */}
       <h3
+        ref={nomRef}
         className="absolute overflow-hidden text-white [font-family:var(--font-card-new-title)]"
         style={{
           left: "9%",
           right: "14%",
           bottom: `${100 - ZONE_EFFET_HAUT}%`,
+          // Deux lignes à la taille de base : un nom plus long RÉTRÉCIT pour y
+          // tenir (`useFitText`), il n'est jamais coupé de « … ».
+          height: `${NOM_HAUTEUR_CQW}cqw`,
           fontSize: `${nameSizeCqw(def.name)}cqw`,
           lineHeight: 1.05,
-          // Deux lignes au plus, et la place des jambages (le « g » de « l'Ange »).
-          display: "-webkit-box",
-          WebkitLineClamp: 2,
-          WebkitBoxOrient: "vertical",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "flex-end",
           paddingBottom: "0.2em",
           transform: "rotate(-3deg)",
           transformOrigin: "left bottom",
           textShadow: HALO,
         }}
       >
-        {def.name}
+        <span>{def.name}</span>
       </h3>
 
       {/* Effet : une zone FIXE, plus étroite que la carte pour laisser la
           colonne des stats ; au-delà de sa hauteur, le texte défile. */}
       {def.text && (
         <p
+          ref={effetRef}
           className={`absolute font-semibold text-white [font-family:var(--font-card-body)] ${styles.regles}`}
           style={{
             top: `${ZONE_EFFET_HAUT}%`,
@@ -283,6 +312,49 @@ function EffetAbyssal() {
       </div>
     </>
   );
+}
+
+/** En dessous de cette taille, l'effet se lit mal même en aperçu : l'encart de lecture prend le relais. */
+const EFFET_LISIBLE_CQW = 3.4;
+
+/** Hauteur de la zone du nom : deux lignes à la plus grande taille, jambages compris. */
+const NOM_HAUTEUR_CQW = 30;
+
+/**
+ * Le texte RÉTRÉCIT pour tenir dans sa zone, au lieu d'être coupé : on part
+ * de la taille prévue pour sa longueur et on descend par pas de 0,25 cqw tant
+ * qu'il déborde (en hauteur, ou un mot trop long en largeur), sans passer
+ * sous `minCqw` — au-delà, l'effet défile. En `cqw`, le résultat ne dépend
+ * pas de la taille de la carte : on ne le recalcule qu'au changement de
+ * texte et une fois les polices chargées.
+ */
+function useFitText(ref: React.RefObject<HTMLElement | null>, text: string, baseCqw: number, minCqw: number, smallCqw?: number) {
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el || !text) return;
+    const fit = () => {
+      let size = baseCqw;
+      el.style.fontSize = `${size}cqw`;
+      // Le nom est calé en BAS : ce qui déborde part vers le haut, où
+      // `scrollHeight` ne le voit pas. On mesure donc son contenu (premier enfant).
+      const contenu = (el.firstElementChild as HTMLElement | null) ?? el;
+      const deborde = () =>
+        (contenu === el ? el.scrollHeight : contenu.offsetHeight) > el.clientHeight + 1 || contenu.scrollWidth > el.clientWidth + 1;
+      while (size > minCqw && deborde()) {
+        size = Math.max(minCqw, size - 0.25);
+        el.style.fontSize = `${size}cqw`;
+      }
+      // Texte devenu PETIT pour tenir : l'aperçu ajoute alors l'encart de
+      // lecture (`CardRulesPanel`, affiché par `:has([data-fit-small])`).
+      if (smallCqw !== undefined) el.toggleAttribute("data-fit-small", size < smallCqw || deborde());
+    };
+    fit();
+    let alive = true;
+    void document.fonts?.ready.then(() => alive && fit());
+    return () => {
+      alive = false;
+    };
+  }, [ref, text, baseCqw, minCqw, smallCqw]);
 }
 
 function nameSizeCqw(name: string): number {
