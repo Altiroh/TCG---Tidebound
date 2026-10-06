@@ -98,6 +98,15 @@ describe("vignettes d'illustration", () => {
   const MINI = path.join(DOSSIER, "mini");
   const illustrations = [...fichiers].filter((nom) => nom.endsWith(".webp"));
 
+  // Une Abyssale montrée SEULE (pile de deck, liste, contenu de booster)
+  // passe par sa vignette composée décor + débord (`cardIllustrationUrl`).
+  it("chaque Abyssale a sa vignette composée", () => {
+    const sans = CORE_SET.filter((def) => def.id.endsWith("-abyssal") && fichiers.has(`${def.id}.webp`) && !fichiers.has(`${def.id}-vignette.webp`)).map(
+      (def) => def.id
+    );
+    expect(sans, "\nÀ composer : node scripts/optimizeImages.mjs\n").toEqual([]);
+  });
+
   // Présence seulement, pas fraîcheur : Git ne conserve pas les dates de
   // fichiers, un clone les remet toutes à l'heure du checkout.
   it("chaque illustration a sa vignette", () => {

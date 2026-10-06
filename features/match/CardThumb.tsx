@@ -2,6 +2,7 @@
 
 import { getCardDefinition, HIDDEN_CARD_ID } from "@/game";
 import { useImageOk } from "@/features/match/useImageOk";
+import { cardIllustrationThumbUrl } from "@/features/decks/cardArtUrl";
 
 interface CardThumbProps {
   /** Carte à représenter — absente ou `HIDDEN_CARD_ID` : pastille neutre "?" (jamais d'identité révélée). */
@@ -23,7 +24,7 @@ interface CardThumbProps {
  */
 export function CardThumb({ cardId, src, glyph, size = 28, className = "border-white/20", glyphClassName = "text-slate-200" }: CardThumbProps) {
   const isCard = Boolean(cardId) && cardId !== HIDDEN_CARD_ID;
-  const imageUrl = src ?? (isCard ? `/assets/cards/illustrations/${cardId}.webp` : "");
+  const imageUrl = src ?? (isCard ? cardIllustrationThumbUrl(cardId!) : "");
   const imageOk = useImageOk(imageUrl);
   const name = isCard ? getCardDefinition(cardId!).name : undefined;
   const fallback = glyph ?? (isCard ? name!.charAt(0) : "?");

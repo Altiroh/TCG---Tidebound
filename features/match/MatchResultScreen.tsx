@@ -9,7 +9,7 @@ import type { MatchAudienceSummary } from "@/features/audience/actions";
 import { RollingNumber } from "@/features/audience/RollingNumber";
 import { useMatchAudience } from "@/features/audience/useMatchAudience";
 import { weightiestSignals, type MatchAudienceVerdict } from "@/features/audience/verdict";
-import { cardIllustrationUrl } from "@/features/decks/cardArtUrl";
+import { cardDecorUrl, cardIllustrationUrl } from "@/features/decks/cardArtUrl";
 import type { MatchRewardSummary } from "@/features/progression/actions";
 import { useMatchReward } from "@/features/progression/useMatchReward";
 import type { QuestRecapEntry } from "@/features/quests/actions";
@@ -110,7 +110,8 @@ function photoLayers(player: MatchResultScreenProps["player"]): { src: string | 
       // Carte retirée du catalogue : son illustration seule, si elle existe encore.
     }
     return {
-      src: cardIllustrationUrl(player.avatarCardId),
+      // Le décor seul : le débord est empilé par-dessus, ici même.
+      src: abyssal ? cardDecorUrl(player.avatarCardId) : cardIllustrationUrl(player.avatarCardId),
       // Une Abyssale n'a que son décor dans l'illustration : le sujet vit dans le calque de débord.
       debord: abyssal ? `/assets/cards/illustrations/${player.avatarCardId}-debord.webp` : null,
     };

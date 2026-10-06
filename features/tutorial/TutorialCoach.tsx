@@ -86,7 +86,10 @@ export function TutorialCoach({ state, playerId, furthest, onFurthest, onSkip, o
     // Sans zone désignée (leçon générale), la fiche se pose en haut au centre.
     const anchor = anchorRect ?? { left: viewport.width / 2 - 1, top: viewport.height * 0.4, width: 2, height: 2 };
     setPlacement(placeCoach(anchor, { width: panel.width, height: panel.height }, viewport));
-  }, [anchorRect, step?.id, waiting]);
+    // `mounted` : au tout premier rendu la fiche n'existe pas encore (rien n'est
+    // rendu avant le montage) ; sans lui, la mesure ne se refaisait jamais sur
+    // une leçon sans ancre, et la fiche restait invisible.
+  }, [anchorRect, step?.id, waiting, mounted]);
 
   if (!mounted) return null;
 

@@ -8,8 +8,23 @@
  * écran, connexion comprise.
  */
 
-/** Illustration d'une carte, telle que servie par `public/assets`. */
+/**
+ * Fichier d'illustration à MONTRER SEULE. Une Abyssale n'a que son décor
+ * dans `<id>.webp` (le sujet vit dans le débord, empilé par la face de
+ * carte) : seule, on sert sa vignette composée décor + sujet
+ * (`<id>-vignette.webp`, fabriquée par `scripts/optimizeImages.mjs`).
+ */
+function illustrationFile(cardId: string): string {
+  return cardId.endsWith("-abyssal") ? `${cardId}-vignette` : cardId;
+}
+
+/** Illustration d'une carte, telle que servie par `public/assets` — pour l'afficher seule. */
 export function cardIllustrationUrl(cardId: string): string {
+  return `/assets/cards/illustrations/${illustrationFile(cardId)}.webp`;
+}
+
+/** Le DÉCOR seul d'une Abyssale (pour qui empile lui-même le débord par-dessus). */
+export function cardDecorUrl(cardId: string): string {
   return `/assets/cards/illustrations/${cardId}.webp`;
 }
 
@@ -20,5 +35,5 @@ export function cardIllustrationUrl(cardId: string): string {
  * `tests/game/illustrations.test.ts`.
  */
 export function cardIllustrationThumbUrl(cardId: string): string {
-  return `/assets/cards/illustrations/mini/${cardId}.webp`;
+  return `/assets/cards/illustrations/mini/${illustrationFile(cardId)}.webp`;
 }
