@@ -79,52 +79,19 @@ update public.player_card_notebooks n set cover_card_id = null
 from public.retired_cards rc where n.cover_card_id = rc.card_id;
 
 -- ── Choix de carte en attente ─────────────────────────────────────────
--- Chaque carte retirée d'une proposition NON tranchée est remplacée par
--- une carte active de la même rareté, absente de la proposition, non
--- possédée de préférence. Sans remplaçant possible, elle est simplement
--- retirée (le choix garde au moins ses autres cartes).
-do $$
-declare
-  v_choice record;
-  v_offered text[];
-  v_card text;
-  v_replacement text;
-begin
-  for v_choice in
-    select pcc.id, pcc.user_id, pcc.rarity, pcc.offered_card_ids
-    from public.player_card_choices pcc
-    where pcc.resolved_at is null
-      and pcc.offered_card_ids && (select array_agg(card_id) from public.retired_cards)
-  loop
-    v_offered := v_choice.offered_card_ids;
-    foreach v_card in array v_choice.offered_card_ids loop
-      if exists (select 1 from public.retired_cards rc where rc.card_id = v_card) then
-        select c.id into v_replacement
-        from public.cards c
-        where c.rarity = v_choice.rarity
-          and c.is_collectible
-          and c.is_enabled
-          and not exists (select 1 from public.retired_cards rc where rc.card_id = c.id)
-          and not (c.id = any (v_offered))
-        order by
-          exists (
-            select 1 from public.player_cards pc
-            where pc.user_id = v_choice.user_id and pc.card_id = c.id and pc.quantity > 0
-          ),
-          random()
-        limit 1;
-
-        v_offered := array_remove(v_offered, v_card);
-        if v_replacement is not null then
-          v_offered := array_append(v_offered, v_replacement);
-        end if;
-      end if;
-    end loop;
-
-    update public.player_card_choices set offered_card_ids = v_offered where id = v_choice.id;
-  end loop;
-end
-$$;
+-- Une carte retirée est ôtée des propositions NON tranchées (le choix
+-- garde ses autres cartes). En SQL simple, sans bloc procédural (`do`) :
+-- l'éditeur SQL du tableau de bord coupait le bloc et refusait la requête.
+update public.player_card_choices pcc
+set offered_card_ids = array(
+  select offered.card_id
+  from unnest(pcc.offered_card_ids) as offered(card_id)
+  where not exists (select 1 from public.retired_cards rc where rc.card_id = offered.card_id)
+)
+where pcc.resolved_at is null
+  and exists (
+    select 1 from public.retired_cards rc where rc.card_id = any (pcc.offered_card_ids)
+  );
 
 -- ── Désactivation au catalogue ────────────────────────────────────────
 update public.cards c
