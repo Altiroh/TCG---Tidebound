@@ -14,7 +14,7 @@ import {
   type PlayerId,
 } from "@/game";
 import { dieFaceUrl, dieTextureFit, dieTextureUrl } from "@/features/match/dice/diceAssets";
-import { axisAngle, multiply, placeFaces, restMatrix, rollPath, rotate, slerp, toCss, type Mat4 } from "@/features/match/dice/polyhedra";
+import { axisAngle, eulerMatrix, multiply, placeFaces, restMatrix, rollPath, rotate, slerp, toCss, type Mat4 } from "@/features/match/dice/polyhedra";
 import { useDiceThrow, type DiceThrow } from "@/features/match/dice/useDiceThrow";
 import { loadImageStatus } from "@/features/match/imageStatusCache";
 import { playButtonClick, playDiceLanded } from "@/lib/sound";
@@ -90,6 +90,13 @@ function DiceOnTable({ throwInfo, state, viewerId, onAction }: { throwInfo: Dice
     setSpot({ x: cx, y: cy });
   }, [throwInfo.key]);
 
+  // La légende suit le dé : au premier lancer, quand il est posé ; après un
+  // ajustement, quand il est retombé sur sa nouvelle face.
+  const valeurInitiale = useRef<{ key: string; faces: string } | null>(null);
+  const faces = throwInfo.faces.join(",");
+  if (valeurInitiale.current?.key !== throwInfo.key) valeurInitiale.current = { key: throwInfo.key, faces };
+  const ajuste = valeurInitiale.current.faces !== faces;
+
   if (!spot) return null;
   const mine = fromViewer && throwInfo.open && throwInfo.choice;
   const issue = throwInfo.outcome ?? (throwInfo.choice && throwInfo.choice.value !== undefined ? dieOutcomeOf(throwInfo.choice, throwInfo.choice.value) : undefined);
@@ -118,7 +125,12 @@ function DiceOnTable({ throwInfo, state, viewerId, onAction }: { throwInfo: Dice
         ))}
       </div>
 
-      <p className={styles.caption} data-outcome={throwInfo.open ? undefined : throwInfo.outcome}>
+      <p
+        key={`${throwInfo.key}:${faces}`}
+        className={styles.caption}
+        data-outcome={throwInfo.open ? undefined : throwInfo.outcome}
+        style={ajuste ? { animationDelay: `${Math.round(ADJUST_MS * 0.9)}ms` } : undefined}
+      >
         {source && <span className={styles.source}>{source} · </span>}
         {!throwInfo.choice?.candidates && throwInfo.faces.length === 1 && issue && <strong className={styles.value}>{throwInfo.faces[0]} · </strong>}
         {throwInfo.choice?.candidates
@@ -228,8 +240,10 @@ const LIGHT: readonly [number, number, number] = (() => {
   const n = Math.hypot(...v);
   return [v[0]! / n, v[1]! / n, v[2]! / n];
 })();
-/** Durée du roulis vers une nouvelle face, quand un ajustement change le jet. */
-const ROLL_MS = 450;
+/** Changement de valeur (+1, Chaîne) : le dé se lève, tremble, change de face, se repose. */
+const ADJUST_MS = 820;
+/** Hauteur (px) à laquelle le dé se lève pour changer de face. */
+const ADJUST_LIFT = 46;
 
 /** Temps que met un dé lancé à se poser : la légende et les gestes attendent qu'il soit immobile. */
 function settleMs(die: DieSize): number {
@@ -435,27 +449,49 @@ function ThrownDie({ throwKey, die, face, fromViewer, outcome, onPick }: ThrownD
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [throwKey, fromViewer, draw]);
 
-  // Un ajustement change la face : le dé roule de son orientation actuelle vers la nouvelle.
+  // Un ajustement change la valeur (+1, Chaîne) : le dé SE LÈVE, tremble dans
+  // la main invisible, présente la nouvelle face en l'air, puis se repose.
   // On compare la VALEUR : un effet rejoué (mode strict) ne doit pas figer le
-  // dé sur sa pose de repos pendant qu'il tournoie encore.
+  // dé sur sa pose de repos pendant qu'il roule encore.
   const faceRef = useRef(face);
   useEffect(() => {
     if (faceRef.current === face) return;
     faceRef.current = face;
     const from = shownRef.current;
-    if (prefersReducedMotion()) {
+    const lift = liftRef.current;
+    const shadow = shadowRef.current;
+    if (prefersReducedMotion() || !lift || !shadow) {
       draw(rest);
       return;
     }
     const t0 = performance.now();
     let frame = 0;
     const step = (now: number) => {
-      const k = Math.min(1, (now - t0) / ROLL_MS);
-      draw(slerp(from, rest, ROLL_EASING(k)));
+      const k = Math.min(1, (now - t0) / ADJUST_MS);
+      // Hauteur : monte (0 → 25 %), reste en l'air, redescend (75 → 100 %) avec un petit rebond.
+      const h = k < 0.25 ? ADJUST_LIFT * ROLL_EASING(k / 0.25) : k < 0.75 ? ADJUST_LIFT : k < 0.92 ? ADJUST_LIFT * (1 - ((k - 0.75) / 0.17) ** 2) : ADJUST_LIFT * 0.12 * Math.sin((Math.PI * (k - 0.92)) / 0.08);
+      // Tremblement : vif en l'air, éteint à l'atterrissage.
+      const force = k < 0.8 ? Math.sin(Math.PI * Math.min(1, k / 0.8)) : 0;
+      const shake = eulerMatrix(Math.sin(now / 23) * 11 * force, Math.sin(now / 31 + 1) * 9 * force, Math.sin(now / 19 + 2) * 7 * force);
+      // La nouvelle face se présente pendant qu'il est en l'air.
+      const turn = ROLL_EASING(Math.min(1, Math.max(0, (k - 0.2) / 0.45)));
+      draw(multiply(shake, slerp(from, rest, turn)));
+      lift.style.transform = `translate(0px, ${(-h * 0.55).toFixed(1)}px) scale(${(1 + h / 420).toFixed(3)})`;
+      shadow.style.transform = `translate(${(h * 0.25).toFixed(1)}px, ${(h * 0.35).toFixed(1)}px) scale(${Math.max(0.45, 1 - h / 260).toFixed(3)})`;
+      shadow.style.opacity = `${Math.max(0.15, 1 - h / 170).toFixed(2)}`;
       if (k < 1) frame = requestAnimationFrame(step);
+      else draw(rest);
     };
     frame = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(frame);
+    const clac = window.setTimeout(playDiceLanded, ADJUST_MS * 0.9);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.clearTimeout(clac);
+      draw(rest);
+      lift.style.transform = "";
+      shadow.style.transform = "";
+      shadow.style.opacity = "";
+    };
   }, [face, rest, draw]);
 
   const content = (
