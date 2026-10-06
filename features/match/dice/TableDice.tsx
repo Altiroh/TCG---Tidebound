@@ -13,7 +13,7 @@ import {
   type PlayerAction,
   type PlayerId,
 } from "@/game";
-import { DIE_FACE_PLACEMENT, dieBodyUrl, dieFaceUrl } from "@/features/match/dice/diceAssets";
+import { DIE_GEOMETRY, dieBodyUrl, dieFaceUrl, faceMatrix, visibleFaceValues } from "@/features/match/dice/diceAssets";
 import { useDiceThrow, type DiceThrow } from "@/features/match/dice/useDiceThrow";
 import { useImageOk } from "@/features/match/useImageOk";
 import { loadImageStatus } from "@/features/match/imageStatusCache";
@@ -87,12 +87,10 @@ function DiceOnTable({ throwInfo, state, viewerId, onAction }: { throwInfo: Dice
   const [spot, setSpot] = useState<{ x: number; y: number } | null>(null);
   const fromViewer = throwInfo.rollerId === viewerId;
 
-  // Point de chute : le milieu de la table (la piste de Marée), décalé d'un jet à l'autre.
   useLayoutEffect(() => {
-    const zone = document.querySelector('[data-zone="CenterZone"]')?.getBoundingClientRect();
-    const width = zone?.width ?? window.innerWidth * 0.6;
-    const cx = (zone ? zone.left + zone.width / 2 : window.innerWidth / 2) + (hash(throwInfo.key) - 0.5) * width * 0.3;
-    const cy = zone ? zone.top + zone.height / 2 : window.innerHeight / 2;
+    // Au CENTRE de l'écran, à peine décalé d'un jet à l'autre : c'est là que le regard est.
+    const cx = window.innerWidth / 2 + (hash(throwInfo.key) - 0.5) * window.innerWidth * 0.06;
+    const cy = window.innerHeight * 0.47;
     setSpot({ x: cx, y: cy });
   }, [throwInfo.key]);
 
@@ -226,7 +224,6 @@ function ThrownDie({ throwKey, die, face, fromViewer, outcome, onPick }: ThrownD
   const [tick, setTick] = useState(0);
   const bodyOk = useImageOk(dieBodyUrl(die));
   const shownFace = tumbling ? 1 + Math.floor(hash(`${throwKey}:${tick}`) * die) : face;
-  const faceOk = useImageOk(dieFaceUrl(die, shownFace));
 
   // Le vol : parti du bord de celui qui lance, une courbe, deux rebonds.
   useEffect(() => {
@@ -272,37 +269,37 @@ function ThrownDie({ throwKey, die, face, fromViewer, outcome, onPick }: ThrownD
   const wobble = tumbling
     ? `rotate(${(hash(`${throwKey}:w${tick}`) - 0.5) * 70}deg) scale(${0.78 + hash(`${throwKey}:a${tick}`) * 0.3}, ${0.7 + hash(`${throwKey}:b${tick}`) * 0.35}) skew(${(hash(`${throwKey}:k${tick}`) - 0.5) * 24}deg)`
     : undefined;
-  const placement = DIE_FACE_PLACEMENT[die];
+  const geometry = DIE_GEOMETRY[die];
+  // Les faces visibles : le résultat dessus, des voisines cohérentes à côté (tirées au hasard en vol).
+  const values = visibleFaceValues(die, shownFace, geometry.faces.length, hash(`${throwKey}:n${tumbling ? tick : "pose"}`));
 
   const content = (
     <div className={styles.die} data-die={die} data-outcome={outcome} style={{ transform: wobble } as CSSProperties}>
       {bodyOk ? (
-        // eslint-disable-next-line @next/next/no-img-element -- planche locale du dé
-        <img className={styles.body} src={dieBodyUrl(die)} alt="" draggable={false} />
+        // Le corps et, projetés sur chaque face visible, ses points (`faceMatrix`).
+        <svg className={styles.body} viewBox={`0 0 ${geometry.width} ${geometry.height}`} aria-hidden>
+          <image href={dieBodyUrl(die)} width={geometry.width} height={geometry.height} />
+          <g key={tumbling ? "vol" : `pose:${face}`} className={tumbling ? undefined : styles.faceSettle}>
+            {geometry.faces.map((faceShape, index) => (
+              <image
+                key={index}
+                href={dieFaceUrl(die, values[index]!)}
+                width={1}
+                height={1}
+                preserveAspectRatio="none"
+                transform={faceMatrix(geometry, faceShape)}
+                opacity={faceShape.shade}
+              />
+            ))}
+          </g>
+        </svg>
       ) : (
-        <span className={styles.fallbackBody} data-die={die} aria-hidden />
-      )}
-      {bodyOk && faceOk ? (
-        // eslint-disable-next-line @next/next/no-img-element -- points de la face, déformés sur le corps
-        <img
-          key={shownFace}
-          className={`${styles.face} ${tumbling ? "" : styles.faceSettle}`}
-          src={dieFaceUrl(die, shownFace)}
-          alt=""
-          draggable={false}
-          style={{
-            left: `${placement.left}%`,
-            top: `${placement.top}%`,
-            width: `${placement.width}%`,
-            height: `${placement.height}%`,
-            transform: placement.transform,
-          }}
-        />
-      ) : bodyOk && tumbling ? null : (
-        // Planche absente (ou face pas encore chargée une fois posé) : le chiffre.
-        <span key={shownFace} className={`${styles.fallbackFace} ${tumbling ? "" : styles.faceSettle}`}>
-          {shownFace}
-        </span>
+        <>
+          <span className={styles.fallbackBody} data-die={die} aria-hidden />
+          <span key={shownFace} className={`${styles.fallbackFace} ${tumbling ? "" : styles.faceSettle}`}>
+            {shownFace}
+          </span>
+        </>
       )}
     </div>
   );
