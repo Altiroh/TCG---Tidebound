@@ -238,6 +238,27 @@ export const LA_MUTATION_MONDIALE_PACK_VISUAL: BoosterPackVisual = {
   cardBacks: PACK_CARD_BACKS,
 };
 
+/**
+ * Perturbation dimensionnelle (Lot 17 — Dungeon et Ladalle / Opalins),
+ * planches du 06/10/2026, même gabarit et mêmes mesures que les autres.
+ */
+export const PERTURBATION_DIMENSIONNELLE_PACK_VISUAL: BoosterPackVisual = {
+  id: "perturbation-dimensionnelle",
+  assets: {
+    closed: "/assets/boosters/perturbation-dimensionnelle/perturbation-dimensionnelle.webp",
+    openTop: "/assets/boosters/perturbation-dimensionnelle/perturbation-dimensionnelle-open-top.webp",
+    openBottom: "/assets/boosters/perturbation-dimensionnelle/perturbation-dimensionnelle-open-bottom.webp",
+  },
+  // Corps 833 × 1309 px, bande 770 × 182 px, fermé 887 × 1497 px ramené à 93.33 %.
+  aspectRatio: 833 / 1309,
+  closedRect: { left: 0.63, top: -6.73, width: 99.38, height: 106.73 },
+  topRect: { left: 4.44, top: -6.73, width: 92.44, height: 13.9 },
+  topHinge: { x: 96, y: 84 },
+  tearLineTop: 6,
+  mouth: PACK_MOUTH,
+  cardBacks: PACK_CARD_BACKS,
+};
+
 /** Id de booster (table `boosters`) → visuel. Tout id inconnu retombe sur le visuel par défaut. */
 const BOOSTER_VISUAL_BY_ID: Record<string, BoosterPackVisual> = {
   standard: DEFAULT_PACK_VISUAL,
@@ -248,6 +269,8 @@ const BOOSTER_VISUAL_BY_ID: Record<string, BoosterPackVisual> = {
   "necessaire-du-marin": NECESSAIRE_DU_MARIN_PACK_VISUAL,
   "eclats-en-selle": ECLATS_EN_SELLE_PACK_VISUAL,
   "la-mutation-mondiale": LA_MUTATION_MONDIALE_PACK_VISUAL,
+  // Le booster du Lot 17 garde son identifiant de lancement ; son nom et ses planches sont « Perturbation dimensionnelle ».
+  "dungeon-et-ladalle": PERTURBATION_DIMENSIONNELLE_PACK_VISUAL,
 };
 
 export const BOOSTER_PACK_VISUALS: readonly BoosterPackVisual[] = [
@@ -258,6 +281,7 @@ export const BOOSTER_PACK_VISUALS: readonly BoosterPackVisual[] = [
   LA_VEILLEE_DES_DISPARUS_PACK_VISUAL,
   ECLATS_EN_SELLE_PACK_VISUAL,
   LA_MUTATION_MONDIALE_PACK_VISUAL,
+  PERTURBATION_DIMENSIONNELLE_PACK_VISUAL,
   WELCOME_PACK_VISUAL,
 ];
 
@@ -297,6 +321,8 @@ const SHELF_ROLL_BY_ID: Readonly<Record<string, string>> = {
   // nom en cartouche, sans le pictogramme « x » où se pose le compte (qui
   // tomberait sur le titre). Repli sur le rouleau du Défaut tant qu'il n'est
   // pas repeint.
+  // Même cas pour « perturbation-dimensionnelle-rayon.webp » (06/10/2026) :
+  // un sachet couché, nom en cartouche, sans pictogramme « x ».
 };
 
 export const DEFAULT_SHELF_ROLL = "/assets/boosters/defaut/defaut-rayon.webp";

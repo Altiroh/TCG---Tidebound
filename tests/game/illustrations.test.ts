@@ -116,7 +116,6 @@ describe("visuels de sachet", () => {
    */
   /** Sachets livrés sans planches, chacun avec son motif — même règle que `SANS_VISUEL`. */
   const SACHET_SANS_VISUEL: Record<string, string> = {
-    "dungeon-et-ladalle": "Booster du Lot 17 créé le 05/10/2026 sans planches de sachet : visuel du Défaut en attendant.",
   };
 
   it("chaque booster du rayon a ses trois images, et ne les emprunte à personne", () => {

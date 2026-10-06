@@ -203,20 +203,20 @@ const EXTENSIONS: readonly BoosterExtension[] = [
       "un autre — jusqu'à ce qu'il ne reste plus personne à bord pour compter.",
   },
   {
-    // BROUILLON (05/10/2026) : Notion ne prévoit ni nom, ni accroche, ni lore
-    // pour le booster du Lot 17 — tout est à valider, puis à reporter dans
-    // « Boosters & économie ». Deux familles à parts proches : le rayon
-    // annonce le LOT sous son titre Notion, pas l'une des deux.
+    // Nom repris des planches du sachet (06/10/2026). Accroche et lore restent
+    // un BROUILLON à valider, puis à reporter dans « Boosters & économie ».
+    // Deux familles à parts proches : le rayon annonce le LOT sous son titre
+    // Notion, pas l'une des deux.
     boosterId: BOOSTER_DUNGEON_ET_LADALLE,
-    name: "Le Donjon et l'Opale",
+    name: "Perturbation dimensionnelle",
     kind: "extension",
     archetype: null,
     familyLabel: "Dungeon et Ladalle · Opalins",
-    tagline: "Des dés pipés, des gardiens",
+    tagline: "Un trou dans le ciel",
     lore:
-      "D'un côté, une compagnie d'aventuriers qui jure connaître le chemin, lance les dés à chaque porte et rentre " +
-      "à l'auberge plus souvent qu'au trésor. De l'autre, des Opalins qui veillent depuis toujours, s'éveillent " +
-      "niveau après niveau et cuirassent le Navire qui les porte. Le hasard d'un côté, la patience de l'autre.",
+      "Le ciel s'est ouvert au-dessus de la jungle, et il en tombe des aventuriers qui jurent connaître le chemin, " +
+      "lancent les dés à chaque porte et rentrent à l'auberge plus souvent qu'au trésor. En bas, les Opalins les " +
+      "regardent tomber : ils veillent depuis toujours, s'éveillent niveau après niveau, et ne laissent rien passer.",
   },
 ];
 

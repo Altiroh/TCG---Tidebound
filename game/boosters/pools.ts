@@ -39,7 +39,7 @@ export const BOOSTER_NECESSAIRE_DU_MARIN = "necessaire-du-marin";
 export const BOOSTER_ECLATS_EN_SELLE = "eclats-en-selle";
 /** B7 — La mutation mondiale (Lot 16). Les Altérés et leur Éveil (« Booster 4 — Altérations du Large » dans Notion avant son nom définitif). */
 export const BOOSTER_LA_MUTATION_MONDIALE = "la-mutation-mondiale";
-/** B8 — Lot 17 : Dungeon et Ladalle / Opalins. Nom commercial PROVISOIRE (Notion n'en prévoit aucun au 05/10/2026). */
+/** B8 — Perturbation dimensionnelle (Lot 17 : Dungeon et Ladalle / Opalins). L'identifiant de lancement est resté. */
 export const BOOSTER_DUNGEON_ET_LADALLE = "dungeon-et-ladalle";
 
 /**

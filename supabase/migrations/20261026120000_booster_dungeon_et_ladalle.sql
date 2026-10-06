@@ -1,9 +1,8 @@
 -- ======================================================================
--- B8 — Le Donjon et l'Opale (Lot 17 — Dungeon et Ladalle / Opalins)
+-- B8 — Perturbation dimensionnelle (Lot 17 — Dungeon et Ladalle / Opalins)
 -- ======================================================================
--- Huitième booster achetable : les 63 cartes du Lot 17. NOM PROVISOIRE
--- (Notion ne prévoit pas encore de booster pour ce lot) : à valider, puis
--- à reporter ici, dans `game/boosters/extensions.ts` et dans Notion.
+-- Huitième booster achetable : les 63 cartes du Lot 17. Nom repris des
+-- planches du sachet (06/10/2026) ; l'identifiant de lancement est resté.
 --
 -- Prix : 150 Tides, comme les autres extensions. À revoir à la passe
 -- économique.
@@ -13,7 +12,7 @@
 -- APRÈS cette migration, sinon le booster est achetable avec un pool vide.
 
 insert into public.booster_definitions (id, name, card_count, price_currency, is_purchasable, is_enabled) values
-  ('dungeon-et-ladalle', 'Le Donjon et l''Opale', 8, 150, true, true)
+  ('dungeon-et-ladalle', 'Perturbation dimensionnelle', 8, 150, true, true)
 on conflict (id) do update set
   name = excluded.name,
   card_count = excluded.card_count,
