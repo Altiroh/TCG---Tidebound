@@ -62,6 +62,7 @@ export function HoverCardPreview({ anchor, children, portal = false }: HoverCard
     <div
       ref={ref}
       className={styles.hoverPreview}
+      data-hover-preview=""
       data-ready={position ? "true" : "false"}
       style={{ left: position?.left ?? 0, top: position?.top ?? 0 }}
       aria-hidden

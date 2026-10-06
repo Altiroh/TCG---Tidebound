@@ -1,4 +1,4 @@
-import { createGameState, type DeckList, type GameState } from "@/game";
+import { applyTutorialScenario, createGameState, type DeckList, type GameState } from "@/game";
 
 /**
  * Crée une partie locale "hot-seat" : les deux joueurs jouent sur le même
@@ -15,20 +15,21 @@ export function createLocalMatch(deck1: DeckList, deck2: DeckList): GameState {
 }
 
 /**
- * Partie du TUTORIEL : une partie locale ordinaire, à une garantie près —
- * la main d'ouverture du joueur contient au moins un exemplaire de chaque
- * type dont les étapes ont besoin.
+ * Partie du TUTORIEL : une partie locale reprise EN COURS DE ROUTE, sur le
+ * scénario préparé (`applyTutorialScenario`) — main, plateaux et Marée
+ * posés pour que chaque leçon trouve son exemple. Le reste vient des deux
+ * préconstruits, et la partie se joue ensuite jusqu'au bout.
  *
  * Fonction distincte plutôt qu'un paramètre de plus sur `createLocalMatch` :
- * aucune autre partie ne doit pouvoir arranger sa main, et le nom dit à
- * quoi sert l'exception.
+ * aucune autre partie ne doit pouvoir arranger sa table.
  */
-export function createTutorialMatch(deck1: DeckList, deck2: DeckList, guaranteedOpeningTypes: readonly string[]): GameState {
-  return createGameState({
-    gameId: `tutorial_${Date.now()}`,
-    player1: { id: "p1", deck: deck1 },
-    player2: { id: "p2", deck: deck2 },
-    seed: Date.now(),
-    guaranteedOpeningTypes,
-  });
+export function createTutorialMatch(deck1: DeckList, deck2: DeckList): GameState {
+  return applyTutorialScenario(
+    createGameState({
+      gameId: `tutorial_${Date.now()}`,
+      player1: { id: "p1", deck: deck1 },
+      player2: { id: "p2", deck: deck2 },
+      seed: Date.now(),
+    })
+  );
 }

@@ -143,7 +143,7 @@ function ShipAbilityPanel(view: ShipAbilityPanelView) {
   const plankStyle = { backgroundImage: `url(${SHIP_ABILITY_PLANKS_URL})` };
   const content = (
     <>
-      <span aria-hidden className={styles.shipAbilityPort}>
+      <span aria-hidden className={styles.shipAbilityPort} data-ship-ability="">
         <span
           className={styles.shipAbilityArt}
           style={artUrl ? { backgroundImage: `url(${artUrl})` } : undefined}

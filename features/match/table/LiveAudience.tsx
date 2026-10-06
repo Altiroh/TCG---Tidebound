@@ -73,7 +73,7 @@ export function LiveAudience({ state, viewerId }: { state: GameState; viewerId: 
 
   return (
     <AudienceTip mood={mood} placement="below">
-      <span className={styles.liveAudience} data-trend={trend ?? undefined} aria-label={`Public : ${mood.toLowerCase()}`}>
+      <span className={styles.liveAudience} data-live-audience="" data-trend={trend ?? undefined} aria-label={`Public : ${mood.toLowerCase()}`}>
         <svg viewBox="0 0 24 24" fill="none" aria-hidden>
           <path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6S2 12 2 12z" stroke="currentColor" strokeWidth={1.8} strokeLinejoin="round" />
           <circle cx="12" cy="12" r="2.8" stroke="currentColor" strokeWidth={1.8} />

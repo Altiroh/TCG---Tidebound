@@ -237,6 +237,22 @@
   color: #9a1f1a;
 }
 
+/* ── Le mot de la fin (tutoriel) ───────────────────────────── */
+
+.epilogue {
+  left: 4.8%;
+  top: 69%;
+  width: 34%;
+  animation: rise-in 600ms ease-out 1250ms both;
+}
+
+.epilogueText {
+  margin: 0;
+  font-family: var(--tb-font-ui, Georgia, serif);
+  font-size: max(11px, var(--tb-fs-floor, 0px), calc(1.15cqw * var(--z, 1)));
+  line-height: 1.35;
+}
+
 /* ── Les quêtes ────────────────────────────────────────────── */
 
 .rule {

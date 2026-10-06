@@ -1,159 +1,178 @@
 import { describe, expect, it } from "vitest";
-import { TUTORIAL_STEPS, tutorialProgress } from "@/game/tutorial/steps";
+import {
+  TUTORIAL_CARDS,
+  TUTORIAL_START_TURN,
+  TUTORIAL_STEPS,
+  applyTutorialScenario,
+  tutorialAnchor,
+  tutorialCardsExist,
+  tutorialProgress,
+} from "@/game/tutorial";
 import { PRECON_DECKS } from "@/game";
-import { getCardDefinition } from "@/game/cards/sets/core";
-import { UNIT_CARD_TYPES } from "@/game/cards/types";
-import { COACH_GAP, placeCoach } from "@/features/tutorial/coachPlacement";
-import { TUTORIAL_OPENING_TYPES } from "@/game/tutorial/steps";
+import { dispatch } from "@/game/engine";
+import { runBotTurn } from "@/game/bot/runBotTurn";
 import { createGameState } from "@/game/state/createGameState";
-import { RULES } from "@/game/rules/constants";
-import { instance, testGameState, testPlayer } from "./testHelpers";
+import { COACH_GAP, placeCoach } from "@/features/tutorial/coachPlacement";
+import type { GameState, PlayerAction } from "@/game";
 
-const base = { turnNumber: 1, timestamp: 0 };
+/**
+ * TUTORIEL (refonte du 06/10/2026) : une partie reprise en cours de route
+ * sur un scénario préparé, des LEÇONS qui attendent « Compris » et des
+ * ACTIONS qui se valident sur l'état réel — conditionnelles quand le geste
+ * n'est pas encore possible.
+ */
 
-function stateAfterPlaying(cardIds: string[]) {
-  const state = testGameState();
-  return {
-    ...state,
-    eventLog: cardIds.map((cardId, index) => ({
-      ...base,
-      type: "PLAY_CARD" as const,
-      playerId: "p1",
-      instanceId: `i${index}`,
-      cardId,
-    })),
-  };
+const decks = (() => {
+  const player = PRECON_DECKS[1] ?? PRECON_DECKS[0]!;
+  return { player, opponent: PRECON_DECKS.find((d) => d.id !== player.id) ?? player };
+})();
+
+function scenario(seed = 7): GameState {
+  return applyTutorialScenario(
+    createGameState({ gameId: `tuto${seed}`, player1: { id: "p1", deck: decks.player }, player2: { id: "p2", deck: decks.opponent }, seed })
+  );
+}
+
+function act(state: GameState, action: PlayerAction): GameState {
+  const result = dispatch(state, action);
+  if (!result.ok) throw new Error(`${action.type} : ${result.error}`);
+  return result.state;
+}
+
+const inHand = (state: GameState, cardId: string) => state.players[0].hand.find((c) => c.cardId === cardId)!.instanceId;
+const onBoard = (state: GameState, playerIndex: 0 | 1, cardId: string) => state.players[playerIndex].board.find((c) => c.cardId === cardId)?.instanceId;
+const indexOf = (id: string) => TUTORIAL_STEPS.findIndex((step) => step.id === id);
+
+/** Joue le premier tour comme le guide le demande, puis le tour du bot. */
+function firstTurnThenBot(seed: number): GameState {
+  let state = scenario(seed);
+  state = act(state, { type: "playCard", playerId: "p1", instanceId: inHand(state, TUTORIAL_CARDS.unit) });
+  state = act(state, { type: "playCard", playerId: "p1", instanceId: inHand(state, TUTORIAL_CARDS.piedMarin) });
+  state = act(state, { type: "breakObject", playerId: "p1", instanceId: inHand(state, TUTORIAL_CARDS.object), fromHand: true });
+  state = act(state, { type: "saborder", playerId: "p1", instanceId: onBoard(state, 0, TUTORIAL_CARDS.structure)! });
+  state = act(state, { type: "endTurn", playerId: "p1" });
+  state = runBotTurn(state, "p2", "facile");
+  // Les fenêtres facultatives de l'entame (capacité de Navire à l'annonce de la Marée) : le joueur passe.
+  for (let guard = 0; state.pendingReaction && guard < 5; guard++) {
+    state = act(state, { type: "passReaction", playerId: state.pendingReaction.awaitingPlayerId });
+  }
+  return state;
 }
 
 describe("étapes du tutoriel", () => {
-  it("donne une ancre à chaque étape — le guide doit savoir où se poser", () => {
+  it("chaque étape a un chapitre, un titre et une consigne", () => {
     for (const step of TUTORIAL_STEPS) {
-      expect(step.anchor, `étape « ${step.id} » sans ancre`).toBeTruthy();
+      expect(step.chapter.trim(), step.id).not.toBe("");
+      expect(step.title.trim(), step.id).not.toBe("");
+      expect(step.instruction.trim(), step.id).not.toBe("");
     }
   });
 
-  it("valide « un corps sur le pont » avec un Marin comme avec une Créature", () => {
-    // LE bug remonté : le deck du tutoriel compte plus de Marins que de
-    // Créatures, et une main d'ouverture sans Créature bloquait l'étape
-    // pendant que le joueur posait carte sur carte.
-    const withMarin = tutorialProgress(stateAfterPlaying(["marin-des-jetees"]), "p1");
-    expect(withMarin.index).toBeGreaterThan(0);
-
-    const withCreature = tutorialProgress(stateAfterPlaying(["murene-aveugle"]), "p1");
-    expect(withCreature.index).toBeGreaterThan(0);
+  it("couvre l'interface, le premier tour, les gestes, le combat, la Marée et le public", () => {
+    const ids = TUTORIAL_STEPS.map((step) => step.id);
+    for (const id of ["hand", "deck-graveyard", "anchor", "reason", "ship-ability", "opponent", "pied-marin", "break", "saborder", "discard", "end-turn", "opponent-turn", "garde", "attack", "tide", "audience"]) {
+      expect(ids, id).toContain(id);
+    }
   });
 
-  it("ne valide pas la première étape sur une carte qui n'est pas une unité", () => {
-    // Un Équipement ou une Structure ne met aucun corps sur le pont.
-    const progress = tutorialProgress(stateAfterPlaying(["treuil-rouille"]), "p1");
-    expect(progress.index).toBe(0);
+  it("nomme des cartes qui existent au catalogue", () => {
+    expect(tutorialCardsExist()).toBe(true);
   });
 
-  it("reste franchissable avec le deck réellement distribué au joueur", () => {
-    // Garde-fou contre la classe de bug remontée : une étape dont l'objectif
-    // n'existe pas dans le deck du tutoriel est un cul-de-sac.
-    const deck = PRECON_DECKS[1] ?? PRECON_DECKS[0]!;
-    const types = new Set(deck.cardIds.map((id) => getCardDefinition(id).type));
-    expect([...UNIT_CARD_TYPES].some((type) => types.has(type)), "aucune unité dans le deck").toBe(true);
-    expect(types.has("objet"), "aucun Objet : deux étapes deviennent infranchissables").toBe(true);
+  it("une leçon arrête la course : elle attend « Compris »", () => {
+    const progress = tutorialProgress(scenario(), "p1");
+    expect(progress.step?.id).toBe("welcome");
+    expect(progress.step?.isDone).toBeUndefined();
+    expect(tutorialProgress(scenario(), "p1", 1).step?.id).toBe("hand");
   });
 
-  it("n'avance jamais à reculons, même si le joueur perd ce qu'il a posé", () => {
-    const played = stateAfterPlaying(["marin-des-jetees", "murene-aveugle"]);
-    const advanced = tutorialProgress(played, "p1");
-    // Plateau vidé, mais le journal garde la trace : l'étape reste acquise.
-    const wiped = { ...played, players: [testPlayer("p1"), testPlayer("p2")] as typeof played.players };
-    expect(tutorialProgress(wiped, "p1", advanced.index).index).toBeGreaterThanOrEqual(advanced.index);
+  it("une action déjà faite se valide en arrivant dessus", () => {
+    let state = scenario();
+    state = act(state, { type: "playCard", playerId: "p1", instanceId: inHand(state, TUTORIAL_CARDS.unit) });
+    // Le joueur a posé la Gabière pendant les leçons : l'étape « pose-la » tombe d'elle-même.
+    expect(tutorialProgress(state, "p1", indexOf("play-unit")).step?.id).toBe("summoning-sickness");
+  });
+
+  it("chaque ancre désigne quelque chose pendant le premier tour", () => {
+    const state = scenario();
+    for (const step of TUTORIAL_STEPS) {
+      if (!step.anchor) continue;
+      expect(tutorialAnchor(step, state, "p1"), step.id).toBeTruthy();
+    }
   });
 });
 
-describe("main d'ouverture garantie", () => {
-  const decks = (() => {
-    const player = PRECON_DECKS[1] ?? PRECON_DECKS[0]!;
-    return { player, opponent: PRECON_DECKS.find((d) => d.id !== player.id) ?? player };
-  })();
-
-  function openingTypes(seed: number): string[] {
-    const state = createGameState({
-      gameId: `t${seed}`,
-      player1: { id: "p1", deck: decks.player },
-      player2: { id: "p2", deck: decks.opponent },
-      seed,
-      guaranteedOpeningTypes: TUTORIAL_OPENING_TYPES,
-    });
-    return state.players[0].hand.map((card) => getCardDefinition(card.cardId).type);
-  }
-
-  it("contient toujours une unité et DEUX Objets, quelle que soit la graine", () => {
-    // Deux Objets et non un : l'étape 4 en pose un, l'étape 5 en brise un
-    // autre depuis la main. C'est la garantie qui empêche le joueur de se
-    // condamner tout seul.
-    for (let seed = 1; seed <= 40; seed++) {
-      const types = openingTypes(seed);
-      expect(types.filter((t) => (UNIT_CARD_TYPES as readonly string[]).includes(t)).length, `graine ${seed}`).toBeGreaterThanOrEqual(1);
-      expect(types.filter((t) => t === "objet").length, `graine ${seed}`).toBeGreaterThanOrEqual(2);
-    }
+describe("partie scénarisée", () => {
+  it("reprend au troisième tour du joueur, avec ce que les leçons demandent", () => {
+    const state = scenario();
+    expect(state.turnNumber).toBe(TUTORIAL_START_TURN);
+    expect(state.activePlayerId).toBe("p1");
+    const hand = state.players[0].hand.map((c) => c.cardId);
+    expect(hand).toEqual(expect.arrayContaining([TUTORIAL_CARDS.unit, TUTORIAL_CARDS.piedMarin, TUTORIAL_CARDS.object]));
+    expect(onBoard(state, 0, TUTORIAL_CARDS.structure)).toBeTruthy();
+    expect(onBoard(state, 1, TUTORIAL_CARDS.garde)).toBeTruthy();
+    expect(onBoard(state, 1, TUTORIAL_CARDS.threat)).toBeTruthy();
+    expect(state.environment.tideRemainingTurns).toBe(1);
   });
 
-  it("garde une main de la bonne taille et ne duplique aucun exemplaire", () => {
-    const state = createGameState({
-      gameId: "t",
-      player1: { id: "p1", deck: decks.player },
-      player2: { id: "p2", deck: decks.opponent },
-      seed: 7,
-      guaranteedOpeningTypes: TUTORIAL_OPENING_TYPES,
-    });
-    const hand = state.players[0].hand;
-    expect(hand).toHaveLength(RULES.STARTING_HAND_SIZE);
-    // La main sort du deck : rien n'est inventé, rien n'est en double.
-    expect(hand.length + state.players[0].deck.length).toBe(decks.player.cardIds.length);
-    const ids = [...hand, ...state.players[0].deck].map((c) => c.instanceId);
+  it("donne assez de Raison pour les gestes du premier tour", () => {
+    let state = scenario();
+    state = act(state, { type: "playCard", playerId: "p1", instanceId: inHand(state, TUTORIAL_CARDS.unit) });
+    state = act(state, { type: "playCard", playerId: "p1", instanceId: inHand(state, TUTORIAL_CARDS.piedMarin) });
+    state = act(state, { type: "breakObject", playerId: "p1", instanceId: inHand(state, TUTORIAL_CARDS.object), fromHand: true });
+    expect(state.players[0].reason).toBeGreaterThanOrEqual(0);
+  });
+
+  it("n'invente ni ne duplique aucun exemplaire du préconstruit", () => {
+    const state = scenario();
+    const ids = [...state.players[0].hand, ...state.players[0].deck, ...state.players[0].board].map((c) => c.instanceId);
     expect(new Set(ids).size).toBe(ids.length);
   });
-
-  it("ne trafique pas la main quand aucun type n'est garanti", () => {
-    const plain = createGameState({
-      gameId: "t",
-      player1: { id: "p1", deck: decks.player },
-      player2: { id: "p2", deck: decks.opponent },
-      seed: 99,
-    });
-    expect(plain.players[0].hand).toHaveLength(RULES.STARTING_HAND_SIZE);
-  });
 });
 
-describe("cartes autorisées par étape", () => {
-  function handOf(cardIds: string[]) {
-    const state = testGameState();
-    return {
-      ...state,
-      players: [
-        testPlayer("p1", { hand: cardIds.map((id) => instance(id, "p1")) }),
-        testPlayer("p2"),
-      ] as typeof state.players,
-    };
-  }
-
-  it("n'autorise que les unités à la première étape", () => {
-    const state = handOf(["marin-des-jetees", "murene-aveugle", "treuil-rouille", "thermos-du-dernier-quart"]);
-    const eligible = TUTORIAL_STEPS[0]!.eligibleHandCards!(state, "p1");
-    const types = eligible.map((id) => getCardDefinition(state.players[0].hand.find((c) => c.instanceId === id)!.cardId).type);
-    expect(types.sort()).toEqual(["creature", "marin"]);
+describe("parcours guidé, de bout en bout", () => {
+  it("compte un Bris depuis le PLATEAU comme depuis la main", () => {
+    // Le bug remonté : l'ancienne étape n'acceptait que la main, et un Objet
+    // Brisé sur le plateau la laissait bloquée.
+    let state = scenario();
+    state = act(state, { type: "playCard", playerId: "p1", instanceId: inHand(state, TUTORIAL_CARDS.object) });
+    const thermos = onBoard(state, 0, TUTORIAL_CARDS.object)!;
+    state = act(state, { type: "breakObject", playerId: "p1", instanceId: thermos });
+    expect(TUTORIAL_STEPS[indexOf("break")]!.isDone!(state, "p1")).toBe(true);
   });
 
-  it("écarte les Objets de la deuxième étape — les étapes 4 et 5 en ont besoin", () => {
-    const state = handOf(["marin-des-jetees", "thermos-du-dernier-quart"]);
-    const eligible = TUTORIAL_STEPS[1]!.eligibleHandCards!(state, "p1");
-    expect(eligible).toHaveLength(1);
-    expect(state.players[0].hand.find((c) => c.instanceId === eligible[0])!.cardId).toBe("marin-des-jetees");
+  it("valide le Sabordage de la Structure préparée", () => {
+    let state = scenario();
+    state = act(state, { type: "saborder", playerId: "p1", instanceId: onBoard(state, 0, TUTORIAL_CARDS.structure)! });
+    expect(TUTORIAL_STEPS[indexOf("saborder")]!.isDone!(state, "p1")).toBe(true);
   });
 
-  it("laisse le plateau libre aux étapes qui ne demandent pas de poser une carte", () => {
-    // Attaquer, observer la Marée, finir la partie : rien à restreindre.
-    for (const id of ["attack", "tide", "finish"]) {
-      const step = TUTORIAL_STEPS.find((s) => s.id === id)!;
-      expect(step.eligibleHandCards, `étape « ${id} »`).toBeUndefined();
+  it("n'annonce l'attaque possible qu'au bon moment, et la rend possible quelle que soit la graine", () => {
+    const attack = TUTORIAL_STEPS[indexOf("attack")]!;
+    // Au premier tour, rien n'est prêt hors Pied marin : la fiche le dit au lieu de laisser chercher.
+    let first = scenario();
+    first = act(first, { type: "playCard", playerId: "p1", instanceId: inHand(first, TUTORIAL_CARDS.unit) });
+    expect(attack.waitingFor!(first, "p1")).toMatch(/Aucune de tes unités|Phase de combat/);
+
+    for (let seed = 1; seed <= 8; seed++) {
+      let state = firstTurnThenBot(seed);
+      expect(state.activePlayerId, `graine ${seed}`).toBe("p1");
+      expect(tutorialProgress(state, "p1", indexOf("opponent-turn")).index, `graine ${seed}`).toBeGreaterThan(indexOf("opponent-turn"));
+      expect(attack.waitingFor!(state, "p1"), `graine ${seed}`).toMatch(/Phase de combat/);
+      state = act(state, { type: "advancePhase", playerId: "p1" });
+      expect(attack.waitingFor!(state, "p1"), `graine ${seed}`).toBeNull();
+
+      // La Garde impose sa cible : on l'attaque.
+      const attacker = state.players[0].board.find((u) => u.cardId === TUTORIAL_CARDS.unit)!.instanceId;
+      const garde = state.players[1].board.find((u) => u.cardId === TUTORIAL_CARDS.garde)?.instanceId;
+      state = act(state, { type: "attack", playerId: "p1", attackerInstanceId: attacker, ...(garde ? { defenderInstanceId: garde } : {}) });
+      expect(attack.isDone!(state, "p1"), `graine ${seed}`).toBe(true);
     }
+  });
+
+  it("voit la Marée changer pendant le tour adverse", () => {
+    const state = firstTurnThenBot(3);
+    expect(state.environment.tideState).not.toBe("calme");
   });
 });
 

@@ -1,204 +1,359 @@
 import { getCardDefinition } from "@/game/cards/sets/core";
-import { UNIT_CARD_TYPES } from "@/game/cards/types";
+import { canUnitAttack } from "@/game/rules/validation";
 import type { GameState, PlayerId } from "@/game/state/types";
+import { TUTORIAL_CARDS, TUTORIAL_START_TURN } from "@/game/tutorial/scenario";
 
 /**
- * Tutoriel — étapes d'une PARTIE GUIDÉE.
+ * Tutoriel — étapes d'une PARTIE GUIDÉE (refonte du 06/10/2026).
  *
- * Source de vérité : Notion « Progression joueur », section 2. La spec
- * verrouille le contenu minimal et, surtout, la FORME :
+ * Source de vérité : Notion « Progression joueur », section 2, et le retour
+ * du 06/10/2026 : expliquer d'abord l'INTERFACE, puis le premier tour, les
+ * gestes (Bris, Sabordage, Défausse), le tour adverse, le combat et la
+ * Garde, la Marée, la Raison et la Déraison, le public. Sans jamais
+ * bloquer le joueur ; une fois tout vu, la partie se joue jusqu'au bout,
+ * le guide réduit à un bandeau discret.
  *
- *   > Le tutoriel doit être court, jouable et intégré à l'univers
- *   > Tidebound, pas présenté comme une succession de fenêtres techniques.
+ * DEUX SORTES D'ÉTAPES :
+ *   - une LEÇON (pas de `isDone`) explique ce qu'on voit, en désignant la
+ *     zone ; elle se valide par « Compris ». Le joueur peut jouer pendant
+ *     qu'il lit : rien n'est figé ;
+ *   - une ACTION se valide quand le joueur a FAIT le geste, prédicat pur
+ *     sur l'état réel. Une action déjà faite plus tôt se valide d'office
+ *     en arrivant dessus.
  *
- * D'où ce modèle : le tutoriel n'est pas un diaporama ni une partie
- * scriptée à part, c'est une vraie partie contre le bot doublée d'un
- * compagnon de bord. Chaque étape est une CONSIGNE et un PRÉDICAT PUR sur
- * l'état réel ; elle se valide quand le joueur a effectivement fait le
- * geste, jamais sur un clic de « Suivant ». Le joueur peut donc jouer à
- * côté, se tromper, revenir — rien ne le bloque.
+ * Une action peut ne pas être faisable TOUT DE SUITE (attaquer pendant le
+ * tour adverse) : `waitingFor` dit alors ce qu'on attend, au lieu de
+ * laisser le joueur chercher un geste impossible. C'était le défaut de
+ * l'ancien tutoriel — « Attaque » s'affichait au premier tour, quand
+ * aucune unité ne pouvait frapper.
  *
- * Une étape ne se dévalide jamais : `TutorialProgress` retient le rang le
- * plus avancé atteint, pour qu'un permanent détruit ne fasse pas reculer la
- * consigne.
+ * Une étape ne se dévalide jamais : `TutorialProgress` part du rang le plus
+ * avancé atteint.
  */
 
-/**
- * Zone de l'écran où le geste se fait. Sert à DEUX choses : poser la fiche
- * du guide à côté d'elle plutôt qu'au bord de l'écran, et l'allumer quand
- * le joueur ne trouve pas.
- *
- * Exprimée en sélecteur CSS et non en identifiant abstrait : le plateau
- * porte déjà ces ancres (`data-zone`, `data-drop`, `data-graveyard`), et un
- * registre intermédiaire ne ferait que dupliquer ce qui existe.
- */
-export type TutorialAnchor =
-  /** La main du joueur. */
-  | '[data-zone="PlayerHand"]'
-  /** Le plateau du joueur, là où les cartes se posent. */
-  | '[data-zone="PlayerZone"]'
-  /** La piste de Marée, au centre. */
-  | '[data-zone="CenterZone"]'
-  /** Le Navire adverse — cible d'attaque. */
-  | '[data-drop="ship"]'
-  /** Le crâne du joueur : Sabordage et Bris depuis la main. */
-  | '[data-graveyard="player"]'
-  /** La colonne de droite : tour, journal et bouton de phase. */
-  | '[data-zone="SideRail"]';
+/** Sélecteur CSS de la zone que l'étape désigne — le plateau porte déjà ces ancres. */
+export type TutorialAnchor = string;
 
 export interface TutorialStep {
   id: string;
+  /** Chapitre, affiché au-dessus du titre. */
+  chapter: string;
   /** Titre court, ton « carnet de bord ». */
   title: string;
-  /** Consigne, une phrase. */
+  /** Consigne ou explication principale. */
   instruction: string;
-  /** Détail facultatif : la règle que l'étape fait comprendre. */
+  /** Précision : la règle que l'étape fait comprendre. */
   detail?: string;
-  /** Où le geste se fait — le guide s'y ancre et l'allume au besoin. */
-  anchor: TutorialAnchor;
+  /** Zone à désigner (halo posé SUR l'élément) — fixe, ou calculée sur l'état (une carte précise). */
+  anchor?: TutorialAnchor | ((state: GameState, playerId: PlayerId) => TutorialAnchor | null);
   /**
-   * Cartes de la main qui conviennent à cette étape, par `instanceId`.
-   *
-   * Absent = l'étape ne demande pas de poser une carte (attaquer, observer
-   * la Marée) et rien n'est restreint. Présent, il fait DEUX choses : le
-   * guide désigne la première carte de la liste, et le plateau n'autorise
-   * que celles-ci.
-   *
-   * La restriction n'est pas du dirigisme gratuit : le deck du tutoriel
-   * n'a que quelques Objets, et poser le dernier à l'étape « pose un
-   * Objet » rendait l'étape suivante — « brise un Objet depuis ta main » —
-   * infranchissable. Le joueur se bloquait lui-même sans savoir pourquoi.
+   * Cartes de la main qui conviennent à cette étape, par `instanceId`. Le
+   * guide désigne la première ; le plateau n'autorise que celles-ci, pour
+   * qu'une carte posée à contretemps ne rende pas l'étape suivante
+   * infranchissable.
    */
   eligibleHandCards?: (state: GameState, playerId: PlayerId) => string[];
-  /** Vrai dès que le joueur a fait le geste — PUR, lu sur l'état réel. */
-  isDone: (state: GameState, playerId: PlayerId) => boolean;
+  /** ACTION : vrai dès que le joueur a fait le geste. Absent : c'est une LEÇON (« Compris »). */
+  isDone?: (state: GameState, playerId: PlayerId) => boolean;
+  /** ACTION pas encore faisable : ce qu'on attend, en une phrase. `null` : à toi. */
+  waitingFor?: (state: GameState, playerId: PlayerId) => string | null;
 }
 
-/** Cartes de la main de `playerId` dont le type est l'un de ceux demandés. */
-function handCardsOfType(state: GameState, playerId: PlayerId, types: readonly string[]): string[] {
-  const player = state.players.find((p) => p.id === playerId);
-  return (player?.hand ?? [])
-    .filter((card) => {
-      try {
-        return types.includes(getCardDefinition(card.cardId).type);
-      } catch {
-        return false;
-      }
-    })
-    .map((card) => card.instanceId);
+const ZONE = {
+  hand: '[data-zone="PlayerHand"]',
+  board: '[data-zone="PlayerZone"]',
+  opponentBoard: '[data-zone="OpponentZone"]',
+  center: '[data-zone="CenterZone"]',
+  rail: '[data-zone="SideRail"]',
+  deck: '[data-deck="player"]',
+  graveyard: '[data-graveyard="player"]',
+  audience: "[data-live-audience]",
+} as const;
+
+const ship = (playerId: PlayerId) => `[data-ship-target="${playerId}"]`;
+const handCard = (instanceId: string) => `[data-hand-card="${instanceId}"]`;
+const boardUnit = (instanceId: string) => `[data-board-unit="${instanceId}"]`;
+
+function player(state: GameState, playerId: PlayerId) {
+  return state.players.find((p) => p.id === playerId);
 }
 
-/** Le joueur a-t-il posé une carte de l'un de ces types ? */
-function playedOneOf(state: GameState, playerId: PlayerId, types: readonly string[]): boolean {
-  return state.eventLog.some((event) => {
-    if (event.type !== "PLAY_CARD" || event.playerId !== playerId) return false;
-    try {
-      return types.includes(getCardDefinition(event.cardId).type);
-    } catch {
-      return false;
-    }
-  });
+/** Exemplaires de `cardId` dans la main du joueur. */
+function inHand(state: GameState, playerId: PlayerId, cardId: string): string[] {
+  return (player(state, playerId)?.hand ?? []).filter((c) => c.cardId === cardId).map((c) => c.instanceId);
 }
 
-/**
- * Les sept apprentissages listés par la spec, dans l'ordre où une partie
- * les rencontre naturellement. Volontairement aucun n'impose une carte
- * précise : le tutoriel se joue avec un vrai deck, pas une main truquée.
- */
+/** Premier exemplaire de `cardId` sur le plateau d'un joueur. */
+function onBoard(state: GameState, playerId: PlayerId, cardId: string): string | null {
+  return player(state, playerId)?.board.find((c) => c.cardId === cardId)?.instanceId ?? null;
+}
+
+function played(state: GameState, playerId: PlayerId, cardId: string): boolean {
+  return state.eventLog.some((e) => e.type === "PLAY_CARD" && e.playerId === playerId && e.cardId === cardId);
+}
+
+const opponentOf = (state: GameState, playerId: PlayerId) => state.players.find((p) => p.id !== playerId)!.id;
+
+/** Une de ses unités pourrait-elle attaquer, si l'on était en Phase de combat ? */
+function hasReadyAttacker(state: GameState, playerId: PlayerId): boolean {
+  // Ni fenêtre ni question ouverte : on demande si l'unité POURRAIT frapper, pas si elle le peut à l'instant.
+  const enCombat: GameState = { ...state, phase: "combatPhase", pendingReaction: undefined, pendingChoice: undefined };
+  return (player(state, playerId)?.board ?? []).some((unit) => canUnitAttack(enCombat, playerId, unit.instanceId));
+}
+
+/** Pourquoi on ne peut pas encore attaquer — `null` si c'est possible maintenant. */
+function attackWait(state: GameState, playerId: PlayerId): string | null {
+  if (state.activePlayerId !== playerId) return "Attends ton tour : c'est à l'adversaire de jouer.";
+  if (state.pendingReaction || state.pendingChoice) return "Réponds d'abord à la question en cours.";
+  if (!hasReadyAttacker(state, playerId)) return "Aucune de tes unités n'est prête : pose-en une, elle frappera au tour suivant.";
+  if (state.phase !== "combatPhase") return "Passe d'abord en Phase de combat : bouton à droite.";
+  return null;
+}
+
 export const TUTORIAL_STEPS: readonly TutorialStep[] = [
+  // --- Le pont : ce qu'on voit ---------------------------------------
   {
-    id: "play-unit",
-    title: "Un corps sur le pont",
-    // Marin OU Créature, et surtout pas « une Créature » seule. Le deck
-    // du tutoriel compte 13 Marins pour 12 Créatures : une main
-    // d'ouverture sans la moindre Créature est banale, et le joueur posait
-    // alors carte sur carte sans que l'étape avance ni que rien ne le lui
-    // explique. La leçon de cette étape est le GESTE — mettre un corps sur
-    // le pont — pas la distinction entre les deux types d'unité.
-    instruction: "Pose une unité sur ton plateau : un Marin ou une Créature.",
-    detail: "Glisse la carte sur ton plateau — au doigt, tu peux aussi la toucher, puis « Jouer ».",
-    anchor: '[data-zone="PlayerHand"]',
-    eligibleHandCards: (state, playerId) => handCardsOfType(state, playerId, UNIT_CARD_TYPES),
-    isDone: (state, playerId) => playedOneOf(state, playerId, UNIT_CARD_TYPES),
+    id: "welcome",
+    chapter: "Le pont",
+    title: "Bienvenue à bord",
+    instruction: "La partie est déjà lancée : ton équipage est en bas, celui de l'adversaire en haut.",
+    detail: "Lis chaque fiche, puis « Compris ». Tu peux jouer pendant ce temps : rien n'est figé.",
   },
   {
-    id: "understand-cost",
-    title: "La Raison se dépense",
-    instruction: "Regarde ta Raison baisser : chaque carte coûte le chiffre inscrit en haut à gauche.",
-    detail: "Le médaillon bleu de ton Navire se vide à mesure que tu poses. Il remonte au début de ton tour.",
-    anchor: '[data-zone="PlayerZone"]',
-    // Les Objets sont écartés : les étapes 4 et 5 en ont besoin, et le deck
-    // du tutoriel n'en compte que quelques-uns.
-    eligibleHandCards: (state, playerId) => handCardsOfType(state, playerId, [...UNIT_CARD_TYPES, "structure", "equipement"]),
-    // Deux cartes posées : le joueur a vu la Raison bouger deux fois.
-    isDone: (state, playerId) => state.eventLog.filter((e) => e.type === "PLAY_CARD" && e.playerId === playerId).length >= 2,
+    id: "hand",
+    chapter: "Le pont",
+    title: "Ta main",
+    instruction: "Les cartes que tu peux jouer. Le chiffre en haut à gauche est leur coût en Raison.",
+    detail: "Survole une carte (ou appuie longuement) pour la lire en grand.",
+    anchor: ZONE.hand,
+  },
+  {
+    id: "deck-graveyard",
+    chapter: "Le pont",
+    title: "Pioche et Cimetière",
+    instruction: "À gauche, ta pioche : tu y tires une carte au début de chaque tour. Le crâne, c'est ton Cimetière.",
+    detail: "Tout ce qui est détruit, Brisé, Sabordé ou défaussé y finit.",
+    anchor: ZONE.graveyard,
+  },
+  {
+    id: "anchor",
+    chapter: "Le pont",
+    title: "Ton Navire et son Ancrage",
+    instruction: "Le médaillon rouge de ton Navire est son Ancrage : ta vie. À 0, tu perds.",
+    detail: "Celui d'en face aussi : le réduire à 0, c'est gagner.",
+    anchor: (_state, playerId) => ship(playerId),
+  },
+  {
+    id: "reason",
+    chapter: "Le pont",
+    title: "La Raison",
+    instruction: "Le médaillon bleu, c'est ta Raison : elle paie tes cartes. Ce que tu ne dépenses pas reste acquis.",
+    detail:
+      "Elle remonte un peu à chaque tour. Tu peux même descendre sous 0 — c'est la Déraison : chaque point manquant te coûte de l'Ancrage à la fin de ton tour.",
+    anchor: (_state, playerId) => `[data-reason-gauge="${playerId}"]`,
+  },
+  {
+    id: "ship-ability",
+    chapter: "Le pont",
+    title: "La capacité du Navire",
+    instruction: "Le hublot sur ton Navire est sa capacité : elle s'active d'un clic, quand elle s'allume.",
+    detail: "Survole-le pour lire ce qu'elle fait et ce qu'elle coûte.",
+    anchor: (_state, playerId) => `${ship(playerId)} [data-ship-ability]`,
+  },
+  {
+    id: "opponent",
+    chapter: "Le pont",
+    title: "En face",
+    instruction: "Le plateau adverse : ses unités, ses Structures, son Navire. Sa main reste cachée.",
+    detail: "Le médaillon bouclier sur une carte, c'est Garde. On y revient au combat.",
+    anchor: ZONE.opponentBoard,
+  },
+
+  // --- Ton premier tour ----------------------------------------------
+  {
+    id: "play-unit",
+    chapter: "Ton premier tour",
+    title: "Un corps sur le pont",
+    instruction: "Pose la Gabière du Grand Large : glisse-la sur ton plateau (au doigt : touche-la, puis « Jouer »).",
+    detail: "Regarde ta Raison baisser du coût de la carte.",
+    anchor: (state, playerId) => {
+      const id = inHand(state, playerId, TUTORIAL_CARDS.unit)[0];
+      return id ? handCard(id) : ZONE.hand;
+    },
+    eligibleHandCards: (state, playerId) => inHand(state, playerId, TUTORIAL_CARDS.unit),
+    isDone: (state, playerId) => played(state, playerId, TUTORIAL_CARDS.unit),
+  },
+  {
+    id: "summoning-sickness",
+    chapter: "Ton premier tour",
+    title: "Il vient d'arriver",
+    instruction: "Une unité posée ce tour-ci ne peut pas encore attaquer : elle frappera à ton prochain tour.",
+    detail: "Le médaillon « Engourdi » posé sur la carte le rappelle. Il disparaît au début de ton prochain tour.",
+    anchor: (state, playerId) => {
+      const id = onBoard(state, playerId, TUTORIAL_CARDS.unit);
+      return id ? boardUnit(id) : ZONE.board;
+    },
+  },
+  {
+    id: "pied-marin",
+    chapter: "Ton premier tour",
+    title: "Pied marin",
+    instruction: "Pose la Sterne des Embruns. Elle a Pied marin : elle peut attaquer dès son arrivée.",
+    detail: "Sur la carte posée, le médaillon Pied marin remplace « Engourdi » : elle est prête tout de suite.",
+    anchor: (state, playerId) => {
+      const id = inHand(state, playerId, TUTORIAL_CARDS.piedMarin)[0];
+      return id ? handCard(id) : ZONE.hand;
+    },
+    eligibleHandCards: (state, playerId) => inHand(state, playerId, TUTORIAL_CARDS.piedMarin),
+    isDone: (state, playerId) => played(state, playerId, TUTORIAL_CARDS.piedMarin),
+  },
+  {
+    id: "effects",
+    chapter: "Ton premier tour",
+    title: "Lire une carte",
+    instruction: "Le texte d'une carte dit QUAND elle agit : « À son arrivée », « Brisez cet Objet », « Sabordage », « Lorsqu'il attaque »…",
+    detail: "Puissance (épée) et Résistance (bouclier) en bas ; à 0 Résistance, la carte est détruite.",
+    anchor: ZONE.board,
+  },
+
+  // --- Les gestes ----------------------------------------------------
+  {
+    id: "break",
+    chapter: "Les gestes",
+    title: "Briser un Objet",
+    instruction: "Un Objet sert en se BRISANT : son effet s'applique, puis il part au Cimetière. Brise le Thermos du Dernier Quart depuis ta main : glisse-le sur le crâne.",
+    detail: "Depuis la main, le Bris coûte la moitié du prix. Posé sur le plateau, un Objet attend : tu le Brises quand tu veux.",
+    anchor: ZONE.graveyard,
+    eligibleHandCards: (state, playerId) => inHand(state, playerId, TUTORIAL_CARDS.object),
+    // N'importe quel Bris compte — depuis la main OU le plateau : l'ancien
+    // tutoriel n'acceptait que la main, et un Objet Brisé sur le plateau
+    // laissait l'étape bloquée sans explication.
+    isDone: (state, playerId) => state.eventLog.some((e) => e.type === "OBJECT_BROKEN" && e.playerId === playerId),
+    waitingFor: (state, playerId) => (state.activePlayerId === playerId ? null : "Attends ton tour."),
+  },
+  {
+    id: "saborder",
+    chapter: "Les gestes",
+    title: "Saborder",
+    instruction: "Saborder, c'est sacrifier un de tes permanents. Glisse la Caisse des Dernières Planches sur le crâne.",
+    detail: "Certaines cartes ont un effet « Sabordage : » qui s'applique alors — ici, 1 Ancrage et une carte.",
+    anchor: (state, playerId) => {
+      const id = onBoard(state, playerId, TUTORIAL_CARDS.structure);
+      return id ? boardUnit(id) : ZONE.graveyard;
+    },
+    isDone: (state, playerId) => state.eventLog.some((e) => e.type === "SABORDED" && e.playerId === playerId),
+    waitingFor: (state, playerId) => (state.activePlayerId === playerId ? null : "Attends ton tour."),
+  },
+  {
+    id: "discard",
+    chapter: "Les gestes",
+    title: "Défausser",
+    instruction: "Défausser, c'est envoyer une carte de ta main au Cimetière. Certains effets le demandent.",
+    detail: "Ta main tient 7 cartes au plus : au-delà, tu défausses à la fin de ton tour.",
+    anchor: ZONE.graveyard,
+  },
+
+  // --- Fin de tour et tour adverse -----------------------------------
+  {
+    id: "end-turn",
+    chapter: "Fin de tour",
+    title: "Termine ton tour",
+    instruction: "Termine ton tour avec le bouton à droite (ou en passant les phases).",
+    detail: "C'est en fin de tour que la Déraison se paie, si ta Raison est sous 0.",
+    anchor: ZONE.rail,
+    isDone: (state) => state.turnNumber > TUTORIAL_START_TURN,
+  },
+  {
+    id: "opponent-turn",
+    chapter: "Fin de tour",
+    title: "Au tour de l'adversaire",
+    instruction: "L'adversaire pioche, pose, attaque peut-être. Observe : tu reprends la main juste après.",
+    detail: "Regarde aussi la Marée au centre : elle avance d'elle-même au fil des tours.",
+    anchor: ZONE.center,
+    isDone: (state, playerId) => state.activePlayerId === playerId && state.turnNumber > TUTORIAL_START_TURN + 1,
+  },
+
+  // --- Le combat -----------------------------------------------------
+  {
+    id: "attack-concept",
+    chapter: "Le combat",
+    title: "Attaquer",
+    instruction: "Passe en Phase de combat (bouton à droite). Chaque unité prête attaque une fois par tour.",
+    detail:
+      "Contre une unité : elle encaisse ta Puissance, et riposte avec la sienne. Contre le Navire : il perd autant d'Ancrage, sans riposte.",
+    anchor: ZONE.rail,
+  },
+  {
+    id: "garde",
+    chapter: "Le combat",
+    title: "La Garde",
+    instruction: "Tant qu'une unité adverse a Garde, tes attaques doivent la viser : ni le Navire, ni les autres unités.",
+    detail: "Abats la Garde, et la voie s'ouvre. Détruire ses unités te protège aussi de leurs attaques au tour suivant.",
+    anchor: (state, playerId) => {
+      const id = onBoard(state, opponentOf(state, playerId), TUTORIAL_CARDS.garde);
+      return id ? boardUnit(id) : ZONE.opponentBoard;
+    },
   },
   {
     id: "attack",
+    chapter: "Le combat",
     title: "À l'abordage",
-    instruction: "Passe en Phase de combat, puis attaque avec une de tes unités.",
-    detail: "Une unité qui vient d'arriver doit attendre un tour avant de frapper. Au doigt : touche ton unité, puis sa cible.",
-    anchor: '[data-zone="SideRail"]',
-    isDone: (state, playerId) => state.eventLog.some((event) => event.type === "ATTACK" && event.playerId === playerId),
+    instruction: "Attaque : glisse une unité prête sur sa cible (au doigt : touche ton unité, puis la cible).",
+    anchor: ZONE.opponentBoard,
+    isDone: (state, playerId) => state.eventLog.some((e) => e.type === "ATTACK" && e.playerId === playerId),
+    waitingFor: attackWait,
   },
-  {
-    id: "play-object",
-    title: "La cale",
-    instruction: "Pose un Objet sur ton plateau.",
-    detail: "Un Objet reste en jeu et occupe une place : il attend son heure.",
-    anchor: '[data-zone="PlayerHand"]',
-    eligibleHandCards: (state, playerId) => handCardsOfType(state, playerId, ["objet"]),
-    isDone: (state, playerId) => playedOneOf(state, playerId, ["objet"]),
-  },
-  {
-    id: "break-object",
-    title: "Ça peut encore servir",
-    instruction: "Brise un Objet depuis ta main en le glissant sur le crâne — au doigt, touche-le, puis « Briser depuis la main ».",
-    detail: "Briser depuis la main coûte moins cher que de le poser : c'est l'effet qui t'intéresse, pas la place.",
-    anchor: '[data-graveyard="player"]',
-    eligibleHandCards: (state, playerId) => handCardsOfType(state, playerId, ["objet"]),
-    isDone: (state, playerId) => state.eventLog.some((event) => event.type === "OBJECT_BROKEN" && event.playerId === playerId && event.fromHand),
-  },
+
+  // --- La Marée ------------------------------------------------------
   {
     id: "tide",
-    title: "La Marée monte",
-    instruction: "Observe la piste de Marée au centre : elle avance toute seule, à chaque tour.",
-    detail: "Calme, Houle, Tempête, Abysses — chaque état change ce que tes cartes valent, et finit par frapper les deux Navires.",
-    anchor: '[data-zone="CenterZone"]',
-    isDone: (state) => state.eventLog.some((event) => event.type === "TIDE_ADVANCED" && event.stateChanged),
+    chapter: "La Marée",
+    title: "Les quatre Marées",
+    instruction: "Calme, Houle, Tempête, Abysses : la Marée change d'état au fil des tours, montante ou descendante.",
+    detail:
+      "Calme : rien. Houle : une carte peut tomber malade et perdre de la Résistance. Tempête : 1 dégât d'Ancrage aux deux Navires chaque tour, et aux Structures. Abysses : 2 Ancrage à l'entrée, Raison max −2. Beaucoup de cartes changent selon la Marée.",
+    anchor: ZONE.center,
+  },
+
+  // --- Le public -----------------------------------------------------
+  {
+    id: "audience",
+    chapter: "Le public",
+    title: "On te regarde",
+    instruction: "L'œil en haut, c'est ton public. Une partie expédiée rapporte peu ; une partie bien jouée attire les regards.",
+    detail: "Beaux coups, retournements, Marée bien exploitée : le public grandit, et les mécènes qui te repèrent envoient des cadeaux.",
+    anchor: ZONE.audience,
   },
   {
-    id: "finish",
-    title: "Tenir jusqu'au bout",
-    instruction: "Termine la partie.",
-    detail: "Réduis l'Ancrage adverse à zéro — ou tiens plus longtemps que lui.",
-    anchor: '[data-drop="ship"]',
-    isDone: (state) => state.status === "finished",
+    id: "free-play",
+    chapter: "À toi",
+    title: "La mer est à toi",
+    instruction: "Tu connais les rouages. Joue la partie jusqu'au bout — ou termine le tutoriel quand tu veux.",
   },
 ];
 
 export interface TutorialProgress {
-  /** Index de l'étape en cours ; égal à `TUTORIAL_STEPS.length` une fois tout fait. */
+  /** Index de l'étape en cours ; égal à `TUTORIAL_STEPS.length` une fois tout vu. */
   index: number;
   step: TutorialStep | null;
   doneCount: number;
   total: number;
+  /** Toutes les étapes sont vues : le guide se réduit, la partie continue. */
   complete: boolean;
 }
 
 /**
  * Avancement du tutoriel pour un état donné.
  *
- * `furthestIndex` (le rang le plus avancé déjà atteint) est passé par
- * l'appelant et ne redescend jamais : sans lui, perdre son unique Créature
- * ferait revenir la consigne « pose une Créature » alors que le joueur l'a
- * déjà fait. On avance tant que l'étape courante est remplie — plusieurs
- * étapes peuvent donc tomber d'un coup, ce qui est le comportement voulu
- * quand un joueur va plus vite que le guide.
+ * `furthestIndex` (le rang le plus avancé déjà atteint, tenu par l'écran :
+ * c'est lui qu'incrémentent « Compris » et « Passer l'étape ») ne redescend
+ * jamais. On avance tant que l'étape courante est une ACTION déjà faite —
+ * plusieurs peuvent tomber d'un coup quand le joueur va plus vite que le
+ * guide. Une leçon arrête la course : elle attend « Compris ».
  */
 export function tutorialProgress(state: GameState, playerId: PlayerId, furthestIndex = 0): TutorialProgress {
   let index = Math.max(0, Math.min(furthestIndex, TUTORIAL_STEPS.length));
-  while (index < TUTORIAL_STEPS.length && TUTORIAL_STEPS[index]!.isDone(state, playerId)) index += 1;
+  while (index < TUTORIAL_STEPS.length && TUTORIAL_STEPS[index]!.isDone?.(state, playerId)) index += 1;
 
   return {
     index,
@@ -209,12 +364,19 @@ export function tutorialProgress(state: GameState, playerId: PlayerId, furthestI
   };
 }
 
-/**
- * Types de cartes que la main d'ouverture du tutoriel doit contenir, dans
- * l'ordre où les étapes les réclament.
- *
- * Deux Objets et non un : l'étape 4 en POSE un et l'étape 5 en BRISE un
- * autre depuis la main. Avec un seul, la quatrième étape condamnait la
- * cinquième.
- */
-export const TUTORIAL_OPENING_TYPES: readonly string[] = ["creature", "objet", "objet"];
+/** Sélecteur de la zone désignée par l'étape, résolu sur l'état. */
+export function tutorialAnchor(step: TutorialStep, state: GameState, playerId: PlayerId): TutorialAnchor | null {
+  if (!step.anchor) return null;
+  return typeof step.anchor === "function" ? step.anchor(state, playerId) : step.anchor;
+}
+
+/** Garde-fou : chaque carte du scénario existe au catalogue (lu par les tests). */
+export function tutorialCardsExist(): boolean {
+  return Object.values(TUTORIAL_CARDS).every((id) => {
+    try {
+      return Boolean(getCardDefinition(id));
+    } catch {
+      return false;
+    }
+  });
+}

@@ -84,6 +84,7 @@
   backdrop-filter: blur(10px);
   color: var(--tb-text);
   font-family: var(--tb-font-ui);
+  transition: opacity 160ms ease-out;
 }
 
 /* Le filet cyan en tête, signature des fenêtres du jeu. */
@@ -133,7 +134,7 @@
   color: var(--tb-text-muted);
 }
 
-/* Barre d'avancement : sept crans, un par apprentissage. */
+/* Barre d'avancement : un cran par étape. */
 .coachTrack {
   display: flex;
   gap: 4px;
@@ -183,7 +184,7 @@
  * nom de la carte qu'il demandait justement de lire, et parfois « Jouer ».
  */
 :global(body:has([data-card-zoom])) .coach,
-:global(body:has([data-card-zoom])) .spotlight {
+:global(body:has([data-hover-preview][data-ready="true"])) .coach {
   opacity: 0;
   pointer-events: none;
 }
@@ -325,39 +326,85 @@
   pointer-events: none;
 }
 
+/* Action pas encore possible : ce qu'on attend, en une ligne. */
+.coachWaiting {
+  margin: 8px 0 0;
+  padding: 6px 8px;
+  border-left: 2px solid var(--tb-accent);
+  border-radius: var(--tb-radius-sm);
+  background: var(--tb-accent-soft);
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--tb-text-strong);
+}
+
+/* « Compris » : la seule action d'une leçon. */
+.coachPrimary {
+  padding: 0.45em 1.1em;
+  border: 1px solid var(--tb-accent);
+  border-radius: var(--tb-radius-sm);
+  background: var(--tb-accent-soft);
+  color: var(--tb-text-strong);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: var(--tb-cursor-pointer);
+}
+
+.coachPrimary:focus-visible { outline: 2px solid var(--tb-accent); outline-offset: 2px; }
+
+@media (hover: hover) {
+  .coachPrimary:hover { background: var(--tb-accent); color: var(--tb-surface-solid); }
+}
+
 /*
- * Halo posé sur la zone à utiliser, après cinq secondes d'hésitation.
- * `pointer-events: none` est vital : il se superpose exactement à la main
- * et au plateau, il ne doit jamais intercepter le geste qu'il réclame.
+ * Leçons terminées : un bandeau DISCRET en bas à gauche, au-dessus de la
+ * zone sûre. La partie continue ; on peut terminer quand on veut.
  */
-.spotlight {
+.coachMini {
   position: fixed;
-  z-index: 74;
-  border-radius: 18px;
+  left: calc(12px + var(--tb-safe-left, 0px));
+  bottom: calc(12px + var(--tb-safe-bottom, 0px));
+  z-index: 75;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: min(420px, calc(100vw - 24px));
+  padding: 6px 6px 6px 12px;
+  border: 1px solid var(--tb-border-strong);
+  border-radius: var(--tb-radius-pill);
+  background: var(--tb-surface-solid);
+  box-shadow: var(--tb-shadow-lg);
+  color: var(--tb-text-muted);
+  font-family: var(--tb-font-ui);
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+.coachMiniText {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.coachMiniButton {
+  flex: none;
+  padding: 0.4em 0.9em;
+  border: 1px solid var(--tb-accent);
+  border-radius: var(--tb-radius-pill);
+  background: transparent;
+  color: var(--tb-text-strong);
+  font: inherit;
+  cursor: var(--tb-cursor-pointer);
+}
+
+.coachMiniButton:focus-visible { outline: 2px solid var(--tb-accent); outline-offset: 2px; }
+
+@media (hover: hover) {
+  .coachMini:hover { opacity: 1; }
+  .coachMiniButton:hover { background: var(--tb-accent-soft); }
+}
+
+:global(body:has([data-card-zoom])) .coachMini {
+  opacity: 0;
   pointer-events: none;
-  box-shadow:
-    0 0 0 2px var(--tb-accent-bright),
-    0 0 22px 6px rgba(95, 208, 230, 0.45),
-    inset 0 0 26px rgba(95, 208, 230, 0.18);
-  animation: coachPulse 1.6s ease-in-out infinite;
-}
-
-@keyframes coachPulse {
-  0%,
-  100% {
-    opacity: 0.55;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 1;
-    transform: scale(1.012);
-  }
-}
-
-/* Un joueur qui a demandé moins d'animation garde le halo, sans la pulsation. */
-@media (prefers-reduced-motion: reduce) {
-  .spotlight {
-    animation: none;
-    opacity: 0.9;
-  }
 }
