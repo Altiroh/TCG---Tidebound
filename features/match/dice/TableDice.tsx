@@ -15,6 +15,7 @@ import {
 } from "@/game";
 import { dieFaceUrl, dieTextureFit, dieTextureUrl } from "@/features/match/dice/diceAssets";
 import { axisAngle, eulerMatrix, multiply, placeFaces, restMatrix, rollPath, rotate, slerp, toCss, type Mat4 } from "@/features/match/dice/polyhedra";
+import { LANCER, dieSettleMs as settleMs } from "@/features/match/dice/diceTimings";
 import { useDiceThrow, type DiceThrow } from "@/features/match/dice/useDiceThrow";
 import { loadImageStatus } from "@/features/match/imageStatusCache";
 import { playButtonClick, playDiceLanded } from "@/lib/sound";
@@ -271,12 +272,6 @@ const DIE_DECISION_MS = 15_000;
 /** Hauteur (px) à laquelle le dé se lève pour changer de face. */
 const ADJUST_LIFT = 46;
 
-/** Temps que met un dé lancé à se poser : la légende et les gestes attendent qu'il soit immobile. */
-function settleMs(die: DieSize): number {
-  const geste = LANCER[die];
-  return geste.airMs + geste.rollMs.slice(0, geste.rolls).reduce((a, b) => a + b, 0) + geste.wobbleMs;
-}
-
 function dieSizePx(): number {
   return typeof window === "undefined" ? 96 : Math.round(Math.min(124, Math.max(72, window.innerWidth * 0.08)));
 }
@@ -300,22 +295,6 @@ function bezier(x1: number, y1: number, x2: number, y2: number): (t: number) => 
 }
 
 const ROLL_EASING = bezier(0.3, 0.7, 0.3, 1);
-
-/**
- * LA MANIÈRE DE CHAQUE SOLIDE, une fois sur la table.
- *  - D6 : un quart de tour par bascule ; il rebondit franchement et roule
- *    deux ou trois fois, puis se cale d'un léger balancement.
- *  - D4 : pointu et lourd, il se PLANTE : un petit rebond, une seule bascule
- *    (109,5°, lourde), et il oscille sur sa base avant de s'immobiliser.
- *  - D8 : presque rond, il ROULE loin, en petites bascules de 70,5° de plus
- *    en plus lentes, sans presque rebondir.
- * `pivot` : de combien son centre se soulève en passant par-dessus l'arête.
- */
-const LANCER: Record<DieSize, { airMs: number; spinTurns: number; rolls: number; rollMs: number[]; hops: number[]; pivot: number; wobbleDeg: number; wobbleMs: number }> = {
-  6: { airMs: 520, spinTurns: 1.25, rolls: 3, rollMs: [200, 240, 330], hops: [34, 10, 0], pivot: 0.2, wobbleDeg: 3, wobbleMs: 280 },
-  4: { airMs: 480, spinTurns: 0.85, rolls: 1, rollMs: [330], hops: [12], pivot: 0.1, wobbleDeg: 8, wobbleMs: 460 },
-  8: { airMs: 520, spinTurns: 1.25, rolls: 5, rollMs: [140, 155, 175, 210, 290], hops: [20, 6, 0, 0, 0], pivot: 0.1, wobbleDeg: 2, wobbleMs: 220 },
-};
 
 /**
  * Un dé EN VOLUME : il vole jusqu'à sa place en tournoyant sur ses trois axes,

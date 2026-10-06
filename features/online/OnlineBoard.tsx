@@ -389,7 +389,8 @@ export function OnlineBoard({
         />
       )}
       {/* Les dés se lancent SUR la table, pour les deux joueurs ; le jet ouvert y garde ses gestes. */}
-      <TableDice state={state} viewerId={myUserId} onAction={act} />
+      {/* L'état RÉEL : le dé part dès le tirage, pendant que le plateau retient son issue. */}
+      <TableDice state={liveState} viewerId={myUserId} onAction={act} />
       {!state.pendingReaction && state.pendingChoice?.kind === "deckLook" && state.pendingChoice.playerId === myUserId && (
         <DeckLookPrompt
           choice={state.pendingChoice}

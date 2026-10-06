@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { GameEvent, GameState, PlayerId } from "@/game";
 import { deriveEffectVolley, patchedDisplay, volleyLandingMs, type EffectVolley } from "@/features/match/effectPresentation";
+import { beforeDieDisplay, dieHoldMs, freshDieRoll, type DieHold } from "@/features/match/dicePresentation";
 
 export interface AttackAnimation {
   id: number;
@@ -88,6 +89,28 @@ interface Presentation {
   volley: EffectVolley | null;
   /** Ce coup termine la partie : on laisse l'animation aller au bout avant l'écran de fin. */
   finalBlow: boolean;
+  /**
+   * Un jet de dé résolu d'office (`dicePresentation.ts`) : le plateau reste
+   * sur l'état d'avant l'issue (`shown`) le temps que le dé se pose et qu'on
+   * lise sa face ; la suite du lot (`after`) se met en scène ensuite.
+   */
+  dice: { hold: DieHold; shown: GameState; after: GameEvent[] } | null;
+}
+
+/** Mise en scène d'un lot d'événements : l'attaque, sinon les effets, et l'état à afficher en attendant. */
+function stage(previous: GameState, live: GameState, events: GameEvent[], nextId: { current: number }): Omit<Presentation, "dice"> {
+  const attack = deriveAttack(events, live, nextId.current);
+  if (attack) nextId.current += 1;
+  const volley = deriveEffectVolley(events, previous, live, nextId.current);
+  if (volley) nextId.current += 1;
+  const staged = attack !== null || volley !== null;
+  return {
+    live,
+    held: attack ? previous : volley ? patchedDisplay(previous, live, volley) : null,
+    attack,
+    volley,
+    finalBlow: staged && live.status === "finished" && previous.status !== "finished",
+  };
 }
 
 /** Après un coup qui termine la partie : le temps de voir le Navire encaisser avant l'écran de fin. */
@@ -125,8 +148,10 @@ export function useAttackPresentation(live: GameState): {
   displayState: GameState;
   attacks: AttackAnimation[];
   volleys: EffectVolley[];
+  /** Un dé roule encore et retient l'issue de son jet : le bot attend avant de rejouer. */
+  diceHolding: boolean;
 } {
-  const [presentation, setPresentation] = useState<Presentation>({ live, held: null, attack: null, volley: null, finalBlow: false });
+  const [presentation, setPresentation] = useState<Presentation>({ live, held: null, attack: null, volley: null, finalBlow: false, dice: null });
   const [attacks, setAttacks] = useState<AttackAnimation[]>([]);
   const [volleys, setVolleys] = useState<EffectVolley[]>([]);
   const nextId = useRef(0);
@@ -135,19 +160,27 @@ export function useAttackPresentation(live: GameState): {
     const previous = presentation.live;
     const newEvents = live.eventLog.length > previous.eventLog.length ? live.eventLog.slice(previous.eventLog.length) : [];
     const animate = newEvents.length > 0 && !prefersReducedMotion();
-    const attack = animate ? deriveAttack(newEvents, live, nextId.current) : null;
-    if (attack) nextId.current += 1;
-    const volley = animate ? deriveEffectVolley(newEvents, previous, live, nextId.current) : null;
-    if (volley) nextId.current += 1;
-    const staged = attack !== null || volley !== null;
-    setPresentation({
-      live,
-      held: attack ? previous : volley ? patchedDisplay(previous, live, volley) : null,
-      attack,
-      volley,
-      finalBlow: staged && live.status === "finished" && previous.status !== "finished",
-    });
+    const hold = animate ? freshDieRoll(newEvents, previous) : null;
+    if (hold) {
+      const shown = beforeDieDisplay(previous, live, newEvents, hold);
+      setPresentation({ live, held: shown, attack: null, volley: null, finalBlow: false, dice: { hold, shown, after: newEvents.slice(hold.index + 1) } });
+    } else {
+      setPresentation(animate ? { ...stage(previous, live, newEvents, nextId), dice: null } : { live, held: null, attack: null, volley: null, finalBlow: false, dice: null });
+    }
   }
+
+  // Le dé s'est posé et sa face a été lue : la suite du lot se met en scène.
+  // Un état plus récent a pu remplacer ce jet entre-temps : on n'y touche pas.
+  const dice = presentation.dice;
+  useEffect(() => {
+    if (!dice) return;
+    const timer = setTimeout(() => {
+      setPresentation((current) =>
+        current.dice === dice ? { ...stage(dice.shown, current.live, dice.after, nextId), dice: null } : current
+      );
+    }, dieHoldMs(dice.hold));
+    return () => clearTimeout(timer);
+  }, [dice]);
 
   // Minuteurs de la mise en scène : relâcher l'état retenu au bon moment,
   // puis retirer l'animation. La relâche ne touche qu'à SA mise en scène :
@@ -181,5 +214,5 @@ export function useAttackPresentation(live: GameState): {
     return () => clearTimeout(release);
   }, [staged, volley, finalBlow]);
 
-  return { displayState: presentation.held ?? presentation.live, attacks, volleys };
+  return { displayState: presentation.held ?? presentation.live, attacks, volleys, diceHolding: presentation.dice !== null };
 }

@@ -130,7 +130,7 @@ export function MatchBoard({
   useScreenWakeLock(liveState.status !== "finished");
   // `state` = état AFFICHÉ (retenu avant le choc pendant une attaque, cf. `useAttackPresentation`) ; toute
   // action se valide et s'applique sur `liveState`, l'état de jeu réel.
-  const { displayState: state, attacks, volleys } = useAttackPresentation(liveState);
+  const { displayState: state, attacks, volleys, diceHolding } = useAttackPresentation(liveState);
   // Observateur externe (tutoriel) : notifié de l'état RÉEL, pas de l'état
   // affiché — une étape ne doit pas attendre la fin d'une animation.
   useEffect(() => {
@@ -256,7 +256,9 @@ export function MatchBoard({
   // boucle, pas le joueur actif : quand le bot ouvre une fenêtre au joueur
   // pendant son propre tour, il doit reprendre la main une fois qu'on y a
   // répondu, alors que le joueur actif, lui, n'a pas changé.
-  const botToAct = Boolean(botPlayerId) && liveState.status === "active" && botHasSomethingToDo(liveState, botPlayerId!);
+  // Un dé qui roule encore retient l'issue de son jet (`dicePresentation.ts`) :
+  // le bot attend qu'elle s'affiche avant de rejouer.
+  const botToAct = Boolean(botPlayerId) && !diceHolding && liveState.status === "active" && botHasSomethingToDo(liveState, botPlayerId!);
   useEffect(() => {
     if (!botToAct || !botDifficulty || !botPlayerId) return;
 
@@ -596,7 +598,8 @@ export function MatchBoard({
         />
       )}
       {/* Les dés se lancent SUR la table, pour les deux joueurs ; le jet ouvert y garde ses gestes. */}
-      <TableDice state={state} viewerId={viewerPlayerId} onAction={runReactionAction} />
+      {/* L'état RÉEL : le dé part dès le tirage, pendant que le plateau retient son issue. */}
+      <TableDice state={liveState} viewerId={viewerPlayerId} onAction={runReactionAction} />
       {!state.pendingReaction && state.pendingChoice?.kind === "deckLook" && state.pendingChoice.playerId === viewerPlayerId && (
         <DeckLookPrompt
           choice={state.pendingChoice}
