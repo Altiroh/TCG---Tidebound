@@ -117,7 +117,7 @@ function place(prop: LandeProp, l: Layout, taken: Rect[], tuning: Pick<LandeTuni
 }
 
 /**
- * Les deux FEUX du sol du Donjon (`plateau-sol.webp` : le brasero en haut à
+ * Les deux FEUX du sol du Donjon (`enclos-sol.webp` : le brasero en haut à
  * gauche, les bougies en bas à droite), en fractions de l'écran : chaque
  * pièce est éclairée du côté du plus proche, et son ombre part à l'opposé.
  */

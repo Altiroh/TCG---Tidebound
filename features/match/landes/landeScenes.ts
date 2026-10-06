@@ -158,18 +158,18 @@ export const LANDE_SCENES: Readonly<Record<string, LandeScene>> = {
     // ne fait plus qu'un voile léger sur les coins.
     tint: "radial-gradient(120% 90% at 50% 45%, transparent 55%, rgba(8, 5, 2, 0.35) 100%)",
     frontFx: true,
-    // Maquette du 06/10/2026 : le sol dallé entre quatre murs, boîtes
-    // relevées sur la maquette (fond de 1672 × 941).
-    floor: "plateau-sol.png",
+    // Le sol dallé, peint pour l'interface : dalles claires sur toute la
+    // largeur (y 128 → 795 du fond de 1672 × 941), pierre sombre en haut et en
+    // bas. Les murs se dressent sur ces deux bandes, entre les objets des
+    // coins (brasero, crâne, bannière, bougies) ; pas de murs sur les côtés,
+    // le plateau va presque jusqu'aux bords.
+    floor: "enclos-sol.png",
     frame: [
-      { file: "mur-haut.png", box: [245 / 1672, 80 / 941, 1300 / 1672, 150 / 941] },
-      { file: "mur-gauche.png", box: [38 / 1672, 145 / 941, 110 / 1672, 560 / 941] },
-      { file: "mur-droite.png", box: [1505 / 1672, 145 / 941, 130 / 1672, 560 / 941] },
-      { file: "mur-bas.png", box: [140 / 1672, 680 / 941, 1420 / 1672, 125 / 941] },
+      { file: "mur-haut.png", box: [265 / 1672, 8 / 941, 1020 / 1672, 140 / 941] },
+      { file: "mur-bas.png", box: [440 / 1672, 785 / 941, 970 / 1672, 135 / 941] },
     ],
-    // L'intérieur de l'enclos (bord intérieur des murs) : le plateau s'y pose,
-    // les murs restent visibles tout autour.
-    fit: [150 / 1672, 150 / 941, 1520 / 1672, 690 / 941],
+    // Les dalles claires : le plateau s'y pose.
+    fit: [8 / 1672, 135 / 941, 1664 / 1672, 790 / 941],
     // L'étal et les latrines sortent du plateau à l'arrivée de la Lande.
     // `at` est une position VOULUE : `LandeProps` cherche autour la plus
     // grande place libre, sans jamais toucher l'interface.

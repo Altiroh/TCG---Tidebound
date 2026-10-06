@@ -64,7 +64,7 @@
 }
 
 /* ──────────────────────────────────────────────────────────────
- * BACKGROUND LAYER — la table classique (`table-classique/fond.webp`), ou le
+ * BACKGROUND LAYER — la table classique (`table-classique/playground.webp`), ou le
  * sol d'une Lande, au format 1672 × 941.
  * `.coverBox` reproduit un `object-fit: cover` calé à 50 % / 70 % : tout ce
  * qui est posé dedans (bougie, murs) reste à sa place sur le fond, quel que
@@ -96,13 +96,14 @@
   user-select: none;
 }
 
-/* La bougie du coin haut gauche (maquette du 06/10/2026). Boîte en
-   fractions du fond ; la flamme est à 50 % / 19 % de l'image. */
+/* La bougie du coin haut gauche (maquette du 06/10/2026), sur la bande de
+   bois au-dessus du tapis. Boîte en fractions du fond ; la flamme est à
+   50 % / 19 % de l'image. */
 .bougie {
   position: absolute;
-  left: 0.5%;
-  top: -2.2%;
-  width: 10.8%;
+  left: 0.6%;
+  top: -3.5%;
+  width: 9%;
   aspect-ratio: 478 / 512;
 }
 

@@ -11,16 +11,18 @@ import styles from "@/features/match/table/Table.module.css";
  * parchemin où se pose le plateau, et dans les coins pièces, dés, pipe,
  * cartes et boussole — tout est peint dans le fond (1672 × 941).
  */
-const TABLE_SRC = "/assets/board/table-classique/fond.webp";
+const TABLE_SRC = "/assets/board/table-classique/playground.webp";
 
 /** La bougie posée dans le coin haut gauche, au-dessus du fond : sa flamme vacille. */
 const BOUGIE_SRC = "/assets/board/table-classique/bougie.webp";
 
 /**
- * Le tapis de parchemin dans le fond (mesuré : x 40 → 1610, y 150 → 815),
- * pris un peu en retrait de ses bords roulés : le plateau se pose dedans.
+ * Le tapis de parchemin dans le fond (mesuré : x 5 → 1668, y 135 → 805),
+ * pris un peu en retrait de ses bords déchirés : le plateau se pose dedans.
+ * Le fond est peint pour l'interface (tapis sur toute la largeur, bois en
+ * haut et en bas pour les mains) : le zoom reste faible.
  */
-const TABLE_FIT: FitTarget = [55 / 1672, 162 / 941, 1597 / 1672, 803 / 941];
+const TABLE_FIT: FitTarget = [15 / 1672, 145 / 941, 1657 / 1672, 797 / 941];
 
 /** Zones d'interface que le fond doit englober (les mains en restent dehors, comme sur la maquette). */
 const UI_ZONES = '[data-zone="OpponentZone"], [data-zone="CenterZone"], [data-zone="PlayerZone"], [data-zone="SideRail"]';

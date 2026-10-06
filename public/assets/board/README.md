@@ -6,7 +6,7 @@ Board principal + variantes visuelles selon les Eaux et les états de Marée.
 - `water-variants/` : une variante par Eaux (voir `game/environment/waterData.ts`
   pour la liste des `WaterDefinition` — id, nom).
 - `table-classique/` : le fond de la partie (maquette du 06/10/2026) — table de
-  bois, tapis de parchemin et objets peints dans les coins (`fond.webp`,
+  bois, tapis de parchemin et objets peints dans les coins (`playground.webp`,
   1672×941), et la bougie posée par-dessus dans le coin haut gauche
   (`bougie.webp`). Posés par `table/BackgroundLayer.tsx` ; un sol de Lande
   (`LandeScene.floor`) remplace le fond tant que la Lande est en jeu.
