@@ -7,8 +7,8 @@ import type { DieSize } from "@/game";
  * lui pendant le lancer (`TableDice`) : c'est la distorsion qui donne le
  * volume, les planches n'ont qu'une vue.
  *
- * Dossier : `public/assets/dice/`. Tant que les planches n'y sont pas, un
- * dé dessiné prend le relais — rien ne casse, le chiffre reste lisible.
+ * Dossier : `public/assets/dice/`. Si une planche manquait, un dé dessiné
+ * prend le relais — rien ne casse, le chiffre reste lisible.
  */
 export const DICE_DIR = "/assets/dice";
 
@@ -22,13 +22,16 @@ export function dieFaceUrl(die: DieSize, value: number): string {
 
 /**
  * Où se posent les points sur le corps, en % de l'image du corps, et la
- * déformation qui les couche sur la face visible. VALEURS DE DÉPART, à
- * recaler sur les planches une fois livrées : le corps du D6 est vu de
- * trois quarts, ses points sont donc légèrement écrasés en hauteur ; le D4
- * et le D8 montrent une face triangulaire, plus petite.
+ * déformation qui les couche sur la face visible. Calé sur les planches du
+ * 06/10/2026 (corps recadrés à leur silhouette ; les faces d'un même dé
+ * partagent un cadre commun, pour que la taille des points ne varie pas
+ * d'une face à l'autre) :
+ *   - D4 : face avant du tétraèdre, légèrement couchée ;
+ *   - D6 : face GAUCHE du cube vu de trois quarts, cisaillée comme elle ;
+ *   - D8 : facette haute gauche de l'octaèdre.
  */
 export const DIE_FACE_PLACEMENT: Record<DieSize, { left: number; top: number; width: number; height: number; transform: string }> = {
-  4: { left: 26, top: 40, width: 48, height: 44, transform: "perspective(240px) rotateX(16deg)" },
-  6: { left: 17, top: 22, width: 66, height: 60, transform: "perspective(260px) rotateX(14deg) skewX(-3deg)" },
-  8: { left: 25, top: 24, width: 50, height: 50, transform: "perspective(240px) rotateX(10deg)" },
+  4: { left: 28, top: 45, width: 44, height: 44, transform: "perspective(300px) rotateX(28deg)" },
+  6: { left: 8, top: 33, width: 42, height: 46, transform: "skewY(14deg)" },
+  8: { left: 15, top: 20, width: 38, height: 36, transform: "skewY(-22deg) scaleX(0.9)" },
 };

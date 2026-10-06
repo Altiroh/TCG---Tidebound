@@ -219,6 +219,14 @@ function ThrownDie({ throwKey, die, face, fromViewer, outcome, onPick }: ThrownD
   const shownFace = tumbling ? 1 + Math.floor(hash(`${throwKey}:${tick}`) * die) : face;
   const faceOk = useImageOk(dieFaceUrl(die, shownFace));
 
+  // Toutes les faces du dé, chargées dès le lancer : elles défilent en vol.
+  useEffect(() => {
+    for (let value = 1; value <= die; value++) {
+      const image = new Image();
+      image.src = dieFaceUrl(die, value);
+    }
+  }, [die]);
+
   // Le vol : parti du bord de celui qui lance, une courbe, deux rebonds.
   useEffect(() => {
     const element = flightRef.current;
@@ -289,7 +297,8 @@ function ThrownDie({ throwKey, die, face, fromViewer, outcome, onPick }: ThrownD
             transform: placement.transform,
           }}
         />
-      ) : (
+      ) : bodyOk && tumbling ? null : (
+        // Planche absente (ou face pas encore chargée une fois posé) : le chiffre.
         <span key={shownFace} className={`${styles.fallbackFace} ${tumbling ? "" : styles.faceSettle}`}>
           {shownFace}
         </span>
