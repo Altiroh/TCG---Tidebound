@@ -1012,7 +1012,7 @@ export function TableBoard(props: TableBoardProps) {
           entering={(lande !== undefined && lande.instanceId !== seenLande.current) || landeArrival?.instanceId === lande?.instanceId}
           enterDelayMs={LANDE_ARRIVAL.DISSOLVE_AT}
         />
-        <DecorLayer />
+        <DecorLayer onFloor={Boolean(lande && landeScene(lande.cardId).floor)} />
 
         {/* `gesturing` : un glisser est en cours quelque part. Il coupe
             l'agrandissement au survol sur TOUT le plateau — une carte qui

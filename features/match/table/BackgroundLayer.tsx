@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { TideStateName } from "@/game";
 import { useImageOk } from "@/features/match/useImageOk";
+import { useLandeTuning } from "@/features/match/landes/landeTuning";
 import styles from "@/features/match/table/Table.module.css";
 
 /** Mer et ciel propres à chaque état de Marée (1672×941, même cadrage). */
@@ -57,6 +58,9 @@ export function BackgroundLayer({
     const id = idle(() => setAllMounted(true), { timeout: 4000 });
     return () => cancel(id);
   }, []);
+  const tuning = useLandeTuning();
+  // Un sol de Lande remplace la mer : pont et voile se règlent avec lui (`landeTuning.ts`).
+  const onFloor = floor !== null;
 
   return (
     <div aria-hidden className={styles.background}>
@@ -76,8 +80,15 @@ export function BackgroundLayer({
         ))}
       <LandeFloor floor={floor} />
       {/* eslint-disable-next-line @next/next/no-img-element -- idem */}
-      <img src={DECK_SRC} alt="" draggable={false} decoding="async" className={styles.backgroundImage} />
-      <div className={styles.backgroundVeil} />
+      <img
+        src={DECK_SRC}
+        alt=""
+        draggable={false}
+        decoding="async"
+        className={`${styles.backgroundImage} ${styles.backgroundTuned}`}
+        style={{ opacity: onFloor ? tuning.deckOpacity : 1 }}
+      />
+      <div className={`${styles.backgroundVeil} ${styles.backgroundTuned}`} style={{ opacity: onFloor ? tuning.veilOpacity : 1 }} />
     </div>
   );
 }
@@ -92,6 +103,7 @@ const FLOOR_LEAVE_MS = 1200;
  */
 function LandeFloor({ floor }: { floor: { src: string; key: string; delayMs: number } | null }) {
   const ok = useImageOk(floor?.src ?? null);
+  const { floorBrightness } = useLandeTuning();
   const [leaving, setLeaving] = useState<{ src: string; key: string } | null>(null);
   const [shown, setShown] = useState<{ src: string; key: string; delayMs: number } | null>(null);
   useEffect(() => {
@@ -108,8 +120,10 @@ function LandeFloor({ floor }: { floor: { src: string; key: string; delayMs: num
     return undefined;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [floor?.key, ok]);
+  // La luminosité vit sur un calque autour du sol : l'animation d'entrée,
+  // qui joue elle-même sur `filter`, l'écraserait sur l'image.
   return (
-    <>
+    <div className={styles.landeFloorLayer} style={{ filter: floorBrightness === 1 ? undefined : `brightness(${floorBrightness})` }}>
       {leaving && (
         // eslint-disable-next-line @next/next/no-img-element -- décor plein écran
         <img key={`out-${leaving.key}`} src={leaving.src} alt="" draggable={false} className={`${styles.backgroundImage} ${styles.landeFloorOut}`} />
@@ -125,6 +139,6 @@ function LandeFloor({ floor }: { floor: { src: string; key: string; delayMs: num
           style={{ animationDelay: `${shown.delayMs}ms` }}
         />
       )}
-    </>
+    </div>
   );
 }

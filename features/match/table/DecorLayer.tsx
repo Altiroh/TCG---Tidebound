@@ -1,3 +1,4 @@
+import { useLandeTuning } from "@/features/match/landes/landeTuning";
 import styles from "@/features/match/table/Table.module.css";
 
 /**
@@ -9,9 +10,11 @@ import styles from "@/features/match/table/Table.module.css";
  * Chacun est calé sur son coin et dimensionné en hauteur d'écran (`cqh`) ;
  * les mains et les cadres passent devant.
  */
-export function DecorLayer() {
+export function DecorLayer({ onFloor = false }: { onFloor?: boolean }) {
+  // Un sol de Lande remplace la mer : le décor du navire se règle avec lui (`landeTuning.ts`).
+  const { decorOpacity } = useLandeTuning();
   return (
-    <div aria-hidden className={styles.decor}>
+    <div aria-hidden className={styles.decor} style={onFloor ? { opacity: decorOpacity, transition: "opacity 600ms ease" } : undefined}>
       {/* eslint-disable-next-line @next/next/no-img-element -- décor fixe */}
       <img data-decor-obstacle="" src="/assets/board/decor-corner-top-right.webp" alt="" draggable={false} className={`${styles.decorItem} ${styles.decorTopRight}`} />
       {/* eslint-disable-next-line @next/next/no-img-element -- décor fixe */}

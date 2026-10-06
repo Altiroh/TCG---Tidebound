@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { getCardDefinition, PRECON_DECKS, type CardInstance, type GameState } from "@/game";
 import { createLocalMatch } from "@/features/match/createLocalMatch";
 import { MatchBoard } from "@/features/match/MatchBoard";
+import { LandeTuningPanel } from "@/features/match/landes/LandeTuningPanel";
 
 const LANDES = ["pluie-corrosive", "chaine-de-construction", "vallee-de-verre", "le-donjon-de-ladalle"] as const;
 
@@ -18,7 +19,10 @@ function carte(cardId: string, ownerId: string, index: number): CardInstance {
  * les payer, et quelques corps de chaque côté pour voir leurs règles agir.
  *
  * `?lande=<id>` : la Lande est déjà en jeu au chargement (sa scène seule,
- * sans l'arrivée) — pour régler un décor sans rejouer la carte.
+ * sans l'arrivée) — pour régler un décor sans rejouer la carte. Le panneau
+ * « Réglages » (`LandeTuningPanel`) fait varier la scène en direct.
+ *
+ * Gaston (D6) est aussi en main : de quoi voir un jet de dé sur la scène.
  */
 export function LandePreview() {
   const params = useSearchParams();
@@ -42,12 +46,21 @@ export function LandePreview() {
           ? {
               ...p,
               reason: 10,
-              hand: [...LANDES.filter((id) => id !== lande).map((id, i) => carte(id, p.id, i)), ...p.hand.slice(0, 3)],
+              hand: [
+                ...LANDES.filter((id) => id !== lande).map((id, i) => carte(id, p.id, i)),
+                carte("gaston-aventurier-de-ladalle", p.id, 0),
+                ...p.hand.slice(0, 3),
+              ],
               board: [carte("crabe-de-fer", p.id, 0), carte("marin-des-jetees", p.id, 1)],
             }
           : { ...p, board: [carte("crabe-de-fer", p.id, 0), carte("murene-aveugle", p.id, 1), carte("marin-des-jetees", p.id, 2)] }
       ) as GameState["players"],
     };
   }
-  return state ? <MatchBoard initialState={state} onExit={() => window.history.back()} /> : null;
+  return state ? (
+    <>
+      <MatchBoard initialState={state} onExit={() => window.history.back()} />
+      <LandeTuningPanel />
+    </>
+  ) : null;
 }

@@ -87,6 +87,17 @@
   user-select: none;
 }
 
+/* Calque du sol d'une Lande : porte sa luminosité (`landeTuning.ts`). */
+.landeFloorLayer {
+  position: absolute;
+  inset: 0;
+}
+
+/* Pont et voile s'effacent en douceur quand un sol remplace la mer. */
+.backgroundTuned {
+  transition: opacity 600ms ease;
+}
+
 /* Sol d'une Lande (le Donjon : des pavés) : il surgit du centre en une
    onde qui s'élargit, la table tremble un instant, puis il tient. */
 .landeFloor {

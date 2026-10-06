@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { landeAsset, type LandeProp, type LandePropZone } from "@/features/match/landes/landeScenes";
+import { useLandeTuning, type LandeTuning } from "@/features/match/landes/landeTuning";
 import styles from "@/features/match/landes/Landes.module.css";
 
 interface Rect {
@@ -92,11 +93,12 @@ const MIN_SIZE = 64;
  * sa position voulue, sans toucher ni l'interface ni les pièces déjà
  * posées. `null` s'il n'y a pas la place.
  */
-function place(prop: LandeProp, l: Layout, taken: Rect[]): { x: number; y: number; size: number } | null {
+function place(prop: LandeProp, l: Layout, taken: Rect[], tuning: Pick<LandeTuning, "propScale" | "propMax" | "propFree">): { x: number; y: number; size: number } | null {
   const { top, bottom } = band(prop.zone, l);
   // Le pied à distance de la marge de sécurité (`intersects`) du bord de sa bande.
   const y = bottom - 8;
-  const maxSize = Math.min((bottom - top - 16) * prop.scale, 300) / 0.95;
+  const free = tuning.propFree === 1;
+  const maxSize = (free ? tuning.propMax * prop.scale * tuning.propScale : Math.min((bottom - top - 16) * prop.scale * tuning.propScale, tuning.propMax)) / 0.95;
   const wanted = prop.at * l.width;
   const xs: number[] = [];
   for (let k = 0; k <= 60; k++) {
@@ -107,7 +109,7 @@ function place(prop: LandeProp, l: Layout, taken: Rect[]): { x: number; y: numbe
     for (const x of xs) {
       const r = footprint(x, y, size);
       if (r.left < 2 || r.right > l.width - 2 || r.top < 2) continue;
-      if (l.obstacles.some((o) => intersects(r, o)) || taken.some((t) => intersects(r, t, 2))) continue;
+      if ((!free && l.obstacles.some((o) => intersects(r, o))) || taken.some((t) => intersects(r, t, 2))) continue;
       return { x, y, size };
     }
   }
@@ -153,6 +155,7 @@ export function LandeProps({ cardId, props, layer }: { cardId: string; props: re
   const hostRef = useRef<HTMLDivElement | null>(null);
   const [layout, setLayout] = useState<Layout | null>(null);
   const mine = props.filter((p) => p.layer === layer);
+  const tuning = useLandeTuning();
 
   useEffect(() => {
     const host = hostRef.current;
@@ -175,7 +178,7 @@ export function LandeProps({ cardId, props, layer }: { cardId: string; props: re
         (() => {
           const taken: Rect[] = [];
           return mine.map((prop, index) => {
-            const spot = place(prop, layout, taken);
+            const spot = place(prop, layout, taken, tuning);
             if (!spot) return null;
             taken.push(footprint(spot.x, spot.y, spot.size));
             // Face au CENTRE : les pièces sont peintes tournées vers la gauche ;

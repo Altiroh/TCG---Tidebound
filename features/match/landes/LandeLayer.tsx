@@ -5,6 +5,7 @@ import type { ActiveLande } from "@/game";
 import { createLandeFx, type LandeFx, type LandeFxLayer, type LandeLayout, type LandeRect, type LandeSprites } from "@/features/match/landes/landeFx";
 import { LandeProps } from "@/features/match/landes/LandeProps";
 import { landeAsset, landeScene, type LandeLayer as SceneLayer } from "@/features/match/landes/landeScenes";
+import { useLandeTuning } from "@/features/match/landes/landeTuning";
 import styles from "@/features/match/landes/Landes.module.css";
 
 /** Durée du fondu de sortie d'une Lande qui expire ou qu'une autre chasse. */
@@ -70,6 +71,7 @@ export function LandeLayer({ lande, entering, enterDelayMs }: LandeLayerProps) {
 
 function LandeScene({ lande, state, delayMs, layer }: { lande: ActiveLande; state: "entering" | "shown" | "leaving"; delayMs: number; layer: LandeFxLayer }) {
   const scene = landeScene(lande.cardId);
+  const { tintOpacity } = useLandeTuning();
   // L'entrée se décide une fois, au montage : la fin de l'arrivée ne doit
   // pas relancer le fondu d'une scène déjà installée.
   const [entry] = useState({ state, delayMs });
@@ -151,7 +153,7 @@ function LandeScene({ lande, state, delayMs, layer }: { lande: ActiveLande; stat
       data-state={state === "leaving" ? "leaving" : entry.state}
       style={{ "--lande-delay": `${entry.delayMs}ms`, "--lande-rgb": scene.rgb } as CSSProperties}
     >
-      {layer === "back" && <div className={styles.landeTint} style={{ background: scene.tint }} />}
+      {layer === "back" && <div className={styles.landeTint} style={{ background: scene.tint, opacity: tintOpacity }} />}
       {scene.props && <LandeProps cardId={lande.cardId} props={scene.props} layer={layer} />}
       {scene.fx && <canvas ref={canvasRef} className={styles.landeCanvas} data-off={runFx ? undefined : ""} />}
       {layer === "back" &&
