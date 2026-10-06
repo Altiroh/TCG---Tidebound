@@ -14,7 +14,7 @@ import {
   type PlayerId,
 } from "@/game";
 import { dieFaceUrl, dieTextureFit, dieTextureUrl } from "@/features/match/dice/diceAssets";
-import { eulerMatrix, multiply, placeFaces, restMatrix, rotate, slerp, toCss, type Mat4 } from "@/features/match/dice/polyhedra";
+import { axisAngle, multiply, placeFaces, restMatrix, rollPath, rotate, slerp, toCss, type Mat4 } from "@/features/match/dice/polyhedra";
 import { useDiceThrow, type DiceThrow } from "@/features/match/dice/useDiceThrow";
 import { loadImageStatus } from "@/features/match/imageStatusCache";
 import { playButtonClick, playDiceLanded } from "@/lib/sound";
@@ -34,8 +34,6 @@ const ISSUES: Record<DieOutcome, string> = {
   criticalFailure: "Échec critique",
 };
 
-/** Durée du vol, de la main au tapis. */
-const FLIGHT_MS = 950;
 
 function signe(delta: number): string {
   return delta > 0 ? `+${delta}` : `${delta}`;
@@ -98,7 +96,7 @@ function DiceOnTable({ throwInfo, state, viewerId, onAction }: { throwInfo: Dice
   const source = throwInfo.cardId ? getCardDefinition(throwInfo.cardId).name.split(",")[0] : null;
 
   return (
-    <div className={styles.spot} style={{ left: spot.x, top: spot.y }} aria-live="polite">
+    <div className={styles.spot} style={{ left: spot.x, top: spot.y, "--settle": `${settleMs(throwInfo.die)}ms` } as CSSProperties} aria-live="polite">
       <div className={styles.dice}>
         {throwInfo.faces.map((face, index) => (
           <ThrownDie
@@ -233,11 +231,17 @@ const LIGHT: readonly [number, number, number] = (() => {
 /** Durée du roulis vers une nouvelle face, quand un ajustement change le jet. */
 const ROLL_MS = 450;
 
+/** Temps que met un dé lancé à se poser : la légende et les gestes attendent qu'il soit immobile. */
+function settleMs(die: DieSize): number {
+  const geste = LANCER[die];
+  return geste.airMs + geste.rollMs.slice(0, geste.rolls).reduce((a, b) => a + b, 0) + geste.wobbleMs;
+}
+
 function dieSizePx(): number {
   return typeof window === "undefined" ? 96 : Math.round(Math.min(124, Math.max(72, window.innerWidth * 0.08)));
 }
 
-/** `cubic-bezier(x1, y1, x2, y2)` pour un avancement 0 → 1 (Newton, puis dichotomie). */
+/** `cubic-bezier(x1, y1, x2, y2)` pour un avancement 0 → 1 (par dichotomie). */
 function bezier(x1: number, y1: number, x2: number, y2: number): (t: number) => number {
   const at = (a: number, b: number, u: number) => 3 * a * u * (1 - u) ** 2 + 3 * b * u * u * (1 - u) + u ** 3;
   return (t) => {
@@ -255,9 +259,23 @@ function bezier(x1: number, y1: number, x2: number, y2: number): (t: number) => 
   };
 }
 
-/** Amorti du tournoiement : encore vif à l'atterrissage, puis il se pose. */
-const SPIN_EASING = bezier(0.3, 0.35, 0.45, 1);
 const ROLL_EASING = bezier(0.3, 0.7, 0.3, 1);
+
+/**
+ * LA MANIÈRE DE CHAQUE SOLIDE, une fois sur la table.
+ *  - D6 : un quart de tour par bascule ; il rebondit franchement et roule
+ *    deux ou trois fois, puis se cale d'un léger balancement.
+ *  - D4 : pointu et lourd, il se PLANTE : un petit rebond, une seule bascule
+ *    (109,5°, lourde), et il oscille sur sa base avant de s'immobiliser.
+ *  - D8 : presque rond, il ROULE loin, en petites bascules de 70,5° de plus
+ *    en plus lentes, sans presque rebondir.
+ * `pivot` : de combien son centre se soulève en passant par-dessus l'arête.
+ */
+const LANCER: Record<DieSize, { airMs: number; spinTurns: number; rolls: number; rollMs: number[]; hops: number[]; pivot: number; wobbleDeg: number; wobbleMs: number }> = {
+  6: { airMs: 520, spinTurns: 1.25, rolls: 3, rollMs: [200, 240, 330], hops: [34, 10, 0], pivot: 0.2, wobbleDeg: 3, wobbleMs: 280 },
+  4: { airMs: 480, spinTurns: 0.85, rolls: 1, rollMs: [330], hops: [12], pivot: 0.1, wobbleDeg: 8, wobbleMs: 460 },
+  8: { airMs: 520, spinTurns: 1.25, rolls: 5, rollMs: [140, 155, 175, 210, 290], hops: [20, 6, 0, 0, 0], pivot: 0.1, wobbleDeg: 2, wobbleMs: 220 },
+};
 
 /**
  * Un dé EN VOLUME : il vole jusqu'à sa place en tournoyant sur ses trois axes,
@@ -272,6 +290,8 @@ const ROLL_EASING = bezier(0.3, 0.7, 0.3, 1);
  */
 function ThrownDie({ throwKey, die, face, fromViewer, outcome, onPick }: ThrownDieProps) {
   const flightRef = useRef<HTMLDivElement | null>(null);
+  const liftRef = useRef<HTMLDivElement | null>(null);
+  const shadowRef = useRef<HTMLSpanElement | null>(null);
   const faceRefs = useRef<(HTMLDivElement | null)[]>([]);
   const [size] = useState(dieSizePx);
   const edge = Math.round(size * EDGE_RATIO[die]);
@@ -300,49 +320,118 @@ function ThrownDie({ throwKey, die, face, fromViewer, outcome, onPick }: ThrownD
     [faces]
   );
 
-  // Le vol : parti du bord de celui qui lance, une courbe, deux rebonds — et le dé qui roule sur lui-même.
+  // Le lancer : le dé tombe sur la table en tournoyant, touche, puis BASCULE
+  // d'arête en arête (`rollPath`) jusqu'à la face obtenue — à la manière de
+  // son solide (`LANCER`). Calculé à rebours : il finit exactement au repos.
   useEffect(() => {
     const flight = flightRef.current;
+    const lift = liftRef.current;
+    const shadow = shadowRef.current;
     const final = restMatrix(die, face, tilt);
-    if (!flight || prefersReducedMotion()) {
+    if (!flight || !lift || !shadow || prefersReducedMotion()) {
       draw(final);
       return;
     }
+    const geste = LANCER[die];
     const side = fromViewer ? 1 : -1;
-    const startX = (hash(`${throwKey}:x`) - 0.5) * 320;
-    const startY = side * window.innerHeight * 0.55;
-    const vol = flight.animate(
-      [
-        { transform: `translate(${startX}px, ${startY}px) scale(1.6)`, opacity: 0, offset: 0 },
-        { transform: `translate(${startX * 0.55}px, ${startY * 0.35 - 90 * side}px) scale(1.4)`, opacity: 1, offset: 0.35 },
-        { transform: "translate(0px, 0px) scale(1)", offset: 0.68 },
-        { transform: `translate(${-startX * 0.04}px, ${-22 * side}px) scale(1.05)`, offset: 0.8 },
-        { transform: "translate(0px, 0px) scale(1)", offset: 0.9 },
-        { transform: `translate(0px, ${-5 * side}px) scale(1.01)`, offset: 0.95 },
-        { transform: "translate(0px, 0px) scale(1)", offset: 1 },
-      ],
-      { duration: FLIGHT_MS, easing: "cubic-bezier(0.22, 0.7, 0.3, 1)", fill: "forwards" }
-    );
-    // Des tours entiers sur les trois axes, qui s'amortissent jusqu'à la face obtenue.
-    const tour = (k: string) => (hash(`${throwKey}:${k}`) > 0.5 ? 1 : -1) * (2 + Math.floor(hash(`${throwKey}:${k}n`) * 2)) * 360;
-    const [rx, ry, rz] = [tour("rx"), tour("ry"), tour("rz") / 2];
-    const duree = FLIGHT_MS;
+    let tirage = 0;
+    const random = () => hash(`${throwKey}:r${tirage++}`);
+    const lateral = (random() - 0.5) * 0.7;
+    const throwDir: [number, number] = [lateral / Math.hypot(lateral, 1), -side / Math.hypot(lateral, 1)];
+    const path = rollPath(die, face, tilt, geste.rolls, throwDir, random);
+
+    // Positions au sol, à rebours depuis le point de chute final (0, 0).
+    const points: [number, number][] = [[0, 0]];
+    for (let k = path.steps.length - 1; k >= 0; k--) {
+      const step = path.steps[k]!;
+      const [x, y] = points[0]!;
+      points.unshift([x - step.dir[0] * step.distance * edge, y - step.dir[1] * step.distance * edge]);
+    }
+
+    type Pose = { o: Mat4; x: number; y: number; h: number; opacity?: number };
+    const segments: { ms: number; at: (t: number) => Pose }[] = [];
+    // 1. La chute : il arrive de chez celui qui lance, haut, et tournoie autour
+    //    de l'axe de sa première bascule — l'élan passe tel quel dans le roulement.
+    const first = path.steps[0];
+    const spinAxis = first?.axis ?? ([1, 0, 0] as const);
+    const spinSign = first ? Math.sign(first.angle) : 1;
+    const [x0, y0] = points[0]!;
+    const fromX = x0 - throwDir[0] * window.innerHeight * 0.5;
+    const fromY = y0 - throwDir[1] * window.innerHeight * 0.5;
+    segments.push({
+      ms: geste.airMs,
+      at: (t) => ({
+        o: multiply(path.orientations[0]!, axisAngle(spinAxis, -spinSign * geste.spinTurns * 2 * Math.PI * (1 - t))),
+        x: fromX + (x0 - fromX) * (1 - (1 - t) ** 1.6),
+        y: fromY + (y0 - fromY) * (1 - (1 - t) ** 1.6),
+        h: 150 * (1 - t * t),
+        opacity: Math.min(1, t * 4),
+      }),
+    });
+    // 2. Les bascules, chacune autour de l'arête commune, avec le rebond qui s'éteint.
+    path.steps.forEach((step, k) => {
+      const [ax, ay] = points[k]!;
+      const [bx, by] = points[k + 1]!;
+      const hop = geste.hops[k] ?? 0;
+      segments.push({
+        ms: geste.rollMs[k] ?? geste.rollMs[geste.rollMs.length - 1]!,
+        at: (t) => {
+          const e = k === path.steps.length - 1 ? 1 - (1 - t) ** 2 : t;
+          return {
+            o: multiply(path.orientations[k]!, axisAngle(step.axis, step.angle * e)),
+            x: ax + (bx - ax) * e,
+            y: ay + (by - ay) * e,
+            h: hop * Math.sin(Math.PI * t) + edge * geste.pivot * Math.sin(Math.PI * e),
+          };
+        },
+      });
+    });
+    // 3. Il se cale : un balancement sur sa dernière arête, qui s'amortit.
+    const last = path.steps[path.steps.length - 1];
+    segments.push({
+      ms: geste.wobbleMs,
+      at: (t) => ({
+        o: last ? multiply(final, axisAngle(last.axis, -Math.sign(last.angle) * ((geste.wobbleDeg * Math.PI) / 180) * Math.sin(Math.PI * 2 * 1.5 * t) * (1 - t))) : final,
+        x: 0,
+        y: 0,
+        h: 0,
+      }),
+    });
+
+    const apply = (pose: Pose) => {
+      draw(pose.o);
+      flight.style.transform = `translate(${pose.x.toFixed(1)}px, ${pose.y.toFixed(1)}px)`;
+      flight.style.opacity = `${pose.opacity ?? 1}`;
+      lift.style.transform = `translate(0px, ${(-pose.h * 0.55).toFixed(1)}px) scale(${(1 + pose.h / 420).toFixed(3)})`;
+      shadow.style.transform = `translate(${(pose.h * 0.25).toFixed(1)}px, ${(pose.h * 0.35).toFixed(1)}px) scale(${Math.max(0.45, 1 - pose.h / 260).toFixed(3)})`;
+      shadow.style.opacity = `${Math.max(0.15, 1 - pose.h / 170).toFixed(2)}`;
+    };
+    const total = segments.reduce((sum, seg) => sum + seg.ms, 0);
     const t0 = performance.now();
     let frame = 0;
     const step = (now: number) => {
-      const k = Math.min(1, (now - t0) / duree);
-      const reste = 1 - SPIN_EASING(k);
-      draw(multiply(final, eulerMatrix(rx * reste, ry * reste, rz * reste)));
-      if (k < 1) frame = requestAnimationFrame(step);
+      let elapsed = Math.min(total, now - t0);
+      for (const seg of segments) {
+        if (elapsed <= seg.ms || seg === segments[segments.length - 1]) {
+          apply(seg.at(Math.min(1, elapsed / seg.ms)));
+          break;
+        }
+        elapsed -= seg.ms;
+      }
+      if (now - t0 < total) frame = requestAnimationFrame(step);
     };
     step(t0);
-    const clac = window.setTimeout(playDiceLanded, FLIGHT_MS * 0.68);
+    const clac = window.setTimeout(playDiceLanded, geste.airMs);
     return () => {
-      vol.cancel();
       cancelAnimationFrame(frame);
       window.clearTimeout(clac);
+      flight.style.transform = "";
+      flight.style.opacity = "";
+      lift.style.transform = "";
+      shadow.style.transform = "";
+      shadow.style.opacity = "";
     };
-    // Le vol ne se rejoue qu'à un NOUVEAU jet ; un ajustement de la face roule (effet suivant).
+    // Le lancer ne se rejoue qu'à un NOUVEAU jet ; un ajustement de la face roule (effet suivant).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [throwKey, fromViewer, draw]);
 
@@ -404,16 +493,18 @@ function ThrownDie({ throwKey, die, face, fromViewer, outcome, onPick }: ThrownD
 
   return (
     <div className={styles.flight} ref={flightRef}>
-      <span className={styles.shadow} aria-hidden />
-      {onPick ? (
-        <button type="button" className={styles.pick} onClick={onPick} aria-label={`Garder ${face}`}>
-          {content}
-        </button>
-      ) : (
-        <div className={styles.holder} role="img" aria-label={`D${die} : ${face}`}>
-          {content}
-        </div>
-      )}
+      <span className={styles.shadow} ref={shadowRef} aria-hidden />
+      <div className={styles.lift} ref={liftRef}>
+        {onPick ? (
+          <button type="button" className={styles.pick} onClick={onPick} aria-label={`Garder ${face}`}>
+            {content}
+          </button>
+        ) : (
+          <div className={styles.holder} role="img" aria-label={`D${die} : ${face}`}>
+            {content}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

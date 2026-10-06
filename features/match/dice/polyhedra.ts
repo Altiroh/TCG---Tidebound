@@ -261,6 +261,90 @@ export function slerp(a: Mat4, b: Mat4, t: number): Mat4 {
   return fromQuat(qa.map((x, i) => x * k0 + qb[i]! * k1) as Quat);
 }
 
+/** Rotation d'angle `angle` (radians) autour de l'axe unitaire `axis` (Rodrigues). */
+export function axisAngle(axis: Vec3, angle: number): Mat4 {
+  const [x, y, z] = axis;
+  const c = Math.cos(angle);
+  const s = Math.sin(angle);
+  const t = 1 - c;
+  return [
+    t * x * x + c, t * x * y + s * z, t * x * z - s * y, 0,
+    t * x * y - s * z, t * y * y + c, t * y * z + s * x, 0,
+    t * x * z + s * y, t * y * z - s * x, t * z * z + c, 0,
+    0, 0, 0, 1,
+  ];
+}
+
+function transpose(m: Mat4): Mat4 {
+  return [m[0]!, m[4]!, m[8]!, 0, m[1]!, m[5]!, m[9]!, 0, m[2]!, m[6]!, m[10]!, 0, 0, 0, 0, 1];
+}
+
+/** Une bascule d'une face à sa voisine, par-dessus leur arête commune. */
+export interface RollStep {
+  /** Arête commune (repère du dé, unitaire). */
+  axis: Vec3;
+  /** Angle de la bascule (radians) : `orientation · axisAngle(axis, angle)` amène la face suivante devant. */
+  angle: number;
+  /** Direction du déplacement à l'écran (unitaire), et distance en arêtes. */
+  dir: [number, number];
+  distance: number;
+}
+
+export interface RollPath {
+  /** Orientation au premier contact avec la table, puis après chaque bascule ; la dernière est le repos. */
+  orientations: Mat4[];
+  steps: RollStep[];
+}
+
+/**
+ * LE ROULEMENT d'un dé sur la table, à rebours depuis la face obtenue.
+ *
+ * Un dé réel ne pivote pas sur place : il bascule d'une face à une face
+ * VOISINE, autour de leur arête commune — d'un quart de tour pour le cube,
+ * de 70,5° pour l'octaèdre (il roule loin), de 109,5° pour le tétraèdre (il
+ * se plante). On part de la pose de repos et on remonte `rolls` bascules,
+ * en préférant celles qui avancent dans le sens du lancer (`throwDir`) ;
+ * `random` (0 → 1, stable) départage. Le chemin rejoué à l'endroit finit
+ * EXACTEMENT sur la pose de repos.
+ */
+export function rollPath(die: DieSize, value: number, tilt: { x: number; y: number }, rolls: number, throwDir: [number, number], random: () => number): RollPath {
+  const solid = SOLIDS[die];
+  const faceOf = (v: number) => solid.faces.find((f) => f.value === v) ?? solid.faces[0]!;
+  const normalOf = (v: number) => outward(faceOf(v).vertices.map((i) => solid.vertices[i]!));
+  const inradius = (v: number) => dot(solid.vertices[faceOf(v).vertices[0]!]!, normalOf(v));
+  const orientations: Mat4[] = [restMatrix(die, value, tilt)];
+  const steps: RollStep[] = [];
+  let current = faceOf(value).value;
+  let previous: number | null = null;
+  for (let k = 0; k < rolls; k++) {
+    const after = orientations[0]!;
+    const candidates = solid.faces
+      .filter((f) => f.value !== current && f.value !== previous && f.vertices.filter((i) => faceOf(current).vertices.includes(i)).length === 2)
+      .map((f) => {
+        const shared = f.vertices.filter((i) => faceOf(current).vertices.includes(i));
+        const axis = norm(sub(solid.vertices[shared[1]!]!, solid.vertices[shared[0]!]!));
+        const from = normalOf(f.value);
+        const to = normalOf(current);
+        let angle = Math.acos(Math.max(-1, Math.min(1, dot(from, to))));
+        // La bascule doit amener `to` là où était `from`.
+        if (dot(rotate(axisAngle(axis, angle), to), from) < 0.999) angle = -angle;
+        const before = multiply(after, transpose(axisAngle(axis, angle)));
+        const n = rotate(before, to);
+        const len = Math.hypot(n[0], n[1]) || 1;
+        const dir: [number, number] = [n[0] / len, n[1] / len];
+        const distance = 2 * inradius(current) * Math.tan(Math.abs(angle) / 2);
+        return { value: f.value, before, step: { axis, angle, dir, distance }, score: dir[0] * throwDir[0] + dir[1] * throwDir[1] + random() * 0.9 };
+      });
+    if (candidates.length === 0) break;
+    const best = candidates.reduce((a, b) => (b.score > a.score ? b : a));
+    orientations.unshift(best.before);
+    steps.unshift(best.step);
+    previous = current;
+    current = best.value;
+  }
+  return { orientations, steps };
+}
+
 /** Valeurs portées par un dé (pour vérifier qu'aucune ne manque ni ne se répète). */
 export function faceValues(die: DieSize): number[] {
   return SOLIDS[die].faces.map((f) => f.value);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { eulerMatrix, faceValues, multiply, placeFaces, restMatrix, rotate, slerp, type Mat4 } from "@/features/match/dice/polyhedra";
+import { axisAngle, eulerMatrix, faceValues, multiply, placeFaces, restMatrix, rollPath, rotate, slerp, type Mat4 } from "@/features/match/dice/polyhedra";
 
 const DICE = [4, 6, 8] as const;
 const SANS_TILT = { x: 0, y: 0 };
@@ -49,5 +49,23 @@ describe("dés en volume", () => {
     slerp(a, b, 0).slice(0, 11).forEach((x, i) => expect(x).toBeCloseTo(a[i]!, 6));
     slerp(a, b, 1).slice(0, 11).forEach((x, i) => expect(x).toBeCloseTo(b[i]!, 6));
     expect(det3(slerp(a, b, 0.5))).toBeCloseTo(1, 6);
+  });
+
+  it("le roulement bascule de face voisine en face voisine et finit sur la pose de repos", () => {
+    const angles: Record<number, number> = { 4: 109.47, 6: 90, 8: 70.53 };
+    for (const die of DICE) {
+      for (const value of faceValues(die)) {
+        let seed = value * 7 + die;
+        const random = () => ((seed = (seed * 9301 + 49297) % 233280) / 233280);
+        const path = rollPath(die, value, { x: -12, y: 15 }, 4, [0, -1], random);
+        expect(path.steps.length).toBe(4);
+        path.steps.forEach((step, k) => {
+          expect(Math.abs((step.angle * 180) / Math.PI)).toBeCloseTo(angles[die]!, 1);
+          const arrivee = multiply(path.orientations[k]!, axisAngle(step.axis, step.angle));
+          arrivee.forEach((x, i) => expect(x).toBeCloseTo(path.orientations[k + 1]![i]!, 6));
+        });
+        path.orientations.at(-1)!.forEach((x, i) => expect(x).toBeCloseTo(restMatrix(die, value, { x: -12, y: 15 })[i]!, 6));
+      }
+    }
   });
 });
