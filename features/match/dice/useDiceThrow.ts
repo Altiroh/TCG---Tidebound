@@ -25,7 +25,7 @@ export interface DiceThrow {
 }
 
 /** Temps pendant lequel un dé fermé reste posé sur la table avant de s'effacer. */
-export const SETTLED_LINGER_MS = 2600;
+export const SETTLED_LINGER_MS = 1200;
 
 /**
  * Un jet ouvert peut s'éclipser un instant de l'état : briser un Objet

@@ -161,8 +161,24 @@ function DieControls({ state, throwInfo, viewerId, onAction }: { throwInfo: Dice
     onAction({ type: "resolveChoice", playerId: viewerId, choice: reponse });
   };
 
+  // Le temps écoulé, le jet est VALIDÉ tel quel — jamais une partie bloquée
+  // sur une décision facultative. Le compte repart à chaque changement du jet
+  // (+1, Chaîne, relance), et attend que le dé soit posé.
+  const etat = `${throwInfo.key}:${choice.value ?? ""}:${throwInfo.faces.join(",")}`;
+  const delai = settleMs(throwInfo.die);
+  const actionRef = useRef(onAction);
+  actionRef.current = onAction;
+  useEffect(() => {
+    const timer = window.setTimeout(
+      () => actionRef.current({ type: "resolveChoice", playerId: viewerId, choice: { dieResolve: true } }),
+      delai + DIE_DECISION_MS
+    );
+    return () => window.clearTimeout(timer);
+  }, [etat, delai, viewerId]);
+
   return (
     <div className={styles.controls}>
+      <div className={styles.controlsRow}>
       {options.reroll && (
         <button type="button" className={styles.chip} onClick={() => repondre({ dieReroll: true })}>
           Relancer
@@ -213,6 +229,14 @@ function DieControls({ state, throwInfo, viewerId, onAction }: { throwInfo: Dice
       <button type="button" className={styles.chip} data-primary="" onClick={() => repondre({ dieResolve: true })}>
         Valider
       </button>
+      </div>
+      <div className={styles.countdown} aria-hidden>
+        <div
+          key={etat}
+          className={`reaction-countdown-fill ${styles.countdownFill}`}
+          style={{ animationDuration: `${DIE_DECISION_MS}ms`, animationDelay: `${delai}ms` }}
+        />
+      </div>
     </div>
   );
 }
@@ -242,6 +266,8 @@ const LIGHT: readonly [number, number, number] = (() => {
 })();
 /** Changement de valeur (+1, Chaîne) : le dé se lève, tremble, change de face, se repose. */
 const ADJUST_MS = 820;
+/** Temps laissé pour ajuster le jet (relancer, ±1, Chaîne) avant qu'il soit validé tel quel. */
+const DIE_DECISION_MS = 15_000;
 /** Hauteur (px) à laquelle le dé se lève pour changer de face. */
 const ADJUST_LIFT = 46;
 
