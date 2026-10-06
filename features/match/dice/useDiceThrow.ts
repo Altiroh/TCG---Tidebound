@@ -25,7 +25,14 @@ export interface DiceThrow {
 }
 
 /** Temps pendant lequel un dé fermé reste posé sur la table avant de s'effacer. */
-export const SETTLED_LINGER_MS = 1200;
+export const SETTLED_LINGER_MS = 1600;
+
+/**
+ * Temps de LECTURE une fois le dé posé : un jet que plus rien ne peut changer
+ * se ferme dès son tirage, pendant que le dé roule encore. Sans ce délai,
+ * il s'effaçait avant même d'avoir montré sa valeur (retour du 06/10/2026).
+ */
+export const READ_AFTER_LANDING_MS = 2200;
 
 /**
  * Un jet ouvert peut s'éclipser un instant de l'état : briser un Objet
@@ -50,7 +57,7 @@ function resolvedEvents(state: GameState) {
  * La clé d'un jet ouvert et celle de l'événement qui le ferme sont la même
  * (`<jets déjà fermés>:<tirages>`) : le dé ne repart pas en se fermant.
  */
-export function useDiceThrow(state: GameState): DiceThrow | null {
+export function useDiceThrow(state: GameState, landingMs: (die: DieSize) => number = () => 0): DiceThrow | null {
   const resolved = resolvedEvents(state);
   const seenAtMount = useRef(resolved.length);
   const pending = pendingDieRoll(state);
@@ -96,14 +103,24 @@ export function useDiceThrow(state: GameState): DiceThrow | null {
     current = pose;
   }
 
+  // Quand chaque lancer est apparu : il ne s'efface qu'une fois posé ET lu.
+  const firstSeen = useRef(new Map<string, number>());
+  if (current && !firstSeen.current.has(current.key)) firstSeen.current.set(current.key, Date.now());
+
   // Un jet fermé s'efface de lui-même ; un nouveau jet le remplace aussitôt.
   const [expiredKey, setExpiredKey] = useState<string | null>(null);
   const settledKey = current && !current.open ? `${current.key}:${current.outcome}` : null;
+  const settledDie = current?.die;
+  const throwKey = current?.key;
   useEffect(() => {
-    if (!settledKey) return;
-    const timer = window.setTimeout(() => setExpiredKey(settledKey), SETTLED_LINGER_MS);
+    if (!settledKey || !throwKey || settledDie === undefined) return;
+    const seen = firstSeen.current.get(throwKey) ?? Date.now();
+    const readable = seen + landingMs(settledDie) + READ_AFTER_LANDING_MS - Date.now();
+    const timer = window.setTimeout(() => setExpiredKey(settledKey), Math.max(SETTLED_LINGER_MS, readable));
     return () => window.clearTimeout(timer);
-  }, [settledKey]);
+    // `landingMs` : une fonction de durées fixes, pas une dépendance qui change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settledKey, settledDie, throwKey]);
 
   if (settledKey && expiredKey === settledKey) return null;
   return current;

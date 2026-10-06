@@ -22,9 +22,9 @@ interface Layout {
 
 /**
  * Ce que le décor ne doit JAMAIS recouvrir : les deux rangées, la colonne
- * de droite, les cartes en main des deux côtés, et tout élément marqué
+ * de droite, les cartes en main des deux côtés, tout élément marqué
  * `data-ui-obstacle` (piste et tuile de Marée, hublots de Lande et
- * d'effets, boutons du haut).
+ * d'effets, boutons du haut), et les objets du décor de la table.
  */
 const OBSTACLES = [
   '[data-zone="OpponentZone"]',
@@ -34,6 +34,9 @@ const OBSTACLES = [
   "[data-opp-hand-index]",
   "[data-ui-obstacle]",
   "[data-live-audience]",
+  // Les objets du DÉCOR de la table (lanternes, tonneau, barre…) : une pièce
+  // posée dessus aurait l'air collée, pas posée sur le bureau.
+  "[data-decor-obstacle]",
 ].join(", ");
 
 function readLayout(host: HTMLElement): Layout {

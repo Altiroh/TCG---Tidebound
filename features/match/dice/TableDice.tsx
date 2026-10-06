@@ -64,7 +64,7 @@ function prefersReducedMotion(): boolean {
  * plateau reste visible et jouable du regard.
  */
 export function TableDice({ state, viewerId, onAction }: TableDiceProps) {
-  const current = useDiceThrow(state);
+  const current = useDiceThrow(state, settleMs);
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   // Planches chargées dès l'arrivée à table : sans cela, le PREMIER lancer
