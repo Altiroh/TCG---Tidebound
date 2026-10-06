@@ -1311,6 +1311,9 @@ const GENERIQUES: CardDefinition[] = [
     id: "aventuriere-en-retard",
     name: "Aventurière en retard",
     type: "marin",
+    // Famille Dungeon et Ladalle (audit du 06/10/2026), mais obtenue dans
+    // Poissons pas frais : le pool du Lot 17 suit le `setCode`, pas l'archétype.
+    archetype: DL,
     setCode: LOT17_PASSERELLES,
     cost: 2,
     attack: 3,

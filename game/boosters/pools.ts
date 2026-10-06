@@ -110,13 +110,11 @@ const DEFAUT: readonly string[] = [
   "pelican-des-cales",
   "mouette-du-brise-lames",
   "harnois-de-vigie",
-  // Passerelles du Lot 17, redistribuées au nettoyage du 06/10/2026 (Notion « Boosters & économie »).
-  "cartographe-du-large",
-  "gardien-des-balises",
-  "boussole-fendue",
+  // Passerelles du Lot 17 (06/10/2026). Audit du même jour : seules Carte
+  // détrempée et Calme trompeur restent obtenables ; Cartographe du Large,
+  // Gardien des Balises, Boussole fendue, Campement provisoire et Tour de
+  // guet mobile sont sorties des pools (définitions conservées).
   "carte-detrempee",
-  "campement-provisoire",
-  "tour-de-guet-mobile",
   "calme-trompeur",
 ];
 
@@ -181,9 +179,9 @@ const POISSONS_PAS_FRAIS: readonly string[] = [
   "albatros-de-mauvais-temps",
   "charpentier-des-epaves",
   "barge-de-reparation",
-  // Passerelles du Lot 17 (06/10/2026).
+  // Passerelle du Lot 17 (06/10/2026) : Dungeon et Ladalle par sa famille,
+  // obtenue ici. Marée imprévisible est sortie des pools à l'audit du 06/10.
   "aventuriere-en-retard",
-  "maree-imprevisible",
 ];
 
 /**
@@ -245,8 +243,7 @@ const ETRANGETE_SOUS_MARINE: readonly string[] = [
   "clous-de-recuperation",
   "etau-du-calfat",
   "sonde-des-courants-perdus",
-  // Passerelle du Lot 17 (06/10/2026).
-  "terres-inconnues",
+  // Terres inconnues (passerelle du Lot 17) : sortie des pools à l'audit du 06/10/2026.
 ];
 
 /**
@@ -502,6 +499,23 @@ const BIENVENUE: readonly string[] = DEFAUT.filter((cardId) => {
   if ((def.abilities ?? []).some((ability) => ability.trigger === "onLandeStrike")) return false;
   return def.setCode === undefined || def.setCode === "core";
 });
+
+/**
+ * Cartes du catalogue VOLONTAIREMENT hors de tout booster : les passerelles
+ * du Lot 17 sorties des pools à l'audit du 06/10/2026. Leurs définitions
+ * restent (les joueurs qui les possèdent les gardent ; Boussole fendue reste
+ * dans le préconstruit Les Veilleurs d'Opale), mais aucun sachet ne les
+ * donne plus. Toute AUTRE carte hors booster est une erreur (tests).
+ */
+export const CARTES_HORS_POOLS: readonly string[] = [
+  "boussole-fendue",
+  "campement-provisoire",
+  "cartographe-du-large",
+  "gardien-des-balises",
+  "maree-imprevisible",
+  "terres-inconnues",
+  "tour-de-guet-mobile",
+];
 
 /** Cartes éligibles par booster. La base en est le miroir (`booster_pool_cards`). */
 export const BOOSTER_POOLS: Readonly<Record<string, readonly string[]>> = {
