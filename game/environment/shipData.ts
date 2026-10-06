@@ -270,6 +270,7 @@ export const SHIP_SET: ShipDefinition[] = [
     startingAnchor: 36,
     reasonMax: 8,
     slotCount: 6,
+    illustration: "ile-tortue-opaline.webp",
     text: "Profil : lourd / Opalins / valeur récurrente.",
     passiveText:
       "La première carte Opaline coûtant 5 ou plus que vous jouez à chacun de vos tours coûte 1 de moins. " +

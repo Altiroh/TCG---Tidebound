@@ -2,7 +2,6 @@ import { existsSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { CORE_SET } from "@/game/cards/sets/core";
-import { LOT17_SET } from "@/game/cards/sets/lot17";
 import { SHELF_BOOSTER_IDS } from "@/game/boosters/extensions";
 import { DEFAULT_PACK_VISUAL, getBoosterPackVisual } from "@/features/boosters/opening/boosterPackVisuals";
 import { STANDARD_BOOSTER_ID } from "@/game/economy/constants";
@@ -38,11 +37,24 @@ const DOSSIER = path.join(process.cwd(), "public", "assets", "cards", "illustrat
  * de son visuel — le troisième test le refuse.
  */
 const SANS_VISUEL: Record<string, string> = {
-  // Le Lot 16 — Les Altérés — a reçu ses derniers visuels le 04/10/2026 et
-  // les trois Landes du 05/10/2026 sont arrivées avec les leurs.
-  // Le Lot 17 (Dungeon et Ladalle / Opalins, 05/10/2026) est livré sans visuels.
+  // Le Lot 17 a reçu ses visuels le 06/10/2026, sauf les douze passerelles
+  // nées avec lui (dont Mousse superstitieux et Pièce porte-bonheur, restées
+  // dans son booster).
   ...Object.fromEntries(
-    LOT17_SET.map((def) => def.id).map((id) => [id, "Lot 17 livré sans visuels (05/10/2026)"])
+    [
+      "cartographe-du-large",
+      "aventuriere-en-retard",
+      "mousse-superstitieux",
+      "gardien-des-balises",
+      "boussole-fendue",
+      "piece-porte-bonheur",
+      "carte-detrempee",
+      "campement-provisoire",
+      "tour-de-guet-mobile",
+      "maree-imprevisible",
+      "calme-trompeur",
+      "terres-inconnues",
+    ].map((id) => [id, "Passerelle du Lot 17 livrée sans visuel (06/10/2026)"])
   ),
 };
 
