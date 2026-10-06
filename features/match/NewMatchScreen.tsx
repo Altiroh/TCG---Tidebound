@@ -14,6 +14,7 @@ import { nameplateArtUrl } from "@/features/decks/nameplateArt";
 import { BotSetup } from "@/features/match/BotSetup";
 import { ModeTable, PlayTable } from "@/features/match/ModeTable";
 import { GameScreen } from "@/features/shell/GameScreen";
+import { DifficultyStars } from "@/features/shell/GameIcons";
 import { shipNameOf } from "@/features/ships/ShipPortrait";
 import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/match/NewMatch.module.css";
@@ -187,11 +188,6 @@ const DIFFICULTY_WORDS = ["Très accessible", "Accessible", "Moyen", "Exigeant",
 
 function difficultyWord(difficulty: number): string {
   return DIFFICULTY_WORDS[Math.min(DIFFICULTY_WORDS.length, Math.max(1, Math.round(difficulty))) - 1]!;
-}
-
-function stars(difficulty: number): string {
-  const filled = Math.min(5, Math.max(0, Math.round(difficulty)));
-  return "★".repeat(filled) + "☆".repeat(5 - filled);
 }
 
 /**
@@ -733,7 +729,7 @@ export function NewMatchScreen({
                                   <span className={styles.rowIssue}>{issue}</span>
                                 ) : meta ? (
                                   <span className={styles.rowStars} aria-label={`Difficulté : ${difficultyWord(meta.difficulty)}`}>
-                                    {stars(meta.difficulty)}
+                                    <DifficultyStars value={meta.difficulty} decorative />
                                   </span>
                                 ) : (
                                   <span className={styles.rowStars}>{deck.cardIds.length} cartes</span>
@@ -998,9 +994,7 @@ function DeckSheet({ deck, family, issue }: { deck: DeckList | null; family: str
               </span>
               <span className={styles.statLines}>
                 <span className={styles.statLabel}>
-                  <span className={styles.statStars} aria-hidden>
-                    {stars(meta.difficulty)}
-                  </span>{" "}
+                  <DifficultyStars value={meta.difficulty} className={styles.statStars} decorative />{" "}
                   Difficulté
                 </span>
                 <span className={styles.statValue}>{difficultyWord(meta.difficulty)}</span>

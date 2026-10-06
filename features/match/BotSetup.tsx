@@ -34,19 +34,6 @@ export type SetupFoe =
 /** Durée du geste de la poignée (`BotSetup.module.css`, `pull`). */
 const PULL_MS = 720;
 
-function Stars({ value }: { value: number }) {
-  const filled = Math.min(5, Math.max(0, Math.round(value)));
-  return (
-    <span className={styles.stars} role="img" aria-label={`Difficulté ${filled} sur 5`}>
-      {Array.from({ length: 5 }, (_, index) => (
-        <svg key={index} viewBox="0 0 24 24" data-on={index < filled || undefined} aria-hidden>
-          <path d="M12 2.8l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17.2l-5.7 3.1 1.2-6.4L2.8 9.5l6.4-.8z" />
-        </svg>
-      ))}
-    </span>
-  );
-}
-
 /**
  * JOUER → CONTRE UN BOT, ou EN LIGNE (recherche rapide, `foe.kind`), sur la même table que le choix du mode (retour du
  * 28/09/2026) : les cartes des modes sont parties, les éléments de cette

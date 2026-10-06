@@ -6,7 +6,7 @@ import { ownershipLabel, type CatalogDeck, type DeckOwnership } from "@/game";
 import { CardDetailModal } from "@/features/collection/card-detail/CardDetailModal";
 import { Dialog } from "@/features/shell/Dialog";
 import { ShipPortrait, shipNameOf } from "@/features/ships/ShipPortrait";
-import { PreconToken } from "@/features/shell/GameIcons";
+import { DifficultyStars, PreconToken } from "@/features/shell/GameIcons";
 import { cardIllustrationThumbUrl } from "@/features/decks/nameplateArt";
 import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/decks/DeckCatalog.module.css";
@@ -32,11 +32,6 @@ interface DeckSheetProps {
   /** « Essayer » : partie contre le bot, deck entièrement prêté (§4, option UX recommandée). */
   onTry: () => void;
   onClose: () => void;
-}
-
-/** Difficulté en étoiles, comme la spec l'écrit (« ★★☆☆☆ »). */
-function difficultyStars(difficulty: number): string {
-  return "★".repeat(difficulty) + "☆".repeat(Math.max(0, 5 - difficulty));
 }
 
 /**
@@ -148,7 +143,7 @@ export function DeckSheet({
             </span>
             <span className={styles.sheetField}>
               <span className={styles.sheetLabel}>Difficulté</span>
-              <span className={`${styles.sheetValue} ${styles.difficulty}`}>{difficultyStars(deck.difficulty)}</span>
+              <DifficultyStars value={deck.difficulty} className={`${styles.sheetValue} ${styles.difficulty}`} />
             </span>
             <span className={styles.sheetField}>
               <span className={styles.sheetLabel}>Effectif</span>

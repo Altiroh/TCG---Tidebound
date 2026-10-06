@@ -348,23 +348,9 @@
 }
 
 .stars {
-  display: inline-flex;
-  gap: 0.12em;
+  --tb-star: 5.4cqh;
   margin-top: 4%;
-}
-
-.stars svg {
-  width: 5cqh;
-  height: 5cqh;
-  fill: none;
-  stroke: #5a3a12;
-  stroke-width: 1.6;
-}
-
-.stars svg[data-on] {
-  fill: #f2c24e;
-  stroke: #5a3a12;
-  filter: drop-shadow(0 0 2px rgba(242, 194, 78, 0.6));
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.45));
 }
 
 .issue {
@@ -495,9 +481,8 @@
   height: calc(var(--h) * 5.4);
 }
 
-.detailStars svg {
-  width: calc(var(--h) * 3.6);
-  height: calc(var(--h) * 3.6);
+.detailStars {
+  --tb-star: calc(var(--h) * 3.9);
 }
 
 .equipWrap {

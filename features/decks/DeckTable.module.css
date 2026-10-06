@@ -531,10 +531,7 @@
   height: calc(1.5cqw * var(--z, 1));
   border-radius: calc(0.4cqw * var(--z, 1)) 0 calc(0.4cqw * var(--z, 1)) 0;
   background: rgba(24, 16, 10, 0.78);
-  color: #f3c86b;
-  font-size: calc(calc(1cqw * var(--z, 1)) * var(--tb-text-scale));
-  line-height: 1;
-  text-shadow: 0 0 calc(0.4cqw * var(--z, 1)) rgba(243, 200, 107, 0.7);
+  --tb-star: calc(1.15cqw * var(--z, 1));
 }
 
 /* Le bandeau de parchemin du nom, qui déborde de la pile. */
@@ -771,16 +768,21 @@
   height: calc(2.2cqw * var(--z, 1));
   border: calc(0.12cqw * var(--z, 1)) solid #b88a3e;
   border-radius: 50%;
+  display: grid;
+  place-items: center;
+  padding: 0;
   background: rgba(36, 23, 13, 0.85);
-  color: rgba(241, 227, 196, 0.55);
-  font-size: calc(calc(1.2cqw * var(--z, 1)) * var(--tb-text-scale));
-  line-height: 1;
+  --tb-star: calc(1.5cqw * var(--z, 1));
   cursor: var(--tb-cursor-pointer);
 }
 
-.ficheFavorite[data-active] {
-  color: #f3c86b;
-  text-shadow: 0 0 calc(0.5cqw * var(--z, 1)) rgba(243, 200, 107, 0.8);
+/* Favori : l'étoile pleine luit ; sinon, l'étoile vide reste en retrait. */
+.ficheFavorite:not([data-active]) img {
+  opacity: 0.7;
+}
+
+.ficheFavorite[data-active] img {
+  filter: drop-shadow(0 0 calc(0.3cqw * var(--z, 1)) rgba(150, 210, 230, 0.6));
 }
 
 .ficheBody {
@@ -856,32 +858,11 @@
   background: #7a2019;
 }
 
-/*
- * LA DIFFICULTÉ, en cinq étoiles : pleines, dorées et cernées d'encre ;
- * vides, un simple contour d'encre. Sur le parchemin, l'ancien ★☆ brun
- * disparaissait dans la teinte du papier.
- */
+/* LA DIFFICULTÉ, en cinq étoiles de métal peintes (`DifficultyStars`). */
 .ficheStars {
-  display: inline-flex;
-  align-items: center;
-  gap: calc(0.08cqw * var(--z, 1));
+  --tb-star: max(14px, calc(1.45cqw * var(--z, 1)));
   margin-left: auto;
-  line-height: 1;
-}
-
-.ficheStar {
-  width: max(12px, calc(1.25cqw * var(--z, 1)));
-  height: max(12px, calc(1.25cqw * var(--z, 1)));
-  fill: rgba(58, 38, 22, 0.1);
-  stroke: rgba(58, 38, 22, 0.6);
-  stroke-width: 1.4;
-  stroke-linejoin: round;
-}
-
-.ficheStar[data-filled] {
-  fill: #f2c24e;
-  stroke: #5a3510;
-  filter: drop-shadow(0 0 calc(0.15cqw * var(--z, 1)) rgba(255, 196, 70, 0.7)) drop-shadow(0 calc(0.05cqw * var(--z, 1)) calc(0.08cqw * var(--z, 1)) rgba(0, 0, 0, 0.45));
+  filter: drop-shadow(0 calc(0.05cqw * var(--z, 1)) calc(0.08cqw * var(--z, 1)) rgba(0, 0, 0, 0.45));
 }
 
 .ficheText {

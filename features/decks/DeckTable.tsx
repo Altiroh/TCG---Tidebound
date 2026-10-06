@@ -9,7 +9,7 @@ import { DeckStyleIcon } from "@/features/decks/DeckStyleIcon";
 import { DECK_SORTS, type DeckSortId } from "@/features/decks/deckFilters";
 import { shipNameOf } from "@/features/ships/ShipPortrait";
 import { CandleToy } from "@/features/shell/CandleToy";
-import { PreconToken } from "@/features/shell/GameIcons";
+import { DifficultyStars, PreconToken, StarIcon } from "@/features/shell/GameIcons";
 import { useImagesReady } from "@/features/shell/useImagesReady";
 import styles from "@/features/decks/DeckTable.module.css";
 import { playButtonClick } from "@/lib/sound";
@@ -75,13 +75,6 @@ interface DeckTableProps extends DeckTableActions {
   emptyLabel: string;
 }
 
-/** Étoiles pleines (sur cinq) d'une difficulté. */
-function filledStars(difficulty: number): number {
-  return Math.min(5, Math.max(0, Math.round(difficulty)));
-}
-
-/** Tracé d'une étoile à cinq branches (viewBox 24 × 24). */
-const STAR_PATH = "M12 2.6l2.85 5.9 6.45.9-4.7 4.5 1.15 6.4L12 17.2l-5.75 3.1 1.15-6.4-4.7-4.5 6.45-.9z";
 
 
 /**
@@ -339,7 +332,7 @@ export function DeckTable(props: DeckTableProps) {
                   <span className={styles.stackWindow} style={deck.artUrl ? { backgroundImage: `url("${deck.artUrl}")` } : undefined} />
                   {props.favorites.has(deck.id) && (
                     <span className={styles.stackFavorite} aria-label="Favori">
-                      ★
+                      <StarIcon filled />
                     </span>
                   )}
                   {/* Le STYLE du deck, sur le fanion de Raison des tuiles de plateau, en haut à droite. */}
@@ -431,7 +424,7 @@ function DeckFiche(props: DeckTableProps & { deck: BrowserDeck | null }) {
           props.onToggleFavorite(deck.id);
         }}
       >
-        ★
+        <StarIcon filled={favorite} />
       </button>
 
       <div key={`body-${deck.id}`} className={styles.ficheBody} data-swap>
@@ -452,20 +445,7 @@ function DeckFiche(props: DeckTableProps & { deck: BrowserDeck | null }) {
             {deck.cardCount} / {RULES.DECK_SIZE_MAX} cartes
           </span>
           {deck.style && <span className={styles.chip}>{deck.style}</span>}
-          {deck.style && (
-            <span
-              className={styles.ficheStars}
-              role="img"
-              aria-label={`Difficulté ${filledStars(deck.difficulty)} sur 5`}
-              title={`Difficulté ${filledStars(deck.difficulty)} sur 5`}
-            >
-              {[0, 1, 2, 3, 4].map((index) => (
-                <svg key={index} className={styles.ficheStar} data-filled={index < filledStars(deck.difficulty) || undefined} viewBox="0 0 24 24" aria-hidden>
-                  <path d={STAR_PATH} />
-                </svg>
-              ))}
-            </span>
-          )}
+          {deck.style && <DifficultyStars value={deck.difficulty} className={styles.ficheStars} />}
         </div>
 
         {deck.description && <p className={styles.ficheText}>{deck.description}</p>}

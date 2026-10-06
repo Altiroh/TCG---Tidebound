@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { ARCHETYPE_LABELS, DECK_STYLES, getCardDefinition, type DeckList, type DeckStyleId } from "@/game";
 import { nameplateArtUrl } from "@/features/decks/nameplateArt";
 import { deckFacts, type DeckSource } from "@/features/match/deckFacts";
+import { DifficultyStars } from "@/features/shell/GameIcons";
 import styles from "@/features/match/DeckPicker.module.css";
 import { playButtonClick, playTabClick } from "@/lib/sound";
 
@@ -38,19 +39,6 @@ function dominantArchetype(cardIds: readonly string[]): string | null {
     }
   }
   return best ? (ARCHETYPE_LABELS[best as keyof typeof ARCHETYPE_LABELS] ?? null) : null;
-}
-
-function Stars({ value, className }: { value: number; className?: string }) {
-  const filled = Math.min(5, Math.max(0, Math.round(value)));
-  return (
-    <span className={[styles.stars, className].filter(Boolean).join(" ")} role="img" aria-label={`Difficulté ${filled} sur 5`}>
-      {Array.from({ length: 5 }, (_, index) => (
-        <svg key={index} viewBox="0 0 24 24" data-on={index < filled || undefined} aria-hidden>
-          <path d="M12 2.8l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17.2l-5.7 3.1 1.2-6.4L2.8 9.5l6.4-.8z" />
-        </svg>
-      ))}
-    </span>
-  );
 }
 
 /**
@@ -222,7 +210,7 @@ export function DeckPicker({
                     ) : (
                       <span className={styles.stylePill}>{facts.style}</span>
                     )}
-                    <Stars value={facts.difficulty} />
+                    <DifficultyStars value={facts.difficulty} className={styles.stars} />
                     {issue && <span className={styles.issue}>{issue}</span>}
                   </button>
                 </li>
@@ -263,7 +251,7 @@ export function DeckPicker({
                   {chosen.facts.styleId && <img src={styleEmblem(chosen.facts.styleId)} alt="" draggable={false} />}
                   {chosen.facts.style.split("/")[0]?.trim()}
                 </span>
-                <Stars value={chosen.facts.difficulty} className={styles.detailStars} />
+                <DifficultyStars value={chosen.facts.difficulty} className={`${styles.stars} ${styles.detailStars}`} />
               </div>
               <div className={styles.equipWrap}>
                 <button

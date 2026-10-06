@@ -707,26 +707,6 @@
   50% { translate: 0 -2.5%; }
 }
 
-.stars {
-  display: inline-flex;
-  gap: 0.15cqw;
-}
-
-.stars svg {
-  width: 1cqw;
-  height: 1cqw;
-  fill: none;
-  stroke: rgba(60, 38, 16, 0.55);
-  stroke-width: 1.6;
-}
-
-.stars svg[data-on] {
-  fill: #f2c24e;
-  stroke: #5a3a12;
-  filter: drop-shadow(0 0 0.2cqw rgba(242, 194, 78, 0.6));
-}
-
-
 /* Écran bas (téléphone couché) : le récapitulatif garde l'essentiel, et son bouton. */
 
 /*

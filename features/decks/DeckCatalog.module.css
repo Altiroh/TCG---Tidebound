@@ -103,8 +103,8 @@
 
 /* Les étoiles de difficulté : de l'or — c'est une valeur, pas un état. */
 .difficulty {
-  letter-spacing: 0.08em;
-  color: var(--gold);
+  --tb-star: 1.15em;
+  vertical-align: -0.2em;
 }
 
 /* ──────────────────────────────────────────────────────────────
