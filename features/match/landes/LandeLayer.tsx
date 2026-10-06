@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import type { ActiveLande } from "@/game";
 import { createLandeFx, type LandeFx, type LandeFxLayer, type LandeLayout, type LandeRect, type LandeSprites } from "@/features/match/landes/landeFx";
+import { LandeProps } from "@/features/match/landes/LandeProps";
 import { landeAsset, landeScene, type LandeLayer as SceneLayer } from "@/features/match/landes/landeScenes";
 import styles from "@/features/match/landes/Landes.module.css";
 
@@ -151,6 +152,7 @@ function LandeScene({ lande, state, delayMs, layer }: { lande: ActiveLande; stat
       style={{ "--lande-delay": `${entry.delayMs}ms`, "--lande-rgb": scene.rgb } as CSSProperties}
     >
       {layer === "back" && <div className={styles.landeTint} style={{ background: scene.tint }} />}
+      {scene.props && <LandeProps cardId={lande.cardId} props={scene.props} layer={layer} />}
       {scene.fx && <canvas ref={canvasRef} className={styles.landeCanvas} data-off={runFx ? undefined : ""} />}
       {layer === "back" &&
         (scene.layers ?? []).map((edge) => <SceneLayerImage key={edge.file} cardId={lande.cardId} layer={edge} />)}

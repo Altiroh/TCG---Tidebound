@@ -6,7 +6,7 @@ import { getCardDefinition, PRECON_DECKS, type CardInstance, type GameState } fr
 import { createLocalMatch } from "@/features/match/createLocalMatch";
 import { MatchBoard } from "@/features/match/MatchBoard";
 
-const LANDES = ["pluie-corrosive", "chaine-de-construction", "vallee-de-verre"] as const;
+const LANDES = ["pluie-corrosive", "chaine-de-construction", "vallee-de-verre", "le-donjon-de-ladalle"] as const;
 
 function carte(cardId: string, ownerId: string, index: number): CardInstance {
   return { instanceId: `lab_${ownerId}_${cardId}_${index}`, cardId, ownerId, damageMarked: 0, modifiers: [], summoningSick: false, hasAttackedThisTurn: false };

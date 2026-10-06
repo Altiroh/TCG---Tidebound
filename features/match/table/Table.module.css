@@ -1005,7 +1005,7 @@
   width: 30%;
   aspect-ratio: 1;
   transform: translateX(-50%);
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.75)) drop-shadow(0 0 6px rgba(160, 200, 230, 0.45));
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.75)) drop-shadow(0 0 8px rgba(170, 110, 255, 0.55));
   pointer-events: auto;
   cursor: help;
 }
@@ -1017,14 +1017,21 @@
   object-fit: contain;
 }
 
+/* Le chiffre, en pastille sombre posée sur le bas du médaillon : le bouclier reste visible. */
 .shipArmorValue {
   grid-area: 1 / 1;
-  margin-top: -6%;
-  font-size: var(--fs-value);
+  align-self: end;
+  margin-bottom: -14%;
+  min-width: 1.5em;
+  padding: 0.1em 0.35em;
+  border: 1px solid rgba(214, 180, 255, 0.7);
+  border-radius: 999px;
+  background: rgba(30, 14, 52, 0.92);
+  font-size: calc(var(--fs-value) * 0.8);
   font-weight: 700;
   line-height: 1;
-  color: #1b2735;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
+  text-align: center;
+  color: #f1e6ff;
 }
 
 .shipGaugeValue {

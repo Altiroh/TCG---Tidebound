@@ -154,6 +154,209 @@
   100% { opacity: 0; }
 }
 
+/* ── Pièces posées (Le Donjon de Ladalle, `LandeProps`) ─────────────── */
+
+.propsHost {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* La pièce, pied au bas de sa boîte. Le bas est COUPÉ au ras du sol : elle
+   en sort en montant, au lieu de glisser par-dessus le plateau. */
+.prop {
+  position: absolute;
+  clip-path: inset(-60% -40% 0 -40%);
+}
+
+.propRise {
+  position: absolute;
+  inset: 0;
+  animation: propRise 1500ms cubic-bezier(0.22, 0.75, 0.3, 1) calc(var(--lande-delay, 0ms) + var(--rise-delay, 0ms)) both;
+}
+
+/* Elle monte en tremblant (le grondement), puis se pose. */
+@keyframes propRise {
+  0% { transform: translate(0, 100%); }
+  12% { transform: translate(-1.2%, 86%); }
+  24% { transform: translate(1.4%, 70%); }
+  36% { transform: translate(-1.2%, 52%); }
+  48% { transform: translate(1.2%, 34%); }
+  60% { transform: translate(-0.9%, 18%); }
+  72% { transform: translate(0.7%, 6%); }
+  84% { transform: translate(-0.4%, -1.5%); }
+  92% { transform: translate(0.2%, 0.5%); }
+  100% { transform: none; }
+}
+
+.propImg {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: bottom center;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.6)) drop-shadow(-6px 3px 4px rgba(0, 0, 0, 0.35));
+  user-select: none;
+}
+
+/* Ombre portée au sol, couchée vers la droite (lumière en haut à gauche). */
+.propShadow {
+  position: absolute;
+  left: 8%;
+  right: -12%;
+  bottom: -2%;
+  height: 16%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0));
+  transform: skewX(-20deg);
+  animation: propShadowIn 1500ms ease-out calc(var(--lande-delay, 0ms) + var(--rise-delay, 0ms)) both;
+}
+
+@keyframes propShadowIn {
+  from { opacity: 0; transform: skewX(-20deg) scaleX(0.4); }
+  to { opacity: 1; transform: skewX(-20deg); }
+}
+
+/* Poussière soulevée au pied pendant la montée, puis retombée. */
+.propDust {
+  position: absolute;
+  left: -15%;
+  right: -15%;
+  bottom: -6%;
+  height: 34%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(150, 128, 100, 0.7), rgba(120, 100, 80, 0.25) 55%, rgba(120, 100, 80, 0));
+  filter: blur(4px);
+  opacity: 0;
+  animation: propDust 2000ms ease-out calc(var(--lande-delay, 0ms) + var(--rise-delay, 0ms)) both;
+}
+
+@keyframes propDust {
+  0% { opacity: 0; transform: scale(0.5, 0.4); }
+  25% { opacity: 1; transform: scale(1, 0.8); }
+  70% { opacity: 0.6; transform: scale(1.2, 1.2) translateY(-12%); }
+  100% { opacity: 0; transform: scale(1.35, 1.4) translateY(-22%); }
+}
+
+/* Une LUMIÈRE : halo qui vacille ; un clic la souffle ou la rallume. */
+.propLight {
+  position: absolute;
+  width: calc(var(--light-size) * 100%);
+  aspect-ratio: 1;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+  cursor: var(--tb-cursor-pointer, pointer);
+}
+
+.propLight:focus-visible {
+  outline: 2px solid rgba(255, 220, 150, 0.9);
+  outline-offset: 2px;
+}
+
+.propGlow {
+  position: absolute;
+  inset: -90%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255, 226, 160, 0.95), rgba(255, 170, 70, 0.5) 40%, rgba(255, 140, 40, 0));
+  mix-blend-mode: screen;
+  opacity: 0;
+  transition: opacity 400ms ease-out;
+  animation: propFlicker 2.4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.propLight[data-lit] .propGlow {
+  opacity: 1;
+}
+
+@keyframes propFlicker {
+  0%, 100% { transform: scale(1); filter: brightness(1); }
+  18% { transform: scale(1.06); filter: brightness(1.15); }
+  32% { transform: scale(0.96); filter: brightness(0.88); }
+  51% { transform: scale(1.04); filter: brightness(1.1); }
+  67% { transform: scale(0.98); filter: brightness(0.94); }
+  83% { transform: scale(1.03); filter: brightness(1.06); }
+}
+
+/* Soufflée : la lumière peinte s'assombrit. */
+.propDark {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(12, 8, 4, 0.95), rgba(12, 8, 4, 0.7) 55%, rgba(12, 8, 4, 0));
+  mix-blend-mode: multiply;
+  opacity: 1;
+  transition: opacity 300ms ease-out;
+  pointer-events: none;
+}
+
+.propLight[data-lit] .propDark {
+  opacity: 0;
+}
+
+.propPuff {
+  position: absolute;
+  left: 50%;
+  bottom: 50%;
+  width: 70%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(200, 200, 200, 0.6), rgba(200, 200, 200, 0));
+  transform: translateX(-50%);
+  animation: propPuff 1200ms ease-out forwards;
+  pointer-events: none;
+}
+
+@keyframes propPuff {
+  from { opacity: 0.9; transform: translate(-50%, 0) scale(0.5); }
+  to { opacity: 0; transform: translate(-50%, -180%) scale(1.6); }
+}
+
+/* La puanteur des latrines : des volutes vertes qui montent en ondulant. */
+.propStench {
+  position: absolute;
+  width: 70%;
+  height: 80%;
+  transform: translate(-50%, -70%);
+  pointer-events: none;
+}
+
+.stenchWisp {
+  position: absolute;
+  bottom: 0;
+  left: calc(10% + var(--k) * 12%);
+  width: 52%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(160, 230, 60, 0.85), rgba(120, 190, 40, 0.4) 55%, rgba(90, 150, 30, 0));
+  filter: blur(3px);
+  opacity: 0;
+  animation: stench 3.6s ease-in-out infinite;
+  animation-delay: calc(var(--k) * 0.72s);
+}
+
+@keyframes stench {
+  0% { opacity: 0; transform: translate(0, 0) scale(0.4); }
+  20% { opacity: 0.9; }
+  50% { transform: translate(-18%, -90%) scale(0.85); }
+  75% { opacity: 0.5; transform: translate(14%, -150%) scale(1.1); }
+  100% { opacity: 0; transform: translate(-6%, -210%) scale(1.35); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .propRise,
+  .propShadow,
+  .propDust,
+  .propGlow,
+  .stenchWisp {
+    animation: none;
+  }
+  .stenchWisp { opacity: 0.4; }
+}
+
 /* ── Arrivée ───────────────────────────────────────────────────────── */
 
 .arrival {

@@ -55,3 +55,23 @@ de bord peuvent l'enrichir :
 | --- | --- | --- |
 | `flaques-bas.png` | Flaques acides verdâtres qui fument, au pied du plateau. | 2560 × 600 |
 | `fumees.png` | Plein cadre, **fond noir** : volutes vert-jaune légères. | 2560 × 1440 |
+
+## `le-donjon-de-ladalle/`
+
+Pièces isométriques **posées entières** autour du plateau (`LandeProps`,
+déclarées dans `landeScenes.ts` → `props`) : pied au bas de l'image, fond
+transparent. Chacune sort du sol à l'arrivée de la Lande, dans un
+grondement, et garde son ombre au sol.
+
+| Fichier | Zone | Particularité |
+| --- | --- | --- |
+| `arche.png` | bande de mer, à gauche | lanterne : halo cliquable |
+| `mur-echelle.png` | bande de mer, à droite (sous les cartes) | — |
+| `etal.png` | bureau, à gauche | lanterne : halo cliquable |
+| `latrines.png` | bureau, à droite | fumée verte nauséabonde |
+| `mur-fenetre.png` | ciel, à gauche | fenêtre éclairée : halo cliquable |
+| `mur-torche.png` | ciel, à droite | torche : halo cliquable |
+
+Une nouvelle pièce : la déposer ici, l'ajouter à `props` avec sa zone, sa
+position et, s'il y a lieu, ses points de lumière (fractions de l'image).
+

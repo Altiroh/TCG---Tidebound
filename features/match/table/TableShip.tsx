@@ -330,7 +330,7 @@ export function TableShip({ name, ownerId, illustration, hull, maxHull, reason, 
         {armor > 0 && (
           <span className={styles.shipArmor} title={`Armure ${armor} : absorbe les dégâts du Navire avant l'Ancrage.`}>
             {/* eslint-disable-next-line @next/next/no-img-element -- icône locale */}
-            <img src="/assets/cards/frames/nouveau/bouclier.webp" alt="" aria-hidden draggable={false} className={styles.shipArmorIcon} />
+            <img src="/assets/ui/icons/armure-navire.webp" alt="" aria-hidden draggable={false} className={styles.shipArmorIcon} />
             <span className={styles.shipArmorValue}>{armor}</span>
           </span>
         )}

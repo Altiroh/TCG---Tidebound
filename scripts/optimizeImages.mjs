@@ -224,6 +224,8 @@ const RULES = [
   // gardent 1400 px de large.
   { match: /\/landes\/[^/]+\/chaine-segment-/, maxSize: 1400, quality: 86 },
   { match: /\/landes\/[^/]+\/(fissures|cadenas|fumees|flaques)/, maxSize: 2560, quality: 84 },
+  // Pièces du Donjon de Ladalle : décor isométrique posé jusqu'à ~260 px de haut.
+  { match: /\/landes\/le-donjon-de-ladalle\//, maxSize: 768, quality: 86 },
   { match: /\/landes\//, maxSize: 700, quality: 86 },
   { match: /\/(menu|ships|boosters|collection|decks|board)\//, maxSize: 1600, quality: 85 },
   { match: /.*/, maxSize: 1280, quality: 85 },

@@ -43,6 +43,28 @@ export interface LandeLayer {
   sway?: boolean;
 }
 
+/** Zone où se pose une pièce de décor : la bande de mer, le bureau sous la rangée du joueur, le ciel au-dessus de l'adversaire. */
+export type LandePropZone = "sea" | "desk" | "sky";
+
+/**
+ * PIÈCE DE DÉCOR POSÉE (Le Donjon de Ladalle) : une image isométrique,
+ * pied au bas de l'image, posée par `LandeProps` dans sa zone.
+ */
+export interface LandeProp {
+  file: string;
+  zone: LandePropZone;
+  /** Position horizontale dans la zone (0 → 1). */
+  at: number;
+  /** Hauteur, en multiple de la hauteur de la zone. */
+  scale: number;
+  /** « front » : devant le plateau (hors cartes) ; « back » : sous les cartes. */
+  layer: "back" | "front";
+  /** Sources de lumière (fractions de l'image) : un halo cliquable, qu'on souffle et rallume. */
+  lights?: { x: number; y: number; size?: number }[];
+  /** Point d'où monte une fumée verte nauséabonde (fractions de l'image). */
+  stench?: { x: number; y: number };
+}
+
 export interface LandeScene {
   /** Couleur de la Lande, `r, g, b` — halo, particules, liseré de dissolution. */
   rgb: string;
@@ -69,6 +91,8 @@ export interface LandeScene {
   /** Pièces d'ancrage aux extrémités visibles (anneau, crochet), en alternance. */
   anchors?: string[];
   layers?: LandeLayer[];
+  /** Pièces de décor posées autour du plateau (`LandeProps`). */
+  props?: LandeProp[];
   /**
    * Calque montré un instant à chaque tour de table qui s'achève (fissures
    * de la Vallée, cadenas de la Chaîne). Relatif au dossier de la Lande.
@@ -108,6 +132,23 @@ export const LANDE_SCENES: Readonly<Record<string, LandeScene>> = {
     sprites: ["pic-01.png", "pic-02.png", "pic-03.png", "pic-04.png", "pic-05.png", "pic-06.png", "eclat-01.png", "eclat-02.png", "eclat-03.png"],
     debris: ["eclat-01.png", "eclat-02.png", "eclat-03.png"],
     pulseLayer: "fissures.png",
+  },
+  "le-donjon-de-ladalle": {
+    rgb: "236, 170, 84",
+    rgbHot: "255, 226, 160",
+    tint:
+      "linear-gradient(180deg, rgba(30, 20, 10, 0.4) 0%, rgba(20, 14, 8, 0.15) 40%, rgba(30, 20, 10, 0.4) 100%), " +
+      "radial-gradient(120% 90% at 50% 45%, transparent 40%, rgba(8, 5, 2, 0.55) 100%)",
+    frontFx: true,
+    // Murs, arche, étal et latrines sortent du plateau à l'arrivée de la Lande.
+    props: [
+      { file: "arche.png", zone: "sea", at: 0.19, scale: 1.05, layer: "front", lights: [{ x: 0.825, y: 0.33 }] },
+      { file: "mur-echelle.png", zone: "sea", at: 0.79, scale: 0.8, layer: "back" },
+      { file: "etal.png", zone: "desk", at: 0.12, scale: 1.25, layer: "front", lights: [{ x: 0.83, y: 0.38 }] },
+      { file: "latrines.png", zone: "desk", at: 0.93, scale: 1.2, layer: "front", stench: { x: 0.45, y: 0.42 } },
+      { file: "mur-fenetre.png", zone: "sky", at: 0.07, scale: 1.05, layer: "front", lights: [{ x: 0.465, y: 0.48, size: 0.42 }] },
+      { file: "mur-torche.png", zone: "sky", at: 0.92, scale: 1.05, layer: "front", lights: [{ x: 0.275, y: 0.33 }] },
+    ],
   },
   "chaine-de-construction": {
     rgb: "196, 112, 52",
