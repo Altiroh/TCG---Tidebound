@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type RefObject } from "react";
 import { useImageOk } from "@/features/match/useImageOk";
+import { fitBackground, unionRect, type FitTarget, type Rect } from "@/features/match/table/backgroundFit";
 import { useLandeTuning } from "@/features/match/landes/landeTuning";
 import styles from "@/features/match/table/Table.module.css";
 
@@ -15,6 +16,15 @@ const TABLE_SRC = "/assets/board/table-classique/fond.webp";
 /** La bougie posée dans le coin haut gauche, au-dessus du fond : sa flamme vacille. */
 const BOUGIE_SRC = "/assets/board/table-classique/bougie.webp";
 
+/**
+ * Le tapis de parchemin dans le fond (mesuré : x 40 → 1610, y 150 → 815),
+ * pris un peu en retrait de ses bords roulés : le plateau se pose dedans.
+ */
+const TABLE_FIT: FitTarget = [55 / 1672, 162 / 941, 1597 / 1672, 803 / 941];
+
+/** Zones d'interface que le fond doit englober (les mains en restent dehors, comme sur la maquette). */
+const UI_ZONES = '[data-zone="OpponentZone"], [data-zone="CenterZone"], [data-zone="PlayerZone"], [data-zone="SideRail"]';
+
 /** Sol d'une Lande et ses murs (`LandeScene.floor` / `.frame`), prêts à poser. */
 export interface LandeFloorProps {
   src: string;
@@ -24,31 +34,81 @@ export interface LandeFloorProps {
   delayMs: number;
   /** Murs qui encadrent le sol, en fractions du fond. */
   frame: { src: string; box: readonly [number, number, number, number] }[];
+  /** Zone du sol faite pour le plateau (`LandeScene.fit`) ; à défaut, celle de la table. */
+  fit?: FitTarget;
 }
 
 /**
  * Décor de la scène : la table classique, ou le sol d'une Lande qui la
  * remplace (Le Donjon de Ladalle : des pavés entre quatre murs).
  *
- * Tout est posé dans un même CADRE au format du fond (`.coverBox`), recadré
- * comme un `object-fit: cover` calé à 50 % / 70 % : la bougie et les murs
- * restent sur le fond, quel que soit le format d'écran — SANS jamais déplacer
- * le gameplay, qui vit dans un calque séparé au-dessus.
+ * Chaque fond est posé dans un CADRE à son format (`.coverBox`), avec ce
+ * qu'on pose dessus (bougie, murs). Le cadre est zoomé et décalé pour que la
+ * zone du fond faite pour le plateau — le tapis, l'enclos de murs — englobe
+ * les zones d'interface MESURÉES (`backgroundFit.ts`), quel que soit le
+ * format d'écran. Le gameplay, lui, ne bouge jamais. Avant la première
+ * mesure, le cadre se comporte comme un `object-fit: cover`.
  *
  * De vraies balises `<img>` plutôt qu'un `background-image` : même raison
  * que `BoardBackdrop` (repaint peu fiable d'un fond CSS chargé tard).
  */
 export function BackgroundLayer({ floor = null }: { floor?: LandeFloorProps | null }) {
+  const hostRef = useRef<HTMLDivElement | null>(null);
+  const layout = useUiLayout(hostRef);
+  const boxFor = (target: FitTarget): CSSProperties | undefined => {
+    if (!layout) return undefined;
+    const box = fitBackground(layout.view, layout.ui, target, layout.margin);
+    return { left: box.left, top: box.top, width: box.width, height: box.height };
+  };
   return (
-    <div aria-hidden className={styles.background}>
-      <div className={styles.coverBox}>
+    <div ref={hostRef} aria-hidden className={styles.background}>
+      <div className={styles.coverBox} style={boxFor(TABLE_FIT)}>
         {/* eslint-disable-next-line @next/next/no-img-element -- décor plein écran, jamais responsive au sens Next/Image */}
         <img src={TABLE_SRC} alt="" draggable={false} decoding="async" fetchPriority="high" className={styles.coverImage} />
-        <LandeFloor floor={floor} />
         <Bougie />
       </div>
+      <LandeFloor floor={floor} boxFor={boxFor} />
     </div>
   );
+}
+
+/**
+ * Où sont les zones d'interface, dans le repère du fond : relu à chaque
+ * changement de taille de la vue ou d'une zone (format d'écran, rangées qui
+ * changent de mode).
+ */
+function useUiLayout(hostRef: RefObject<HTMLDivElement | null>) {
+  const [layout, setLayout] = useState<{ view: { width: number; height: number }; ui: Rect; margin: number } | null>(null);
+  useEffect(() => {
+    const host = hostRef.current;
+    const scene = host?.parentElement;
+    if (!host || !scene) return;
+    const read = () => {
+      const origin = host.getBoundingClientRect();
+      const ui = unionRect(
+        [...scene.querySelectorAll(UI_ZONES)].map((el) => {
+          const r = el.getBoundingClientRect();
+          return { left: r.left - origin.left, top: r.top - origin.top, right: r.right - origin.left, bottom: r.bottom - origin.top };
+        })
+      );
+      if (!ui || origin.width === 0 || origin.height === 0) return setLayout(null);
+      setLayout({ view: { width: origin.width, height: origin.height }, ui, margin: Math.max(6, origin.height * 0.012) });
+    };
+    read();
+    const observer = new ResizeObserver(read);
+    observer.observe(host);
+    scene.querySelectorAll(UI_ZONES).forEach((el) => observer.observe(el));
+    // Les rangées se posent après le fond : on relit leur place un peu plus tard.
+    const later = window.setTimeout(() => {
+      read();
+      scene.querySelectorAll(UI_ZONES).forEach((el) => observer.observe(el));
+    }, 600);
+    return () => {
+      observer.disconnect();
+      window.clearTimeout(later);
+    };
+  }, [hostRef]);
+  return layout;
 }
 
 /**
@@ -79,7 +139,7 @@ const WALL_STAGGER_MS = 160;
  * tant que la Lande est là. Absent (fichier pas encore livré) : rien ne
  * change, la table reste.
  */
-function LandeFloor({ floor }: { floor: LandeFloorProps | null }) {
+function LandeFloor({ floor, boxFor }: { floor: LandeFloorProps | null; boxFor: (target: FitTarget) => CSSProperties | undefined }) {
   const ok = useImageOk(floor?.src ?? null);
   const { floorBrightness } = useLandeTuning();
   const [leaving, setLeaving] = useState<LandeFloorProps | null>(null);
@@ -102,15 +162,15 @@ function LandeFloor({ floor }: { floor: LandeFloorProps | null }) {
   // qui joue elle-même sur `filter`, l'écraserait sur l'image.
   return (
     <div className={styles.landeFloorLayer} style={{ filter: floorBrightness === 1 ? undefined : `brightness(${floorBrightness})` }}>
-      {leaving && <FloorScene key={`out-${leaving.key}`} floor={leaving} className={styles.landeFloorOut} />}
-      {shown && <FloorScene key={shown.key} floor={shown} className={styles.landeFloor} />}
+      {leaving && <FloorScene key={`out-${leaving.key}`} floor={leaving} box={boxFor(leaving.fit ?? TABLE_FIT)} className={styles.landeFloorOut} />}
+      {shown && <FloorScene key={shown.key} floor={shown} box={boxFor(shown.fit ?? TABLE_FIT)} className={styles.landeFloor} />}
     </div>
   );
 }
 
-function FloorScene({ floor, className }: { floor: LandeFloorProps; className?: string }) {
+function FloorScene({ floor, box, className }: { floor: LandeFloorProps; box: CSSProperties | undefined; className?: string }) {
   return (
-    <div className={`${styles.landeFloorScene} ${className ?? ""}`} style={{ animationDelay: `${floor.delayMs}ms` }}>
+    <div className={`${styles.coverBox} ${className ?? ""}`} style={{ ...box, animationDelay: `${floor.delayMs}ms` }}>
       {/* eslint-disable-next-line @next/next/no-img-element -- décor plein écran */}
       <img src={floor.src} alt="" draggable={false} className={styles.coverImage} />
       {floor.frame.map((wall, i) => (

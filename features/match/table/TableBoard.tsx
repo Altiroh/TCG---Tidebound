@@ -1004,6 +1004,7 @@ export function TableBoard(props: TableBoardProps) {
               key: lande.instanceId,
               delayMs: arriving ? LANDE_ARRIVAL.DISSOLVE_AT : 0,
               frame: (scene.frame ?? []).map((wall) => ({ src: landeAsset(lande.cardId, wall.file), box: wall.box })),
+              ...(scene.fit ? { fit: scene.fit } : {}),
             };
           })()}
         />

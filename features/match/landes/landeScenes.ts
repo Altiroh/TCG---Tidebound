@@ -103,6 +103,12 @@ export interface LandeScene {
    * l'un après l'autre, une fois le sol apparu.
    */
   frame?: { file: string; box: readonly [number, number, number, number] }[];
+  /**
+   * Zone du sol faite pour le plateau, `[gauche, haut, droite, bas]` en
+   * fractions du fond : le fond est zoomé pour qu'elle englobe l'interface
+   * (`backgroundFit.ts`). À défaut, celle du tapis de la table.
+   */
+  fit?: readonly [number, number, number, number];
   /** Pièces de décor posées autour du plateau (`LandeProps`). */
   props?: LandeProp[];
   /**
@@ -161,6 +167,9 @@ export const LANDE_SCENES: Readonly<Record<string, LandeScene>> = {
       { file: "mur-droite.png", box: [1505 / 1672, 145 / 941, 130 / 1672, 560 / 941] },
       { file: "mur-bas.png", box: [140 / 1672, 680 / 941, 1420 / 1672, 125 / 941] },
     ],
+    // L'intérieur de l'enclos (bord intérieur des murs) : le plateau s'y pose,
+    // les murs restent visibles tout autour.
+    fit: [150 / 1672, 150 / 941, 1520 / 1672, 690 / 941],
     // L'étal et les latrines sortent du plateau à l'arrivée de la Lande.
     // `at` est une position VOULUE : `LandeProps` cherche autour la plus
     // grande place libre, sans jamais toucher l'interface.

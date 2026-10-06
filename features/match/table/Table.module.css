@@ -157,11 +157,6 @@
   inset: 0;
 }
 
-.landeFloorScene {
-  position: absolute;
-  inset: 0;
-}
-
 /* Sol d'une Lande (le Donjon : des pavés) : il surgit du centre en une
    onde qui s'élargit, la table tremble un instant, puis il tient. */
 .landeFloor {
