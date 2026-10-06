@@ -141,13 +141,15 @@ export const LANDE_SCENES: Readonly<Record<string, LandeScene>> = {
       "radial-gradient(120% 90% at 50% 45%, transparent 40%, rgba(8, 5, 2, 0.55) 100%)",
     frontFx: true,
     // Murs, arche, étal et latrines sortent du plateau à l'arrivée de la Lande.
+    // `at` est une position VOULUE : `LandeProps` cherche autour la plus
+    // grande place libre, sans jamais toucher l'interface.
     props: [
-      { file: "arche.png", zone: "sea", at: 0.19, scale: 1.05, layer: "front", lights: [{ x: 0.825, y: 0.33 }] },
-      { file: "mur-echelle.png", zone: "sea", at: 0.79, scale: 0.8, layer: "back" },
-      { file: "etal.png", zone: "desk", at: 0.12, scale: 1.25, layer: "front", lights: [{ x: 0.83, y: 0.38 }] },
-      { file: "latrines.png", zone: "desk", at: 0.93, scale: 1.2, layer: "front", stench: { x: 0.45, y: 0.42 } },
-      { file: "mur-fenetre.png", zone: "sky", at: 0.07, scale: 1.05, layer: "front", lights: [{ x: 0.465, y: 0.48, size: 0.42 }] },
-      { file: "mur-torche.png", zone: "sky", at: 0.92, scale: 1.05, layer: "front", lights: [{ x: 0.275, y: 0.33 }] },
+      { file: "arche.png", zone: "sea", at: 0.18, scale: 1, layer: "front", lights: [{ x: 0.825, y: 0.33 }] },
+      { file: "etal.png", zone: "desk", at: 0.12, scale: 1, layer: "front", lights: [{ x: 0.83, y: 0.38 }] },
+      { file: "latrines.png", zone: "desk", at: 0.82, scale: 1, layer: "front", stench: { x: 0.45, y: 0.42 } },
+      { file: "mur-fenetre.png", zone: "sky", at: 0.08, scale: 1, layer: "front", lights: [{ x: 0.465, y: 0.48, size: 0.42 }] },
+      { file: "mur-echelle.png", zone: "sky", at: 0.28, scale: 1, layer: "front" },
+      { file: "mur-torche.png", zone: "sky", at: 0.84, scale: 1, layer: "front", lights: [{ x: 0.275, y: 0.33 }] },
     ],
   },
   "chaine-de-construction": {

@@ -67,6 +67,7 @@ export function TideIndicator({ tide }: TideIndicatorProps) {
     <div
       ref={rootRef}
       className={styles.tide}
+      data-ui-obstacle=""
       aria-label="Progression de la Marée"
       role="group"
       // Au doigt, toute la piste est la cible : le « i » fait 16 px sur un téléphone.

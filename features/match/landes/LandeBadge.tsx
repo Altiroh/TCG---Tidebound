@@ -57,6 +57,7 @@ export function LandeBadge({ environment, tideState, dropState }: LandeBadgeProp
       <div
         ref={ref}
         className={styles.badge}
+        data-ui-obstacle=""
         data-drop-state={dropState}
         data-empty={lande ? undefined : ""}
         role={lande ? "img" : undefined}

@@ -48,6 +48,7 @@ function OngoingBadge({ card, mine, tideState, pulsing }: { card: CardInstance; 
   return (
     <div
       ref={ref}
+      data-ui-obstacle=""
       className={`${styles.badge} ${styles.ongoingBadge} ${pulsing ? "animate-reaction-pulse" : ""}`}
       role="img"
       aria-label={label}

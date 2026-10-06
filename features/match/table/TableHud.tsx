@@ -33,7 +33,7 @@ interface PreviewHudProps {
 export function TableHud({ turn, turnOwner, viewerTurn, journal, phaseButton, onMenu, audience }: PreviewHudProps) {
   return (
     <>
-      <div className={styles.hudCornerTop}>
+      <div className={styles.hudCornerTop} data-ui-obstacle="">
         {audience}
         <button type="button" className={styles.hudButton} onClick={onMenu} aria-label="Menu" title="Menu">
           {/* eslint-disable-next-line @next/next/no-img-element -- cadre décoratif, même asset que le bouton de phase */}

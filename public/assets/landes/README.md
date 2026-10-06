@@ -63,14 +63,21 @@ déclarées dans `landeScenes.ts` → `props`) : pied au bas de l'image, fond
 transparent. Chacune sort du sol à l'arrivée de la Lande, dans un
 grondement, et garde son ombre au sol.
 
-| Fichier | Zone | Particularité |
+| Fichier | Zone voulue | Particularité |
 | --- | --- | --- |
 | `arche.png` | bande de mer, à gauche | lanterne : halo cliquable |
-| `mur-echelle.png` | bande de mer, à droite (sous les cartes) | — |
 | `etal.png` | bureau, à gauche | lanterne : halo cliquable |
 | `latrines.png` | bureau, à droite | fumée verte nauséabonde |
 | `mur-fenetre.png` | ciel, à gauche | fenêtre éclairée : halo cliquable |
+| `mur-echelle.png` | ciel, à gauche du centre | — |
 | `mur-torche.png` | ciel, à droite | torche : halo cliquable |
+
+La position est une INTENTION : `LandeProps` cherche autour la plus grande
+place libre et ne recouvre JAMAIS l'interface (rangées, colonne de droite,
+mains, piste et tuile de Marée, hublots, boutons — tout élément marqué
+`data-ui-obstacle`). Sans place, la pièce n'est pas posée. Chaque pièce
+regarde le jeu (miroir à gauche du plateau, léger pivot) et s'éclaire du
+côté de la lanterne du décor la plus proche ; son ombre part à l'opposé.
 
 Une nouvelle pièce : la déposer ici, l'ajouter à `props` avec sa zone, sa
 position et, s'il y a lieu, ses points de lumière (fractions de l'image).

@@ -189,6 +189,33 @@
   100% { transform: none; }
 }
 
+/* Tournée vers le jeu : miroir à gauche du plateau, et un léger pivot en
+   perspective (le côté proche du centre recule un peu). */
+.propTurn {
+  position: absolute;
+  inset: 0;
+  transform: perspective(900px) rotateY(-9deg);
+  transform-origin: 50% 100%;
+}
+
+.propTurn[data-mirrored] {
+  transform: perspective(900px) rotateY(-9deg) scaleX(-1);
+}
+
+/* La lumière de la scène, posée sur la pièce seule (masque = la pièce). */
+.propShade {
+  position: absolute;
+  inset: 0;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: bottom center;
+  mask-position: bottom center;
+  mix-blend-mode: soft-light;
+  pointer-events: none;
+}
+
 .propImg {
   width: 100%;
   height: 100%;
@@ -201,19 +228,19 @@
 /* Ombre portée au sol, couchée vers la droite (lumière en haut à gauche). */
 .propShadow {
   position: absolute;
-  left: 8%;
-  right: -12%;
+  left: 0%;
+  right: 0%;
   bottom: -2%;
   height: 16%;
   border-radius: 50%;
   background: radial-gradient(closest-side, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0));
-  transform: skewX(-20deg);
+  transform: translateX(var(--shadow-x, 8%)) skewX(var(--shadow-skew, -20deg));
   animation: propShadowIn 1500ms ease-out calc(var(--lande-delay, 0ms) + var(--rise-delay, 0ms)) both;
 }
 
 @keyframes propShadowIn {
-  from { opacity: 0; transform: skewX(-20deg) scaleX(0.4); }
-  to { opacity: 1; transform: skewX(-20deg); }
+  from { opacity: 0; transform: translateX(var(--shadow-x, 8%)) skewX(var(--shadow-skew, -20deg)) scaleX(0.4); }
+  to { opacity: 1; transform: translateX(var(--shadow-x, 8%)) skewX(var(--shadow-skew, -20deg)); }
 }
 
 /* Poussière soulevée au pied pendant la montée, puis retombée. */

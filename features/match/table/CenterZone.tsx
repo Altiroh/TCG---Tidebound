@@ -31,7 +31,7 @@ export function CenterZone({ tide, hint, cargo }: CenterZoneProps) {
   return (
     <div className={`${styles.zone} ${styles.centerZone}`} data-zone="CenterZone">
       <div className={styles.zoneSlotShip}>
-        <div className={styles.tideTile} role="img" aria-label={`Marée ${rising ? "montante" : "descendante"}`}>
+        <div className={styles.tideTile} data-ui-obstacle="" role="img" aria-label={`Marée ${rising ? "montante" : "descendante"}`}>
           {/* eslint-disable-next-line @next/next/no-img-element -- tuile locale */}
           <img
             src="/assets/board/tide-orientation/montante.webp"

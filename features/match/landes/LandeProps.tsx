@@ -15,60 +15,124 @@ interface Layout {
   width: number;
   height: number;
   opponent: Rect;
-  center: Rect;
   player: Rect;
-}
-
-/** Place des rangées, en px du calque (proportions par défaut tant que le plateau n'est pas mesuré). */
-function readLayout(host: HTMLElement): Layout {
-  const box = host.getBoundingClientRect();
-  const rect = (zone: string, fallback: Rect): Rect => {
-    const el = host.ownerDocument.querySelector(`[data-zone="${zone}"]`);
-    const r = el?.getBoundingClientRect();
-    if (!r || r.width === 0) return fallback;
-    return { left: r.left - box.left, top: r.top - box.top, right: r.right - box.left, bottom: r.bottom - box.top };
-  };
-  const w = box.width;
-  const h = box.height;
-  return {
-    width: w,
-    height: h,
-    opponent: rect("OpponentZone", { left: 0.01 * w, top: 0.14 * h, right: 0.9 * w, bottom: 0.36 * h }),
-    center: rect("CenterZone", { left: 0.01 * w, top: 0.37 * h, right: 0.9 * w, bottom: 0.63 * h }),
-    player: rect("PlayerZone", { left: 0.01 * w, top: 0.64 * h, right: 0.9 * w, bottom: 0.85 * h }),
-  };
+  /** Tout ce que l'interface occupe : une pièce n'en recouvre jamais rien. */
+  obstacles: Rect[];
 }
 
 /**
- * Où et à quelle taille poser une pièce : son PIED (milieu du bord bas) et
- * sa hauteur, d'après la zone qu'elle habite. `null` : pas la place sur cet
- * écran (téléphone couché), la pièce n'est pas posée plutôt que d'écraser
- * le jeu.
+ * Ce que le décor ne doit JAMAIS recouvrir : les deux rangées, la colonne
+ * de droite, les cartes en main des deux côtés, et tout élément marqué
+ * `data-ui-obstacle` (piste et tuile de Marée, hublots de Lande et
+ * d'effets, boutons du haut).
  */
-function placement(zone: LandePropZone, at: number, scale: number, l: Layout): { x: number; y: number; size: number } | null {
-  const span = (r: Rect) => r.left + (r.right - r.left) * at;
-  const seaH = l.center.bottom - l.center.top;
-  const playerH = l.player.bottom - l.player.top;
-  const opponentH = l.opponent.bottom - l.opponent.top;
+const OBSTACLES = [
+  '[data-zone="OpponentZone"]',
+  '[data-zone="PlayerZone"]',
+  '[data-zone="SideRail"]',
+  '[data-zone="PlayerHand"] [data-card-id]',
+  "[data-opp-hand-index]",
+  "[data-ui-obstacle]",
+  "[data-live-audience]",
+].join(", ");
+
+function readLayout(host: HTMLElement): Layout {
+  const box = host.getBoundingClientRect();
+  const local = (r: DOMRect): Rect => ({ left: r.left - box.left, top: r.top - box.top, right: r.right - box.left, bottom: r.bottom - box.top });
+  const doc = host.ownerDocument;
+  const zone = (name: string, fallback: Rect): Rect => {
+    const r = doc.querySelector(`[data-zone="${name}"]`)?.getBoundingClientRect();
+    return r && r.width > 0 ? local(r) : fallback;
+  };
+  const w = box.width;
+  const h = box.height;
+  const obstacles = [...doc.querySelectorAll(OBSTACLES)]
+    .map((el) => el.getBoundingClientRect())
+    .filter((r) => r.width > 0 && r.height > 0)
+    .map(local);
+  return {
+    width: w,
+    height: h,
+    opponent: zone("OpponentZone", { left: 0.01 * w, top: 0.14 * h, right: 0.9 * w, bottom: 0.36 * h }),
+    player: zone("PlayerZone", { left: 0.01 * w, top: 0.64 * h, right: 0.9 * w, bottom: 0.85 * h }),
+    obstacles,
+  };
+}
+
+/** Bande verticale d'une zone : là où le pied se pose, et la hauteur qu'elle offre. */
+function band(zone: LandePropZone, l: Layout): { top: number; bottom: number } {
   switch (zone) {
-    case "sea": {
-      if (seaH < 90) return null;
-      return { x: span(l.center), y: l.center.bottom - seaH * 0.04, size: seaH * scale };
-    }
-    case "desk": {
-      const deskH = l.height - l.player.bottom;
-      if (deskH < 40) return null;
-      const y = l.player.bottom + deskH * 0.9;
-      // Le sommet ne mord sur la rangée que de son liseré.
-      const size = Math.min(deskH * scale, y - (l.player.bottom - playerH * 0.08));
-      return { x: span(l.player), y, size };
-    }
-    case "sky": {
-      if (l.opponent.top < l.height * 0.12) return null;
-      const y = l.opponent.top + opponentH * 0.06;
-      return { x: span(l.opponent), y, size: l.opponent.top * scale };
+    case "sky":
+      return { top: 0, bottom: l.opponent.top };
+    case "sea":
+      return { top: l.opponent.bottom, bottom: l.player.top };
+    case "desk":
+      return { top: l.player.bottom, bottom: l.height };
+  }
+}
+
+/**
+ * Ce que la pièce occupe vraiment dans son carré d'image (les pièces
+ * isométriques ont des marges transparentes).
+ */
+function footprint(x: number, y: number, size: number): Rect {
+  return { left: x - size * 0.45, right: x + size * 0.45, top: y - size * 0.95, bottom: y };
+}
+
+const intersects = (a: Rect, b: Rect, pad = 6) => a.left < b.right + pad && a.right > b.left - pad && a.top < b.bottom + pad && a.bottom > b.top - pad;
+
+/** Taille minimale d'une pièce : en dessous, elle n'est pas posée. */
+const MIN_SIZE = 64;
+
+/**
+ * Place une pièce : la plus GRANDE possible dans sa bande, au plus près de
+ * sa position voulue, sans toucher ni l'interface ni les pièces déjà
+ * posées. `null` s'il n'y a pas la place.
+ */
+function place(prop: LandeProp, l: Layout, taken: Rect[]): { x: number; y: number; size: number } | null {
+  const { top, bottom } = band(prop.zone, l);
+  // Le pied à distance de la marge de sécurité (`intersects`) du bord de sa bande.
+  const y = bottom - 8;
+  const maxSize = Math.min((bottom - top - 16) * prop.scale, 300) / 0.95;
+  const wanted = prop.at * l.width;
+  const xs: number[] = [];
+  for (let k = 0; k <= 60; k++) {
+    const dx = (k % 2 === 0 ? 1 : -1) * Math.ceil(k / 2) * l.width * 0.01;
+    xs.push(wanted + dx);
+  }
+  for (let size = maxSize; size >= MIN_SIZE; size *= 0.92) {
+    for (const x of xs) {
+      const r = footprint(x, y, size);
+      if (r.left < 2 || r.right > l.width - 2 || r.top < 2) continue;
+      if (l.obstacles.some((o) => intersects(r, o)) || taken.some((t) => intersects(r, t, 2))) continue;
+      return { x, y, size };
     }
   }
+  return null;
+}
+
+/**
+ * Les deux LANTERNES du décor de la table (`DecorLayer` : en haut à droite
+ * et en bas à gauche), en fractions de l'écran : chaque pièce est éclairée
+ * du côté de la plus proche, et son ombre part à l'opposé.
+ */
+const DECOR_LANTERNS = [
+  { x: 0.95, y: 0.13 },
+  { x: 0.03, y: 0.9 },
+];
+
+function lightingFor(x: number, y: number, l: Layout): { angle: number; strength: number; away: [number, number] } {
+  let best = { dx: 0, dy: -1, d: Infinity };
+  for (const lantern of DECOR_LANTERNS) {
+    const dx = lantern.x * l.width - x;
+    const dy = lantern.y * l.height - y;
+    const d = Math.hypot(dx, dy);
+    if (d < best.d) best = { dx, dy, d };
+  }
+  // Angle CSS (0° = vers le haut, 90° = vers la droite) pointant vers la lanterne.
+  const angle = (Math.atan2(best.dx, -best.dy) * 180) / Math.PI;
+  const strength = Math.max(0.35, Math.min(1, 1 - best.d / (Math.hypot(l.width, l.height) * 0.9)));
+  return { angle, strength, away: [-best.dx / best.d, -best.dy / best.d] };
 }
 
 /**
@@ -105,16 +169,40 @@ export function LandeProps({ cardId, props, layer }: { cardId: string; props: re
   return (
     <div ref={hostRef} className={styles.propsHost}>
       {layout &&
-        mine.map((prop, index) => {
-          const place = placement(prop.zone, prop.at, prop.scale, layout);
-          if (!place) return null;
-          return <PropPiece key={prop.file} cardId={cardId} prop={prop} place={place} order={index} />;
-        })}
+        (() => {
+          const taken: Rect[] = [];
+          return mine.map((prop, index) => {
+            const spot = place(prop, layout, taken);
+            if (!spot) return null;
+            taken.push(footprint(spot.x, spot.y, spot.size));
+            // Face au CENTRE : les pièces sont peintes tournées vers la gauche ;
+            // à gauche du plateau, on les retourne pour qu'elles regardent le jeu.
+            const mirrored = spot.x < layout.width / 2;
+            return <PropPiece key={prop.file} cardId={cardId} prop={prop} place={spot} order={index} mirrored={mirrored} light={lightingFor(spot.x, spot.y - spot.size / 2, layout)} />;
+          });
+        })()}
     </div>
   );
 }
 
-function PropPiece({ cardId, prop, place, order }: { cardId: string; prop: LandeProp; place: { x: number; y: number; size: number }; order: number }) {
+function PropPiece({
+  cardId,
+  prop,
+  place,
+  order,
+  mirrored,
+  light,
+}: {
+  cardId: string;
+  prop: LandeProp;
+  place: { x: number; y: number; size: number };
+  order: number;
+  mirrored: boolean;
+  light: { angle: number; strength: number; away: [number, number] };
+}) {
+  const src = landeAsset(cardId, prop.file);
+  // Dans le repère retourné, la lumière vient de l'autre côté.
+  const angle = mirrored ? -light.angle : light.angle;
   const [lit, setLit] = useState<boolean[]>(() => (prop.lights ?? []).map(() => true));
   const [puffs, setPuffs] = useState<number[]>(() => (prop.lights ?? []).map(() => 0));
   return (
@@ -127,6 +215,8 @@ function PropPiece({ cardId, prop, place, order }: { cardId: string; prop: Lande
           width: place.size,
           height: place.size,
           "--rise-delay": `${order * 260}ms`,
+          "--shadow-x": `${(light.away[0] * 14).toFixed(1)}%`,
+          "--shadow-skew": `${(light.away[0] * -26).toFixed(1)}deg`,
         } as CSSProperties
       }
     >
@@ -134,8 +224,22 @@ function PropPiece({ cardId, prop, place, order }: { cardId: string; prop: Lande
       <span className={styles.propShadow} aria-hidden />
       <span className={styles.propDust} aria-hidden />
       <div className={styles.propRise}>
+      {/* Tournée vers le jeu (miroir à gauche) et légèrement pivotée en perspective. */}
+      <div className={styles.propTurn} data-mirrored={mirrored ? "" : undefined}>
         {/* eslint-disable-next-line @next/next/no-img-element -- décor local */}
-        <img className={styles.propImg} src={landeAsset(cardId, prop.file)} alt="" draggable={false} />
+        <img className={styles.propImg} src={src} alt="" draggable={false} />
+        {/* Éclairage de la scène : le côté tourné vers la lanterne du décor la plus proche se réchauffe, l'autre s'assombrit. Masqué par la pièce elle-même. */}
+        <span
+          className={styles.propShade}
+          aria-hidden
+          style={
+            {
+              WebkitMaskImage: `url(${src})`,
+              maskImage: `url(${src})`,
+              background: `linear-gradient(${angle.toFixed(0)}deg, rgba(8, 6, 14, ${(0.55 * light.strength).toFixed(2)}) 0%, rgba(8, 6, 14, 0) 45%, rgba(255, 196, 120, ${(0.42 * light.strength).toFixed(2)}) 100%)`,
+            } as CSSProperties
+          }
+        />
         {(prop.lights ?? []).map((light, i) => (
           <button
             key={i}
@@ -162,6 +266,7 @@ function PropPiece({ cardId, prop, place, order }: { cardId: string; prop: Lande
             ))}
           </span>
         )}
+      </div>
       </div>
     </div>
   );
