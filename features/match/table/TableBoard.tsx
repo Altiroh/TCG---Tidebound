@@ -53,6 +53,7 @@ import { DragLayer, type AimTone } from "@/features/match/table/DragLayer";
 import { EquipLinks } from "@/features/match/table/EquipLinks";
 import { GameStage } from "@/features/match/table/GameStage";
 import { GameViewport } from "@/features/match/table/GameViewport";
+import { CardRulesPanel } from "@/features/match/table/CardRulesPanel";
 import { HoverCardPreview } from "@/features/match/table/HoverCardPreview";
 import { MotionLayer } from "@/features/match/table/MotionLayer";
 import { OpponentZone } from "@/features/match/table/OpponentZone";
@@ -1220,7 +1221,9 @@ export function TableBoard(props: TableBoardProps) {
         {preview && !gesture && (() => {
           const found = byId.get(preview.id);
           return found ? (
-            <HoverCardPreview anchor={preview.rect}>{renderFace(found.instance, found.owner)}</HoverCardPreview>
+            <HoverCardPreview anchor={preview.rect} aside={<CardRulesPanel cardId={found.instance.cardId} />}>
+              {renderFace(found.instance, found.owner)}
+            </HoverCardPreview>
           ) : null;
         })()}
         {landeArrival && (
@@ -1261,6 +1264,7 @@ export function TableBoard(props: TableBoardProps) {
         return (
           <TableCardZoom
             key={found.instance.instanceId}
+            rulesCardId={found.instance.cardId}
             onClose={() => setZoomId(null)}
             actions={zoomActions(found.instance, found.owner.id, inHand, zoom?.confirmSaborder ?? false)}
             legend={inHand ? [] : cardStatusLegend(found.instance, tideState, auraContextFor(found.owner), state.turnNumber)}

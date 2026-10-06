@@ -165,9 +165,17 @@ export function NouveauCadreFace({ def, legendaire = false, attack, health, atta
           style={{ fontSize: "3.4cqw", letterSpacing: "0.04em" }}
         >
           {CARD_TYPE_LABELS[def.type]}
-          {/* Famille conçue pour se reconnaître (Opalin) : « Créature · Opalin ». */}
-          {def.showsArchetype && def.archetype ? ` · ${ARCHETYPE_LABELS[def.archetype]}` : null}
         </span>
+        {/* La FAMILLE, discrète, juste sous le type (décision du 06/10/2026 :
+            toutes les familles, plus seulement les Opalins). */}
+        {def.archetype && (
+          <span
+            className="whitespace-nowrap italic leading-none [font-family:var(--font-card-title)]"
+            style={{ fontSize: "2.6cqw", letterSpacing: "0.03em", opacity: 0.72, marginTop: "-0.2cqw" }}
+          >
+            {ARCHETYPE_LABELS[def.archetype]}
+          </span>
+        )}
       </div>
 
       {/* Nom : ancré par le BAS juste au-dessus de la zone d'effet — même place

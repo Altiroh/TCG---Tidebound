@@ -15,6 +15,11 @@ interface HoverCardPreviewProps {
    * (le hublot de Lande, au centre) — sinon il passe dessous.
    */
   portal?: boolean;
+  /**
+   * Posé CONTRE la carte, du côté libre de l'écran : l'effet en texte de
+   * lecture (`CardRulesPanel`), qu'un effet long rend minuscule sur la face.
+   */
+  aside?: ReactNode;
 }
 
 /** Marge au bord de la fenêtre, et écart entre la carte survolée et son aperçu. */
@@ -36,7 +41,7 @@ const GAP = 14;
  * Souris seulement : au doigt il n'y a pas de survol, et c'est l'appui long
  * qui pose la carte en grand au milieu de l'écran (`TableCardZoom`).
  */
-export function HoverCardPreview({ anchor, children, portal = false }: HoverCardPreviewProps) {
+export function HoverCardPreview({ anchor, children, portal = false, aside }: HoverCardPreviewProps) {
   const ref = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState<{ left: number; top: number } | null>(null);
 
@@ -48,7 +53,11 @@ export function HoverCardPreview({ anchor, children, portal = false }: HoverCard
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
 
-    const centered = anchor.left + anchor.width / 2 - width / 2;
+    // La CARTE (pas l'encart) se centre sur l'originale ; l'encart déborde du côté libre.
+    const card = el.querySelector<HTMLElement>("[data-preview-card]");
+    const cardWidth = card?.offsetWidth ?? width;
+    const offset = card?.offsetLeft ?? 0;
+    const centered = anchor.left + anchor.width / 2 - cardWidth / 2 - offset;
     const left = Math.min(Math.max(MARGIN, centered), Math.max(MARGIN, viewportWidth - width - MARGIN));
 
     const above = anchor.top + anchor.height / 2 > viewportHeight / 2;
@@ -58,6 +67,8 @@ export function HoverCardPreview({ anchor, children, portal = false }: HoverCard
     setPosition({ left, top });
   }, [anchor]);
 
+  // L'encart va du côté où il reste de la place : à gauche d'une carte de droite.
+  const side = anchor.left + anchor.width / 2 > (typeof window === "undefined" ? 0 : window.innerWidth / 2) ? "left" : "right";
   const layer = (
     <div
       ref={ref}
@@ -67,7 +78,10 @@ export function HoverCardPreview({ anchor, children, portal = false }: HoverCard
       style={{ left: position?.left ?? 0, top: position?.top ?? 0 }}
       aria-hidden
     >
-      {children}
+      <div className={styles.hoverPreviewRow} data-side={side}>
+        <div className={styles.hoverPreviewCard} data-preview-card="">{children}</div>
+        {aside}
+      </div>
     </div>
   );
   return portal ? createPortal(layer, document.body) : layer;

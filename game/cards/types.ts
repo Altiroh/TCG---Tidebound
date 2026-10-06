@@ -643,15 +643,16 @@ export interface CardDefinition {
   /**
    * Famille de cartes à laquelle appartient cette carte
    * (`game/cards/archetypes.ts`). Lue par le moteur pour compter/cibler
-   * les membres d'un archétype ; JAMAIS affichée sur la carte — sauf
-   * `showsArchetype`.
+   * les membres d'un archétype. Affichée DISCRÈTEMENT sur la face, sous la
+   * ligne de type, pour toutes les familles (décision du 06/10/2026).
    */
   archetype?: ArchetypeId;
 
   /**
-   * Exception à la règle ci-dessus (Notion, Catalogue, 05/10/2026) : la
-   * famille est conçue pour se reconnaître, sa ligne de type l'affiche
-   * (« Créature · Opalin »).
+   * Famille conçue pour se reconnaître (Notion, Catalogue, 05/10/2026 :
+   * les Opalins). Depuis le 06/10/2026, toutes les familles s'affichent
+   * sous le type : ce marqueur ne change plus le rendu, il garde la trace
+   * de cette intention de design.
    */
   showsArchetype?: boolean;
 

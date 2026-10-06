@@ -2041,7 +2041,6 @@
   --preview-h: clamp(300px, 74vh, 620px);
   position: fixed;
   z-index: 70;
-  width: calc(var(--preview-h) * 5 / 7);
   pointer-events: none;
   filter: drop-shadow(0 18px 40px rgba(0, 0, 0, 0.78));
   opacity: 0;
@@ -2058,6 +2057,71 @@
   .hoverPreview[data-ready="true"] {
     transition: none;
   }
+}
+
+/* Aperçu + encart de règles, côte à côte ; l'encart passe du côté libre de l'écran. */
+.hoverPreviewRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.hoverPreviewRow[data-side="left"] {
+  flex-direction: row-reverse;
+}
+
+.hoverPreviewCard {
+  flex: none;
+  width: calc(var(--preview-h) * 5 / 7);
+}
+
+/* L'EFFET en texte de lecture (`CardRulesPanel`) : taille fixe, jamais rétrécie. */
+.rulesPanel {
+  width: min(300px, 30vw);
+  max-height: var(--preview-h, 70vh);
+  overflow-y: auto;
+  padding: 14px 16px 16px;
+  border: 1px solid rgba(232, 200, 140, 0.45);
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(20, 30, 42, 0.96), rgba(10, 16, 24, 0.96));
+  color: #eef3f7;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+}
+
+/* Dans la carte en grand (au doigt), l'encart prend la largeur de la colonne d'actions. */
+.cardZoomSide .rulesPanel {
+  width: auto;
+  max-height: none;
+  flex: none;
+}
+
+.rulesPanelName {
+  margin: 0;
+  color: #f3dcae;
+  font-family: var(--font-card-new-title, Georgia, serif);
+  font-size: 17px;
+  line-height: 1.15;
+}
+
+.rulesPanelType {
+  margin: 4px 0 10px;
+  color: rgba(232, 220, 196, 0.75);
+  font-family: var(--tb-font-ui);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.rulesPanelFamily {
+  color: rgba(232, 220, 196, 0.55);
+}
+
+.rulesPanelText {
+  margin: 0;
+  font-family: var(--font-card-body, Georgia, serif);
+  font-size: calc(15px * var(--tb-text-scale, 1));
+  line-height: 1.45;
+  white-space: pre-line;
 }
 
 /* `CardTile` est un <button> désactivé quand il n'a pas d'`onClick` : un
