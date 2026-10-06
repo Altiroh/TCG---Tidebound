@@ -750,7 +750,26 @@ export interface EffectDefinition {
    * Pour `lookAtDeckTop` : où retournent les cartes regardées et non prises
    * (`DeckLookChoice.restTo`). Défaut : sous la pioche.
    */
-  restTo?: "deckBottom" | "deckTopChosenOrder" | "shuffle";
+  restTo?: "deckBottom" | "deckTopChosenOrder" | "deckBottomChosenOrder" | "shuffle";
+  /**
+   * `lookAtDeckTop` : « cherchez X dans votre pioche » — on regarde TOUTE la
+   * pioche, mais seules les cartes qui conviennent au `filter` sont
+   * montrées ; les autres ne bougent pas, et la pioche est mélangée ensuite
+   * (sauf `restTo` contraire). Corne du Rassemblement (Lot 17).
+   */
+  searchWholeDeck?: boolean;
+  /**
+   * `lookAtDeckTop` : plusieurs PANIERS de prise (`DeckLookChoice.takeGroups`),
+   * chacun avec son filtre et, au besoin, sa condition de plateau — « un
+   * Opalin parmi elles ; si vous contrôlez au moins 2 Opalins, vous pouvez
+   * également ajouter un Objet » (Banquet ancestral, Lot 17). Un panier dont
+   * la condition n'est pas remplie n'est pas proposé.
+   */
+  takeGroups?: Array<{
+    uses: number;
+    filter?: { cardTypes?: import("@/game/cards/types").CardType[]; archetype?: import("@/game/cards/archetypes").ArchetypeId };
+    conditionControlledArchetypeAtLeast?: { archetype: import("@/game/cards/archetypes").ArchetypeId; count: number };
+  }>;
   /** `lookAtDeckTop` / `pickFromGraveyard` : où vont les cartes PRISES (`DeckLookChoice.takeTo`). */
   takeTo?: "hand" | "deckTop" | "deckBottom";
   /** `lookAtDeckTop` : regarder les cartes du DESSOUS de la pioche (Meraï, Opalin des Profondeurs). */

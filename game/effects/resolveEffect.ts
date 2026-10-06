@@ -2181,7 +2181,16 @@ export function resolveEffect(
       const player = resolveSinglePlayerTarget(state, effect, context) ?? getPlayer(state, context.controllerId);
       // « Regardez les N cartes du DESSOUS de votre pioche » (Meraï, Lot 17).
       const combien = Math.max(0, amount);
-      const regardees = effect.fromBottom ? player.deck.slice(Math.max(0, player.deck.length - combien)) : player.deck.slice(0, combien);
+      // « Cherchez un Opalin dans votre pioche » (Corne du Rassemblement) : toute la pioche, filtrée.
+      const cherche = (carte: CardInstance) => {
+        const def = getCardDefinition(carte.cardId);
+        return matchesCardTypeFilter(effect.filter, def.type) && (!effect.filter?.archetype || def.archetype === effect.filter.archetype);
+      };
+      const regardees = effect.searchWholeDeck
+        ? player.deck.filter(cherche)
+        : effect.fromBottom
+          ? player.deck.slice(Math.max(0, player.deck.length - combien))
+          : player.deck.slice(0, combien);
       // Pioche vide : le texte est sans objet, on ne pose pas une question
       // dont aucune réponse n'existe.
       if (regardees.length === 0) return { state, events };
@@ -2189,19 +2198,49 @@ export function resolveEffect(
       // Les cartes SORTENT de la pioche maintenant : elles vivent dans le
       // choix jusqu'à la réponse, sans quoi une pioche résolue entre-temps
       // les rendrait obsolètes.
-      const reste = effect.fromBottom ? player.deck.slice(0, player.deck.length - regardees.length) : player.deck.slice(regardees.length);
+      const ids = new Set(regardees.map((carte) => carte.instanceId));
+      const reste = effect.searchWholeDeck
+        ? player.deck.filter((carte) => !ids.has(carte.instanceId))
+        : effect.fromBottom
+          ? player.deck.slice(0, player.deck.length - regardees.length)
+          : player.deck.slice(regardees.length);
+      // Paniers (Banquet ancestral) : ceux dont la condition de plateau tient.
+      const paniers = effect.takeGroups
+        ?.filter((group) => {
+          const condition = group.conditionControlledArchetypeAtLeast;
+          return !condition || countArchetypeUnits(player.board, condition.archetype) >= condition.count;
+        })
+        .map((group) => ({
+          count: group.uses,
+          ...(group.filter?.cardTypes ? { cardTypes: group.filter.cardTypes } : {}),
+          ...(group.filter?.archetype ? { archetype: group.filter.archetype } : {}),
+        }));
       return {
         state: openChoice(replacePlayer(state, { ...player, deck: reste }), {
             kind: "deckLook",
             playerId: player.id,
             revealed: regardees,
-            take: effect.uses ?? 1,
+            take: paniers ? paniers.reduce((sum, group) => sum + group.count, 0) : (effect.uses ?? 1),
+            ...(paniers ? { takeGroups: paniers } : {}),
             ...(effect.filter?.cardTypes ? { takeableCardTypes: effect.filter.cardTypes } : {}),
             ...(effect.filter?.archetype ? { takeableArchetype: effect.filter.archetype } : {}),
             ...(effect.filter?.subtype ? { takeableSubtype: effect.filter.subtype } : {}),
             ...(effect.filter?.maxCost !== undefined ? { takeableMaxCost: effect.filter.maxCost } : {}),
-            ...(effect.restTo ? { restTo: effect.restTo } : {}),
+            ...(effect.restTo ? { restTo: effect.restTo } : effect.searchWholeDeck ? { restTo: "shuffle" as const } : {}),
             ...(effect.takeTo ? { takeTo: effect.takeTo } : {}),
+            // La suite du texte, sur la carte prise (« réduisez son coût de 1 ce tour », Corne du Rassemblement).
+            ...(effect.thenEffects?.length
+              ? {
+                  continuation: {
+                    effects: [...effect.thenEffects],
+                    context: {
+                      controllerId: context.controllerId,
+                      ...(context.sourceInstanceId ? { sourceInstanceId: context.sourceInstanceId } : {}),
+                      turnNumber: context.turnNumber,
+                    },
+                  },
+                }
+              : {}),
             // « une Sentinelle de cette couleur » : la couleur de l'Éclat
             // désigné, lue AVANT qu'il ne soit Sabordé par l'effet suivant.
             ...(effect.takeableColorFrom === "chosenUnit"

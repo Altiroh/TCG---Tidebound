@@ -240,3 +240,68 @@ describe("texte ignoré", () => {
     expect(cible.modifiers.some((m) => m.textIgnored)).toBe(true);
   });
 });
+
+describe("outils de régularité Opalins (nettoyage du 06/10/2026)", () => {
+  const opalinsEnJeu = () => [instance("velm-opalin-des-armures", "p1"), instance("sila-opalin-du-large", "p1")];
+
+  it("Banquet ancestral : un Opalin, plus un Objet si l'on contrôle 2 Opalins ; le reste dessous, dans l'ordre choisi", () => {
+    const banquet = instance("banquet-ancestral", "p1");
+    const opalin = instance("kaor-opalin-des-reliques", "p1");
+    const objet = instance("de-pipe", "p1");
+    const autre = instance("marin-des-jetees", "p1");
+    const structure = instance("veille-des-niveaux", "p1");
+    const fond = instance("marin-des-jetees", "p1");
+    const r = jouer(table({ hand: [banquet], board: opalinsEnJeu(), deck: [opalin, objet, autre, structure, fond] }), banquet);
+    ok(r);
+    const choix = r.state.pendingChoice;
+    expect(choix?.kind).toBe("deckLook");
+    if (choix?.kind !== "deckLook") return;
+    expect(choix.takeGroups).toHaveLength(2);
+    // Deux Objets ? Non : un seul panier les accepte.
+    const refus = dispatch(r.state, { type: "resolveChoice", playerId: "p1", choice: { takeInstanceIds: [opalin.instanceId, autre.instanceId] } });
+    expect(refus.ok).toBe(false);
+    const pris = dispatch(r.state, {
+      type: "resolveChoice",
+      playerId: "p1",
+      choice: { takeInstanceIds: [opalin.instanceId, objet.instanceId], restOrder: [structure.instanceId, autre.instanceId] },
+    });
+    ok(pris);
+    const p1 = joueur(pris.state);
+    expect(p1.hand.map((c) => c.instanceId)).toEqual(expect.arrayContaining([opalin.instanceId, objet.instanceId]));
+    // Sous la pioche, dans l'ordre donné.
+    expect(p1.deck.map((c) => c.instanceId)).toEqual([fond.instanceId, structure.instanceId, autre.instanceId]);
+  });
+
+  it("Banquet ancestral sans 2 Opalins : seul le panier Opalin est proposé", () => {
+    const banquet = instance("banquet-ancestral", "p1");
+    const r = jouer(table({ hand: [banquet], deck: [instance("kaor-opalin-des-reliques", "p1"), instance("de-pipe", "p1")] }), banquet);
+    ok(r);
+    const choix = r.state.pendingChoice;
+    expect(choix?.kind === "deckLook" && choix.takeGroups).toHaveLength(1);
+  });
+
+  it("Corne du Rassemblement, Brisée depuis la main : cherche un Opalin dans TOUTE la pioche, et il coûte 1 de moins ce tour", () => {
+    const corne = instance("corne-du-rassemblement", "p1");
+    const kaor = instance("kaor-opalin-des-reliques", "p1");
+    const pioche = [...Array.from({ length: 6 }, () => instance("marin-des-jetees", "p1")), kaor];
+    const state = table({ hand: [corne], board: opalinsEnJeu(), deck: pioche, reason: 10, reasonMax: 10 });
+    const brise = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: corne.instanceId, fromHand: true });
+    ok(brise);
+    const choix = brise.state.pendingChoice;
+    expect(choix?.kind === "deckLook" && choix.revealed.map((c) => c.instanceId)).toEqual([kaor.instanceId]);
+    const pris = dispatch(brise.state, { type: "resolveChoice", playerId: "p1", choice: { takeInstanceIds: [kaor.instanceId] } });
+    ok(pris);
+    const raison = joueur(pris.state).reason;
+    const joue = jouer(pris.state, kaor);
+    ok(joue);
+    expect(raison - joueur(joue.state).reason).toBe(getCardDefinition("kaor-opalin-des-reliques").cost - 1);
+  });
+
+  it("Corne du Rassemblement Brisée depuis le plateau : rien", () => {
+    const corne = instance("corne-du-rassemblement", "p1");
+    const state = table({ board: [corne], deck: [instance("kaor-opalin-des-reliques", "p1")] });
+    const brise = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: corne.instanceId });
+    ok(brise);
+    expect(brise.state.pendingChoice).toBeUndefined();
+  });
+});

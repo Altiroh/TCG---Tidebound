@@ -728,6 +728,13 @@ export interface HandDiscardChoice {
  * regarde — c'est toute la valeur du filtrage que l'adversaire n'ait pas
  * vu passer les trois cartes.
  */
+/** Un panier de `DeckLookChoice.takeGroups` : jusqu'à `count` cartes de ce type et de cette famille. */
+export interface DeckLookTakeGroup {
+  count: number;
+  cardTypes?: import("@/game/cards/types").CardType[];
+  archetype?: import("@/game/cards/archetypes").ArchetypeId;
+}
+
 export interface DeckLookChoice {
   kind: "deckLook";
   playerId: PlayerId;
@@ -764,7 +771,15 @@ export interface DeckLookChoice {
    * (`restOrder` de la réponse) — « remettez les autres au-dessus de votre
    * pioche dans l'ordre de votre choix » (Ils Étaient Déjà Là, Lot 16).
    */
-  restTo?: "deckBottom" | "deckTopChosenOrder" | "shuffle";
+  restTo?: "deckBottom" | "deckTopChosenOrder" | "deckBottomChosenOrder" | "shuffle";
+  /**
+   * Plusieurs PANIERS de prise, chacun avec son filtre (Banquet ancestral,
+   * Lot 17 : « un Opalin parmi elles […] vous pouvez également ajouter un
+   * Objet »). Présent, il remplace `take` et les `takeable*` : une carte est
+   * prenable si elle convient à un panier, et une sélection l'est si chaque
+   * carte trouve une place dans un panier distinct (`deckLookSelectionFits`).
+   */
+  takeGroups?: DeckLookTakeGroup[];
   /**
    * Où vont les cartes PRISES (Lot 17). `"hand"` (défaut) ; `"deckTop"` :
    * « gardez-en une au-dessus » (Boussole fendue) ; `"deckBottom"` :

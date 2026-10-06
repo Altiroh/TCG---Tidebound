@@ -34,9 +34,11 @@ describe("pools de boosters", () => {
     // catalogue, sans remplaçant — B1 63 → 57, B2 65 → 54, B3 62 → 51.
     // 05/10/2026 : Pluie corrosive (Lande) et Zone de repli rejoignent B1
     // (57 → 59) ; Cartographe Opalin méfiant rejoint B3 (51 → 52).
-    expect(BOOSTER_POOLS[BOOSTER_DEFAUT]).toHaveLength(59);
-    expect(BOOSTER_POOLS[BOOSTER_POISSONS_PAS_FRAIS]).toHaveLength(54);
-    expect(BOOSTER_POOLS[BOOSTER_ETRANGETE_SOUS_MARINE]).toHaveLength(52);
+    // 06/10/2026 : les passerelles du Lot 17 sont redistribuées — 7 en B1
+    // (59 → 66), 2 en B2 (54 → 56), 1 en B3 (52 → 53).
+    expect(BOOSTER_POOLS[BOOSTER_DEFAUT]).toHaveLength(66);
+    expect(BOOSTER_POOLS[BOOSTER_POISSONS_PAS_FRAIS]).toHaveLength(56);
+    expect(BOOSTER_POOLS[BOOSTER_ETRANGETE_SOUS_MARINE]).toHaveLength(53);
   });
 
   it("n'a que trois cartes passerelles ENTRE LES TROIS PREMIERS boosters, exactement celles que le cadrage nomme", () => {

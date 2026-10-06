@@ -585,6 +585,9 @@ const LOT17_RARITY: Record<string, CardRarity> = {
   "eidolon-opalin-lv5": "epic",
   // Version STANDARD (06/10/2026) : le plafond d'une carte sans suffixe ; sa variante `-abyssal` est l'Abyssale du lot.
   "eidolon-opalin-lvx": "legendary",
+  // Ajoutées au nettoyage du 06/10/2026.
+  "banquet-ancestral": "uncommon",
+  "corne-du-rassemblement": "uncommon",
   "veille-des-niveaux": "uncommon",
   "fragment-d-eveil": "rare",
   "sommeil-de-pierre": "uncommon",
@@ -595,11 +598,9 @@ const LOT17_RARITY: Record<string, CardRarity> = {
   "boussole-fendue": "common",
   "piece-porte-bonheur": "uncommon",
   "carte-detrempee": "common",
-  "corde-de-rappel-legere": "uncommon",
   "campement-provisoire": "uncommon",
   "tour-de-guet-mobile": "common",
   "maree-imprevisible": "uncommon",
-  "route-barree": "uncommon",
   "calme-trompeur": "rare",
   "terres-inconnues": "rare",
 };

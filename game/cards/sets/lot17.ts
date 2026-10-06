@@ -28,6 +28,12 @@ import type { DieOutcomeBranch } from "@/game/state/types";
 
 /** Lot de diffusion, miroir de `cards.set_code` (aucun booster encore). */
 export const DUNGEON_ET_LADALLE = "dungeon-et-ladalle";
+/**
+ * Cartes nées avec le Lot 17 mais sorties de son booster au nettoyage du
+ * 06/10/2026 (Notion « Boosters & économie » § Nettoyage du Lot 17) : elles
+ * sont redistribuées dans les anciens boosters (`game/boosters/pools.ts`).
+ */
+export const LOT17_PASSERELLES = "lot-17-passerelles";
 
 const DL = "dungeon-et-ladalle" as const;
 const OPALIN = "opalin" as const;
@@ -1222,16 +1228,76 @@ const OPALINS: CardDefinition[] = [
       },
     ],
   }),
+  // --- Ajoutées au nettoyage du 06/10/2026 : outils de régularité du deck Opalin.
+  opalin({
+    id: "banquet-ancestral",
+    name: "Banquet ancestral",
+    type: "anomalie",
+    cost: 3,
+    maxCopies: 3,
+    permanent: false,
+    text:
+      "Regardez les 4 cartes du dessus de votre pioche. Vous pouvez révéler un Opalin parmi elles et l'ajouter à votre " +
+      "main. Si vous contrôlez au moins 2 Opalins, vous pouvez également ajouter un Objet parmi ces cartes à votre main. " +
+      "Placez le reste sous votre pioche dans l'ordre de votre choix.",
+    onPlayEffects: [
+      {
+        type: "lookAtDeckTop",
+        target: { kind: "controllerPlayer" },
+        amount: flat(4),
+        refusable: true,
+        restTo: "deckBottomChosenOrder",
+        takeGroups: [
+          { uses: 1, filter: { cardTypes: [...UNITES], archetype: OPALIN } },
+          { uses: 1, filter: { cardTypes: ["objet"] }, conditionControlledArchetypeAtLeast: { archetype: OPALIN, count: 2 } },
+        ],
+      },
+    ],
+  }),
+  opalin({
+    id: "corne-du-rassemblement",
+    name: "Corne du Rassemblement",
+    type: "objet",
+    cost: 2,
+    maxCopies: 3,
+    text:
+      "Bris depuis la main : cherchez un Opalin dans votre pioche, révélez-le et ajoutez-le à votre main. Si vous " +
+      "contrôlez au moins 2 Opalins, réduisez son coût de 1 ce tour.",
+    onBreakEffects: [
+      {
+        type: "lookAtDeckTop",
+        target: { kind: "controllerPlayer" },
+        amount: flat(0),
+        searchWholeDeck: true,
+        filter: { cardTypes: [...UNITES], archetype: OPALIN },
+        uses: 1,
+        conditionBrokenFromHand: true,
+        thenEffects: [
+          {
+            type: "discountNextCards",
+            target: { kind: "controllerPlayer" },
+            amount: flat(1),
+            discountOnlyRecoveredCard: true,
+            conditionControlledArchetypeAtLeast: { archetype: OPALIN, count: 2 },
+          },
+        ],
+      },
+    ],
+  }),
 ];
 
-// --- Génériques / passerelles (14) ------------------------------------------------
+// --- Passerelles (12) -------------------------------------------------------------
+// Nées avec le lot. Depuis le nettoyage du 06/10/2026, Mousse superstitieux et
+// Pièce porte-bonheur sont des soutiens Dungeon et Ladalle (booster du lot) ;
+// les dix autres sont redistribuées dans les anciens boosters (`LOT17_PASSERELLES`).
+// Corde de rappel et Route barrée sont écartées (redondantes).
 
 const GENERIQUES: CardDefinition[] = [
   {
     id: "cartographe-du-large",
     name: "Cartographe du Large",
     type: "marin",
-    setCode: DUNGEON_ET_LADALLE,
+    setCode: LOT17_PASSERELLES,
     cost: 2,
     attack: 2,
     health: 3,
@@ -1245,7 +1311,7 @@ const GENERIQUES: CardDefinition[] = [
     id: "aventuriere-en-retard",
     name: "Aventurière en retard",
     type: "marin",
-    setCode: DUNGEON_ET_LADALLE,
+    setCode: LOT17_PASSERELLES,
     cost: 2,
     attack: 3,
     health: 2,
@@ -1262,10 +1328,12 @@ const GENERIQUES: CardDefinition[] = [
     id: "mousse-superstitieux",
     name: "Mousse superstitieux",
     type: "marin",
+    archetype: DL,
     setCode: DUNGEON_ET_LADALLE,
     cost: 1,
     attack: 1,
     health: 2,
+    die: 4,
     maxCopies: 3,
     text: "La première fois qu'un effet aléatoire que vous contrôlez vous avantage à chacun de vos tours, il gagne +1/+1.",
     // « Vous avantage » : un de vos jets de dé tourne à la Réussite.
@@ -1283,7 +1351,7 @@ const GENERIQUES: CardDefinition[] = [
     id: "gardien-des-balises",
     name: "Gardien des Balises",
     type: "marin",
-    setCode: DUNGEON_ET_LADALLE,
+    setCode: LOT17_PASSERELLES,
     cost: 3,
     attack: 3,
     health: 4,
@@ -1295,7 +1363,7 @@ const GENERIQUES: CardDefinition[] = [
     id: "boussole-fendue",
     name: "Boussole fendue",
     type: "objet",
-    setCode: DUNGEON_ET_LADALLE,
+    setCode: LOT17_PASSERELLES,
     cost: 1,
     maxCopies: 3,
     text: "Brisez : regardez les 2 cartes du dessus. Gardez-en une au-dessus et placez l'autre dessous.",
@@ -1305,6 +1373,7 @@ const GENERIQUES: CardDefinition[] = [
     id: "piece-porte-bonheur",
     name: "Pièce porte-bonheur",
     type: "objet",
+    archetype: DL,
     setCode: DUNGEON_ET_LADALLE,
     cost: 2,
     maxCopies: 3,
@@ -1316,27 +1385,17 @@ const GENERIQUES: CardDefinition[] = [
     id: "carte-detrempee",
     name: "Carte détrempée",
     type: "objet",
-    setCode: DUNGEON_ET_LADALLE,
+    setCode: LOT17_PASSERELLES,
     cost: 2,
     maxCopies: 3,
     text: "Brisez : récupérez une Lande depuis votre Cimetière et placez-la sous votre deck.",
     onBreakEffects: [{ type: "pickFromGraveyard", target: { kind: "controllerPlayer" }, filter: { cardTypes: ["lande"] }, uses: 1, takeTo: "deckBottom" }],
   },
   {
-    id: "corde-de-rappel-legere",
-    name: "Corde de rappel",
-    type: "objet",
-    setCode: DUNGEON_ET_LADALLE,
-    cost: 2,
-    maxCopies: 3,
-    text: "Brisez : renvoyez une unité alliée coûtant 3 ou moins dans votre main.",
-    onBreakEffects: [{ type: "moveZone", target: { kind: "chosenUnit", among: { unitsOnly: true, maxCost: 3 } }, toZone: "hand" }],
-  },
-  {
     id: "campement-provisoire",
     name: "Campement provisoire",
     type: "structure",
-    setCode: DUNGEON_ET_LADALLE,
+    setCode: LOT17_PASSERELLES,
     cost: 2,
     health: 3,
     maxCopies: 3,
@@ -1347,7 +1406,7 @@ const GENERIQUES: CardDefinition[] = [
     id: "tour-de-guet-mobile",
     name: "Tour de guet mobile",
     type: "structure",
-    setCode: DUNGEON_ET_LADALLE,
+    setCode: LOT17_PASSERELLES,
     cost: 3,
     health: 4,
     maxCopies: 3,
@@ -1366,7 +1425,7 @@ const GENERIQUES: CardDefinition[] = [
     id: "maree-imprevisible",
     name: "Marée imprévisible",
     type: "anomalie",
-    setCode: DUNGEON_ET_LADALLE,
+    setCode: LOT17_PASSERELLES,
     cost: 3,
     maxCopies: 3,
     permanent: false,
@@ -1375,28 +1434,10 @@ const GENERIQUES: CardDefinition[] = [
     abilities: deplacerLaMaree("mareeSens"),
   },
   {
-    id: "route-barree",
-    name: "Route barrée",
-    type: "anomalie",
-    setCode: DUNGEON_ET_LADALLE,
-    cost: 4,
-    maxCopies: 3,
-    permanent: false,
-    text: "Réduisez de 2 la durée restante de la Lande active. Si elle disparaît ainsi, gagnez 2 Armure.",
-    onPlayEffects: [
-      {
-        type: "shortenLande",
-        target: { kind: "allPlayers" },
-        amount: flat(2),
-        ifLandeEnds: [{ type: "gainArmor", target: { kind: "controllerPlayer" }, amount: flat(2) }],
-      },
-    ],
-  },
-  {
     id: "calme-trompeur",
     name: "Calme trompeur",
     type: "lande",
-    setCode: DUNGEON_ET_LADALLE,
+    setCode: LOT17_PASSERELLES,
     cost: 2,
     maxCopies: 2,
     text: "Durée : 3 tours de table. La première unité coûtant 2 ou moins que chaque joueur joue à son tour gagne +0/+1.",
@@ -1406,7 +1447,7 @@ const GENERIQUES: CardDefinition[] = [
     id: "terres-inconnues",
     name: "Terres inconnues",
     type: "lande",
-    setCode: DUNGEON_ET_LADALLE,
+    setCode: LOT17_PASSERELLES,
     cost: 3,
     maxCopies: 2,
     text:

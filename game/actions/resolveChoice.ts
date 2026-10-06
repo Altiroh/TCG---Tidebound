@@ -1,7 +1,7 @@
 import { getShipDefinition } from "@/game/environment/shipData";
 import { shuffle } from "@/game/rng";
 import { getCardDefinition } from "@/game/cards/sets/core";
-import { deckLookRefusal } from "@/game/rules/deckLook";
+import { deckLookRefusal, deckLookSelectionFits, deckLookTakeLimit } from "@/game/rules/deckLook";
 import { UNIT_CARD_TYPES } from "@/game/cards/types";
 import { chromaticColorsOf } from "@/game/rules/chromatic";
 import { closeAndResolveDieRoll, closeDieRollIfIdle, resolveEffectSequence } from "@/game/effects/resolveSequence";
@@ -370,7 +370,7 @@ export function resolveChoice(state: GameState, action: ResolveChoiceAction): Ac
       return { ok: false, error: "Ce choix n'est pas refusable : le texte dit d'en prendre une." };
     }
     if (new Set(prises).size !== prises.length) return { ok: false, error: "Une même carte ne peut être prise deux fois." };
-    if (prises.length > choice.take) return { ok: false, error: `Ce choix permet d'en prendre au plus ${choice.take}.` };
+    if (prises.length > deckLookTakeLimit(choice)) return { ok: false, error: `Ce choix permet d'en prendre au plus ${deckLookTakeLimit(choice)}.` };
 
     const regardees = choice.revealed;
     for (const id of prises) {
@@ -384,6 +384,11 @@ export function resolveChoice(state: GameState, action: ResolveChoiceAction): Ac
       if (refus === "cost") return { ok: false, error: "Ce texte ne permet pas de prendre une carte aussi chère." };
     }
 
+    // Paniers (Banquet ancestral) : chaque carte prise doit trouver sa place dans un panier distinct.
+    if (choice.takeGroups && !deckLookSelectionFits(choice, prises.map((id) => regardees.find((c) => c.instanceId === id)!))) {
+      return { ok: false, error: "Ces cartes ne tiennent pas ensemble dans ce que le texte permet de prendre." };
+    }
+
     const player = getPlayer(nextState, choice.playerId);
     // Dans l'ordre de la RÉPONSE : « placez-les sous votre pioche dans l'ordre de votre choix ».
     const gardees = prises.map((id) => regardees.find((c) => c.instanceId === id)!);
@@ -394,7 +399,7 @@ export function resolveChoice(state: GameState, action: ResolveChoiceAction): Ac
     // « Remettez les autres au-dessus dans l'ordre de votre choix » : l'ordre
     // donné doit nommer chacune des cartes rendues, une fois.
     const ordre = typeof action.choice === "object" && "restOrder" in action.choice ? action.choice.restOrder : undefined;
-    if (ordre && choice.restTo === "deckTopChosenOrder") {
+    if (ordre && (choice.restTo === "deckTopChosenOrder" || choice.restTo === "deckBottomChosenOrder")) {
       const attendues = new Set(rendues.map((c) => c.instanceId));
       if (ordre.length !== attendues.size || new Set(ordre).size !== ordre.length || ordre.some((id) => !attendues.has(id))) {
         return { ok: false, error: "L'ordre donné doit nommer chacune des cartes remises, une seule fois." };

@@ -110,6 +110,14 @@ const DEFAUT: readonly string[] = [
   "pelican-des-cales",
   "mouette-du-brise-lames",
   "harnois-de-vigie",
+  // Passerelles du Lot 17, redistribuées au nettoyage du 06/10/2026 (Notion « Boosters & économie »).
+  "cartographe-du-large",
+  "gardien-des-balises",
+  "boussole-fendue",
+  "carte-detrempee",
+  "campement-provisoire",
+  "tour-de-guet-mobile",
+  "calme-trompeur",
 ];
 
 /**
@@ -173,6 +181,9 @@ const POISSONS_PAS_FRAIS: readonly string[] = [
   "albatros-de-mauvais-temps",
   "charpentier-des-epaves",
   "barge-de-reparation",
+  // Passerelles du Lot 17 (06/10/2026).
+  "aventuriere-en-retard",
+  "maree-imprevisible",
 ];
 
 /**
@@ -234,6 +245,8 @@ const ETRANGETE_SOUS_MARINE: readonly string[] = [
   "clous-de-recuperation",
   "etau-du-calfat",
   "sonde-des-courants-perdus",
+  // Passerelle du Lot 17 (06/10/2026).
+  "terres-inconnues",
 ];
 
 /**
@@ -469,7 +482,8 @@ const LA_MUTATION_MONDIALE_POOL: readonly string[] = CORE_SET.filter((card) => c
 
 /**
  * B8 — Lot 17, Dungeon et Ladalle / Opalins. Même règle que B7 : les cartes
- * du lot et elles seules. Son Abyssale : Eidolon Opalin LVX, sommet de la
+ * du lot et elles seules — 54 depuis le nettoyage du 06/10/2026 (les
+ * passerelles sont parties dans les anciens boosters). Son Abyssale : Eidolon Opalin LVX, sommet de la
  * lignée LV (migration `20261026120000_booster_dungeon_et_ladalle.sql`).
  */
 const DUNGEON_ET_LADALLE_POOL: readonly string[] = CORE_SET.filter((card) => card.setCode === BOOSTER_DUNGEON_ET_LADALLE).map(
