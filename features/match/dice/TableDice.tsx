@@ -255,7 +255,8 @@ function bezier(x1: number, y1: number, x2: number, y2: number): (t: number) => 
   };
 }
 
-const SPIN_EASING = bezier(0.15, 0.65, 0.25, 1);
+/** Amorti du tournoiement : encore vif à l'atterrissage, puis il se pose. */
+const SPIN_EASING = bezier(0.3, 0.35, 0.45, 1);
 const ROLL_EASING = bezier(0.3, 0.7, 0.3, 1);
 
 /**
@@ -325,7 +326,7 @@ function ThrownDie({ throwKey, die, face, fromViewer, outcome, onPick }: ThrownD
     // Des tours entiers sur les trois axes, qui s'amortissent jusqu'à la face obtenue.
     const tour = (k: string) => (hash(`${throwKey}:${k}`) > 0.5 ? 1 : -1) * (2 + Math.floor(hash(`${throwKey}:${k}n`) * 2)) * 360;
     const [rx, ry, rz] = [tour("rx"), tour("ry"), tour("rz") / 2];
-    const duree = FLIGHT_MS * 0.92;
+    const duree = FLIGHT_MS;
     const t0 = performance.now();
     let frame = 0;
     const step = (now: number) => {
@@ -346,12 +347,12 @@ function ThrownDie({ throwKey, die, face, fromViewer, outcome, onPick }: ThrownD
   }, [throwKey, fromViewer, draw]);
 
   // Un ajustement change la face : le dé roule de son orientation actuelle vers la nouvelle.
-  const premiere = useRef(true);
+  // On compare la VALEUR : un effet rejoué (mode strict) ne doit pas figer le
+  // dé sur sa pose de repos pendant qu'il tournoie encore.
+  const faceRef = useRef(face);
   useEffect(() => {
-    if (premiere.current) {
-      premiere.current = false;
-      return;
-    }
+    if (faceRef.current === face) return;
+    faceRef.current = face;
     const from = shownRef.current;
     if (prefersReducedMotion()) {
       draw(rest);
@@ -366,7 +367,7 @@ function ThrownDie({ throwKey, die, face, fromViewer, outcome, onPick }: ThrownD
     };
     frame = requestAnimationFrame(step);
     return () => cancelAnimationFrame(frame);
-  }, [rest, draw]);
+  }, [face, rest, draw]);
 
   const content = (
     <div className={styles.die} data-die={die} data-outcome={outcome} style={{ "--die": `${size}px` } as CSSProperties}>

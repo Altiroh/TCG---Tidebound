@@ -27,6 +27,14 @@ export interface DiceThrow {
 /** Temps pendant lequel un dé fermé reste posé sur la table avant de s'effacer. */
 export const SETTLED_LINGER_MS = 2600;
 
+/**
+ * Un jet ouvert peut s'éclipser un instant de l'état : briser un Objet
+ * « Chaîne » ouvre d'abord sa fenêtre de réaction, puis le jet revient (ou se
+ * ferme). Pendant ce battement, le dé reste posé — sans pastilles — au lieu
+ * de disparaître et d'être relancé.
+ */
+export const OPEN_GRACE_MS = 1500;
+
 function resolvedEvents(state: GameState) {
   return state.eventLog.filter((e): e is Extract<GameState["eventLog"][number], { type: "DIE_RESOLVED" }> => e.type === "DIE_RESOLVED");
 }
@@ -69,6 +77,23 @@ export function useDiceThrow(state: GameState): DiceThrow | null {
       outcome: last.outcome,
       ...(last.cardId ? { cardId: last.cardId } : {}),
     };
+  }
+
+  // Le jet ouvert s'est éclipsé sans se fermer : on garde le dé posé un instant.
+  const lastOpen = useRef<DiceThrow | null>(null);
+  const [graceOver, setGraceOver] = useState<string | null>(null);
+  if (current?.open) lastOpen.current = current;
+  else if (current) lastOpen.current = null;
+  const enSuspens = !current && lastOpen.current && resolvedEvents(state).length === Number(lastOpen.current.key.split(":")[0]) ? lastOpen.current : null;
+  const suspensKey = enSuspens?.key ?? null;
+  useEffect(() => {
+    if (!suspensKey) return;
+    const timer = window.setTimeout(() => setGraceOver(suspensKey), OPEN_GRACE_MS);
+    return () => window.clearTimeout(timer);
+  }, [suspensKey]);
+  if (enSuspens && graceOver !== enSuspens.key) {
+    const { choice: _gestes, ...pose } = enSuspens;
+    current = pose;
   }
 
   // Un jet fermé s'efface de lui-même ; un nouveau jet le remplace aussitôt.
