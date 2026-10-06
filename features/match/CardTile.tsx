@@ -29,6 +29,7 @@ import { StatusBadge } from "@/features/match/StatusBadge";
 import { useDecreaseFlash } from "@/features/match/useDecreaseFlash";
 import { useImageOk } from "@/features/match/useImageOk";
 import { NouveauCadreFace } from "@/features/cadre-preview/NouveauCadreCard";
+import { useDebordPleinCadre } from "@/features/match/useDebordPleinCadre";
 import { NOUVEAU_CADRE } from "@/features/match/cardFrame";
 import { rarityForCardId } from "@/game/boosters";
 
@@ -631,6 +632,8 @@ export function CardTile({
   const [illustrationFailed, setIllustrationFailed] = useState<string | null>(null);
   const illustrationOk = illustrationFailed !== illustrationUrl;
   const debordOk = useImageOk(debordUrl);
+  // Calque peint sur le canevas de l'illustration : posé comme elle, pas dans la zone d'une silhouette.
+  const debordPlein = useDebordPleinCadre(debordOk ? debordUrl : null);
   const isBoardTile = variant === "board";
   // Nouveau cadre (`cardFrame.ts`) : seulement la carte complète d'une
   // vraie carte — ni la tuile de plateau, ni un jeton, ni une carte cachée.
@@ -723,15 +726,15 @@ export function CardTile({
               {/* Couche 1.5 : le débord Abyssal. Pour une Abyssale, l'illustration n'est que le DÉCOR ;
                   le sujet (Bat-marin encapuchonné…) vit dans ce calque. Sans lui, la tuile montrait un
                   paysage vide. Il se tient debout au-dessus du nom, sous le voile qui garde nom et stats lisibles. */}
-              {isAbyssal && !isToken && debordOk && debordUrl && (
+              {isAbyssal && !isToken && debordOk && debordUrl && debordPlein !== null && (
                 // eslint-disable-next-line @next/next/no-img-element -- asset local, calque optionnel par carte Abyssale
                 <img
                   src={debordUrl}
                   alt=""
                   loading="lazy"
                   decoding="async"
-                  className="pointer-events-none absolute object-contain object-bottom"
-                  style={zoneStyle(BOARD_DEBORD_ZONE)}
+                  className={`pointer-events-none absolute ${debordPlein ? "h-full w-full object-cover" : "object-contain object-bottom"}`}
+                  style={debordPlein ? { inset: 0 } : zoneStyle(BOARD_DEBORD_ZONE)}
                 />
               )}
               {/* Couche 2 : un voile sombre en pied, pour que nom et stats se lisent sur n'importe quelle illustration. */}
@@ -930,7 +933,18 @@ export function CardTile({
         )}
 
         {/* Couche 2.5 : débord Abyssal — silhouette à fond transparent qui déborde du cadre, posée par-dessus */}
-        {isAbyssal && debordOk && debordUrl && (
+        {isAbyssal && debordOk && debordUrl && debordPlein === true && (
+          // eslint-disable-next-line @next/next/no-img-element -- calque peint sur le canevas de l'illustration : posé comme elle
+          <img
+            src={debordUrl}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            className="pointer-events-none absolute object-cover"
+            style={zoneStyle(illustrationZone)}
+          />
+        )}
+        {isAbyssal && debordOk && debordUrl && debordPlein === false && (
           // eslint-disable-next-line @next/next/no-img-element -- asset local, calque optionnel par carte Abyssale
           <img
             src={debordUrl}
