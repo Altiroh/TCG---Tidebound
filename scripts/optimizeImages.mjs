@@ -224,6 +224,10 @@ const RULES = [
   // gardent 1400 px de large.
   { match: /\/landes\/[^/]+\/chaine-segment-/, maxSize: 1400, quality: 86 },
   { match: /\/landes\/[^/]+\/(fissures|cadenas|fumees|flaques)/, maxSize: 2560, quality: 84 },
+  // Sol d'une Lande (`LandeScene.floor`, ex. donjon-sol) : il remplace la mer
+  // en plein écran, même format et même taille que les fonds de Marée
+  // (1672 × 941). À tester AVANT la règle des pièces du Donjon.
+  { match: /\/landes\/[^/]+\/[^/]*-sol\./, maxSize: 1672, quality: 84 },
   // Pièces du Donjon de Ladalle : décor isométrique posé jusqu'à ~260 px de haut.
   { match: /\/landes\/le-donjon-de-ladalle\//, maxSize: 768, quality: 86 },
   { match: /\/landes\//, maxSize: 700, quality: 86 },
