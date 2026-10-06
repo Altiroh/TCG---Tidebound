@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { TideStateName } from "@/game";
+import { useImageOk } from "@/features/match/useImageOk";
 import styles from "@/features/match/table/Table.module.css";
 
 /** Mer et ciel propres à chaque état de Marée (1672×941, même cadrage). */
@@ -38,7 +39,17 @@ const DECK_SRC = "/assets/board/board-deck.webp";
  * De vraies balises `<img>` plutôt qu'un `background-image` : même raison
  * que `BoardBackdrop` (repaint peu fiable d'un fond CSS chargé tard).
  */
-export function BackgroundLayer({ tideState }: { tideState: TideStateName }) {
+export function BackgroundLayer({
+  tideState,
+  floor = null,
+}: {
+  tideState: TideStateName;
+  /**
+   * Sol d'une Lande (`LandeScene.floor`) qui remplace la mer : `key` change
+   * avec la Lande, `delayMs` attend la fin de son arrivée.
+   */
+  floor?: { src: string; key: string; delayMs: number } | null;
+}) {
   const [allMounted, setAllMounted] = useState(false);
   useEffect(() => {
     const idle = window.requestIdleCallback ?? ((callback: () => void) => window.setTimeout(callback, 1200));
@@ -63,9 +74,57 @@ export function BackgroundLayer({ tideState }: { tideState: TideStateName }) {
             className={`${styles.backgroundImage} ${styles.backgroundTide} ${state === tideState ? styles.backgroundTideActive : ""}`}
           />
         ))}
+      <LandeFloor floor={floor} />
       {/* eslint-disable-next-line @next/next/no-img-element -- idem */}
       <img src={DECK_SRC} alt="" draggable={false} decoding="async" className={styles.backgroundImage} />
       <div className={styles.backgroundVeil} />
     </div>
+  );
+}
+
+/** Durée du fondu de sortie d'un sol, quand sa Lande part. */
+const FLOOR_LEAVE_MS = 1200;
+
+/**
+ * Le SOL d'une Lande, entre la mer et le pont : il surgit du centre en une
+ * onde, la table tremble, puis il tient tant que la Lande est là. Absent
+ * (fichier pas encore livré) : rien ne change, la mer reste.
+ */
+function LandeFloor({ floor }: { floor: { src: string; key: string; delayMs: number } | null }) {
+  const ok = useImageOk(floor?.src ?? null);
+  const [leaving, setLeaving] = useState<{ src: string; key: string } | null>(null);
+  const [shown, setShown] = useState<{ src: string; key: string; delayMs: number } | null>(null);
+  useEffect(() => {
+    if (floor && ok) {
+      setShown(floor);
+      return;
+    }
+    if (!floor && shown) {
+      setLeaving(shown);
+      setShown(null);
+      const timer = window.setTimeout(() => setLeaving(null), FLOOR_LEAVE_MS);
+      return () => window.clearTimeout(timer);
+    }
+    return undefined;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [floor?.key, ok]);
+  return (
+    <>
+      {leaving && (
+        // eslint-disable-next-line @next/next/no-img-element -- décor plein écran
+        <img key={`out-${leaving.key}`} src={leaving.src} alt="" draggable={false} className={`${styles.backgroundImage} ${styles.landeFloorOut}`} />
+      )}
+      {shown && (
+        // eslint-disable-next-line @next/next/no-img-element -- décor plein écran
+        <img
+          key={shown.key}
+          src={shown.src}
+          alt=""
+          draggable={false}
+          className={`${styles.backgroundImage} ${styles.landeFloor}`}
+          style={{ animationDelay: `${shown.delayMs}ms` }}
+        />
+      )}
+    </>
   );
 }

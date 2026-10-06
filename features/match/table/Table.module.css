@@ -87,6 +87,38 @@
   user-select: none;
 }
 
+/* Sol d'une Lande (le Donjon : des pavés) : il surgit du centre en une
+   onde qui s'élargit, la table tremble un instant, puis il tient. */
+.landeFloor {
+  animation: landeFloorIn 1800ms cubic-bezier(0.3, 0.7, 0.25, 1) both;
+}
+
+@keyframes landeFloorIn {
+  0% { clip-path: circle(0% at 50% 55%); filter: brightness(0.4); transform: translate(0, 0); }
+  15% { transform: translate(-3px, 2px); }
+  30% { transform: translate(3px, -2px); }
+  45% { transform: translate(-2px, 1px); }
+  60% { clip-path: circle(60% at 50% 55%); transform: translate(2px, -1px); }
+  75% { transform: translate(-1px, 0); }
+  100% { clip-path: circle(120% at 50% 55%); filter: none; transform: none; }
+}
+
+.landeFloorOut {
+  animation: landeFloorOut 1200ms ease-in forwards;
+}
+
+@keyframes landeFloorOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landeFloor,
+  .landeFloorOut {
+    animation-duration: 1ms;
+  }
+}
+
 /* Les quatre mers restent montées et se relaient en fondu enchaîné. */
 .backgroundTide {
   opacity: 0;

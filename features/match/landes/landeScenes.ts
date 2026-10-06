@@ -91,6 +91,12 @@ export interface LandeScene {
   /** Pièces d'ancrage aux extrémités visibles (anneau, crochet), en alternance. */
   anchors?: string[];
   layers?: LandeLayer[];
+  /**
+   * SOL qui remplace la mer tant que la Lande est active (Le Donjon de
+   * Ladalle : des pavés). Même format et même cadrage que les fonds de Marée
+   * (1672 × 941) : posé entre la mer et le pont, il fait partie du décor.
+   */
+  floor?: string;
   /** Pièces de décor posées autour du plateau (`LandeProps`). */
   props?: LandeProp[];
   /**
@@ -140,6 +146,7 @@ export const LANDE_SCENES: Readonly<Record<string, LandeScene>> = {
       "linear-gradient(180deg, rgba(30, 20, 10, 0.4) 0%, rgba(20, 14, 8, 0.15) 40%, rgba(30, 20, 10, 0.4) 100%), " +
       "radial-gradient(120% 90% at 50% 45%, transparent 40%, rgba(8, 5, 2, 0.55) 100%)",
     frontFx: true,
+    floor: "donjon-sol.png",
     // Murs, arche, étal et latrines sortent du plateau à l'arrivée de la Lande.
     // `at` est une position VOULUE : `LandeProps` cherche autour la plus
     // grande place libre, sans jamais toucher l'interface.

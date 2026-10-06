@@ -48,6 +48,7 @@ import { LandeBadge } from "@/features/match/landes/LandeBadge";
 import landeStyles from "@/features/match/landes/Landes.module.css";
 import { OngoingEffects } from "@/features/match/table/OngoingEffects";
 import { LandeLayer } from "@/features/match/landes/LandeLayer";
+import { landeAsset, landeScene } from "@/features/match/landes/landeScenes";
 import { DecorLayer } from "@/features/match/table/DecorLayer";
 import { DragLayer, type AimTone } from "@/features/match/table/DragLayer";
 import { EquipLinks } from "@/features/match/table/EquipLinks";
@@ -994,7 +995,15 @@ export function TableBoard(props: TableBoardProps) {
   return (
     <>
       <GameViewport>
-        <BackgroundLayer tideState={tideState} />
+        <BackgroundLayer
+          tideState={tideState}
+          floor={(() => {
+            const sol = lande ? landeScene(lande.cardId).floor : undefined;
+            if (!lande || !sol) return null;
+            const arriving = lande.instanceId !== seenLande.current || landeArrival?.instanceId === lande.instanceId;
+            return { src: landeAsset(lande.cardId, sol), key: lande.instanceId, delayMs: arriving ? LANDE_ARRIVAL.DISSOLVE_AT : 0 };
+          })()}
+        />
         <RainLayer tideState={tideState} />
         <LandeLayer
           lande={lande}
