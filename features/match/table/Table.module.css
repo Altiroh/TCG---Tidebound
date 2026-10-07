@@ -480,22 +480,56 @@
  * comme les piles et la colonne de droite (symétrie), les rejetait sur le
  * cadre de bois. La cible de dépôt (`.boardSlotNext`) garde son allure.
  */
+.stageBare {
+  /* Décalage du navire vers le plateau (mobile, voir plus bas). */
+  --ship-shift: 0px;
+}
+
 .stageBare .boardSlotEmpty:not(.boardSlotNext) {
-  background: rgba(92, 58, 24, 0.07);
+  background: rgba(92, 58, 24, 0.1);
   box-shadow: none;
-  outline: 1.5px dashed rgba(92, 58, 24, 0.5);
+  outline: 1.5px dashed rgba(92, 58, 24, 0.62);
   outline-offset: -1.5px;
 }
 
 .stageBare .zoneSlotShip {
   justify-self: end;
+  translate: var(--ship-shift) 0;
+}
+
+/*
+ * Chaque camp tracé à l'encre sur la feuille : un double filet sépia et un
+ * lavis à peine visible, du navire aux piles. Il remplace le cadre de bois
+ * (`.lane`) pour regrouper le camp sans l'alourdir. Il part de la colonne
+ * du plateau et recule de la largeur du navire : le navire, collé au
+ * plateau, n'occupe que la fin de la colonne 1.
+ */
+.laneInk {
+  --ink-pad: calc(var(--row-h) * 0.07);
+  grid-column: 2 / 4;
+  z-index: 0;
+  pointer-events: none;
+  margin: calc(var(--ink-pad) * -1) calc(var(--ink-pad) * -1) calc(var(--ink-pad) * -1)
+    calc((var(--ship-w) + var(--col-gap) + var(--ink-pad) - var(--ship-shift)) * -1);
+  border: 1.5px solid rgba(92, 58, 24, 0.42);
+  border-radius: calc(var(--row-h) * 0.06);
+  background: radial-gradient(ellipse at center, rgba(92, 58, 24, 0.03), rgba(92, 58, 24, 0.09));
+  box-shadow: inset 0 0 0 4px rgba(0, 0, 0, 0), inset 0 0 0 5px rgba(92, 58, 24, 0.2);
+}
+
+.laneInk.laneOpponent {
+  grid-row: 2;
+}
+
+.laneInk.lanePlayer {
+  grid-row: 4;
 }
 
 /* Sur mobile, la colonne 1 n'est large que du navire : `end` ne le bouge
    pas. On le pousse dans le vide qui le sépare du plateau. */
 @media (max-height: 520px), (max-width: 820px) {
-  .stageBare .zoneSlotShip {
-    translate: 3cqw 0;
+  .stageBare {
+    --ship-shift: 3cqw;
   }
 }
 

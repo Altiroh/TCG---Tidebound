@@ -334,6 +334,9 @@ export function BoardPreviewPage() {
           et Marée se rapprochent du plateau (`.stageBare`). La vraie partie
           (`TableBoard`) garde ses cadres tant que l'essai n'est pas validé. */}
       <GameStage ref={stageRef} className={`${styles.stageBare} ${gesture ? styles.gesturing : ""}`}>
+        {/* Chaque camp tracé à l'encre sur la feuille, à la place du cadre de bois. */}
+        <div aria-hidden className={`${styles.laneInk} ${styles.laneOpponent}`} />
+        <div aria-hidden className={`${styles.laneInk} ${styles.lanePlayer}`} />
 
         <TableOpponentHand count={opponentHand} hidden={motion.hidden} />
         <OpponentZone
