@@ -1,5 +1,5 @@
 import type { TideStateName } from "@/game";
-import { BOARD_CAPACITY, type TableCardModel, type TableTideModel } from "@/features/match/table/tableModel";
+import type { TableCardModel, TableTideModel } from "@/features/match/table/tableModel";
 
 type CardId = string;
 
@@ -13,13 +13,19 @@ type CardId = string;
  */
 
 /*
- * Le MODÈLE de vue (`TableCardModel`, `TableTideModel`, `BOARD_CAPACITY`)
- * vit avec le plateau (`features/match/table/tableModel.ts`), pas ici : ce
- * fichier ne fournit que des données de démonstration. Réexportés par
- * commodité pour les écrans du laboratoire.
+ * Le MODÈLE de vue (`TableCardModel`, `TableTideModel`) vit avec le plateau
+ * (`features/match/table/tableModel.ts`), pas ici : ce fichier ne fournit
+ * que des données de démonstration. Réexportés par commodité pour les
+ * écrans du laboratoire.
  */
-export { BOARD_CAPACITY };
 export type { TableCardModel, TableTideModel };
+
+/**
+ * Le labo se règle sur le PIRE cas : les plus grands Navires (Brise-Lames,
+ * Île-Tortue Opaline) ont 6 emplacements, contre 5 pour le `BOARD_CAPACITY`
+ * par défaut. Ce qui tient ici tient pour tous les Navires.
+ */
+export const BOARD_CAPACITY = 6;
 
 function makeCards(prefix: string, cardIds: CardId[]): TableCardModel[] {
   return cardIds.map((cardId, i) => ({ id: `${prefix}-${i + 1}`, cardId }));

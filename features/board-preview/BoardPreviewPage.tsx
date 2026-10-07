@@ -333,7 +333,9 @@ export function BoardPreviewPage() {
           (`.lane`), les emplacements se dessinent à même le tapis, et navires
           et Marée se rapprochent du plateau (`.stageBare`). La vraie partie
           (`TableBoard`) garde ses cadres tant que l'essai n'est pas validé. */}
-      <GameStage ref={stageRef} className={`${styles.stageBare} ${gesture ? styles.gesturing : ""}`}>
+      <GameStage ref={stageRef} className={`${styles.stageBare} ${gesture ? styles.gesturing : ""}`}
+        style={{ ["--board-slots" as string]: BOARD_CAPACITY }}
+      >
         {/* Chaque camp tracé à l'encre sur la feuille, à la place du cadre de bois. */}
         <div aria-hidden className={`${styles.laneInk} ${styles.laneOpponent}`} />
         <div aria-hidden className={`${styles.laneInk} ${styles.lanePlayer}`} />
@@ -342,6 +344,7 @@ export function BoardPreviewPage() {
         <OpponentZone
           ship={{ name: opponent.shipName, illustration: opponent.illustration, hull: hull.opponent, maxHull: opponent.maxHull, reason: opponent.reason, maxReason: opponent.maxReason }}
           board={opponentBoard}
+          capacity={BOARD_CAPACITY}
           deck={opponentDeck}
           graveyard={opponentGraveyard}
           graveyardTop={
@@ -392,6 +395,7 @@ export function BoardPreviewPage() {
             },
           }}
           board={playerBoard}
+          capacity={BOARD_CAPACITY}
           deck={playerDeck.length}
           onDraw={drawPlayer}
           graveyard={playerGraveyard}
