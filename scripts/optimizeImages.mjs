@@ -153,8 +153,10 @@ const RULES = [
   // jamais plus de ~380 px de haut. 1254 → 760 px (audit du 24/09).
   { match: /\/board\/tide-orientation\//, maxSize: 760, quality: 86 },
   // Table classique : le fond (table et tapis de parchemin) couvre l'écran,
-  // pleine taille ; la bougie, posée dans le coin, ne dépasse pas ~200 px.
-  { match: /\/board\/table-classique\/(fond|playground)[^/]*\./, maxSize: 1672, quality: 84 },
+  // pleine taille, et zoomé pour englober le plateau : à 1672 px et
+  // qualité 84 il sortait flou (07/10) — on garde jusqu'à 2560 px, en 92.
+  // La bougie, posée dans le coin, ne dépasse pas ~200 px.
+  { match: /\/board\/table-classique\/(fond|playground)[^/]*\./, maxSize: 2560, quality: 92 },
   { match: /\/board\/table-classique\/bougie\./, maxSize: 512, quality: 90 },
   // Ombre de transition de page : étirée à 140 % de la hauteur d'écran, elle
   // est déjà agrandie à l'affichage. Ramenée de 1672 à 1254 px (audit du

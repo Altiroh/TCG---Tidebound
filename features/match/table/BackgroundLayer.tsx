@@ -7,9 +7,9 @@ import { useLandeTuning } from "@/features/match/landes/landeTuning";
 import styles from "@/features/match/table/Table.module.css";
 
 /**
- * TABLE CLASSIQUE (maquette du 06/10/2026) : une table de bois, un tapis de
- * parchemin où se pose le plateau, et dans les coins pièces, dés, pipe,
- * cartes et boussole — tout est peint dans le fond (1672 × 941).
+ * TABLE CLASSIQUE (fond du 07/10/2026) : un tapis de parchemin où se pose le
+ * plateau, serti dans un cadre de planches bleu-vert cloutées et de
+ * cordages — tout est peint dans le fond (1672 × 941).
  */
 const TABLE_SRC = "/assets/board/table-classique/playground.webp";
 
@@ -17,12 +17,14 @@ const TABLE_SRC = "/assets/board/table-classique/playground.webp";
 const BOUGIE_SRC = "/assets/board/table-classique/bougie.webp";
 
 /**
- * Le tapis de parchemin dans le fond (mesuré : x 5 → 1668, y 135 → 805),
- * pris un peu en retrait de ses bords déchirés : le plateau se pose dedans.
- * Le fond est peint pour l'interface (tapis sur toute la largeur, bois en
- * haut et en bas pour les mains) : le zoom reste faible.
+ * Le tapis de parchemin dans le fond (mesuré : x 75 → 1598, y 112 → 825),
+ * pris un peu en retrait de ses bords déchirés en hauteur : le plateau se
+ * pose dedans. En largeur, la cible est le fond presque entier : les rangées
+ * vont d'un bord à l'autre de l'écran, et les faire tenir dans le seul
+ * parchemin zoomait le fond au point de le flouter et de couper le cadre ;
+ * elles passent donc sur les planches de côté.
  */
-const TABLE_FIT: FitTarget = [15 / 1672, 145 / 941, 1657 / 1672, 797 / 941];
+const TABLE_FIT: FitTarget = [12 / 1672, 125 / 941, 1660 / 1672, 812 / 941];
 
 /** Zones d'interface que le fond doit englober (les mains en restent dehors, comme sur la maquette). */
 const UI_ZONES = '[data-zone="OpponentZone"], [data-zone="CenterZone"], [data-zone="PlayerZone"], [data-zone="SideRail"]';
