@@ -329,10 +329,11 @@ export function BoardPreviewPage() {
     <GameViewport debugZones={zonesVisible}>
       <BackgroundLayer />
 
-      <GameStage ref={stageRef} className={gesture ? styles.gesturing : undefined}>
-        {/* Cadres des deux rangées de plateau, derrière les zones. La bande de Marée n'en a pas : on y voit le décor. */}
-        <div aria-hidden className={`${styles.lane} ${styles.laneOpponent}`} />
-        <div aria-hidden className={`${styles.lane} ${styles.lanePlayer}`} />
+      {/* Essai sur la feuille de parchemin (07/10) : plus de cadres de rangée
+          (`.lane`), les emplacements se dessinent à même le tapis, et navires
+          et Marée se rapprochent du plateau (`.stageBare`). La vraie partie
+          (`TableBoard`) garde ses cadres tant que l'essai n'est pas validé. */}
+      <GameStage ref={stageRef} className={`${styles.stageBare} ${gesture ? styles.gesturing : ""}`}>
 
         <TableOpponentHand count={opponentHand} hidden={motion.hidden} />
         <OpponentZone

@@ -472,6 +472,33 @@
   box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.45);
 }
 
+/*
+ * ESSAI DU LABO (`/game/board-preview`, 07/10) : le plateau posé à même la
+ * feuille de parchemin, sans cadre de rangée. Les emplacements vides y sont
+ * tracés à l'encre (pointillés sépia, à peine ombrés), et navires et Marée
+ * quittent le bord gauche pour se coller au plateau : la colonne 1, large
+ * comme les piles et la colonne de droite (symétrie), les rejetait sur le
+ * cadre de bois. La cible de dépôt (`.boardSlotNext`) garde son allure.
+ */
+.stageBare .boardSlotEmpty:not(.boardSlotNext) {
+  background: rgba(92, 58, 24, 0.07);
+  box-shadow: none;
+  outline: 1.5px dashed rgba(92, 58, 24, 0.5);
+  outline-offset: -1.5px;
+}
+
+.stageBare .zoneSlotShip {
+  justify-self: end;
+}
+
+/* Sur mobile, la colonne 1 n'est large que du navire : `end` ne le bouge
+   pas. On le pousse dans le vide qui le sépare du plateau. */
+@media (max-height: 520px), (max-width: 820px) {
+  .stageBare .zoneSlotShip {
+    translate: 3cqw 0;
+  }
+}
+
 /* Carte adverse cachée par la Marée (Structure invisible) : le dos, au format carte. */
 .boardCardBack {
   display: block;
