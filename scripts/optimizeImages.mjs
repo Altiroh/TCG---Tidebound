@@ -167,6 +167,8 @@ const RULES = [
   { match: /\/board\/pont\/selecteur-maree\./, maxSize: 320, quality: 92 },
   { match: /\/board\/pont\/emplacement-carte\./, maxSize: 560, quality: 88 },
   { match: /\/board\/pont\/bol-des\./, maxSize: 512, quality: 90 },
+  // Boutons de phase du pont : ~80 px à l'écran.
+  { match: /\/board\/pont\/(phase-principale|phase-combat|fin-de-tour)\./, maxSize: 320, quality: 92 },
   // Ombre de transition de page : étirée à 140 % de la hauteur d'écran, elle
   // est déjà agrandie à l'affichage. Ramenée de 1672 à 1254 px (audit du
   // 24/09, 330 → 134 Ko) : c'est une ombre floue qui traverse l'écran en

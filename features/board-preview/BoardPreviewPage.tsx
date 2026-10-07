@@ -18,6 +18,7 @@ import { MotionLayer, type ImpactFx } from "@/features/match/table/MotionLayer";
 import { shipAbilityArtUrl } from "@/features/ships/shipFrame";
 import { OpponentZone } from "@/features/match/table/OpponentZone";
 import { PlayerZone } from "@/features/match/table/PlayerZone";
+import { PontActions, type PontPhase } from "@/features/board-preview/PontActions";
 import { PontTideTrack } from "@/features/board-preview/PontTideTrack";
 import { PreviewGameCard } from "@/features/board-preview/PreviewGameCard";
 import { TableHand } from "@/features/match/table/TableHand";
@@ -84,6 +85,8 @@ export type BoardPreviewDecor = "parchemin" | "pont";
 
 export function BoardPreviewPage({ decor = "parchemin" }: { decor?: BoardPreviewDecor }) {
   const pont = decor === "pont";
+  // Phase du labo du pont : on la change à la main ; la fin de tour ramène à la phase principale.
+  const [pontPhase, setPontPhase] = useState<PontPhase>("main");
   const stageRef = useRef<HTMLDivElement>(null);
   const metrics = useTableMetrics(stageRef);
   const [zonesVisible, setZonesVisible] = useState(false);
@@ -390,13 +393,8 @@ export function BoardPreviewPage({ decor = "parchemin" }: { decor?: BoardPreview
         <CenterZone
           tide={tide}
           track={pont ? <PontTideTrack tide={tide} /> : undefined}
-          // Sur le pont, le bol à dés se pose à droite de la Marée (la case du hublot de Lande).
-          cargo={
-            pont ? (
-              // eslint-disable-next-line @next/next/no-img-element -- décor local
-              <img src="/assets/board/pont/bol-des.webp" alt="" aria-hidden draggable={false} className={styles.pontBowl} />
-            ) : undefined
-          }
+          // Sur le pont, à droite de la Marée : les phases, la fin de tour et le bol à dés.
+          cargo={pont ? <PontActions phase={pontPhase} onPhase={setPontPhase} onEndTurn={() => setPontPhase("main")} /> : undefined}
         />
         <PlayerZone
           ship={{

@@ -541,39 +541,132 @@
 }
 
 /*
- * LE PONT DU CAPITAINE (labo `/game/pont-preview`, 07/10) : le pont est sa
- * propre table, sans toiles. Un emplacement vide est une planche de bois
- * marquée d'une rose des vents, à demi effacée dans le pont ; la piste de
- * Marée à hublots est plus large que l'ancienne (ses noms sont peints
- * dessous) ; le bol à dés se pose à sa droite.
+ * LE PONT DU CAPITAINE (labo `/game/pont-preview`, 07/10), d'après la
+ * maquette : le pont est sa propre table, sans toiles ni colonne de tour.
+ *
+ *   [ navire ] [ pioche ] [ 6 emplacements ] [ cimetière ]
+ *   [   (Lande, posée)  ] [  piste de Marée ] [ phases · fin de tour · dés ]
+ *   [ navire ] [ pioche ] [ 6 emplacements ] [ cimetière ]
+ *
+ * Les deux piles quittent leur boîte commune (`.cargo` en `display:
+ * contents`) pour encadrer les cartes, chacune dans sa colonne. Sélecteurs à
+ * deux classes (`.stage.stagePont`) : ils l'emportent sur la scène mobile,
+ * écrite plus bas.
  */
+.stage.stagePont {
+  /* Ni colonne de tour, ni symétrie : navire, pioche, plateau, cimetière.
+     Carte la plus grande qui tient : navire (≈ 1,25 carte), deux piles,
+     les emplacements, trois gouttières. */
+  --card-h-fit: calc(
+    (min(100cqw - var(--safe-left) - var(--safe-right), var(--stage-max-w)) - 2 * var(--gutter-x) - 3 * var(--col-gap) -
+        (var(--board-slots) + 1) * var(--board-gap)) /
+      (var(--board-slots) + 3.3) * 7 / 5
+  );
+  /* La colonne du plateau prend la largeur de ses cartes, et l'ensemble se
+     centre : pioche et cimetière encadrent les cartes au lieu de partir aux
+     bords. */
+  grid-template-columns: var(--ship-w) var(--card-w) max-content var(--card-w);
+  justify-content: center;
+}
+
+.stagePont .rail {
+  display: none;
+}
+
+.stage.stagePont .zone {
+  grid-column: 1 / -1;
+}
+
+.stage.stagePont .zoneSlotShip {
+  grid-column: 1;
+  justify-self: start;
+  translate: none;
+}
+
+.stage.stagePont .zoneSlotBoard {
+  grid-column: 3;
+}
+
+.stagePont .zoneSlotCargo,
+.stagePont .cargo {
+  display: contents;
+}
+
+/* Tout sur la même ligne : la pioche vient APRÈS le plateau dans le DOM
+   mais AVANT lui dans la grille ; placée automatiquement, elle passait à
+   la ligne suivante et décalait toute la rangée. */
+.stage.stagePont .zone > *,
+.stagePont .cargoDeck,
+.stagePont .cargoGraveyard {
+  grid-row: 1;
+}
+
+.stagePont .cargoDeck {
+  grid-column: 2;
+  justify-self: center;
+}
+
+.stagePont .cargoGraveyard {
+  grid-column: 4;
+  justify-self: center;
+}
+
+/* Piles épaisses, cartes superposées comme sur la maquette. */
+.stagePont .cargoDeck,
+.stagePont .cargoGraveyard {
+  box-shadow:
+    2px 2px 0 #2a1a0e,
+    3px 3px 0 rgba(214, 186, 140, 0.35),
+    5px 5px 0 #2a1a0e,
+    6px 6px 0 rgba(214, 186, 140, 0.3),
+    8px 8px 0 #2a1a0e,
+    9px 9px 0 rgba(214, 186, 140, 0.25),
+    11px 11px 0 #2a1a0e,
+    0 12px 22px rgba(10, 5, 2, 0.6);
+}
+
+.stagePont .cargoGraveyard {
+  background: rgba(30, 18, 8, 0.55);
+}
+
+/* Bande centrale : la grille du plateau, sans tuile de sens. */
+.stage.stagePont .centerZone {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: subgrid;
+}
+
+.stage.stagePont .centerZone .zoneSlotShip {
+  display: none;
+}
+
+.stage.stagePont .centerZone .zoneSlotBoard {
+  grid-column: 3;
+  justify-self: center;
+  /* Large comme le plateau, mais jamais plus haute que la bande centrale
+     (la planche fait 3,9 fois sa hauteur ; le sélecteur dépasse au-dessus). */
+  width: min(92%, calc(var(--center-h) * 3.1));
+}
+
+.stage.stagePont .centerZone .zoneSlotCargo {
+  grid-column: 4;
+  display: flex;
+  justify-self: start;
+  width: max-content;
+}
+
+/* Un emplacement vide : une planche marquée d'une rose des vents, à demi
+   effacée dans le pont. */
 .stagePont .boardSlotEmpty:not(.boardSlotNext) {
   background: url("/assets/board/pont/emplacement-carte.webp") center / 100% 100% no-repeat;
   box-shadow: none;
   opacity: 0.45;
 }
 
-.stagePont .centerZone .zoneSlotBoard {
-  flex-basis: calc(var(--card-w) * 5.6 + 5 * var(--board-gap));
-}
-
-.pontBowl {
-  display: block;
-  height: calc(var(--row-h) * 0.62);
-  aspect-ratio: 1;
-  filter: drop-shadow(0 4px 8px rgba(20, 10, 4, 0.6));
-  pointer-events: none;
-  user-select: none;
-}
-
-/* Téléphone : la piste et le bol suivent la hauteur de la bande centrale. */
+/* Téléphone : la piste suit la hauteur de la bande centrale. */
 @media (max-height: 520px), (max-width: 820px) {
-  .stagePont .centerZone .zoneSlotBoard {
-    flex-basis: auto;
-  }
-
-  .pontBowl {
-    height: calc(var(--center-h, 40px) * 1.1);
+  .stage.stagePont .centerZone .zoneSlotBoard {
+    width: auto;
   }
 }
 
