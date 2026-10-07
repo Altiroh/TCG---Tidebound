@@ -512,36 +512,67 @@
 }
 
 /*
- * Chaque camp posé sur son TAPIS de feutrine (`board/tapis/`), du navire aux
- * piles, à la place du cadre de bois (`.lane`). Le tapis est peint en 3:2 :
- * il est découpé en neuf (`border-image`), les quatre coins (roses des
- * vents brodées) restent entiers, les bords cousus et la feutrine s'étirent
- * à la longueur de la rangée. Il part de la colonne du plateau et recule de
- * la largeur du navire : le navire, collé au plateau, n'occupe que la fin
- * de la colonne 1.
+ * Chaque camp posé sur sa TOILE à voile teinte (`board/tapis/`), du navire
+ * aux piles, à la place du cadre de bois (`.lane`). (Les tapis de feutrine,
+ * trop propres pour le parchemin peint, ont été écartés le 07/10.)
+ *
+ * La toile peinte fait 1500 × 960 ; une rangée est 5 à 7 fois plus large
+ * que haute. Un `border-image` étirait son centre jusqu'à le déformer
+ * (« pixels étirés »). Elle est donc montée SANS DÉFORMATION, tout à la
+ * hauteur de la rangée :
+ *   - `-bout` : le bout gauche (0 → 620 px : roses des vents, pièce
+ *     rapiécée, déchirures), entier ; à droite, son reflet ;
+ *   - `-milieu` : un morceau de toile (620 → 1150 px) suivi de son reflet,
+ *     répété en largeur (`round` : un nombre entier de paires). Reflet après
+ *     reflet, chaque raccord recolle deux bords identiques — avec le bout de
+ *     gauche, entre deux tuiles, et avec le bout de droite.
+ * Elle part de la colonne du plateau et recule de la largeur du navire : le
+ * navire, collé au plateau, n'occupe que la fin de la colonne 1.
  */
 .laneMat {
-  --mat-pad: calc(var(--row-h) * 0.09);
-  /* Taille rendue d'un pixel du tapis source : un coin (120 px) ≈ 0,2 rangée. */
-  --mat-unit: calc(var(--row-h) / 600);
+  /* Marge de toile autour des cartes : les bords déchirés en prennent un
+     tiers, le reste laisse respirer les cartes. */
+  --mat-pad: calc(var(--row-h) * 0.2);
+  --mat-h: calc(var(--row-h) + 2 * var(--mat-pad));
+  --mat-cap: calc(var(--mat-h) * 620 / 960);
+  --mat-bout: url("/assets/board/tapis/toile-bleue-bout.webp");
+  --mat-milieu: url("/assets/board/tapis/toile-bleue-milieu.webp");
+  position: relative;
   grid-column: 2 / 4;
   z-index: 0;
   pointer-events: none;
   margin: calc(var(--mat-pad) * -1) calc(var(--mat-pad) * -1) calc(var(--mat-pad) * -1)
     calc((var(--ship-w) + var(--col-gap) + var(--mat-pad) - var(--ship-shift)) * -1);
-  border-style: solid;
-  border-width: 0;
-  border-image-source: url("/assets/board/tapis/tapis-bleu.webp");
-  border-image-slice: 120 fill;
-  border-image-width: calc(var(--mat-unit) * 120);
-  border-image-repeat: stretch;
-  filter: drop-shadow(0 calc(var(--row-h) * 0.02) calc(var(--row-h) * 0.04) rgba(40, 22, 8, 0.45));
+  /* Le milieu, entre les deux bouts (un pixel de recouvrement, contre un liseré). */
+  padding-inline: calc(var(--mat-cap) - 1px);
+  background: var(--mat-milieu) left center / auto 100% round no-repeat content-box;
+  filter: drop-shadow(0 calc(var(--row-h) * 0.015) calc(var(--row-h) * 0.03) rgba(40, 22, 8, 0.4));
 }
 
-/* L'adversaire sur le tapis rouge, le joueur sur le bleu. */
+.laneMat::before,
+.laneMat::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: var(--mat-cap);
+  background: var(--mat-bout) center / 100% 100% no-repeat;
+}
+
+.laneMat::before {
+  left: 0;
+}
+
+.laneMat::after {
+  right: 0;
+  transform: scaleX(-1);
+}
+
+/* L'adversaire sur la toile rouge, le joueur sur la bleue. */
 .laneMat.laneOpponent {
   grid-row: 2;
-  border-image-source: url("/assets/board/tapis/tapis-rouge.webp");
+  --mat-bout: url("/assets/board/tapis/toile-rouge-bout.webp");
+  --mat-milieu: url("/assets/board/tapis/toile-rouge-milieu.webp");
 }
 
 .laneMat.lanePlayer {
@@ -555,6 +586,12 @@
     /* Le vide entre navire et plateau ne fait qu’une douzaine de pixels à
        6 emplacements : on n’en prend que la moitié. */
     --ship-shift: 0.8cqw;
+  }
+
+  /* Les rangées ne sont séparées que d'une bande de 26 px : la toile reste
+     près des cartes. */
+  .stageBare .laneMat {
+    --mat-pad: calc(var(--row-h) * 0.1);
   }
 }
 
