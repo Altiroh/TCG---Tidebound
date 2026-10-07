@@ -336,9 +336,9 @@ export function BoardPreviewPage() {
       <GameStage ref={stageRef} className={`${styles.stageBare} ${gesture ? styles.gesturing : ""}`}
         style={{ ["--board-slots" as string]: BOARD_CAPACITY }}
       >
-        {/* Chaque camp tracé à l'encre sur la feuille, à la place du cadre de bois. */}
-        <div aria-hidden className={`${styles.laneInk} ${styles.laneOpponent}`} />
-        <div aria-hidden className={`${styles.laneInk} ${styles.lanePlayer}`} />
+        {/* Chaque camp sur son tapis de feutrine, à la place du cadre de bois. */}
+        <div aria-hidden className={`${styles.laneMat} ${styles.laneOpponent}`} />
+        <div aria-hidden className={`${styles.laneMat} ${styles.lanePlayer}`} />
 
         <TableOpponentHand count={opponentHand} hidden={motion.hidden} />
         <OpponentZone
