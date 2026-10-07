@@ -590,6 +590,12 @@
   --pont-persp: 150cqh;
   /* Distance (dans le plan) entre le centre d'une rangée et celui de la bande de Marée. */
   --pont-row-offset: calc((var(--row-h) + var(--center-h)) / 2 + var(--row-gap));
+  /* NETTETÉ : une zone inclinée est dessinée à plat puis projetée ; ce qui
+     passe DEVANT l'écran est agrandi après coup, donc flou (la rangée du
+     joueur, sa pioche). Tout le plan recule de façon que son bord le plus
+     proche (le bas de la rangée du joueur) touche l'écran : plus rien n'est
+     agrandi, tout est seulement réduit, et reste net. */
+  --pont-near: calc((var(--pont-row-offset) + var(--row-h) / 2) * sin(var(--pont-tilt)));
   perspective: var(--pont-persp);
   perspective-origin: 50% 50%;
 }
@@ -598,7 +604,7 @@
 .stage.stagePont .centerZone,
 .stage.stagePont .playerZone {
   transform-origin: 50% 50%;
-  transform: translateZ(var(--pont-z, 0px)) rotateX(var(--pont-tilt));
+  transform: translateZ(calc(var(--pont-z, 0px) - var(--pont-near))) rotateX(var(--pont-tilt));
 }
 
 .stage.stagePont .opponentZone {
