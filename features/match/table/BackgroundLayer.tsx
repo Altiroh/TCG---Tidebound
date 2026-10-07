@@ -26,6 +26,33 @@ const BOUGIE_SRC = "/assets/board/table-classique/bougie.webp";
  */
 const TABLE_FIT: FitTarget = [12 / 1672, 125 / 941, 1660 / 1672, 812 / 941];
 
+/**
+ * Une TABLE de partie : son fond (1672 × 941), la zone faite pour le plateau
+ * et, pour la table classique, la bougie du coin. Par défaut, la table
+ * classique ; les laboratoires en essaient d'autres (`TABLE_PONT`).
+ */
+export interface TableDecor {
+  src: string;
+  fit: FitTarget;
+  bougie?: boolean;
+}
+
+export const TABLE_CLASSIQUE: TableDecor = { src: TABLE_SRC, fit: TABLE_FIT, bougie: true };
+
+/**
+ * LE PONT DU CAPITAINE (essai du 07/10/2026) : un pont de navire vu de haut,
+ * bastingage, cordages et lanternes tout autour, la mer au couchant derrière.
+ * Les planches (mesurées : x ≈ 160 → 1560 en bas, 290 → 1440 en haut, y ≈ 95
+ * → 840) reçoivent le plateau. Y faire tenir toute l'interface zoomait le
+ * fond au point de chasser le bastingage de l'écran : la cible est le fond
+ * presque entier, et navires, piles et colonne de tour débordent sur le
+ * pourtour, comme sur la maquette.
+ */
+export const TABLE_PONT: TableDecor = {
+  src: "/assets/board/pont/pont-fond.webp",
+  fit: [30 / 1672, 70 / 941, 1642 / 1672, 885 / 941],
+};
+
 /** Zones d'interface que le fond doit englober (les mains en restent dehors, comme sur la maquette). */
 const UI_ZONES = '[data-zone="OpponentZone"], [data-zone="CenterZone"], [data-zone="PlayerZone"], [data-zone="SideRail"]';
 
@@ -56,7 +83,7 @@ export interface LandeFloorProps {
  * De vraies balises `<img>` plutôt qu'un `background-image` : même raison
  * que `BoardBackdrop` (repaint peu fiable d'un fond CSS chargé tard).
  */
-export function BackgroundLayer({ floor = null }: { floor?: LandeFloorProps | null }) {
+export function BackgroundLayer({ floor = null, table = TABLE_CLASSIQUE }: { floor?: LandeFloorProps | null; table?: TableDecor }) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const layout = useUiLayout(hostRef);
   const boxFor = (target: FitTarget): CSSProperties | undefined => {
@@ -66,12 +93,12 @@ export function BackgroundLayer({ floor = null }: { floor?: LandeFloorProps | nu
   };
   return (
     <div ref={hostRef} aria-hidden className={styles.background}>
-      <div className={styles.coverBox} style={boxFor(TABLE_FIT)}>
+      <div className={styles.coverBox} style={boxFor(table.fit)}>
         {/* eslint-disable-next-line @next/next/no-img-element -- décor plein écran, jamais responsive au sens Next/Image */}
-        <img src={TABLE_SRC} alt="" draggable={false} decoding="async" fetchPriority="high" className={styles.coverImage} />
-        <Bougie />
+        <img src={table.src} alt="" draggable={false} decoding="async" fetchPriority="high" className={styles.coverImage} />
+        {table.bougie && <Bougie />}
       </div>
-      <LandeFloor floor={floor} boxFor={boxFor} />
+      <LandeFloor floor={floor} boxFor={boxFor} tableFit={table.fit} />
     </div>
   );
 }
@@ -143,7 +170,7 @@ const WALL_STAGGER_MS = 160;
  * tant que la Lande est là. Absent (fichier pas encore livré) : rien ne
  * change, la table reste.
  */
-function LandeFloor({ floor, boxFor }: { floor: LandeFloorProps | null; boxFor: (target: FitTarget) => CSSProperties | undefined }) {
+function LandeFloor({ floor, boxFor, tableFit }: { floor: LandeFloorProps | null; boxFor: (target: FitTarget) => CSSProperties | undefined; tableFit: FitTarget }) {
   const ok = useImageOk(floor?.src ?? null);
   const { floorBrightness } = useLandeTuning();
   const [leaving, setLeaving] = useState<LandeFloorProps | null>(null);
@@ -166,8 +193,8 @@ function LandeFloor({ floor, boxFor }: { floor: LandeFloorProps | null; boxFor: 
   // qui joue elle-même sur `filter`, l'écraserait sur l'image.
   return (
     <div className={styles.landeFloorLayer} style={{ filter: floorBrightness === 1 ? undefined : `brightness(${floorBrightness})` }}>
-      {leaving && <FloorScene key={`out-${leaving.key}`} floor={leaving} box={boxFor(leaving.fit ?? TABLE_FIT)} className={styles.landeFloorOut} />}
-      {shown && <FloorScene key={shown.key} floor={shown} box={boxFor(shown.fit ?? TABLE_FIT)} className={styles.landeFloor} />}
+      {leaving && <FloorScene key={`out-${leaving.key}`} floor={leaving} box={boxFor(leaving.fit ?? tableFit)} className={styles.landeFloorOut} />}
+      {shown && <FloorScene key={shown.key} floor={shown} box={boxFor(shown.fit ?? tableFit)} className={styles.landeFloor} />}
     </div>
   );
 }

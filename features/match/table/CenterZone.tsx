@@ -9,6 +9,8 @@ interface CenterZoneProps {
   hint?: ReactNode;
   /** Colonne de droite, à droite de la piste : le hublot de la Lande en jeu (`LandeBadge`). */
   cargo?: ReactNode;
+  /** Piste de Marée de remplacement (laboratoires) ; à défaut, les hublots de `TideIndicator`. */
+  track?: ReactNode;
 }
 
 /**
@@ -26,7 +28,7 @@ interface CenterZoneProps {
  * se relaient en pivotant quand l'orientation change — même mouvement que
  * `TideOrientationTile` (fondu + légère rotation + zoom).
  */
-export function CenterZone({ tide, hint, cargo }: CenterZoneProps) {
+export function CenterZone({ tide, hint, cargo, track }: CenterZoneProps) {
   const rising = tide.orientation === "rising";
   return (
     <div className={`${styles.zone} ${styles.centerZone}`} data-zone="CenterZone">
@@ -50,7 +52,7 @@ export function CenterZone({ tide, hint, cargo }: CenterZoneProps) {
       </div>
       <div className={styles.zoneSlotBoard}>
         <div className={styles.centerStack}>
-          <TideIndicator tide={tide} />
+          {track ?? <TideIndicator tide={tide} />}
           {hint}
         </div>
       </div>

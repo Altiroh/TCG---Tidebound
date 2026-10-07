@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { advanceTideState, naturalOrientationFor, type TideOrientation } from "@/game";
 import { playCardDraw, playAttackImpact } from "@/lib/sound";
 import { animateAttacker, ATTACK_IMPACT_AT_MS, ATTACK_TOTAL_MS, shake } from "@/features/board-preview/attackMotion";
-import { BackgroundLayer } from "@/features/match/table/BackgroundLayer";
+import { BackgroundLayer, TABLE_PONT } from "@/features/match/table/BackgroundLayer";
 import { CardZoom } from "@/features/board-preview/CardZoom";
 import { CenterZone } from "@/features/match/table/CenterZone";
 import { DebugOverlay } from "@/features/board-preview/DebugOverlay";
@@ -18,6 +18,7 @@ import { MotionLayer, type ImpactFx } from "@/features/match/table/MotionLayer";
 import { shipAbilityArtUrl } from "@/features/ships/shipFrame";
 import { OpponentZone } from "@/features/match/table/OpponentZone";
 import { PlayerZone } from "@/features/match/table/PlayerZone";
+import { PontTideTrack } from "@/features/board-preview/PontTideTrack";
 import { PreviewGameCard } from "@/features/board-preview/PreviewGameCard";
 import { TableHand } from "@/features/match/table/TableHand";
 import { PhaseButton, TableHud } from "@/features/match/table/TableHud";
@@ -74,7 +75,15 @@ const BADGE_SIZE: Record<BoardPreviewBreakpoint, number> = {
   "desktop-large": 38,
 };
 
-export function BoardPreviewPage() {
+/**
+ * Décor du labo : la feuille de parchemin et ses toiles (`/game/board-preview`),
+ * ou le Pont du Capitaine (`/game/pont-preview`, essai du 07/10) — un pont de
+ * navire, sa piste de Marée à hublots, des emplacements de bois et un bol à dés.
+ */
+export type BoardPreviewDecor = "parchemin" | "pont";
+
+export function BoardPreviewPage({ decor = "parchemin" }: { decor?: BoardPreviewDecor }) {
+  const pont = decor === "pont";
   const stageRef = useRef<HTMLDivElement>(null);
   const metrics = useTableMetrics(stageRef);
   const [zonesVisible, setZonesVisible] = useState(false);
@@ -327,18 +336,22 @@ export function BoardPreviewPage() {
 
   return (
     <GameViewport debugZones={zonesVisible}>
-      <BackgroundLayer />
+      <BackgroundLayer table={pont ? TABLE_PONT : undefined} />
 
       {/* Essai sur la feuille de parchemin (07/10) : plus de cadres de rangée
           (`.lane`), les emplacements se dessinent à même le tapis, et navires
           et Marée se rapprochent du plateau (`.stageBare`). La vraie partie
           (`TableBoard`) garde ses cadres tant que l'essai n'est pas validé. */}
-      <GameStage ref={stageRef} className={`${styles.stageBare} ${gesture ? styles.gesturing : ""}`}
+      <GameStage ref={stageRef} className={`${styles.stageBare} ${pont ? styles.stagePont : ""} ${gesture ? styles.gesturing : ""}`}
         style={{ ["--board-slots" as string]: BOARD_CAPACITY }}
       >
-        {/* Chaque camp sur son tapis de feutrine, à la place du cadre de bois. */}
-        <div aria-hidden className={`${styles.laneMat} ${styles.laneOpponent}`} />
-        <div aria-hidden className={`${styles.laneMat} ${styles.lanePlayer}`} />
+        {/* Sur le parchemin, chaque camp sur sa toile, à la place du cadre de bois. Le pont, lui, est sa propre table. */}
+        {!pont && (
+          <>
+            <div aria-hidden className={`${styles.laneMat} ${styles.laneOpponent}`} />
+            <div aria-hidden className={`${styles.laneMat} ${styles.lanePlayer}`} />
+          </>
+        )}
 
         <TableOpponentHand count={opponentHand} hidden={motion.hidden} />
         <OpponentZone
@@ -374,7 +387,17 @@ export function BoardPreviewPage() {
             </div>
           )}
         />
-        <CenterZone tide={tide} />
+        <CenterZone
+          tide={tide}
+          track={pont ? <PontTideTrack tide={tide} /> : undefined}
+          // Sur le pont, le bol à dés se pose à droite de la Marée (la case du hublot de Lande).
+          cargo={
+            pont ? (
+              // eslint-disable-next-line @next/next/no-img-element -- décor local
+              <img src="/assets/board/pont/bol-des.webp" alt="" aria-hidden draggable={false} className={styles.pontBowl} />
+            ) : undefined
+          }
+        />
         <PlayerZone
           ship={{
             name: player.shipName,

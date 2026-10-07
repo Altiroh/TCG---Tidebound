@@ -540,6 +540,43 @@
   width: auto;
 }
 
+/*
+ * LE PONT DU CAPITAINE (labo `/game/pont-preview`, 07/10) : le pont est sa
+ * propre table, sans toiles. Un emplacement vide est une planche de bois
+ * marquée d'une rose des vents, à demi effacée dans le pont ; la piste de
+ * Marée à hublots est plus large que l'ancienne (ses noms sont peints
+ * dessous) ; le bol à dés se pose à sa droite.
+ */
+.stagePont .boardSlotEmpty:not(.boardSlotNext) {
+  background: url("/assets/board/pont/emplacement-carte.webp") center / 100% 100% no-repeat;
+  box-shadow: none;
+  opacity: 0.45;
+}
+
+.stagePont .centerZone .zoneSlotBoard {
+  flex-basis: calc(var(--card-w) * 5.6 + 5 * var(--board-gap));
+}
+
+.pontBowl {
+  display: block;
+  height: calc(var(--row-h) * 0.62);
+  aspect-ratio: 1;
+  filter: drop-shadow(0 4px 8px rgba(20, 10, 4, 0.6));
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Téléphone : la piste et le bol suivent la hauteur de la bande centrale. */
+@media (max-height: 520px), (max-width: 820px) {
+  .stagePont .centerZone .zoneSlotBoard {
+    flex-basis: auto;
+  }
+
+  .pontBowl {
+    height: calc(var(--center-h, 40px) * 1.1);
+  }
+}
+
 /* Pas de Lande en jeu : pas de case vide qui décentrerait le groupe. */
 .stageBare .centerZone .zoneSlotCargo:empty {
   display: none;

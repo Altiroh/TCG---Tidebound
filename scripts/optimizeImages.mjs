@@ -158,6 +158,15 @@ const RULES = [
   // La bougie, posée dans le coin, ne dépasse pas ~200 px.
   { match: /\/board\/table-classique\/(fond|playground)[^/]*\./, maxSize: 2560, quality: 92 },
   { match: /\/board\/table-classique\/bougie\./, maxSize: 512, quality: 90 },
+  // Le Pont du Capitaine (labo `/game/pont-preview`, 07/10) : le fond couvre
+  // l'écran ; la piste de Marée tient au plus ~900 px de large, le sélecteur
+  // ~80 px ; l'emplacement vide a la taille d'une carte de plateau ; le bol
+  // à dés ~200 px.
+  { match: /\/board\/pont\/pont-fond\./, maxSize: 1672, quality: 90 },
+  { match: /\/board\/pont\/piste-maree\./, maxSize: 1800, quality: 90 },
+  { match: /\/board\/pont\/selecteur-maree\./, maxSize: 320, quality: 92 },
+  { match: /\/board\/pont\/emplacement-carte\./, maxSize: 560, quality: 88 },
+  { match: /\/board\/pont\/bol-des\./, maxSize: 512, quality: 90 },
   // Ombre de transition de page : étirée à 140 % de la hauteur d'écran, elle
   // est déjà agrandie à l'affichage. Ramenée de 1672 à 1254 px (audit du
   // 24/09, 330 → 134 Ko) : c'est une ombre floue qui traverse l'écran en
