@@ -654,45 +654,40 @@
 }
 
 /*
- * PILES ÉPAISSES : vu en plongée, un paquet posé montre sa TRANCHE — une
- * bande de bords de cartes sous la carte du dessus (le côté qui nous fait
- * face) et un filet sur la droite. Elle est dessinée sous la pile
- * (`::before`, derrière la carte), en fines lignes de papier, plus sombres
- * vers le pont ; l'ombre portée tombe au pied du paquet.
+ * PILES ÉPAISSES, comme sur la maquette : un paquet, ce sont des CARTES
+ * EMPILÉES. Sous la carte du dessus dépassent cinq dos de carte, chacun un
+ * peu plus bas (le côté qui nous fait face, vu en plongée) et à peine plus
+ * à droite : des bords sombres séparés d'un fin liseré clair, puis l'ombre
+ * du paquet sur le pont. (Une première tranche « en bloc » beige faisait
+ * socle, pas paquet.) Unité : `--pile-u`, ~1 px pour une carte de 190 px.
  */
 .stagePont .cargoDeck,
-.stagePont .cargoGraveyard {
-  --pile-thick: calc(var(--card-h) * 0.07);
-  box-shadow: none;
-  /* Pas d'`isolation` ici : le crâne du cimetière se fond en `screen` dans
-     ce qui est dessous, et isolé avec la tranche, il blanchissait la pile. */
-}
-
-.stagePont .cargoDeck::before,
-.stagePont .cargoGraveyard::before {
-  content: "";
-  position: absolute;
-  z-index: -1;
-  /* Seulement la bande qui dépasse SOUS la carte (et le filet de droite) :
-     derrière une carte semi-transparente (le cimetière), des lignes claires
-     transparaissaient. */
-  inset: calc(100% - var(--card-radius) * 2) calc(var(--pile-thick) * -0.35) calc(var(--pile-thick) * -1) calc(var(--card-radius) * 0.5);
-  border-radius: var(--card-radius);
-  background:
-    linear-gradient(to bottom, transparent 55%, rgba(20, 10, 4, 0.55)),
-    repeating-linear-gradient(to bottom, #d9c6a0 0 1px, #8a6c45 1px 2px, #c4ad85 2px 3px);
+.stagePont .cargoGraveyard:has(.graveyardTop) {
+  --pile-u: calc(var(--card-h) / 190);
+  --pile-edge: #1d150f;
+  --pile-line: rgba(196, 170, 124, 0.55);
   box-shadow:
-    0 calc(var(--pile-thick) * 0.6) calc(var(--pile-thick) * 1.4) rgba(10, 5, 2, 0.65),
-    inset 0 0 0 1px rgba(30, 16, 6, 0.6);
+    calc(var(--pile-u) * 0.4) calc(var(--pile-u) * 2) 0 var(--pile-edge),
+    calc(var(--pile-u) * 0.6) calc(var(--pile-u) * 3) 0 var(--pile-line),
+    calc(var(--pile-u) * 0.8) calc(var(--pile-u) * 4.5) 0 var(--pile-edge),
+    calc(var(--pile-u) * 1) calc(var(--pile-u) * 5.5) 0 var(--pile-line),
+    calc(var(--pile-u) * 1.2) calc(var(--pile-u) * 7) 0 var(--pile-edge),
+    calc(var(--pile-u) * 1.4) calc(var(--pile-u) * 8) 0 var(--pile-line),
+    calc(var(--pile-u) * 1.6) calc(var(--pile-u) * 9.5) 0 var(--pile-edge),
+    calc(var(--pile-u) * 1.8) calc(var(--pile-u) * 10.5) 0 var(--pile-line),
+    calc(var(--pile-u) * 2) calc(var(--pile-u) * 12) 0 var(--pile-edge),
+    0 calc(var(--pile-u) * 16) calc(var(--pile-u) * 14) rgba(10, 5, 2, 0.6);
 }
 
 .stagePont .cargoGraveyard {
   background: rgba(30, 18, 8, 0.55);
 }
 
-/* Cimetière vide : pas de tranche, juste son creux. */
-.stagePont .cargoGraveyard:not(:has(.graveyardTop))::before {
-  display: none;
+/* La dernière carte défaussée : opaque et assombrie, plutôt que
+   semi-transparente (sur le bois, elle virait au gris délavé). */
+.stage.stagePont .cargoGraveyard .graveyardTop {
+  opacity: 1;
+  filter: grayscale(0.5) brightness(0.62) sepia(0.15);
 }
 
 /* Bande centrale : la grille du plateau, sans tuile de sens. */
