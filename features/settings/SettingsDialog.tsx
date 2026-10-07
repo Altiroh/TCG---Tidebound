@@ -26,7 +26,7 @@ interface SettingsDialogProps {
  * cyan en tête, la même croix, les mêmes sorties (Échap, voile, croix). Il
  * ne restait de l'ancienne version qu'une matière de plus à entretenir.
  *
- * Sections (Audio, Interface, Tutoriel, Compte) séparées par un filet : tout ce
+ * Sections (Audio, Interface, Tutoriel, Atelier, Compte) séparées par un filet : tout ce
  * qui se règle aujourd'hui tient sur un écran, sans onglets ni page dédiée.
  */
 export function SettingsDialog({ isSignedIn, onClose }: SettingsDialogProps) {
@@ -69,6 +69,28 @@ export function SettingsDialog({ isSignedIn, onClose }: SettingsDialogProps) {
             <hr className={styles.divider} />
           </>
         )}
+
+        {/* Temporaire, comme le diagnostic d'écran : ouvrir le plateau hors
+            partie (`/game/board-preview`, sans moteur ni base) le temps de
+            finir l'espace de jeu. Route publique : visible connecté ou non. */}
+        <section className={styles.section}>
+          <h3 className={styles.sectionTitle}>Atelier</h3>
+          <p className={styles.signedOut}>
+            Le plateau seul, sans partie ni adversaire, pour régler l&apos;espace de jeu.{" "}
+            <Link
+              href="/game/board-preview"
+              className={`${AUTH_LINK_CLASS} hover:underline`}
+              onClick={() => {
+                playButtonClick();
+                onClose();
+              }}
+            >
+              Ouvrir le plateau
+            </Link>
+          </p>
+        </section>
+
+        <hr className={styles.divider} />
 
         <section className={styles.section}>
           <h3 className={styles.sectionTitle}>Compte</h3>
