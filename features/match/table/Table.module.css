@@ -510,6 +510,52 @@
 }
 
 /*
+ * ÉQUILIBRE (07/10, d'après le plateau d'Hearthstone) : tout se lit autour
+ * d'un axe vertical au milieu de l'écran. Les toiles y sont déjà centrées
+ * (autant de vide de chaque côté) ; la bande de Marée l'est aussi désormais.
+ * Elle quitte la grille du plateau, où la piste se centrait sur les seules
+ * cartes et la tuile de sens collait au bord, pour former un groupe serré au
+ * milieu : [ sens ] [ piste ] [ hublot de Lande ].
+ */
+.stageBare .centerZone {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: calc(var(--col-gap) * 1.5);
+}
+
+.stageBare .centerZone .zoneSlotShip {
+  flex: 0 0 auto;
+  translate: none;
+}
+
+.stageBare .centerZone .zoneSlotBoard {
+  flex: 0 1 calc(var(--card-w) * 4.6 + 4 * var(--board-gap));
+  min-width: 0;
+}
+
+.stageBare .centerZone .zoneSlotCargo {
+  flex: 0 0 auto;
+  width: auto;
+}
+
+/* Pas de Lande en jeu : pas de case vide qui décentrerait le groupe. */
+.stageBare .centerZone .zoneSlotCargo:empty {
+  display: none;
+}
+
+/* La colonne de tour, plus fine, accrochée au cadre de droite (comme le
+   bouton « Fin du tour » d'Hearthstone, posé sur le bord du plateau). */
+.stageBare {
+  --rail-w: clamp(56px, 7cqw, 180px);
+}
+
+.stageBare .rail {
+  translate: calc(var(--gutter-x) * 0.7) 0;
+}
+
+/*
  * Chaque camp posé sur sa TOILE à voile teinte (`board/tapis/`), du navire
  * aux piles, à la place du cadre de bois (`.lane`). (Les tapis de feutrine,
  * trop propres pour le parchemin peint, ont été écartés le 07/10.)
@@ -544,7 +590,10 @@
   /* Le milieu, entre les deux bouts (un pixel de recouvrement, contre un liseré). */
   padding-inline: calc(var(--mat-cap) - 1px);
   background: var(--mat-milieu) left center / auto 100% round no-repeat content-box;
-  filter: drop-shadow(0 calc(var(--row-h) * 0.015) calc(var(--row-h) * 0.03) rgba(40, 22, 8, 0.4));
+  /* Calmée : les couleurs fortes vont au bord, pas sous les cartes. Passée
+     et un peu transparente, la toile laisse le parchemin rester la table. */
+  opacity: 0.88;
+  filter: saturate(0.7) brightness(0.98) drop-shadow(0 calc(var(--row-h) * 0.015) calc(var(--row-h) * 0.03) rgba(40, 22, 8, 0.35));
 }
 
 .laneMat::before,
