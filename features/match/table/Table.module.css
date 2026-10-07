@@ -573,6 +573,42 @@
   display: none;
 }
 
+/*
+ * LA PENTE DU PONT : le fond est peint en légère plongée (les planches se
+ * resserrent vers le haut, vers un point de fuite au-dessus du plateau).
+ * Posées à plat sur l'écran, les rangées « flottaient » : tout ce qui est
+ * POSÉ SUR LE PONT (les deux rangées, la bande centrale) s'incline donc sur
+ * un même plan — chaque zone pivote sur sa ligne médiane (`rotateX`) et
+ * recule ou avance de sa distance au centre du plan (`translateZ`), si bien
+ * qu'elles partagent un seul point de fuite (`perspective-origin`, au
+ * milieu de la scène). Les mains, tenues par les joueurs, restent à plat.
+ * Réglages : `--pont-tilt` (angle) et `--pont-persp` (distance de l'œil :
+ * plus courte = fuite plus marquée).
+ */
+.stage.stagePont {
+  --pont-tilt: 22deg;
+  --pont-persp: 150cqh;
+  /* Distance (dans le plan) entre le centre d'une rangée et celui de la bande de Marée. */
+  --pont-row-offset: calc((var(--row-h) + var(--center-h)) / 2 + var(--row-gap));
+  perspective: var(--pont-persp);
+  perspective-origin: 50% 50%;
+}
+
+.stage.stagePont .opponentZone,
+.stage.stagePont .centerZone,
+.stage.stagePont .playerZone {
+  transform-origin: 50% 50%;
+  transform: translateZ(var(--pont-z, 0px)) rotateX(var(--pont-tilt));
+}
+
+.stage.stagePont .opponentZone {
+  --pont-z: calc(var(--pont-row-offset) * sin(var(--pont-tilt)) * -1);
+}
+
+.stage.stagePont .playerZone {
+  --pont-z: calc(var(--pont-row-offset) * sin(var(--pont-tilt)));
+}
+
 .stage.stagePont .zone {
   grid-column: 1 / -1;
 }
