@@ -62,6 +62,17 @@ const OUTCOMES = {
     // Les lettres de ce titre commencent plus loin dans son image : le « V » s'aligne sur le « D » de la défaite.
     titleLeft: 2.1,
   },
+  // LE MATCH NUL (08/10/2026) : la même composition, sur le décor et le
+  // cadre photo de la défaite (ni confettis ni ciel doré : personne n'a
+  // gagné). Pas de titre peint : il s'imprime à l'encre d'acier
+  // (`.titlePrinted`), filet et losange compris.
+  draw: {
+    assets: "/assets/match-end/defaite",
+    titleAlt: "Match nul",
+    window: { x: 48.96, y: 43.56, w: 56.1, h: 58.2, angle: 8.4, clip: "polygon(21.4% 7.7%, 81.6% 18.2%, 75.2% 81.8%, 17.6% 67.2%)" },
+    caption: { x: 46.25, y: 80.95 },
+    titleLeft: 2.8,
+  },
 } as const;
 
 /**
@@ -79,7 +90,7 @@ export interface MatchEpilogue {
 
 interface MatchResultScreenProps {
   epilogue?: MatchEpilogue;
-  outcome: "victory" | "defeat";
+  outcome: "victory" | "defeat" | "draw";
   player: { name: string; ship: ShipDefinition; title?: string | null; avatarCardId?: string | null };
   matchId?: string;
   preview?: { reward: MatchRewardSummary; quests: QuestRecapEntry[]; voyage?: VoyageRecap | null; audience?: MatchAudienceSummary };
@@ -140,6 +151,8 @@ function photoLayers(player: MatchResultScreenProps["player"]): { src: string | 
 export function MatchResultScreen({ outcome, player, matchId, preview, audience, onExit, exitHref, epilogue }: MatchResultScreenProps) {
   const look = OUTCOMES[outcome];
   const isVictory = outcome === "victory";
+  // Pas de musique propre au nul : celle, retenue, de la défaite — jamais la fanfare.
+  const soundOutcome = outcome === "draw" ? "defeat" : outcome;
   const { shown } = useMatchAudience({ matchId, preview: preview?.audience });
   const reward = useMatchReward(matchId, preview?.reward);
   const { entries, voyage } = useMatchQuestRecap(matchId, preview?.quests, preview?.voyage);
@@ -152,13 +165,13 @@ export function MatchResultScreen({ outcome, player, matchId, preview, audience,
   // monté hors partie, en a besoin).
   useNoMenuAmbiance();
   useEffect(() => {
-    const timer = window.setTimeout(() => playMatchEnd(outcome), END_SOUND_AT_MS);
-    const stopTheme = startEndTheme(outcome);
+    const timer = window.setTimeout(() => playMatchEnd(soundOutcome), END_SOUND_AT_MS);
+    const stopTheme = startEndTheme(soundOutcome);
     return () => {
       window.clearTimeout(timer);
       stopTheme();
     };
-  }, [outcome]);
+  }, [soundOutcome]);
 
   const slots: QuestSlot[] = [
     ...entries.slice(0, voyage ? QUEST_SLOTS - 1 : QUEST_SLOTS).map((entry) => ({
@@ -208,7 +221,7 @@ export function MatchResultScreen({ outcome, player, matchId, preview, audience,
 
   const signals = audience ? weightiestSignals(audience.signals) : [];
   const anyPositive = signals.some((signal) => signal.weight > 0);
-  const signalsTitle = isVictory ? "Moments forts" : anyPositive ? "Malgré tout…" : "Ce qui a pesé";
+  const signalsTitle = isVictory ? "Moments forts" : outcome === "draw" ? (anyPositive ? "Ce qui a marqué" : "Ce qui a pesé") : anyPositive ? "Malgré tout…" : "Ce qui a pesé";
   const leveledUp = reward ? reward.levelAfter > reward.levelBefore : false;
   const photo = photoLayers(player);
   const windowStyle = {
@@ -229,8 +242,15 @@ export function MatchResultScreen({ outcome, player, matchId, preview, audience,
       <div className={styles.stage}>
         {/* eslint-disable-next-line @next/next/no-img-element -- enseigne du jeu, taille fixe */}
         <img className={styles.logo} src="/assets/menu/logo/tidebound-logo.webp" alt="Tidebound" draggable={false} />
-        {/* eslint-disable-next-line @next/next/no-img-element -- titre peint */}
-        <img className={styles.title} style={{ left: `${look.titleLeft}%` }} src={`${look.assets}/titre.webp`} alt={look.titleAlt} draggable={false} />
+        {outcome === "draw" ? (
+          <h1 className={`${styles.title} ${styles.titlePrinted}`} style={{ left: `${look.titleLeft}%` }}>
+            <span className={styles.titleWords}>{look.titleAlt}</span>
+            <span className={styles.titleRule} aria-hidden />
+          </h1>
+        ) : (
+          // eslint-disable-next-line @next/next/no-img-element -- titre peint
+          <img className={styles.title} style={{ left: `${look.titleLeft}%` }} src={`${look.assets}/titre.webp`} alt={look.titleAlt} draggable={false} />
+        )}
 
         {/* ── Le public ── */}
         {(shown !== null || audience) && (

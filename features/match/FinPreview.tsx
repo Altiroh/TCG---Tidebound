@@ -27,10 +27,11 @@ function quete(
 
 function Ecran() {
   const params = useSearchParams();
-  const defaite = params.get("issue") === "defaite";
+  const issue = params.get("issue");
+  const defaite = issue === "defaite" || issue === "nul";
   return (
     <MatchEndScreen
-      outcome={defaite ? "defeat" : "victory"}
+      outcome={issue === "nul" ? "draw" : defaite ? "defeat" : "victory"}
       // Titre sous le nom : `?titre=0` le retire, `?titre=…` en essaie un autre.
       // Illustration de la photo : `?avatar=0` la retire (le Navire la remplace), `?avatar=<carte>` en essaie une autre.
       player={{

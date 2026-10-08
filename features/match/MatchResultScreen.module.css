@@ -94,6 +94,54 @@
   animation: title-in 700ms cubic-bezier(0.2, 0.9, 0.3, 1) 200ms both;
 }
 
+/*
+ * LE TITRE IMPRIMÉ du match nul : ni l'or de la victoire ni le sang de la
+ * défaite, une encre d'acier gravée, avec le filet et le losange des titres
+ * peints. Même boîte que `.title` (33,5 % de large, en haut à gauche).
+ */
+.titlePrinted {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.9cqw;
+  padding-top: 1.6cqw;
+}
+
+.titleWords {
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-size: 4.6cqw;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  background: linear-gradient(180deg, #e8edf0 0%, #aeb9c0 38%, #5f6c75 62%, #c9d2d7 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-stroke: 0.06cqw rgba(23, 16, 10, 0.55);
+  filter: drop-shadow(0 0.15cqw 0.12cqw rgba(23, 16, 10, 0.55));
+}
+
+.titleRule {
+  position: relative;
+  width: 86%;
+  height: 0.18cqw;
+  background: linear-gradient(90deg, transparent, #4d5860 18%, #4d5860 82%, transparent);
+}
+
+.titleRule::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0.9cqw;
+  height: 0.9cqw;
+  border: 0.18cqw solid #4d5860;
+  background: #c9d2d7;
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
 /* ── Le public ─────────────────────────────────────────────── */
 
 .spectators {

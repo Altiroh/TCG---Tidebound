@@ -396,8 +396,9 @@ export function MatchBoard({
     id === botPlayerId ? "Le bot" : id === humanPlayerId ? (displayNames.me ?? "Joueur 1") : id === "p1" ? "Joueur 1" : id === "p2" ? "Joueur 2" : "?";
 
   if (state.status === "finished" && !hideEndScreen && endHold.showEnd) {
-    // Contre un bot, l'écran appartient au joueur humain ; en hot-seat, c'est celui du vainqueur.
-    const subjectId = humanPlayerId ?? state.winnerId;
+    // Contre un bot, l'écran appartient au joueur humain ; en hot-seat, c'est
+    // celui du vainqueur — ou, sur un match nul, celui qui a la main.
+    const subjectId = humanPlayerId ?? state.winnerId ?? viewerPlayer.id;
     const isDefeat = Boolean(humanPlayerId && state.winnerId && state.winnerId !== humanPlayerId);
     const genericName = subjectId === "p1" ? "Joueur 1" : "Joueur 2";
     const subjectName = humanPlayerId ? (displayNames.me ?? genericName) : genericName;
@@ -405,14 +406,10 @@ export function MatchBoard({
     return (
       // Partie LOCALE (hot-seat, ou bot hors connexion) : jouée entièrement dans le navigateur, elle ne rapporte jamais rien.
       <MatchEndScreen
-        outcome={isDefeat ? "defeat" : "victory"}
-        player={
-          state.winnerId
-            ? { name: subjectName, ship: subjectShip, title: humanPlayerId ? myTitle : null, avatarCardId: humanPlayerId ? myAvatar : null }
-            : undefined
-        }
+        outcome={!state.winnerId ? "draw" : isDefeat ? "defeat" : "victory"}
+        player={{ name: subjectName, ship: subjectShip, title: humanPlayerId ? myTitle : null, avatarCardId: humanPlayerId ? myAvatar : null }}
         onExit={onExit}
-        audience={subjectId ? matchAudienceVerdict(state, subjectId) : undefined}
+        audience={matchAudienceVerdict(state, subjectId)}
       />
     );
   }

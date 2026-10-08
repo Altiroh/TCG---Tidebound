@@ -226,9 +226,9 @@ export function OnlineBoard({
     const iWon = state.winnerId === myUserId;
     return (
       <MatchEndScreen
-        outcome={iWon ? "victory" : "defeat"}
-        // Toujours le joueur qui regarde, jamais le vainqueur : il se reconnaît sur la plaque, avec son propre Navire.
-        player={state.winnerId ? { name: displayNames[myUserId] ?? "Toi", ship: myShip, title: myTitle, avatarCardId: myAvatar } : undefined}
+        outcome={iWon ? "victory" : state.winnerId ? "defeat" : "draw"}
+        // Toujours le joueur qui regarde, jamais le vainqueur : il se reconnaît sur la photo, avec son propre Navire — match nul compris.
+        player={{ name: displayNames[myUserId] ?? "Toi", ship: myShip, title: myTitle, avatarCardId: myAvatar }}
         exitHref={exitHref}
         matchId={matchId}
         audience={matchAudienceVerdict(state, myUserId)}

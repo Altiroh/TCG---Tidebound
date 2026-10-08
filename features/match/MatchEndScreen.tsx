@@ -17,7 +17,7 @@ import type { QuestRecapEntry } from "@/features/quests/actions";
 import type { VoyageRecap } from "@/features/quests/voyageActions";
 import type { MatchRewardSummary } from "@/features/progression/actions";
 
-export type MatchOutcome = "victory" | "defeat";
+export type MatchOutcome = "victory" | "defeat" | "draw";
 
 interface MatchEndScreenProps {
   /** Fin racontée (tutoriel) : mot personnalisé et boutons dédiés, transmis à `MatchResultScreen`. */
@@ -135,9 +135,10 @@ export function MatchEndScreen({ outcome, player, onExit, exitHref, matchId, pre
   const nameplateZone = isDefeat ? DEFEAT_NAMEPLATE_ZONE : NAMEPLATE_ZONE;
   const titleZone = isDefeat ? DEFEAT_TITLE_ZONE : TITLE_ZONE;
 
-  // Victoire comme défaite ont leur composition peinte (26/09/2026) : le
-  // décor, la photo du joueur collée de travers, l'information imprimée à
-  // l'encre à gauche. Seul le match nul garde l'écran ci-dessous.
+  // Victoire, défaite et match nul (08/10/2026) ont leur composition peinte
+  // (26/09/2026) : le décor, la photo du joueur collée de travers,
+  // l'information imprimée à l'encre à gauche. L'écran ci-dessous ne sert
+  // plus que de repli, sans joueur à montrer.
   if (player) {
     return (
       <MatchResultScreen
