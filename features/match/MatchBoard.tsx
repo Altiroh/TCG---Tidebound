@@ -483,6 +483,14 @@ export function MatchBoard({
             if (phase.action === "advance") runAction({ type: "advancePhase", playerId: activePlayerId });
             else if (phase.action === "endTurn") runAction({ type: "endTurn", playerId: activePlayerId });
           },
+          onAdvance: () => {
+            playButtonClick();
+            runAction({ type: "advancePhase", playerId: activePlayerId });
+          },
+          onEndTurn: () => {
+            playButtonClick();
+            runAction({ type: "endTurn", playerId: activePlayerId });
+          },
           secondary: phase.secondary && {
             label: phase.secondary.label,
             onClick: () => {

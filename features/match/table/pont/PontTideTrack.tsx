@@ -3,7 +3,7 @@
 import type { CSSProperties } from "react";
 import { PORTHOLE_SEAS } from "@/features/match/table/TidePorthole";
 import type { TableTideModel } from "@/features/match/table/tableModel";
-import styles from "@/features/board-preview/PontTideTrack.module.css";
+import styles from "@/features/match/table/pont/PontTideTrack.module.css";
 
 /**
  * PISTE DE MARÉE du Pont du Capitaine (labo `/game/pont-preview`, 07/10/2026).

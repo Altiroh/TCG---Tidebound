@@ -64,7 +64,9 @@ const ZONE = {
   board: '[data-zone="PlayerZone"]',
   opponentBoard: '[data-zone="OpponentZone"]',
   center: '[data-zone="CenterZone"]',
-  rail: '[data-zone="SideRail"]',
+  // Les boutons de phase : à droite de la Marée sur le Pont du Capitaine,
+  // dans la colonne de tour sur la table classique (le premier présent).
+  rail: '[data-zone="PhaseActions"], [data-zone="SideRail"]',
   deck: '[data-deck="player"]',
   graveyard: '[data-graveyard="player"]',
   audience: "[data-live-audience]",

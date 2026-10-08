@@ -16,6 +16,7 @@ import {
   getShipDefinition,
   hasResistance,
   isVisibleDuringTide,
+  landeRemainingTableTurns,
   reasonCeiling,
   RULES,
   STATUS_SILENCE,
@@ -41,7 +42,12 @@ import type { HeldTarget } from "@/features/match/useHeldTarget";
 import { EffectFxLayer, reasonAnchor, reasonGaugeOf } from "@/features/match/EffectFxLayer";
 import { THICK_TEXT_OUTLINE } from "@/features/match/cardDisplay";
 import styles from "@/features/match/table/Table.module.css";
-import { BackgroundLayer } from "@/features/match/table/BackgroundLayer";
+import { BackgroundLayer, TABLE_PONT } from "@/features/match/table/BackgroundLayer";
+import { PontActions } from "@/features/match/table/pont/PontActions";
+import { PontLandeFx } from "@/features/match/table/pont/PontLandeFx";
+import { PontLandeSlot } from "@/features/match/table/pont/PontLandeSlot";
+import { PontTideTrack } from "@/features/match/table/pont/PontTideTrack";
+import { PONT_LANDE_FX, pontLandeFloor } from "@/features/match/table/pont/pontLandes";
 import { CenterZone } from "@/features/match/table/CenterZone";
 import { LandeArrival, LANDE_ARRIVAL } from "@/features/match/landes/LandeArrival";
 import { LandeBadge } from "@/features/match/landes/LandeBadge";
@@ -113,8 +119,19 @@ export interface TableBoardProps {
     onClick?: () => void;
     /** « Fin de tour » dès la Phase de combat, sous le bouton principal. */
     secondary?: { label: string; onClick: () => void };
+    /** Le Pont du Capitaine a ses propres boutons : passer à la phase suivante (`advancePhase`)… */
+    onAdvance?: () => void;
+    /** …et terminer le tour (`endTurn`), possible à tout moment de son tour. */
+    onEndTurn?: () => void;
   };
   onMenu: () => void;
+  /**
+   * Le décor du plateau : le Pont du Capitaine (par défaut, 08/10/2026 —
+   * plateau en plongée, piste de Marée à hublots, emplacement de Lande entre
+   * les navires, boutons de phase à droite, sans colonne de tour ni journal)
+   * ou la table classique (parchemin et cadres de rangée).
+   */
+  decor?: "pont" | "classique";
 
   /**
    * Clic sur une carte de la main (parcours au clic : jouer, ou entrer en
@@ -268,6 +285,8 @@ export function TableBoard(props: TableBoardProps) {
     // Seule l'identité de la Lande compte : son décompte change à chaque tour.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lande?.instanceId]);
+  const pont = (props.decor ?? "pont") === "pont";
+  const landeArriving = (lande !== undefined && lande.instanceId !== seenLande.current) || landeArrival?.instanceId === lande?.instanceId;
   /** Navire dont la fiche est ouverte (clic sur un Navire hors ciblage d'attaque). */
   const [shipInfoFor, setShipInfoFor] = useState<PlayerId | null>(null);
 
@@ -995,7 +1014,9 @@ export function TableBoard(props: TableBoardProps) {
     <>
       <GameViewport>
         <BackgroundLayer
+          table={pont ? TABLE_PONT : undefined}
           floor={(() => {
+            if (pont) return lande ? pontLandeFloor(lande.cardId, lande.instanceId, landeArriving) : null;
             const scene = lande ? landeScene(lande.cardId) : undefined;
             if (!lande || !scene?.floor) return null;
             const arriving = lande.instanceId !== seenLande.current || landeArrival?.instanceId === lande.instanceId;
@@ -1009,13 +1030,17 @@ export function TableBoard(props: TableBoardProps) {
           })()}
         />
         <RainLayer tideState={tideState} />
-        <LandeLayer
-          lande={lande}
-          // Lue au rendu même où la Lande change (l'effet qui arme l'arrivée
-          // passe après) : sa scène doit naître « en attente de la carte ».
-          entering={(lande !== undefined && lande.instanceId !== seenLande.current) || landeArrival?.instanceId === lande?.instanceId}
-          enterDelayMs={LANDE_ARRIVAL.DISSOLVE_AT}
-        />
+        {pont && lande && PONT_LANDE_FX[lande.cardId] && <PontLandeFx key={lande.instanceId} kind={PONT_LANDE_FX[lande.cardId]!} />}
+        {/* Sur le pont, la Lande est son SOL (et ses effets) : pas de scène de bord par-dessus. */}
+        {!pont && (
+          <LandeLayer
+            lande={lande}
+            // Lue au rendu même où la Lande change (l'effet qui arme l'arrivée
+            // passe après) : sa scène doit naître « en attente de la carte ».
+            entering={(lande !== undefined && lande.instanceId !== seenLande.current) || landeArrival?.instanceId === lande?.instanceId}
+            enterDelayMs={LANDE_ARRIVAL.DISSOLVE_AT}
+          />
+        )}
 
         {/* `gesturing` : un glisser est en cours quelque part. Il coupe
             l'agrandissement au survol sur TOUT le plateau — une carte qui
@@ -1023,12 +1048,16 @@ export function TableBoard(props: TableBoardProps) {
             précisément la zone visée. */}
         <GameStage
           ref={stageRef}
-          className={gesture ? styles.gesturing : undefined}
+          className={[pont ? `${styles.stageBare} ${styles.stagePont}` : "", gesture ? styles.gesturing : ""].join(" ").trim() || undefined}
           // Le plus grand des deux Navires fixe la largeur des cartes (cf. `--card-h-fit`).
           style={{ ["--board-slots" as string]: Math.max(5, viewerShip.slotCount, opponentShip.slotCount) }}
         >
-          <div aria-hidden className={`${styles.lane} ${styles.laneOpponent}`} />
-          <div aria-hidden className={`${styles.lane} ${styles.lanePlayer}`} />
+          {!pont && (
+            <>
+              <div aria-hidden className={`${styles.lane} ${styles.laneOpponent}`} />
+              <div aria-hidden className={`${styles.lane} ${styles.lanePlayer}`} />
+            </>
+          )}
 
           <TableOpponentHand count={opponent.hand.length} ownerId={opponent.id} />
           <OpponentZone
@@ -1063,28 +1092,74 @@ export function TableBoard(props: TableBoardProps) {
           />
           <CenterZone
             tide={tide}
-            cargo={
-              // Effets en cours de l'adversaire AU-DESSUS du hublot de Lande, les tiens EN DESSOUS :
-              // chacun du côté de son camp.
-              <div className={landeStyles.cargoRow}>
-                <OngoingEffects
-                  effects={opponent.board.filter((card) => isOngoingEffect(getCardDefinition(card.cardId))).map((card) => ({ card, ownerId: opponent.id }))}
-                  viewerId={viewerId}
-                  tideState={tideState}
-                  pulsingIds={props.reactionSourceIds}
-                />
-                <LandeBadge
-                  environment={state.environment}
-                  tideState={tideState}
+            track={pont ? <PontTideTrack tide={tide} /> : undefined}
+            shipColumn={
+              pont ? (
+                <PontLandeSlot
+                  card={
+                    lande ? (
+                      <CardTile
+                        key={lande.instanceId}
+                        instance={{ instanceId: lande.instanceId, cardId: lande.cardId, ownerId: lande.ownerId, damageMarked: 0, modifiers: [], summoningSick: false, hasAttackedThisTurn: false }}
+                        tideState={tideState}
+                        widthClassName="w-full"
+                        scaleOnHover={false}
+                        showStatusBadges={false}
+                        variant="board"
+                      />
+                    ) : undefined
+                  }
+                  turns={lande ? landeRemainingTableTurns(state.environment) : null}
                   dropState={placingLande ? (hover === "lande" ? "over" : "ready") : "idle"}
                 />
-                <OngoingEffects
-                  effects={viewer.board.filter((card) => isOngoingEffect(getCardDefinition(card.cardId))).map((card) => ({ card, ownerId: viewer.id }))}
-                  viewerId={viewerId}
-                  tideState={tideState}
-                  pulsingIds={props.reactionSourceIds}
-                />
-              </div>
+              ) : undefined
+            }
+            cargo={
+              pont ? (
+                // Effets en cours de l'adversaire au-dessus des boutons, les tiens en dessous.
+                <div className={landeStyles.cargoRow}>
+                  <OngoingEffects
+                    effects={opponent.board.filter((card) => isOngoingEffect(getCardDefinition(card.cardId))).map((card) => ({ card, ownerId: opponent.id }))}
+                    viewerId={viewerId}
+                    tideState={tideState}
+                    pulsingIds={props.reactionSourceIds}
+                  />
+                  <PontActions
+                    phase={state.phase}
+                    disabled={props.phaseButton.disabled}
+                    onAdvance={() => props.phaseButton.onAdvance?.()}
+                    onEndTurn={() => props.phaseButton.onEndTurn?.()}
+                  />
+                  <OngoingEffects
+                    effects={viewer.board.filter((card) => isOngoingEffect(getCardDefinition(card.cardId))).map((card) => ({ card, ownerId: viewer.id }))}
+                    viewerId={viewerId}
+                    tideState={tideState}
+                    pulsingIds={props.reactionSourceIds}
+                  />
+                </div>
+              ) : (
+                // Effets en cours de l'adversaire AU-DESSUS du hublot de Lande, les tiens EN DESSOUS :
+                // chacun du côté de son camp.
+                <div className={landeStyles.cargoRow}>
+                  <OngoingEffects
+                    effects={opponent.board.filter((card) => isOngoingEffect(getCardDefinition(card.cardId))).map((card) => ({ card, ownerId: opponent.id }))}
+                    viewerId={viewerId}
+                    tideState={tideState}
+                    pulsingIds={props.reactionSourceIds}
+                  />
+                  <LandeBadge
+                    environment={state.environment}
+                    tideState={tideState}
+                    dropState={placingLande ? (hover === "lande" ? "over" : "ready") : "idle"}
+                  />
+                  <OngoingEffects
+                    effects={viewer.board.filter((card) => isOngoingEffect(getCardDefinition(card.cardId))).map((card) => ({ card, ownerId: viewer.id }))}
+                    viewerId={viewerId}
+                    tideState={tideState}
+                    pulsingIds={props.reactionSourceIds}
+                  />
+                </div>
+              )
             }
             hint={
               dropError ? (

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import styles from "@/features/board-preview/PontLandeFx.module.css";
+import styles from "@/features/match/table/pont/PontLandeFx.module.css";
 
 /**
  * EFFETS DE LANDE DU PONT (labo `/game/pont-preview`, 08/10/2026), dessinés

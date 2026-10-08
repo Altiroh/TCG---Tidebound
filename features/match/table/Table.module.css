@@ -935,6 +935,15 @@
   opacity: 0.62;
 }
 
+/* Une carte de Lande en cours de pose : l'emplacement l'appelle. */
+.pontLandeSlot[data-drop-state="ready"] {
+  box-shadow: 0 0 0 2px rgba(126, 224, 208, 0.7), 0 0 18px rgba(126, 224, 208, 0.35);
+}
+
+.pontLandeSlot[data-drop-state="over"] {
+  box-shadow: 0 0 0 3px var(--accent), 0 0 28px rgba(126, 224, 208, 0.6);
+}
+
 /* Une Lande posée : sa carte remplit l'emplacement, sans le gabarit dessous. */
 .pontLandeSlotFilled::before,
 .pontLandeSlotFilled::after {

@@ -282,6 +282,14 @@ export function OnlineBoard({
             if (phase.action === "advance") act({ type: "advancePhase", playerId: myUserId });
             else if (phase.action === "endTurn") act({ type: "endTurn", playerId: myUserId });
           },
+          onAdvance: () => {
+            playButtonClick();
+            act({ type: "advancePhase", playerId: myUserId });
+          },
+          onEndTurn: () => {
+            playButtonClick();
+            act({ type: "endTurn", playerId: myUserId });
+          },
           secondary: phase.secondary && {
             label: phase.secondary.label,
             onClick: () => {
