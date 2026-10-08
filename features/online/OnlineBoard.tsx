@@ -6,7 +6,6 @@ import { matchAudienceVerdict } from "@/features/audience/verdict";
 import { useEndScreenHold } from "@/features/match/useEndScreenHold";
 import { useScreenWakeLock } from "@/features/match/useScreenWakeLock";
 import {
-  canUnitAttack,
   eligibleCandidatesFor,
   getCardDefinition,
   getShipDefinition,
@@ -118,8 +117,6 @@ export function OnlineBoard({
   const canPlay = isMyTurn && !pending && !state.pendingReaction && !state.pendingChoice;
   const canPlayCards = canPlay && isMainPhase(state.phase);
   const canAttack = canPlay && state.phase === "combatPhase";
-  const activePlayerBoard = state.players.find((p) => p.id === state.activePlayerId)?.board ?? [];
-  const hasAnyAttacker = activePlayerBoard.some((unit) => canUnitAttack(state, state.activePlayerId, unit.instanceId));
   const myReactionCandidates = canRespondToReaction
     ? eligibleCandidatesFor(state, state.pendingReaction!.events, myUserId, state.pendingReaction!.turnNumber, state.pendingReaction!.usedCandidateKeys)
     : [];
@@ -238,7 +235,7 @@ export function OnlineBoard({
     );
   }
 
-  const phase = phaseButtonFor({ isMyTurn, phase: state.phase === "mainPhase" && !hasAnyAttacker ? "mainPhase2" : state.phase });
+  const phase = phaseButtonFor({ isMyTurn, phase: state.phase });
   const hint = targetingHint(selection?.kind === "reaction" ? null : selection?.kind ?? null);
 
   // Objets d'invite en constantes locales : `board.breakPrompt` ne se

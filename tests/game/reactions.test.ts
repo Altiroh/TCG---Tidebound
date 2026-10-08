@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { dispatch } from "@/game/engine";
-import { instance, testGameState, testPlayer } from "./testHelpers";
+import { instance, testGameState, testPlayer, enFinDeTour } from "./testHelpers";
 
 describe("moteur de réactions — fenêtre facultative (Notion 'Moteur de partie')", () => {
   it("ouvre une fenêtre de réaction quand une capacité `optional` devient éligible, et bloque les actions normales tant qu'elle reste ouverte", () => {
@@ -24,7 +24,7 @@ describe("moteur de réactions — fenêtre facultative (Notion 'Moteur de parti
 
     // Aucune action normale n'est acceptée tant que la fenêtre est ouverte,
     // même pour le joueur qui n'attend pas la réponse.
-    const blockedEndTurn = dispatch(result.state, { type: "endTurn", playerId: "p1" });
+    const blockedEndTurn = dispatch(enFinDeTour(result.state), { type: "endTurn", playerId: "p1" });
     expect(blockedEndTurn.ok).toBe(false);
 
     // Le mauvais joueur ne peut pas répondre à la place de celui attendu.
@@ -72,7 +72,7 @@ describe("moteur de réactions — fenêtre facultative (Notion 'Moteur de parti
     expect(passed.events.some((e) => e.type === "REACTION_PASSED")).toBe(true);
 
     // La partie continue normalement une fois la fenêtre refermée.
-    const endTurn = dispatch(passed.state, { type: "endTurn", playerId: "p1" });
+    const endTurn = dispatch(enFinDeTour(passed.state), { type: "endTurn", playerId: "p1" });
     expect(endTurn.ok).toBe(true);
   });
 

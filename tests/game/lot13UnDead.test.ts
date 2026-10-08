@@ -4,7 +4,7 @@ import type { CardDefinition } from "@/game/cards/types";
 import { dispatch } from "@/game/engine";
 import { hasGraveyardArrival } from "@/game/effects/resolveEffect";
 import { countArchetypeUnits } from "@/game/cards/archetypes";
-import { answerHandDiscard, instance, testEnvironment, testGameState, testPlayer } from "./testHelpers";
+import { answerHandDiscard, instance, testEnvironment, testGameState, testPlayer, enFinDeTour } from "./testHelpers";
 
 /**
  * Lot 13 — Un Dead / La Veillée des Disparus.
@@ -66,6 +66,7 @@ describe("Lot 13 — la défausse comme moteur", () => {
   function defausseProvoquee(observateurs: ReturnType<typeof instance>[], aDefausser: ReturnType<typeof instance>) {
     const mousse = instance("mousse-des-quarts", "p1");
     const state = testGameState({
+      turnNumber: 1,
       players: [
         testPlayer("p1", {
           hand: [mousse, aDefausser],
@@ -143,6 +144,7 @@ describe("Lot 13 — le meulage nourrit la Veillée", () => {
     try {
       const meuleur = instance(MEULEUR.id, "p1");
       const state = testGameState({
+        turnNumber: 1,
         players: [
           testPlayer("p1", { hand: [meuleur], board: observateurs, reason: 10, deck: [instance("ptit-bout", "p1"), instance("crabe-de-fer", "p1"), instance("crabe-de-fer", "p1")] }),
           testPlayer("p2", { shipId: "le-goliath", deck: [instance("crabe-de-fer", "p2"), instance("crabe-de-fer", "p2")] }),
@@ -190,6 +192,7 @@ describe("Lot 13 — le Cimetière comme ressource", () => {
     const gouter = instance("le-gouter", "p1");
     const ptitBout = instance("ptit-bout", "p1");
     const state = testGameState({
+      turnNumber: 1,
       players: [
         testPlayer("p1", {
           board: [gouter],
@@ -216,6 +219,7 @@ describe("Lot 13 — le Cimetière comme ressource", () => {
     const maman = instance("maman-revient", "p1");
     const ptitBout = instance("ptit-bout", "p1");
     const state = testGameState({
+      turnNumber: 1,
       players: [
         testPlayer("p1", { board: [chanson, maman], graveyard: [ptitBout], deck: [instance("crabe-de-fer", "p1")], reason: 10 }),
         testPlayer("p2", { shipId: "le-goliath" }),
@@ -250,7 +254,7 @@ describe("Lot 13 — le Cimetière comme ressource", () => {
           testPlayer("p2", { shipId: "le-goliath", deck: [instance("crabe-de-fer", "p2")] }),
         ],
       });
-      const fin = dispatch(state, { type: "endTurn", playerId: "p2" });
+      const fin = dispatch(enFinDeTour(state), { type: "endTurn", playerId: "p2" });
       ok(fin);
       const enJeu = fin.state.players.find((p) => p.id === "p1")!.board.find((u) => u.instanceId === promis.instanceId)!;
       return enJeu.modifiers.reduce((sum, m) => sum + m.attack, 0);
@@ -330,6 +334,7 @@ describe("Lot 13 — l'attrition", () => {
   it("Le Copain du dessous cogne le Navire adverse en mourant", () => {
     const copain = instance("le-copain-du-dessous", "p1");
     const state = testGameState({
+      turnNumber: 1,
       players: [testPlayer("p1", { board: [copain], reason: 10 }), testPlayer("p2", { shipId: "le-goliath" })],
     });
     const avant = state.players.find((p) => p.id === "p2")!.anchor;
@@ -375,6 +380,7 @@ describe("Lot 13 — choisir une carte du Cimetière ailleurs que sur un Bris", 
     // Hors filtre : coût 5, et pas dans le Cimetière du bon profil.
     const trop = instance("on-avait-dit-tous-ensemble", "p1");
     const state = testGameState({
+      turnNumber: 1,
       players: [
         testPlayer("p1", { hand: [tuViensJouer], graveyard: [ptitBout, trop], reason: 10 }),
         testPlayer("p2", { shipId: "le-goliath" }),
@@ -414,6 +420,7 @@ describe("Lot 13 — choisir une carte du Cimetière ailleurs que sur un Bris", 
       const tuViensJouer = instance("tu-viens-jouer", "p1");
       const ptitBout = instance("ptit-bout", "p1");
       const state = testGameState({
+        turnNumber: 1,
         players: [
           testPlayer("p1", { hand: [tuViensJouer], graveyard: [ptitBout], graveyardArrivals: arrivals, reason: 10 }),
           testPlayer("p2", { shipId: "le-goliath" }),
@@ -445,6 +452,7 @@ describe("Lot 13 — choisir une carte du Cimetière ailleurs que sur un Bris", 
     // verrait que les défausses, et un Un Dead tué ne compterait pas.
     const copain = instance("le-copain-du-dessous", "p1");
     const state = testGameState({
+      turnNumber: 1,
       players: [testPlayer("p1", { board: [copain], reason: 10 }), testPlayer("p2", { shipId: "le-goliath" })],
     });
     const saborde = dispatch(state, { type: "saborder", playerId: "p1", instanceId: copain.instanceId });

@@ -16,7 +16,8 @@ function botTurnViews(): GameState[] {
   });
   const views: GameState[] = [];
   for (let step = 0; step < 8 && state.status === "active"; step++) {
-    const ended = dispatch(state, { type: "endTurn", playerId: state.activePlayerId });
+    // Pas de fin de tour en Phase principale 1 : on passe d'abord en principale 2.
+    const ended = dispatch(state.phase === "mainPhase" ? { ...state, phase: "mainPhase2" } : state, { type: "endTurn", playerId: state.activePlayerId });
     if (!ended.ok) break;
     state = ended.state;
     views.push(toPlayerView(state, "p1"));

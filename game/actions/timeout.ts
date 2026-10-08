@@ -149,7 +149,11 @@ export function timeout(
     };
   }
 
-  const fallback = applyDefault(counted, defaultActionFor(counted, action.playerId));
+  const defaultAction = defaultActionFor(counted, action.playerId);
+  // Pas de fin de tour en Phase principale 1 : l'échéance saute le combat
+  // (personne n'attaque à la place du joueur absent) et finit en principale 2.
+  const ready: GameState = defaultAction.type === "endTurn" && counted.phase === "mainPhase" ? { ...counted, phase: "mainPhase2" } : counted;
+  const fallback = applyDefault(ready, defaultAction);
   // Le geste neutre a été refusé (état inattendu) : le point est compté
   // quand même, sinon une partie bloquée le resterait pour toujours.
   if (!fallback.ok) return { ok: true, state: counted, events: [timeoutEvent] };

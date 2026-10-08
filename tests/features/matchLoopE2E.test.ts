@@ -655,7 +655,10 @@ describe("délai de tour — l'autorité reste au serveur", () => {
           ? { type: "passReaction" as const, playerId: present }
           : state.pendingChoice
             ? chooseBotAction(state, present, "moyen")
-            : { type: "endTurn" as const, playerId: present };
+            : state.phase === "mainPhase2"
+              ? { type: "endTurn" as const, playerId: present }
+              : // Pas de fin de tour en Phase principale 1 : le joueur passe ses phases d'abord.
+                { type: "advancePhase" as const, playerId: present };
         expect((await submitMatchAction(matchId, action)).ok).toBe(true);
         continue;
       }
@@ -699,6 +702,20 @@ describe("Collectable payé en Jetons de Préconstruit", () => {
 });
 
 const { botHasSomethingToDo } = await import("@/game/bot/runBotTurn");
+
+/**
+ * Termine le tour de l'humain : pas de fin de tour en Phase principale 1,
+ * il passe donc ses phases jusqu'à la principale 2, puis finit. Rend la
+ * réponse de la FIN DE TOUR.
+ */
+async function finirTour(matchId: string) {
+  for (let i = 0; i < 2; i++) {
+    const state = db.one("match_states", { match_id: matchId })!.state;
+    if (state.phase === "mainPhase2") break;
+    expect((await submitMatchAction(matchId, { type: "advancePhase", playerId: USER })).ok).toBe(true);
+  }
+  return submitMatchAction(matchId, { type: "endTurn", playerId: USER });
+}
 const { BOT_PLAYER_ID } = await import("@/features/matches/matchStore");
 
 describe("tour du bot par tranches — la fin de tour répond sans attendre le bot", () => {
@@ -706,7 +723,7 @@ describe("tour du bot par tranches — la fin de tour répond sans attendre le b
     const started = await startBotMatch(DECK.id, OTHER_DECK.id, "difficile");
     const matchId = started.matchId!;
 
-    const ended = await submitMatchAction(matchId, { type: "endTurn", playerId: USER });
+    const ended = await finirTour(matchId);
     expect(ended.error).toBeUndefined();
     // Une seule vue : celle d'après le coup du joueur. Le bot n'a encore rien joué.
     expect(ended.data!.frames.views.length).toBe(1);
@@ -731,7 +748,7 @@ describe("tour du bot par tranches — la fin de tour répond sans attendre le b
   it("une table rouverte au milieu du tour du bot le voit terminé", async () => {
     const started = await startBotMatch(DECK.id, OTHER_DECK.id, "moyen");
     const matchId = started.matchId!;
-    const ended = await submitMatchAction(matchId, { type: "endTurn", playerId: USER });
+    const ended = await finirTour(matchId);
     expect(ended.data!.botToMove).toBe(true);
 
     // L'écran a été fermé : personne ne demande la suite. La lecture la termine.
@@ -744,7 +761,7 @@ describe("tour du bot par tranches — la fin de tour répond sans attendre le b
   it("ne fait pas jouer le bot pour quelqu'un qui n'est pas à la table", async () => {
     const started = await startBotMatch(DECK.id, OTHER_DECK.id, "facile");
     const matchId = started.matchId!;
-    await submitMatchAction(matchId, { type: "endTurn", playerId: USER });
+    await finirTour(matchId);
     const version = db.one("match_states", { match_id: matchId })!.version;
 
     sessionUserId = OPPONENT;

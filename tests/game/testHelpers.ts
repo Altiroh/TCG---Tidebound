@@ -92,7 +92,10 @@ export function testGameState(overrides: Partial<GameState> = {}): GameState {
     id: "test-game",
     createdAt: 0,
     players: [p1, p2],
-    turnNumber: 1,
+    // Le 2e tour de p1, pas le 1er : au tout premier tour de la partie, le
+    // premier joueur ne peut pas attaquer (règle du 08/10/2026) — un cas
+    // particulier que seuls les tests qui le visent doivent rencontrer.
+    turnNumber: 3,
     activePlayerId: "p1",
     priorityPlayerId: "p1",
     phase: "mainPhase",
@@ -153,4 +156,14 @@ export function answerHandDiscard(state: GameState, instanceIds?: string[]) {
     playerId: choice.playerId,
     choice: { discardInstanceIds: instanceIds ?? hand.slice(0, choice.count).map((card) => card.instanceId) },
   });
+}
+
+/**
+ * Prêt à finir son tour : pas de fin de tour en Phase principale 1 (règle du
+ * 08/10/2026). Les tests qui terminent un tour « tout de suite » passent par
+ * ici : l'état est posé en Phase principale 2, sans rejouer la phase de
+ * combat (ni ses déclencheurs) — exactement ce qu'ils faisaient avant.
+ */
+export function enFinDeTour(state: GameState): GameState {
+  return state.phase === "mainPhase" ? { ...state, phase: "mainPhase2" } : state;
 }

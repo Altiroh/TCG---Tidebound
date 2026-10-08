@@ -10,7 +10,7 @@ interface PontActionsProps {
   disabled?: boolean;
   /** Passer à la phase suivante (`advancePhase`). */
   onAdvance: () => void;
-  /** Terminer le tour (`endTurn`) : possible à tout moment de mon tour. */
+  /** Terminer le tour (`endTurn`) : dès la Phase de combat, jamais en Phase principale 1. */
   onEndTurn: () => void;
 }
 
@@ -52,7 +52,15 @@ export function PontActions({ phase, disabled = false, onAdvance, onEndTurn }: P
           {/* eslint-disable-next-line @next/next/no-img-element -- bouton peint */}
           <img src={next.src} alt="" draggable={false} />
         </button>
-        <button type="button" className={styles.button} disabled={disabled} aria-label="Fin de tour" title="Fin de tour" onClick={onEndTurn}>
+        <button
+          type="button"
+          className={styles.button}
+          // Pas de fin de tour en Phase principale 1 : passer d'abord en combat.
+          disabled={disabled || phase === "mainPhase"}
+          aria-label="Fin de tour"
+          title={phase === "mainPhase" ? "Fin de tour — passez d'abord en Phase de combat" : "Fin de tour"}
+          onClick={onEndTurn}
+        >
           {/* eslint-disable-next-line @next/next/no-img-element -- bouton peint */}
           <img src={FIN_DE_TOUR} alt="" draggable={false} />
         </button>

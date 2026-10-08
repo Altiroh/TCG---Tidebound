@@ -21,7 +21,7 @@ import { CORE_SET } from "@/game/cards/sets/core";
 import { resolveEffect } from "@/game/effects/resolveEffect";
 import { previewBreakReason } from "@/game/actions/breakObject";
 import type { GameState } from "@/game/state/types";
-import { answerHandDiscard, instance, pendingCandidates, testEnvironment, testGameState, testPlayer } from "./testHelpers";
+import { answerHandDiscard, instance, pendingCandidates, testEnvironment, testGameState, testPlayer, enFinDeTour } from "./testHelpers";
 
 function ok(result: { ok: boolean; error?: string }): asserts result is { ok: true; state: GameState } & typeof result {
   if (!result.ok) throw new Error(result.error ?? "action refusée");
@@ -46,21 +46,21 @@ describe("durée d'une carte : les tours de son contrôleur", () => {
     });
 
     // Tour de p2 : le Rideau ne bouge pas.
-    const toP2 = dispatch(state, { type: "endTurn", playerId: "p1" });
+    const toP2 = dispatch(enFinDeTour(state), { type: "endTurn", playerId: "p1" });
     ok(toP2);
     state = toP2.state;
     expect(board(state, "p1").find((u) => u.instanceId === rideau.instanceId)?.turnsRemaining).toBe(2);
 
     // Retour de p1 : un tour de moins, et la carte est toujours là.
-    const backToP1 = dispatch(state, { type: "endTurn", playerId: "p2" });
+    const backToP1 = dispatch(enFinDeTour(state), { type: "endTurn", playerId: "p2" });
     ok(backToP1);
     state = backToP1.state;
     expect(board(state, "p1").find((u) => u.instanceId === rideau.instanceId)?.turnsRemaining).toBe(1);
 
     // Deux de ses tours écoulés : elle quitte le plateau à l'entame du second.
-    const toP2Again = dispatch(state, { type: "endTurn", playerId: "p1" });
+    const toP2Again = dispatch(enFinDeTour(state), { type: "endTurn", playerId: "p1" });
     ok(toP2Again);
-    const expired = dispatch(toP2Again.state, { type: "endTurn", playerId: "p2" });
+    const expired = dispatch(enFinDeTour(toP2Again.state), { type: "endTurn", playerId: "p2" });
     ok(expired);
     expect(board(expired.state, "p1").some((u) => u.instanceId === rideau.instanceId)).toBe(false);
     expect(player(expired.state, "p1").graveyard.some((u) => u.instanceId === rideau.instanceId)).toBe(true);

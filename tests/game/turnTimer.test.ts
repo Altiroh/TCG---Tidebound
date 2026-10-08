@@ -5,7 +5,7 @@ import { allowanceFor, missedDeadlines, nextTimeoutEndsGame, playerToAct, turnTi
 import { createGameState } from "@/game/state/createGameState";
 import { DECK_LE_GRAND_BANC, DECK_CHASSE_AU_GROS } from "@/game/cards/decks/precon";
 import { getPlayer, type GameState } from "@/game/state/types";
-import { instance, testGameState, testPlayer } from "./testHelpers";
+import { instance, testGameState, testPlayer, enFinDeTour } from "./testHelpers";
 
 /**
  * DÉLAI DE TOUR — ce que le moteur en fait.
@@ -58,7 +58,7 @@ describe("chrono de tour", () => {
     expect(state.turnTimer?.awaitingPlayerId).toBe("p1");
     expect(state.turnTimer!.deadlineAt).toBeGreaterThan(Date.now());
 
-    const passeLaMain = dispatch(state, { type: "endTurn", playerId: "p1" });
+    const passeLaMain = dispatch(enFinDeTour(state), { type: "endTurn", playerId: "p1" });
     ok(passeLaMain);
     // La question a changé de siège : le chrono aussi.
     expect(passeLaMain.state.turnTimer?.awaitingPlayerId).toBe("p2");
@@ -104,7 +104,7 @@ describe("échéance manquée", () => {
     expect(missedDeadlines(premiere.state, "p1")).toBe(1);
 
     // p2 rend la main : p1 n'a plus que deux minutes.
-    const retour = dispatch(premiere.state, { type: "endTurn", playerId: "p2" });
+    const retour = dispatch(enFinDeTour(premiere.state), { type: "endTurn", playerId: "p2" });
     ok(retour);
     expect(retour.state.turnTimer?.awaitingPlayerId).toBe("p1");
     expect(allowanceFor(retour.state)).toBe(2 * 60_000);
@@ -118,7 +118,7 @@ describe("échéance manquée", () => {
     ok(deuxieme);
     expect(deuxieme.state.status).toBe("active");
     expect(missedDeadlines(deuxieme.state, "p1")).toBe(2);
-    const retour2 = dispatch(deuxieme.state, { type: "endTurn", playerId: "p2" });
+    const retour2 = dispatch(enFinDeTour(deuxieme.state), { type: "endTurn", playerId: "p2" });
     ok(retour2);
     expect(allowanceFor(retour2.state)).toBe(60_000);
     expect(nextTimeoutEndsGame(retour2.state, "p1")).toBe(true);

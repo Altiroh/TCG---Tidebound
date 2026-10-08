@@ -9,7 +9,7 @@ import { markArrivalsBeforeTurnStart, pruneGraveyardArrivals } from "@/game/stat
 import { RULES } from "@/game/rules/constants";
 import { landeRemovedKeywords, landeStrikesAtEndOfTurn } from "@/game/rules/lande";
 import { tickLande } from "@/game/rules/landeTick";
-import { assertGameActive, assertIsActivePlayer, assertPlayerInGame, combine } from "@/game/rules/validation";
+import { assertGameActive, assertIsActivePlayer, assertPlayerInGame, combine, fail, ok } from "@/game/rules/validation";
 import { findAnomalyForcedChoices, recordForcedChoicesImposed } from "@/game/state/anomalies";
 import { ouvrirFenetrePour } from "@/game/reactions/reactionWindow";
 import type { TriggerEvent } from "@/game/triggers/types";
@@ -20,7 +20,8 @@ function validate(state: GameState, action: EndTurnAction) {
   return combine(
     assertGameActive(state),
     assertPlayerInGame(state, action.playerId),
-    assertIsActivePlayer(state, action.playerId)
+    assertIsActivePlayer(state, action.playerId),
+    state.phase === "mainPhase" ? fail("Pas de fin de tour en Phase principale 1 : passez d'abord en Phase de combat.") : ok()
   );
 }
 

@@ -10,7 +10,7 @@ import { processTrigger } from "@/game/triggers/triggerBus";
 import { processDeaths } from "@/game/state/processDeaths";
 import { eligibleCandidatesFor } from "@/game/reactions/reactionWindow";
 import type { GameState } from "@/game/state/types";
-import { activateReactionFor, answerHandDiscard, instance, pendingCandidates, testEnvironment, testGameState, testPlayer } from "./testHelpers";
+import { activateReactionFor, answerHandDiscard, instance, pendingCandidates, testEnvironment, testGameState, testPlayer, enFinDeTour } from "./testHelpers";
 
 const STRUCTURE = "le-trone-de-bouchon"; // Structure toujours visible, 4 Résistance, sans capacité
 const EPAVE = "epave-a-fleur-deau"; // visible en Houle uniquement
@@ -114,7 +114,7 @@ describe("Structures qui deviennent visibles — Contremaître des Amarres, Épa
 
   it("Contremaître des Amarres : une Structure ADVERSE qui devient visible perd 1 Résistance", () => {
     const { epave, state } = revealSetup([], [instance("contremaitre-des-amarres", "p2")]);
-    const result = dispatch(state, { type: "endTurn", playerId: "p1" });
+    const result = dispatch(enFinDeTour(state), { type: "endTurn", playerId: "p1" });
     ok(result);
     const revealed = board(result.state, "p1").find((u) => u.instanceId === epave.instanceId)!;
     expect(revealed.damageMarked).toBe(1);
@@ -122,7 +122,7 @@ describe("Structures qui deviennent visibles — Contremaître des Amarres, Épa
 
   it("Épave à Fleur d'Eau : propose de défausser 1 carte pour en piocher 1 quand elle devient visible", () => {
     const { state } = revealSetup([], []);
-    const result = dispatch(state, { type: "endTurn", playerId: "p1" });
+    const result = dispatch(enFinDeTour(state), { type: "endTurn", playerId: "p1" });
     ok(result);
     expect(result.events.some((e) => e.type === "STRUCTURE_REVEALED")).toBe(true);
     expect(result.state.pendingReaction?.awaitingPlayerId).toBe("p1");
@@ -159,7 +159,7 @@ describe("Marée — Balise des Profondeurs, Lanterne aux Verres Noirs", () => {
       environment: testEnvironment({ tideState: "calme", tideRemainingTurns: 1, tideOrientation: "montante" }),
       players: [testPlayer("p1", { board: [balise], reason: 5 }), testPlayer("p2", { deck: filler("p2") })],
     });
-    const ended = dispatch(state, { type: "endTurn", playerId: "p1" });
+    const ended = dispatch(enFinDeTour(state), { type: "endTurn", playerId: "p1" });
     ok(ended);
     expect(ended.state.environment.tideState).toBe("houle");
     const candidate = candidates(ended.state).find((c) => c.cardId === "balise-des-profondeurs");
@@ -185,7 +185,7 @@ describe("Marée — Balise des Profondeurs, Lanterne aux Verres Noirs", () => {
       environment: testEnvironment({ tideState: "houle", tideRemainingTurns: 3, tideOrientation: "montante" }),
       players: [testPlayer("p1"), testPlayer("p2", { board: [marin, lanterne], reason: 5, deck: filler("p2") })],
     });
-    const ended = dispatch(state, { type: "endTurn", playerId: "p1" });
+    const ended = dispatch(enFinDeTour(state), { type: "endTurn", playerId: "p1" });
     ok(ended);
     const options = candidates(ended.state).filter((c) => c.cardId === "lanterne-aux-verres-noirs");
     expect(options.map((c) => c.abilityIndex).sort()).toEqual([0, 1]);
@@ -212,7 +212,7 @@ describe("Équipements récurrents — Kit de Calfatage, Treuil à Chair", () =>
       environment: testEnvironment({ tideState: "houle", tideRemainingTurns: 4 }),
       players: [testPlayer("p1"), testPlayer("p2", { board: [damaged, kit], deck: filler("p2") })],
     });
-    const healed = dispatch(visible, { type: "endTurn", playerId: "p1" });
+    const healed = dispatch(enFinDeTour(visible), { type: "endTurn", playerId: "p1" });
     ok(healed);
     expect(board(healed.state, "p2").find((u) => u.instanceId === damaged.instanceId)!.damageMarked).toBe(1);
 
@@ -220,7 +220,7 @@ describe("Équipements récurrents — Kit de Calfatage, Treuil à Chair", () =>
       environment: testEnvironment({ tideState: "calme", tideRemainingTurns: 4 }),
       players: [testPlayer("p1"), testPlayer("p2", { board: [damaged, kit], deck: filler("p2") })],
     });
-    const untouched = dispatch(hidden, { type: "endTurn", playerId: "p1" });
+    const untouched = dispatch(enFinDeTour(hidden), { type: "endTurn", playerId: "p1" });
     ok(untouched);
     expect(board(untouched.state, "p2").find((u) => u.instanceId === damaged.instanceId)!.damageMarked).toBe(2);
   });
@@ -234,8 +234,8 @@ describe("Équipements récurrents — Kit de Calfatage, Treuil à Chair", () =>
         players: [testPlayer("p1", { board: [creature, treuil], reason: 5 }), testPlayer("p2", { deck: filler("p2") })],
       });
     };
-    const attacked = dispatch(setup(true), { type: "endTurn", playerId: "p1" });
-    const idle = dispatch(setup(false), { type: "endTurn", playerId: "p1" });
+    const attacked = dispatch(enFinDeTour(setup(true)), { type: "endTurn", playerId: "p1" });
+    const idle = dispatch(enFinDeTour(setup(false)), { type: "endTurn", playerId: "p1" });
     ok(attacked);
     ok(idle);
     expect(player(attacked.state, "p1").reason).toBe(player(idle.state, "p1").reason - 1);

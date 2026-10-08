@@ -3,7 +3,7 @@ import { dispatch } from "@/game/engine";
 import { auraContextOf, computeEffectiveStats } from "@/game/cards/stats";
 import type { CardInstance } from "@/game/cards/types";
 import type { GameState } from "@/game/state/types";
-import { activateReactionFor, answerHandDiscard, instance, pendingCandidates, testEnvironment, testGameState, testPlayer } from "./testHelpers";
+import { activateReactionFor, answerHandDiscard, instance, pendingCandidates, testEnvironment, testGameState, testPlayer, enFinDeTour } from "./testHelpers";
 
 /**
  * PONT DE VERRE — « La première fois pendant chacun de vos tours qu'une unité
@@ -136,7 +136,7 @@ describe("Pont de Verre face à un autre déclenchement simultané", () => {
     expect(unite(soin.state, blesse.instanceId)!.damageMarked).toBe(1);
     expect(soin.state.pendingReaction).toBeUndefined();
     // La partie reprend son cours normal.
-    const fin = dispatch(soin.state, { type: "endTurn", playerId: "p1" });
+    const fin = dispatch(enFinDeTour(soin.state), { type: "endTurn", playerId: "p1" });
     ok(fin);
   });
 

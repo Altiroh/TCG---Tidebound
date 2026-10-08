@@ -8,7 +8,7 @@ import { processSummonEnterTriggers, processTrigger } from "@/game/triggers/trig
 import { deriveReactionTriggerEvents } from "@/game/reactions/reactionWindow";
 import type { GameEvent } from "@/game/events/types";
 import type { GameState, PlayerState } from "@/game/state/types";
-import { activateReactionFor, answerHandDiscard, instance, pendingCandidates, testEnvironment, testGameState, testPlayer } from "./testHelpers";
+import { activateReactionFor, answerHandDiscard, instance, pendingCandidates, testEnvironment, testGameState, testPlayer, enFinDeTour } from "./testHelpers";
 
 /**
  * Revue cartes ↔ moteur, phase 2 — Lot 10 (Cra-Poiscail), Lot 11 (Théâtre
@@ -36,7 +36,7 @@ function passAll(state: GameState): GameState {
 }
 
 function endTurn(state: GameState, playerId: string): GameState {
-  return passAll(ok(dispatch(passAll(state), { type: "endTurn", playerId })));
+  return passAll(ok(dispatch(enFinDeTour(passAll(state)), { type: "endTurn", playerId })));
 }
 
 function eventsOf(result: ReturnType<typeof dispatch>): GameEvent[] {
@@ -49,6 +49,7 @@ describe("Il Dottore des Noyés — « jusqu'à VOTRE prochain tour »", () => {
     const dottore = instance("il-dottore-des-noyes", "p1");
     const crabe = instance("crabe-de-fer", "p2");
     let state = testGameState({
+      turnNumber: 1,
       players: [
         testPlayer("p1", { hand: [dottore], deck: filler("p1") }),
         testPlayer("p2", { shipId: "le-goliath", board: [crabe], deck: filler("p2") }),
@@ -87,6 +88,7 @@ describe("Le Régisseur Sans Visage — « renvoyer une AUTRE unité Marionnette
     const pulcinella = instance("pulcinella-gonfle", "p1");
     const arlecchino = instance("arlecchino-des-profondeurs", "p1");
     const state = testGameState({
+      turnNumber: 1,
       players: [
         testPlayer("p1", { board: [regisseur, pulcinella], hand: [arlecchino] }),
         testPlayer("p2", { shipId: "le-goliath" }),
@@ -114,6 +116,7 @@ describe("arrivée JOUÉE, invoquée ou REJOUÉE (`onlyPlayed`, arrivée rejoué
     const rideau = instance("le-rideau-se-leve", "p1");
     const pulcinella = instance("pulcinella-gonfle", "p1");
     let state = testGameState({
+      turnNumber: 1,
       players: [testPlayer("p1", { hand: [rideau, pulcinella], reason: 10 }), testPlayer("p2", { shipId: "le-goliath" })],
     });
     const poseRideau = dispatch(state, { type: "playCard", playerId: "p1", instanceId: rideau.instanceId });
@@ -129,6 +132,7 @@ describe("arrivée JOUÉE, invoquée ou REJOUÉE (`onlyPlayed`, arrivée rejoué
     const regisseur = instance("le-regisseur-des-profondeurs-abyssal", "p1");
     const pulcinella = instance("pulcinella-gonfle", "p1");
     const state = testGameState({
+      turnNumber: 1,
       players: [testPlayer("p1", { board: [rideau, regisseur, pulcinella] }), testPlayer("p2", { shipId: "le-goliath" })],
     });
     const rejouee: GameEvent = {
@@ -151,6 +155,7 @@ describe("arrivée JOUÉE, invoquée ou REJOUÉE (`onlyPlayed`, arrivée rejoué
     const rideau = instance("le-rideau-se-leve", "p1", { turnsRemaining: 2 });
     const pulcinella = instance("pulcinella-gonfle", "p1");
     const state = testGameState({
+      turnNumber: 1,
       players: [testPlayer("p1", { board: [rideau, pulcinella] }), testPlayer("p2", { shipId: "le-goliath" })],
     });
     const invocation = { trigger: "onEnterPlay" as const, playerId: "p1", cardId: "pulcinella-gonfle", sourceInstanceId: pulcinella.instanceId, fromSummon: true };
@@ -158,6 +163,7 @@ describe("arrivée JOUÉE, invoquée ou REJOUÉE (`onlyPlayed`, arrivée rejoué
 
     const regisseur = instance("le-regisseur-des-profondeurs-abyssal", "p1");
     const avecRegisseur = testGameState({
+      turnNumber: 1,
       players: [testPlayer("p1", { board: [regisseur, pulcinella] }), testPlayer("p2", { shipId: "le-goliath" })],
     });
     expect(processTrigger(avecRegisseur, invocation, 1).events.some((e) => e.type === "ENTER_EFFECTS_REPEATED")).toBe(true);
@@ -167,6 +173,7 @@ describe("arrivée JOUÉE, invoquée ou REJOUÉE (`onlyPlayed`, arrivée rejoué
     const marionnettes = ["pulcinella-gonfle", "arlequin-raccommodeur", "marin-des-jetees", "marin-des-jetees"].map((id) => instance(id, "p1"));
     const nasse = instance("la-nasse-trop-pleine", "p2", { turnsRemaining: 3 });
     const state = testGameState({
+      turnNumber: 1,
       environment: testEnvironment({ tideState: "tempete", tideRemainingTurns: 3 }),
       players: [testPlayer("p1", { board: marionnettes }), testPlayer("p2", { shipId: "le-goliath", board: [nasse] })],
     });
@@ -179,7 +186,7 @@ describe("arrivée JOUÉE, invoquée ou REJOUÉE (`onlyPlayed`, arrivée rejoué
   });
 
   it("la fenêtre de réaction distingue pose, invocation et arrivée rejouée", () => {
-    const state = testGameState();
+    const state = testGameState({ turnNumber: 1 });
     const base = { turnNumber: 1, timestamp: 0, playerId: "p1", instanceId: "x", cardId: "pulcinella-gonfle" };
     const [pose, invoque, rejoue] = deriveReactionTriggerEvents(state, [
       { ...base, type: "SUMMON", played: true },
@@ -197,6 +204,7 @@ describe("Pied marin des invocations (Fesses en Avant !, Le Grand Saut)", () => 
   it("les Péons peuvent attaquer ET portent le mot-clé jusqu'à la fin du tour", () => {
     const fesses = instance("fesses-en-avant", "p1");
     let state = testGameState({
+      turnNumber: 1,
       players: [testPlayer("p1", { hand: [fesses], deck: filler("p1") }), testPlayer("p2", { shipId: "le-goliath", deck: filler("p2") })],
     });
     state = passAll(ok(dispatch(state, { type: "playCard", playerId: "p1", instanceId: fesses.instanceId })));
@@ -220,7 +228,7 @@ describe("Roi Cra-Poiscail", () => {
     const b = instance("ptite-fesse", "p1");
     const state = ok(
       dispatch(
-        testGameState({ players: [testPlayer("p1", { hand: [roi], board: [a, b] }), testPlayer("p2", { shipId: "le-goliath" })] }),
+        testGameState({ turnNumber: 1, players: [testPlayer("p1", { hand: [roi], board: [a, b] }), testPlayer("p2", { shipId: "le-goliath" })] }),
         { type: "playCard", playerId: "p1", instanceId: roi.instanceId }
       )
     );
@@ -239,6 +247,7 @@ describe("Roi Cra-Poiscail", () => {
     const state = ok(
       dispatch(
         testGameState({
+          turnNumber: 1,
           players: [testPlayer("p1", { hand: [roi], board: [instance("ptite-fesse", "p1")] }), testPlayer("p2", { shipId: "le-goliath" })],
         }),
         { type: "playCard", playerId: "p1", instanceId: roi.instanceId }
@@ -265,6 +274,7 @@ describe("Cache-Cache — « la première fois PENDANT VOTRE TOUR »", () => {
       const cacheCache = instance("cache-cache", "p1");
       const meuleur = instance(MEULEUR.id, "p2");
       const state = testGameState({
+        turnNumber: 1,
         activePlayerId: "p2",
         priorityPlayerId: "p2",
         players: [
@@ -286,6 +296,7 @@ describe("Le Goûter — la carte source ne remplit pas sa propre condition", ()
     const gouter = instance("le-gouter", "p1");
     const crabe = instance("crabe-de-fer", "p1");
     let state = testGameState({
+      turnNumber: 1,
       players: [testPlayer("p1", { board: [gouter], hand: [crabe], deck: filler("p1") }), testPlayer("p2", { shipId: "le-goliath" })],
     });
     state = ok(dispatch(state, { type: "breakObject", playerId: "p1", instanceId: gouter.instanceId }));
@@ -302,6 +313,7 @@ describe("On rentre bientôt — défaussez PUIS piochez", () => {
     const crabe = instance("crabe-de-fer", "p1");
     const murene = instance("murene-aveugle", "p1");
     let state = testGameState({
+      turnNumber: 1,
       players: [testPlayer("p1", { hand: [orb, crabe], deck: [murene, ...filler("p1")] }), testPlayer("p2", { shipId: "le-goliath" })],
     });
     state = ok(dispatch(state, { type: "playCard", playerId: "p1", instanceId: orb.instanceId }));
@@ -319,7 +331,7 @@ describe("On rentre bientôt — défaussez PUIS piochez", () => {
     const orb = instance("on-rentre-bientot", "p1");
     const state = ok(
       dispatch(
-        testGameState({ players: [testPlayer("p1", { hand: [orb], deck: filler("p1") }), testPlayer("p2", { shipId: "le-goliath" })] }),
+        testGameState({ turnNumber: 1, players: [testPlayer("p1", { hand: [orb], deck: filler("p1") }), testPlayer("p2", { shipId: "le-goliath" })] }),
         { type: "playCard", playerId: "p1", instanceId: orb.instanceId }
       )
     );
@@ -334,6 +346,7 @@ describe("Tu viens jouer ? — la réduction porte sur la carte repêchée", () 
     const autre = instance("encore-cinq-minutes", "p1");
     const gros = instance("on-avait-dit-tous-ensemble", "p1");
     let state = testGameState({
+      turnNumber: 1,
       players: [
         testPlayer("p1", {
           hand: [tvj, autre, gros],
@@ -367,6 +380,7 @@ describe("Bonne nuit", () => {
     const papa = instance("papa-est-en-mer", "p1");
     const gros = instance("on-avait-dit-tous-ensemble", "p1");
     const state = testGameState({
+      turnNumber: 1,
       players: [testPlayer("p1", { board: [bonneNuit], graveyard: [papa, gros] }), testPlayer("p2", { shipId: "le-goliath" })],
     });
     expect(
@@ -396,6 +410,7 @@ describe("morts d'unités Un Dead : Tout le monde à table, Doudou", () => {
     const a = instance("ptit-bout", "p1");
     const b = instance("cache-cache", "p1");
     let state = testGameState({
+      turnNumber: 1,
       // Une carte en main : la défausse ne peut pas viser la carte piochée.
       players: [testPlayer("p1", { board: [table, a, b], hand: [instance("crabe-de-fer", "p1")], deck: filler("p1") }), testPlayer("p2", { shipId: "le-goliath" })],
     });
@@ -411,6 +426,7 @@ describe("morts d'unités Un Dead : Tout le monde à table, Doudou", () => {
     const porteur = instance("ptit-bout", "p1");
     const doudou = instance("doudou", "p1", { attachedToInstanceId: porteur.instanceId });
     let state = testGameState({
+      turnNumber: 1,
       players: [testPlayer("p1", { board: [porteur, doudou], hand: [instance("crabe-de-fer", "p1")], deck: filler("p1") }), testPlayer("p2", { shipId: "le-goliath" })],
     });
     state = ok(dispatch(detruire(state, [porteur.instanceId]), { type: "advancePhase", playerId: "p1" }));

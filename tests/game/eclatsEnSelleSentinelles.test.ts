@@ -6,7 +6,7 @@ import { chromaticColorsOf, emittedSignalsOf, findAssemblage } from "@/game/rule
 import { hasEffectiveKeyword } from "@/game/rules/validation";
 import type { CardInstance, ChromaticColor } from "@/game/cards/types";
 import type { GameState } from "@/game/state/types";
-import { activateReactionFor, instance, pendingCandidates, testEnvironment, testGameState, testPlayer } from "./testHelpers";
+import { activateReactionFor, instance, pendingCandidates, testEnvironment, testGameState, testPlayer, enFinDeTour } from "./testHelpers";
 
 /**
  * LOT 15 — SENTINELLES CHROMATIQUES : chaque Sentinelle émet le Signal de sa
@@ -123,7 +123,7 @@ describe("Signaux Bleu, Vert et Violet : une fois par tour", () => {
     // Riposte affaiblie : 4 - 1 = 3 dégâts, le Héros (2) tombe quand même.
     expect(stats(r.state, cible.instanceId).attack).toBe(3);
     // Le malus tient pendant le tour adverse…
-    const fin = dispatch(passerTout(r.state), { type: "endTurn", playerId: "p1" });
+    const fin = dispatch(enFinDeTour(passerTout(r.state)), { type: "endTurn", playerId: "p1" });
     ok(fin);
     expect(stats(fin.state, cible.instanceId).attack).toBe(3);
   });
@@ -407,10 +407,10 @@ describe("jouer les couleurs ensemble", () => {
     const lu = activateReactionFor(r.state, "stratege-de-lazur", cible.instanceId);
     ok(lu);
     expect(stats(lu.state, cible.instanceId).attack).toBe(2);
-    const tourAdverse = dispatch(passerTout(lu.state), { type: "endTurn", playerId: "p1" });
+    const tourAdverse = dispatch(enFinDeTour(passerTout(lu.state)), { type: "endTurn", playerId: "p1" });
     ok(tourAdverse);
     expect(stats(tourAdverse.state, cible.instanceId).attack).toBe(2);
-    const retour = dispatch(passerTout(tourAdverse.state), { type: "endTurn", playerId: "p2" });
+    const retour = dispatch(enFinDeTour(passerTout(tourAdverse.state)), { type: "endTurn", playerId: "p2" });
     ok(retour);
     expect(stats(retour.state, cible.instanceId).attack).toBe(4);
   });

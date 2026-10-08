@@ -16,7 +16,7 @@ import { processTrigger } from "@/game/triggers/triggerBus";
 import { eligibleCandidatesFor } from "@/game/reactions/reactionWindow";
 import { assertUnitCanAttack, hasEffectiveKeyword, hasKeywordInContext, KEYWORD_PIED_MARIN } from "@/game/rules/validation";
 import type { GameState } from "@/game/state/types";
-import { activateReactionFor, instance, pendingCandidates, testEnvironment, testGameState, testPlayer } from "./testHelpers";
+import { activateReactionFor, instance, pendingCandidates, testEnvironment, testGameState, testPlayer, enFinDeTour } from "./testHelpers";
 
 const STRUCTURE = "le-trone-de-bouchon"; // Structure toujours visible, sans capacité
 const OBJET = "cartes-des-courants"; // Objet coût 2, sans cible ni Raison en jeu
@@ -194,7 +194,7 @@ describe("Changement de Marée sans fenêtre d'annonce", () => {
         testPlayer("p2", { shipId: "le-goliath", deck: filler("p2"), anchor: 20 }),
       ],
     });
-    const entered = dispatch(state, { type: "endTurn", playerId: "p1" });
+    const entered = dispatch(enFinDeTour(state), { type: "endTurn", playerId: "p1" });
     ok(entered);
     expect(entered.state.pendingReaction).toBeUndefined();
     expect(player(entered.state, "p2").anchor).toBe(19);
@@ -218,7 +218,7 @@ describe("Horloge de Marée — choix au Sabordage", () => {
     expect(choice.abilityIndexes).toEqual([0, 1]);
 
     // Toute autre action est bloquée tant que le choix est ouvert.
-    expect(dispatch(saborded.state, { type: "endTurn", playerId: "p1" }).ok).toBe(false);
+    expect(dispatch(enFinDeTour(saborded.state), { type: "endTurn", playerId: "p1" }).ok).toBe(false);
 
     const extended = dispatch(saborded.state, { type: "resolveChoice", playerId: "p1", choice: { abilityIndex: 1 } });
     ok(extended);
@@ -371,7 +371,7 @@ describe("P'tite Fesse, Grand Rêve abyssale — Pied marin jusqu'à la fin du t
     expect(computeEffectiveStats(unit, "calme").attack).toBe(4);
 
     // Fin du tour : le modificateur tombe, le mot-clé avec lui.
-    const ended = dispatch(triggered.state, { type: "endTurn", playerId: "p1" });
+    const ended = dispatch(enFinDeTour(triggered.state), { type: "endTurn", playerId: "p1" });
     ok(ended);
     const after = player(ended.state, "p1");
     expect(hasEffectiveKeyword(ended.state, after, after.board.find((u) => u.instanceId === fesse.instanceId)!, KEYWORD_PIED_MARIN)).toBe(false);

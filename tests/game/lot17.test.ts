@@ -6,7 +6,7 @@ import { hasEffectiveKeyword } from "@/game/rules/validation";
 import { nextInt } from "@/game/rng";
 import type { CardInstance } from "@/game/cards/types";
 import type { DieSize, GameState } from "@/game/state/types";
-import { instance, testEnvironment, testGameState, testPlayer } from "./testHelpers";
+import { instance, testEnvironment, testGameState, testPlayer, enFinDeTour } from "./testHelpers";
 
 /**
  * LOT 17 — Dungeon et Ladalle / Opalins.
@@ -187,7 +187,7 @@ describe("la lignée LV et l'Île-Tortue Opaline", () => {
     const lv1 = instance("eidolon-opalin-lv1", "p1", { levelMarkers: 1 });
     const lv5 = instance("eidolon-opalin-lv5", "p1");
     const state = table({ board: [lv1], deck: [lv5, ...Array.from({ length: 5 }, () => instance("marin-des-jetees", "p1"))] });
-    const r = dispatch(state, { type: "endTurn", playerId: "p1" });
+    const r = dispatch(enFinDeTour(state), { type: "endTurn", playerId: "p1" });
     ok(r);
     const p1 = joueur(r.state);
     expect(p1.board.some((u) => u.instanceId === lv1.instanceId)).toBe(false);
@@ -202,9 +202,9 @@ describe("la lignée LV et l'Île-Tortue Opaline", () => {
       const lvx = instance(lvxId, "p1");
       // Fin de tour p1, puis tour p2 vide : l'entame du tour suivant de p1 pose le marqueur.
       let state = table({ board: [lv5], deck: [lvx, ...Array.from({ length: 5 }, () => instance("marin-des-jetees", "p1"))] });
-      let r = dispatch(state, { type: "endTurn", playerId: "p1" });
+      let r = dispatch(enFinDeTour(state), { type: "endTurn", playerId: "p1" });
       ok(r);
-      r = dispatch(r.state, { type: "endTurn", playerId: "p2" });
+      r = dispatch(enFinDeTour(r.state), { type: "endTurn", playerId: "p2" });
       ok(r);
       state = r.state;
       const p1 = joueur(state);

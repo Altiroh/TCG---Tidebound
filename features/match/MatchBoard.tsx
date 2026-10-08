@@ -6,7 +6,6 @@ import { useEndScreenHold } from "@/features/match/useEndScreenHold";
 import { useScreenWakeLock } from "@/features/match/useScreenWakeLock";
 import { useEffect, useRef, useState } from "react";
 import {
-  canUnitAttack,
   dispatch,
   eligibleCandidatesFor,
   getCardDefinition,
@@ -170,9 +169,6 @@ export function MatchBoard({
   );
   // La première cible d'une action qui n'est pas allée au bout reste marquée.
   const heldTarget = useHeldTarget(state);
-  // Si aucune unité du joueur actif ne peut attaquer, le bouton unique saute directement à "Fin de tour".
-  const activePlayerBoard = state.players.find((p) => p.id === activePlayerId)?.board ?? [];
-  const hasAnyAttacker = activePlayerBoard.some((unit) => canUnitAttack(state, state.activePlayerId, unit.instanceId));
   const myReactionCandidates =
     state.pendingReaction?.awaitingPlayerId === viewerPlayerId
       ? eligibleCandidatesFor(state, state.pendingReaction.events, viewerPlayerId, state.pendingReaction.turnNumber, state.pendingReaction.usedCandidateKeys)
@@ -420,8 +416,8 @@ export function MatchBoard({
     );
   }
 
-  // Rien à attaquer : le bouton saute le combat ET la Phase principale 2 (on y est déjà, en pratique) et propose la fin du tour.
-  const phase = phaseButtonFor({ isMyTurn: isViewerTurn, phase: state.phase === "mainPhase" && !hasAnyAttacker ? "mainPhase2" : state.phase });
+  // Pas de fin de tour en Phase principale 1 (règle du 08/10/2026) : le bouton mène toujours au combat d'abord.
+  const phase = phaseButtonFor({ isMyTurn: isViewerTurn, phase: state.phase });
   const hint = targetingHint(pending?.kind === "reaction" ? null : pending?.kind ?? null);
 
   // Objets d'invite en constantes locales : `board.breakPrompt` ne se

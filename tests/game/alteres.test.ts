@@ -34,6 +34,7 @@ const eveils = (state: GameState, instanceId: string) => eveilsThisTurn(unite(st
 function table(p1: Partial<ReturnType<typeof testPlayer>> = {}, p2: Partial<ReturnType<typeof testPlayer>> = {}): GameState {
   const pioche = (owner: string) => Array.from({ length: 10 }, () => instance("marin-des-jetees", owner));
   return testGameState({
+    turnNumber: 1,
     environment: testEnvironment({ tideState: "calme" }),
     players: [
       testPlayer("p1", { reason: 10, reasonMax: 10, deck: pioche("p1"), ...p1 }),
@@ -482,6 +483,8 @@ describe("Mutation Réflexe : une réaction jouée depuis la main quand un Alté
     const brute = instance("le-feral", "p1");
     const state = testGameState({
       ...table({ board: [brute] }, { board: [defenseur], hand: main2 }),
+      // Une attaque : pas au tout premier tour de la partie.
+      turnNumber: 3,
       phase: "combatPhase",
     });
     return { brute, r: dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: brute.instanceId, defenderInstanceId: defenseur.instanceId }) };

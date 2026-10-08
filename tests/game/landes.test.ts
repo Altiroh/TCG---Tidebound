@@ -10,7 +10,7 @@ import { describe, expect, it } from "vitest";
 import { dispatch } from "@/game/engine";
 import { hasEffectiveKeyword, assertValidDefender } from "@/game/rules/validation";
 import { landeRemainingTableTurns } from "@/game/rules/lande";
-import { activateReactionFor, instance, testEnvironment, testGameState, testPlayer } from "./testHelpers";
+import { activateReactionFor, instance, testEnvironment, testGameState, testPlayer, enFinDeTour } from "./testHelpers";
 import type { GameState } from "@/game/state/types";
 
 const PLUIE = "pluie-corrosive";
@@ -37,7 +37,7 @@ function partie(hand: ReturnType<typeof instance>[], extra: Partial<GameState> =
 
 /** Fin du tour du joueur actif. */
 function finDeTour(state: GameState): GameState {
-  const result = dispatch(state, { type: "endTurn", playerId: state.activePlayerId });
+  const result = dispatch(enFinDeTour(state), { type: "endTurn", playerId: state.activePlayerId });
   ok(result);
   // Une fenêtre éventuelle (annonce de Marée) se passe : rien de la Lande n'y attend.
   let next = result.state;
@@ -256,7 +256,7 @@ describe("Réponses aux Landes", () => {
     const autre = instance("marin-des-jetees", "p1");
     // Dernier demi-tour du premier tour de table : la fin de ce tour frappe.
     const state = partie([], { activePlayerId: "p1", environment: enJeu(VALLEE, "p2", 3) }, { p1: [zone, crabe, autre] });
-    const fin = dispatch(state, { type: "endTurn", playerId: "p1" });
+    const fin = dispatch(enFinDeTour(state), { type: "endTurn", playerId: "p1" });
     ok(fin);
     expect(fin.state.pendingReaction?.awaitingPlayerId).toBe("p1");
     expect(fin.state.pendingLandeStrike).toBeDefined();
@@ -280,7 +280,7 @@ describe("Réponses aux Landes", () => {
     const zone = instance("zone-de-repli", "p1");
     const crabe = instance("crabe-de-fer", "p1");
     const state = partie([], { environment: enJeu(VALLEE, "p2", 3) }, { p1: [zone, crabe] });
-    const fin = dispatch(state, { type: "endTurn", playerId: "p1" });
+    const fin = dispatch(enFinDeTour(state), { type: "endTurn", playerId: "p1" });
     ok(fin);
     const passe = dispatch(fin.state, { type: "passReaction", playerId: "p1" });
     ok(passe);
@@ -291,7 +291,7 @@ describe("Réponses aux Landes", () => {
     const zone = instance("zone-de-repli", "p2");
     const crabe = instance("crabe-de-fer", "p2");
     const state = partie([], { environment: enJeu(PLUIE, "p1", 5) }, { p2: [zone, crabe] });
-    const fin = dispatch(state, { type: "endTurn", playerId: "p1" });
+    const fin = dispatch(enFinDeTour(state), { type: "endTurn", playerId: "p1" });
     ok(fin);
     expect(fin.state.activePlayerId).toBe("p2");
     expect(fin.state.pendingReaction?.awaitingPlayerId).toBe("p2");

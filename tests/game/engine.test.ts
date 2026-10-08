@@ -6,7 +6,7 @@ import { handBreakCost } from "@/game/actions/breakObject";
 import { enumerateCandidateActions } from "@/game/bot/enumerateActions";
 import { canUnitAttack } from "@/game/rules/validation";
 import { naturalReasonRecovery, reasonCeiling } from "@/game/state/reason";
-import { instance, TEST_COQUE_LEGERE, testEnvironment, testGameState, testPlayer, withTestShip } from "./testHelpers";
+import { instance, TEST_COQUE_LEGERE, testEnvironment, testGameState, testPlayer, withTestShip, enFinDeTour } from "./testHelpers";
 import type { GameState } from "@/game/state/types";
 
 describe("engine.dispatch - phases", () => {
@@ -80,7 +80,7 @@ describe("engine.dispatch - phases", () => {
 
   it("chaque nouveau tour recommence en Phase principale", () => {
     const state = testGameState({ phase: "mainPhase2" });
-    const result = dispatch(state, { type: "endTurn", playerId: "p1" });
+    const result = dispatch(enFinDeTour(state), { type: "endTurn", playerId: "p1" });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.state.phase).toBe("mainPhase");
@@ -731,6 +731,7 @@ describe("engine.dispatch - endTurn", () => {
   it("passe la main au joueur suivant, lui rend la récupération naturelle (et non plus la totalité) et pioche", () => {
     const deckCard = instance("marin-des-jetees", "p2");
     const state = testGameState({
+      turnNumber: 1,
       players: [
         testPlayer("p1", { reasonMax: 10, reason: 5 }),
         testPlayer("p2", { reasonMax: 10, reason: 5, deck: [deckCard] }),
@@ -738,7 +739,7 @@ describe("engine.dispatch - endTurn", () => {
       activePlayerId: "p1",
     });
 
-    const result = dispatch(state, { type: "endTurn", playerId: "p1" });
+    const result = dispatch(enFinDeTour(state), { type: "endTurn", playerId: "p1" });
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
@@ -755,7 +756,7 @@ describe("engine.dispatch - endTurn", () => {
       activePlayerId: "p1",
     });
 
-    const result = dispatch(state, { type: "endTurn", playerId: "p1" });
+    const result = dispatch(enFinDeTour(state), { type: "endTurn", playerId: "p1" });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     const unit = result.state.players[1].board[0];
@@ -769,7 +770,7 @@ describe("engine.dispatch - endTurn", () => {
       activePlayerId: "p1",
     });
 
-    const result = dispatch(state, { type: "endTurn", playerId: "p1" });
+    const result = dispatch(enFinDeTour(state), { type: "endTurn", playerId: "p1" });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.state.players[0].anchor).toBe(18);
@@ -782,7 +783,7 @@ describe("engine.dispatch - endTurn", () => {
       activePlayerId: "p1",
     });
 
-    const result = dispatch(state, { type: "endTurn", playerId: "p1" });
+    const result = dispatch(enFinDeTour(state), { type: "endTurn", playerId: "p1" });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     // p2 devient actif à 0 Raison : 0 n'est pas une dette (il faut être SOUS 0), donc aucune perte d'Ancrage.
@@ -796,7 +797,7 @@ describe("engine.dispatch - endTurn", () => {
       activePlayerId: "p1",
     });
 
-    const result = dispatch(state, { type: "endTurn", playerId: "p1" });
+    const result = dispatch(enFinDeTour(state), { type: "endTurn", playerId: "p1" });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.state.players[0].anchor).toBe(14); // 18 - 4
@@ -812,7 +813,7 @@ describe("engine.dispatch - endTurn", () => {
       activePlayerId: "p1",
     });
 
-    const result = dispatch(state, { type: "endTurn", playerId: "p1" });
+    const result = dispatch(enFinDeTour(state), { type: "endTurn", playerId: "p1" });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     // Une dette qu'on n'a pas CHOISIE ne se paie pas en Ancrage : elle coûte
@@ -830,7 +831,7 @@ describe("engine.dispatch - endTurn", () => {
       activePlayerId: "p1",
     });
 
-    const result = dispatch(state, { type: "endTurn", playerId: "p1" });
+    const result = dispatch(enFinDeTour(state), { type: "endTurn", playerId: "p1" });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.state.players[1].anchor).toBe(18);
@@ -858,7 +859,7 @@ describe("engine.dispatch - endTurn", () => {
     // n'est finie qu'une fois qu'elle s'est refermée. Ce test-ci mesure la
     // Raison — il passe la fenêtre et laisse l'entame se terminer.
     const end = (s: GameState, playerId: string) => {
-      const r = dispatch(s, { type: "endTurn", playerId });
+      const r = dispatch(enFinDeTour(s), { type: "endTurn", playerId });
       if (!r.ok) throw new Error(r.error);
       let after = r.state;
       while (after.pendingReaction) {
@@ -923,7 +924,7 @@ describe("engine.dispatch - endTurn", () => {
         testPlayer("p2", { deck: [instance("marin-des-jetees", "p2")] }),
       ],
     });
-    const after = dispatch(riche, { type: "endTurn", playerId: "p2" });
+    const after = dispatch(enFinDeTour(riche), { type: "endTurn", playerId: "p2" });
     expect(after.ok).toBe(true);
     if (!after.ok) return;
     expect(after.state.players[0].reason).toBe(9); // conservé, ni rogné ni augmenté
@@ -936,7 +937,7 @@ describe("engine.dispatch - endTurn", () => {
         testPlayer("p2", { deck: [instance("marin-des-jetees", "p2")] }),
       ],
     });
-    const result = dispatch(state, { type: "endTurn", playerId: "p1" });
+    const result = dispatch(enFinDeTour(state), { type: "endTurn", playerId: "p1" });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.state.players[0].reasonCap).toBe(3);
@@ -949,7 +950,7 @@ describe("engine.dispatch - endTurn", () => {
       activePlayerId: "p1",
     });
 
-    const result = dispatch(state, { type: "endTurn", playerId: "p1" });
+    const result = dispatch(enFinDeTour(state), { type: "endTurn", playerId: "p1" });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.state.players[0].anchor).toBe(18); // 20 - (3 - 1)
@@ -973,7 +974,7 @@ describe("engine.dispatch - endTurn", () => {
 
   it("refuse de terminer le tour si ce n'est pas le tour du joueur", () => {
     const state = testGameState({ activePlayerId: "p1" });
-    const result = dispatch(state, { type: "endTurn", playerId: "p2" });
+    const result = dispatch(enFinDeTour(state), { type: "endTurn", playerId: "p2" });
     expect(result.ok).toBe(false);
   });
 
@@ -984,7 +985,7 @@ describe("engine.dispatch - endTurn", () => {
       activePlayerId: "p1",
     });
 
-    const result = dispatch(state, { type: "endTurn", playerId: "p1" });
+    const result = dispatch(enFinDeTour(state), { type: "endTurn", playerId: "p1" });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     const p2 = result.state.players[1];
@@ -1021,7 +1022,7 @@ describe("engine.dispatch - condition de victoire", () => {
       activePlayerId: "p2",
     });
 
-    const result = dispatch(state, { type: "endTurn", playerId: "p2" });
+    const result = dispatch(enFinDeTour(state), { type: "endTurn", playerId: "p2" });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     // p1 devient actif, pioche dans un deck vide : Résilience p1 (20+reason
@@ -1042,7 +1043,7 @@ describe("engine.dispatch - endTurn : défausse forcée (RULES.MAX_HAND_SIZE)", 
       activePlayerId: "p1",
     });
 
-    const paused = dispatch(state, { type: "endTurn", playerId: "p1" });
+    const paused = dispatch(enFinDeTour(state), { type: "endTurn", playerId: "p1" });
     expect(paused.ok).toBe(true);
     if (!paused.ok) return;
     // Rien n'est parti tout seul, et le tour n'est pas encore passé.
@@ -1050,7 +1051,7 @@ describe("engine.dispatch - endTurn : défausse forcée (RULES.MAX_HAND_SIZE)", 
     expect(paused.state.activePlayerId).toBe("p1");
     expect(paused.state.players[0].hand).toHaveLength(8);
     // Tant que le choix est ouvert, rien d'autre ne passe.
-    expect(dispatch(paused.state, { type: "endTurn", playerId: "p1" }).ok).toBe(false);
+    expect(dispatch(enFinDeTour(paused.state), { type: "endTurn", playerId: "p1" }).ok).toBe(false);
     // Et la défausse attend son compte exact : pas de refus.
     expect(dispatch(paused.state, { type: "resolveChoice", playerId: "p1", choice: "pass" }).ok).toBe(false);
 
@@ -1079,7 +1080,7 @@ describe("engine.dispatch - endTurn : défausse forcée (RULES.MAX_HAND_SIZE)", 
       activePlayerId: "p1",
     });
 
-    const result = dispatch(state, { type: "endTurn", playerId: "p1" });
+    const result = dispatch(enFinDeTour(state), { type: "endTurn", playerId: "p1" });
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
@@ -1378,7 +1379,7 @@ describe("engine.dispatch - endTurn : capacité de début de tour conditionnelle
       environment: testEnvironment({ tideState: "houle", tideRemainingTurns: 3 }),
     });
 
-    const result = dispatch(state, { type: "endTurn", playerId: "p1" });
+    const result = dispatch(enFinDeTour(state), { type: "endTurn", playerId: "p1" });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.state.players[1].anchor).toBe(16); // 15 + 1 de la Barge de Réparation
@@ -1392,7 +1393,7 @@ describe("engine.dispatch - endTurn : capacité de début de tour conditionnelle
       environment: testEnvironment({ tideState: "calme", tideRemainingTurns: 3 }),
     });
 
-    const result = dispatch(state, { type: "endTurn", playerId: "p1" });
+    const result = dispatch(enFinDeTour(state), { type: "endTurn", playerId: "p1" });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.state.players[1].anchor).toBe(15); // Barge invisible pendant Calme
@@ -1697,7 +1698,7 @@ describe("engine.dispatch - capacités optionnelles via fenêtre de réaction (C
       environment: testEnvironment({ tideState: "tempete", tideRemainingTurns: 1, tideOrientation: "montante" }),
     });
 
-    const ended = dispatch(state, { type: "endTurn", playerId: "p1" });
+    const ended = dispatch(enFinDeTour(state), { type: "endTurn", playerId: "p1" });
     expect(ended.ok).toBe(true);
     if (!ended.ok) return;
     expect(ended.state.environment.tideState).toBe("abysses");
@@ -1727,7 +1728,7 @@ describe("engine.dispatch - capacités optionnelles via fenêtre de réaction (C
       environment: testEnvironment({ tideState: "tempete", tideRemainingTurns: 3 }),
     });
 
-    const ended = dispatch(state, { type: "endTurn", playerId: "p2" });
+    const ended = dispatch(enFinDeTour(state), { type: "endTurn", playerId: "p2" });
     // Ce n'est PAS le tour de p1 qui redevient actif ici (p2 termine son
     // tour, p1 le devient) : startOfTurn de p1 doit bien se déclencher.
     expect(ended.ok).toBe(true);
@@ -2003,7 +2004,7 @@ describe("engine.dispatch - Brise-Vague de Fortune : bouclier de dégâts de Mar
       environment: testEnvironment({ tideState: "tempete", tideRemainingTurns: 5 }),
     });
 
-    const result = dispatch(state, { type: "endTurn", playerId: "p1" });
+    const result = dispatch(enFinDeTour(state), { type: "endTurn", playerId: "p1" });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     // 1 dégât d'Ancrage de Tempête, intégralement absorbé par le bouclier.
@@ -2208,10 +2209,10 @@ describe("engine.dispatch - activateAbility : Sondeur des Mauvaises Eaux (capaci
     expect(second.ok).toBe(false);
 
     // Nouveau tour (endTurn x2 pour repasser à p1) : la capacité redevient disponible.
-    const p2Turn = dispatch(first.state, { type: "endTurn", playerId: "p1" });
+    const p2Turn = dispatch(enFinDeTour(first.state), { type: "endTurn", playerId: "p1" });
     expect(p2Turn.ok).toBe(true);
     if (!p2Turn.ok) return;
-    const p1Turn = dispatch(p2Turn.state, { type: "endTurn", playerId: "p2" });
+    const p1Turn = dispatch(enFinDeTour(p2Turn.state), { type: "endTurn", playerId: "p2" });
     expect(p1Turn.ok).toBe(true);
     if (!p1Turn.ok) return;
 
@@ -2365,6 +2366,7 @@ describe("engine.dispatch - La Gueule Sous la Mer : saut direct en Abysses + ver
     const fillerP1 = instance("marin-des-jetees", "p1");
     const fillerP2 = instance("marin-des-jetees", "p2");
     const state = testGameState({
+      turnNumber: 1,
       players: [
         testPlayer("p1", { hand: [gueule, mousse], deck: [fillerP1], reason: 10, anchor: 20 }),
         testPlayer("p2", { deck: [fillerP2], reason: 10 }),
@@ -2383,13 +2385,13 @@ describe("engine.dispatch - La Gueule Sous la Mer : saut direct en Abysses + ver
     expect(withMousse.state.players[0].reason).toBe(2); // 3 (après la Gueule et Équipage à bout) - 1 (coût) + 0 (gain verrouillé)
 
     // Fin du tour de p1, puis fin du tour de p2 (p1 redevient actif : le verrou est levé).
-    const p2Turn = dispatch(withMousse.state, { type: "endTurn", playerId: "p1" });
+    const p2Turn = dispatch(enFinDeTour(withMousse.state), { type: "endTurn", playerId: "p1" });
     expect(p2Turn.ok).toBe(true);
     if (!p2Turn.ok) return;
     expect(p2Turn.state.players[0].reason).toBe(2); // pas de régénération pour p1 ici (ce n'est pas son tour)
     expect(p2Turn.state.players[0].statusFlags).toContain("noReasonGainUntilNextTurn"); // toujours posé : pas encore "le début de son tour"
 
-    const p1Turn = dispatch(p2Turn.state, { type: "endTurn", playerId: "p2" });
+    const p1Turn = dispatch(enFinDeTour(p2Turn.state), { type: "endTurn", playerId: "p2" });
     expect(p1Turn.ok).toBe(true);
     if (!p1Turn.ok) return;
     expect(p1Turn.state.players[0].statusFlags).not.toContain("noReasonGainUntilNextTurn");
@@ -2431,7 +2433,7 @@ describe("engine.dispatch - Le Fond Vous Regarde : choix forcé au début de cha
       ],
     });
 
-    const p2Turn = dispatch(state, { type: "endTurn", playerId: "p1" });
+    const p2Turn = dispatch(enFinDeTour(state), { type: "endTurn", playerId: "p1" });
     expect(p2Turn.ok).toBe(true);
     if (!p2Turn.ok) return;
     expect(p2Turn.state.activePlayerId).toBe("p2");
@@ -2445,7 +2447,7 @@ describe("engine.dispatch - Le Fond Vous Regarde : choix forcé au début de cha
     });
 
     // Toute autre action est refusée tant que le choix reste ouvert.
-    const blocked = dispatch(p2Turn.state, { type: "endTurn", playerId: "p2" });
+    const blocked = dispatch(enFinDeTour(p2Turn.state), { type: "endTurn", playerId: "p2" });
     expect(blocked.ok).toBe(false);
 
     const resolved = dispatch(p2Turn.state, { type: "resolveChoice", playerId: "p2", choice: "reasonLoss" });
@@ -2455,7 +2457,7 @@ describe("engine.dispatch - Le Fond Vous Regarde : choix forcé au début de cha
     expect(resolved.state.players[1].reason).toBe(9); // 10 - 1
 
     // Toujours en jeu (durée 2 tours) : le choix revient au tour suivant, pour p1 cette fois.
-    const p1Turn = dispatch(resolved.state, { type: "endTurn", playerId: "p2" });
+    const p1Turn = dispatch(enFinDeTour(resolved.state), { type: "endTurn", playerId: "p2" });
     expect(p1Turn.ok).toBe(true);
     if (!p1Turn.ok) return;
     expect(p1Turn.state.activePlayerId).toBe("p1");
@@ -2472,7 +2474,7 @@ describe("engine.dispatch - Le Fond Vous Regarde : choix forcé au début de cha
       ],
     });
     const passerEtChoisir = (playerId: string) => {
-      const fin = dispatch(state, { type: "endTurn", playerId });
+      const fin = dispatch(enFinDeTour(state), { type: "endTurn", playerId });
       if (!fin.ok) throw new Error(fin.error);
       state = fin.state;
       if (!state.pendingChoice) return false;
@@ -2499,7 +2501,7 @@ describe("engine.dispatch - Le Fond Vous Regarde : choix forcé au début de cha
       ],
     });
 
-    const p2Turn = dispatch(state, { type: "endTurn", playerId: "p1" });
+    const p2Turn = dispatch(enFinDeTour(state), { type: "endTurn", playerId: "p1" });
     expect(p2Turn.ok).toBe(true);
     if (!p2Turn.ok) return;
 
@@ -2520,7 +2522,7 @@ describe("engine.dispatch - Le Fond Vous Regarde : choix forcé au début de cha
       ],
     });
 
-    const p2Turn = dispatch(state, { type: "endTurn", playerId: "p1" });
+    const p2Turn = dispatch(enFinDeTour(state), { type: "endTurn", playerId: "p1" });
     expect(p2Turn.ok).toBe(true);
     if (!p2Turn.ok) return;
 
@@ -2538,7 +2540,7 @@ describe("engine.dispatch - Le Fond Vous Regarde : choix forcé au début de cha
       ],
     });
 
-    const p2Turn = dispatch(state, { type: "endTurn", playerId: "p1" });
+    const p2Turn = dispatch(enFinDeTour(state), { type: "endTurn", playerId: "p1" });
     expect(p2Turn.ok).toBe(true);
     if (!p2Turn.ok) return;
     expect(p2Turn.state.pendingChoice?.kind === "reasonOrAnchor" && p2Turn.state.pendingChoice.reasonLossAmount).toBe(2);

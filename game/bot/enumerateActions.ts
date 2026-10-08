@@ -350,14 +350,9 @@ export function enumerateCandidateActions(state: GameState, playerId: PlayerId):
     }
 
     if (state.phase === "mainPhase") {
+      // Pas de fin de tour en Phase principale 1 (règle du 08/10/2026) : la
+      // seule sortie est la Phase de combat, même sans rien à attaquer.
       actions.push({ type: "advancePhase", playerId });
-      // N'offre "passer directement" que s'il n'y a rien à attaquer derrière —
-      // sinon `chooseAction.ts` favorise de toute façon `advancePhase` via son
-      // bonus heuristique, mais autant ne pas tenter le sort avec un
-      // choix aléatoire (difficulté "facile") qui zapperait une attaque gratuite.
-      if (!player.board.some((unit) => canUnitAttack(state, playerId, unit.instanceId))) {
-        actions.push({ type: "endTurn", playerId });
-      }
     } else {
       // Phase principale 2 : le combat est derrière, la seule sortie est la fin du tour.
       actions.push({ type: "endTurn", playerId });

@@ -76,11 +76,11 @@ export function chooseBotAction(
     const searched = searchBestAction(state, playerId);
     if (searched) return searched;
     const fallback = scoreCandidates(state, playerId).sort((a, b) => b.score - a.score)[0];
-    return fallback?.action ?? { type: "endTurn", playerId };
+    return fallback?.action ?? sortieDePhase(state, playerId);
   }
 
   let scored = scoreCandidates(state, playerId);
-  if (scored.length === 0) return { type: "endTurn", playerId };
+  if (scored.length === 0) return sortieDePhase(state, playerId);
 
   scored.sort((a, b) => b.score - a.score);
 
@@ -142,3 +142,8 @@ interface MistakeProfile {
 const FACILE: MistakeProfile = { mistakeChance: 0.55, mistakeDepth: 0.8 };
 /** Joue le bon coup la plupart du temps, et ses erreurs restent proches du bon. */
 const MOYEN: MistakeProfile = { mistakeChance: 0.25, mistakeDepth: 0.4 };
+
+/** Rien de mieux à faire : finir son tour — ou, en Phase principale 1 où on ne le peut pas, passer au combat. */
+function sortieDePhase(state: GameState, playerId: PlayerId): PlayerAction {
+  return state.phase === "mainPhase" ? { type: "advancePhase", playerId } : { type: "endTurn", playerId };
+}

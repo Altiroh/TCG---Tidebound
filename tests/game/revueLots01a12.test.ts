@@ -3,7 +3,7 @@ import { dispatch } from "@/game/engine";
 import { computeEffectiveStats } from "@/game/cards/stats";
 import { processTrigger } from "@/game/triggers/triggerBus";
 import type { GameState, PlayerState } from "@/game/state/types";
-import { activateReactionFor, answerHandDiscard, instance, pendingCandidates, testEnvironment, testGameState, testPlayer } from "./testHelpers";
+import { activateReactionFor, answerHandDiscard, instance, pendingCandidates, testEnvironment, testGameState, testPlayer, enFinDeTour } from "./testHelpers";
 
 /**
  * Revue cartes ↔ moteur, phase 2 : écarts restants des Lots 01 à 09 et du
@@ -173,7 +173,7 @@ describe("Lanterne aux Verres Noirs : pas d'option « réduire » à vide", () =
         testPlayer("p2", { shipId: "le-goliath", board: [marin, lanterne], deck: [instance("murene-aveugle", "p2")] }),
       ],
     });
-    return ok(dispatch(state, { type: "endTurn", playerId: "p1" }));
+    return ok(dispatch(enFinDeTour(state), { type: "endTurn", playerId: "p1" }));
   }
   const options = (state: GameState) => pendingCandidates(state).filter((c) => c.cardId === "lanterne-aux-verres-noirs").map((c) => c.abilityIndex);
 
@@ -260,7 +260,7 @@ describe("Le Fond Vous Regarde : CHAQUE Anomalie impose son choix", () => {
         testPlayer("p2", { deck: [instance("murene-aveugle", "p2")], reason: 10, anchor: 20 }),
       ],
     });
-    const tour = ok(dispatch(state, { type: "endTurn", playerId: "p1" }));
+    const tour = ok(dispatch(enFinDeTour(state), { type: "endTurn", playerId: "p1" }));
     expect(tour.pendingChoice?.kind === "reasonOrAnchor" && tour.pendingChoice.sourceInstanceId).toBe(a.instanceId);
     const premier = ok(dispatch(tour, { type: "resolveChoice", playerId: "p2", choice: "anchorDamage" }));
     // Avant : une seule des deux cartes agissait.
@@ -362,7 +362,7 @@ describe("Wood Vy : la Structure PERD de la Résistance, puis en récupère 1", 
         testPlayer("p2", { shipId: "le-goliath", board: [wood, horloge], deck: [instance("murene-aveugle", "p2")] }),
       ],
     });
-    const after = ok(dispatch(state, { type: "endTurn", playerId: "p1" }));
+    const after = ok(dispatch(enFinDeTour(state), { type: "endTurn", playerId: "p1" }));
     // Avant : la Marée ne consultait pas Wood Vy — 1 dégât marqué.
     expect(unit(after, horloge.instanceId)!.damageMarked).toBe(0);
     const log = after.eventLog.filter((e) => ("targetInstanceId" in e ? e.targetInstanceId : undefined) === horloge.instanceId);

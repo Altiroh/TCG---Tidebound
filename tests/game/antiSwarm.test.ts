@@ -19,7 +19,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { dispatch } from "@/game/engine";
-import { activateReactionFor, instance, pendingCandidates, testEnvironment, testGameState, testPlayer } from "./testHelpers";
+import { activateReactionFor, instance, pendingCandidates, testEnvironment, testGameState, testPlayer, enFinDeTour } from "./testHelpers";
 import type { GameState } from "@/game/state/types";
 
 const NASSE = "la-nasse-trop-pleine"; // visible en Tempête et Abysses
@@ -48,7 +48,7 @@ function finDeTourAvec(n: number, extra: ReturnType<typeof instance>[] = []) {
 
 describe("Le Rôle d'Équipage — la taxe du nombre", () => {
   it("ne coûte rien à deux corps : le seuil est une vraie réponse", () => {
-    const result = dispatch(finDeTourAvec(2), { type: "endTurn", playerId: "p1" });
+    const result = dispatch(enFinDeTour(finDeTourAvec(2)), { type: "endTurn", playerId: "p1" });
     ok(result);
     // 6 de Raison, puis la récupération naturelle du tour de p2 : la taxe
     // n'a rien prélevé avant elle.
@@ -56,7 +56,7 @@ describe("Le Rôle d'Équipage — la taxe du nombre", () => {
   });
 
   it("prélève 1 Raison par unité au-delà de la deuxième", () => {
-    const result = dispatch(finDeTourAvec(5), { type: "endTurn", playerId: "p1" });
+    const result = dispatch(enFinDeTour(finDeTourAvec(5)), { type: "endTurn", playerId: "p1" });
     ok(result);
     // 5 unités → 3 de taxe → 3, puis +2 de récupération au tour de p2.
     expect(player(result.state, "p2").reason).toBe(5);
@@ -66,7 +66,7 @@ describe("Le Rôle d'Équipage — la taxe du nombre", () => {
     // Deux unités et deux Structures : le texte dit « unités », et le
     // moteur ne doit pas lire le nombre de Slots occupés à la place.
     const structures = [instance("le-trone-de-bouchon", "p2"), instance("bibliotheque-salee", "p2")];
-    const result = dispatch(finDeTourAvec(2, structures), { type: "endTurn", playerId: "p1" });
+    const result = dispatch(enFinDeTour(finDeTourAvec(2, structures)), { type: "endTurn", playerId: "p1" });
     ok(result);
     expect(player(result.state, "p2").reason).toBe(8);
   });
@@ -81,7 +81,7 @@ describe("Le Rôle d'Équipage — la taxe du nombre", () => {
       players: state.players.map((p) => (p.id === "p2" ? { ...p, reason: 0 } : p)) as GameState["players"],
     };
     const ancreAvant = player(aSec, "p2").anchor;
-    const result = dispatch(aSec, { type: "endTurn", playerId: "p1" });
+    const result = dispatch(enFinDeTour(aSec), { type: "endTurn", playerId: "p1" });
     ok(result);
     expect(player(result.state, "p2").anchor).toBe(ancreAvant);
     // Dette de 4, récupération de 2 : entièrement absorbée, rien ne remonte.

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createGameState, dispatch, getCardDefinition, HIDDEN_CARD_ID, CATALOG_DECKS, toPlayerView } from "@/game";
-import { instance, testGameState, testPlayer } from "./testHelpers";
+import { instance, testGameState, testPlayer, enFinDeTour } from "./testHelpers";
 
 function newMatch() {
   return createGameState({
@@ -67,7 +67,7 @@ describe("toPlayerView — projection par joueur", () => {
 
   it("masque l'instance piochée par l'adversaire dans le journal, pas celle du destinataire", () => {
     const state = newMatch();
-    const afterTurn = dispatch(state, { type: "endTurn", playerId: "p1" });
+    const afterTurn = dispatch(enFinDeTour(state), { type: "endTurn", playerId: "p1" });
     expect(afterTurn.ok).toBe(true);
     if (!afterTurn.ok) return;
 

@@ -106,7 +106,10 @@ export function applyBotAction(state: GameState, playerId: PlayerId, action: Pla
                     }
                   : ("reasonLoss" as const),
           }
-        : { type: "endTurn" as const, playerId };
+        : state.phase === "mainPhase"
+          ? // Pas de fin de tour en Phase principale 1 : le repli passe au combat.
+            { type: "advancePhase" as const, playerId }
+          : { type: "endTurn" as const, playerId };
     const fallback = dispatch(state, fallbackAction);
     return { state: fallback.ok ? fallback.state : state, done: true };
   }

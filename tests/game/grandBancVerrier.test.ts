@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { dispatch } from "@/game/engine";
 import { getPlayer, type GameState } from "@/game/state/types";
-import { instance, testGameState, testPlayer } from "./testHelpers";
+import { enFinDeTour, instance, testGameState, testPlayer } from "./testHelpers";
 
 /**
  * Le Grand Banc au Standard Verrier (01/10/2026) : « le banc grossit ».
@@ -35,7 +35,7 @@ const bonus = (state: GameState, id: string) => {
   };
 };
 
-const finDuTour = (state: GameState) => joue(state, { type: "endTurn", playerId: "p1" });
+const finDuTour = (state: GameState) => joue(enFinDeTour(state), { type: "endTurn", playerId: "p1" });
 
 describe("Grand Banc — le banc grossit", () => {
   it("Chef de Banc : l'arrivante gagne +1 / +1, conservé après la fin du tour", () => {

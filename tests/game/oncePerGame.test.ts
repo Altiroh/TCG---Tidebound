@@ -10,7 +10,7 @@ import {
   withOncePerGameUse,
 } from "@/game/state/oncePerGame";
 import { getPlayer, type GameState } from "@/game/state/types";
-import { instance, testEnvironment, testGameState, testPlayer } from "./testHelpers";
+import { instance, testEnvironment, testGameState, testPlayer, enFinDeTour } from "./testHelpers";
 
 /**
  * FRÉQUENCE « UNE FOIS PAR PARTIE » et ses trois premiers usages :
@@ -168,7 +168,7 @@ describe("capacités de Navire activées dans la fenêtre d'annonce de Marée", 
   }
 
   it("L'Errant — Changer de cap réduit de 1 la durée de la Marée annoncée", () => {
-    const annonce = dispatch(atTideChange("lerrant"), { type: "endTurn", playerId: "p1" });
+    const annonce = dispatch(enFinDeTour(atTideChange("lerrant")), { type: "endTurn", playerId: "p1" });
     ok(annonce);
     // L'entame est SUSPENDUE : la fenêtre attend le porteur du Navire.
     expect(annonce.state.pendingReaction?.awaitingPlayerId).toBe("p2");
@@ -189,7 +189,7 @@ describe("capacités de Navire activées dans la fenêtre d'annonce de Marée", 
   });
 
   it("Le Courlis — Virage court inverse l'orientation de la Marée annoncée", () => {
-    const annonce = dispatch(atTideChange("le-courlis"), { type: "endTurn", playerId: "p1" });
+    const annonce = dispatch(enFinDeTour(atTideChange("le-courlis")), { type: "endTurn", playerId: "p1" });
     ok(annonce);
     expect(annonce.state.pendingReaction?.awaitingPlayerId).toBe("p2");
     expect(annonce.state.environment.tideOrientation).toBe("montante");
@@ -200,7 +200,7 @@ describe("capacités de Navire activées dans la fenêtre d'annonce de Marée", 
   });
 
   it("passer la fenêtre garde la capacité pour plus tard, et laisse l'entame se terminer", () => {
-    const annonce = dispatch(atTideChange("lerrant"), { type: "endTurn", playerId: "p1" });
+    const annonce = dispatch(enFinDeTour(atTideChange("lerrant")), { type: "endTurn", playerId: "p1" });
     ok(annonce);
     const dureeAnnoncee = annonce.state.environment.tideRemainingTurns;
 
@@ -223,7 +223,7 @@ describe("capacités de Navire activées dans la fenêtre d'annonce de Marée", 
   });
 
   it("l'adversaire ne peut pas activer la capacité du Navire d'en face", () => {
-    const annonce = dispatch(atTideChange("lerrant"), { type: "endTurn", playerId: "p1" });
+    const annonce = dispatch(enFinDeTour(atTideChange("lerrant")), { type: "endTurn", playerId: "p1" });
     ok(annonce);
     const vol = dispatch(annonce.state, { type: "activateShipAbility", playerId: "p1" });
     expect(vol.ok).toBe(false);

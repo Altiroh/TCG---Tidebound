@@ -14,6 +14,7 @@ import { runBotTurn } from "@/game/bot/runBotTurn";
 import { createGameState } from "@/game/state/createGameState";
 import { COACH_GAP, placeCoach } from "@/features/tutorial/coachPlacement";
 import type { GameState, PlayerAction } from "@/game";
+import { enFinDeTour } from "./testHelpers";
 
 /**
  * TUTORIEL (refonte du 06/10/2026) : une partie reprise en cours de route
@@ -50,7 +51,7 @@ function firstTurnThenBot(seed: number): GameState {
   state = act(state, { type: "playCard", playerId: "p1", instanceId: inHand(state, TUTORIAL_CARDS.piedMarin) });
   state = act(state, { type: "breakObject", playerId: "p1", instanceId: inHand(state, TUTORIAL_CARDS.object), fromHand: true });
   state = act(state, { type: "saborder", playerId: "p1", instanceId: onBoard(state, 0, TUTORIAL_CARDS.structure)! });
-  state = act(state, { type: "endTurn", playerId: "p1" });
+  state = act(enFinDeTour(state), { type: "endTurn", playerId: "p1" });
   state = runBotTurn(state, "p2", "facile");
   // Les fenêtres facultatives de l'entame (capacité de Navire à l'annonce de la Marée) : le joueur passe.
   for (let guard = 0; state.pendingReaction && guard < 5; guard++) {

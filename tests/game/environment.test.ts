@@ -6,7 +6,7 @@ import { resolveEffect } from "@/game/effects/resolveEffect";
 import { grantIgnoreNextTideDamage } from "@/game/environment/resolveEnvironment";
 import { getShipDefinition } from "@/game/environment/shipData";
 import { validateDeckList } from "@/game/rules/deckValidation";
-import { instance, testEnvironment, testGameState, testPlayer } from "./testHelpers";
+import { instance, testEnvironment, testGameState, testPlayer, enFinDeTour } from "./testHelpers";
 
 describe("environnement - emplacements du Navire", () => {
   it("un Navire limite le plateau à son slotCount (6 pour Le Brise-Lames), Structures/Objets inclus (Slots universels)", () => {
@@ -47,7 +47,7 @@ describe("environnement - Marée (modèle durée + intensité)", () => {
       environment: testEnvironment({ tideState: "houle", tideRemainingTurns: 1 }),
     });
 
-    const result = dispatch(state, { type: "endTurn", playerId: "p1" });
+    const result = dispatch(enFinDeTour(state), { type: "endTurn", playerId: "p1" });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.state.environment.tideState).toBe("tempete");
@@ -65,10 +65,11 @@ describe("environnement - Marée (modèle durée + intensité)", () => {
     const filler = (ownerId: string) => [instance("marin-des-jetees", ownerId)];
     // p1 termine son tour (turnNumber 1 -> 2, pair) : pas de tick, la Marée reste figée pour le tour de p2.
     const afterP1 = testGameState({
+      turnNumber: 1,
       players: [testPlayer("p1", { deck: filler("p1") }), testPlayer("p2", { deck: filler("p2") })],
       environment: testEnvironment({ tideState: "tempete", tideRemainingTurns: 1 }),
     });
-    const resultP1 = dispatch(afterP1, { type: "endTurn", playerId: "p1" });
+    const resultP1 = dispatch(enFinDeTour(afterP1), { type: "endTurn", playerId: "p1" });
     expect(resultP1.ok).toBe(true);
     if (!resultP1.ok) return;
     expect(resultP1.state.turnNumber).toBe(2);
@@ -76,7 +77,7 @@ describe("environnement - Marée (modèle durée + intensité)", () => {
     expect(resultP1.state.environment.tideRemainingTurns).toBe(1);
 
     // p2 termine à son tour (turnNumber 2 -> 3, impair) : le tour de table est complet, la Marée avance enfin.
-    const resultP2 = dispatch(resultP1.state, { type: "endTurn", playerId: "p2" });
+    const resultP2 = dispatch(enFinDeTour(resultP1.state), { type: "endTurn", playerId: "p2" });
     expect(resultP2.ok).toBe(true);
     if (!resultP2.ok) return;
     expect(resultP2.state.turnNumber).toBe(3);
@@ -106,7 +107,7 @@ describe("environnement - Marée (modèle durée + intensité)", () => {
       players: [testPlayer("p1", { board: [buoy] }), testPlayer("p2")],
       activePlayerId: "p2",
     });
-    const result = dispatch(state, { type: "endTurn", playerId: "p2" });
+    const result = dispatch(enFinDeTour(state), { type: "endTurn", playerId: "p2" });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.state.players[0].board).toHaveLength(0);
@@ -118,7 +119,7 @@ describe("environnement - Marée (modèle durée + intensité)", () => {
       players: [testPlayer("p1", { board: [buoy] }), testPlayer("p2")],
       activePlayerId: "p2",
     });
-    const result = dispatch(state, { type: "endTurn", playerId: "p2" });
+    const result = dispatch(enFinDeTour(state), { type: "endTurn", playerId: "p2" });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     const remaining = result.state.players[0].board.find((u) => u.instanceId === buoy.instanceId)?.turnsRemaining;
@@ -136,7 +137,7 @@ describe("environnement - Marée (modèle durée + intensité)", () => {
       players: [grantIgnoreNextTideDamage(state.players[0], "tempete"), state.players[1]],
     };
 
-    const result = dispatch(state, { type: "endTurn", playerId: "p1" });
+    const result = dispatch(enFinDeTour(state), { type: "endTurn", playerId: "p1" });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.state.environment.tideState).toBe("tempete");
@@ -164,7 +165,7 @@ describe("environnement - orientation de Marée", () => {
       environment: testEnvironment({ tideState: "tempete", tideRemainingTurns: 1, tideOrientation: "montante" }),
     });
     expect(state.environment.tideOrientation).toBe("montante");
-    const result = dispatch(state, { type: "endTurn", playerId: state.activePlayerId });
+    const result = dispatch(enFinDeTour(state), { type: "endTurn", playerId: state.activePlayerId });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.state.environment.tideState).toBe("abysses");
@@ -178,7 +179,7 @@ describe("environnement - orientation de Marée", () => {
       players: [testPlayer("p1", { deck: filler("p1") }), testPlayer("p2")],
       environment: testEnvironment({ tideState: "houle", tideRemainingTurns: 1, tideOrientation: "descendante" }),
     });
-    const result = dispatch(state, { type: "endTurn", playerId: "p1" });
+    const result = dispatch(enFinDeTour(state), { type: "endTurn", playerId: "p1" });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.state.environment.tideState).toBe("calme");
@@ -222,7 +223,7 @@ describe("environnement - malus globaux des Marées (verrouillé, Notion 'Moteur
       environment: testEnvironment({ tideState: "tempete", tideRemainingTurns: 1, tideOrientation: "montante" }),
     });
 
-    const result = dispatch(state, { type: "endTurn", playerId: "p1" });
+    const result = dispatch(enFinDeTour(state), { type: "endTurn", playerId: "p1" });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.state.environment.tideState).toBe("abysses");
@@ -247,7 +248,7 @@ describe("environnement - malus globaux des Marées (verrouillé, Notion 'Moteur
       environment: testEnvironment({ tideState: "tempete", tideRemainingTurns: 1, tideOrientation: "montante" }),
     });
 
-    const result = dispatch(state, { type: "endTurn", playerId: "p1" });
+    const result = dispatch(enFinDeTour(state), { type: "endTurn", playerId: "p1" });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     const p1 = result.state.players[0];
@@ -267,7 +268,7 @@ describe("environnement - malus globaux des Marées (verrouillé, Notion 'Moteur
       environment: testEnvironment({ tideState: "abysses", tideRemainingTurns: 1, tideOrientation: "descendante" }),
     });
 
-    const result = dispatch(state, { type: "endTurn", playerId: "p1" });
+    const result = dispatch(enFinDeTour(state), { type: "endTurn", playerId: "p1" });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.state.environment.tideState).toBe("tempete");
@@ -283,7 +284,7 @@ describe("environnement - malus globaux des Marées (verrouillé, Notion 'Moteur
       environment: testEnvironment({ tideState: "houle", tideRemainingTurns: 5 }),
     });
 
-    const result = dispatch(state, { type: "endTurn", playerId: "p1" });
+    const result = dispatch(enFinDeTour(state), { type: "endTurn", playerId: "p1" });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.state.environment.tideState).toBe("houle");
@@ -303,7 +304,7 @@ describe("environnement - malus globaux des Marées (verrouillé, Notion 'Moteur
       rngState: 1,
     });
 
-    const result = dispatch(state, { type: "endTurn", playerId: "p1" });
+    const result = dispatch(enFinDeTour(state), { type: "endTurn", playerId: "p1" });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     const unit = result.state.players[0].board.find((u) => u.instanceId === structure.instanceId);
@@ -318,7 +319,7 @@ describe("environnement - malus globaux des Marées (verrouillé, Notion 'Moteur
       environment: testEnvironment({ tideState: "houle", tideRemainingTurns: 1, tideOrientation: "montante" }),
     });
 
-    const result = dispatch(state, { type: "endTurn", playerId: "p1" });
+    const result = dispatch(enFinDeTour(state), { type: "endTurn", playerId: "p1" });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.state.environment.tideState).toBe("tempete");
@@ -341,7 +342,7 @@ describe("environnement - malus globaux des Marées (verrouillé, Notion 'Moteur
 
     let becameSick = false;
     for (let i = 0; i < maxTurns && !becameSick; i++) {
-      const result = dispatch(state, { type: "endTurn", playerId: state.activePlayerId });
+      const result = dispatch(enFinDeTour(state), { type: "endTurn", playerId: state.activePlayerId });
       expect(result.ok).toBe(true);
       if (!result.ok) return;
       state = result.state;

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { dispatch } from "@/game/engine";
 import { getPlayer, type GameState, type PlayerId } from "@/game/state/types";
-import { answerHandDiscard, instance, testGameState, testPlayer } from "./testHelpers";
+import { answerHandDiscard, instance, testGameState, testPlayer, enFinDeTour } from "./testHelpers";
 
 /**
  * La Veillée au Standard Verrier (01/10/2026) : ses gains de Puissance
@@ -13,7 +13,7 @@ const pioche = (n: number, o: string) => Array.from({ length: n }, () => instanc
 const puissance = (state: GameState, owner: PlayerId, id: string) =>
   getPlayer(state, owner).board.find((u) => u.instanceId === id)!.modifiers.reduce((sum, m) => sum + m.attack, 0);
 function finDeTour(state: GameState): GameState {
-  const fin = dispatch(state, { type: "endTurn", playerId: state.activePlayerId });
+  const fin = dispatch(enFinDeTour(state), { type: "endTurn", playerId: state.activePlayerId });
   if (!fin.ok) throw new Error(fin.error);
   return fin.state;
 }

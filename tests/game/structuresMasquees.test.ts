@@ -15,7 +15,7 @@ import { dispatch } from "@/game/engine";
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { botHasSomethingToDo } from "@/game/bot/runBotTurn";
 import { chooseBotAction } from "@/game/bot/chooseAction";
-import { activateReactionFor, instance, pendingCandidates, testEnvironment, testGameState, testPlayer } from "./testHelpers";
+import { activateReactionFor, instance, pendingCandidates, testEnvironment, testGameState, testPlayer, enFinDeTour } from "./testHelpers";
 import type { GameState } from "@/game/state/types";
 
 const BALISE = "balise-des-profondeurs"; // optional, onTideStateEntered, SANS garde de visibilité
@@ -54,7 +54,7 @@ describe("Structure masquée par la Marée — inactive par défaut", () => {
     // donc masquée en Calme : sa capacité ne doit pas être proposée.
     expect(getCardDefinition(BALISE).visibleDuringTide).not.toContain("calme");
 
-    const result = dispatch(changementDeMaree("calme"), { type: "endTurn", playerId: "p1" });
+    const result = dispatch(enFinDeTour(changementDeMaree("calme")), { type: "endTurn", playerId: "p1" });
     ok(result);
     expect(result.state.environment.tideState).toBe("calme");
     expect(pendingCandidates(result.state).some((c) => c.cardId === BALISE)).toBe(false);
@@ -66,7 +66,7 @@ describe("Structure masquée par la Marée — inactive par défaut", () => {
     // capacité ne se déclenchait jamais.
     expect(getCardDefinition(BALISE).visibleDuringTide).toContain("houle");
 
-    const result = dispatch(changementDeMaree("houle"), { type: "endTurn", playerId: "p1" });
+    const result = dispatch(enFinDeTour(changementDeMaree("houle")), { type: "endTurn", playerId: "p1" });
     ok(result);
     expect(result.state.environment.tideState).toBe("houle");
     expect(pendingCandidates(result.state).some((c) => c.cardId === BALISE)).toBe(true);
@@ -76,7 +76,7 @@ describe("Structure masquée par la Marée — inactive par défaut", () => {
     // « Elle existe toujours » : l'inactivité ne la met pas en pause.
     const state = changementDeMaree("calme");
     const avant = state.players[0]!.board[0]!.turnsRemaining!;
-    const result = dispatch(state, { type: "endTurn", playerId: "p1" });
+    const result = dispatch(enFinDeTour(state), { type: "endTurn", playerId: "p1" });
     ok(result);
 
     const apres = result.state.players[0]!.board.find((u) => u.cardId === BALISE);
@@ -85,7 +85,7 @@ describe("Structure masquée par la Marée — inactive par défaut", () => {
     // prendre la main, donc la durée de p1 n'a pas encore bougé ce tour-ci.
     expect(apres!.turnsRemaining).toBe(avant);
 
-    const tourSuivant = dispatch(result.state, { type: "endTurn", playerId: "p2" });
+    const tourSuivant = dispatch(enFinDeTour(result.state), { type: "endTurn", playerId: "p2" });
     ok(tourSuivant);
     const apresSonTour = tourSuivant.state.players[0]!.board.find((u) => u.cardId === BALISE);
     expect(apresSonTour!.turnsRemaining).toBe(avant - 1);

@@ -5,7 +5,7 @@ import { canBeEquipTarget, getCardDefinition } from "@/game/cards/sets/core";
 import { resolveEffect } from "@/game/effects/resolveEffect";
 import { hasEffectiveKeyword } from "@/game/rules/validation";
 import { STATUS_MALADE } from "@/game/cards/types";
-import { activateReactionFor, instance, testEnvironment, testGameState, testPlayer } from "./testHelpers";
+import { activateReactionFor, instance, testEnvironment, testGameState, testPlayer, enFinDeTour } from "./testHelpers";
 
 const PEON = "peon-cra-poiscail";
 
@@ -322,7 +322,7 @@ describe("archétype Cra-Poiscail — capacités d'observateur (Booster 2)", () 
       ] as typeof state.players,
     };
 
-    const result = dispatch(damaged, { type: "endTurn", playerId: "p1" });
+    const result = dispatch(enFinDeTour(damaged), { type: "endTurn", playerId: "p1" });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(peons(result.state.players[0]!.board)).toBe(1);
@@ -546,7 +546,7 @@ describe("durées de bonus", () => {
     if (!played.ok) return;
     expect(computeEffectiveStats(played.state.players[0]!.board.find((u) => u.instanceId === arrivant.instanceId)!, "calme").attack).toBe(2);
 
-    const ended = dispatch(played.state, { type: "endTurn", playerId: "p1" });
+    const ended = dispatch(enFinDeTour(played.state), { type: "endTurn", playerId: "p1" });
     expect(ended.ok).toBe(true);
     if (!ended.ok) return;
     // Le +1 servait à attaquer ce tour-ci : il ne doit pas servir à défendre ensuite.
@@ -573,14 +573,14 @@ describe("durées de bonus", () => {
     const buffed = played.state.players[0]!.board.find((u) => u.instanceId === arrivant.instanceId)!;
     expect(computeEffectiveStats(buffed, "calme").health).toBe(2);
 
-    const p1Ended = dispatch(played.state, { type: "endTurn", playerId: "p1" });
+    const p1Ended = dispatch(enFinDeTour(played.state), { type: "endTurn", playerId: "p1" });
     expect(p1Ended.ok).toBe(true);
     if (!p1Ended.ok) return;
     // Pendant le tour adverse, la Résistance tient encore.
     const duringOpponentTurn = p1Ended.state.players.find((p) => p.id === "p1")!.board.find((u) => u.instanceId === arrivant.instanceId)!;
     expect(computeEffectiveStats(duringOpponentTurn, "calme").health).toBe(2);
 
-    const p2Ended = dispatch(p1Ended.state, { type: "endTurn", playerId: "p2" });
+    const p2Ended = dispatch(enFinDeTour(p1Ended.state), { type: "endTurn", playerId: "p2" });
     expect(p2Ended.ok).toBe(true);
     if (!p2Ended.ok) return;
     const backToOwner = p2Ended.state.players.find((p) => p.id === "p1")!.board.find((u) => u.instanceId === arrivant.instanceId)!;
@@ -884,7 +884,7 @@ describe("Casque-Coquille — les dégâts de Marée sont des dégâts d'effet",
       environment: testEnvironment({ tideState: "houle", tideRemainingTurns: 5 }),
     });
 
-    const result = dispatch(state, { type: "endTurn", playerId: "p1" });
+    const result = dispatch(enFinDeTour(state), { type: "endTurn", playerId: "p1" });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 

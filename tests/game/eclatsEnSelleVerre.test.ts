@@ -4,7 +4,7 @@ import { auraContextOf, computeEffectiveStats } from "@/game/cards/stats";
 import { hasEffectiveKeyword } from "@/game/rules/validation";
 import type { CardInstance } from "@/game/cards/types";
 import type { GameState } from "@/game/state/types";
-import { activateReactionFor, instance, pendingCandidates, testEnvironment, testGameState, testPlayer } from "./testHelpers";
+import { activateReactionFor, instance, pendingCandidates, testEnvironment, testGameState, testPlayer, enFinDeTour } from "./testHelpers";
 
 /**
  * LOT 15 — ÉQUIPAGE DE VERRE : survivre aux dégâts fait progresser.
@@ -65,7 +65,7 @@ describe("survivre à des dégâts", () => {
     expect(puissance(r2.state, matelot.instanceId)).toBe(2);
 
     // Le gain est conservé : il survit au changement de tour.
-    const fin = dispatch(r2.state, { type: "endTurn", playerId: "p1" });
+    const fin = dispatch(enFinDeTour(r2.state), { type: "endTurn", playerId: "p1" });
     ok(fin);
     expect(puissance(fin.state, matelot.instanceId)).toBe(2);
   });
@@ -90,7 +90,7 @@ describe("survivre à des dégâts", () => {
       priorityPlayerId: "p2",
       turnNumber: 2,
     });
-    const r = dispatch(state, { type: "endTurn", playerId: "p2" });
+    const r = dispatch(enFinDeTour(state), { type: "endTurn", playerId: "p2" });
     ok(r);
     expect(unite(r.state, eclaireur.instanceId)!.damageMarked).toBe(1);
     expect(puissance(r.state, eclaireur.instanceId)).toBe(3);
@@ -242,7 +242,7 @@ describe("gestes du Verre", () => {
       priorityPlayerId: "p2",
       turnNumber: 2,
     });
-    const r = dispatch(state, { type: "endTurn", playerId: "p2" });
+    const r = dispatch(enFinDeTour(state), { type: "endTurn", playerId: "p2" });
     ok(r);
     const soin = activateReactionFor(r.state, "polisseuse-des-felures", blesse.instanceId);
     ok(soin);
@@ -323,7 +323,7 @@ describe("Jusqu'à ce que ça casse", () => {
       ok(p);
       fin = p.state;
     }
-    const tour = dispatch(fin, { type: "endTurn", playerId: "p1" });
+    const tour = dispatch(enFinDeTour(fin), { type: "endTurn", playerId: "p1" });
     ok(tour);
     expect(unite(tour.state, anomalie.instanceId)).toBeUndefined();
     expect(joueur(tour.state, "p1").graveyard.some((c) => c.instanceId === anomalie.instanceId)).toBe(true);

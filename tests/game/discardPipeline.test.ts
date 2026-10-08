@@ -3,7 +3,7 @@ import { dispatch } from "@/game/engine";
 import { discardFromHand, pruneGraveyardArrivals } from "@/game/state/discard";
 import { RULES } from "@/game/rules/constants";
 import { runBotTurn } from "@/game/bot/runBotTurn";
-import { answerHandDiscard, instance, testGameState, testPlayer } from "./testHelpers";
+import { answerHandDiscard, instance, testGameState, testPlayer, enFinDeTour } from "./testHelpers";
 
 /**
  * La VOIE UNIQUE de la défausse (`game/state/discard.ts`).
@@ -67,7 +67,7 @@ describe("défausse — voie unique", () => {
       ],
     });
 
-    const paused = dispatch(state, { type: "endTurn", playerId: "p1" });
+    const paused = dispatch(enFinDeTour(state), { type: "endTurn", playerId: "p1" });
     expect(paused.ok).toBe(true);
     if (!paused.ok) return;
     const result = answerHandDiscard(paused.state);
@@ -199,7 +199,7 @@ describe("défausse — c'est le joueur qui désigne", () => {
 
   it("bloque toute autre action tant que la défausse n'a pas reçu de réponse", () => {
     const { state } = mousseEnJeu();
-    const result = dispatch(state, { type: "endTurn", playerId: "p1" });
+    const result = dispatch(enFinDeTour(state), { type: "endTurn", playerId: "p1" });
     expect(result.ok).toBe(false);
   });
 });

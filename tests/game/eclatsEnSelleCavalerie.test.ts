@@ -6,7 +6,7 @@ import { toPlayerView } from "@/game/state/playerView";
 import { HIDDEN_CARD_ID } from "@/game/cards/hiddenCard";
 import type { CardInstance } from "@/game/cards/types";
 import type { GameState } from "@/game/state/types";
-import { activateReactionFor, instance, testEnvironment, testGameState, testPlayer } from "./testHelpers";
+import { activateReactionFor, instance, testEnvironment, testGameState, testPlayer, enFinDeTour } from "./testHelpers";
 
 /**
  * LOT 15 — CAVALERIE : des Bêtes lourdes, peu nombreuses, et juste assez
@@ -67,7 +67,7 @@ describe("combat et Garde", () => {
     const perce = activateReactionFor(r.state, "bete-de-percee", rempart.instanceId);
     ok(perce);
     expect(hasEffectiveKeyword(perce.state, joueur(perce.state, "p2"), unite(perce.state, rempart.instanceId)!, "garde")).toBe(false);
-    const fin = dispatch(passerTout(perce.state), { type: "endTurn", playerId: "p1" });
+    const fin = dispatch(enFinDeTour(passerTout(perce.state)), { type: "endTurn", playerId: "p1" });
     ok(fin);
     expect(hasEffectiveKeyword(fin.state, joueur(fin.state, "p2"), unite(fin.state, rempart.instanceId)!, "garde")).toBe(true);
   });
@@ -281,7 +281,7 @@ describe("Bêtes et conditions", () => {
     const a = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: destrier.instanceId, defenderInstanceId: cible.instanceId });
     ok(a);
     expect(unite(a.state, cible.instanceId)!.damageMarked).toBe(4);
-    const fin = dispatch(passerTout(a.state), { type: "endTurn", playerId: "p1" });
+    const fin = dispatch(enFinDeTour(passerTout(a.state)), { type: "endTurn", playerId: "p1" });
     ok(fin);
     expect(stats(fin.state, destrier.instanceId).attack).toBe(4);
   });
@@ -329,12 +329,12 @@ describe("Bêtes et conditions", () => {
   it("Le Déserteur Gris rentre en main à la fin du tour s'il a au moins 3 autres unités", () => {
     const deserteur = instance("le-deserteur-gris", "p1");
     const autres = [instance("matelot-fele", "p1"), instance("matelot-fele", "p1"), instance("matelot-fele", "p1")];
-    const r = dispatch(table({ board: [deserteur, ...autres] }, { deck: [instance("matelot-fele", "p2")] }), { type: "endTurn", playerId: "p1" });
+    const r = dispatch(enFinDeTour(table({ board: [deserteur, ...autres] }, { deck: [instance("matelot-fele", "p2")] })), { type: "endTurn", playerId: "p1" });
     ok(r);
     expect(unite(r.state, deserteur.instanceId)).toBeUndefined();
     expect(joueur(r.state, "p1").hand.some((c) => c.cardId === "le-deserteur-gris")).toBe(true);
 
-    const reste = dispatch(table({ board: [deserteur, ...autres.slice(0, 2)] }, { deck: [instance("matelot-fele", "p2")] }), { type: "endTurn", playerId: "p1" });
+    const reste = dispatch(enFinDeTour(table({ board: [deserteur, ...autres.slice(0, 2)] }, { deck: [instance("matelot-fele", "p2")] })), { type: "endTurn", playerId: "p1" });
     ok(reste);
     expect(unite(reste.state, deserteur.instanceId)).toBeDefined();
   });

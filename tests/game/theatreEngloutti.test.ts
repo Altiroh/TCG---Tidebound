@@ -51,7 +51,7 @@ describe("catalogue du Lot 11", () => {
 describe("retour en main", () => {
   function stateWithBoard() {
     const puppet = instance("pulcinella-gonfle", "p1", { damageMarked: 2 });
-    const base = testGameState();
+    const base = testGameState({ turnNumber: 1 });
     return {
       puppet,
       state: {
@@ -96,7 +96,7 @@ describe("retour en main", () => {
   // d'un pouce : une carte rentre chez SON propriétaire, jamais chez celui
   // qui la renvoie.
   it("renvoie une carte adverse dans la main de SON propriétaire, pas dans celle du contrôleur", () => {
-    const base = testGameState();
+    const base = testGameState({ turnNumber: 1 });
     const enemy = instance("pulcinella-gonfle", "p2");
     const state = {
       ...base,
@@ -124,7 +124,7 @@ describe("ciblage par sous-type et par coût", () => {
   // textes ne disent pas : le sous-type seul reste la lecture « carte », et
   // `unitsOnly` la lecture « unité ».
   it("le sous-type seul (« carte Marionnette ») accepte Structures et Objets, `unitsOnly` (« unité Marionnette ») non", () => {
-    const base = testGameState();
+    const base = testGameState({ turnNumber: 1 });
     const puppet = instance("pulcinella-gonfle", "p1");
     const structure = instance("le-theatre-englouti", "p1");
     const outsider = instance("murene-aveugle", "p1");
@@ -156,7 +156,7 @@ describe("ciblage par sous-type et par coût", () => {
   });
 
   it("le plafond de coût du Régisseur écarte les grosses Marionnettes", () => {
-    const base = testGameState();
+    const base = testGameState({ turnNumber: 1 });
     const cheap = instance("pulcinella-gonfle", "p1"); // coût 2
     const pricey = instance("il-dottore-des-noyes", "p1"); // coût 4
     const state = {
@@ -171,7 +171,7 @@ describe("ciblage par sous-type et par coût", () => {
 
 describe("réduction de coût", () => {
   function stateWithDiscount(amount: number, subtype?: string) {
-    const base = testGameState();
+    const base = testGameState({ turnNumber: 1 });
     const card = instance("colombina-aux-cent-visages", "p1"); // coût 3
     return {
       card,
@@ -203,7 +203,7 @@ describe("réduction de coût", () => {
   });
 
   it("ne descend jamais sous 1 Raison, même en cumulant", () => {
-    const base = testGameState();
+    const base = testGameState({ turnNumber: 1 });
     const card = instance("pulcinella-gonfle", "p1"); // coût 2
     const state = {
       ...base,
@@ -227,7 +227,7 @@ describe("réduction de coût", () => {
   });
 
   it("ne s'applique pas à une carte d'un autre sous-type", () => {
-    const base = testGameState();
+    const base = testGameState({ turnNumber: 1 });
     const outsider = instance("murene-aveugle", "p1"); // coût 2, pas une Marionnette
     const state = {
       ...base,
@@ -250,7 +250,7 @@ describe("réduction de coût", () => {
   });
 
   it("est perdue au tour suivant — « ce tour » n'est pas « jusqu'à usage »", () => {
-    const base = testGameState();
+    const base = testGameState({ turnNumber: 1 });
     const card = instance("pulcinella-gonfle", "p1");
     const state = {
       ...base,
@@ -274,7 +274,7 @@ describe("réduction de coût", () => {
 
 describe("répétition d'un effet d'arrivée", () => {
   it("rejoue l'effet d'arrivée de la cible sans la faire revenir en jeu", () => {
-    const base = testGameState();
+    const base = testGameState({ turnNumber: 1 });
     // Le Poisson-Lanterne récupère 1 Raison à son arrivée sous Tempête ;
     // on prend plutôt une arrivée inconditionnelle pour isoler la mécanique.
     const target = instance("pantalone-sans-sou", "p1");
@@ -316,6 +316,7 @@ describe("Il Dottore des Noyés — un camp par mode", () => {
     // Une ennemie assez solide pour survivre au -2 / -2 (5 / 5) : on mesure le malus, pas une mort.
     const enemy = instance("la-chose-qui-remonte", "p2");
     const state = testGameState({
+      turnNumber: 1,
       players: [testPlayer("p1", { hand: [dottore], board: [ally], reason: 10 }), testPlayer("p2", { board: [enemy] })],
     });
     const played = dispatch(state, { type: "playCard", playerId: "p1", instanceId: dottore.instanceId });
@@ -355,6 +356,7 @@ describe("Il Dottore des Noyés — un camp par mode", () => {
     const ally = instance("pulcinella-gonfle", "p1");
     const enemy = instance("la-chose-qui-remonte", "p2");
     const state = testGameState({
+      turnNumber: 1,
       players: [testPlayer("p1", { hand: [colombina], board: [dottore, ally], reason: 10 }), testPlayer("p2", { board: [enemy] })],
     });
 

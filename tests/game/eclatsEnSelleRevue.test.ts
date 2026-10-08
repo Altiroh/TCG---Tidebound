@@ -5,7 +5,7 @@ import { emittedSignalsOf, findAssemblage } from "@/game/rules/chromatic";
 import { processChromaticSignals } from "@/game/rules/chromaticSignals";
 import type { CardInstance } from "@/game/cards/types";
 import type { GameState } from "@/game/state/types";
-import { activateReactionFor, instance, testEnvironment, testGameState, testPlayer } from "./testHelpers";
+import { activateReactionFor, instance, testEnvironment, testGameState, testPlayer, enFinDeTour } from "./testHelpers";
 
 /**
  * LOT 15 — ÉCLATS EN SELLE : écarts relevés par la revue cartes ↔ moteur du
@@ -147,10 +147,10 @@ describe("cibles : « une Sentinelle » sans « que vous contrôlez » vise les 
     const choix = dispatch(r.state, { type: "resolveChoice", playerId: "p1", choice: { pickInstanceIds: [adverse.instanceId] } });
     ok(choix);
     expect(stats(choix.state, adverse.instanceId).attack).toBe(2);
-    const tourAdverse = dispatch(passerTout(choix.state), { type: "endTurn", playerId: "p1" });
+    const tourAdverse = dispatch(enFinDeTour(passerTout(choix.state)), { type: "endTurn", playerId: "p1" });
     ok(tourAdverse);
     expect(stats(tourAdverse.state, adverse.instanceId).attack).toBe(2);
-    const retour = dispatch(passerTout(tourAdverse.state), { type: "endTurn", playerId: "p2" });
+    const retour = dispatch(enFinDeTour(passerTout(tourAdverse.state)), { type: "endTurn", playerId: "p2" });
     ok(retour);
     expect(stats(retour.state, adverse.instanceId).attack).toBe(1);
   });
@@ -169,10 +169,10 @@ describe("Bracelet de Résonance", () => {
     expect(unite(resonne.state, eclat.instanceId)).toBeUndefined();
     expect(emittedSignalsOf(unite(resonne.state, porteuse.instanceId)!)).toEqual(["jaune", "bleu"]);
 
-    const tourAdverse = dispatch(passerTout(resonne.state), { type: "endTurn", playerId: "p1" });
+    const tourAdverse = dispatch(enFinDeTour(passerTout(resonne.state)), { type: "endTurn", playerId: "p1" });
     ok(tourAdverse);
     expect(emittedSignalsOf(unite(tourAdverse.state, porteuse.instanceId)!)).toContain("bleu");
-    const retour = dispatch(passerTout(tourAdverse.state), { type: "endTurn", playerId: "p2" });
+    const retour = dispatch(enFinDeTour(passerTout(tourAdverse.state)), { type: "endTurn", playerId: "p2" });
     ok(retour);
     expect(emittedSignalsOf(unite(retour.state, porteuse.instanceId)!)).toEqual(["jaune"]);
   });
