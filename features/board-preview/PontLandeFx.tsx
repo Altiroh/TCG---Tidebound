@@ -114,12 +114,32 @@ export function PontLandeFx({ kind }: { kind: PontLandeFxKind }) {
     });
     let nextShaft = 0;
 
+    // Bande où l'effet a le droit d'être : entre la main adverse (en haut) et
+    // la mienne (en bas). Les mains, tenues par les joueurs, restent nettes.
+    let clipTop = 0;
+    let clipBottom = Number.POSITIVE_INFINITY;
+    let nextMeasure = 0;
+    const measureHands = (now: number) => {
+      if (now < nextMeasure) return;
+      nextMeasure = now + 500;
+      const origin = canvas.getBoundingClientRect();
+      const mine = document.querySelector('[data-zone="PlayerHand"]')?.getBoundingClientRect();
+      const theirs = document.querySelector('[data-zone="OpponentHand"]')?.getBoundingClientRect();
+      clipBottom = mine && mine.height > 0 ? mine.top - origin.top : h;
+      clipTop = theirs && theirs.height > 0 ? theirs.bottom - origin.top : 0;
+    };
+
     let last = performance.now();
     let raf = 0;
     const frame = (now: number) => {
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
       ctx.clearRect(0, 0, w, h);
+      measureHands(now);
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, clipTop, w, Math.max(0, clipBottom - clipTop));
+      ctx.clip();
 
       if (kind === "pluieVerte") {
         // ONDES d'impact : ellipses écrasées par la perspective, qui s'élargissent et s'éteignent.
@@ -248,6 +268,7 @@ export function PontLandeFx({ kind }: { kind: PontLandeFxKind }) {
         ctx.globalCompositeOperation = "source-over";
       }
 
+      ctx.restore();
       raf = requestAnimationFrame(frame);
     };
     raf = requestAnimationFrame(frame);
