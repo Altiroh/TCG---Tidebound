@@ -847,11 +847,14 @@
  * peu plus bas (le côté qui nous fait face, vu en plongée) et à peine plus
  * à droite : des bords sombres séparés d'un fin liseré clair, puis l'ombre
  * du paquet sur le pont. (Une première tranche « en bloc » beige faisait
- * socle, pas paquet.) Unité : `--pile-u`, ~1 px pour une carte de 190 px.
+ * socle, pas paquet.) Unité : `--pile-u`, ~1 px pour une carte de 190 px,
+ * multipliée par `--pile-depth` (0 → 1, posée par `TableCargo` selon le
+ * nombre de cartes) : une carte seule n'a ni tranche ni ombre de paquet, la
+ * pioche s'amincit à mesure qu'on pioche.
  */
 .stagePont .cargoDeck,
 .stagePont .cargoGraveyard:has(.graveyardTop) {
-  --pile-u: calc(var(--card-h) / 190);
+  --pile-u: calc(var(--card-h) / 190 * var(--pile-depth, 1));
   --pile-edge: #1d150f;
   --pile-line: rgba(196, 170, 124, 0.55);
   box-shadow:
@@ -867,15 +870,21 @@
     0 calc(var(--pile-u) * 16) calc(var(--pile-u) * 14) rgba(10, 5, 2, 0.6);
 }
 
+/* Le creux du Cimetière, seulement vide : sous une carte (un jeton ovale
+   surtout), il dessinait le fantôme d'une carte en dessous. */
 .stagePont .cargoGraveyard {
   background: rgba(30, 18, 8, 0.55);
+}
+
+.stagePont .cargoGraveyard:has(.graveyardTop) {
+  background: none;
 }
 
 /* La dernière carte défaussée : opaque et assombrie, plutôt que
    semi-transparente (sur le bois, elle virait au gris délavé). */
 .stage.stagePont .cargoGraveyard .graveyardTop {
   opacity: 1;
-  filter: grayscale(0.5) brightness(0.62) sepia(0.15);
+  filter: grayscale(0.3) brightness(0.8) sepia(0.1);
 }
 
 /* Bande centrale : la grille du plateau, sans tuile de sens. */

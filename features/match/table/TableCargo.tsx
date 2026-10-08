@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import type { PlayerId } from "@/game";
 import { useCardBackSrcFor } from "@/features/cosmetics/MatchCosmeticsProvider";
 import styles from "@/features/match/table/Table.module.css";
@@ -41,6 +41,11 @@ interface PreviewCargoProps {
  */
 export function TableCargo({ side, ownerId, deck, graveyard, graveyardTop, graveyardDropState, onDraw, onGraveyardClick }: PreviewCargoProps) {
   const cardBack = useCardBackSrcFor(ownerId);
+  // Épaisseur de chaque pile, 0 → 1 : une carte seule n'a pas de tranche,
+  // la pioche s'amincit à mesure qu'on pioche (pleine vers 30 cartes, le
+  // Cimetière vers 20). Lue par le décor du pont (`--pile-depth`).
+  const deckDepth = { "--pile-depth": Math.min(1, Math.max(0, deck - 1) / 30) } as CSSProperties;
+  const graveyardDepth = Math.min(1, Math.max(0, graveyard - 1) / 20);
 
   const deckContent = (
     <>
@@ -58,6 +63,7 @@ export function TableCargo({ side, ownerId, deck, graveyard, graveyardTop, grave
         <button
           type="button"
           className={`${styles.cargoDeck} ${styles.cargoDeckButton}`}
+          style={deckDepth}
           data-deck={side}
           onClick={onDraw}
           disabled={deck === 0}
@@ -67,7 +73,7 @@ export function TableCargo({ side, ownerId, deck, graveyard, graveyardTop, grave
           {deckContent}
         </button>
       ) : (
-        <div className={styles.cargoDeck} data-deck={side} title="Pioche">
+        <div className={styles.cargoDeck} data-deck={side} title="Pioche" style={deckDepth}>
           {deckContent}
         </div>
       )}
@@ -79,7 +85,7 @@ export function TableCargo({ side, ownerId, deck, graveyard, graveyardTop, grave
         data-graveyard={side}
         onClick={onGraveyardClick}
         role={onGraveyardClick ? "button" : undefined}
-        style={onGraveyardClick ? { cursor: "var(--tb-cursor-pointer)" } : undefined}
+        style={{ "--pile-depth": graveyardDepth, ...(onGraveyardClick ? { cursor: "var(--tb-cursor-pointer)" } : {}) } as CSSProperties}
         data-drop={graveyardDropState ? "graveyard" : undefined}
       >
         {graveyard > 0 && graveyardTop && (
