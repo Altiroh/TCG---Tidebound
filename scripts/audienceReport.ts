@@ -120,7 +120,7 @@ for (const opponent of ["joueur", "difficile", "moyen", "facile"] as const) {
   const swings: number[] = [];
   spectacles.forEach((entry, index) => {
     const before = audience;
-    audience = nextAudience(audience, entry.value, { opponent });
+    audience = nextAudience(audience, entry.value, { opponent, won: entry.won });
     if (index >= 15) swings.push(audience - before);
     best = Math.max(best, audience);
     for (const milestone of AUDIENCE_MILESTONES) if (best >= milestone.threshold && !reachedAt.has(milestone.threshold)) reachedAt.set(milestone.threshold, index + 1);

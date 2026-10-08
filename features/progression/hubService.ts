@@ -510,6 +510,7 @@ export async function recordMatchAudience(
     const analysis = analyzeMatch(finalState, userId);
     const opponent = context.opponent ?? "joueur";
     const played = context.played ?? true;
+    // Une victoire ne fait jamais perdre d'audience (migration 20261029120000).
     let { data, error } = await service.rpc("record_match_audience", {
       p_user_id: userId,
       p_match_id: matchId,
@@ -519,7 +520,22 @@ export async function recordMatchAudience(
       p_prize_xp: context.prize?.xp ?? 0,
       p_prize_tides: context.prize?.tides ?? 0,
       p_weight: matchAudienceWeight(opponent, played),
+      p_won: analysis.facts.won,
     });
+    // Migration 20261029120000 pas encore passée : la fonction ne connaît pas
+    // `p_won`. On juge quand même, sans le plancher de victoire.
+    if (error?.code === "PGRST202") {
+      ({ data, error } = await service.rpc("record_match_audience", {
+        p_user_id: userId,
+        p_match_id: matchId,
+        p_spectacle: analysis.spectacle,
+        p_highlights: analysis.highlights,
+        p_vs_bot: opponent !== "joueur",
+        p_prize_xp: context.prize?.xp ?? 0,
+        p_prize_tides: context.prize?.tides ?? 0,
+        p_weight: matchAudienceWeight(opponent, played),
+      }));
+    }
     // Migration 20261015120000 pas encore passée : la fonction ne connaît pas
     // `p_weight` (PostgREST ne trouve pas la signature). On juge quand même,
     // avec le poids fixe « contre le bot » de 20261013120000.

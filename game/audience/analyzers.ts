@@ -17,7 +17,8 @@ export type Analyzer = (facts: MatchFacts) => AudienceSignal[];
 /** Le rythme d'une partie de `tableTurns` tours de table, une fois finie. */
 function tempoSignal(tableTurns: number): AudienceSignal {
   if (tableTurns <= 3) return { id: "tempo.expedited", family: "rythme", label: "Trop vite expédiée", weight: -20, salience: 6 };
-  if (tableTurns <= 5) return { id: "tempo.short", family: "rythme", label: "Une partie éclair", weight: 0, salience: 1 };
+  // Une partie éclair a son nerf (08/10/2026) : elle ne valait rien, et une victoire rapide finissait sous la barre.
+  if (tableTurns <= 5) return { id: "tempo.short", family: "rythme", label: "Une partie éclair", weight: 4, salience: 1 };
   if (tableTurns <= 14) return { id: "tempo.full", family: "rythme", label: "Une vraie traversée", weight: 12, salience: 2 };
   return { id: "tempo.long", family: "rythme", label: "Une partie au long cours", weight: 6, salience: 2 };
 }
@@ -63,11 +64,16 @@ const tension: Analyzer = (facts) => {
     signals.push({ id: "tension.swings", family: "tension", label: "Un duel indécis jusqu'au bout", weight: Math.min(12, facts.leadChanges * 4), salience: 7 });
   }
   // Une victoire reste une victoire, même quand l'adversaire a quitté la table.
+  // C'est l'événement de la partie : +12 (08/10/2026 — à +5, une victoire
+  // comptait moins qu'un jeu « solide » et ne tenait pas une audience).
   if (facts.finished && facts.won) {
-    signals.push({ id: "tension.victory", family: "tension", label: "Une victoire au bout", weight: 5, salience: 1 });
+    signals.push({ id: "tension.victory", family: "tension", label: "Une victoire au bout", weight: 12, salience: 1 });
   }
+  // Une victoire nette, vite et sans être inquiété : le public aime aussi la
+  // maîtrise. C'était un malus (« sans suspense », −5) qui punissait
+  // précisément les decks qui gagnent proprement.
   if (facts.finished && facts.won && facts.opponentFinalAnchor <= 0 && feltFinal >= facts.startingAnchor * 0.8 && facts.tableTurns <= 6) {
-    signals.push({ id: "tension.onesided", family: "tension", label: "Une démonstration sans suspense", weight: -5, salience: 3 });
+    signals.push({ id: "tension.dominant", family: "tension", label: "Une démonstration de force", weight: 6, salience: 4 });
   }
   return signals;
 };

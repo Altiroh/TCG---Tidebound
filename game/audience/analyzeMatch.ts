@@ -47,6 +47,8 @@ export function analyzeMatch(state: GameState, playerId: PlayerId): MatchAnalysi
  *   écart   = S × 25 − audience
  *   delta   = écart × 0,15 × poids de l'adversaire
  *   plancher: une partie ne retire jamais plus de 6 % de l'audience
+ *   victoire: une partie GAGNÉE ne fait jamais baisser l'audience — elle
+ *             rapporte au moins 1 % de l'audience × poids (08/10/2026)
  *
  * Tenir un spectacle S amène l'audience vers 25 S. Une belle partie la fait
  * monter, une partie terne la fait baisser — mais une seule partie ratée ne
@@ -59,6 +61,13 @@ export const AUDIENCE_PER_SPECTACLE = 25;
 export const AUDIENCE_RATE = 0.15;
 /** Part maximale de l'audience qu'une seule partie peut retirer. */
 export const AUDIENCE_MAX_LOSS_SHARE = 0.06;
+/**
+ * Ce qu'une VICTOIRE rapporte au minimum, en part de l'audience (× poids de
+ * l'adversaire) : gagner ne coûte jamais de public. Sans ce plancher, une
+ * audience au-dessus de 25 × S baissait même sur une victoire (retour du
+ * 08/10/2026 : trois victoires, 1100 → 980).
+ */
+export const AUDIENCE_MIN_WIN_SHARE = 0.01;
 
 /** Contre qui la partie s'est jouée : un joueur, ou un bot de tel niveau. */
 export type AudienceOpponent = "joueur" | BotDifficulty;
@@ -83,8 +92,8 @@ export function audienceTarget(spectacle: number): number {
 }
 
 /** Audience après une partie. Elle monte ET descend, en douceur. */
-export function nextAudience(audience: number, spectacle: number, options: { opponent?: AudienceOpponent } = {}): number {
-  return nextAudienceWeighted(audience, spectacle, AUDIENCE_OPPONENT_WEIGHT[options.opponent ?? "joueur"]);
+export function nextAudience(audience: number, spectacle: number, options: { opponent?: AudienceOpponent; won?: boolean } = {}): number {
+  return nextAudienceWeighted(audience, spectacle, AUDIENCE_OPPONENT_WEIGHT[options.opponent ?? "joueur"], options.won ?? false);
 }
 
 /**
@@ -92,10 +101,13 @@ export function nextAudience(audience: number, spectacle: number, options: { opp
  * que reçoit la fonction Postgres `record_match_audience` (`p_weight`). Un
  * poids nul (partie locale, jamais jugée) laisse l'audience où elle est.
  */
-export function nextAudienceWeighted(audience: number, spectacle: number, weight: number): number {
+export function nextAudienceWeighted(audience: number, spectacle: number, weight: number, won = false): number {
   const current = Math.max(0, audience);
-  const rate = AUDIENCE_RATE * Math.max(0, Math.min(1, weight));
-  const delta = Math.max((audienceTarget(spectacle) - current) * rate, -current * AUDIENCE_MAX_LOSS_SHARE);
+  const w = Math.max(0, Math.min(1, weight));
+  const rate = AUDIENCE_RATE * w;
+  let delta = Math.max((audienceTarget(spectacle) - current) * rate, -current * AUDIENCE_MAX_LOSS_SHARE);
+  // Une victoire jugée (poids > 0) rapporte toujours un peu, jamais moins que 1 spectateur.
+  if (won && w > 0) delta = Math.max(delta, current * AUDIENCE_MIN_WIN_SHARE * w, 1);
   return Math.max(0, Math.round(current + delta));
 }
 

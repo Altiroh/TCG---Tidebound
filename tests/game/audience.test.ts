@@ -387,3 +387,37 @@ describe("paliers d'audience — ce que le public rapporte", () => {
     for (const milestone of AUDIENCE_MILESTONES) expect(milestone.rewards.length).toBeGreaterThan(0);
   });
 });
+
+describe("une victoire ne fait jamais perdre d'audience (08/10/2026)", () => {
+  it("rapporte au moins 1 % de l'audience × le poids, même au-dessus de la cible", () => {
+    // Le cas signalé : à 1100, une victoire au spectacle 38 (cible 950) faisait perdre ~22.
+    expect(nextAudienceWeighted(1100, 38, 1, false)).toBeLessThan(1100);
+    expect(nextAudienceWeighted(1100, 38, 1, true)).toBe(1111);
+    expect(nextAudienceWeighted(1100, 38, 0.5, true)).toBe(1106);
+    // Un seul spectateur au moins, même tout en bas.
+    expect(nextAudienceWeighted(0, 0, 0.25, true)).toBe(1);
+  });
+
+  it("une belle victoire garde son élan au-dessus du plancher", () => {
+    expect(nextAudienceWeighted(500, 60, 1, true)).toBe(Math.round(500 + (60 * 25 - 500) * 0.15));
+  });
+
+  it("une partie non jugée (poids 0) ne bouge pas, victoire ou pas", () => {
+    expect(nextAudienceWeighted(1068, 40, 0, true)).toBe(1068);
+  });
+
+  it("une défaite garde ses règles : jamais plus de 6 % de perte", () => {
+    expect(nextAudienceWeighted(1000, 0, 1, false)).toBe(Math.round(1000 * (1 - AUDIENCE_MAX_LOSS_SHARE)));
+  });
+});
+
+describe("barème revu des victoires (08/10/2026)", () => {
+  it("une victoire nette et rapide est une démonstration de force, plus un malus", () => {
+    const clean = analyzeMatch(game([play("chope"), play("canon"), endTurn()], { turnNumber: 9, winnerId: "p1" }), "p1");
+    const ids = clean.signals.map((signal) => signal.id);
+    expect(ids).toContain("tension.dominant");
+    expect(clean.signals.find((signal) => signal.id === "tension.victory")?.weight).toBe(12);
+    expect(clean.signals.every((signal) => signal.weight >= 0)).toBe(true);
+    expect(clean.signals.find((signal) => signal.id === "tempo.short")?.weight).toBe(4);
+  });
+});
