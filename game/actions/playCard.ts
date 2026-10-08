@@ -1,6 +1,8 @@
 import { activeLandeRules } from "@/game/rules/lande";
 import { markTurnDiscountsUsed, turnDiscounts } from "@/game/rules/costReductions";
-import { isOngoingEffect } from "@/game/rules/ongoing";
+import { boardPermanents, isOngoingEffect } from "@/game/rules/ongoing";
+import { getShipDefinition } from "@/game/environment/shipData";
+import { boardSlotLayout, chooseBoardSlot } from "@/game/rules/boardSlots";
 import { canBeEquipTarget, getCardDefinition, hasAnyValidEquipTarget } from "@/game/cards/sets/core";
 import { isLandeCard, isPermanentCard, isVisibleDuringTide, UNIT_CARD_TYPES, type CardDefinition } from "@/game/cards/types";
 import { placeLande, recordUnitArrivals, unitArrivalRefusal } from "@/game/rules/lande";
@@ -427,6 +429,19 @@ export function playCard(state: GameState, action: PlayCardAction): ActionResult
     // Un effet en cours (Anomalie) ne prend pas de place dans le rang : toujours en fin de liste.
     const wanted = isOngoingEffect(def) ? owner.board.length : (action.boardIndex ?? (hostIndex >= 0 ? hostIndex + 1 : owner.board.length));
     const at = Math.max(0, Math.min(Math.trunc(wanted), owner.board.length));
+    // CASE du rang (`boardSlot`, cases vides comprises) : celle que le
+    // joueur vise ; sinon, pour un Équipement, la plus proche de son
+    // porteur, pour un Assemblage celle de la première Sentinelle, et
+    // sinon la première libre. Écrite à chaque pose : une carte revenue en
+    // main ne garde pas son ancienne case.
+    const capacity = getShipDefinition(owner.shipId).slotCount;
+    const slotOfInstance = (board: typeof owner.board, instanceId: string | undefined) =>
+      instanceId ? boardSlotLayout(boardPermanents(board), capacity).findIndex((u) => u?.instanceId === instanceId) : -1;
+    const nearSlot = assemblage ? slotOfInstance(player.board, assemblage[0]?.instanceId) : hostIndex >= 0 ? slotOfInstance(owner.board, action.targetInstanceId) : -1;
+    const slot = isOngoingEffect(def)
+      ? undefined
+      : chooseBoardSlot(boardPermanents(owner.board), capacity, action.boardSlot, nearSlot >= 0 ? nearSlot : undefined);
+    boardUnit.slot = slot;
     const board = [...owner.board.slice(0, at), boardUnit, ...owner.board.slice(at)];
     nextState = {
       ...nextState,

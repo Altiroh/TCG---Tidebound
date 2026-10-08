@@ -21,6 +21,7 @@ import {
   type PendingReactionCandidate,
   type PlayerAction,
   type PlayerId,
+  hasCombatToPlay,
 } from "@/game";
 import { GlassAlert } from "@/components/ui/GlassAlert";
 import { DEFAULT_PLAYER_COSMETICS, MatchCosmeticsProvider } from "@/features/cosmetics/MatchCosmeticsProvider";
@@ -418,7 +419,7 @@ export function MatchBoard({
 
   // Pas de fin de tour en Phase principale 1 (règle du 08/10/2026) : le bouton mène au combat d'abord —
   // sauf au tout premier tour, où l'on ne peut pas attaquer : il propose directement la fin du tour.
-  const phase = phaseButtonFor({ isMyTurn: isViewerTurn, phase: state.phase === "mainPhase" && state.turnNumber === 1 ? "mainPhase2" : state.phase });
+  const phase = phaseButtonFor({ isMyTurn: isViewerTurn, phase: state.phase === "mainPhase" && !hasCombatToPlay(state, state.activePlayerId) ? "mainPhase2" : state.phase });
   const hint = targetingHint(pending?.kind === "reaction" ? null : pending?.kind ?? null);
 
   // Objets d'invite en constantes locales : `board.breakPrompt` ne se
@@ -498,10 +499,10 @@ export function MatchBoard({
         }}
         onMenu={() => board.setShowPauseMenu(true)}
         onHandCardClick={(id, options) => board.handleHandCardClick(id, { fromZoom: options?.fromZoom })}
-        onPlayCard={(instanceId, targetInstanceId, boardIndex) => {
+        onPlayCard={(instanceId, targetInstanceId, boardSlot) => {
           // Le lâcher a déjà montré l'avertissement de Déraison : il vaut confirmation.
-          if (targetInstanceId) runAction({ type: "playCard", playerId: activePlayerId, instanceId, targetInstanceId, boardIndex });
-          else board.handleHandCardClick(instanceId, { dropped: true, boardIndex });
+          if (targetInstanceId) runAction({ type: "playCard", playerId: activePlayerId, instanceId, targetInstanceId, boardSlot });
+          else board.handleHandCardClick(instanceId, { dropped: true, boardSlot });
         }}
         onAttack={(attackerInstanceId, defenderInstanceId) =>
           runAction({ type: "attack", playerId: activePlayerId, attackerInstanceId, defenderInstanceId })
@@ -682,20 +683,20 @@ export function MatchBoard({
         );
       })()}
       {board.assemblagePick && (() => {
-        const { card, boardIndex, proposal } = board.assemblagePick;
+        const { card, boardSlot, proposal } = board.assemblagePick;
         return (
           <AssemblagePrompt
             card={card}
             proposal={proposal}
-            onChooseOthers={() => board.setAssemblagePick({ card, boardIndex })}
+            onChooseOthers={() => board.setAssemblagePick({ card, boardSlot })}
             board={liveState.players.find((p) => p.id === activePlayerId)?.board ?? []}
             onAssemble={(assemblage) => {
               board.setAssemblagePick(null);
-              runAction({ type: "playCard", playerId: activePlayerId, instanceId: card.instanceId, boardIndex, assemblage });
+              runAction({ type: "playCard", playerId: activePlayerId, instanceId: card.instanceId, boardSlot, assemblage });
             }}
             onPlayNormally={() => {
               board.setAssemblagePick(null);
-              runAction({ type: "playCard", playerId: activePlayerId, instanceId: card.instanceId, boardIndex });
+              runAction({ type: "playCard", playerId: activePlayerId, instanceId: card.instanceId, boardSlot });
             }}
             onCancel={() => board.setAssemblagePick(null)}
           />

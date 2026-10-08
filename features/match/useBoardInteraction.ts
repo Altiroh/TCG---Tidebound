@@ -2,8 +2,11 @@
 
 import { useEffect, useState } from "react";
 import {
+  boardPermanents,
+  boardSlotLayout,
   findAssemblage,
   getCardDefinition,
+  getShipDefinition,
   graveyardChoicesForBreak,
   graveyardChoicesForPlay,
   type CardInstance,
@@ -41,7 +44,7 @@ import type { TableTargeting } from "@/features/match/table/legalTargets";
  */
 export interface AssemblagePick {
   card: CardInstance;
-  boardIndex?: number;
+  boardSlot?: number;
   proposal?: Array<{ instanceId: string; color: ChromaticColor }>;
 }
 
@@ -50,7 +53,7 @@ export interface AssemblagePick {
  *
  * - `dropped` : LÂCHÉE sur le plateau. Le glisser a montré le prix de
  *   Déraison, et le lâcher sur un emplacement libre a déjà répondu à la
- *   question d'Assemblage (coût normal) ; `boardIndex` dit où.
+ *   question d'Assemblage (coût normal) ; `boardSlot` dit où.
  * - `fromZoom` : bouton « Jouer » de la carte agrandie, au doigt. Son
  *   libellé disait la Déraison : il vaut confirmation. Mais la question
  *   d'Assemblage reste posée, et un ciblage déjà engagé sur cette carte
@@ -58,7 +61,7 @@ export interface AssemblagePick {
  */
 export interface HandCardClickOptions {
   dropped?: boolean;
-  boardIndex?: number;
+  boardSlot?: number;
   fromZoom?: boolean;
 }
 
@@ -148,7 +151,7 @@ export interface BoardInteractionConfig {
  */
 export type GraveyardPickRequest =
   | { kind: "break"; card: CardInstance; fromHand: boolean }
-  | { kind: "play"; card: CardInstance; boardIndex?: number }
+  | { kind: "play"; card: CardInstance; boardSlot?: number }
   | { kind: "reaction"; candidate: PendingReactionCandidate };
 
 export interface BoardInteraction {
@@ -260,7 +263,7 @@ export function useBoardInteraction({
   }
 
   /** Clic sur une carte de main : la joue, ou entre en désignation de cible (cf. `HandCardClickOptions`). */
-  function handleHandCardClick(instanceId: string, { dropped = false, boardIndex, fromZoom = false }: HandCardClickOptions = {}) {
+  function handleHandCardClick(instanceId: string, { dropped = false, boardSlot, fromZoom = false }: HandCardClickOptions = {}) {
     if (!canPlayCards) return;
     const card = viewer.hand.find((c) => c.instanceId === instanceId);
     if (!card) return;
@@ -279,7 +282,7 @@ export function useBoardInteraction({
     // a déjà répondu : il la pose, au coût normal. L'Assemblage, lui, se
     // demande en la lâchant sur une Sentinelle (`handleAssemblageDrop`).
     if (!dropped && def.chromaticAssemblage && findAssemblage(viewer.board, def.chromaticAssemblage.sentinels)) {
-      setAssemblagePick({ card, boardIndex });
+      setAssemblagePick({ card, boardSlot });
       return;
     }
     if (needsPlayTarget(def, viewer.board)) {
@@ -292,10 +295,10 @@ export function useBoardInteraction({
     if (graveyardChoicesForPlay(liveState, actorId, def).length > 0) {
       // L'emplacement voyage avec la question : le joueur a déjà lâché sa
       // carte quelque part, la réponse au Cimetière ne doit pas l'oublier.
-      setGraveyardPick({ kind: "play", card, boardIndex });
+      setGraveyardPick({ kind: "play", card, boardSlot });
       return;
     }
-    act({ type: "playCard", playerId: actorId, instanceId, boardIndex });
+    act({ type: "playCard", playerId: actorId, instanceId, boardSlot });
   }
 
   /**
@@ -352,12 +355,11 @@ export function useBoardInteraction({
     const proposal = findAssemblage(viewer.board, requis, sentinelId);
     if (!proposal) return false;
     onGestureStart?.();
-    // Le Géant prend la place de la Sentinelle sur laquelle on l'a lâché :
-    // son rang une fois les Sentinelles Assemblées retirées.
-    const parties = new Set(proposal.map((part) => part.instanceId));
-    const rang = viewer.board.findIndex((u) => u.instanceId === sentinelId);
-    const boardIndex = viewer.board.slice(0, rang).filter((u) => !parties.has(u.instanceId)).length;
-    setAssemblagePick({ card, proposal, boardIndex });
+    // Le Géant prend la CASE de la Sentinelle sur laquelle on l'a lâché :
+    // elle se libère quand les Sentinelles Assemblées partent.
+    const capacity = getShipDefinition(viewer.shipId).slotCount;
+    const slot = boardSlotLayout(boardPermanents(viewer.board), capacity).findIndex((u) => u?.instanceId === sentinelId);
+    setAssemblagePick({ card, proposal, boardSlot: slot >= 0 ? slot : undefined });
     return true;
   }
 

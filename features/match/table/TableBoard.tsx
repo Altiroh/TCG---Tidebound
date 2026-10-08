@@ -3,7 +3,9 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   boardPermanents,
+  boardSlotLayout,
   canActivateAbility,
+  hasCombatToPlay,
   isOngoingEffect,
   slotsUsed,
   findAssemblage,
@@ -141,8 +143,8 @@ export interface TableBoardProps {
    */
   onHandCardClick: (instanceId: string, options?: { fromZoom?: boolean }) => void;
   /** Carte de main lâchée sur le plateau (sans cible) ou sur sa cible. Le lâcher vaut confirmation. */
-  /** `boardIndex` : emplacement visé dans le rang (cf. `PlayCardAction`). */
-  onPlayCard: (instanceId: string, targetInstanceId?: string, boardIndex?: number) => void;
+  /** `boardSlot` : emplacement visé dans le rang (cf. `PlayCardAction`). */
+  onPlayCard: (instanceId: string, targetInstanceId?: string, boardSlot?: number) => void;
   /** Attaque — sans défenseur : le Navire adverse. */
   onAttack: (attackerInstanceId: string, defenderInstanceId?: string) => void;
   /** Objet posé lâché sur une cible (effet de bris ciblé). */
@@ -270,6 +272,9 @@ export function TableBoard(props: TableBoardProps) {
   const opponentCardBack = useCardBackSrcFor(opponent.id);
   const viewerShip = getShipDefinition(viewer.shipId);
   const opponentShip = getShipDefinition(opponent.shipId);
+  // Les rangs CASE PAR CASE (trous compris) : chaque carte à la case choisie à la pose.
+  const viewerRow = boardSlotLayout(boardPermanents(viewer.board), viewerShip.slotCount);
+  const opponentRow = boardSlotLayout(boardPermanents(opponent.board), opponentShip.slotCount);
   const tideState = state.environment.tideState;
 
   // ── Lande ──────────────────────────────────────────────────────────
@@ -448,24 +453,15 @@ export function TableBoard(props: TableBoardProps) {
   const dropId = (drop: string) => drop.replace(/^(own|unit):/, "");
 
   /**
-   * Emplacement désigné par la zone lâchée : une case vide le dit
-   * (`board:3`), une carte du plateau vaut « avant celle-ci » — lâcher sur
-   * la première carte, c'est passer devant elle. Le rang seul
-   * (`board`, entre deux cases) garde le comportement d'avant : fin de rang.
+   * CASE désignée par la zone lâchée (`board:3`), cases vides comprises :
+   * la carte s'y pose, même tout à droite d'un rang vide
+   * (`game/rules/boardSlots.ts`). Lâchée sur une carte déjà posée ou entre
+   * deux cases (`board`) : pas de case, le moteur prend la première libre.
    */
   const slotOf = (drop: string): number | undefined => {
-    if (drop.startsWith("board:")) {
-      // La case k du RANG (sans les effets en cours) : rendue en indice
-      // dans la liste complète du moteur, où les Anomalies durables vivent aussi.
-      const k = Number(drop.slice("board:".length));
-      const rang = boardPermanents(viewer.board);
-      return k < rang.length ? viewer.board.indexOf(rang[k]!) : viewer.board.length;
-    }
-    if (drop.startsWith("own:")) {
-      const index = viewer.board.findIndex((u) => u.instanceId === dropId(drop));
-      return index >= 0 ? index : undefined;
-    }
-    return undefined;
+    if (!drop.startsWith("board:")) return undefined;
+    const k = Number(drop.slice("board:".length));
+    return viewerRow[k] === undefined ? k : undefined;
   };
   const isBoardDrop = (drop: string) => drop === "board" || drop.startsWith("board:") || drop.startsWith("own:");
 
@@ -1062,7 +1058,7 @@ export function TableBoard(props: TableBoardProps) {
           <TableOpponentHand count={opponent.hand.length} ownerId={opponent.id} />
           <OpponentZone
             ship={shipView(opponent, opponentShip)}
-            board={boardPermanents(opponent.board).map(toModel)}
+            board={opponentRow.map((card) => card && toModel(card))}
             capacity={opponentShip.slotCount}
             deck={opponent.deck.length}
             graveyard={opponent.graveyard.length}
@@ -1126,7 +1122,7 @@ export function TableBoard(props: TableBoardProps) {
                   />
                   <PontActions
                     phase={state.phase}
-                    firstTurn={state.turnNumber === 1}
+                    noCombat={!hasCombatToPlay(state, state.activePlayerId)}
                     disabled={props.phaseButton.disabled}
                     onAdvance={() => props.phaseButton.onAdvance?.()}
                     onEndTurn={() => props.phaseButton.onEndTurn?.()}
@@ -1189,7 +1185,7 @@ export function TableBoard(props: TableBoardProps) {
           />
           <PlayerZone
             ship={shipView(viewer, viewerShip)}
-            board={boardPermanents(viewer.board).map(toModel)}
+            board={viewerRow.map((card) => card && toModel(card))}
             capacity={viewerShip.slotCount}
             deck={viewer.deck.length}
             graveyard={viewer.graveyard.length}

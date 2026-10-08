@@ -1,3 +1,4 @@
+import { hasCombatToPlay } from "@/game/rules/combatAvailable";
 import { sensibleDieAnswer } from "@/game/rules/dice";
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { isDeckLookTakeable } from "@/game/rules/deckLook";
@@ -349,12 +350,13 @@ export function enumerateCandidateActions(state: GameState, playerId: PlayerId):
       }
     }
 
-    if (state.phase === "mainPhase" && state.turnNumber === 1) {
-      // Tout premier tour : pas d'attaque possible, le tour se termine ici.
+    if (state.phase === "mainPhase" && !hasCombatToPlay(state, playerId)) {
+      // Rien ne peut se battre (tout premier tour, unités qui arrivent,
+      // Marée qui les rend inactives) : le tour se termine ici.
       actions.push({ type: "endTurn", playerId });
     } else if (state.phase === "mainPhase") {
-      // Pas de fin de tour en Phase principale 1 (règle du 08/10/2026) : la
-      // seule sortie est la Phase de combat, même sans rien à attaquer.
+      // Pas de fin de tour en Phase principale 1 (règle du 08/10/2026) :
+      // quelque chose peut se battre, la sortie est la Phase de combat.
       actions.push({ type: "advancePhase", playerId });
     } else {
       // Phase principale 2 : le combat est derrière, la seule sortie est la fin du tour.

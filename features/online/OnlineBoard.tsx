@@ -17,6 +17,7 @@ import {
   type PendingReactionCandidate,
   type PlayerAction,
   type PlayerId,
+  hasCombatToPlay,
 } from "@/game";
 import { GlassAlert } from "@/components/ui/GlassAlert";
 import { ActionToastStack } from "@/features/match/ActionToastStack";
@@ -235,7 +236,7 @@ export function OnlineBoard({
     );
   }
 
-  const phase = phaseButtonFor({ isMyTurn, phase: state.phase === "mainPhase" && state.turnNumber === 1 ? "mainPhase2" : state.phase });
+  const phase = phaseButtonFor({ isMyTurn, phase: state.phase === "mainPhase" && !hasCombatToPlay(state, state.activePlayerId) ? "mainPhase2" : state.phase });
   const hint = targetingHint(selection?.kind === "reaction" ? null : selection?.kind ?? null);
 
   // Objets d'invite en constantes locales : `board.breakPrompt` ne se
@@ -297,9 +298,9 @@ export function OnlineBoard({
         }}
         onMenu={() => board.setShowPauseMenu(true)}
         onHandCardClick={(id, options) => board.handleHandCardClick(id, { fromZoom: options?.fromZoom })}
-        onPlayCard={(instanceId, targetInstanceId, boardIndex) => {
-          if (targetInstanceId) act({ type: "playCard", playerId: myUserId, instanceId, targetInstanceId, boardIndex });
-          else board.handleHandCardClick(instanceId, { dropped: true, boardIndex });
+        onPlayCard={(instanceId, targetInstanceId, boardSlot) => {
+          if (targetInstanceId) act({ type: "playCard", playerId: myUserId, instanceId, targetInstanceId, boardSlot });
+          else board.handleHandCardClick(instanceId, { dropped: true, boardSlot });
         }}
         onAttack={(attackerInstanceId, defenderInstanceId) => act({ type: "attack", playerId: myUserId, attackerInstanceId, defenderInstanceId })}
         onBreakOnTarget={(instanceId, targetInstanceId) => act({ type: "breakObject", playerId: myUserId, instanceId, targetInstanceId })}
@@ -467,20 +468,20 @@ export function OnlineBoard({
         );
       })()}
       {board.assemblagePick && (() => {
-        const { card, boardIndex, proposal } = board.assemblagePick;
+        const { card, boardSlot, proposal } = board.assemblagePick;
         return (
           <AssemblagePrompt
             card={card}
             proposal={proposal}
-            onChooseOthers={() => board.setAssemblagePick({ card, boardIndex })}
+            onChooseOthers={() => board.setAssemblagePick({ card, boardSlot })}
             board={state.players.find((p) => p.id === myUserId)?.board ?? []}
             onAssemble={(assemblage) => {
               board.setAssemblagePick(null);
-              act({ type: "playCard", playerId: myUserId, instanceId: card.instanceId, boardIndex, assemblage });
+              act({ type: "playCard", playerId: myUserId, instanceId: card.instanceId, boardSlot, assemblage });
             }}
             onPlayNormally={() => {
               board.setAssemblagePick(null);
-              act({ type: "playCard", playerId: myUserId, instanceId: card.instanceId, boardIndex });
+              act({ type: "playCard", playerId: myUserId, instanceId: card.instanceId, boardSlot });
             }}
             onCancel={() => board.setAssemblagePick(null)}
           />

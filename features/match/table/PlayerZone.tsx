@@ -7,7 +7,8 @@ import type { TableCardModel } from "@/features/match/table/tableModel";
 
 interface PlayerZoneProps {
   ship: ShipView;
-  board: TableCardModel[];
+  /** Le rang case par case : `undefined` = case vide. */
+  board: readonly (TableCardModel | undefined)[];
   /** Emplacements du Navire (4, 5 ou 6) — les vides restent dessinés. */
   capacity?: number;
   renderCard: (card: TableCardModel) => ReactNode;

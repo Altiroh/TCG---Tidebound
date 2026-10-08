@@ -23,6 +23,14 @@ export interface PlayCardAction {
    */
   boardIndex?: number;
   /**
+   * CASE du rang où poser la carte (0 = tout à gauche), cases vides
+   * comprises : « tout à droite » reste tout à droite
+   * (`game/rules/boardSlots.ts`). Une case prise ou hors du rang est
+   * ignorée. Absente : la case libre la plus proche du porteur pour un
+   * Équipement, sinon la première libre.
+   */
+  boardSlot?: number;
+  /**
    * « Assemblage Chromatique » (Le Géant Chromatique, Lot 15) : les
    * Sentinelles que le joueur place au Cimetière pour jouer la carte à son
    * coût alternatif, chacune avec la couleur qu'il lui fait porter. Absent :

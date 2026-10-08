@@ -1567,6 +1567,12 @@ export interface CardInstance {
    * (« S'il entre en jeu par l'effet d'Eidolon Opalin LV1… », Lot 17).
    */
   arrivedViaCardId?: CardId;
+  /**
+   * Case du rang où la carte est posée (0 = tout à gauche), choisie par le
+   * joueur à la pose. Présentation seulement, aucune règle ne la lit
+   * (`game/rules/boardSlots.ts`). Absente : la première case libre.
+   */
+  slot?: number;
 
   /**
    * Dégâts marqués sur l'unité. Les statistiques effectives (attaque/vie,

@@ -5,7 +5,8 @@ import { instance, testGameState, testPlayer } from "./testHelpers";
 /**
  * Règles du tour arrêtées le 08/10/2026 :
  *   - pas de fin de tour en Phase principale 1 : on passe d'abord en combat —
- *     sauf au tout premier tour, où l'on ne peut pas attaquer ;
+ *     sauf quand rien ne peut se battre (tout premier tour, unités qui
+ *     arrivent, Navire qui ne tire pas) ;
  *   - au tout premier tour de la partie, le joueur qui commence n'attaque
  *     pas, Pied marin compris ;
  *   - le joueur qui commence ne pioche pas à son premier tour.
@@ -22,11 +23,33 @@ function table(overrides: Partial<GameState> = {}): GameState {
   });
 }
 
+/** Une table où p1 a une unité prête à attaquer. */
+function tableAvecAttaquant(overrides: Partial<GameState> = {}): GameState {
+  return testGameState({
+    players: [
+      testPlayer("p1", { deck: deck("p1"), board: [instance("marin-des-jetees", "p1")] }),
+      testPlayer("p2", { shipId: "le-goliath", deck: deck("p2") }),
+    ],
+    ...overrides,
+  });
+}
+
 describe("fin de tour", () => {
-  it("est refusée en Phase principale 1", () => {
-    const result = dispatch(table({ phase: "mainPhase" }), { type: "endTurn", playerId: "p1" });
+  it("est refusée en Phase principale 1 quand une unité peut attaquer", () => {
+    const result = dispatch(tableAvecAttaquant({ phase: "mainPhase" }), { type: "endTurn", playerId: "p1" });
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error).toMatch(/Phase principale 1/);
+  });
+
+  it("est possible dès la Phase principale 1 quand rien ne peut se battre", () => {
+    // Plateau vide.
+    const vide = dispatch(table({ phase: "mainPhase" }), { type: "endTurn", playerId: "p1" });
+    expect(vide.ok && vide.state.activePlayerId).toBe("p2");
+    // Une unité tout juste arrivée, sans Pied marin.
+    const arrivee = tableAvecAttaquant({ phase: "mainPhase" });
+    arrivee.players[0].board[0]!.summoningSick = true;
+    const fin = dispatch(arrivee, { type: "endTurn", playerId: "p1" });
+    expect(fin.ok && fin.state.activePlayerId).toBe("p2");
   });
 
   it("est possible dès la Phase principale 1 au tout premier tour, où l'on ne peut pas attaquer", () => {

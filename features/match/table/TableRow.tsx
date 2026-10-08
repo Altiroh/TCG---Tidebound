@@ -8,7 +8,8 @@ export type BoardDropState = "idle" | "ready" | "over";
 interface PreviewBoardProps {
   /** Nom de zone pour l'overlay de debug (`DebugOverlay`). */
   zone: "OpponentBoard" | "PlayerBoard";
-  cards: TableCardModel[];
+  /** Le rang case par case : `undefined` = case vide (`boardSlotLayout`). */
+  cards: readonly (TableCardModel | undefined)[];
   /** Nombre d'emplacements dessinés, cartes absentes comprises. */
   capacity?: number;
   /**
@@ -20,9 +21,8 @@ interface PreviewBoardProps {
   droppable?: boolean;
   dropState?: BoardDropState;
   /**
-   * Emplacement qui recevra la carte en cours de pose — c'est LUI qui
-   * s'allume. Absent : le premier emplacement libre, c'est-à-dire la fin
-   * du rang.
+   * Case qui recevra la carte en cours de pose — c'est ELLE qui s'allume.
+   * Absente : la première case libre.
    */
   dropSlot?: number;
 }
@@ -33,18 +33,16 @@ interface PreviewBoardProps {
  * bouge pas selon le nombre de cartes en jeu.
  *
  * Pendant une pose, l'emplacement VISÉ s'allume — celui sous le pointeur,
- * pas forcément le dernier : chaque emplacement est sa propre cible de
- * dépôt (`data-drop="board:<index>"`), et la carte s'insère là. Le rang
- * entier reste une cible de repli (`data-drop="board"`, fin de rang) pour
- * que lâcher entre deux cases ne fasse jamais rien rater.
+ * pas forcément la première libre : chaque case est sa propre cible de
+ * dépôt (`data-drop="board:<index>"`), et la carte s'y pose, cases vides
+ * comprises. Le rang entier reste une cible de repli (`data-drop="board"`,
+ * première case libre) pour que lâcher entre deux cases ne rate jamais.
  */
 export function TableRow({ zone, cards, capacity = BOARD_CAPACITY, renderCard, droppable = false, dropState = "idle", dropSlot }: PreviewBoardProps) {
   const slots = Array.from({ length: Math.max(capacity, cards.length) }, (_, index) => cards[index]);
-  const nextFree = cards.length < capacity ? cards.length : -1;
-  // L'emplacement mis en évidence : celui que le joueur vise, ramené dans
-  // le rang (le rang est DENSE, viser la case 5 sur un plateau qui en
-  // compte deux revient à se ranger en troisième).
-  const highlighted = dropSlot === undefined ? nextFree : Math.min(dropSlot, cards.length);
+  const nextFree = slots.findIndex((card, index) => card === undefined && index < capacity);
+  // La case mise en évidence : celle que le joueur vise si elle est libre.
+  const highlighted = dropSlot !== undefined && slots[dropSlot] === undefined ? dropSlot : nextFree;
 
   return (
     <div

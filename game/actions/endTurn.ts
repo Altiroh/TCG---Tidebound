@@ -15,16 +15,17 @@ import { ouvrirFenetrePour } from "@/game/reactions/reactionWindow";
 import type { TriggerEvent } from "@/game/triggers/types";
 import { getOpponent, STATUS_NO_REASON_GAIN, type GameState, type PlayerId, type PlayerState } from "@/game/state/types";
 import type { ActionResult, EndTurnAction } from "@/game/actions/types";
+import { hasCombatToPlay } from "@/game/rules/combatAvailable";
 
 function validate(state: GameState, action: EndTurnAction) {
   return combine(
     assertGameActive(state),
     assertPlayerInGame(state, action.playerId),
     assertIsActivePlayer(state, action.playerId),
-    // Pas de fin de tour en Phase principale 1 — sauf au tout premier tour de
-    // la partie, où le joueur qui commence ne peut pas attaquer : le combat
-    // n'y servirait à rien (règles du 08/10/2026).
-    state.phase === "mainPhase" && state.turnNumber !== 1
+    // Pas de fin de tour en Phase principale 1 — sauf quand le combat ne
+    // servirait à rien : aucune unité ne peut attaquer et le Navire ne tire
+    // pas (tout premier tour compris ; règles du 08/10/2026).
+    state.phase === "mainPhase" && hasCombatToPlay(state, action.playerId)
       ? fail("Pas de fin de tour en Phase principale 1 : passez d'abord en Phase de combat.")
       : ok()
   );
