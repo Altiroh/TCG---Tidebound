@@ -64,13 +64,21 @@
   --tb-shelf-height: calc(100cqh + max(var(--tb-safe-bottom), 0.6vh));
 }
 
-/* Boussoles, gemmes et pièces, au pied de l'étagère : SOUS elle. */
+/*
+ * Boussoles, gemmes et pièces, au pied de l'étagère : SOUS elle. Le bord
+ * gauche de l'image est coupé net : il doit rester caché derrière
+ * l'étagère (et ses flèches). Accroché au bord DROIT de l'étagère — 79,5 %
+ * de sa largeur, le calage de la maquette —, pas à un pourcentage de la
+ * scène : l'étagère suit l'écran (bord gauche, pleine hauteur), et hors
+ * 16:9 les deux se décalaient, laissant voir la coupe sur la carte.
+ */
 .decor {
   position: absolute;
   z-index: 0;
-  left: 23.9%;
-  bottom: 0;
-  width: 24.3%;
+  left: calc(var(--tb-shelf-left) + var(--tb-shelf-height) * 815 / 1400 * 0.795);
+  /* Posé au pied de l'étagère (le bas de l'écran), à sa taille : 78,7 % de sa largeur. */
+  bottom: calc(100% - var(--tb-shelf-top) - var(--tb-shelf-height));
+  width: calc(var(--tb-shelf-height) * 815 / 1400 * 0.787);
   height: auto;
   pointer-events: none;
   user-select: none;

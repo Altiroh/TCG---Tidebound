@@ -10,6 +10,7 @@ import { PreconToken, TideCoin } from "@/features/shell/GameIcons";
 import { ScreenToast, type ScreenToastMessage } from "@/features/shell/ScreenToast";
 import { purchaseBooster, type BoosterInventory, type BoosterInventoryEntry } from "@/features/boosters/actions";
 import { MAX_PURCHASE_QUANTITY } from "@/features/boosters/constants";
+import { SHELF_BOOSTER_IDS } from "@/game/boosters";
 import { closedPackVariables, getBoosterPackVisual } from "@/features/boosters/opening/boosterPackVisuals";
 import { purchaseCollectable } from "@/features/cosmetics/collectablesActions";
 import type { CollectablesView } from "@/features/cosmetics/collectablesService";
@@ -63,6 +64,12 @@ const SANDBOX_ACTIONS = {
 const PACKS_PER_PLATE = 3;
 
 /** Les rayons qui se tiennent dans cet écran. */
+/** Rang d'un booster sur le rayon ; un booster inconnu du rayon passe en dernier. */
+function shelfRank(boosterId: string): number {
+  const rank = SHELF_BOOSTER_IDS.indexOf(boosterId);
+  return rank === -1 ? SHELF_BOOSTER_IDS.length : rank;
+}
+
 type SectionId = "boosters" | "decks" | "cosmetics";
 
 /*
@@ -181,8 +188,14 @@ export function MarketScreen({ inventory, catalog, collectables, sandbox = false
 
   // Un booster non achetable (le Mini Booster de Bienvenue, offert) n'a rien
   // à faire dans une boutique : il s'obtient, il ne se vend pas.
+  // Dans l'ordre du rayon (`SHELF_BOOSTER_IDS`) : le booster de base, puis
+  // les extensions de la plus ANCIENNE à la plus récente — comme l'étagère
+  // de Mes boosters, et pas dans l'ordre alphabétique de la base.
   const onSale = useMemo(
-    () => inventory.boosters.filter((booster) => booster.isPurchasable && booster.price !== null),
+    () =>
+      inventory.boosters
+        .filter((booster) => booster.isPurchasable && booster.price !== null)
+        .sort((a, b) => shelfRank(a.boosterId) - shelfRank(b.boosterId)),
     [inventory.boosters]
   );
 
