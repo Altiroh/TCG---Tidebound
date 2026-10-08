@@ -629,6 +629,29 @@
   grid-column: 3;
 }
 
+/* Le SOCLE du navire (`socle-navire.webp`, 1283 × 933) : une plaque de bois
+   cerclée de cuivre, arquée comme le cadre, sur laquelle le portrait se
+   dresse. Sa partie plate (≈ 18 → 82 % en largeur) reçoit le navire ; le
+   pied de la plaque dépasse sous lui. Rangées seulement (pas la bande de
+   Marée, dont la colonne 1 porte l'emplacement de Lande). */
+.stage.stagePont :is(.opponentZone, .playerZone) .zoneSlotShip {
+  position: relative;
+}
+
+.stage.stagePont :is(.opponentZone, .playerZone) .zoneSlotShip::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  left: 50%;
+  bottom: calc(var(--row-h) * -0.1);
+  width: calc(var(--row-h) * 1.25);
+  aspect-ratio: 1283 / 933;
+  translate: -50% 0;
+  background: url("/assets/board/pont/socle-navire.webp") center / 100% 100% no-repeat;
+  filter: drop-shadow(0 calc(var(--row-h) * 0.03) calc(var(--row-h) * 0.05) rgba(10, 5, 2, 0.55));
+  pointer-events: none;
+}
+
 .stagePont .zoneSlotCargo,
 .stagePont .cargo {
   display: contents;
