@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { advanceTideState, getCardDefinition, naturalOrientationFor, type TideOrientation } from "@/game";
 import { playCardDraw, playAttackImpact } from "@/lib/sound";
 import { animateAttacker, ATTACK_IMPACT_AT_MS, ATTACK_TOTAL_MS, shake } from "@/features/board-preview/attackMotion";
-import { BackgroundLayer, TABLE_PONT } from "@/features/match/table/BackgroundLayer";
+import { BackgroundLayer, TABLE_PONT, type LandeFloorProps } from "@/features/match/table/BackgroundLayer";
 import { CardZoom } from "@/features/board-preview/CardZoom";
 import { CenterZone } from "@/features/match/table/CenterZone";
 import { DebugOverlay } from "@/features/board-preview/DebugOverlay";
@@ -84,6 +84,27 @@ const BADGE_SIZE: Record<BoardPreviewBreakpoint, number> = {
 export type BoardPreviewDecor = "parchemin" | "pont";
 
 /** Les Landes que le labo du pont sait poser (bouton « Lande » de la barre de debug). */
+/**
+ * DÉCORS DE LANDE du pont : une Lande posée remplace le sol du pont par le
+ * sien (même cadrage, 1672 × 941) et y dresse ses pièces. Boîtes en
+ * fractions du fond : [gauche, haut, largeur, hauteur]. Échelle : un tonneau
+ * du donjon fait ~110 px de haut ; un cabinet, deux fois plus (≈ 22 % de la
+ * hauteur), pieds posés sur les dalles, dans les deux coins du fond que ni
+ * la main adverse (haut, 0 → 10 %) ni la rangée adverse (12 → 88 % en
+ * largeur) ne couvrent.
+ */
+const PONT_LANDE_FLOORS: Record<string, LandeFloorProps> = {
+  "le-donjon-de-ladalle": {
+    key: "pont-donjon",
+    src: "/assets/landes/le-donjon-de-ladalle/pont-donjon-sol.webp",
+    delayMs: 0,
+    frame: [
+      { src: "/assets/landes/le-donjon-de-ladalle/cabinet-ferme.webp", box: [0.022, 0.1, 0.0904, 0.22] },
+      { src: "/assets/landes/le-donjon-de-ladalle/cabinet-ouvert.webp", box: [0.888, 0.1, 0.0971, 0.22] },
+    ],
+  },
+};
+
 const PONT_LANDES = ["pluie-corrosive", "chaine-de-construction", "vallee-de-verre", "le-donjon-de-ladalle", "calme-trompeur", "terres-inconnues"];
 
 export function BoardPreviewPage({ decor = "parchemin" }: { decor?: BoardPreviewDecor }) {
@@ -345,7 +366,7 @@ export function BoardPreviewPage({ decor = "parchemin" }: { decor?: BoardPreview
 
   return (
     <GameViewport debugZones={zonesVisible}>
-      <BackgroundLayer table={pont ? TABLE_PONT : undefined} />
+      <BackgroundLayer table={pont ? TABLE_PONT : undefined} floor={pont && landeId ? (PONT_LANDE_FLOORS[landeId] ?? null) : null} />
 
       {/* Essai sur la feuille de parchemin (07/10) : plus de cadres de rangée
           (`.lane`), les emplacements se dessinent à même le tapis, et navires
