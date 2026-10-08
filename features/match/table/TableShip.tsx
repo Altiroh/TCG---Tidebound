@@ -128,6 +128,24 @@ function ShipAbilityPanel(view: ShipAbilityPanelView) {
   // Au doigt, le premier toucher MONTRE la capacité ; c'est le bouton de la fiche qui agit.
   const [sheet, setSheet] = useState(false);
   const pointerType = useRef("mouse");
+  // Où poser la carte de survol : elle sort du plateau (calque fixe, au-dessus
+  // de tout) — dans le panneau, une rangée inclinée ou ses voisines la
+  // recouvraient. Relevée sur le hublot à l'entrée du pointeur ou du focus.
+  const [floating, setFloating] = useState<{ left: number; top: number } | null>(null);
+  const showCard = (el: HTMLElement) => {
+    const r = el.getBoundingClientRect();
+    setFloating({ left: r.right + 10, top: r.top + r.height / 2 });
+  };
+  const hoverProps = {
+    onPointerEnter: (event: React.PointerEvent<HTMLElement>) => {
+      if (event.pointerType === "mouse") showCard(event.currentTarget);
+    },
+    onPointerLeave: () => setFloating(null),
+    onFocus: (event: React.FocusEvent<HTMLElement>) => {
+      if (event.currentTarget.matches(":focus-visible")) showCard(event.currentTarget);
+    },
+    onBlur: () => setFloating(null),
+  };
   const label = armed ? `${name} — armé` : name;
   const status = actionable ? null : blockedBy;
   const ariaLabel = [label, text, status].filter(Boolean).join(" — ");
@@ -166,7 +184,9 @@ function ShipAbilityPanel(view: ShipAbilityPanelView) {
           Le `title=""` du panneau n'est pas un oubli : il empêche la bulle
           du cadre de Navire qui l'entoure (« Fiche du Navire… ») de
           remonter jusqu'ici. */}
-      <span aria-hidden className={styles.shipAbilityCard}>
+      {floating &&
+        createPortal(
+          <span aria-hidden className={`${styles.shipAbilityCard} ${styles.shipAbilityCardFloating}`} style={{ left: floating.left, top: floating.top }}>
         <span
           className={styles.shipAbilityCardArt}
           style={artUrl ? { backgroundImage: `url(${artUrl})` } : undefined}
@@ -183,7 +203,9 @@ function ShipAbilityPanel(view: ShipAbilityPanelView) {
           )}
           {status && <span className={styles.shipAbilityCardStatus}>{status}</span>}
         </span>
-      </span>
+          </span>,
+          document.body
+        )}
     </>
   );
 
@@ -196,6 +218,7 @@ function ShipAbilityPanel(view: ShipAbilityPanelView) {
         title=""
         role="img"
         aria-label={ariaLabel}
+        {...hoverProps}
         onPointerDown={(event) => {
           pointerType.current = event.pointerType;
         }}
@@ -219,6 +242,7 @@ function ShipAbilityPanel(view: ShipAbilityPanelView) {
         className={className}
         title=""
         aria-label={ariaLabel}
+        {...hoverProps}
         onPointerDown={(event) => {
           pointerType.current = event.pointerType;
         }}

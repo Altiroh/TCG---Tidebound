@@ -1,8 +1,22 @@
 /* Piste de Marée du Pont du Capitaine — voir `PontTideTrack.tsx`. */
 
+/*
+ * La rangée : la plaque du sens (hauteur = 64 % de la planche) puis la
+ * planche, côte à côte DANS la colonne des cartes — jamais sur
+ * l'emplacement de Lande. Largeurs tirées des deux proportions (planche
+ * 2094 × 534, plaque 1743 × 626) : 68,5 % + 29,5 %, et 2 % d'écart.
+ */
+.pontMaree {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
 .track {
   position: relative;
-  width: 100%;
+  flex: none;
+  width: 68.5%;
   aspect-ratio: 2094 / 534;
   /* Le sélecteur dépasse au-dessus de la planche. */
   margin-top: 6%;
@@ -110,12 +124,12 @@
  * 49,97 % / 50,4 %, 24,3 % × 66,3 %.
  */
 .sens {
-  position: absolute;
-  right: calc(100% + 1.5%);
-  top: 50%;
-  height: 64%;
+  position: relative;
+  flex: none;
+  width: 29.5%;
   aspect-ratio: 1743 / 626;
-  translate: 0 -50%;
+  /* Alignée sur la planche, pas sur le sélecteur qui la dépasse. */
+  margin-top: 4%;
   pointer-events: none;
 }
 
@@ -166,9 +180,20 @@
 /* Sur téléphone, la bande centrale ne fait que ~40 px de haut : la piste
    s'y cale par sa HAUTEUR (`--center-h`, posée par la scène mobile). */
 @media (max-height: 520px), (max-width: 820px) {
+  .pontMaree {
+    width: auto;
+    gap: calc(var(--center-h, 40px) * 0.15);
+  }
+
   .track {
     width: auto;
     height: calc(var(--center-h, 40px) * 1.15);
+    margin-top: 0;
+  }
+
+  .sens {
+    width: auto;
+    height: calc(var(--center-h, 40px) * 1.15 * 0.64);
     margin-top: 0;
   }
 }

@@ -15,7 +15,8 @@ import styles from "@/features/match/table/pont/PontTideTrack.module.css";
  * au milieu du hublot. Le SÉLECTEUR doré se pose au-dessus de l'état en
  * cours et pointe vers lui.
  *
- * À sa gauche, la PLAQUE DU SENS (`plaque-sens-maree.webp`) : dans son
+ * À sa gauche, dans la même rangée (jamais sur l'emplacement de Lande), la
+ * PLAQUE DU SENS (`plaque-sens-maree.webp`) : dans son
  * hublot, le logo de vague — bleu, vers le haut, quand la Marée monte ;
  * rouge, tête en bas, quand elle descend. Les deux sont les faces d'une même
  * pièce qui BASCULE à chaque changement de sens, toujours bord haut poussé
@@ -56,30 +57,7 @@ export function PontTideTrack({ tide }: { tide: TableTideModel }) {
   const angle = useFlipAngle(rising);
   const turns = `${tide.remainingTurns} tour${tide.remainingTurns > 1 ? "s" : ""} restant${tide.remainingTurns > 1 ? "s" : ""}`;
   return (
-    <div className={styles.track} role="group" aria-label={current ? `Marée : ${current.label}, ${turns}` : "Marée"} data-ui-obstacle="">
-      {tide.states.map((state, index) => (
-        <span
-          key={state.id}
-          className={`${styles.hole} ${index === tide.current ? styles.holeActive : index < tide.current ? styles.holePast : styles.holeNext}`}
-          style={{ "--x": `${HOLE_X[index]}%`, "--y": `${HOLE_Y}%`, "--w": `${HOLE_W}%`, "--h": `${HOLE_H}%` } as CSSProperties}
-          aria-hidden
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element -- décor local */}
-          <img src={PORTHOLE_SEAS[state.id]} alt="" draggable={false} className={styles.sea} />
-          {index === tide.current && (
-            <span className={styles.turns}>
-              <span className={styles.turnsCount}>{tide.remainingTurns}</span>
-              <span className={styles.turnsLabel}>tour{tide.remainingTurns > 1 ? "s" : ""}</span>
-            </span>
-          )}
-        </span>
-      ))}
-      {/* eslint-disable-next-line @next/next/no-img-element -- décor local */}
-      <img src={TRACK_SRC} alt="" draggable={false} className={styles.frame} />
-      <span className={styles.selector} style={{ "--x": `${HOLE_X[tide.current] ?? HOLE_X[0]}%` } as CSSProperties} aria-hidden>
-        {/* eslint-disable-next-line @next/next/no-img-element -- décor local */}
-        <img src={SELECTOR_SRC} alt="" draggable={false} className={styles.selectorImage} />
-      </span>
+    <div className={styles.pontMaree}>
       <span className={styles.sens} role="img" aria-label={rising ? "Marée montante" : "Marée descendante"}>
         {/* eslint-disable-next-line @next/next/no-img-element -- décor local */}
         <img src={SENS_PLAQUE} alt="" draggable={false} className={styles.sensPlaque} />
@@ -92,6 +70,31 @@ export function PontTideTrack({ tide }: { tide: TableTideModel }) {
           </span>
         </span>
       </span>
+      <div className={styles.track} role="group" aria-label={current ? `Marée : ${current.label}, ${turns}` : "Marée"} data-ui-obstacle="">
+        {tide.states.map((state, index) => (
+          <span
+            key={state.id}
+            className={`${styles.hole} ${index === tide.current ? styles.holeActive : index < tide.current ? styles.holePast : styles.holeNext}`}
+            style={{ "--x": `${HOLE_X[index]}%`, "--y": `${HOLE_Y}%`, "--w": `${HOLE_W}%`, "--h": `${HOLE_H}%` } as CSSProperties}
+            aria-hidden
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element -- décor local */}
+            <img src={PORTHOLE_SEAS[state.id]} alt="" draggable={false} className={styles.sea} />
+            {index === tide.current && (
+              <span className={styles.turns}>
+                <span className={styles.turnsCount}>{tide.remainingTurns}</span>
+                <span className={styles.turnsLabel}>tour{tide.remainingTurns > 1 ? "s" : ""}</span>
+              </span>
+            )}
+          </span>
+        ))}
+        {/* eslint-disable-next-line @next/next/no-img-element -- décor local */}
+        <img src={TRACK_SRC} alt="" draggable={false} className={styles.frame} />
+        <span className={styles.selector} style={{ "--x": `${HOLE_X[tide.current] ?? HOLE_X[0]}%` } as CSSProperties} aria-hidden>
+          {/* eslint-disable-next-line @next/next/no-img-element -- décor local */}
+          <img src={SELECTOR_SRC} alt="" draggable={false} className={styles.selectorImage} />
+        </span>
+      </div>
     </div>
   );
 }

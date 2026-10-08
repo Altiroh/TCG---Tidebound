@@ -738,64 +738,34 @@
 }
 
 /*
- * LE SURVOL REDRESSÉ : ce qu'on survole (une carte agrandie, la fiche d'une
- * capacité de Navire) se lit FACE À L'ÉCRAN, pas couché sur le pont. Il se
- * décolle du plan (`translateZ`) et pivote en sens inverse de la pente
- * (`rotateX(-tilt)`). Il faut pour cela que la 3D se propage de la rangée
- * jusqu'à lui (`preserve-3d`) — un `filter` l'aplatirait : celui du Navire
- * et de sa capacité passe donc sur leur cadre et leur anneau.
+ * LE SURVOL REDRESSÉ : une carte survolée se lit FACE À L'ÉCRAN, pas couchée
+ * sur le pont. Elle pivote en sens inverse de la pente (`rotateX(-tilt)`)
+ * autour de son BORD BAS, qui reste en place : elle se lève comme une carte
+ * qu'on redresse, et le pointeur reste toujours sur elle — pivotée sur son
+ * centre et décollée du plan, elle fuyait sous le curseur, l'aperçu en grand
+ * se fermait et se rouvrait sans cesse. La 3D doit se propager de la rangée
+ * jusqu'à elle (`preserve-3d`). La fiche d'une capacité de Navire, elle,
+ * sort du plateau (calque fixe, `TableShip`).
  */
 .stage.stagePont .zone,
 .stage.stagePont .zone > *,
 .stagePont .board,
-.stagePont .boardSlot,
-.stagePont .shipTarget,
-.stagePont .ship,
-.stagePont .shipAbility {
+.stagePont .boardSlot {
   transform-style: preserve-3d;
 }
 
-.stagePont .ship {
-  filter: none;
-}
-
-.stagePont .shipFrame {
-  filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.6));
-}
-
-.stagePont .shipAbility {
-  filter: none;
-}
-
-.stagePont .shipAbilityRing {
-  filter: drop-shadow(0 0.05em 0.15em rgba(0, 0, 0, 0.6));
-}
-
-/* Le halo d'une capacité prête (un `filter` animé) passe lui aussi sur l'anneau. */
-.stagePont .shipAbilityReady {
-  animation: none;
-}
-
-.stagePont .shipAbilityReady .shipAbilityRing {
-  animation: shipAbilityGlow 1.9s ease-in-out infinite;
+.stagePont .boardHoverable {
+  transform-origin: 50% 100%;
 }
 
 @media (hover: hover) {
   .stagePont .boardHoverable:hover:not(.dragSource):not(.aimSource):not(.castSource) {
-    transform: translateZ(calc(var(--card-h) * 0.3)) rotateX(calc(var(--pont-tilt) * -1)) scale(var(--card-hover-scale));
+    transform: translateZ(2px) rotateX(calc(var(--pont-tilt) * -1)) scale(var(--card-hover-scale));
   }
 
   .stagePont.gesturing .boardHoverable:hover {
     transform: none;
   }
-
-  .stagePont .shipAbility:hover .shipAbilityCard {
-    transform: translateZ(calc(var(--row-h) * 0.3)) rotateX(calc(var(--pont-tilt) * -1)) translateY(-50%) scale(1);
-  }
-}
-
-.stagePont .shipAbility:focus-visible .shipAbilityCard {
-  transform: translateZ(calc(var(--row-h) * 0.3)) rotateX(calc(var(--pont-tilt) * -1)) translateY(-50%) scale(1);
 }
 
 .stage.stagePont .opponentZone {
@@ -1026,19 +996,17 @@
   }
 }
 
+/* Le logo du type Lande (l'île) au centre de la planche, sur un disque
+   sombre qui couvre la rose des vents : pas de mot, le logo suffit. */
 .pontLandeSlot::after {
-  content: "Lande";
+  content: "";
   position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 9%;
-  text-align: center;
-  font-family: var(--font-display, serif);
-  font-size: calc(var(--card-h) * 0.075);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: rgba(232, 208, 160, 0.55);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+  inset: 0;
+  background:
+    url("/assets/board/pont/embleme-lande.webp") center / 42% auto no-repeat,
+    radial-gradient(circle, rgba(36, 22, 10, 0.75) 0 27%, rgba(36, 22, 10, 0) 29%) center / 100% 100% no-repeat;
+  /* L'île (teinte crème dans l'image) au premier plan, le disque dessous. */
+  opacity: 0.8;
 }
 
 .stage.stagePont .centerZone .zoneSlotBoard {
@@ -1046,12 +1014,11 @@
   justify-self: center;
   /* Large comme le plateau, mais jamais plus haute que la bande centrale
      (la planche fait 3,9 fois sa hauteur ; le sélecteur dépasse au-dessus). */
-  width: min(92%, calc(var(--center-h) * 3.1));
+  width: min(92%, calc(var(--center-h) * 4.5));
   /* Un poil plus haut que le milieu de la bande : le sélecteur au-dessus
      la faisait paraître trop basse. */
-  /* Centrée sur l'ÉCRAN, pas sur la colonne des cartes : celle-ci est décalée
-     à droite d'une demi-largeur de navire (plus une gouttière). */
-  translate: calc((var(--ship-w) + var(--col-gap)) / -2) calc(var(--center-h) * -0.1);
+  /* La plaque du sens et la piste, centrées ensemble dans la colonne des cartes. */
+  translate: 0 calc(var(--center-h) * -0.1);
 }
 
 .stage.stagePont .centerZone .zoneSlotCargo {
@@ -1463,6 +1430,20 @@
     opacity: 1;
     transform: translateY(-50%) scale(1);
   }
+}
+
+/* La carte de survol SORTIE du plateau (portail, calque fixe) : posée à
+   droite du hublot, centrée sur lui, au-dessus de tout. */
+.shipAbilityCardFloating {
+  position: fixed;
+  z-index: 75;
+  opacity: 1;
+  transform: translateY(-50%);
+  animation: shipAbilityCardIn 140ms ease-out;
+}
+
+@keyframes shipAbilityCardIn {
+  from { opacity: 0; transform: translateY(-50%) scale(0.96); }
 }
 
 /* L'illustration, EN GRAND : dans le hublot elle est rognée en rond et
