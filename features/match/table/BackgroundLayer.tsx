@@ -66,9 +66,13 @@ export interface LandeFloorProps {
   /**
    * Murs et pièces qui habillent le sol, en fractions du fond (une boîte peut
    * déborder du fond : la pièce est alors coupée par le bord de l'écran).
-   * `flip` : la pièce en miroir, tournée vers l'autre côté.
+   * `flip` : la pièce en miroir, tournée vers l'autre côté. `fx` : la pièce
+   * se clique, et joue son effet (`fumeeVerte` : des volutes vertes et
+   * puantes s'en échappent).
    */
-  frame: { src: string; box: readonly [number, number, number, number]; flip?: boolean }[];
+  frame: { src: string; box: readonly [number, number, number, number]; flip?: boolean; fx?: "fumeeVerte"; label?: string }[];
+  /** Flammes du décor peint (bougies, torches) : une lueur chaude vacille sur chacune. [x, y, taille], en fractions du fond. */
+  glows?: readonly (readonly [number, number, number])[];
   /** Zone du sol faite pour le plateau (`LandeScene.fit`) ; à défaut, celle de la table. */
   fit?: FitTarget;
   /**
@@ -206,7 +210,7 @@ function LandeFloor({ floor, boxFor, tableFit }: { floor: LandeFloorProps | null
       {shown && <FloorScene key={shown.key} floor={shown} box={boxFor(shown.fit ?? tableFit)} className={styles.landeFloor} />}
       {/* L'onde de choc, hors du sol (qu'elle borde : le sol est découpé en cercle). */}
       {shown?.origin && (
-        <div key={`onde-${shown.key}`} className={styles.coverBox} style={boxFor(shown.fit ?? tableFit)} aria-hidden>
+        <div key={`onde-${shown.key}`} className={styles.coverBox} style={{ ...boxFor(shown.fit ?? tableFit), pointerEvents: "none" }} aria-hidden>
           <span
             className={styles.landeShockwave}
             style={{ left: `${shown.origin[0] * 100}%`, top: `${shown.origin[1] * 100}%`, animationDelay: `${shown.delayMs}ms` }}
@@ -217,7 +221,19 @@ function LandeFloor({ floor, boxFor, tableFit }: { floor: LandeFloorProps | null
   );
 }
 
+
+/** Durée d'une bouffée de fumée (`landeFumee`), avant qu'elle ne soit retirée. */
+const FUMEE_MS = 3200;
+
 function FloorScene({ floor, box, className }: { floor: LandeFloorProps; box: CSSProperties | undefined; className?: string }) {
+  // Bouffées en cours : chaque clic sur une pièce à effet en relance une.
+  const [puffs, setPuffs] = useState<{ id: number; wall: number }[]>([]);
+  const nextPuff = useRef(0);
+  function puff(wall: number) {
+    const id = nextPuff.current++;
+    setPuffs((list) => [...list, { id, wall }]);
+    window.setTimeout(() => setPuffs((list) => list.filter((p) => p.id !== id)), FUMEE_MS);
+  }
   return (
     <div
       className={`${styles.coverBox} ${className ?? ""}`}
@@ -232,27 +248,49 @@ function FloorScene({ floor, box, className }: { floor: LandeFloorProps; box: CS
     >
       {/* eslint-disable-next-line @next/next/no-img-element -- décor plein écran */}
       <img src={floor.src} alt="" draggable={false} className={styles.coverImage} />
-      {floor.frame.map((wall, i) => (
-        // eslint-disable-next-line @next/next/no-img-element -- décor local
-        <img
-          key={wall.src}
-          src={wall.src}
-          alt=""
-          draggable={false}
-          className={styles.landeWall}
-          style={
-            {
-              left: `${wall.box[0] * 100}%`,
-              top: `${wall.box[1] * 100}%`,
-              width: `${wall.box[2] * 100}%`,
-              height: `${wall.box[3] * 100}%`,
-              // `scale` et non `transform` : l'animation d'entrée joue sur `transform`.
-              scale: wall.flip ? "-1 1" : undefined,
-              animationDelay: `${floor.delayMs + WALLS_AFTER_MS + i * WALL_STAGGER_MS}ms`,
-            } as CSSProperties
-          }
+      {floor.glows?.map(([x, y, size], i) => (
+        <span
+          key={`lueur-${i}`}
+          className={styles.landeGlow}
+          style={{ left: `${x * 100}%`, top: `${y * 100}%`, width: `${size * 100}%`, animationDelay: `${-i * 0.7}s` }}
         />
       ))}
+      {floor.frame.map((wall, i) => {
+        const style = {
+          left: `${wall.box[0] * 100}%`,
+          top: `${wall.box[1] * 100}%`,
+          width: `${wall.box[2] * 100}%`,
+          height: `${wall.box[3] * 100}%`,
+          // `scale` et non `transform` : l'animation d'entrée joue sur `transform`.
+          scale: wall.flip ? "-1 1" : undefined,
+          animationDelay: `${floor.delayMs + WALLS_AFTER_MS + i * WALL_STAGGER_MS}ms`,
+        } as CSSProperties;
+        return wall.fx ? (
+          <button key={wall.src} type="button" className={`${styles.landeWall} ${styles.landeProp}`} style={style} onClick={() => puff(i)} aria-label={wall.label} title={wall.label}>
+            {/* eslint-disable-next-line @next/next/no-img-element -- décor local */}
+            <img src={wall.src} alt="" draggable={false} />
+          </button>
+        ) : (
+          // eslint-disable-next-line @next/next/no-img-element -- décor local
+          <img key={wall.src} src={wall.src} alt="" draggable={false} className={styles.landeWall} style={style} />
+        );
+      })}
+      {puffs.map(({ id, wall }) => {
+        const b = floor.frame[wall]?.box;
+        if (!b) return null;
+        return (
+          <span
+            key={id}
+            className={styles.landeFumee}
+            aria-hidden
+            style={{ left: `${(b[0] + b[2] / 2) * 100}%`, top: `${(b[1] + b[3] * 0.3) * 100}%`, width: `${b[2] * 220}%` }}
+          >
+            {[0, 1, 2, 3, 4, 5].map((n) => (
+              <span key={n} className={styles.landeFumeePuff} style={{ "--n": n } as CSSProperties} />
+            ))}
+          </span>
+        );
+      })}
     </div>
   );
 }

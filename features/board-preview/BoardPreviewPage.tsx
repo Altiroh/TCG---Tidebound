@@ -83,15 +83,16 @@ const BADGE_SIZE: Record<BoardPreviewBreakpoint, number> = {
  */
 export type BoardPreviewDecor = "parchemin" | "pont";
 
-/** Les Landes que le labo du pont sait poser (bouton « Lande » de la barre de debug). */
 /**
  * DÉCORS DE LANDE du pont : une Lande posée remplace le sol du pont par le
  * sien (même cadrage, 1672 × 941) et y dresse ses pièces. Boîtes en
- * fractions du fond : [gauche, haut, largeur, hauteur]. Échelle : un tonneau
- * du donjon fait ~110 px de haut ; un cabinet, deux fois plus (≈ 22 % de la
- * hauteur), pieds posés sur les dalles. Placés sans symétrie, à moitié
- * hors du cadre (l'un au bord gauche, l'autre en miroir dans le coin haut
- * droit) : on les découvre, on ne les voit pas d'abord.
+ * fractions du fond : [gauche, haut, largeur, hauteur].
+ *
+ * Le Donjon (maquette du 08/10) : une seule cabine, à gauche contre le mur,
+ * à l'échelle des dalles (≈ trois rangées de dalles de haut, 32 % de la
+ * hauteur), qui déborde un peu du cadre. Cliquée, elle lâche une fumée
+ * verte et puante. Les quatre flammes peintes (candélabres du fond, bougies
+ * des coins bas) ont chacune leur lueur.
  */
 const PONT_LANDE_FLOORS: Record<string, LandeFloorProps> = {
   "le-donjon-de-ladalle": {
@@ -100,13 +101,17 @@ const PONT_LANDE_FLOORS: Record<string, LandeFloorProps> = {
     // Le sol part de la carte, après son impact (`landeCardSlam`, ~480 ms).
     delayMs: 480,
     origin: [0.19, 0.49],
-    frame: [
-      { src: "/assets/landes/le-donjon-de-ladalle/cabinet-ferme.webp", box: [-0.035, 0.405, 0.0904, 0.22] },
-      { src: "/assets/landes/le-donjon-de-ladalle/cabinet-ouvert.webp", box: [0.928, -0.07, 0.0971, 0.22], flip: true },
+    frame: [{ src: "/assets/landes/le-donjon-de-ladalle/cabine.webp", box: [-0.015, 0.15, 0.1162, 0.32], fx: "fumeeVerte", label: "Cabine (ne pas ouvrir)" }],
+    glows: [
+      [0.132, 0.037, 0.1],
+      [0.83, 0.037, 0.1],
+      [0.021, 0.733, 0.1],
+      [0.966, 0.733, 0.1],
     ],
   },
 };
 
+/** Les Landes que le labo du pont sait poser (bouton « Lande » de la barre de debug). */
 const PONT_LANDES = ["pluie-corrosive", "chaine-de-construction", "vallee-de-verre", "le-donjon-de-ladalle", "calme-trompeur", "terres-inconnues"];
 
 export function BoardPreviewPage({ decor = "parchemin" }: { decor?: BoardPreviewDecor }) {
@@ -116,6 +121,7 @@ export function BoardPreviewPage({ decor = "parchemin" }: { decor?: BoardPreview
   // Lande posée dans le labo du pont : -1 = aucune.
   const [landeIndex, setLandeIndex] = useState(-1);
   const landeId = landeIndex >= 0 ? PONT_LANDES[landeIndex] : null;
+  const landeTurns = landeId ? (getCardDefinition(landeId).lande?.durationTableTurns ?? null) : null;
   const stageRef = useRef<HTMLDivElement>(null);
   const metrics = useTableMetrics(stageRef);
   const [zonesVisible, setZonesVisible] = useState(false);
@@ -427,6 +433,13 @@ export function BoardPreviewPage({ decor = "parchemin" }: { decor?: BoardPreview
             pont ? (
               <div className={`${styles.pontLandeSlot} ${landeId ? styles.pontLandeSlotFilled : ""}`} aria-label={landeId ? undefined : "Emplacement de Lande, vide"}>
                 {landeId && <PreviewGameCard card={{ id: `lande-${landeId}`, cardId: landeId }} tideState={tideState} showStatusBadges={false} variant="board" />}
+                {/* Les tours qui restent à la Lande (labo : sa durée entière, elle vient d'arriver). */}
+                {landeTurns != null && (
+                  <span className={styles.pontLandeTurns} aria-label={`${landeTurns} tours de table restants`}>
+                    <span className={styles.pontLandeTurnsCount}>{landeTurns}</span>
+                    {landeTurns > 1 ? "tours" : "tour"}
+                  </span>
+                )}
               </div>
             ) : undefined
           }

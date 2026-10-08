@@ -220,6 +220,71 @@
   animation: landeWallIn 700ms cubic-bezier(0.25, 1.4, 0.5, 1) both;
 }
 
+/* Une pièce de décor qui se clique (la cabine du Donjon). */
+.landeProp {
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: var(--tb-cursor-pointer, pointer);
+  pointer-events: auto;
+}
+
+.landeProp img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.landeProp:hover {
+  filter: drop-shadow(0.3cqh 0.9cqh 0.8cqh rgba(15, 8, 3, 0.6)) brightness(1.12);
+}
+
+/* FUMÉE PUANTE : six volutes vertes qui montent de la cabine en ondulant,
+   gonflent et se dissipent, chacune un peu décalée. */
+.landeFumee {
+  position: absolute;
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  pointer-events: none;
+}
+
+.landeFumeePuff {
+  position: absolute;
+  left: calc(30% + var(--n) * 7%);
+  top: 50%;
+  width: 60%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(150, 215, 60, 0.95) 0%, rgba(110, 170, 40, 0.65) 38%, rgba(70, 110, 30, 0) 70%);
+  filter: blur(2px);
+  opacity: 0;
+  animation: landeFumee 2800ms ease-out calc(var(--n) * 110ms) both;
+}
+
+.landeFumeePuff:nth-child(odd) {
+  --drift: -1;
+}
+
+@keyframes landeFumee {
+  0% { opacity: 0; transform: translate(0, 0) scale(0.3); }
+  15% { opacity: 0.95; }
+  50% { transform: translate(calc(var(--drift, 1) * 18%), -70%) scale(1); }
+  100% { opacity: 0; transform: translate(calc(var(--drift, 1) * -12%), -150%) scale(1.6); }
+}
+
+/* LUEUR d'une flamme peinte : un halo chaud qui vacille, fondu en `screen`. */
+.landeGlow {
+  position: absolute;
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 210, 130, 0.55) 0%, rgba(255, 160, 70, 0.22) 35%, rgba(255, 140, 60, 0) 68%);
+  mix-blend-mode: screen;
+  pointer-events: none;
+  animation: bougieVacille 2.6s ease-in-out infinite;
+}
+
 @keyframes landeWallIn {
   0% { opacity: 0; transform: translateY(12%) scale(0.96); }
   60% { opacity: 1; }
@@ -235,6 +300,14 @@
 
   .landeShockwave {
     display: none;
+  }
+
+  .landeGlow {
+    animation: none;
+  }
+
+  .landeFumeePuff {
+    animation-duration: 1200ms;
   }
 
   .bougieLueur,
@@ -605,6 +678,20 @@
   display: none;
 }
 
+/* La scène couvre tout l'écran : là où elle est VIDE, les clics passent au
+   décor dessous (la cabine du Donjon). Seuls ses éléments réels les prennent. */
+.stage.stagePont,
+.stage.stagePont .zone {
+  pointer-events: none;
+}
+
+.stage.stagePont > :not(.zone):not(.effects):not([aria-hidden="true"]),
+.stage.stagePont .zone > :not(.zoneSlotShip),
+.stage.stagePont .zoneSlotShip > *,
+.stagePont .cargoDeck,
+.stagePont .cargoGraveyard {
+  pointer-events: auto;
+}
 /*
  * LA PENTE DU PONT : le fond est peint en légère plongée (les planches se
  * resserrent vers le haut, vers un point de fuite au-dessus du plateau).
@@ -639,6 +726,67 @@
   transform: translateZ(calc(var(--pont-z, 0px) - var(--pont-near))) rotateX(var(--pont-tilt));
 }
 
+/*
+ * LE SURVOL REDRESSÉ : ce qu'on survole (une carte agrandie, la fiche d'une
+ * capacité de Navire) se lit FACE À L'ÉCRAN, pas couché sur le pont. Il se
+ * décolle du plan (`translateZ`) et pivote en sens inverse de la pente
+ * (`rotateX(-tilt)`). Il faut pour cela que la 3D se propage de la rangée
+ * jusqu'à lui (`preserve-3d`) — un `filter` l'aplatirait : celui du Navire
+ * et de sa capacité passe donc sur leur cadre et leur anneau.
+ */
+.stage.stagePont .zone,
+.stage.stagePont .zone > *,
+.stagePont .board,
+.stagePont .boardSlot,
+.stagePont .shipTarget,
+.stagePont .ship,
+.stagePont .shipAbility {
+  transform-style: preserve-3d;
+}
+
+.stagePont .ship {
+  filter: none;
+}
+
+.stagePont .shipFrame {
+  filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.6));
+}
+
+.stagePont .shipAbility {
+  filter: none;
+}
+
+.stagePont .shipAbilityRing {
+  filter: drop-shadow(0 0.05em 0.15em rgba(0, 0, 0, 0.6));
+}
+
+/* Le halo d'une capacité prête (un `filter` animé) passe lui aussi sur l'anneau. */
+.stagePont .shipAbilityReady {
+  animation: none;
+}
+
+.stagePont .shipAbilityReady .shipAbilityRing {
+  animation: shipAbilityGlow 1.9s ease-in-out infinite;
+}
+
+@media (hover: hover) {
+  .stagePont .boardHoverable:hover:not(.dragSource):not(.aimSource):not(.castSource) {
+    transform: translateZ(calc(var(--card-h) * 0.3)) rotateX(calc(var(--pont-tilt) * -1)) scale(var(--card-hover-scale));
+  }
+
+  .stagePont.gesturing .boardHoverable:hover {
+    transform: none;
+  }
+
+  .stagePont .shipAbility:hover .shipAbilityCard {
+    transform: translateZ(calc(var(--row-h) * 0.3)) rotateX(calc(var(--pont-tilt) * -1)) translateY(-50%) scale(1);
+  }
+}
+
+.stagePont .shipAbility:focus-visible .shipAbilityCard {
+  transform: translateZ(calc(var(--row-h) * 0.3)) rotateX(calc(var(--pont-tilt) * -1)) translateY(-50%) scale(1);
+}
+
 .stage.stagePont .opponentZone {
   --pont-z: calc(var(--pont-row-offset) * sin(var(--pont-tilt)) * -1);
 }
@@ -665,12 +813,13 @@
    cerclée de cuivre, arquée comme le cadre, sur laquelle le portrait se
    dresse. Sa partie plate (≈ 18 → 82 % en largeur) reçoit le navire ; le
    pied de la plaque dépasse sous lui. Rangées seulement (pas la bande de
-   Marée, dont la colonne 1 porte l'emplacement de Lande). */
+   Marée, dont la colonne 1 porte l'emplacement de Lande). Accroché au
+   cadre du Navire lui-même (`.ship`), il le suit quand il bouge. */
 .stage.stagePont :is(.opponentZone, .playerZone) .zoneSlotShip {
   position: relative;
 }
 
-.stage.stagePont :is(.opponentZone, .playerZone) .zoneSlotShip::before {
+.stage.stagePont :is(.opponentZone, .playerZone) .ship::before {
   content: "";
   position: absolute;
   z-index: -1;
@@ -781,13 +930,51 @@
   display: none;
 }
 
-.pontLandeSlotFilled > * {
+.pontLandeSlotFilled > :first-child {
   width: 100%;
   height: 100%;
   /* La carte s'ABAT dans son emplacement : elle tombe de haut en tournoyant,
      frappe le pont (léger écrasement), rebondit, se pose. Le sol de la Lande
      part d'ici juste après l'impact (`delayMs` du décor). */
   animation: landeCardSlam 620ms cubic-bezier(0.5, 0, 0.75, 0) both;
+}
+
+/* Les tours qui restent à la Lande : un médaillon de cuivre qui chevauche
+   le bas de sa carte. */
+.pontLandeTurns {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  bottom: calc(var(--card-h) * -0.07);
+  translate: -50% 0;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.3em;
+  padding: 0.2em 0.75em;
+  border: 1px solid rgba(240, 200, 120, 0.7);
+  border-radius: 999px;
+  background: linear-gradient(#5a3a1a, #2e1c0c);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+  font-family: var(--font-display, serif);
+  font-size: calc(var(--card-h) * 0.07);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: #f4dcae;
+  /* Arrive avec l'éclat de l'impact. */
+  animation: landeTurnsIn 400ms ease-out 520ms both;
+}
+
+.pontLandeTurnsCount {
+  font-size: 1.6em;
+  font-weight: 700;
+  line-height: 1;
+  color: #fff3d6;
+}
+
+@keyframes landeTurnsIn {
+  from { opacity: 0; scale: 0.6; }
+  to { opacity: 1; scale: 1; }
 }
 
 /* L'éclat de l'impact, autour de l'emplacement. */
@@ -810,7 +997,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .pontLandeSlotFilled,
-  .pontLandeSlotFilled > * {
+  .pontLandeSlotFilled > :first-child {
     animation: none;
   }
 }
@@ -838,7 +1025,9 @@
   width: min(92%, calc(var(--center-h) * 3.1));
   /* Un poil plus haut que le milieu de la bande : le sélecteur au-dessus
      la faisait paraître trop basse. */
-  translate: 0 calc(var(--center-h) * -0.1);
+  /* Centrée sur l'ÉCRAN, pas sur la colonne des cartes : celle-ci est décalée
+     à droite d'une demi-largeur de navire (plus une gouttière). */
+  translate: calc((var(--ship-w) + var(--col-gap)) / -2) calc(var(--center-h) * -0.1);
 }
 
 .stage.stagePont .centerZone .zoneSlotCargo {
