@@ -109,7 +109,28 @@ const PONT_LANDE_FLOORS: Record<string, LandeFloorProps> = {
       [0.966, 0.733, 0.1],
     ],
   },
+  "pluie-corrosive": pontSol("pluie-corrosive"),
+  "calme-trompeur": pontSol("calme-trompeur"),
+  // Les feux derrière les vitres, aux quatre coins.
+  "vallee-de-verre": pontSol("vallee-de-verre", [
+    [0.14, 0.03, 0.12],
+    [0.855, 0.03, 0.12],
+    [0.02, 0.72, 0.12],
+    [0.975, 0.72, 0.12],
+  ]),
+  // Les lanternes du chantier.
+  "chaine-de-construction": pontSol("chaine-de-construction", [
+    [0.255, 0.045, 0.07],
+    [0.825, 0.05, 0.07],
+    [0.962, 0.15, 0.06],
+    [0.982, 0.745, 0.08],
+  ]),
 };
+
+/** Un sol de Lande sans pièce : `landes/<id>/pont-sol.webp`, qui part de la carte. */
+function pontSol(cardId: string, glows?: LandeFloorProps["glows"]): LandeFloorProps {
+  return { key: `pont-${cardId}`, src: `/assets/landes/${cardId}/pont-sol.webp`, delayMs: 480, origin: [0.19, 0.49], frame: [], glows };
+}
 
 /** Les Landes que le labo du pont sait poser (bouton « Lande » de la barre de debug). */
 const PONT_LANDES = ["pluie-corrosive", "chaine-de-construction", "vallee-de-verre", "le-donjon-de-ladalle", "calme-trompeur", "terres-inconnues"];
@@ -437,7 +458,7 @@ export function BoardPreviewPage({ decor = "parchemin" }: { decor?: BoardPreview
                 {landeTurns != null && (
                   <span className={styles.pontLandeTurns} aria-label={`${landeTurns} tours de table restants`}>
                     <span className={styles.pontLandeTurnsCount}>{landeTurns}</span>
-                    {landeTurns > 1 ? "tours" : "tour"}
+                    <span className={styles.pontLandeTurnsLabel}>{landeTurns > 1 ? "tours" : "tour"}</span>
                   </span>
                 )}
               </div>

@@ -236,6 +236,15 @@
   pointer-events: none;
 }
 
+/* Une carte survolée passe devant le lien d'équipement : il s'efface le temps du survol. */
+.equipLinks {
+  transition: opacity 140ms ease-out;
+}
+
+.viewport:has(.stagePont .boardHoverable:hover) .equipLinks {
+  opacity: 0;
+}
+
 .landeProp:hover {
   filter: drop-shadow(0.3cqh 0.9cqh 0.8cqh rgba(15, 8, 3, 0.6)) brightness(1.12);
 }
@@ -939,37 +948,40 @@
   animation: landeCardSlam 620ms cubic-bezier(0.5, 0, 0.75, 0) both;
 }
 
-/* Les tours qui restent à la Lande : un médaillon de cuivre qui chevauche
-   le bas de sa carte. */
+/* Les tours qui restent à la Lande, AU MILIEU de sa carte, comme le
+   décompte d'un hublot de Marée : gros chiffre clair et « TOURS » dessous,
+   sur un voile sombre qui les fait lire sur toutes les illustrations. */
 .pontLandeTurns {
   position: absolute;
   z-index: 2;
-  left: 50%;
-  bottom: calc(var(--card-h) * -0.07);
-  translate: -50% 0;
-  display: inline-flex;
-  align-items: baseline;
-  gap: 0.3em;
-  padding: 0.2em 0.75em;
-  border: 1px solid rgba(240, 200, 120, 0.7);
-  border-radius: 999px;
-  background: linear-gradient(#5a3a1a, #2e1c0c);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--card-radius);
+  background: radial-gradient(circle, rgba(4, 12, 20, 0.55) 0 30%, transparent 62%);
+  color: #fff6e2;
   font-family: var(--font-display, serif);
-  font-size: calc(var(--card-h) * 0.07);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  color: #f4dcae;
+  text-shadow:
+    0 0 0.35em rgba(0, 0, 0, 0.9),
+    0 0.06em 0 rgba(0, 0, 0, 0.8);
+  pointer-events: none;
   /* Arrive avec l'éclat de l'impact. */
   animation: landeTurnsIn 400ms ease-out 520ms both;
 }
 
 .pontLandeTurnsCount {
-  font-size: 1.6em;
+  font-size: calc(var(--card-h) * 0.3);
   font-weight: 700;
+  line-height: 0.9;
+}
+
+.pontLandeTurnsLabel {
+  font-size: calc(var(--card-h) * 0.07);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   line-height: 1;
-  color: #fff3d6;
 }
 
 @keyframes landeTurnsIn {
