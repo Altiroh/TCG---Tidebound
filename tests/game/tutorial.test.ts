@@ -71,7 +71,7 @@ describe("étapes du tutoriel", () => {
 
   it("couvre l'interface, le premier tour, les gestes, le combat, la Marée et le public", () => {
     const ids = TUTORIAL_STEPS.map((step) => step.id);
-    for (const id of ["hand", "deck-graveyard", "anchor", "reason", "ship-ability", "opponent", "pied-marin", "break", "saborder", "discard", "end-turn", "opponent-turn", "garde", "attack", "tide", "audience"]) {
+    for (const id of ["hand", "deck-graveyard", "anchor", "reason", "ship-ability", "opponent", "pied-marin", "break", "saborder", "discard", "end-turn", "opponent-turn", "garde", "attack", "lande", "lande-play", "tide", "audience"]) {
       expect(ids, id).toContain(id);
     }
   });
@@ -109,7 +109,7 @@ describe("partie scénarisée", () => {
     expect(state.turnNumber).toBe(TUTORIAL_START_TURN);
     expect(state.activePlayerId).toBe("p1");
     const hand = state.players[0].hand.map((c) => c.cardId);
-    expect(hand).toEqual(expect.arrayContaining([TUTORIAL_CARDS.unit, TUTORIAL_CARDS.piedMarin, TUTORIAL_CARDS.object]));
+    expect(hand).toEqual(expect.arrayContaining([TUTORIAL_CARDS.unit, TUTORIAL_CARDS.piedMarin, TUTORIAL_CARDS.object, TUTORIAL_CARDS.lande]));
     expect(onBoard(state, 0, TUTORIAL_CARDS.structure)).toBeTruthy();
     expect(onBoard(state, 1, TUTORIAL_CARDS.garde)).toBeTruthy();
     expect(onBoard(state, 1, TUTORIAL_CARDS.threat)).toBeTruthy();
@@ -169,6 +169,19 @@ describe("parcours guidé, de bout en bout", () => {
       state = act(state, { type: "attack", playerId: "p1", attackerInstanceId: attacker, ...(garde ? { defenderInstanceId: garde } : {}) });
       expect(attack.isDone!(state, "p1"), `graine ${seed}`).toBe(true);
     }
+  });
+
+  it("pose la Lande après le combat : elle s'installe au centre et retire la Garde", () => {
+    const step = TUTORIAL_STEPS[indexOf("lande-play")]!;
+    let state = firstTurnThenBot(3);
+    state = act(state, { type: "advancePhase", playerId: "p1" });
+    // En plein combat, la fiche dit d'attendre la Phase principale 2.
+    expect(step.waitingFor!(state, "p1")).toMatch(/Phase principale 2/);
+    state = act(state, { type: "advancePhase", playerId: "p1" });
+    expect(step.waitingFor!(state, "p1")).toBeNull();
+    state = act(state, { type: "playCard", playerId: "p1", instanceId: inHand(state, TUTORIAL_CARDS.lande) });
+    expect(step.isDone!(state, "p1")).toBe(true);
+    expect(state.environment.lande?.cardId).toBe(TUTORIAL_CARDS.lande);
   });
 
   it("voit la Marée changer pendant le tour adverse", () => {

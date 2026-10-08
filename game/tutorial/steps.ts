@@ -70,6 +70,10 @@ const ZONE = {
   deck: '[data-deck="player"]',
   graveyard: '[data-graveyard="player"]',
   audience: "[data-live-audience]",
+  // L'emplacement de Lande, entre les deux Navires (c'est aussi là qu'on la lâche).
+  lande: '[data-drop="lande"]',
+  // La piste de Marée et la plaque de son sens (Pont du Capitaine).
+  tide: "[data-tide-track]",
 } as const;
 
 const ship = (playerId: PlayerId) => `[data-ship-target="${playerId}"]`;
@@ -133,7 +137,7 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
     id: "deck-graveyard",
     chapter: "Le pont",
     title: "Pioche et Cimetière",
-    instruction: "À gauche, ta pioche : tu y tires une carte au début de chaque tour. Le crâne, c'est ton Cimetière.",
+    instruction: "Le crâne, à côté de ton Navire, c'est ton Cimetière. Tout au bout de ta rangée, à droite : ta pioche, où tu tires une carte au début de chaque tour.",
     detail: "Tout ce qui est détruit, Brisé, Sabordé ou défaussé y finit.",
     anchor: ZONE.graveyard,
   },
@@ -176,8 +180,8 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
     id: "play-unit",
     chapter: "Ton premier tour",
     title: "Un corps sur le pont",
-    instruction: "Pose la Gabière du Grand Large : glisse-la sur ton plateau (au doigt : touche-la, puis « Jouer »).",
-    detail: "Regarde ta Raison baisser du coût de la carte.",
+    instruction: "Pose la Gabière du Grand Large : glisse-la sur l'emplacement de ton choix (au doigt : touche-la, puis « Jouer »).",
+    detail: "Regarde ta Raison baisser du coût de la carte. Une carte posée garde sa place : range ton pont comme tu l'entends.",
     anchor: (state, playerId) => {
       const id = inHand(state, playerId, TUTORIAL_CARDS.unit)[0];
       return id ? handCard(id) : ZONE.hand;
@@ -261,7 +265,8 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
     chapter: "Fin de tour",
     title: "Termine ton tour",
     instruction: "Passe en Phase de combat, puis termine ton tour : boutons à droite.",
-    detail: "On ne finit pas son tour en Phase principale 1. C'est en fin de tour que la Déraison se paie, si ta Raison est sous 0.",
+    detail:
+      "Tant qu'une de tes unités peut attaquer, on ne finit pas son tour en Phase principale 1 (sinon, la Fin de tour s'allume tout de suite). C'est en fin de tour que la Déraison se paie, si ta Raison est sous 0.",
     anchor: ZONE.rail,
     isDone: (state) => state.turnNumber > TUTORIAL_START_TURN,
   },
@@ -306,15 +311,45 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
     waitingFor: attackWait,
   },
 
+  // --- La Lande : la carte de terrain ---------------------------------
+  {
+    id: "lande",
+    chapter: "La Lande",
+    title: "La carte de terrain",
+    instruction: "Au centre, entre les deux Navires : l'emplacement de Lande. Une Lande est un terrain qui change les règles pour les DEUX camps.",
+    detail:
+      "Une seule Lande à la fois : en poser une chasse celle en place. Elle reste quelques tours de table (le chiffre sur sa carte), puis part au Cimetière. Elle n'occupe aucun emplacement, et rien ne peut l'attaquer ni la viser.",
+    anchor: ZONE.lande,
+  },
+  {
+    id: "lande-play",
+    chapter: "La Lande",
+    title: "Pluie corrosive",
+    instruction: "Pose la Pluie corrosive : glisse-la sur l'emplacement de Lande. Sous cette pluie, les permanents perdent Garde.",
+    detail: "Pour tout le monde : la Mouette d'en face ne protège plus son Navire. Le pont change de décor tant que la Lande dure.",
+    anchor: (state, playerId) => {
+      const id = inHand(state, playerId, TUTORIAL_CARDS.lande)[0];
+      return id ? handCard(id) : ZONE.lande;
+    },
+    eligibleHandCards: (state, playerId) => inHand(state, playerId, TUTORIAL_CARDS.lande),
+    isDone: (state, playerId) => played(state, playerId, TUTORIAL_CARDS.lande),
+    waitingFor: (state, playerId) =>
+      state.activePlayerId !== playerId
+        ? "Attends ton tour."
+        : state.phase === "combatPhase"
+          ? "Pas pendant le combat : tu pourras la poser en Phase principale 2."
+          : null,
+  },
   // --- La Marée ------------------------------------------------------
   {
     id: "tide",
     chapter: "La Marée",
     title: "Les quatre Marées",
-    instruction: "Calme, Houle, Tempête, Abysses : la Marée change d'état au fil des tours, montante ou descendante.",
+    instruction:
+      "Calme, Houle, Tempête, Abysses : la Marée change d'état au fil des tours. La plaque à gauche dit son sens : vague bleue, elle monte vers les Abysses ; rouge, tête en bas, elle redescend vers le Calme.",
     detail:
       "Calme : rien. Houle : une carte peut tomber malade et perdre de la Résistance. Tempête : 1 dégât d'Ancrage aux deux Navires chaque tour, et aux Structures. Abysses : 2 Ancrage à l'entrée, Raison max −2. Beaucoup de cartes changent selon la Marée.",
-    anchor: ZONE.center,
+    anchor: ZONE.tide,
   },
 
   // --- Le public -----------------------------------------------------

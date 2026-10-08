@@ -57,7 +57,7 @@ export function PontTideTrack({ tide }: { tide: TableTideModel }) {
   const angle = useFlipAngle(rising);
   const turns = `${tide.remainingTurns} tour${tide.remainingTurns > 1 ? "s" : ""} restant${tide.remainingTurns > 1 ? "s" : ""}`;
   return (
-    <div className={styles.pontMaree}>
+    <div className={styles.pontMaree} data-tide-track="">
       <span className={styles.sens} role="img" aria-label={rising ? "Marée montante" : "Marée descendante"}>
         {/* eslint-disable-next-line @next/next/no-img-element -- décor local */}
         <img src={SENS_PLAQUE} alt="" draggable={false} className={styles.sensPlaque} />

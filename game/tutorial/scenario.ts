@@ -11,8 +11,9 @@ import type { GameState, PlayerState } from "@/game/state/types";
  * ouvre une partie DÉJÀ EN COURS, au troisième tour du joueur, avec ce
  * qu'il faut sur la table pour que chaque leçon trouve son exemple :
  *
- *   - en main : une unité ordinaire, une unité à Pied marin et un Objet
- *     dont le Bris ne demande aucune cible ;
+ *   - en main : une unité ordinaire, une unité à Pied marin, un Objet
+ *     dont le Bris ne demande aucune cible, et une Lande qui retire la
+ *     Garde (08/10/2026 : la carte de terrain du Pont) ;
  *   - sur le plateau du joueur : une Structure à « Sabordage : » ;
  *   - en face : une unité à Garde et une unité offensive, pour que le
  *     combat du tour suivant ait un sens (abattre la Garde, se protéger) ;
@@ -39,6 +40,8 @@ export const TUTORIAL_CARDS = {
   garde: "mouette-du-brise-lames",
   /** Unité adverse offensive, fragile : Murène Aveugle, 3/1. */
   threat: "murene-aveugle",
+  /** Lande : Pluie corrosive, 3 Raison — « Les permanents perdent Garde », pour les deux camps. */
+  lande: "pluie-corrosive",
 } as const;
 
 /** Tour de table où la partie scénarisée reprend : le troisième tour du joueur qui commence. */
@@ -78,7 +81,7 @@ export function applyTutorialScenario(state: GameState): GameState {
 
   // La main d'ouverture garde deux cartes du préconstruit, pour que la suite
   // de la partie ait de quoi vivre ; les trois cartes des leçons passent devant.
-  const lessonHand = [TUTORIAL_CARDS.unit, TUTORIAL_CARDS.piedMarin, TUTORIAL_CARDS.object].map((id, i) => scenarioCard(id, me.id, i));
+  const lessonHand = [TUTORIAL_CARDS.unit, TUTORIAL_CARDS.piedMarin, TUTORIAL_CARDS.object, TUTORIAL_CARDS.lande].map((id, i) => scenarioCard(id, me.id, i));
   const player: PlayerState = {
     ...me,
     ...reasonAt(me, Math.ceil(TUTORIAL_START_TURN / 2)),
