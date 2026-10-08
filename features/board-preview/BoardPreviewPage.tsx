@@ -19,6 +19,7 @@ import { shipAbilityArtUrl } from "@/features/ships/shipFrame";
 import { OpponentZone } from "@/features/match/table/OpponentZone";
 import { PlayerZone } from "@/features/match/table/PlayerZone";
 import { PontActions, type PontPhase } from "@/features/board-preview/PontActions";
+import { PontLandeFx, type PontLandeFxKind } from "@/features/board-preview/PontLandeFx";
 import { PontTideTrack } from "@/features/board-preview/PontTideTrack";
 import { PreviewGameCard } from "@/features/board-preview/PreviewGameCard";
 import { TableHand } from "@/features/match/table/TableHand";
@@ -102,6 +103,8 @@ const PONT_LANDE_FLOORS: Record<string, LandeFloorProps> = {
     delayMs: 480,
     origin: [0.19, 0.49],
     frame: [{ src: "/assets/landes/le-donjon-de-ladalle/cabine.webp", box: [-0.015, 0.15, 0.1162, 0.32], fx: "fumeeVerte", label: "Cabine (ne pas ouvrir)" }],
+    // Le panneau de la maquette, en haut à droite, pendu sous la colonne.
+    signs: [{ lines: ["SAFE", "PLACE"], box: [0.892, 0.06, 0.075, 0.2] }],
     glows: [
       [0.132, 0.037, 0.1],
       [0.83, 0.037, 0.1],
@@ -125,6 +128,12 @@ const PONT_LANDE_FLOORS: Record<string, LandeFloorProps> = {
     [0.962, 0.15, 0.06],
     [0.982, 0.745, 0.08],
   ]),
+};
+
+/** Effets animés posés sur le sol d'une Lande (`PontLandeFx`). */
+const PONT_LANDE_FX: Record<string, PontLandeFxKind> = {
+  "pluie-corrosive": "pluieVerte",
+  "calme-trompeur": "puitsLumiere",
 };
 
 /** Un sol de Lande sans pièce : `landes/<id>/pont-sol.webp`, qui part de la carte. */
@@ -396,6 +405,7 @@ export function BoardPreviewPage({ decor = "parchemin" }: { decor?: BoardPreview
   return (
     <GameViewport debugZones={zonesVisible}>
       <BackgroundLayer table={pont ? TABLE_PONT : undefined} floor={pont && landeId ? (PONT_LANDE_FLOORS[landeId] ?? null) : null} />
+      {pont && landeId && PONT_LANDE_FX[landeId] && <PontLandeFx key={landeId} kind={PONT_LANDE_FX[landeId]} />}
 
       {/* Essai sur la feuille de parchemin (07/10) : plus de cadres de rangée
           (`.lane`), les emplacements se dessinent à même le tapis, et navires

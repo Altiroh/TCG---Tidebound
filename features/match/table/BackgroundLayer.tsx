@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type CSSProperties, type RefObject } from "react";
+import { createPortal } from "react-dom";
 import { useImageOk } from "@/features/match/useImageOk";
 import { fitBackground, unionRect, type FitTarget, type Rect } from "@/features/match/table/backgroundFit";
 import { useLandeTuning } from "@/features/match/landes/landeTuning";
@@ -71,6 +72,8 @@ export interface LandeFloorProps {
    * puantes s'en échappent).
    */
   frame: { src: string; box: readonly [number, number, number, number]; flip?: boolean; fx?: "fumeeVerte"; label?: string }[];
+  /** Panneaux de bois peints en CSS, suspendus (lignes de texte, boîte en fractions du fond). */
+  signs?: { lines: string[]; box: readonly [number, number, number, number] }[];
   /** Flammes du décor peint (bougies, torches) : une lueur chaude vacille sur chacune. [x, y, taille], en fractions du fond. */
   glows?: readonly (readonly [number, number, number])[];
   /** Zone du sol faite pour le plateau (`LandeScene.fit`) ; à défaut, celle de la table. */
@@ -225,13 +228,22 @@ function LandeFloor({ floor, boxFor, tableFit }: { floor: LandeFloorProps | null
 /** Durée d'une bouffée de fumée (`landeFumee`), avant qu'elle ne soit retirée. */
 const FUMEE_MS = 3200;
 
+/** Une bouffée : sa place À L'ÉCRAN (px), relevée sur la pièce au moment du clic. */
+interface Puff {
+  id: number;
+  x: number;
+  y: number;
+  size: number;
+}
+
 function FloorScene({ floor, box, className }: { floor: LandeFloorProps; box: CSSProperties | undefined; className?: string }) {
   // Bouffées en cours : chaque clic sur une pièce à effet en relance une.
-  const [puffs, setPuffs] = useState<{ id: number; wall: number }[]>([]);
+  const [puffs, setPuffs] = useState<Puff[]>([]);
   const nextPuff = useRef(0);
-  function puff(wall: number) {
+  function puff(target: HTMLElement) {
+    const r = target.getBoundingClientRect();
     const id = nextPuff.current++;
-    setPuffs((list) => [...list, { id, wall }]);
+    setPuffs((list) => [...list, { id, x: r.left + r.width / 2, y: r.top + r.height * 0.3, size: r.width * 2.2 }]);
     window.setTimeout(() => setPuffs((list) => list.filter((p) => p.id !== id)), FUMEE_MS);
   }
   return (
@@ -266,7 +278,15 @@ function FloorScene({ floor, box, className }: { floor: LandeFloorProps; box: CS
           animationDelay: `${floor.delayMs + WALLS_AFTER_MS + i * WALL_STAGGER_MS}ms`,
         } as CSSProperties;
         return wall.fx ? (
-          <button key={wall.src} type="button" className={`${styles.landeWall} ${styles.landeProp}`} style={style} onClick={() => puff(i)} aria-label={wall.label} title={wall.label}>
+          <button
+            key={wall.src}
+            type="button"
+            className={`${styles.landeWall} ${styles.landeProp}`}
+            style={style}
+            onClick={(event) => puff(event.currentTarget)}
+            aria-label={wall.label}
+            title={wall.label}
+          >
             {/* eslint-disable-next-line @next/next/no-img-element -- décor local */}
             <img src={wall.src} alt="" draggable={false} />
           </button>
@@ -275,22 +295,41 @@ function FloorScene({ floor, box, className }: { floor: LandeFloorProps; box: CS
           <img key={wall.src} src={wall.src} alt="" draggable={false} className={styles.landeWall} style={style} />
         );
       })}
-      {puffs.map(({ id, wall }) => {
-        const b = floor.frame[wall]?.box;
-        if (!b) return null;
-        return (
-          <span
-            key={id}
-            className={styles.landeFumee}
-            aria-hidden
-            style={{ left: `${(b[0] + b[2] / 2) * 100}%`, top: `${(b[1] + b[3] * 0.3) * 100}%`, width: `${b[2] * 220}%` }}
-          >
-            {[0, 1, 2, 3, 4, 5].map((n) => (
-              <span key={n} className={styles.landeFumeePuff} style={{ "--n": n } as CSSProperties} />
+      {floor.signs?.map((sign, i) => (
+        <div
+          key={`panneau-${i}`}
+          className={`${styles.landeWall} ${styles.landeSign}`}
+          style={{
+            left: `${sign.box[0] * 100}%`,
+            top: `${sign.box[1] * 100}%`,
+            width: `${sign.box[2] * 100}%`,
+            height: `${sign.box[3] * 100}%`,
+            animationDelay: `${floor.delayMs + WALLS_AFTER_MS + (floor.frame.length + i) * WALL_STAGGER_MS}ms`,
+          }}
+          role="img"
+          aria-label={`Panneau : ${sign.lines.join(" ")}`}
+        >
+          <span className={styles.landeSignChain} />
+          <span className={styles.landeSignBoard}>
+            <span className={styles.landeSignArrow}>↑</span>
+            {sign.lines.map((line) => (
+              <span key={line}>{line}</span>
             ))}
           </span>
-        );
-      })}
+        </div>
+      ))}
+      {/* La fumée passe DEVANT le plateau : rendue hors de la scène, au-dessus de tout. */}
+      {puffs.length > 0 &&
+        createPortal(
+          puffs.map(({ id, x, y, size }) => (
+            <span key={id} className={styles.landeFumee} aria-hidden style={{ left: x, top: y, width: size }}>
+              {[0, 1, 2, 3, 4, 5].map((n) => (
+                <span key={n} className={styles.landeFumeePuff} style={{ "--n": n } as CSSProperties} />
+              ))}
+            </span>
+          )),
+          document.body
+        )}
     </div>
   );
 }

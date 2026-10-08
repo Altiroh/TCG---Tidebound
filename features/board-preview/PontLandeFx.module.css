@@ -1,0 +1,24 @@
+/* Effets de Lande du pont — voir `PontLandeFx.tsx`. Entre le décor (0) et
+   le plateau (10) : ils ne passent jamais devant une carte. */
+.canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  /* Arrive une fois le sol de la Lande posé. */
+  animation: pontLandeFxIn 1200ms ease-out 1300ms both;
+}
+
+/* La lumière tombe SUR le plateau, cartes comprises : au-dessus de la
+   scène, fondue en `screen` (elle éclaircit, ne masque jamais). */
+.canvasFront {
+  z-index: 15;
+  mix-blend-mode: screen;
+}
+
+@keyframes pontLandeFxIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
