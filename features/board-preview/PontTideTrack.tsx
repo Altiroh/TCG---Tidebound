@@ -11,9 +11,9 @@ import styles from "@/features/board-preview/PontTideTrack.module.css";
  * Une planche cerclée de cuivre (`piste-maree.webp`, 2094 × 534) percée de
  * quatre hublots, les noms des états peints dessous. Dans chaque hublot, la
  * mer de l'état (`PORTHOLE_SEAS`) : éteinte s'il est à venir, normale s'il
- * est passé, éclairée s'il est en cours. Le SÉLECTEUR doré se pose au-dessus
- * de l'état en cours, pointe vers lui, et porte sur son bouton central le
- * nombre de tours restants.
+ * est passé, éclairée s'il est en cours, avec le NOMBRE DE TOURS RESTANTS
+ * au milieu du hublot. Le SÉLECTEUR doré se pose au-dessus de l'état en
+ * cours et pointe vers lui.
  */
 const TRACK_SRC = "/assets/board/pont/piste-maree.webp";
 const SELECTOR_SRC = "/assets/board/pont/selecteur-maree.webp";
@@ -38,6 +38,12 @@ export function PontTideTrack({ tide }: { tide: TableTideModel }) {
         >
           {/* eslint-disable-next-line @next/next/no-img-element -- décor local */}
           <img src={PORTHOLE_SEAS[state.id]} alt="" draggable={false} className={styles.sea} />
+          {index === tide.current && (
+            <span className={styles.turns}>
+              <span className={styles.turnsCount}>{tide.remainingTurns}</span>
+              <span className={styles.turnsLabel}>tour{tide.remainingTurns > 1 ? "s" : ""}</span>
+            </span>
+          )}
         </span>
       ))}
       {/* eslint-disable-next-line @next/next/no-img-element -- décor local */}
@@ -45,7 +51,6 @@ export function PontTideTrack({ tide }: { tide: TableTideModel }) {
       <span className={styles.selector} style={{ "--x": `${HOLE_X[tide.current] ?? HOLE_X[0]}%` } as CSSProperties} aria-hidden>
         {/* eslint-disable-next-line @next/next/no-img-element -- décor local */}
         <img src={SELECTOR_SRC} alt="" draggable={false} className={styles.selectorImage} />
-        <span className={styles.count}>{tide.remainingTurns}</span>
       </span>
     </div>
   );

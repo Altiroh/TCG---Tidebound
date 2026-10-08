@@ -393,6 +393,8 @@ export function BoardPreviewPage({ decor = "parchemin" }: { decor?: BoardPreview
         <CenterZone
           tide={tide}
           track={pont ? <PontTideTrack tide={tide} /> : undefined}
+          // Entre les deux navires : l'emplacement de la Lande (vide tant qu'aucune n'est posée).
+          shipColumn={pont ? <div className={styles.pontLandeSlot} role="img" aria-label="Emplacement de Lande, vide" /> : undefined}
           // Sur le pont, à droite de la Marée : les phases, la fin de tour et le bol à dés.
           cargo={pont ? <PontActions phase={pontPhase} onPhase={setPontPhase} onEndTurn={() => setPontPhase("main")} /> : undefined}
         />

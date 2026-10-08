@@ -7,6 +7,39 @@
   /* Le sélecteur dépasse au-dessus de la planche. */
   margin-top: 6%;
   filter: drop-shadow(0 4px 10px rgba(20, 10, 4, 0.55));
+  /* Le décompte se règle sur la largeur de la planche (`cqw`). */
+  container-type: inline-size;
+}
+
+/* Le nombre de tours restants, au milieu du hublot de l'état en cours. */
+.turns {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #fff6e2;
+  font-family: var(--font-display, serif);
+  text-shadow:
+    0 0 0.35em rgba(0, 0, 0, 0.9),
+    0 0.06em 0 rgba(0, 0, 0, 0.8);
+  pointer-events: none;
+  /* Un léger voile pour que le chiffre se lise sur toutes les mers. */
+  background: radial-gradient(circle, rgba(4, 12, 20, 0.45) 0 38%, transparent 70%);
+}
+
+.turnsCount {
+  font-size: 7.4cqw;
+  font-weight: 700;
+  line-height: 0.9;
+}
+
+.turnsLabel {
+  font-size: 2.1cqw;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1;
 }
 
 .frame {
@@ -70,19 +103,6 @@
   height: 100%;
 }
 
-/* Le décompte, sur le bouton central du sélecteur (≈ 50 %, 42 % de l'image). */
-.count {
-  position: absolute;
-  left: 50%;
-  top: 42.3%;
-  translate: -50% -50%;
-  font-family: var(--font-display, serif);
-  font-weight: 700;
-  font-size: clamp(9px, 1.15cqh, 18px);
-  line-height: 1;
-  color: #3b2308;
-  text-shadow: 0 1px 0 rgba(255, 236, 190, 0.6);
-}
 
 /* Sur téléphone, la bande centrale ne fait que ~40 px de haut : la piste
    s'y cale par sa HAUTEUR (`--center-h`, posée par la scène mobile). */

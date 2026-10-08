@@ -11,6 +11,8 @@ interface CenterZoneProps {
   cargo?: ReactNode;
   /** Piste de Marée de remplacement (laboratoires) ; à défaut, les hublots de `TideIndicator`. */
   track?: ReactNode;
+  /** Remplace la tuile de sens, entre les deux navires (labo du pont : l'emplacement de la Lande). */
+  shipColumn?: ReactNode;
 }
 
 /**
@@ -28,27 +30,29 @@ interface CenterZoneProps {
  * se relaient en pivotant quand l'orientation change — même mouvement que
  * `TideOrientationTile` (fondu + légère rotation + zoom).
  */
-export function CenterZone({ tide, hint, cargo, track }: CenterZoneProps) {
+export function CenterZone({ tide, hint, cargo, track, shipColumn }: CenterZoneProps) {
   const rising = tide.orientation === "rising";
   return (
     <div className={`${styles.zone} ${styles.centerZone}`} data-zone="CenterZone">
       <div className={styles.zoneSlotShip}>
-        <div className={styles.tideTile} data-ui-obstacle="" role="img" aria-label={`Marée ${rising ? "montante" : "descendante"}`}>
-          {/* eslint-disable-next-line @next/next/no-img-element -- tuile locale */}
-          <img
-            src="/assets/board/tide-orientation/montante.webp"
-            alt=""
-            draggable={false}
-            className={`${styles.fill} ${styles.tideTileFace} ${rising ? styles.tideTileFaceOn : ""}`}
-          />
-          {/* eslint-disable-next-line @next/next/no-img-element -- tuile locale */}
-          <img
-            src="/assets/board/tide-orientation/descendante.webp"
-            alt=""
-            draggable={false}
-            className={`${styles.fill} ${styles.tideTileFace} ${rising ? "" : styles.tideTileFaceOn}`}
-          />
-        </div>
+        {shipColumn ?? (
+          <div className={styles.tideTile} data-ui-obstacle="" role="img" aria-label={`Marée ${rising ? "montante" : "descendante"}`}>
+            {/* eslint-disable-next-line @next/next/no-img-element -- tuile locale */}
+            <img
+              src="/assets/board/tide-orientation/montante.webp"
+              alt=""
+              draggable={false}
+              className={`${styles.fill} ${styles.tideTileFace} ${rising ? styles.tideTileFaceOn : ""}`}
+            />
+            {/* eslint-disable-next-line @next/next/no-img-element -- tuile locale */}
+            <img
+              src="/assets/board/tide-orientation/descendante.webp"
+              alt=""
+              draggable={false}
+              className={`${styles.fill} ${styles.tideTileFace} ${rising ? "" : styles.tideTileFaceOn}`}
+            />
+          </div>
+        )}
       </div>
       <div className={styles.zoneSlotBoard}>
         <div className={styles.centerStack}>
