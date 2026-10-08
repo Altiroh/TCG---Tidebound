@@ -20,6 +20,9 @@ interface DebugOverlayProps {
   /** Passe à l'état de Marée suivant (Calme → Houle → Tempête → Abysses → Calme). */
   onNextTide: () => void;
   tideLabel: string;
+  /** Labo du pont : faire défiler les Landes (aucune → chacune → aucune). Absent : pas de bouton. */
+  onNextLande?: () => void;
+  landeLabel?: string;
 }
 
 /**
@@ -44,6 +47,8 @@ export function DebugOverlay({
   onReset,
   onNextTide,
   tideLabel,
+  onNextLande,
+  landeLabel,
 }: DebugOverlayProps) {
   if (collapsed) {
     return (
@@ -88,6 +93,11 @@ export function DebugOverlay({
       <button type="button" className={styles.debugButton} onClick={onNextTide} title="Marée suivante">
         Marée : {tideLabel} ›
       </button>
+      {onNextLande && (
+        <button type="button" className={styles.debugButton} onClick={onNextLande} title="Lande suivante">
+          Lande : {landeLabel} ›
+        </button>
+      )}
       <button type="button" className={styles.debugButton} onClick={onReset}>
         Réinitialiser
       </button>

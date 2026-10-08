@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { advanceTideState, naturalOrientationFor, type TideOrientation } from "@/game";
+import { advanceTideState, getCardDefinition, naturalOrientationFor, type TideOrientation } from "@/game";
 import { playCardDraw, playAttackImpact } from "@/lib/sound";
 import { animateAttacker, ATTACK_IMPACT_AT_MS, ATTACK_TOTAL_MS, shake } from "@/features/board-preview/attackMotion";
 import { BackgroundLayer, TABLE_PONT } from "@/features/match/table/BackgroundLayer";
@@ -83,10 +83,16 @@ const BADGE_SIZE: Record<BoardPreviewBreakpoint, number> = {
  */
 export type BoardPreviewDecor = "parchemin" | "pont";
 
+/** Les Landes que le labo du pont sait poser (bouton « Lande » de la barre de debug). */
+const PONT_LANDES = ["pluie-corrosive", "chaine-de-construction", "vallee-de-verre", "le-donjon-de-ladalle", "calme-trompeur", "terres-inconnues"];
+
 export function BoardPreviewPage({ decor = "parchemin" }: { decor?: BoardPreviewDecor }) {
   const pont = decor === "pont";
   // Phase du labo du pont : on la change à la main ; la fin de tour ramène à la phase principale.
   const [pontPhase, setPontPhase] = useState<PontPhase>("main");
+  // Lande posée dans le labo du pont : -1 = aucune.
+  const [landeIndex, setLandeIndex] = useState(-1);
+  const landeId = landeIndex >= 0 ? PONT_LANDES[landeIndex] : null;
   const stageRef = useRef<HTMLDivElement>(null);
   const metrics = useTableMetrics(stageRef);
   const [zonesVisible, setZonesVisible] = useState(false);
@@ -394,7 +400,13 @@ export function BoardPreviewPage({ decor = "parchemin" }: { decor?: BoardPreview
           tide={tide}
           track={pont ? <PontTideTrack tide={tide} /> : undefined}
           // Entre les deux navires : l'emplacement de la Lande (vide tant qu'aucune n'est posée).
-          shipColumn={pont ? <div className={styles.pontLandeSlot} role="img" aria-label="Emplacement de Lande, vide" /> : undefined}
+          shipColumn={
+            pont ? (
+              <div className={`${styles.pontLandeSlot} ${landeId ? styles.pontLandeSlotFilled : ""}`} aria-label={landeId ? undefined : "Emplacement de Lande, vide"}>
+                {landeId && <PreviewGameCard card={{ id: `lande-${landeId}`, cardId: landeId }} tideState={tideState} showStatusBadges={false} variant="board" />}
+              </div>
+            ) : undefined
+          }
           // Sur le pont, à droite de la Marée : les phases, la fin de tour et le bol à dés.
           cargo={pont ? <PontActions phase={pontPhase} onPhase={setPontPhase} onEndTurn={() => setPontPhase("main")} /> : undefined}
         />
@@ -531,6 +543,8 @@ export function BoardPreviewPage({ decor = "parchemin" }: { decor?: BoardPreview
         onReset={reset}
         onNextTide={nextTide}
         tideLabel={tide.states[tideIndex]?.label ?? ""}
+        onNextLande={pont ? () => setLandeIndex((index) => (index + 1 >= PONT_LANDES.length ? -1 : index + 1)) : undefined}
+        landeLabel={landeId ? getCardDefinition(landeId).name : "aucune"}
       />
     </GameViewport>
   );

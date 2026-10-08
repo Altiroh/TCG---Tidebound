@@ -718,6 +718,17 @@
   opacity: 0.62;
 }
 
+/* Une Lande posée : sa carte remplit l'emplacement, sans le gabarit dessous. */
+.pontLandeSlotFilled::before,
+.pontLandeSlotFilled::after {
+  display: none;
+}
+
+.pontLandeSlotFilled > * {
+  width: 100%;
+  height: 100%;
+}
+
 .pontLandeSlot::after {
   content: "Lande";
   position: absolute;
@@ -739,6 +750,9 @@
   /* Large comme le plateau, mais jamais plus haute que la bande centrale
      (la planche fait 3,9 fois sa hauteur ; le sélecteur dépasse au-dessus). */
   width: min(92%, calc(var(--center-h) * 3.1));
+  /* Un poil plus haut que le milieu de la bande : le sélecteur au-dessus
+     la faisait paraître trop basse. */
+  translate: 0 calc(var(--center-h) * -0.1);
 }
 
 .stage.stagePont .centerZone .zoneSlotCargo {
