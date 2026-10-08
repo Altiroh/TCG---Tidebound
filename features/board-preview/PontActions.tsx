@@ -2,7 +2,8 @@
 
 import styles from "@/features/board-preview/PontActions.module.css";
 
-export type PontPhase = "main" | "battle";
+/** Les trois phases d'un tour : principale 1, combat, principale 2. */
+export type PontPhase = "main1" | "battle" | "main2";
 
 interface PontActionsProps {
   phase: PontPhase;
@@ -10,41 +11,47 @@ interface PontActionsProps {
   onEndTurn: () => void;
 }
 
-const BUTTONS = {
-  main: { src: "/assets/board/pont/phase-principale.webp", label: "Phase principale" },
-  battle: { src: "/assets/board/pont/phase-combat.webp", label: "Phase de combat" },
-  end: { src: "/assets/board/pont/fin-de-tour.webp", label: "Fin de tour" },
+const PHASE_PRINCIPALE = "/assets/board/pont/phase-principale.webp";
+const PHASE_COMBAT = "/assets/board/pont/phase-combat.webp";
+const FIN_DE_TOUR = "/assets/board/pont/fin-de-tour.webp";
+
+/**
+ * Le bouton de phase montre la phase SUIVANTE, celle où il mène :
+ *   - phase principale 1 → « Phase de combat » (la dague) ;
+ *   - phase de combat    → « Phase principale » (la main) : on passe en principale 2 ;
+ *   - phase principale 2 → la main, éteinte : plus de phase après celle-ci.
+ */
+const NEXT: Record<PontPhase, { src: string; label: string; to: PontPhase | null }> = {
+  main1: { src: PHASE_COMBAT, label: "Passer en phase de combat", to: "battle" },
+  battle: { src: PHASE_PRINCIPALE, label: "Passer en phase principale 2", to: "main2" },
+  main2: { src: PHASE_PRINCIPALE, label: "Phase principale 2 — dernière phase du tour", to: null },
 };
 
 /**
- * Commandes du Pont du Capitaine (labo `/game/pont-preview`, 07/10/2026), à
- * droite de la Marée, comme sur la maquette : en haut le CHANGEMENT DE PHASE
- * (principale · combat — la phase en cours est allumée), dessous la FIN DE
- * TOUR ; puis le bol à dés, posé sur le pont.
+ * Commandes du Pont du Capitaine (labo `/game/pont-preview`), à droite de la
+ * Marée : en haut UN bouton de changement de phase, dessous la FIN DE TOUR
+ * (toujours possible, quelle que soit la phase), même taille ; puis le bol à
+ * dés, posé sur le pont.
  */
 export function PontActions({ phase, onPhase, onEndTurn }: PontActionsProps) {
+  const next = NEXT[phase];
   return (
     <div className={styles.actions} data-ui-obstacle="">
       <div className={styles.buttons}>
-        <div className={styles.phases} role="group" aria-label="Changement de phase">
-          {(["main", "battle"] as const).map((id) => (
-            <button
-              key={id}
-              type="button"
-              className={`${styles.button} ${phase === id ? styles.buttonOn : ""}`}
-              aria-pressed={phase === id}
-              aria-label={BUTTONS[id].label}
-              title={BUTTONS[id].label}
-              onClick={() => onPhase(id)}
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element -- bouton peint */}
-              <img src={BUTTONS[id].src} alt="" draggable={false} />
-            </button>
-          ))}
-        </div>
-        <button type="button" className={`${styles.button} ${styles.buttonEnd}`} aria-label={BUTTONS.end.label} title={BUTTONS.end.label} onClick={onEndTurn}>
+        <button
+          type="button"
+          className={styles.button}
+          disabled={next.to === null}
+          aria-label={next.label}
+          title={next.label}
+          onClick={() => next.to && onPhase(next.to)}
+        >
           {/* eslint-disable-next-line @next/next/no-img-element -- bouton peint */}
-          <img src={BUTTONS.end.src} alt="" draggable={false} />
+          <img src={next.src} alt="" draggable={false} />
+        </button>
+        <button type="button" className={`${styles.button} ${styles.buttonEnd}`} aria-label="Fin de tour" title="Fin de tour" onClick={onEndTurn}>
+          {/* eslint-disable-next-line @next/next/no-img-element -- bouton peint */}
+          <img src={FIN_DE_TOUR} alt="" draggable={false} />
         </button>
       </div>
       {/* eslint-disable-next-line @next/next/no-img-element -- décor local */}

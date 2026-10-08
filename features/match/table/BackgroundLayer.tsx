@@ -71,6 +71,11 @@ export interface LandeFloorProps {
   frame: { src: string; box: readonly [number, number, number, number]; flip?: boolean }[];
   /** Zone du sol faite pour le plateau (`LandeScene.fit`) ; à défaut, celle de la table. */
   fit?: FitTarget;
+  /**
+   * D'où le sol surgit, en fractions du fond (défaut : le centre). Donné, une
+   * onde de choc lumineuse part aussi de ce point — la carte de la Lande.
+   */
+  origin?: readonly [number, number];
 }
 
 /**
@@ -199,13 +204,32 @@ function LandeFloor({ floor, boxFor, tableFit }: { floor: LandeFloorProps | null
     <div className={styles.landeFloorLayer} style={{ filter: floorBrightness === 1 ? undefined : `brightness(${floorBrightness})` }}>
       {leaving && <FloorScene key={`out-${leaving.key}`} floor={leaving} box={boxFor(leaving.fit ?? tableFit)} className={styles.landeFloorOut} />}
       {shown && <FloorScene key={shown.key} floor={shown} box={boxFor(shown.fit ?? tableFit)} className={styles.landeFloor} />}
+      {/* L'onde de choc, hors du sol (qu'elle borde : le sol est découpé en cercle). */}
+      {shown?.origin && (
+        <div key={`onde-${shown.key}`} className={styles.coverBox} style={boxFor(shown.fit ?? tableFit)} aria-hidden>
+          <span
+            className={styles.landeShockwave}
+            style={{ left: `${shown.origin[0] * 100}%`, top: `${shown.origin[1] * 100}%`, animationDelay: `${shown.delayMs}ms` }}
+          />
+        </div>
+      )}
     </div>
   );
 }
 
 function FloorScene({ floor, box, className }: { floor: LandeFloorProps; box: CSSProperties | undefined; className?: string }) {
   return (
-    <div className={`${styles.coverBox} ${className ?? ""}`} style={{ ...box, animationDelay: `${floor.delayMs}ms` }}>
+    <div
+      className={`${styles.coverBox} ${className ?? ""}`}
+      style={
+        {
+          ...box,
+          animationDelay: `${floor.delayMs}ms`,
+          "--lande-ox": floor.origin ? `${floor.origin[0] * 100}%` : undefined,
+          "--lande-oy": floor.origin ? `${floor.origin[1] * 100}%` : undefined,
+        } as CSSProperties
+      }
+    >
       {/* eslint-disable-next-line @next/next/no-img-element -- décor plein écran */}
       <img src={floor.src} alt="" draggable={false} className={styles.coverImage} />
       {floor.frame.map((wall, i) => (

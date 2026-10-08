@@ -164,14 +164,42 @@
   animation: landeFloorIn 1800ms cubic-bezier(0.3, 0.7, 0.25, 1) both;
 }
 
+/* Point de départ : le centre, ou la carte de la Lande (`LandeFloorProps.origin`). */
 @keyframes landeFloorIn {
-  0% { clip-path: circle(0% at 50% 55%); filter: brightness(0.4); transform: translate(0, 0); }
+  0% { clip-path: circle(0% at var(--lande-ox, 50%) var(--lande-oy, 55%)); filter: brightness(0.4); transform: translate(0, 0); }
   15% { transform: translate(-3px, 2px); }
   30% { transform: translate(3px, -2px); }
   45% { transform: translate(-2px, 1px); }
-  60% { clip-path: circle(60% at 50% 55%); transform: translate(2px, -1px); }
+  60% { clip-path: circle(70% at var(--lande-ox, 50%) var(--lande-oy, 55%)); transform: translate(2px, -1px); }
   75% { transform: translate(-1px, 0); }
-  100% { clip-path: circle(120% at 50% 55%); filter: none; transform: none; }
+  100% { clip-path: circle(150% at var(--lande-ox, 50%) var(--lande-oy, 55%)); filter: none; transform: none; }
+}
+
+/* L'ONDE DE CHOC qui borde le sol naissant : un anneau de lumière chaude
+   qui part de la carte et s'élargit au rythme du sol, puis s'éteint. */
+.landeShockwave {
+  position: absolute;
+  width: 300%;
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(
+    circle,
+    transparent 0 44%,
+    rgba(255, 196, 110, 0.55) 47%,
+    rgba(255, 236, 190, 0.85) 48.5%,
+    rgba(255, 170, 80, 0.35) 50%,
+    transparent 53%
+  );
+  mix-blend-mode: screen;
+  animation: landeShockwave 1800ms cubic-bezier(0.3, 0.7, 0.25, 1) both;
+}
+
+@keyframes landeShockwave {
+  0% { scale: 0; opacity: 1; }
+  60% { opacity: 0.9; }
+  100% { scale: 1; opacity: 0; }
 }
 
 .landeFloorOut {
@@ -203,6 +231,10 @@
   .landeFloorOut,
   .landeWall {
     animation-duration: 1ms;
+  }
+
+  .landeShockwave {
+    display: none;
   }
 
   .bougieLueur,
@@ -644,9 +676,11 @@
   z-index: -1;
   left: 50%;
   bottom: calc(var(--row-h) * -0.1);
-  width: calc(var(--row-h) * 1.25);
-  aspect-ratio: 1283 / 933;
-  translate: -50% 0;
+  /* Resserré en largeur (le pied, la partie la plus large, déborde moins)
+     sans perdre de hauteur, et un peu décalé vers la gauche, loin de la pioche. */
+  width: calc(var(--row-h) * 1.1);
+  height: calc(var(--row-h) * 1.25 * 933 / 1283);
+  translate: -54% 0;
   background: url("/assets/board/pont/socle-navire.webp") center / 100% 100% no-repeat;
   filter: drop-shadow(0 calc(var(--row-h) * 0.03) calc(var(--row-h) * 0.05) rgba(10, 5, 2, 0.55));
   pointer-events: none;
@@ -750,6 +784,35 @@
 .pontLandeSlotFilled > * {
   width: 100%;
   height: 100%;
+  /* La carte s'ABAT dans son emplacement : elle tombe de haut en tournoyant,
+     frappe le pont (léger écrasement), rebondit, se pose. Le sol de la Lande
+     part d'ici juste après l'impact (`delayMs` du décor). */
+  animation: landeCardSlam 620ms cubic-bezier(0.5, 0, 0.75, 0) both;
+}
+
+/* L'éclat de l'impact, autour de l'emplacement. */
+.pontLandeSlotFilled {
+  animation: landeSlotFlash 900ms ease-out 480ms both;
+}
+
+@keyframes landeCardSlam {
+  0% { opacity: 0; transform: translateY(-120%) scale(1.7) rotate(-14deg); }
+  20% { opacity: 1; }
+  78% { transform: translateY(0) scale(1) rotate(0deg); animation-timing-function: ease-out; }
+  86% { transform: scale(1.06, 0.94); }
+  100% { opacity: 1; transform: none; }
+}
+
+@keyframes landeSlotFlash {
+  0% { box-shadow: 0 0 0 0 rgba(255, 210, 130, 0.9), 0 0 0 0 rgba(255, 170, 80, 0.6); }
+  100% { box-shadow: 0 0 0 calc(var(--card-h) * 0.12) rgba(255, 210, 130, 0), 0 0 calc(var(--card-h) * 0.5) calc(var(--card-h) * 0.1) rgba(255, 170, 80, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pontLandeSlotFilled,
+  .pontLandeSlotFilled > * {
+    animation: none;
+  }
 }
 
 .pontLandeSlot::after {

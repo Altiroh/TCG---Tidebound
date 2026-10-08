@@ -97,7 +97,9 @@ const PONT_LANDE_FLOORS: Record<string, LandeFloorProps> = {
   "le-donjon-de-ladalle": {
     key: "pont-donjon",
     src: "/assets/landes/le-donjon-de-ladalle/pont-donjon-sol.webp",
-    delayMs: 0,
+    // Le sol part de la carte, après son impact (`landeCardSlam`, ~480 ms).
+    delayMs: 480,
+    origin: [0.19, 0.49],
     frame: [
       { src: "/assets/landes/le-donjon-de-ladalle/cabinet-ferme.webp", box: [-0.035, 0.405, 0.0904, 0.22] },
       { src: "/assets/landes/le-donjon-de-ladalle/cabinet-ouvert.webp", box: [0.928, -0.07, 0.0971, 0.22], flip: true },
@@ -109,8 +111,8 @@ const PONT_LANDES = ["pluie-corrosive", "chaine-de-construction", "vallee-de-ver
 
 export function BoardPreviewPage({ decor = "parchemin" }: { decor?: BoardPreviewDecor }) {
   const pont = decor === "pont";
-  // Phase du labo du pont : on la change à la main ; la fin de tour ramène à la phase principale.
-  const [pontPhase, setPontPhase] = useState<PontPhase>("main");
+  // Phase du labo du pont : on la change à la main ; la fin de tour ramène à la phase principale 1.
+  const [pontPhase, setPontPhase] = useState<PontPhase>("main1");
   // Lande posée dans le labo du pont : -1 = aucune.
   const [landeIndex, setLandeIndex] = useState(-1);
   const landeId = landeIndex >= 0 ? PONT_LANDES[landeIndex] : null;
@@ -429,7 +431,7 @@ export function BoardPreviewPage({ decor = "parchemin" }: { decor?: BoardPreview
             ) : undefined
           }
           // Sur le pont, à droite de la Marée : les phases, la fin de tour et le bol à dés.
-          cargo={pont ? <PontActions phase={pontPhase} onPhase={setPontPhase} onEndTurn={() => setPontPhase("main")} /> : undefined}
+          cargo={pont ? <PontActions phase={pontPhase} onPhase={setPontPhase} onEndTurn={() => setPontPhase("main1")} /> : undefined}
         />
         <PlayerZone
           ship={{
