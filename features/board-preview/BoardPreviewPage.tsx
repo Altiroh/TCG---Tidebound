@@ -89,9 +89,9 @@ export type BoardPreviewDecor = "parchemin" | "pont";
  * sien (même cadrage, 1672 × 941) et y dresse ses pièces. Boîtes en
  * fractions du fond : [gauche, haut, largeur, hauteur]. Échelle : un tonneau
  * du donjon fait ~110 px de haut ; un cabinet, deux fois plus (≈ 22 % de la
- * hauteur), pieds posés sur les dalles, dans les deux coins du fond que ni
- * la main adverse (haut, 0 → 10 %) ni la rangée adverse (12 → 88 % en
- * largeur) ne couvrent.
+ * hauteur), pieds posés sur les dalles. Placés sans symétrie, à moitié
+ * hors du cadre (l'un au bord gauche, l'autre en miroir dans le coin haut
+ * droit) : on les découvre, on ne les voit pas d'abord.
  */
 const PONT_LANDE_FLOORS: Record<string, LandeFloorProps> = {
   "le-donjon-de-ladalle": {
@@ -99,8 +99,8 @@ const PONT_LANDE_FLOORS: Record<string, LandeFloorProps> = {
     src: "/assets/landes/le-donjon-de-ladalle/pont-donjon-sol.webp",
     delayMs: 0,
     frame: [
-      { src: "/assets/landes/le-donjon-de-ladalle/cabinet-ferme.webp", box: [0.022, 0.1, 0.0904, 0.22] },
-      { src: "/assets/landes/le-donjon-de-ladalle/cabinet-ouvert.webp", box: [0.888, 0.1, 0.0971, 0.22] },
+      { src: "/assets/landes/le-donjon-de-ladalle/cabinet-ferme.webp", box: [-0.035, 0.405, 0.0904, 0.22] },
+      { src: "/assets/landes/le-donjon-de-ladalle/cabinet-ouvert.webp", box: [0.928, -0.07, 0.0971, 0.22], flip: true },
     ],
   },
 };

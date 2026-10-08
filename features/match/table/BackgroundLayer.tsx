@@ -63,8 +63,12 @@ export interface LandeFloorProps {
   key: string;
   /** Attente avant l'entrée : la fin de l'arrivée de la carte. */
   delayMs: number;
-  /** Murs qui encadrent le sol, en fractions du fond. */
-  frame: { src: string; box: readonly [number, number, number, number] }[];
+  /**
+   * Murs et pièces qui habillent le sol, en fractions du fond (une boîte peut
+   * déborder du fond : la pièce est alors coupée par le bord de l'écran).
+   * `flip` : la pièce en miroir, tournée vers l'autre côté.
+   */
+  frame: { src: string; box: readonly [number, number, number, number]; flip?: boolean }[];
   /** Zone du sol faite pour le plateau (`LandeScene.fit`) ; à défaut, celle de la table. */
   fit?: FitTarget;
 }
@@ -218,6 +222,8 @@ function FloorScene({ floor, box, className }: { floor: LandeFloorProps; box: CS
               top: `${wall.box[1] * 100}%`,
               width: `${wall.box[2] * 100}%`,
               height: `${wall.box[3] * 100}%`,
+              // `scale` et non `transform` : l'animation d'entrée joue sur `transform`.
+              scale: wall.flip ? "-1 1" : undefined,
               animationDelay: `${floor.delayMs + WALLS_AFTER_MS + i * WALL_STAGGER_MS}ms`,
             } as CSSProperties
           }
