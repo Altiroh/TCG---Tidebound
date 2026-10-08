@@ -660,9 +660,9 @@
  * LE PONT DU CAPITAINE (labo `/game/pont-preview`, 07/10), d'après la
  * maquette : le pont est sa propre table, sans toiles ni colonne de tour.
  *
- *   [ navire ] [ pioche ] [ 6 emplacements ] [ cimetière ]
+ *   [ navire ] [ cimetière ] [ 6 emplacements ] [ pioche ]
  *   [   (Lande, posée)  ] [  piste de Marée ] [ phases · fin de tour · dés ]
- *   [ navire ] [ pioche ] [ 6 emplacements ] [ cimetière ]
+ *   [ navire ] [ cimetière ] [ 6 emplacements ] [ pioche ]
  *
  * Les deux piles quittent leur boîte commune (`.cargo` en `display:
  * contents`) pour encadrer les cartes, chacune dans sa colonne. Sélecteurs à
@@ -670,7 +670,7 @@
  * écrite plus bas.
  */
 .stage.stagePont {
-  /* Ni colonne de tour, ni symétrie : navire, pioche, plateau, cimetière.
+  /* Ni colonne de tour, ni symétrie : navire, cimetière, plateau, pioche.
      Carte la plus grande qui tient : navire (≈ 1,25 carte), deux piles,
      les emplacements, trois gouttières. */
   --card-h-fit: calc(
@@ -813,7 +813,8 @@
 .stage.stagePont .zoneSlotShip {
   grid-column: 1;
   justify-self: start;
-  translate: none;
+  /* Un peu à gauche, avec son socle : il ne touche plus la pile voisine. */
+  translate: calc(var(--ship-w) * -0.24) 0;
 }
 
 .stage.stagePont .zoneSlotBoard {
@@ -851,8 +852,8 @@
   display: contents;
 }
 
-/* Tout sur la même ligne : la pioche vient APRÈS le plateau dans le DOM
-   mais AVANT lui dans la grille ; placée automatiquement, elle passait à
+/* Tout sur la même ligne : le cimetière vient APRÈS le plateau dans le DOM
+   mais AVANT lui dans la grille ; placé automatiquement, il passait à
    la ligne suivante et décalait toute la rangée. */
 .stage.stagePont .zone > *,
 .stagePont .cargoDeck,
@@ -861,12 +862,12 @@
 }
 
 .stagePont .cargoDeck {
-  grid-column: 2;
+  grid-column: 4;
   justify-self: center;
 }
 
 .stagePont .cargoGraveyard {
-  grid-column: 4;
+  grid-column: 2;
   justify-self: center;
 }
 
