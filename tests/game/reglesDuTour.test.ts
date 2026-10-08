@@ -4,7 +4,8 @@ import { instance, testGameState, testPlayer } from "./testHelpers";
 
 /**
  * Règles du tour arrêtées le 08/10/2026 :
- *   - pas de fin de tour en Phase principale 1 : on passe d'abord en combat ;
+ *   - pas de fin de tour en Phase principale 1 : on passe d'abord en combat —
+ *     sauf au tout premier tour, où l'on ne peut pas attaquer ;
  *   - au tout premier tour de la partie, le joueur qui commence n'attaque
  *     pas, Pied marin compris ;
  *   - le joueur qui commence ne pioche pas à son premier tour.
@@ -26,6 +27,11 @@ describe("fin de tour", () => {
     const result = dispatch(table({ phase: "mainPhase" }), { type: "endTurn", playerId: "p1" });
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error).toMatch(/Phase principale 1/);
+  });
+
+  it("est possible dès la Phase principale 1 au tout premier tour, où l'on ne peut pas attaquer", () => {
+    const result = dispatch(table({ phase: "mainPhase", turnNumber: 1 }), { type: "endTurn", playerId: "p1" });
+    expect(result.ok && result.state.activePlayerId).toBe("p2");
   });
 
   it("est possible dès la Phase de combat, et en Phase principale 2", () => {

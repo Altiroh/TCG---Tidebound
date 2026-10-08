@@ -21,7 +21,12 @@ function validate(state: GameState, action: EndTurnAction) {
     assertGameActive(state),
     assertPlayerInGame(state, action.playerId),
     assertIsActivePlayer(state, action.playerId),
-    state.phase === "mainPhase" ? fail("Pas de fin de tour en Phase principale 1 : passez d'abord en Phase de combat.") : ok()
+    // Pas de fin de tour en Phase principale 1 — sauf au tout premier tour de
+    // la partie, où le joueur qui commence ne peut pas attaquer : le combat
+    // n'y servirait à rien (règles du 08/10/2026).
+    state.phase === "mainPhase" && state.turnNumber !== 1
+      ? fail("Pas de fin de tour en Phase principale 1 : passez d'abord en Phase de combat.")
+      : ok()
   );
 }
 

@@ -349,7 +349,10 @@ export function enumerateCandidateActions(state: GameState, playerId: PlayerId):
       }
     }
 
-    if (state.phase === "mainPhase") {
+    if (state.phase === "mainPhase" && state.turnNumber === 1) {
+      // Tout premier tour : pas d'attaque possible, le tour se termine ici.
+      actions.push({ type: "endTurn", playerId });
+    } else if (state.phase === "mainPhase") {
       // Pas de fin de tour en Phase principale 1 (règle du 08/10/2026) : la
       // seule sortie est la Phase de combat, même sans rien à attaquer.
       actions.push({ type: "advancePhase", playerId });

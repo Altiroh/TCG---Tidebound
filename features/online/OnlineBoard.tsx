@@ -235,7 +235,7 @@ export function OnlineBoard({
     );
   }
 
-  const phase = phaseButtonFor({ isMyTurn, phase: state.phase });
+  const phase = phaseButtonFor({ isMyTurn, phase: state.phase === "mainPhase" && state.turnNumber === 1 ? "mainPhase2" : state.phase });
   const hint = targetingHint(selection?.kind === "reaction" ? null : selection?.kind ?? null);
 
   // Objets d'invite en constantes locales : `board.breakPrompt` ne se

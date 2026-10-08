@@ -6,11 +6,17 @@ import styles from "@/features/match/table/pont/PontActions.module.css";
 interface PontActionsProps {
   /** La phase en cours (moteur : principale 1 → combat → principale 2). */
   phase: GamePhase;
+  /**
+   * Tout premier tour de la partie : le joueur qui commence ne peut pas
+   * attaquer. Le bouton de phase s'éteint et la Fin de tour s'allume dès la
+   * Phase principale 1.
+   */
+  firstTurn?: boolean;
   /** Pas mon tour, ou une fenêtre de réaction ouverte : rien ne se clique. */
   disabled?: boolean;
   /** Passer à la phase suivante (`advancePhase`). */
   onAdvance: () => void;
-  /** Terminer le tour (`endTurn`) : dès la Phase de combat, jamais en Phase principale 1. */
+  /** Terminer le tour (`endTurn`) : dès la Phase de combat — en Phase principale 1, seulement au tout premier tour. */
   onEndTurn: () => void;
 }
 
@@ -36,15 +42,17 @@ function nextPhaseButton(phase: GamePhase): { src: string; label: string; advanc
  * dés, posé sur le pont. `data-zone="PhaseActions"` : le tutoriel y pointe
  * (« le bouton à droite »).
  */
-export function PontActions({ phase, disabled = false, onAdvance, onEndTurn }: PontActionsProps) {
+export function PontActions({ phase, firstTurn = false, disabled = false, onAdvance, onEndTurn }: PontActionsProps) {
   const next = nextPhaseButton(phase);
+  // Fin de tour interdite en Phase principale 1, sauf au tout premier tour.
+  const endLocked = phase === "mainPhase" && !firstTurn;
   return (
     <div className={styles.actions} data-ui-obstacle="" data-zone="PhaseActions">
       <div className={styles.buttons}>
         <button
           type="button"
           className={styles.button}
-          disabled={disabled || !next.advance}
+          disabled={disabled || !next.advance || (firstTurn && phase === "mainPhase")}
           aria-label={next.label}
           title={next.label}
           onClick={onAdvance}
@@ -55,10 +63,10 @@ export function PontActions({ phase, disabled = false, onAdvance, onEndTurn }: P
         <button
           type="button"
           className={styles.button}
-          // Pas de fin de tour en Phase principale 1 : passer d'abord en combat.
-          disabled={disabled || phase === "mainPhase"}
+          // Pas de fin de tour en Phase principale 1 (sauf au tout premier tour) : passer d'abord en combat.
+          disabled={disabled || endLocked}
           aria-label="Fin de tour"
-          title={phase === "mainPhase" ? "Fin de tour — passez d'abord en Phase de combat" : "Fin de tour"}
+          title={endLocked ? "Fin de tour — passez d'abord en Phase de combat" : "Fin de tour"}
           onClick={onEndTurn}
         >
           {/* eslint-disable-next-line @next/next/no-img-element -- bouton peint */}

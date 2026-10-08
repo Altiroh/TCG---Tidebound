@@ -1126,6 +1126,7 @@ export function TableBoard(props: TableBoardProps) {
                   />
                   <PontActions
                     phase={state.phase}
+                    firstTurn={state.turnNumber === 1}
                     disabled={props.phaseButton.disabled}
                     onAdvance={() => props.phaseButton.onAdvance?.()}
                     onEndTurn={() => props.phaseButton.onEndTurn?.()}

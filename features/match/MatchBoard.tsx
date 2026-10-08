@@ -416,8 +416,9 @@ export function MatchBoard({
     );
   }
 
-  // Pas de fin de tour en Phase principale 1 (règle du 08/10/2026) : le bouton mène toujours au combat d'abord.
-  const phase = phaseButtonFor({ isMyTurn: isViewerTurn, phase: state.phase });
+  // Pas de fin de tour en Phase principale 1 (règle du 08/10/2026) : le bouton mène au combat d'abord —
+  // sauf au tout premier tour, où l'on ne peut pas attaquer : il propose directement la fin du tour.
+  const phase = phaseButtonFor({ isMyTurn: isViewerTurn, phase: state.phase === "mainPhase" && state.turnNumber === 1 ? "mainPhase2" : state.phase });
   const hint = targetingHint(pending?.kind === "reaction" ? null : pending?.kind ?? null);
 
   // Objets d'invite en constantes locales : `board.breakPrompt` ne se
