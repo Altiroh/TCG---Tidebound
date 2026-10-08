@@ -21,8 +21,9 @@
 
 .button {
   position: relative;
-  width: var(--btn);
-  aspect-ratio: 1;
+  width: calc(var(--btn) * 1.21);
+  /* Boutons en relief, légèrement en perspective (planche du 08/10) : 553 × 455. */
+  aspect-ratio: 553 / 455;
   padding: 0;
   border: 0;
   background: none;
@@ -56,7 +57,9 @@
 }
 
 .buttonEnd {
-  width: calc(var(--btn) * 1.15);
+  /* La fin de tour, un peu plus grande sur la planche (601 × 496). */
+  width: calc(var(--btn) * 1.32);
+  aspect-ratio: 601 / 496;
 }
 
 .buttonOn:hover,
