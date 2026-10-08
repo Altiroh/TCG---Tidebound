@@ -104,6 +104,65 @@
 }
 
 
+/*
+ * La plaque du sens, à gauche de la planche (hors de sa largeur : la piste
+ * reste centrée). Son hublot mesuré dans l'image (1743 × 626) : centre
+ * 49,97 % / 50,4 %, 24,3 % × 66,3 %.
+ */
+.sens {
+  position: absolute;
+  right: calc(100% + 1.5%);
+  top: 50%;
+  height: 64%;
+  aspect-ratio: 1743 / 626;
+  translate: 0 -50%;
+  pointer-events: none;
+}
+
+.sensPlaque {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* Le hublot : la pièce derrière la plaque, en perspective pour basculer. */
+.sensHole {
+  position: absolute;
+  left: calc(49.97% - 12.15%);
+  top: calc(50.4% - 33.15%);
+  width: 24.3%;
+  height: 66.3%;
+  border-radius: 50%;
+  perspective: 300px;
+  z-index: -1;
+}
+
+.sensCoin {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  /* Le bord haut part vers le bas, la pièce dépasse un peu et revient. */
+  transition: transform 750ms cubic-bezier(0.35, 1.45, 0.5, 1);
+}
+
+.sensFace {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  backface-visibility: hidden;
+}
+
+/* Le revers : à l'endroit une fois la pièce retournée, puis tête en bas —
+   la vague rouge pointe vers le bas, la Marée descend. */
+.sensBack {
+  transform: rotateX(180deg) rotate(180deg);
+}
+
 /* Sur téléphone, la bande centrale ne fait que ~40 px de haut : la piste
    s'y cale par sa HAUTEUR (`--center-h`, posée par la scène mobile). */
 @media (max-height: 520px), (max-width: 820px) {
@@ -115,6 +174,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .sensCoin,
   .selector,
   .sea {
     transition: none;

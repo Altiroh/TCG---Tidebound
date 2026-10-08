@@ -1,6 +1,6 @@
 "use client";
 
-import type { CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { PORTHOLE_SEAS } from "@/features/match/table/TidePorthole";
 import type { TableTideModel } from "@/features/match/table/tableModel";
 import styles from "@/features/match/table/pont/PontTideTrack.module.css";
@@ -14,6 +14,12 @@ import styles from "@/features/match/table/pont/PontTideTrack.module.css";
  * est passé, éclairée s'il est en cours, avec le NOMBRE DE TOURS RESTANTS
  * au milieu du hublot. Le SÉLECTEUR doré se pose au-dessus de l'état en
  * cours et pointe vers lui.
+ *
+ * À sa gauche, la PLAQUE DU SENS (`plaque-sens-maree.webp`) : dans son
+ * hublot, le logo de vague — bleu, vers le haut, quand la Marée monte ;
+ * rouge, tête en bas, quand elle descend. Les deux sont les faces d'une même
+ * pièce qui BASCULE à chaque changement de sens, toujours bord haut poussé
+ * vers le bas (l'angle s'accumule : 180°, 360°…).
  */
 const TRACK_SRC = "/assets/board/pont/piste-maree.webp";
 const SELECTOR_SRC = "/assets/board/pont/selecteur-maree.webp";
@@ -24,8 +30,30 @@ const HOLE_Y = 44.2;
 const HOLE_W = 14.6;
 const HOLE_H = 52.4;
 
+const SENS_PLAQUE = "/assets/board/pont/plaque-sens-maree.webp";
+const SENS_MONTANTE = "/assets/board/pont/sens-montante.webp";
+const SENS_DESCENDANTE = "/assets/board/pont/sens-descendante.webp";
+
+/**
+ * Angle de la pièce : un demi-tour de plus à chaque changement de sens, pour
+ * qu'elle bascule toujours dans le même sens. Au premier rendu, elle est
+ * déjà sur la bonne face, sans animation.
+ */
+function useFlipAngle(rising: boolean): number {
+  const [angle, setAngle] = useState(rising ? 0 : 180);
+  const last = useRef(rising);
+  useEffect(() => {
+    if (last.current === rising) return;
+    last.current = rising;
+    setAngle((a) => a + 180);
+  }, [rising]);
+  return angle;
+}
+
 export function PontTideTrack({ tide }: { tide: TableTideModel }) {
   const current = tide.states[tide.current];
+  const rising = tide.orientation === "rising";
+  const angle = useFlipAngle(rising);
   const turns = `${tide.remainingTurns} tour${tide.remainingTurns > 1 ? "s" : ""} restant${tide.remainingTurns > 1 ? "s" : ""}`;
   return (
     <div className={styles.track} role="group" aria-label={current ? `Marée : ${current.label}, ${turns}` : "Marée"} data-ui-obstacle="">
@@ -51,6 +79,18 @@ export function PontTideTrack({ tide }: { tide: TableTideModel }) {
       <span className={styles.selector} style={{ "--x": `${HOLE_X[tide.current] ?? HOLE_X[0]}%` } as CSSProperties} aria-hidden>
         {/* eslint-disable-next-line @next/next/no-img-element -- décor local */}
         <img src={SELECTOR_SRC} alt="" draggable={false} className={styles.selectorImage} />
+      </span>
+      <span className={styles.sens} role="img" aria-label={rising ? "Marée montante" : "Marée descendante"}>
+        {/* eslint-disable-next-line @next/next/no-img-element -- décor local */}
+        <img src={SENS_PLAQUE} alt="" draggable={false} className={styles.sensPlaque} />
+        <span className={styles.sensHole}>
+          <span className={styles.sensCoin} style={{ transform: `rotateX(${angle}deg)` }}>
+            {/* eslint-disable-next-line @next/next/no-img-element -- décor local */}
+            <img src={SENS_MONTANTE} alt="" draggable={false} className={styles.sensFace} />
+            {/* eslint-disable-next-line @next/next/no-img-element -- décor local */}
+            <img src={SENS_DESCENDANTE} alt="" draggable={false} className={`${styles.sensFace} ${styles.sensBack}`} />
+          </span>
+        </span>
       </span>
     </div>
   );

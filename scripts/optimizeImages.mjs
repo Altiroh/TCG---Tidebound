@@ -169,6 +169,9 @@ const RULES = [
   { match: /\/board\/pont\/bol-des\./, maxSize: 512, quality: 90 },
   // Boutons de phase du pont : ~80 px à l'écran.
   { match: /\/board\/pont\/(phase-principale|phase-combat|fin-de-tour)\./, maxSize: 320, quality: 92 },
+  // Plaque du sens de Marée (~300 px de large) et ses deux logos (~80 px).
+  { match: /\/board\/pont\/plaque-sens-maree\./, maxSize: 900, quality: 90 },
+  { match: /\/board\/pont\/sens-(montante|descendante)\./, maxSize: 300, quality: 92 },
   // Socle des navires : ~260 px de large à l'écran.
   { match: /\/board\/pont\/socle-navire\./, maxSize: 640, quality: 90 },
   // Ombre de transition de page : étirée à 140 % de la hauteur d'écran, elle
