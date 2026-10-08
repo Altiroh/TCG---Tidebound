@@ -167,27 +167,6 @@ describe("capacités de Navire activées dans la fenêtre d'annonce de Marée", 
     });
   }
 
-  it("L'Errant — Changer de cap réduit de 1 la durée de la Marée annoncée", () => {
-    const annonce = dispatch(enFinDeTour(atTideChange("lerrant")), { type: "endTurn", playerId: "p1" });
-    ok(annonce);
-    // L'entame est SUSPENDUE : la fenêtre attend le porteur du Navire.
-    expect(annonce.state.pendingReaction?.awaitingPlayerId).toBe("p2");
-    expect(annonce.state.pendingTideStep).toBeDefined();
-    const dureeAnnoncee = annonce.state.environment.tideRemainingTurns;
-
-    const active = dispatch(annonce.state, { type: "activateShipAbility", playerId: "p2" });
-    ok(active);
-    expect(active.state.environment.tideRemainingTurns).toBe(dureeAnnoncee - 1);
-    // La fenêtre s'est refermée et l'entame a repris toute seule.
-    expect(active.state.pendingReaction).toBeUndefined();
-    expect(active.state.pendingTideStep).toBeUndefined();
-
-    // Une fois pour la partie : au changement d'état suivant, plus de fenêtre.
-    expect(getPlayer(active.state, "p2").oncePerGameUses).toEqual({
-      [shipAbilityGameKey("lerrant", "Changer de cap")]: 1,
-    });
-  });
-
   it("Le Courlis — Virage court inverse l'orientation de la Marée annoncée", () => {
     const annonce = dispatch(enFinDeTour(atTideChange("le-courlis")), { type: "endTurn", playerId: "p1" });
     ok(annonce);
@@ -200,13 +179,13 @@ describe("capacités de Navire activées dans la fenêtre d'annonce de Marée", 
   });
 
   it("passer la fenêtre garde la capacité pour plus tard, et laisse l'entame se terminer", () => {
-    const annonce = dispatch(enFinDeTour(atTideChange("lerrant")), { type: "endTurn", playerId: "p1" });
+    const annonce = dispatch(enFinDeTour(atTideChange("le-courlis")), { type: "endTurn", playerId: "p1" });
     ok(annonce);
-    const dureeAnnoncee = annonce.state.environment.tideRemainingTurns;
+    const orientation = annonce.state.environment.tideOrientation;
 
     const passe = dispatch(annonce.state, { type: "passReaction", playerId: "p2" });
     ok(passe);
-    expect(passe.state.environment.tideRemainingTurns).toBe(dureeAnnoncee);
+    expect(passe.state.environment.tideOrientation).toBe(orientation);
     expect(passe.state.pendingTideStep).toBeUndefined();
     // Rien n'a été consommé : la réserve de partie est intacte.
     expect(getPlayer(passe.state, "p2").oncePerGameUses ?? {}).toEqual({});
@@ -214,7 +193,7 @@ describe("capacités de Navire activées dans la fenêtre d'annonce de Marée", 
 
   it("une capacité de fenêtre ne s'active pas hors de sa fenêtre", () => {
     const state = testGameState({
-      players: [testPlayer("p1", { shipId: "lerrant" }), testPlayer("p2", { shipId: "le-goliath" })],
+      players: [testPlayer("p1", { shipId: "le-courlis" }), testPlayer("p2", { shipId: "le-goliath" })],
     });
     const refus = dispatch(state, { type: "activateShipAbility", playerId: "p1" });
     expect(refus.ok).toBe(false);
@@ -223,10 +202,17 @@ describe("capacités de Navire activées dans la fenêtre d'annonce de Marée", 
   });
 
   it("l'adversaire ne peut pas activer la capacité du Navire d'en face", () => {
-    const annonce = dispatch(enFinDeTour(atTideChange("lerrant")), { type: "endTurn", playerId: "p1" });
+    const annonce = dispatch(enFinDeTour(atTideChange("le-courlis")), { type: "endTurn", playerId: "p1" });
     ok(annonce);
     const vol = dispatch(annonce.state, { type: "activateShipAbility", playerId: "p1" });
     expect(vol.ok).toBe(false);
+  });
+
+  it("L'Errant n'ouvre plus de fenêtre au changement de Marée", () => {
+    const annonce = dispatch(enFinDeTour(atTideChange("lerrant")), { type: "endTurn", playerId: "p1" });
+    ok(annonce);
+    expect(annonce.state.pendingReaction).toBeUndefined();
+    expect(annonce.state.pendingTideStep).toBeUndefined();
   });
 
   it("les cinq Navires du roster portent leur capacité, et aucune ne reste en texte seul", () => {
@@ -240,5 +226,38 @@ describe("capacités de Navire activées dans la fenêtre d'annonce de Marée", 
     // d'urgence est un robinet, pas un coup d'éclat.
     expect(getShipDefinition("la-religieuse").activatableAbility!.activationsPerGame).toBeUndefined();
     expect(getShipDefinition("lerrant").activatableAbility!.activationsPerGame).toBe(1);
+  });
+});
+
+describe("L'Errant — Changer de cap, en Phase principale (08/10/2026)", () => {
+  function errantEnPhase(phase: GameState["phase"]): GameState {
+    return testGameState({
+      phase,
+      environment: testEnvironment({ tideState: "houle", tideRemainingTurns: 2, tideOrientation: "montante" }),
+      players: [testPlayer("p1", { shipId: "lerrant" }), testPlayer("p2", { shipId: "le-goliath" })],
+    });
+  }
+
+  it("inverse l'orientation de la Marée, au choix du joueur, une fois par partie", () => {
+    const active = dispatch(errantEnPhase("mainPhase"), { type: "activateShipAbility", playerId: "p1" });
+    ok(active);
+    expect(active.state.environment.tideOrientation).toBe("descendante");
+    // La durée et l'état ne bougent pas : seul le sens change.
+    expect(active.state.environment.tideState).toBe("houle");
+    expect(active.state.environment.tideRemainingTurns).toBe(2);
+    expect(getPlayer(active.state, "p1").oncePerGameUses).toEqual({ [shipAbilityGameKey("lerrant", "Changer de cap")]: 1 });
+
+    const encore = dispatch({ ...active.state, turnNumber: active.state.turnNumber + 2 }, { type: "activateShipAbility", playerId: "p1" });
+    expect(encore.ok).toBe(false);
+  });
+
+  it("s'active aussi en Phase principale 2, jamais en combat", () => {
+    expect(dispatch(errantEnPhase("mainPhase2"), { type: "activateShipAbility", playerId: "p1" }).ok).toBe(true);
+    expect(dispatch(errantEnPhase("combatPhase"), { type: "activateShipAbility", playerId: "p1" }).ok).toBe(false);
+  });
+
+  it("pas pendant le tour adverse", () => {
+    const state = { ...errantEnPhase("mainPhase"), activePlayerId: "p2" as const, priorityPlayerId: "p2" as const };
+    expect(dispatch(state, { type: "activateShipAbility", playerId: "p1" }).ok).toBe(false);
   });
 });

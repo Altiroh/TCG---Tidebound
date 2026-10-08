@@ -82,7 +82,7 @@ export function testGameState(overrides: Partial<GameState> = {}): GameState {
   const p1 = testPlayer("p1");
   // Le Goliath en face : même gabarit que L'Errant (30 Ancrage, 10 Raison,
   // 5 Slots), mais ni passif ni faiblesse — et surtout aucune capacité de
-  // FENÊTRE. Depuis que Changer de cap et Virage court s'activent pendant
+  // FENÊTRE. Depuis que Virage court s'active pendant
   // l'annonce d'une Marée, un Navire qui en porte une ouvre une fenêtre à
   // chaque changement d'état : légitime en partie, parasite dans un test
   // qui mesure autre chose. Le Canon de proue, lui, ne se déclenche jamais

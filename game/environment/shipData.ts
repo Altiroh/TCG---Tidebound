@@ -124,26 +124,20 @@ export const SHIP_SET: ShipDefinition[] = [
       "Cap sûr — la première fois de la partie que votre Raison tombe à 0 ou moins, récupérez la Raison " +
       "perdue pendant ce tour.",
     refundTurnReasonOnFirstDepletion: true,
-    // Première capacité « une fois par partie » réellement câblée
-    // (`activationsPerGame`), et première à s'activer DANS une fenêtre :
-    // celle que le moteur ouvre déjà entre l'annonce d'une Marée et
-    // l'application de ses effets. Aucun système de réaction dupliqué —
-    // le Navire rejoint la file de priorité de cette fenêtre.
+    // Changer de cap (08/10/2026, décision de design) : le joueur choisit son
+    // moment pendant sa Phase principale et inverse le sens de la Marée. Elle
+    // s'activait auparavant dans la fenêtre d'annonce d'une Marée (et ne
+    // faisait que réduire sa durée) : une fenêtre à chaque changement d'état,
+    // qui bloquait la partie pour une capacité d'un seul usage.
     activatableAbility: {
       name: "Changer de cap",
       illustration: "errant.webp",
       activationSound: "tide",
-      text:
-        "Une fois par partie, après qu'une Marée a été annoncée mais avant l'application de ses effets, " +
-        "réduisez sa durée de 1 tour.",
+      text: "Une fois par partie, pendant votre Phase principale, inversez l'orientation de la Marée.",
       cost: {},
-      // Jamais utilisées : la fenêtre remplace la phase.
-      activationPhases: [],
-      activationWindow: "tideAnnounced",
+      activationPhases: ["mainPhase", "mainPhase2"],
       activationsPerGame: 1,
-      onActivateEffects: [
-        { type: "tideReduceDuration", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
-      ],
+      onActivateEffects: [{ type: "tideInvertOrientation", target: { kind: "controllerPlayer" } }],
     },
     // Aucune faiblesse explicite.
   },
