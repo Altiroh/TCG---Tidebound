@@ -151,7 +151,7 @@ describe("Le Brise-Lames — Tenir la ligne", () => {
   });
 });
 
-describe("capacités de Navire activées dans la fenêtre d'annonce de Marée", () => {
+describe("capacités de Navire et changement de Marée", () => {
   /**
    * Fin du tour de p1 avec une Marée sur le point de changer d'état : c'est
    * cette annonce qui ouvre la fenêtre.
@@ -167,52 +167,13 @@ describe("capacités de Navire activées dans la fenêtre d'annonce de Marée", 
     });
   }
 
-  it("Le Courlis — Virage court inverse l'orientation de la Marée annoncée", () => {
-    const annonce = dispatch(enFinDeTour(atTideChange("le-courlis")), { type: "endTurn", playerId: "p1" });
-    ok(annonce);
-    expect(annonce.state.pendingReaction?.awaitingPlayerId).toBe("p2");
-    expect(annonce.state.environment.tideOrientation).toBe("montante");
-
-    const active = dispatch(annonce.state, { type: "activateShipAbility", playerId: "p2" });
-    ok(active);
-    expect(active.state.environment.tideOrientation).toBe("descendante");
-  });
-
-  it("passer la fenêtre garde la capacité pour plus tard, et laisse l'entame se terminer", () => {
-    const annonce = dispatch(enFinDeTour(atTideChange("le-courlis")), { type: "endTurn", playerId: "p1" });
-    ok(annonce);
-    const orientation = annonce.state.environment.tideOrientation;
-
-    const passe = dispatch(annonce.state, { type: "passReaction", playerId: "p2" });
-    ok(passe);
-    expect(passe.state.environment.tideOrientation).toBe(orientation);
-    expect(passe.state.pendingTideStep).toBeUndefined();
-    // Rien n'a été consommé : la réserve de partie est intacte.
-    expect(getPlayer(passe.state, "p2").oncePerGameUses ?? {}).toEqual({});
-  });
-
-  it("une capacité de fenêtre ne s'active pas hors de sa fenêtre", () => {
-    const state = testGameState({
-      players: [testPlayer("p1", { shipId: "le-courlis" }), testPlayer("p2", { shipId: "le-goliath" })],
-    });
-    const refus = dispatch(state, { type: "activateShipAbility", playerId: "p1" });
-    expect(refus.ok).toBe(false);
-    expect(refus.ok === false && refus.error).toContain("fenêtre");
-    expect(shipAbilityView(state, "p1")!.canActivate).toBe(false);
-  });
-
-  it("l'adversaire ne peut pas activer la capacité du Navire d'en face", () => {
-    const annonce = dispatch(enFinDeTour(atTideChange("le-courlis")), { type: "endTurn", playerId: "p1" });
-    ok(annonce);
-    const vol = dispatch(annonce.state, { type: "activateShipAbility", playerId: "p1" });
-    expect(vol.ok).toBe(false);
-  });
-
-  it("L'Errant n'ouvre plus de fenêtre au changement de Marée", () => {
-    const annonce = dispatch(enFinDeTour(atTideChange("lerrant")), { type: "endTurn", playerId: "p1" });
-    ok(annonce);
-    expect(annonce.state.pendingReaction).toBeUndefined();
-    expect(annonce.state.pendingTideStep).toBeUndefined();
+  it("aucun Navire n'ouvre plus de fenêtre au changement de Marée (08/10/2026)", () => {
+    for (const ship of ["lerrant", "le-courlis"]) {
+      const annonce = dispatch(enFinDeTour(atTideChange(ship)), { type: "endTurn", playerId: "p1" });
+      ok(annonce);
+      expect(annonce.state.pendingReaction, ship).toBeUndefined();
+      expect(annonce.state.pendingTideStep, ship).toBeUndefined();
+    }
   });
 
   it("les cinq Navires du roster portent leur capacité, et aucune ne reste en texte seul", () => {
@@ -229,12 +190,15 @@ describe("capacités de Navire activées dans la fenêtre d'annonce de Marée", 
   });
 });
 
-describe("L'Errant — Changer de cap, en Phase principale (08/10/2026)", () => {
+describe.each([
+  ["lerrant", "Changer de cap"],
+  ["le-courlis", "Virage court"],
+])("%s — %s, en Phase principale (08/10/2026)", (shipId, abilityName) => {
   function errantEnPhase(phase: GameState["phase"]): GameState {
     return testGameState({
       phase,
       environment: testEnvironment({ tideState: "houle", tideRemainingTurns: 2, tideOrientation: "montante" }),
-      players: [testPlayer("p1", { shipId: "lerrant" }), testPlayer("p2", { shipId: "le-goliath" })],
+      players: [testPlayer("p1", { shipId }), testPlayer("p2", { shipId: "le-goliath" })],
     });
   }
 
@@ -245,7 +209,7 @@ describe("L'Errant — Changer de cap, en Phase principale (08/10/2026)", () => 
     // La durée et l'état ne bougent pas : seul le sens change.
     expect(active.state.environment.tideState).toBe("houle");
     expect(active.state.environment.tideRemainingTurns).toBe(2);
-    expect(getPlayer(active.state, "p1").oncePerGameUses).toEqual({ [shipAbilityGameKey("lerrant", "Changer de cap")]: 1 });
+    expect(getPlayer(active.state, "p1").oncePerGameUses).toEqual({ [shipAbilityGameKey(shipId, abilityName)]: 1 });
 
     const encore = dispatch({ ...active.state, turnNumber: active.state.turnNumber + 2 }, { type: "activateShipAbility", playerId: "p1" });
     expect(encore.ok).toBe(false);

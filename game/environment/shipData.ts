@@ -11,9 +11,10 @@ import type { ShipDefinition } from "@/game/environment/types";
  *
  * NOTE — toutes les capacités activables sont désormais CÂBLÉES. La
  * fréquence "une fois par PARTIE" a sa primitive générique
- * (`activationsPerGame`, `game/state/oncePerGame.ts`), et la fenêtre
- * "après l'annonce d'une Marée" réutilise la fenêtre d'annonce de Marée
- * du moteur (`activationWindow`). `capacityText` — le champ
+ * (`activationsPerGame`, `game/state/oncePerGame.ts`). Depuis le 08/10/2026,
+ * plus aucun Navire ne s'active dans la fenêtre d'annonce de Marée
+ * (`activationWindow`, primitive gardée) : Virage court et Changer de cap se
+ * jouent en Phase principale. `capacityText` — le champ
  * "texte seul, rien n'est appliqué" — n'a plus d'occupant.
  *
  * Les PASSIFS aussi : le dernier en texte seul, Cap sûr (L'Errant), a été
@@ -86,20 +87,16 @@ export const SHIP_SET: ShipDefinition[] = [
     // des Eaux. C'est elle qui fait foi, et c'est elle qui est appliquée
     // ici : « refuser ce que la mer apporte » y est devenu « lui faire
     // faire demi-tour ».
-    //
-    // « Juste avant une transition » = la fenêtre d'annonce : l'état est
-    // committé, ses effets ne sont pas encore appliqués, et l'orientation
-    // décide de la transition SUIVANTE.
     activatableAbility: {
       name: "Virage court",
       illustration: "courlis.webp",
       activationSound: "tide",
-      text:
-        "Une fois par partie, juste avant une transition de Marée, vous pouvez inverser son orientation pour " +
-        "cette transition.",
+      // 08/10/2026 (décision de design) : comme Changer de cap, au moment
+      // choisi pendant la Phase principale, plus dans la fenêtre d'annonce
+      // de Marée qui bloquait la partie à chaque changement d'état.
+      text: "Une fois par partie, pendant votre Phase principale, inversez l'orientation de la Marée.",
       cost: {},
-      activationPhases: [],
-      activationWindow: "tideAnnounced",
+      activationPhases: ["mainPhase", "mainPhase2"],
       activationsPerGame: 1,
       onActivateEffects: [{ type: "tideInvertOrientation", target: { kind: "controllerPlayer" } }],
     },

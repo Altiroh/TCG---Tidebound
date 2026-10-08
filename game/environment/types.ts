@@ -156,7 +156,7 @@ export interface ShipActivatableAbility {
    * ouverte par le moteur entre l'ANNONCE d'une Marée et l'application de
    * ses effets (`GameState.pendingTideStep`).
    * C'est la seule façon d'écrire « après qu'une Marée a été annoncée mais
-   * avant l'application de ses effets » (Le Courlis — Virage court) sans
+   * avant l'application de ses effets » (aucun Navire aujourd'hui, 08/10/2026) sans
    * doubler le système de réaction : le Navire rejoint la file de priorité
    * de cette fenêtre, et s'y active ou s'y passe comme une carte.
    *

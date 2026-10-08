@@ -56,7 +56,7 @@ export function dispatch(state: GameState, action: PlayerAction): ActionResult {
   // que plus personne ne fermera.
   // `activateShipAbility` traverse aussi : une capacité de Navire peut
   // déclarer la fenêtre pour terrain d'activation (`activationWindow`,
-  // Le Courlis — Virage court). Elle refuse d'elle-même si ce n'est pas la
+  // aucune aujourd'hui). Elle refuse d'elle-même si ce n'est pas la
   // sienne, donc rien ne se faufile ici qui ne soit pas éligible.
   if (
     state.pendingReaction &&

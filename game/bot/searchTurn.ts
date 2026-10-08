@@ -306,10 +306,22 @@ export function searchBestAction(
     // Sauf pour DÉGAGER un plateau plein quand une carte attend en main : là,
     // saborder est le coup juste, pas un caprice (Éclats chromatiques).
     const score = line.first.type === "saborder" && !engorge ? raw - SCUTTLE_MARGIN : raw;
-    if (!best || score > best.score) best = { line, score };
+    // À note égale, agir maintenant plutôt que passer la phase : remettre à
+    // plus tard un geste qui ne coûte rien, c'est laisser l'ordre
+    // d'énumération décider — et une capacité de Navire de plus au menu
+    // suffisait à faire « passer » un bot au plateau engorgé.
+    const tied = best !== null && Math.abs(score - best.score) < 1e-9;
+    if (!best || score > best.score + 1e-9 || (tied && passesPhase(best.line.first) && !passesPhase(line.first))) {
+      best = { line, score };
+    }
   }
 
   return best?.line.first ?? candidates[0]!.first;
+}
+
+/** Le coup quitte la phase (ou le tour) sans rien jouer. */
+function passesPhase(action: PlayerAction): boolean {
+  return action.type === "advancePhase" || action.type === "endTurn";
 }
 
 /**

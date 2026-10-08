@@ -44,7 +44,7 @@ export interface ShipAbilityUi {
   /**
    * Entrée à donner à `ReactionPrompt` quand la capacité du Navire
    * s'active DANS la fenêtre de réaction en cours (`activationWindow` —
-   * Virage court). Absente le reste du temps.
+   * aucune aujourd'hui). Absente le reste du temps.
    *
    * Sans elle, une fenêtre ouverte pour le seul Navire n'aurait aucun
    * candidat de carte à afficher : rien à l'écran pour accepter, et surtout

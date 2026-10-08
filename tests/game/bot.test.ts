@@ -30,8 +30,8 @@ describe("runBotTurn", () => {
     for (let i = 0; i < 20 && state.status === "active"; i++) {
       const active = state.activePlayerId;
       // Qui doit jouer n'est pas toujours le joueur actif : une fenêtre de
-      // réaction ouverte à l'entame du tour d'en face (Ancre de Dérive, ou
-      // une capacité de Navire comme Virage court) attend l'ADVERSAIRE. Le
+      // réaction ouverte à l'entame du tour d'en face (Ancre de Dérive)
+      // attend l'ADVERSAIRE. Le
       // serveur fait de même — il fait jouer celui que le moteur désigne.
       const mustPlay = state.pendingReaction?.awaitingPlayerId ?? state.pendingChoice?.playerId ?? active;
       const avant = state;

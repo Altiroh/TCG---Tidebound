@@ -854,10 +854,9 @@ describe("engine.dispatch - endTurn", () => {
       ],
     });
 
-    // Le Courlis porte Virage court, qui s'active à l'annonce d'une Marée :
-    // un changement d'état ouvre donc une fenêtre, et l'entame du tour
-    // n'est finie qu'une fois qu'elle s'est refermée. Ce test-ci mesure la
-    // Raison — il passe la fenêtre et laisse l'entame se terminer.
+    // Une fenêtre peut s'ouvrir à l'entame (une carte qui réagit à la
+    // Marée) : ce test-ci mesure la Raison — il la passe et laisse l'entame
+    // se terminer.
     const end = (s: GameState, playerId: string) => {
       const r = dispatch(enFinDeTour(s), { type: "endTurn", playerId });
       if (!r.ok) throw new Error(r.error);
