@@ -14,6 +14,14 @@ hauteur de l'écran) et anime — grandes aux coins, basses au centre, le
 milieu du plateau toujours libre. Tant qu'une pièce manque, le code dessine
 la sienne ; il s'efface dès que les fichiers arrivent.
 
+## Sols du Pont du Capitaine
+
+Sur le plateau en plongée (`board/pont/`), une Lande remplace le pont par son
+propre SOL, même cadrage : `<id>/pont-sol.webp` (1672 × 941, centre calme,
+décor fort au bord). Ses pièces, ses lueurs et ses effets animés sont
+déclarés avec le décor (labo : `PONT_LANDE_FLOORS`). Le Donjon ajoute
+`cabine.webp` (cliquable : fumée verte) et `panneau.webp` (« SAFE PLACE »).
+
 ## Format
 
 - **PNG avec transparence**, déposé ici, puis

@@ -72,8 +72,6 @@ export interface LandeFloorProps {
    * puantes s'en échappent).
    */
   frame: { src: string; box: readonly [number, number, number, number]; flip?: boolean; fx?: "fumeeVerte"; label?: string }[];
-  /** Panneaux de bois peints en CSS, suspendus (lignes de texte, boîte en fractions du fond). */
-  signs?: { lines: string[]; box: readonly [number, number, number, number] }[];
   /** Flammes du décor peint (bougies, torches) : une lueur chaude vacille sur chacune. [x, y, taille], en fractions du fond. */
   glows?: readonly (readonly [number, number, number])[];
   /** Zone du sol faite pour le plateau (`LandeScene.fit`) ; à défaut, celle de la table. */
@@ -295,29 +293,6 @@ function FloorScene({ floor, box, className }: { floor: LandeFloorProps; box: CS
           <img key={wall.src} src={wall.src} alt="" draggable={false} className={styles.landeWall} style={style} />
         );
       })}
-      {floor.signs?.map((sign, i) => (
-        <div
-          key={`panneau-${i}`}
-          className={`${styles.landeWall} ${styles.landeSign}`}
-          style={{
-            left: `${sign.box[0] * 100}%`,
-            top: `${sign.box[1] * 100}%`,
-            width: `${sign.box[2] * 100}%`,
-            height: `${sign.box[3] * 100}%`,
-            animationDelay: `${floor.delayMs + WALLS_AFTER_MS + (floor.frame.length + i) * WALL_STAGGER_MS}ms`,
-          }}
-          role="img"
-          aria-label={`Panneau : ${sign.lines.join(" ")}`}
-        >
-          <span className={styles.landeSignChain} />
-          <span className={styles.landeSignBoard}>
-            <span className={styles.landeSignArrow}>↑</span>
-            {sign.lines.map((line) => (
-              <span key={line}>{line}</span>
-            ))}
-          </span>
-        </div>
-      ))}
       {/* La fumée passe DEVANT le plateau : rendue hors de la scène, au-dessus de tout. */}
       {puffs.length > 0 &&
         createPortal(

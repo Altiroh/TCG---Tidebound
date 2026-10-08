@@ -284,58 +284,6 @@
   100% { opacity: 0; transform: translate(calc(var(--drift, 1) * -12%), -150%) scale(1.6); }
 }
 
-/*
- * PANNEAU SUSPENDU (« SAFE PLACE » du Donjon) : une planche de bois sombre
- * pendue à deux chaînettes, flèche et lettres peintes qui luisent d'orange.
- * Taille de texte relative à la planche (`cqh`).
- */
-.landeSign {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  container-type: size;
-  pointer-events: none;
-}
-
-.landeSignChain {
-  width: 64%;
-  height: 12%;
-  border-inline: 2px dotted rgba(60, 40, 24, 0.9);
-}
-
-.landeSignBoard {
-  flex: 1;
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2cqh;
-  border: 3px solid #1f140b;
-  border-radius: 6%;
-  background:
-    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.12) 0 2px, transparent 2px 14px),
-    linear-gradient(170deg, #4a3220, #2b1c10 70%);
-  box-shadow:
-    inset 0 0 0 2px rgba(150, 100, 60, 0.35),
-    0 6px 14px rgba(0, 0, 0, 0.6),
-    0 0 40px rgba(255, 150, 60, 0.25);
-  font-family: var(--font-display, serif);
-  font-size: 15cqh;
-  font-weight: 700;
-  line-height: 1;
-  letter-spacing: 0.04em;
-  color: #ffd48a;
-  text-shadow:
-    0 0 6px rgba(255, 170, 70, 0.9),
-    0 0 14px rgba(255, 130, 40, 0.6);
-  animation: bougieVacille 3.4s ease-in-out infinite;
-}
-
-.landeSignArrow {
-  font-size: 1.3em;
-}
-
 /* LUEUR d'une flamme peinte : un halo chaud qui vacille, fondu en `screen`. */
 .landeGlow {
   position: absolute;
@@ -889,10 +837,10 @@
   left: 50%;
   bottom: calc(var(--row-h) * -0.1);
   /* Resserré en largeur (le pied, la partie la plus large, déborde moins)
-     sans perdre de hauteur, et un peu décalé vers la gauche, loin de la pioche. */
+     sans perdre de hauteur, centré sous le cadre. */
   width: calc(var(--row-h) * 1.1);
   height: calc(var(--row-h) * 1.25 * 933 / 1283);
-  translate: -54% 0;
+  translate: -50% 0;
   background: url("/assets/board/pont/socle-navire.webp") center / 100% 100% no-repeat;
   filter: drop-shadow(0 calc(var(--row-h) * 0.03) calc(var(--row-h) * 0.05) rgba(10, 5, 2, 0.55));
   pointer-events: none;

@@ -98,13 +98,15 @@ export type BoardPreviewDecor = "parchemin" | "pont";
 const PONT_LANDE_FLOORS: Record<string, LandeFloorProps> = {
   "le-donjon-de-ladalle": {
     key: "pont-donjon",
-    src: "/assets/landes/le-donjon-de-ladalle/pont-donjon-sol.webp",
+    src: "/assets/landes/le-donjon-de-ladalle/pont-sol.webp",
     // Le sol part de la carte, après son impact (`landeCardSlam`, ~480 ms).
     delayMs: 480,
     origin: [0.19, 0.49],
-    frame: [{ src: "/assets/landes/le-donjon-de-ladalle/cabine.webp", box: [-0.015, 0.15, 0.1162, 0.32], fx: "fumeeVerte", label: "Cabine (ne pas ouvrir)" }],
-    // Le panneau de la maquette, en haut à droite, pendu sous la colonne.
-    signs: [{ lines: ["SAFE", "PLACE"], box: [0.892, 0.06, 0.075, 0.2] }],
+    frame: [
+      { src: "/assets/landes/le-donjon-de-ladalle/cabine.webp", box: [-0.015, 0.15, 0.1162, 0.32], fx: "fumeeVerte", label: "Cabine (ne pas ouvrir)" },
+      // Le panneau « SAFE PLACE », pendu en haut à droite.
+      { src: "/assets/landes/le-donjon-de-ladalle/panneau.webp", box: [0.885, 0.04, 0.083, 0.24] },
+    ],
     glows: [
       [0.132, 0.037, 0.1],
       [0.83, 0.037, 0.1],
