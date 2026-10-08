@@ -143,6 +143,29 @@ function rememberLastPlayedDeckId(deckId: string): void {
   }
 }
 
+/**
+ * Niveau du bot choisi en dernier, retenu sur l'appareil : écrit dès que le
+ * joueur le change, relu au montage (comme le dernier deck).
+ */
+const BOT_DIFFICULTY_KEY = "tidebound:nouvelle-partie:niveau-bot";
+
+function readBotDifficulty(): BotDifficulty | null {
+  try {
+    const raw = window.localStorage.getItem(BOT_DIFFICULTY_KEY);
+    return BOT_DIFFICULTIES.some((d) => d.id === raw) ? (raw as BotDifficulty) : null;
+  } catch {
+    return null;
+  }
+}
+
+function rememberBotDifficulty(difficulty: BotDifficulty): void {
+  try {
+    window.localStorage.setItem(BOT_DIFFICULTY_KEY, difficulty);
+  } catch {
+    // Stockage indisponible : le choix vaut pour cette fois seulement.
+  }
+}
+
 /** 1 : mode · 2 : deck du joueur 1 (ou le sien contre le bot) · 3 : deck du joueur 2 (local à deux seulement). */
 type Step = 1 | 2 | 3;
 
@@ -225,6 +248,15 @@ export function NewMatchScreen({
   );
   const [inviteCode, setInviteCode] = useState(() => normalizeInviteCode(initialInviteCode ?? ""));
   const [botDifficulty, setBotDifficulty] = useState<BotDifficulty>("moyen");
+  // Le niveau retenu remplace « moyen » après le montage (le serveur ne connaît pas l'appareil).
+  useEffect(() => {
+    const saved = readBotDifficulty();
+    if (saved) setBotDifficulty(saved);
+  }, []);
+  function chooseBotDifficulty(difficulty: BotDifficulty) {
+    setBotDifficulty(difficulty);
+    rememberBotDifficulty(difficulty);
+  }
   /** Retour animé de l'écran « contre un bot » vers le choix du mode (flèche du bandeau). */
   const botBackRef = useRef<(() => void) | null>(null);
   // Le deck PAR DÉFAUT du joueur (écran Decks) est présélectionné : on
@@ -457,7 +489,7 @@ export function NewMatchScreen({
             <BotSetup
               foe={
                 mode === "bot"
-                  ? { kind: "bot", levels: BOT_DIFFICULTIES, difficulty: botDifficulty, onDifficulty: setBotDifficulty, note: botNote }
+                  ? { kind: "bot", levels: BOT_DIFFICULTIES, difficulty: botDifficulty, onDifficulty: chooseBotDifficulty, note: botNote }
                   : { kind: "online" }
               }
               deck={deck1}
@@ -618,7 +650,7 @@ export function NewMatchScreen({
                         className={botDifficulty === d.id ? styles.difficultyChipActive : styles.difficultyChip}
                         onClick={() => {
                           playButtonClick();
-                          setBotDifficulty(d.id);
+                          chooseBotDifficulty(d.id);
                         }}
                       >
                         {/* Le rond de radio est décoratif : l'état vient du `role="radio"`. */}

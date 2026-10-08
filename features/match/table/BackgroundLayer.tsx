@@ -69,9 +69,11 @@ export interface LandeFloorProps {
    * déborder du fond : la pièce est alors coupée par le bord de l'écran).
    * `flip` : la pièce en miroir, tournée vers l'autre côté. `fx` : la pièce
    * se clique, et joue son effet (`fumeeVerte` : des volutes vertes et
-   * puantes s'en échappent).
+   * puantes s'en échappent). `hang` : la pièce est PENDUE (une enseigne sous
+   * sa poutre) ; au-dessus de cette fraction de sa hauteur elle reste fixe,
+   * dessous elle se balance au vent autour de ce point d'attache.
    */
-  frame: { src: string; box: readonly [number, number, number, number]; flip?: boolean; fx?: "fumeeVerte"; label?: string }[];
+  frame: { src: string; box: readonly [number, number, number, number]; flip?: boolean; fx?: "fumeeVerte"; label?: string; hang?: number }[];
   /** Flammes du décor peint (bougies, torches) : une lueur chaude vacille sur chacune. [x, y, taille], en fractions du fond. */
   glows?: readonly (readonly [number, number, number])[];
   /** Zone du sol faite pour le plateau (`LandeScene.fit`) ; à défaut, celle de la table. */
@@ -288,6 +290,15 @@ function FloorScene({ floor, box, className }: { floor: LandeFloorProps; box: CS
             {/* eslint-disable-next-line @next/next/no-img-element -- décor local */}
             <img src={wall.src} alt="" draggable={false} />
           </button>
+        ) : wall.hang !== undefined ? (
+          // Une seule image, posée deux fois : la poutre fixe au-dessus de
+          // `hang`, l'enseigne dessous, qui oscille autour des chaînes.
+          <span key={wall.src} className={styles.landeWall} style={{ ...style, "--hang": `${wall.hang * 100}%` } as CSSProperties} aria-hidden>
+            {/* eslint-disable-next-line @next/next/no-img-element -- décor local */}
+            <img src={wall.src} alt="" draggable={false} className={styles.landeHangFixed} />
+            {/* eslint-disable-next-line @next/next/no-img-element -- décor local */}
+            <img src={wall.src} alt="" draggable={false} className={styles.landeHangSway} style={{ animationDelay: `${-i * 1.3}s` }} />
+          </span>
         ) : (
           // eslint-disable-next-line @next/next/no-img-element -- décor local
           <img key={wall.src} src={wall.src} alt="" draggable={false} className={styles.landeWall} style={style} />

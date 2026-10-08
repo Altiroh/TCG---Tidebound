@@ -296,6 +296,38 @@
   animation: bougieVacille 2.6s ease-in-out infinite;
 }
 
+/* PIÈCE PENDUE (l'enseigne « SAFE PLACE » du Donjon) : la poutre reste
+   fixe au-dessus de `--hang`, l'enseigne dessous se balance au vent autour
+   des chaînes — une houle lente, puis une petite rafale. */
+.landeHangFixed,
+.landeHangSway {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.landeHangFixed {
+  clip-path: inset(0 0 calc(100% - var(--hang)) 0);
+}
+
+.landeHangSway {
+  clip-path: inset(var(--hang) 0 0 0);
+  transform-origin: 50% var(--hang);
+  animation: landeSway 9s ease-in-out infinite;
+}
+
+@keyframes landeSway {
+  0%, 100% { rotate: 0deg; }
+  18% { rotate: 1.6deg; }
+  36% { rotate: -1.1deg; }
+  50% { rotate: 0.6deg; }
+  58% { rotate: 2.6deg; }
+  68% { rotate: -1.8deg; }
+  80% { rotate: 0.9deg; }
+  90% { rotate: -0.4deg; }
+}
+
 @keyframes landeWallIn {
   0% { opacity: 0; transform: translateY(12%) scale(0.96); }
   60% { opacity: 1; }
@@ -313,7 +345,8 @@
     display: none;
   }
 
-  .landeGlow {
+  .landeGlow,
+  .landeHangSway {
     animation: none;
   }
 

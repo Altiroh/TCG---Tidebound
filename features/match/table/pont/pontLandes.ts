@@ -21,8 +21,9 @@ export const PONT_LANDE_FLOORS: Record<string, LandeFloorProps> = {
     origin: [0.19, 0.49],
     frame: [
       { src: "/assets/landes/le-donjon-de-ladalle/cabine.webp", box: [-0.015, 0.15, 0.1162, 0.32], fx: "fumeeVerte", label: "Cabine (ne pas ouvrir)" },
-      // Le panneau « SAFE PLACE », pendu en haut à droite.
-      { src: "/assets/landes/le-donjon-de-ladalle/panneau.webp", box: [0.885, 0.04, 0.083, 0.24] },
+      // Le panneau « SAFE PLACE », pendu en haut à droite : sous sa poutre
+      // (18 % de sa hauteur), l'enseigne se balance au vent.
+      { src: "/assets/landes/le-donjon-de-ladalle/panneau.webp", box: [0.885, 0.04, 0.083, 0.24], hang: 0.18 },
     ],
     glows: [
       [0.132, 0.037, 0.1],
