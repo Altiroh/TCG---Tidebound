@@ -278,12 +278,6 @@ export function DecksScreen({ isSignedIn, initialDecks, catalog, recentDeckIds =
     });
   }
 
-  /** « Essayer » : une partie contre le bot avec le deck entièrement prêté. */
-  function handleTry(deck: BrowserDeck) {
-    playButtonClick();
-    router.push(`/partie?essai=${encodeURIComponent(deck.id)}`);
-  }
-
   return (
     <GameScreen active="decks">
       <DeckTable
@@ -319,7 +313,6 @@ export function DecksScreen({ isSignedIn, initialDecks, catalog, recentDeckIds =
           setCatalogError(null);
           setCatalogTarget(deck);
         }}
-        onTryCatalog={handleTry}
         onCopy={isSignedIn ? handleCopy : undefined}
       />
       <ScreenToast message={toast} onDismiss={() => setToast(null)} />
@@ -350,7 +343,6 @@ export function DecksScreen({ isSignedIn, initialDecks, catalog, recentDeckIds =
           busy={isPending}
           error={catalogError}
           onUnlock={() => handleUnlock(catalogTarget)}
-          onTry={() => handleTry(catalogTarget)}
           onClose={() => {
             setCatalogTarget(null);
             setCatalogError(null);

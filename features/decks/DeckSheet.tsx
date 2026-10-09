@@ -29,8 +29,6 @@ interface DeckSheetProps {
   busy: boolean;
   error: string | null;
   onUnlock: () => void;
-  /** « Essayer » : partie contre le bot, deck entièrement prêté (§4, option UX recommandée). */
-  onTry: () => void;
   onClose: () => void;
 }
 
@@ -54,7 +52,6 @@ export function DeckSheet({
   busy,
   error,
   onUnlock,
-  onTry,
   onClose,
 }: DeckSheetProps) {
   const curve = useMemo(() => costCurve(deck.cardIds), [deck.cardIds]);
@@ -206,12 +203,6 @@ export function DeckSheet({
               <span className={game.tagSuccess}>Débloqué</span>
             ) : (
               <span className={game.muted}>{unlockHint}</span>
-            )}
-            {/* « Essayer » : tester avant de dépenser son jeton (§4). */}
-            {!unlocked && !freeChoiceAvailable && (
-              <button type="button" className={game.link} onClick={onTry}>
-                Essayer contre le bot →
-              </button>
             )}
           </div>
 

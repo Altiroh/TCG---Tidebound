@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { catalogDeckById, PRECON_DECKS, type BotDifficulty, type DeckList, type GameState, type PlayerId } from "@/game";
+import { type BotDifficulty, type DeckList, type GameState, type PlayerId } from "@/game";
 import { startBotMatch } from "@/features/bot/actions";
 import { joinMatchmakingQueue } from "@/features/matchmaking/actions";
 import { MatchmakingSearch } from "@/features/matchmaking/MatchmakingSearch";
@@ -154,26 +154,6 @@ export function PartieScreen({
     setFallbackNotice(null);
   }
 
-  /**
-   * « Essayer » un préconstruit verrouillé (Notion « Progression joueur »
-   * §4, option UX recommandée) : partie contre le bot, deck entièrement
-   * PRÊTÉ le temps du test, et récompenses nulles — c'est une partie
-   * locale, elle ne passe pas par l'arbitrage serveur. Le joueur voit ce
-   * que le deck fait avant de dépenser son Jeton.
-   */
-  useEffect(() => {
-    const tryDeckId = searchParams.get("essai");
-    if (!tryDeckId || match) return;
-    const deck = catalogDeckById(tryDeckId);
-    if (!deck || !PRECON_DECKS.some((entry) => entry.id === deck.id)) return;
-    setBot({ playerId: "p2", difficulty: "moyen" });
-    setFallbackNotice("Essai d'un préconstruit : deck entièrement prêté, partie d'entraînement sans XP ni quêtes.");
-    setMatch(createLocalMatch(deck, pickTrialOpponent(deck)));
-    // Une seule fois : on retire le paramètre pour qu'un retour arrière ne relance pas l'essai.
-    router.replace("/partie");
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- ne doit réagir qu'à l'arrivée du paramètre.
-  }, [searchParams]);
-
   if (searching) {
     return (
       <MatchmakingSearch
@@ -230,10 +210,4 @@ export function PartieScreen({
       <MatchBoard initialState={match} onExit={exitMatch} botPlayerId={bot?.playerId} botDifficulty={bot?.difficulty} />
     </>
   );
-}
-
-/** Adversaire d'un essai : un autre préconstruit, pour que le test soit représentatif. */
-function pickTrialOpponent(deck: DeckList): DeckList {
-  const others = PRECON_DECKS.filter((entry) => entry.id !== deck.id);
-  return others[Math.floor(Math.random() * others.length)] ?? deck;
 }

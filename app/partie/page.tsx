@@ -48,7 +48,7 @@ export default async function PartiePage() {
     ? catalog.decks.filter((entry) => entry.unlocked).map((entry) => entry.deck.id)
     : PRECON_DECKS.map((deck) => deck.id);
 
-  // `useSearchParams` (essai d'un préconstruit) impose une frontière de
+  // `useSearchParams` (mode en ligne, code d'invitation, défi) impose une frontière de
   // suspense : sans elle, Next rend toute la page en client au build.
   return (
     <Suspense>

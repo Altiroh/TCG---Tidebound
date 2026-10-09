@@ -50,7 +50,6 @@ export interface DeckTableActions {
   onRestore: (deck: BrowserDeck) => void;
   onPurge: (deck: BrowserDeck) => void;
   onOpenCatalogSheet: (deck: BrowserDeck) => void;
-  onTryCatalog: (deck: BrowserDeck) => void;
   onCopy?: (deck: BrowserDeck) => void;
 }
 
@@ -482,9 +481,6 @@ function DeckFiche(props: DeckTableProps & { deck: BrowserDeck | null }) {
             <>
               <button type="button" className={styles.btnPrimary} onClick={() => props.onOpenCatalogSheet(deck)} disabled={props.busy}>
                 <span aria-hidden>▶</span> Voir la fiche
-              </button>
-              <button type="button" className={styles.btnWood} onClick={() => props.onTryCatalog(deck)} disabled={props.busy}>
-                Essayer
               </button>
               {props.onCopy && (
                 <button type="button" className={styles.btnWood} onClick={() => props.onCopy?.(deck)} disabled={props.busy}>
