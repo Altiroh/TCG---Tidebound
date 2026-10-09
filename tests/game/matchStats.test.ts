@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { dispatch, type GameEvent } from "@/game";
-import { computeMatchQuestContribution, computeMatchStats, LIFETIME_SUM_KEYS, MATCH_STAT_KEYS, MATCH_STATS } from "@/game/quests";
+import { computeMatchQuestContribution, computeMatchStats, LIFETIME_SUM_KEYS, MATCH_STAT_KEYS, MATCH_STATS, MAX_MATCH_SECONDS } from "@/game/quests";
 import type { GameState } from "@/game/state/types";
 import { instance, testEnvironment, testGameState, testPlayer } from "./testHelpers";
 
@@ -348,5 +348,33 @@ describe("attaques, réactions, issues de partie", () => {
     ] as GameEvent[]);
     const result = stats(state);
     expect(result).toMatchObject({ max_damage_in_turn: 7, max_single_hit: 4, max_cards_played_in_turn: 2, deal_ship_damage: 7, play_cards: 3 });
+  });
+});
+
+describe("temps et volume de jeu", () => {
+  it("durée bornée, tours joués, premier joueur, Raison engagée", () => {
+    const start = 1_000_000;
+    const state: GameState = {
+      ...finished([
+        { ...base, timestamp: start, type: "TURN_STARTED", playerId: "p1" },
+        { ...base, timestamp: start + 60_000, type: "PLAY_CARD", playerId: "p1", instanceId: "a", cardId: "ptit-bout" },
+        { ...base, timestamp: 0, type: "TURN_STARTED", playerId: "p2" },
+        { ...base, timestamp: start + 125_400, type: "TURN_STARTED", playerId: "p1" },
+      ] as GameEvent[]),
+      createdAt: start,
+    };
+    expect(stats(state, true)).toMatchObject({ play_seconds: 125, own_turns: 2, play_first: 1, win_first: 1, play_bot_matches: 1, spend_reason: 1 });
+    expect(stats(state, false, "p2", false)).toMatchObject({ own_turns: 1, play_pvp_matches: 1 });
+    expect(stats(state, false, "p2").play_first).toBeUndefined();
+
+    const marathon = { ...state, eventLog: [...state.eventLog, { ...base, timestamp: start + 10 * 3600_000, type: "END_TURN", playerId: "p1" } as GameEvent] };
+    expect(stats(marathon, true).play_seconds).toBe(MAX_MATCH_SECONDS);
+  });
+
+  it("un nul se compte à part (et reste une non-victoire)", () => {
+    const state = finished([{ ...base, type: "GAME_ENDED", reason: "oceanJudgment" }] as GameEvent[]);
+    expect(stats(state, false)).toMatchObject({ draw_matches: 1, lose_matches: 1 });
+    const lost = finished([{ ...base, type: "GAME_ENDED", winnerId: "p2", reason: "anchorZero" }] as GameEvent[]);
+    expect(stats(lost, false).draw_matches).toBeUndefined();
   });
 });

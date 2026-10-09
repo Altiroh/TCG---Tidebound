@@ -13,7 +13,7 @@ import {
   LOW_COST_CREATURE_MAX,
 } from "@/game/quests/catalog";
 import type { MatchQuestProgress, MatchQuestSets, QuestObjectiveKey } from "@/game/quests/types";
-import type { LifetimeOnlySumKey, MatchRecordKey, MatchStats } from "@/game/quests/matchStats";
+import { MAX_MATCH_SECONDS, type LifetimeOnlySumKey, type MatchRecordKey, type MatchStats } from "@/game/quests/matchStats";
 
 /** Créatures distinctes devant infliger des dégâts pour « Ça pique ». */
 const DAMAGING_CREATURES_THRESHOLD = 5;
@@ -245,6 +245,14 @@ function analyserPartie({
     lethal_by_effect: 0,
     lethal_by_tide: 0,
     lethal_by_deraison: 0,
+    play_seconds: 0,
+    own_turns: 0,
+    play_pvp_matches: 0,
+    play_bot_matches: 0,
+    play_first: 0,
+    spend_reason: 0,
+    draw_matches: 0,
+    win_first: 0,
     lose_matches: 0,
     lose_to_own_deraison: 0,
     win_bot_matches: 0,
@@ -296,6 +304,10 @@ function analyserPartie({
   let currentAttacker: string | null = null;
   let ownTurns = 0;
   let draws = 0;
+  /** Joueur du premier tour de la partie (le premier `TURN_STARTED` du journal). */
+  let firstPlayer: PlayerId | null = null;
+  /** La partie s'est terminée sans vainqueur. */
+  let drawn = false;
   /** Dégâts infligés pendant le tour en cours, pour « Gros calibre ». */
   let damageThisTurn = 0;
   let bestTurnDamage = 0;
@@ -410,6 +422,7 @@ function analyserPartie({
 
     switch (event.type) {
       case "TURN_STARTED":
+        if (firstPlayer === null && event.playerId) firstPlayer = event.playerId;
         closeRecordTurn();
         if (event.playerId === playerId) {
           ownTurns += 1;
@@ -457,6 +470,7 @@ function analyserPartie({
         break;
 
       case "GAME_ENDED":
+        if (!event.winnerId) drawn = true;
         if (won && event.winnerId === playerId) {
           if (event.reason === "concede") extra.win_by_concede = 1;
           else if (event.reason === "timeout") extra.win_by_timeout = 1;
@@ -475,6 +489,7 @@ function analyserPartie({
         if (tideState === "abysses") progress.play_in_abysses += 1;
         const def = safeDef(event.cardId);
         if (!def) break;
+        if (def.cost > 0) extra.spend_reason += def.cost;
         if (def.cost >= BIG_CARD_MIN_COST) progress.play_big_cards += 1;
         if (def.type === "anomalie") progress.play_anomalies += 1;
         if (def.type === "creature") {
@@ -769,6 +784,14 @@ function analyserPartie({
     if (won) sets.distinct_decks_won = [deckId];
   }
 
+  // --- Statistiques à vie : temps et volume -------------------------------
+  extra.play_seconds = matchSeconds(state);
+  extra.own_turns = ownTurns;
+  if (vsBot) extra.play_bot_matches = 1;
+  else extra.play_pvp_matches = 1;
+  const wentFirst = firstPlayer === playerId;
+  if (wentFirst) extra.play_first = 1;
+
   // --- Statistiques à vie : issue de la partie ---------------------------
   closeRecordTurn();
   const self = state.players.find((p) => p.id === playerId);
@@ -781,10 +804,26 @@ function analyserPartie({
     if ((self?.reason ?? 0) < 0) extra.win_while_deraison = 1;
     for (const [turns, key] of FAST_WIN_TURNS) if (ownTurns > 0 && ownTurns <= turns) extra[key] = 1;
     records.max_win_anchor = Math.max(0, anchor);
+    if (wentFirst) extra.win_first = 1;
   } else {
+    if (drawn) extra.draw_matches = 1;
     extra.lose_matches = 1;
     if (ownSinking === "deraison") extra.lose_to_own_deraison = 1;
   }
 
   return { progress, sets, extra, records };
+}
+
+/**
+ * Durée d'une partie, en secondes : de la création de l'état au dernier
+ * événement horodaté du journal. Certains événements internes portent un
+ * horodatage nul (retour en main) : seul le PLUS TARDIF compte. Bornée à
+ * `MAX_MATCH_SECONDS`, et à 0 pour un journal sans horloge (tests, replays).
+ */
+export function matchSeconds(state: GameState): number {
+  if (!(state.createdAt > 0)) return 0;
+  let last = 0;
+  for (const event of state.eventLog) if (event.timestamp > last) last = event.timestamp;
+  if (last <= state.createdAt) return 0;
+  return Math.min(MAX_MATCH_SECONDS, Math.round((last - state.createdAt) / 1000));
 }

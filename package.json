@@ -16,6 +16,7 @@
     "seed:sql": "tsx scripts/seedCardsSql.ts",
     "optimize:images": "node scripts/optimizeImages.mjs",
     "balance": "tsx scripts/balanceReport.ts",
+    "banque": "tsx --env-file=.env.local scripts/banqueReport.ts",
     "playtest": "tsx scripts/playtestReport.ts",
     "swarm": "tsx scripts/swarmReport.ts",
     "coverage": "tsx scripts/catalogCoverage.ts",

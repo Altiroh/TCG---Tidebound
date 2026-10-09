@@ -26,6 +26,7 @@ import {
 } from "@/features/progression/hubService";
 import type { SponsorId, SponsorStage } from "@/game/progression";
 import { readAchievementStats, syncAchievements } from "@/features/achievements/achievementService";
+import type { PlayerStatsInput } from "@/features/progression/playerStatsSheet";
 import { equipTitleFor, loadTitles, type EquipTitleResult, type ProfileTitles } from "@/features/progression/titleService";
 import { titleForAchievement } from "@/game/titles";
 import { equipCardBackFor, loadCardBacks, type CardBackCollection } from "@/features/cosmetics/cardBackService";
@@ -139,6 +140,8 @@ export interface ProfileSummary {
   maxRewardedLevelReached: boolean;
   /** Coffre hebdomadaire, Maîtrises, Commanditaires (hub des récompenses). `null` hors connexion. */
   hub: ProgressionHubView | null;
+  /** Compteurs de l'onglet Statistiques — ceux déjà lus pour les exploits. `null` si la lecture a échoué. */
+  playerStats: PlayerStatsInput | null;
 }
 
 const SIGNED_OUT: ProfileSummary = {
@@ -175,6 +178,7 @@ const SIGNED_OUT: ProfileSummary = {
   titles: { options: [], equipped: null, available: false },
   maxRewardedLevelReached: false,
   hub: null,
+  playerStats: null,
 };
 
 /**
@@ -288,6 +292,18 @@ export async function fetchProfile(): Promise<ProfileSummary> {
       titles,
       maxRewardedLevelReached: view.level >= MAX_REWARDED_LEVEL,
       hub: await readProgressionHub(user.id, view.level),
+      playerStats: stats
+        ? {
+            matchesPlayed: stats.matchesPlayed,
+            wins: stats.wins,
+            losses: stats.losses,
+            level: stats.level,
+            distinctCardsOwned: stats.distinctCardsOwned,
+            boostersOpened: stats.boostersOpened,
+            lifetime: stats.lifetime,
+            records: stats.records,
+          }
+        : null,
     };
   } catch (error) {
     console.error("[fetchProfile] Lecture impossible :", error);

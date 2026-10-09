@@ -29,6 +29,7 @@ const PAGE_TABS: Array<{ id: ProfileTab; label: string }> = [
   { id: "recompenses", label: "Récompenses" },
   { id: "quetes", label: "Quêtes" },
   { id: "exploits", label: "Exploits" },
+  { id: "stats", label: "Stats" },
 ];
 
 export function ProfileScreen({ profile, initialTab, initialPanel }: ProfileScreenProps) {
@@ -71,7 +72,7 @@ export function ProfileScreen({ profile, initialTab, initialPanel }: ProfileScre
 
   const waiting = waitingCounts(profile);
   const badgeFor = (id: ProfileTab) =>
-    id === "carnet" ? waiting.login : id === "recompenses" ? waiting.levels : id === "quetes" ? waiting.quests : waiting.achievements;
+    id === "carnet" ? waiting.login : id === "recompenses" ? waiting.levels : id === "quetes" ? waiting.quests : id === "exploits" ? waiting.achievements : 0;
 
   return (
     <GameScreen

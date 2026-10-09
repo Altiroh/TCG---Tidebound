@@ -36,6 +36,14 @@ import type { QuestObjectiveKey } from "@/game/quests/types";
 export type MatchStatNature = "sum" | "record";
 
 /**
+ * Plafond du temps de jeu crédité par partie (`play_seconds`). Le chrono
+ * d'inactivité borne déjà une partie abandonnée, mais une partie reprise
+ * des heures plus tard (rattrapage d'un délai à la reconnexion) ne doit pas
+ * gonfler le compteur d'un après-midi entier.
+ */
+export const MAX_MATCH_SECONDS = 2 * 3600;
+
+/**
  * Objectifs de quête repris tels quels comme cumuls à vie. Exclus : les
  * ensembles (jours, decks distincts — une valeur, pas un compte), la série
  * de jours (un ÉTAT du compte, déjà suivi par `best_play_streak`) et les
@@ -81,7 +89,16 @@ export type LifetimeOnlySumKey =
   | "lethal_by_effect"
   | "lethal_by_tide"
   | "lethal_by_deraison"
+  // --- Temps et volume de jeu ---------------------------------------------
+  | "play_seconds"
+  | "own_turns"
+  | "play_pvp_matches"
+  | "play_bot_matches"
+  | "play_first"
+  | "spend_reason"
   // --- Issues de partie ------------------------------------------------------
+  | "draw_matches"
+  | "win_first"
   | "lose_matches"
   | "lose_to_own_deraison"
   | "win_bot_matches"
@@ -211,7 +228,20 @@ export const MATCH_STATS: Readonly<Record<MatchStatKey, MatchStatDefinition>> = 
   lethal_by_tide: { nature: "sum", description: "Victoires où l'adversaire coule hors de toute action (Marée, début de tour)." },
   lethal_by_deraison: { nature: "sum", description: "Victoires où l'adversaire coule sous sa propre Déraison." },
 
+  // --- Temps et volume de jeu ----------------------------------------------------
+  play_seconds: {
+    nature: "sum",
+    description: `Temps passé en partie, en secondes (du début au dernier coup, plafonné à ${MAX_MATCH_SECONDS / 3600} h par partie).`,
+  },
+  own_turns: { nature: "sum", description: "Tours joués (les vôtres, pas ceux de la table)." },
+  play_pvp_matches: { nature: "sum", description: "Parties jouées contre un joueur." },
+  play_bot_matches: { nature: "sum", description: "Parties jouées contre le bot." },
+  play_first: { nature: "sum", description: "Parties où vous avez joué le premier tour." },
+  spend_reason: { nature: "sum", description: "Raison engagée : coût imprimé des cartes jouées (réductions non déduites)." },
+
   // --- Issues de partie (0 ou 1 par partie) ----------------------------------
+  draw_matches: { nature: "sum", description: "Parties terminées sans vainqueur (match nul)." },
+  win_first: { nature: "sum", description: "Victoires en ayant joué le premier tour." },
   lose_matches: { nature: "sum", description: "Parties perdues (nulles comprises)." },
   lose_to_own_deraison: { nature: "sum", description: "Défaites où votre Navire coule sous votre propre dette de Déraison." },
   win_bot_matches: { nature: "sum", description: "Parties gagnées contre le bot." },

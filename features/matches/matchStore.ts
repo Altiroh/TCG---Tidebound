@@ -7,6 +7,7 @@ import { hasSaneActionShape } from "@/features/matches/actionShape";
 import { audienceOpponent, countsAsPlayedMatch, matchActivity, matchModePaysRewards, utcDayKey } from "@/game/progression";
 import { recordMatchQuestProgress } from "@/features/quests/questService";
 import { recordMatchLifetimeStats } from "@/features/achievements/lifetimeStatsService";
+import { recordMatchBalanceReport } from "@/features/balance/balanceBankService";
 import { recordMatchAudience } from "@/features/progression/hubService";
 import { isRecentDeck } from "@/features/decks/recentDecks";
 import { packFrames, type PackedFrames } from "@/features/matches/matchFrames";
@@ -292,7 +293,12 @@ async function commitAndSettle(
   // APRÈS la persistance de l'état final : on ne récompense jamais une fin
   // de partie qui n'a pas été enregistrée. Idempotent en base, donc sûr même
   // si deux chemins observent la même fin.
-  if (finished) await settleFinishedMatch(updatedMatch, finalState);
+  if (finished) {
+    // La banque d'équilibrage mesure le JEU : toutes les parties, amicales
+    // comprises (que `settleFinishedMatch` laisse de côté), et en parallèle
+    // du règlement — le joueur n'attend rien d'elle.
+    await Promise.all([settleFinishedMatch(updatedMatch, finalState), recordMatchBalanceReport(updatedMatch, finalState)]);
+  }
 
   return {
     ok: true,

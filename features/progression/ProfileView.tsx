@@ -41,6 +41,7 @@ import { ProfileIdentity } from "@/features/progression/ProfileIdentity";
 import { RewardIcon } from "@/features/progression/RewardIcon";
 import { RewardReveal, type RevealedLevel } from "@/features/progression/RewardReveal";
 import { AchievementBoard } from "@/features/progression/AchievementBoard";
+import { PlayerStatsBoard } from "@/features/progression/PlayerStatsBoard";
 import { PreconToken, TideCoin } from "@/features/shell/GameIcons";
 import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/progression/Profile.module.css";
@@ -57,6 +58,7 @@ const TABS: Array<{ id: ProfileTab; label: string }> = [
   { id: "recompenses", label: "Récompenses de niveau" },
   { id: "quetes", label: "Quêtes" },
   { id: "exploits", label: "Exploits" },
+  { id: "stats", label: "Statistiques" },
 ];
 
 /** Ce qui attend le joueur, famille par famille — les pastilles et le « tout réclamer ». */
@@ -364,9 +366,9 @@ export function ProfileView({
     }
     // Un choix (illustration, titre) s'ouvre à la place de la scène ; le fermer y ramène.
     if (picking || tab !== "carnet") {
-      // Exploits : la vitrine prend toute la place et ne fait défiler que sa liste.
+      // Exploits et Statistiques : la vitrine prend toute la place et ne fait défiler que sa liste.
       return (
-        <div className={sceneStyles.tabPage} data-fill={!picking && tab === "exploits" ? "true" : undefined}>
+        <div className={sceneStyles.tabPage} data-fill={!picking && (tab === "exploits" || tab === "stats") ? "true" : undefined}>
           {claimError && <p className={`${game.error} ${sceneStyles.claimError}`}>{claimError}</p>}
           <div className={sceneStyles.tabPanel} role="tabpanel">
             {picker === "title" && <TitlePicker titles={profile.titles} onClose={() => setPicker(null)} onChanged={onRefresh} />}
@@ -386,6 +388,7 @@ export function ProfileView({
                 claimingCode={typeof claiming === "string" ? claiming : null}
               />
             )}
+            {!picking && tab === "stats" && <PlayerStatsBoard stats={profile.playerStats} />}
           </div>
           {revealLayer}
         </div>
@@ -459,7 +462,15 @@ export function ProfileView({
         <nav className={styles.tabs} role="tablist" aria-label="Sections du profil" aria-orientation="vertical">
           {TABS.map((entry) => {
             const badge =
-              entry.id === "recompenses" ? waiting.levels : entry.id === "carnet" ? waiting.login : entry.id === "quetes" ? waiting.quests : waiting.achievements;
+              entry.id === "recompenses"
+                ? waiting.levels
+                : entry.id === "carnet"
+                  ? waiting.login
+                  : entry.id === "quetes"
+                    ? waiting.quests
+                    : entry.id === "exploits"
+                      ? waiting.achievements
+                      : 0;
             return (
               <button
                 key={entry.id}
@@ -518,6 +529,7 @@ export function ProfileView({
         {!picking && tab === "exploits" && (
           <AchievementBoard achievements={profile.achievements} onClaim={(code) => void claimOneAchievement(code)} claimingCode={typeof claiming === "string" ? claiming : null} />
         )}
+        {!picking && tab === "stats" && <PlayerStatsBoard stats={profile.playerStats} />}
       </main>
 
       {revealLayer}

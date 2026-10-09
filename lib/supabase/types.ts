@@ -1028,6 +1028,11 @@ export interface Database {
         Args: { p_user_id: string; p_match_id: string; p_stats: Record<string, number> };
         Returns: { ok: boolean; error?: string; recorded?: boolean; applied?: number };
       };
+      /** Banque d'équilibrage (`20261030120000_banque_statistiques.sql`) : relevé d'une partie, idempotent. */
+      record_match_balance_report: {
+        Args: { p_match_id: string; p_report: Record<string, unknown> };
+        Returns: { ok: boolean; error?: string; recorded?: boolean; cards?: number };
+      };
     };
     Enums: {
       card_type: CardTypeEnum;
