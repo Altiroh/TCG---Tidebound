@@ -61,10 +61,35 @@
   user-select: none;
 }
 
-/* Sur téléphone, la bande centrale ne fait que ~40 px : tout s'y cale. */
+/*
+ * Sur téléphone, la bande centrale ne fait que ~40 px. Calés dedans, les
+ * boutons tombaient à ~20 px : trop petits pour un doigt (09/10/2026). Ils
+ * gardent un plancher de 30 px (≈ 40 × 33 px de bouton), passent côte à
+ * côte pour tenir dans la bande, et le bol à dés, simple décor, s'efface :
+ * il poussait la Fin de tour contre le bord de l'écran.
+ */
 @media (max-height: 520px), (max-width: 820px) {
   .actions {
-    --btn: calc(var(--center-h, 40px) * 0.5);
+    --btn: max(30px, calc(var(--center-h, 40px) * 0.5));
+    gap: 6px;
+  }
+
+  .buttons {
+    flex-direction: row;
+    gap: 6px;
+  }
+
+  .bowl {
+    display: none;
+  }
+}
+
+/* Au doigt, la zone sensible déborde un peu de l'image peinte. */
+@media (pointer: coarse) {
+  .button::before {
+    content: "";
+    position: absolute;
+    inset: -6px -3px;
   }
 }
 

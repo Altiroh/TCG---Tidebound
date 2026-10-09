@@ -182,6 +182,16 @@
   color: #2b1c10;
 }
 
+/* La Traversée, dans sa vue (téléphone) ; ailleurs, sans boîte à elle. */
+.pane {
+  display: contents;
+}
+
+/* Le sélecteur Quêtes / Traversée : téléphone couché seulement (voir plus bas). */
+.mobileSwitch {
+  display: none;
+}
+
 /* ── Onglets de catégorie ─────────────────────────────────────── */
 
 /* Pendus sous la carte : ils la chevauchent, comme sur la maquette. */
@@ -821,6 +831,70 @@ button.row:disabled {
  * plus petite.
  */
 @media (max-height: 560px) {
+  /*
+   * Quêtes et Traversée, chacune sa vue (09/10/2026) : ensemble, la carte
+   * prenait l'écran et les quêtes partaient sous le pli.
+   */
+  .column [data-mobile-hidden] {
+    display: none;
+  }
+
+  .mobileSwitch {
+    position: relative;
+    z-index: 3;
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .mobileSwitchButton {
+    position: relative;
+    min-width: 112px;
+    min-height: 40px;
+    padding: 0 18px;
+    border: 1px solid rgba(217, 181, 106, 0.55);
+    border-radius: 999px;
+    background: rgba(28, 17, 8, 0.82);
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.45);
+    font-family: var(--tb-font-display);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #f0e3c6;
+    cursor: var(--tb-cursor-pointer);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .mobileSwitchButton[aria-pressed="true"] {
+    border-color: #d9b56a;
+    background: linear-gradient(180deg, #a02a1d, #6f1811);
+  }
+
+  .mobileSwitchButton:focus-visible {
+    outline: 2px solid rgba(255, 200, 120, 0.85);
+    outline-offset: 2px;
+  }
+
+  /* Quelque chose à réclamer dans l'autre vue : la pastille du jeu. */
+  .mobileSwitchButton[data-alert]::after {
+    content: "";
+    position: absolute;
+    top: -5px;
+    right: -3px;
+    width: 14px;
+    height: 14px;
+    background: var(--tb-notif-bg);
+    filter: var(--tb-notif-filter);
+    animation: tbNotifPulse 1.9s ease-in-out infinite;
+  }
+
+  /* Plus de carte au-dessus : les onglets ne la chevauchent plus. */
+  .tabs {
+    margin-top: 0;
+  }
+
   .scene {
     --lantern-h: calc(var(--scene-h) * 0.4);
     --lantern-x: calc(var(--lantern-w) * -0.34 + var(--tb-safe-left));
@@ -848,14 +922,48 @@ button.row:disabled {
     gap: calc(20 * var(--u));
   }
 
+  /*
+   * Pleine largeur, une feuille à ses proportions faisait plus haut que
+   * l'écran (09/10/2026) : trois quêtes demandaient un défilement chacune.
+   * Elle s'aplatit — le papier s'étire (`100% 100%`), filets compris, et le
+   * contenu, posé en % de la feuille, suit ses filets.
+   */
+  .sheet,
+  .sheet[data-sheet="hebdomadaires"] {
+    aspect-ratio: 1057 / 540;
+  }
+
   .row {
     grid-template-columns: calc(50 * var(--u)) minmax(0, 1fr) minmax(calc(88 * var(--u)), auto);
   }
 
+  /*
+   * « Remplacer » en toutes lettres chevauchait la récompense dès que la
+   * ligne n'avait plus de marge au-dessus (09/10/2026, iPhone SE) : sur
+   * téléphone, il devient une pastille ronde, au doigt (32 px), dans une
+   * colonne que la ligne lui réserve à droite. Le titre du bouton garde
+   * son nom.
+   */
+  .item:has(.reroll) .row {
+    padding-right: 36px;
+  }
+
   .reroll {
-    top: 0;
+    top: 50%;
     right: 0;
-    min-height: 28px;
+    width: 32px;
+    height: 32px;
+    justify-content: center;
+    padding: 0;
+    font-size: 0;
+    background: rgba(120, 80, 30, 0.12);
+    opacity: 0.85;
+    transform: translateY(-50%);
+  }
+
+  .reroll svg {
+    width: 16px;
+    height: 16px;
   }
 }
 

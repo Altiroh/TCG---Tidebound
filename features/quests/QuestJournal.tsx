@@ -70,6 +70,8 @@ export function QuestJournal({ board, voyages, voyagesPending = false, onChanged
     decode: (raw) => oneOf<QuestCategory | null>(TAB_FILTERS, raw),
   });
   const clearNotice = useCallback(() => setNotice(null), []);
+  // Téléphone couché : la Traversée et les quêtes, chacune sa vue (voir `MobileSwitch`).
+  const [mobileView, setMobileView] = useState<MobileView>("quetes");
 
   const visible = useCallback((entries: QuestEntry[]) => (filter ? entries.filter((entry) => entry.category === filter) : entries), [filter]);
   const empty = useMemo(() => board.daily.length + board.weekly.length === 0, [board.daily, board.weekly]);
@@ -123,6 +125,9 @@ export function QuestJournal({ board, voyages, voyagesPending = false, onChanged
   // d'une semaine à l'autre. En attendant sa lecture, son squelette tient
   // sa place — rien ne saute quand elle arrive.
   const voyage = voyagesPending ? <VoyageSkeleton /> : voyages && <VoyagePanel board={voyages} onNotice={setNotice} onChanged={onChanged} />;
+  const voyageShown = voyagesPending || Boolean(voyages?.available && voyages.voyages.length > 0);
+  // Sur téléphone, ce qui n'est pas dans la vue choisie s'efface (`data-mobile-hidden`, Quests.module.css).
+  const hiddenOnPhone = (view: MobileView) => (voyageShown && mobileView !== view) || undefined;
 
   if (board.unavailable) {
     return (
@@ -148,9 +153,20 @@ export function QuestJournal({ board, voyages, voyagesPending = false, onChanged
 
   return (
     <>
-      {voyage}
+      {voyageShown && (
+        <MobileSwitch
+          view={mobileView}
+          onChange={setMobileView}
+          questAlert={[...board.daily, ...board.weekly].some((entry) => entry.completed && !entry.claimed)}
+          voyageAlert={Boolean(voyages?.voyages.some((entry) => entry.claimableTier !== null))}
+        />
+      )}
 
-      <div className={styles.tabs} role="group" aria-label="Catégories de quêtes">
+      <div className={styles.pane} data-mobile-hidden={hiddenOnPhone("traversee")}>
+        {voyage}
+      </div>
+
+      <div className={styles.tabs} role="group" aria-label="Catégories de quêtes" data-mobile-hidden={hiddenOnPhone("quetes")}>
         {TABS.map((tab) => {
           const active = filter === tab.id;
           return (
@@ -180,7 +196,7 @@ export function QuestJournal({ board, voyages, voyagesPending = false, onChanged
 
       {/* Deux registres côte à côte, cloués sur la planche : le jour et la
           semaine se lisent ensemble, sans défiler. */}
-      <div className={styles.board}>
+      <div className={styles.board} data-mobile-hidden={hiddenOnPhone("quetes")}>
         <QuestSheet
           sheet="quotidiennes"
           title="Quotidiennes"
@@ -204,6 +220,42 @@ export function QuestJournal({ board, voyages, voyagesPending = false, onChanged
 
       <SceneToast notice={notice} onDone={clearNotice} />
     </>
+  );
+}
+
+type MobileView = "quetes" | "traversee";
+
+/**
+ * TÉLÉPHONE COUCHÉ (09/10/2026) : la carte de la Traversée et les feuilles
+ * de quêtes ne tiennent pas ensemble dans ~320 px de haut. Chacune a sa vue,
+ * et ce sélecteur passe de l'une à l'autre ; une pastille signale ce qui
+ * attend d'être réclamé dans la vue cachée. Masqué au-delà du seuil (560 px
+ * de haut), où tout se lit d'un coup.
+ */
+function MobileSwitch({ view, onChange, questAlert, voyageAlert }: { view: MobileView; onChange: (view: MobileView) => void; questAlert: boolean; voyageAlert: boolean }) {
+  const entries: readonly { id: MobileView; label: string; alert: boolean }[] = [
+    { id: "quetes", label: "Quêtes", alert: questAlert },
+    { id: "traversee", label: "Traversée", alert: voyageAlert },
+  ];
+  return (
+    <div className={styles.mobileSwitch} role="group" aria-label="Afficher">
+      {entries.map((entry) => (
+        <button
+          key={entry.id}
+          type="button"
+          className={styles.mobileSwitchButton}
+          aria-pressed={view === entry.id}
+          data-alert={(entry.alert && view !== entry.id) || undefined}
+          onClick={() => {
+            if (view === entry.id) return;
+            playButtonClick();
+            onChange(entry.id);
+          }}
+        >
+          {entry.label}
+        </button>
+      ))}
+    </div>
   );
 }
 

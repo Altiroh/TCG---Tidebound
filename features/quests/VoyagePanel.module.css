@@ -377,9 +377,26 @@ button.plaque:focus-visible {
  * grandit d'autant.
  */
 @media (max-height: 560px) {
+  /*
+   * Pleine largeur, la carte prenait toute la hauteur d'un téléphone
+   * couché (09/10/2026) : les quêtes, elles, n'apparaissaient qu'après
+   * deux écrans de défilement. Les quêtes ont désormais leur propre vue
+   * (`MobileSwitch`) : la carte prend la hauteur utile (`cqh` : la zone qui
+   * défile) moins le sélecteur, centrée. Plancher de 460 px : plus petite,
+   * son titre ne tient plus dans le papier vierge (iPhone SE).
+   */
   .map {
-    --u: calc(100cqw / 1040);
-    margin-left: 0;
+    --map-w: min(100cqw, max(460px, (100cqh - 64px) * 1938 / 736));
+    --u: calc(var(--map-w) / 1040);
+    width: var(--map-w);
+    margin-inline: auto;
+  }
+
+  /* Les sceaux I · II · III se visent au doigt. */
+  .voyageTab {
+    min-width: 20px;
+    height: 18px;
+    font-size: 10px;
   }
 
   .tagline {

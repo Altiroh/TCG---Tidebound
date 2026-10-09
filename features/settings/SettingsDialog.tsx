@@ -87,17 +87,6 @@ export function SettingsDialog({ isSignedIn, onClose }: SettingsDialogProps) {
             >
               Ouvrir le plateau
             </Link>
-            {" · "}
-            <Link
-              href="/game/pont-preview"
-              className={`${AUTH_LINK_CLASS} hover:underline`}
-              onClick={() => {
-                playButtonClick();
-                onClose();
-              }}
-            >
-              Le Pont du Capitaine
-            </Link>
           </p>
         </section>
 
