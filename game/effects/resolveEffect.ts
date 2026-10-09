@@ -1,3 +1,4 @@
+import { addSlotEffect, canAddSlot, canCondemnSlot, condemnedSlots, freeBoardSlots, freeCondemnedSlot } from "@/game/rules/slotEffects";
 import { boardRoomFor } from "@/game/rules/graveyardReturn";
 import { canReceiveMarker, unitHasSubtype, withMarker } from "@/game/cards/markers";
 import { hasSubtype } from "@/game/cards/subtypes";
@@ -6,7 +7,7 @@ import { addNextRollModifier, pendingDieRoll, rerollPending, rollDie, shiftPendi
 import { consumeUnitDamageBonus } from "@/game/state/damageBonus";
 import { armorEvents, armorOf } from "@/game/state/armor";
 import { damageShip } from "@/game/state/armor";
-import { boardPermanents, slotsUsed } from "@/game/rules/ongoing";
+import { boardPermanents } from "@/game/rules/ongoing";
 import {
   CHROMATIC_COLORS,
   hasResistance,
@@ -313,7 +314,7 @@ function amountValue(
   }
   if (amount.kind === "freeSlots") {
     const joueur = getPlayer(state, controllerId);
-    const libres = Math.max(0, getShipDefinition(joueur.shipId).slotCount - slotsUsed(joueur.board));
+    const libres = freeBoardSlots(state, joueur);
     const brut = libres * (amount.per ?? 1);
     return amount.max === undefined ? brut : Math.min(amount.max, brut);
   }
@@ -849,6 +850,10 @@ export function resolveEffect(
   if (effect.conditionControllerHandAtLeast !== undefined) {
     if (getPlayer(state, context.controllerId).hand.length < effect.conditionControllerHandAtLeast) return { state, events };
   }
+  if (effect.conditionControllerHasCondemnedSlot !== undefined) {
+    const condamne = condemnedSlots(state, getPlayer(state, context.controllerId)) > 0;
+    if (condamne !== effect.conditionControllerHasCondemnedSlot) return { state, events };
+  }
   if (effect.conditionChosenTargetSurvives && !chosenTargetSurvives(state, context)) return { state, events };
   if (effect.conditionEveils) {
     const { of, min, max } = effect.conditionEveils;
@@ -1176,7 +1181,7 @@ export function resolveEffect(
       // plus qu'il n'en tient", décision du 2026-09-14). Une invocation qui
       // ne tient pas du tout n'est pas une erreur — elle ne produit
       // simplement aucun corps.
-      const freeSlots = Math.max(0, getShipDefinition(player.shipId).slotCount - slotsUsed(player.board));
+      const freeSlots = freeBoardSlots(state, player);
       const wanted = Math.max(0, effect.count ?? 1);
       // « Aucun effet ne peut dépasser cette limite » (Lande, Chaîne de
       // construction) : l'invocation s'arrête aux arrivées encore permises,
@@ -1470,6 +1475,32 @@ export function resolveEffect(
         events.push(...r.events);
       }
       return { state: nextState, events };
+    }
+
+    case "condemnSlot":
+    case "addSlot": {
+      // Emplacements du terrain (`game/rules/slotEffects.ts`). « Condamnez un
+      // emplacement libre ADVERSE » vise le joueur ciblé ; « ajoutez 1
+      // emplacement à VOTRE terrain », le contrôleur.
+      const joueur = resolveSinglePlayerTarget(state, effect, context) ?? getPlayer(state, context.controllerId);
+      const possible = effect.type === "condemnSlot" ? canCondemnSlot(state, joueur) : canAddSlot(state, joueur);
+      if (!possible) return { state, events };
+      return {
+        state: addSlotEffect(state, joueur.id, {
+          kind: effect.type === "condemnSlot" ? "condemned" : "extra",
+          sourceCardId: effect.cardId ?? "unknown",
+          ...(context.sourceInstanceId ? { sourceInstanceId: context.sourceInstanceId } : {}),
+          ...(effect.whileSourceInPlay ? { whileSourceInPlay: true } : {}),
+          // N tours de table : à l'entame du tour du contrôleur, N tours plus tard (deux tours de jeu par tour de table).
+          ...(effect.tableTurns ? { expiresAtTurn: context.turnNumber + 2 * effect.tableTurns } : {}),
+        }),
+        events,
+      };
+    }
+
+    case "freeCondemnedSlot": {
+      const joueur = resolveSinglePlayerTarget(state, effect, context) ?? getPlayer(state, context.controllerId);
+      return { state: freeCondemnedSlot(state, joueur.id).state, events };
     }
 
     case "addMarker": {

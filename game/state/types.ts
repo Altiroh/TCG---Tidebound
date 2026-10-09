@@ -104,6 +104,12 @@ export interface PlayerState {
    */
   unitArrivalsThisTurn?: { turnNumber: number; count: number };
   /**
+   * Emplacements CONDAMNÉS ou AJOUTÉS sur le terrain de ce joueur (cartes de
+   * plateau du 09/10/2026 — `game/rules/slotEffects.ts`). Absent : le terrain
+   * n'a que les emplacements de son Navire.
+   */
+  slotEffects?: import("@/game/rules/slotEffects").SlotEffect[];
+  /**
    * Où en est la capacité activable du Navire
    * (`ShipDefinition.activatableAbility`) pour ce joueur. Absent : jamais
    * activée. Porté par le JOUEUR et non par une carte — le Navire n'est pas

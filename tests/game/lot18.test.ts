@@ -4,6 +4,7 @@ import { auraContextOf, computeEffectiveStats } from "@/game/cards/stats";
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { canBeEquipTarget } from "@/game/cards/sets/core";
 import { markerCount, unitHasSubtype } from "@/game/cards/markers";
+import { boardCapacity } from "@/game/rules/slotEffects";
 import type { CardInstance } from "@/game/cards/types";
 import type { GameState } from "@/game/state/types";
 import { answerHandDiscard, enFinDeTour, instance, testEnvironment, testGameState, testPlayer } from "./testHelpers";
@@ -258,5 +259,92 @@ describe("cartes du pool", () => {
     const r = jouer(table({ hand: [cerf], board: [ptitBout] }), cerf, ptitBout.instanceId);
     ok(r);
     expect(stats(r.state, ptitBout.instanceId)).toMatchObject({ attack: 1 + 1, health: 2 + 1 });
+  });
+});
+
+describe("cartes de plateau : emplacements condamnés et ajoutés", () => {
+  const capacite = (state: GameState, id: string) => boardCapacity(state, joueur(state, id));
+  // Le Brise-Lames (p1) a 6 emplacements, Le Goliath (p2) 5.
+
+  it("Y'a plus de place ! condamne un emplacement libre adverse pendant 3 tours de table", () => {
+    const objet = instance("ya-plus-de-place", "p1");
+    const r = dispatch(table({ board: [objet] }), { type: "breakObject", playerId: "p1", instanceId: objet.instanceId });
+    ok(r);
+    expect(capacite(r.state, "p2")).toBe(4);
+    // Trois tours de table plus tard (six tours de jeu), à l'entame du tour de p1, l'emplacement est libre.
+    expect(capacite({ ...r.state, turnNumber: r.state.turnNumber + 5 }, "p2")).toBe(4);
+    expect(capacite({ ...r.state, turnNumber: r.state.turnNumber + 6 }, "p2")).toBe(5);
+  });
+
+  it("Y'a plus de place ! n'a rien à condamner sur un terrain plein", () => {
+    const objet = instance("ya-plus-de-place", "p1");
+    const plein = Array.from({ length: 5 }, () => instance("marin-des-jetees", "p2"));
+    const r = dispatch(table({ board: [objet] }, { board: plein }), { type: "breakObject", playerId: "p1", instanceId: objet.instanceId });
+    ok(r);
+    expect(joueur(r.state, "p2").slotEffects ?? []).toHaveLength(0);
+  });
+
+  it("un emplacement condamné empêche de poser une carte de plus", () => {
+    const objet = instance("ya-plus-de-place", "p1");
+    const quatre = Array.from({ length: 4 }, () => instance("marin-des-jetees", "p2"));
+    const pose = instance("marin-des-jetees", "p2");
+    const r = dispatch(table({ board: [objet] }, { board: quatre, hand: [pose] }), { type: "breakObject", playerId: "p1", instanceId: objet.instanceId });
+    ok(r);
+    const tourAdverse: GameState = { ...r.state, activePlayerId: "p2", priorityPlayerId: "p2", phase: "mainPhase" };
+    expect(dispatch(tourAdverse, { type: "playCard", playerId: "p2", instanceId: pose.instanceId }).ok).toBe(false);
+  });
+
+  it("Le Barrage des Égarés condamne tant qu'il est en jeu ; Place au Large libère la condamnation", () => {
+    const barrage = instance("le-barrage-des-egares", "p1");
+    const r = jouer(table({ hand: [barrage] }), barrage);
+    ok(r);
+    expect(capacite(r.state, "p2")).toBe(4);
+    // La Structure partie, l'emplacement se libère.
+    const sansBarrage: GameState = { ...r.state, players: r.state.players.map((p) => (p.id === "p1" ? { ...p, board: [] } : p)) as GameState["players"] };
+    expect(capacite(sansBarrage, "p2")).toBe(5);
+
+    // Place au Large, jouée par p2 : la condamnation tombe, sans pioche.
+    const place = instance("place-au-large", "p2");
+    const tourAdverse: GameState = {
+      ...r.state,
+      activePlayerId: "p2",
+      priorityPlayerId: "p2",
+      players: r.state.players.map((p) => (p.id === "p2" ? { ...p, board: [place] } : p)) as GameState["players"],
+    };
+    const main = joueur(tourAdverse, "p2").hand.length;
+    const libere = dispatch(tourAdverse, { type: "breakObject", playerId: "p2", instanceId: place.instanceId });
+    ok(libere);
+    expect(capacite(libere.state, "p2")).toBe(5);
+    expect(joueur(libere.state, "p2").hand.length).toBe(main);
+  });
+
+  it("Place au Large sans emplacement condamné : piochez 1 carte", () => {
+    const place = instance("place-au-large", "p1");
+    const state = table({ board: [place] });
+    const main = joueur(state).hand.length;
+    const r = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: place.instanceId });
+    ok(r);
+    expect(joueur(r.state).hand.length).toBe(main + 1);
+  });
+
+  it("Le Pont Sans Fin ajoute 1 emplacement pendant 3 tours de table ; à son terme, la carte posée dessus part au Cimetière", () => {
+    const pont = instance("le-pont-sans-fin", "p1");
+    const six = Array.from({ length: 5 }, (_, i) => instance("marin-des-jetees", "p1", { slot: i }));
+    const r = dispatch(table({ board: [pont, ...six] }), { type: "breakObject", playerId: "p1", instanceId: pont.instanceId });
+    ok(r);
+    expect(capacite(r.state, "p1")).toBe(7);
+    const septieme = instance("vieux-loup-de-mer", "p1", { slot: 6 });
+    const plein: GameState = {
+      ...r.state,
+      players: r.state.players.map((p) => (p.id === "p1" ? { ...p, board: [...p.board, instance("marin-des-jetees", "p1", { slot: 5 }), septieme] } : p)) as GameState["players"],
+    };
+    // Juste avant l'échéance : fin du tour de p2, l'entame du tour de p1 fait tomber l'emplacement.
+    const avant: GameState = enFinDeTour({ ...plein, turnNumber: r.state.turnNumber + 5, activePlayerId: "p2", priorityPlayerId: "p2", phase: "mainPhase2" });
+    const fin = dispatch(avant, { type: "endTurn", playerId: "p2" });
+    ok(fin);
+    expect(capacite(fin.state, "p1")).toBe(6);
+    expect(unite(fin.state, septieme.instanceId)).toBeUndefined();
+    expect(joueur(fin.state).graveyard.some((c) => c.instanceId === septieme.instanceId)).toBe(true);
+    expect(joueur(fin.state).board).toHaveLength(6);
   });
 });

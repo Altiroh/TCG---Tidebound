@@ -12,6 +12,8 @@ import sheet from "@/features/match/table/TableSheet.module.css";
 interface ShipInfoSheetProps {
   player: PlayerState;
   ship: ShipDefinition;
+  /** Emplacements utilisables en ce moment (condamnés ou ajoutés compris). Défaut : ceux du Navire. */
+  capacity?: number;
   /** « Ton Navire », « Navire adverse »… */
   ownerLabel: string;
   onClose: () => void;
@@ -46,7 +48,7 @@ function tideTraits(ship: ShipDefinition): Array<{ label: string; bad: boolean }
  * passif, capacité, faiblesse, réactions à la Marée. Rien de caché n'y
  * figure : ce sont des informations publiques de la table.
  */
-export function ShipInfoSheet({ player, ship, ownerLabel, onClose }: ShipInfoSheetProps) {
+export function ShipInfoSheet({ player, ship, capacity = ship.slotCount, ownerLabel, onClose }: ShipInfoSheetProps) {
   useEffect(() => {
     // En capture, et sans propagation : Échap ferme la fiche, il n'ouvre pas
     // AUSSI le menu de pause du plateau (qui écoute la même touche).
@@ -122,10 +124,10 @@ export function ShipInfoSheet({ player, ship, ownerLabel, onClose }: ShipInfoShe
                 <div className={sheet.gauge} data-kind="slots">
                   <span className={sheet.gaugeLabel}>Emplacements</span>
                   <span className={sheet.gaugeValue}>
-                    {slotsUsed(player.board)} <small>/ {ship.slotCount}</small>
+                    {slotsUsed(player.board)} <small>/ {capacity}</small>
                   </span>
                   <span className={sheet.gaugeBar}>
-                    <span className={sheet.gaugeFill} style={{ width: ratio(slotsUsed(player.board), ship.slotCount) }} />
+                    <span className={sheet.gaugeFill} style={{ width: ratio(slotsUsed(player.board), capacity) }} />
                   </span>
                 </div>
               </div>

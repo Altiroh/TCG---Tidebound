@@ -1,8 +1,8 @@
+import { boardCapacity } from "@/game/rules/slotEffects";
 import { stripMarkers } from "@/game/cards/markers";
 import { activeLandeRules } from "@/game/rules/lande";
 import { markTurnDiscountsUsed, turnDiscounts } from "@/game/rules/costReductions";
 import { boardPermanents, isOngoingEffect } from "@/game/rules/ongoing";
-import { getShipDefinition } from "@/game/environment/shipData";
 import { boardSlotLayout, chooseBoardSlot } from "@/game/rules/boardSlots";
 import { canBeEquipTarget, getCardDefinition, hasAnyValidEquipTarget } from "@/game/cards/sets/core";
 import { isLandeCard, isPermanentCard, isVisibleDuringTide, UNIT_CARD_TYPES, type CardDefinition } from "@/game/cards/types";
@@ -437,7 +437,8 @@ export function playCard(state: GameState, action: PlayCardAction): ActionResult
     // porteur, pour un Assemblage celle de la première Sentinelle, et
     // sinon la première libre. Écrite à chaque pose : une carte revenue en
     // main ne garde pas son ancienne case.
-    const capacity = getShipDefinition(owner.shipId).slotCount;
+    // Emplacements condamnés ou ajoutés compris (`game/rules/slotEffects.ts`).
+    const capacity = boardCapacity(nextState, owner);
     const slotOfInstance = (board: typeof owner.board, instanceId: string | undefined) =>
       instanceId ? boardSlotLayout(boardPermanents(board), capacity).findIndex((u) => u?.instanceId === instanceId) : -1;
     const nearSlot = assemblage ? slotOfInstance(player.board, assemblage[0]?.instanceId) : hostIndex >= 0 ? slotOfInstance(owner.board, action.targetInstanceId) : -1;

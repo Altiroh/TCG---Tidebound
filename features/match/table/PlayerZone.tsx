@@ -11,6 +11,8 @@ interface PlayerZoneProps {
   board: readonly (TableCardModel | undefined)[];
   /** Emplacements du Navire (4, 5 ou 6) — les vides restent dessinés. */
   capacity?: number;
+  /** Emplacements condamnés (cartes de plateau), affichés fermés. */
+  condemned?: number;
   renderCard: (card: TableCardModel) => ReactNode;
   /** Habillage du Navire (repère d'animation `data-ship-target`…). */
   wrapShip?: (ship: ReactNode) => ReactNode;
@@ -42,6 +44,7 @@ export function PlayerZone({
   ship,
   board,
   capacity,
+  condemned,
   renderCard,
   wrapShip = (node) => node,
   dropState,
@@ -57,7 +60,7 @@ export function PlayerZone({
     <section className={`${styles.zone} ${styles.playerZone}`} data-zone="PlayerZone" aria-label="Zone du joueur">
       <div className={styles.zoneSlotShip}>{wrapShip(<TableShip {...ship} />)}</div>
       <div className={styles.zoneSlotBoard}>
-        <TableRow zone="PlayerBoard" cards={board} capacity={capacity} renderCard={renderCard} droppable dropState={dropState} dropSlot={dropSlot} />
+        <TableRow zone="PlayerBoard" cards={board} capacity={capacity} condemned={condemned} renderCard={renderCard} droppable dropState={dropState} dropSlot={dropSlot} />
       </div>
       <div className={styles.zoneSlotCargo}>
         <TableCargo

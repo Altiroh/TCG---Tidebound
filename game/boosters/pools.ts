@@ -50,6 +50,8 @@ export const BOOSTER_DUNGEON_ET_LADALLE = "dungeon-et-ladalle";
  * cartes Cra-Poiscail et un teaser Marionnette.
  */
 const DEFAUT: readonly string[] = [
+  "le-pont-sans-fin", // Le Pont Sans Fin — carte de plateau Légendaire (Lot 18, 09/10/2026)
+  "place-au-large", // Place au Large — carte de plateau Rare (Lot 18, 09/10/2026)
   "pluie-corrosive", // Pluie corrosive — Lande Légendaire (05/10/2026)
   "zone-de-repli", // Zone de repli — réponse aux Landes (05/10/2026)
   "marin-des-jetees", // Marin des Jetées
@@ -341,6 +343,9 @@ const VEILLEE_DES_DISPARUS: readonly string[] = [
  *    jour où le design donne des Abyssales au lot.
  */
 const NECESSAIRE_DU_MARIN: readonly string[] = [
+  // --- Cartes de plateau (Lot 18, 09/10/2026) : condamner les emplacements adverses ---
+  "ya-plus-de-place",
+  "le-barrage-des-egares",
   // --- Lande Légendaire et sa réponse (05/10/2026) ---
   "chaine-de-construction",
   "lever-lancre",

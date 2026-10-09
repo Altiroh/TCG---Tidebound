@@ -1,10 +1,9 @@
+import { freeBoardSlots } from "@/game/rules/slotEffects";
 import { withMarker, type MarkerId } from "@/game/cards/markers";
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { UNIT_CARD_TYPES, type CardInstance } from "@/game/cards/types";
-import { getShipDefinition } from "@/game/environment/shipData";
 import type { GameEvent } from "@/game/events/types";
 import { recordUnitArrivals, unitArrivalsLeft } from "@/game/rules/lande";
-import { slotsUsed } from "@/game/rules/ongoing";
 import type { GameState, PlayerId, PlayerState } from "@/game/state/types";
 
 /**
@@ -27,7 +26,7 @@ import type { GameState, PlayerId, PlayerState } from "@/game/state/types";
 export function boardRoomFor(state: GameState, playerId: PlayerId, cardId: string, turnNumber: number): number {
   const player = state.players.find((p) => p.id === playerId);
   if (!player) return 0;
-  const libres = Math.max(0, getShipDefinition(player.shipId).slotCount - slotsUsed(player.board));
+  const libres = freeBoardSlots(state, player);
   const unite = UNIT_CARD_TYPES.includes(getCardDefinition(cardId).type);
   return Math.min(libres, unite ? unitArrivalsLeft(state, playerId, turnNumber) : Infinity);
 }

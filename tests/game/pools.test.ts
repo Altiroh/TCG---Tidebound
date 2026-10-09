@@ -40,7 +40,9 @@ describe("pools de boosters", () => {
     // (59 → 66), 2 en B2 (54 → 56), 1 en B3 (52 → 53). Audit du même jour :
     // seules Carte détrempée, Calme trompeur (B1) et Aventurière en retard
     // (B2) restent dans les pools — B1 61, B2 55, B3 52.
-    expect(BOOSTER_POOLS[BOOSTER_DEFAUT]).toHaveLength(61);
+    // 09/10/2026 : Le Pont Sans Fin et Place au Large (cartes de plateau du
+    // Lot 18) rejoignent B1 (61 → 63).
+    expect(BOOSTER_POOLS[BOOSTER_DEFAUT]).toHaveLength(63);
     expect(BOOSTER_POOLS[BOOSTER_POISSONS_PAS_FRAIS]).toHaveLength(55);
     expect(BOOSTER_POOLS[BOOSTER_ETRANGETE_SOUS_MARINE]).toHaveLength(52);
   });

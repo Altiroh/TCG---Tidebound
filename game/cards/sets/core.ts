@@ -5,7 +5,7 @@ import { ECLATS_EN_SELLE_SET } from "@/game/cards/sets/eclatsEnSelle";
 import { ALTERES_SET } from "@/game/cards/sets/alteres";
 import { LANDES_SET } from "@/game/cards/sets/landes";
 import { LOT17_SET } from "@/game/cards/sets/lot17";
-import { LOT18_SET } from "@/game/cards/sets/lot18";
+import { LOT18_PLATEAU_SET, LOT18_SET } from "@/game/cards/sets/lot18";
 import { EQUIPPABLE_CARD_TYPES, type CardDefinition, type CardInstance } from "@/game/cards/types";
 
 /**
@@ -5466,6 +5466,8 @@ export const CORE_SET: CardDefinition[] = [
   ...LOT17_SET,
   // Lot 18 — Un Dead / Mort-vivant : le marqueur Mort (`game/cards/sets/lot18.ts`).
   ...LOT18_SET,
+  // Lot 18 — cartes de plateau génériques (emplacements condamnés / ajoutés).
+  ...LOT18_PLATEAU_SET,
 ];
 
 /**

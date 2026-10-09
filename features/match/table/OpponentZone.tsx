@@ -11,6 +11,8 @@ interface OpponentZoneProps {
   board: readonly (TableCardModel | undefined)[];
   /** Emplacements du Navire (4, 5 ou 6) — les vides restent dessinés. */
   capacity?: number;
+  /** Emplacements condamnés (cartes de plateau), affichés fermés. */
+  condemned?: number;
   renderCard: (card: TableCardModel) => ReactNode;
   /** Habillage du Navire (cible d'attaque : `data-drop="ship"`, surbrillance…). */
   wrapShip?: (ship: ReactNode) => ReactNode;
@@ -29,12 +31,12 @@ interface OpponentZoneProps {
  * colonnes de la scène avec la bande centrale et la rangée du joueur, donc
  * les deux plateaux et la piste de Marée restent sur le même axe.
  */
-export function OpponentZone({ ship, board, capacity, renderCard, wrapShip = (node) => node, deck, graveyard, graveyardTop, onGraveyardClick }: OpponentZoneProps) {
+export function OpponentZone({ ship, board, capacity, condemned, renderCard, wrapShip = (node) => node, deck, graveyard, graveyardTop, onGraveyardClick }: OpponentZoneProps) {
   return (
     <section className={`${styles.zone} ${styles.opponentZone}`} data-zone="OpponentZone" aria-label="Zone adverse">
       <div className={styles.zoneSlotShip}>{wrapShip(<TableShip {...ship} />)}</div>
       <div className={styles.zoneSlotBoard}>
-        <TableRow zone="OpponentBoard" cards={board} capacity={capacity} renderCard={renderCard} />
+        <TableRow zone="OpponentBoard" cards={board} capacity={capacity} condemned={condemned} renderCard={renderCard} />
       </div>
       <div className={styles.zoneSlotCargo}>
         <TableCargo side="opponent" ownerId={ship.ownerId} deck={deck} graveyard={graveyard} graveyardTop={graveyardTop} onGraveyardClick={onGraveyardClick} />

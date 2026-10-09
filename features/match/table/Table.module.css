@@ -4640,3 +4640,48 @@
     animation: none;
   }
 }
+
+/*
+ * Emplacement CONDAMNÉ (cartes de plateau, 09/10/2026) : une case fermée par
+ * les chaînes de Chaîne de construction, croisées, et un cadenas au centre
+ * (`public/assets/board/emplacement-condamne/cadenas.webp`). Ni cible de
+ * dépôt, ni case libre.
+ */
+.board .boardSlot .boardSlotCondemned:not(.boardSlotNext) {
+  position: relative;
+  overflow: hidden;
+  background: rgba(20, 10, 4, 0.4);
+  border-color: rgba(120, 40, 24, 0.6);
+}
+
+.condemnedChain {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 150%;
+  aspect-ratio: 1400 / 204;
+  background: url("/assets/landes/chaine-de-construction/chaine-segment-01.webp") center / contain no-repeat;
+  filter: drop-shadow(0 0.6cqw 0.8cqw rgba(0, 0, 0, 0.7));
+  pointer-events: none;
+}
+
+.condemnedChain[data-chain="a"] {
+  transform: translate(-50%, -50%) rotate(55deg);
+}
+
+.condemnedChain[data-chain="b"] {
+  background-image: url("/assets/landes/chaine-de-construction/chaine-segment-03.webp");
+  transform: translate(-50%, -50%) rotate(-55deg);
+}
+
+.condemnedLock {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 46%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  background: url("/assets/board/emplacement-condamne/cadenas.webp") center / contain no-repeat;
+  filter: drop-shadow(0 0.8cqw 1cqw rgba(0, 0, 0, 0.75));
+  pointer-events: none;
+}

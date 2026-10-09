@@ -1,3 +1,4 @@
+import { boardCapacity } from "@/game/rules/slotEffects";
 import { computeEffectiveStats } from "@/game/cards/stats";
 import { slotsUsed } from "@/game/rules/ongoing";
 import { getCardDefinition } from "@/game/cards/sets/core";
@@ -251,10 +252,10 @@ export function assertPlayableCondition(
 export function assertBoardNotFull(state: GameState, playerId: PlayerId): ValidationResult {
   const player = state.players.find((p) => p.id === playerId);
   if (!player) return fail("Joueur introuvable.");
-  const ship = getShipDefinition(player.shipId);
-  // Les effets en cours (Anomalies) n'occupent aucun Slot.
-  if (slotsUsed(player.board) >= ship.slotCount) {
-    return fail("Le plateau de ce joueur est déjà plein (emplacements limités par le Navire).");
+  // Les effets en cours (Anomalies) n'occupent aucun Slot. Emplacements
+  // condamnés ou ajoutés compris (`game/rules/slotEffects.ts`).
+  if (slotsUsed(player.board) >= boardCapacity(state, player)) {
+    return fail("Le plateau de ce joueur est déjà plein (emplacements limités par le Navire, ou condamnés).");
   }
   return ok();
 }

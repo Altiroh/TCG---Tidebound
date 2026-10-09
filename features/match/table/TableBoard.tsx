@@ -8,6 +8,8 @@ import {
   hasCombatToPlay,
   isOngoingEffect,
   slotsUsed,
+  boardCapacity,
+  condemnedSlots,
   findAssemblage,
   playCardRefusal,
   previewBreakReason,
@@ -273,8 +275,11 @@ export function TableBoard(props: TableBoardProps) {
   const viewerShip = getShipDefinition(viewer.shipId);
   const opponentShip = getShipDefinition(opponent.shipId);
   // Les rangs CASE PAR CASE (trous compris) : chaque carte à la case choisie à la pose.
-  const viewerRow = boardSlotLayout(boardPermanents(viewer.board), viewerShip.slotCount);
-  const opponentRow = boardSlotLayout(boardPermanents(opponent.board), opponentShip.slotCount);
+  // Emplacements condamnés ou ajoutés compris (cartes de plateau, `boardCapacity`).
+  const viewerCapacity = boardCapacity(state, viewer);
+  const opponentCapacity = boardCapacity(state, opponent);
+  const viewerRow = boardSlotLayout(boardPermanents(viewer.board), viewerCapacity);
+  const opponentRow = boardSlotLayout(boardPermanents(opponent.board), opponentCapacity);
   const tideState = state.environment.tideState;
 
   // ── Lande ──────────────────────────────────────────────────────────
@@ -453,7 +458,7 @@ export function TableBoard(props: TableBoardProps) {
   };
 
   // Les effets en cours (Anomalies) ne prennent pas de Slot.
-  const slotsFree = slotsUsed(viewer.board) < viewerShip.slotCount;
+  const slotsFree = slotsUsed(viewer.board) < viewerCapacity;
   /** La carte est-elle jouable, restriction du tutoriel comprise ? */
   const isPlayable = (instanceId: string) => canPlayCards && (props.playableHandCards?.has(instanceId) ?? true);
   const discardMode = props.handLimitDiscard ?? null;
@@ -1055,7 +1060,13 @@ export function TableBoard(props: TableBoardProps) {
           ref={stageRef}
           className={[pont ? `${styles.stageBare} ${styles.stagePont}` : "", gesture ? styles.gesturing : ""].join(" ").trim() || undefined}
           // Le plus grand des deux Navires fixe la largeur des cartes (cf. `--card-h-fit`).
-          style={{ ["--board-slots" as string]: Math.max(5, viewerShip.slotCount, opponentShip.slotCount) }}
+          style={{
+            ["--board-slots" as string]: Math.max(
+              5,
+              viewerCapacity + condemnedSlots(state, viewer),
+              opponentCapacity + condemnedSlots(state, opponent)
+            ),
+          }}
         >
           {!pont && (
             <>
@@ -1068,7 +1079,8 @@ export function TableBoard(props: TableBoardProps) {
           <OpponentZone
             ship={shipView(opponent, opponentShip)}
             board={opponentRow.map((card) => card && toModel(card))}
-            capacity={opponentShip.slotCount}
+            capacity={opponentCapacity}
+            condemned={condemnedSlots(state, opponent)}
             deck={opponent.deck.length}
             graveyard={opponent.graveyard.length}
             graveyardTop={graveyardTile(opponent)}
@@ -1196,7 +1208,8 @@ export function TableBoard(props: TableBoardProps) {
           <PlayerZone
             ship={shipView(viewer, viewerShip)}
             board={viewerRow.map((card) => card && toModel(card))}
-            capacity={viewerShip.slotCount}
+            capacity={viewerCapacity}
+            condemned={condemnedSlots(state, viewer)}
             deck={viewer.deck.length}
             graveyard={viewer.graveyard.length}
             graveyardTop={graveyardTile(viewer)}
@@ -1380,6 +1393,7 @@ export function TableBoard(props: TableBoardProps) {
         <ShipInfoSheet
           player={shipInfoFor === viewer.id ? viewer : opponent}
           ship={shipInfoFor === viewer.id ? viewerShip : opponentShip}
+          capacity={shipInfoFor === viewer.id ? viewerCapacity : opponentCapacity}
           ownerLabel={shipInfoFor === viewer.id ? "Ton Navire" : "Navire adverse"}
           onClose={() => setShipInfoFor(null)}
         />

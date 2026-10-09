@@ -58,6 +58,12 @@ type RuleId =
 // Dérive, Sabordée d'office au changement de Marée — avait disparu avec la
 // fenêtre `onTideAnnounced`.
 const EXCEPTIONS: Record<string, string> = {
+  "ya-plus-de-place:duration":
+    "« pendant 3 tours de table » est la durée de la CONDAMNATION (`tableTurns` de l'effet `condemnSlot`), pas celle " +
+    "de l'Objet : il se brise pour produire l'effet, il n'a pas à expirer.",
+  "le-pont-sans-fin:duration":
+    "« pendant 3 tours de table » est la durée de l'EMPLACEMENT AJOUTÉ (`tableTurns` de l'effet `addSlot`), pas " +
+    "celle de l'Objet : il se brise pour produire l'effet, il n'a pas à expirer.",
   "miss-franche-comte-1987-roublarde-aux-des-pipes:optional":
     "« Vous pouvez ajouter ou retirer 1 » est une OPTION offerte pendant le jet (`dieAdjustOncePerTurn`) : le " +
     "jet reste ouvert, le joueur choisit +1, -1 ou de valider sans rien changer. Rien ne s'applique d'office.",

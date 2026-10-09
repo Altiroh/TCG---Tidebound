@@ -6,6 +6,7 @@ import { deraisonAnchorDamage, deraisonDebt, naturalReasonRecovery, reasonCeilin
 import type { GameEvent } from "@/game/events/types";
 import { processSummonEnterTriggers, processTrigger } from "@/game/triggers/triggerBus";
 import { returnScheduledFromGraveyards } from "@/game/rules/graveyardReturn";
+import { expireSlotEffects } from "@/game/rules/slotEffects";
 import { markArrivalsBeforeTurnStart, pruneGraveyardArrivals } from "@/game/state/discard";
 import { RULES } from "@/game/rules/constants";
 import { landeRemovedKeywords, landeStrikesAtEndOfTurn } from "@/game/rules/lande";
@@ -267,6 +268,13 @@ export function finirTour(state: GameState, endingPlayerId: PlayerId, eventsAvan
     // en Fin de tour depuis la Phase principale s'il n'a rien à attaquer).
     phase: "mainPhase",
   };
+
+  // Emplacements condamnés ou ajoutés (cartes de plateau) : ceux qui
+  // échoient tombent à l'entame du tour ; un emplacement ajouté emporte la
+  // carte posée dessus au Cimetière.
+  const emplacements = expireSlotEffects(nextState);
+  nextState = emplacements.state;
+  events.push(...emplacements.events);
 
   // --- 1. ANNONCE de la Marée (décompte, progression, orientation) ---
   // L'état est committé, ses effets de TOUR ne sont pas encore appliqués :

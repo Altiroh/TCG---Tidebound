@@ -617,6 +617,11 @@ const LOT18_RARITY: Record<string, CardRarity> = {
   "le-cerf-volant": "common",
   "le-gardien-des-jouets": "rare",
   "ceux-den-bas": "rare",
+  // Cartes de plateau (génériques).
+  "ya-plus-de-place": "legendary",
+  "le-barrage-des-egares": "epic",
+  "le-pont-sans-fin": "legendary",
+  "place-au-large": "rare",
 };
 
 /**

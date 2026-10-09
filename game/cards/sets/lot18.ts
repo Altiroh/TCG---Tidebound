@@ -225,3 +225,66 @@ export const LOT18_SET: CardDefinition[] = [
     ],
   }),
 ];
+
+/**
+ * CARTES DE PLATEAU (Lot 18, génériques — tous archétypes) : elles agissent
+ * sur les EMPLACEMENTS du terrain (`game/rules/slotEffects.ts`). Un seul
+ * vocabulaire (décision du 09/10/2026) : condamner, libérer, ajouter.
+ * Exemplaires : Légendaires ×1, Épique et Rare ×2.
+ */
+export const LOT18_PLATEAU = "lot-18-plateau";
+
+export const LOT18_PLATEAU_SET: CardDefinition[] = [
+  {
+    id: "ya-plus-de-place",
+    name: "Y'a plus de place !",
+    type: "objet",
+    setCode: LOT18_PLATEAU,
+    cost: 6,
+    maxCopies: 1,
+    text: "Brisez cet Objet : condamnez un emplacement libre adverse pendant 3 tours de table.",
+    onBreakEffects: [{ type: "condemnSlot", target: { kind: "opponentPlayer" }, tableTurns: 3, cardId: "ya-plus-de-place" }],
+  },
+  {
+    id: "le-barrage-des-egares",
+    name: "Le Barrage des Égarés",
+    type: "structure",
+    setCode: LOT18_PLATEAU,
+    cost: 4,
+    health: 5,
+    maxCopies: 2,
+    durationTurns: 4,
+    text:
+      "Durée : 4 tours de table. À son arrivée, condamnez un emplacement libre adverse. Il reste condamné tant que " +
+      "cette Structure est en jeu.",
+    onPlayEffects: [{ type: "condemnSlot", target: { kind: "opponentPlayer" }, whileSourceInPlay: true, cardId: "le-barrage-des-egares" }],
+  },
+  {
+    id: "le-pont-sans-fin",
+    name: "Le Pont Sans Fin",
+    type: "objet",
+    setCode: LOT18_PLATEAU,
+    cost: 6,
+    maxCopies: 1,
+    text:
+      "Brisez cet Objet : ajoutez 1 emplacement à votre terrain pendant 3 tours de table. Quand il disparaît, la " +
+      "carte posée dessus part au Cimetière.",
+    onBreakEffects: [{ type: "addSlot", target: { kind: "controllerPlayer" }, tableTurns: 3, cardId: "le-pont-sans-fin" }],
+  },
+  {
+    id: "place-au-large",
+    name: "Place au Large",
+    type: "objet",
+    setCode: LOT18_PLATEAU,
+    cost: 3,
+    maxCopies: 2,
+    text:
+      "Brisez cet Objet : libérez un emplacement condamné de votre terrain. Si aucun emplacement n'est condamné, " +
+      "piochez 1 carte.",
+    onBreakEffects: [
+      // La pioche se lit AVANT la libération : « si aucun n'est condamné », au moment où l'Objet se brise.
+      { type: "draw", target: { kind: "controllerPlayer" }, amount: flat(1), conditionControllerHasCondemnedSlot: false },
+      { type: "freeCondemnedSlot", target: { kind: "controllerPlayer" } },
+    ],
+  },
+];

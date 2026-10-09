@@ -56,6 +56,18 @@ export type EffectType =
   /** « Placez N marqueurs Niveau sur [cible] » (Lot 17, `game/rules/levels.ts`) : au seuil de sa lignée, la carte est remplacée. */
   | "addLevelMarker"
   /**
+   * « Condamnez un emplacement libre adverse » (cartes de plateau,
+   * `game/rules/slotEffects.ts`) : le joueur ciblé perd un emplacement
+   * utilisable, pour `tableTurns` tours de table ou tant que la source est en
+   * jeu (`whileSourceInPlay`). Sans emplacement libre, ou s'il en a déjà un
+   * condamné (plafond), rien.
+   */
+  | "condemnSlot"
+  /** « Ajoutez 1 emplacement à votre terrain pendant N tours de table » (Le Pont Sans Fin). */
+  | "addSlot"
+  /** « Libérez un emplacement condamné de votre terrain » (Place au Large) : la condamnation tombe, quelle qu'en soit la source. */
+  | "freeCondemnedSlot"
+  /**
    * « Placez un marqueur Mort sur une unité » (Lot 18, `game/cards/markers.ts`) :
    * pose `marker` sur chaque cible, dans la limite de ce que sa règle
    * permet (un seul marqueur Mort par unité).
@@ -1134,6 +1146,22 @@ export interface EffectDefinition {
    * vous le faites, piochez 1" — sans carte à défausser, pas de pioche).
    */
   conditionControllerHandAtLeast?: number;
+
+  /**
+   * « Si aucun emplacement n'est condamné » (Place au Large) : `false` ne
+   * résout cet effet que si le terrain du contrôleur n'a AUCUN emplacement
+   * condamné, `true` que s'il en a un (`game/rules/slotEffects.ts`).
+   */
+  conditionControllerHasCondemnedSlot?: boolean;
+
+  /**
+   * `condemnSlot` / `addSlot` : durée en TOURS DE TABLE (« pendant 3 tours
+   * de table ») — l'effet tombe à l'entame du tour où son contrôleur aurait
+   * joué ce nombre de tours.
+   */
+  tableTurns?: number;
+  /** `condemnSlot` : la condamnation dure tant que la carte source est en jeu (Le Barrage des Égarés). */
+  whileSourceInPlay?: boolean;
 
   /**
    * « si vous avez 1 carte ou moins en main » (Dernières Réserves, Lot 14) —

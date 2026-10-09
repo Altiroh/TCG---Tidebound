@@ -12,6 +12,8 @@ interface PreviewBoardProps {
   cards: readonly (TableCardModel | undefined)[];
   /** Nombre d'emplacements dessinés, cartes absentes comprises. */
   capacity?: number;
+  /** Emplacements CONDAMNÉS (cartes de plateau) : affichés fermés, après les cases utilisables. */
+  condemned?: number;
   /**
    * Rendu d'une carte (aujourd'hui `PreviewGameCard`). Le rang ne connaît
    * que ses emplacements : la carte remplit le sien (`--card-w`).
@@ -38,7 +40,7 @@ interface PreviewBoardProps {
  * comprises. Le rang entier reste une cible de repli (`data-drop="board"`,
  * première case libre) pour que lâcher entre deux cases ne rate jamais.
  */
-export function TableRow({ zone, cards, capacity = BOARD_CAPACITY, renderCard, droppable = false, dropState = "idle", dropSlot }: PreviewBoardProps) {
+export function TableRow({ zone, cards, capacity = BOARD_CAPACITY, condemned = 0, renderCard, droppable = false, dropState = "idle", dropSlot }: PreviewBoardProps) {
   const slots = Array.from({ length: Math.max(capacity, cards.length) }, (_, index) => cards[index]);
   const nextFree = slots.findIndex((card, index) => card === undefined && index < capacity);
   // La case mise en évidence : celle que le joueur vise si elle est libre.
@@ -61,6 +63,16 @@ export function TableRow({ zone, cards, capacity = BOARD_CAPACITY, renderCard, d
           ) : (
             <div className={`${styles.boardSlotEmpty} ${dropState !== "idle" && index === highlighted ? styles.boardSlotNext : ""}`} />
           )}
+        </div>
+      ))}
+      {Array.from({ length: condemned }, (_, index) => (
+        <div key={`${zone}-condamne-${index}`} className={styles.boardSlot} title="Emplacement condamné">
+          <div className={`${styles.boardSlotEmpty} ${styles.boardSlotCondemned}`} aria-label="Emplacement condamné">
+            {/* Les chaînes de Chaîne de construction, en croix, et le cadenas au centre. */}
+            <span aria-hidden className={styles.condemnedChain} data-chain="a" />
+            <span aria-hidden className={styles.condemnedChain} data-chain="b" />
+            <span aria-hidden className={styles.condemnedLock} />
+          </div>
         </div>
       ))}
     </div>
