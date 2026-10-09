@@ -98,7 +98,7 @@ export const TOKEN_SET: CardDefinition[] = [
     id: "peon-altere",
     name: "Péon Altéré",
     type: "marin",
-    subtypes: ["humain"],
+    subtypes: ["metahumain"],
     subtype: "altere",
     archetype: "alteres",
     token: true,

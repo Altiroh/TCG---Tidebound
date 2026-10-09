@@ -26,7 +26,8 @@ export type ArchetypeId =
   | "sentinelle-chromatique"
   | "alteres"
   | "opalin"
-  | "dungeon-et-ladalle";
+  | "dungeon-et-ladalle"
+  | "theatre-englouti";
 
 /** Libellé humain — outils de design, journaux, tests. Jamais rendu sur une carte. */
 export const ARCHETYPE_LABELS: Record<ArchetypeId, string> = {
@@ -61,6 +62,10 @@ export const ARCHETYPE_LABELS: Record<ArchetypeId, string> = {
   // Ladalle », dont les cartes lancent des dés (`game/rules/dice.ts`). Les
   // Opalins y reçoivent leur banc.
   "dungeon-et-ladalle": "Dungeon et Ladalle",
+  // La troupe des Marionnettes (Lots 11 et 12), décision du 09/10/2026 : la
+  // famille s'affiche en bas de la carte comme les autres ; « Marionnette »
+  // reste le sous-type que ses effets visent.
+  "theatre-englouti": "Théâtre Englouti",
 };
 
 /**

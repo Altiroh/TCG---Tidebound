@@ -95,6 +95,11 @@ beforeEach(() => {
   db.rpcCalls.length = 0;
   sessionUserId = USER;
   seedReferenceData();
+  // Depuis le 09/10/2026, un préconstruit ne se joue que débloqué : chaque
+  // joueur de ces parties a débloqué les deux listes qu'il emmène.
+  for (const user_id of [USER, OPPONENT, "33333333-3333-3333-3333-333333333333"]) {
+    for (const deck of [DECK, OTHER_DECK]) db.table("player_deck_unlocks").push({ user_id, deck_id: deck.id, source: "precon_token" });
+  }
   vi.spyOn(console, "error").mockImplementation(() => {});
   vi.spyOn(console, "warn").mockImplementation(() => {});
 });
@@ -167,6 +172,18 @@ async function playToTheEnd(matchId: string, userId: string, limit = 400, { aged
 }
 
 describe("boucle complète — partie contre bot, arbitrée côté serveur", () => {
+  it("refuse un préconstruit que le joueur n'a pas débloqué — le bot, lui, garde tout le rayon", async () => {
+    db.tables["player_deck_unlocks"] = db.table("player_deck_unlocks").filter((row) => !(row.user_id === USER && row.deck_id === DECK.id));
+    const refused = await startBotMatch(DECK.id, OTHER_DECK.id, "facile");
+    expect(refused.ok).toBe(false);
+    expect(refused.error).toMatch(/Jeton de Préconstruit/);
+    expect(db.table("matches")).toHaveLength(0);
+    // Le deck ADVERSE du bot n'a pas à être débloqué par le joueur.
+    db.tables["player_deck_unlocks"] = db.table("player_deck_unlocks").filter((row) => !(row.user_id === USER && row.deck_id === OTHER_DECK.id));
+    db.table("player_deck_unlocks").push({ user_id: USER, deck_id: DECK.id, source: "borrowed" });
+    expect((await startBotMatch(DECK.id, OTHER_DECK.id, "facile")).ok).toBe(true);
+  });
+
   it("connexion → deck → partie → fin → récompenses → XP → quêtes → collection", async () => {
     maitriserAlea(1);
     // --- lancement ------------------------------------------------------

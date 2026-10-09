@@ -290,13 +290,15 @@ export function NewMatchScreen({
         // « Préconstruits » étaient deux onglets pour la même chose, qui ne
         // se distinguaient que par la façon de l'obtenir.
         //
-        // TEMPORAIRE : tous sont ouverts pour tester, sans dépenser de
-        // Jeton. Le serveur les accepte déjà tous (`findCatalogDeck`).
+        // Depuis le 09/10/2026, seuls les préconstruits DÉBLOQUÉS se jouent
+        // (le deck offert à l'arrivée, ou un Jeton de Préconstruit) ; le
+        // serveur refuse les autres (`resolveMatchDeck`, refus « locked »).
+        // Les autres restent visibles, pour qu'on sache ce qu'un Jeton ouvre.
         id: "precon",
         label: "Préconstruits",
-        hint: "Douze plans, un par grande mécanique — cartes prêtées tant que tu ne les possèdes pas.",
+        hint: "Douze plans, un par grande mécanique. Chacun se débloque avec un Jeton de Préconstruit, depuis l'écran Decks.",
         decks: PRECON_DECKS,
-        issueFor: () => null,
+        issueFor: (deck) => (unlocked.has(deck.id) ? null : "À débloquer avec un Jeton de Préconstruit (écran Decks)."),
       },
     ],
     [personalDecks, personalValidity, unlocked]

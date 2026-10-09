@@ -4,7 +4,7 @@ import { createGameState, type BotDifficulty } from "@/game";
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import { generateInviteCode } from "@/features/online/inviteCode";
 import { BOT_PLAYER_ID } from "@/features/matches/matchStore";
-import { findCatalogDeck, resolveMatchDeck } from "@/features/decks/matchDeck";
+import { findCatalogDeck, LOCKED_PRECON_MESSAGE, resolveMatchDeck } from "@/features/decks/matchDeck";
 import { getSessionUser } from "@/lib/supabase/sessionUser";
 
 const DIFFICULTIES: readonly BotDifficulty[] = ["facile", "moyen", "difficile"];
@@ -68,6 +68,7 @@ async function createBotMatch(deckId: string, botDeckId: string, difficulty: Bot
     if (resolved.reason === "invalid") {
       return { ok: false, error: `Ce deck n'est pas jouable en l'état : ${resolved.detail}` };
     }
+    if (resolved.reason === "locked") return { ok: false, error: LOCKED_PRECON_MESSAGE };
     return { ok: false, error: "Deck inconnu." };
   }
   const playerDeck = resolved.deck;

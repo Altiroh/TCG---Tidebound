@@ -46,6 +46,10 @@ beforeEach(() => {
     { id: BOB, display_name: "Bob", friend_code: "BOBBY234" },
     { id: CAROL, display_name: "Carol", friend_code: "CAROL234" }
   );
+  // Un préconstruit ne se joue que débloqué (09/10/2026) : chacun a les deux listes de ces défis.
+  for (const user_id of [ALICE, BOB, CAROL]) {
+    for (const deck of PLAYABLE_DECKS.slice(0, 2)) db.table("player_deck_unlocks").push({ user_id, deck_id: deck.id, source: "precon_token" });
+  }
   vi.spyOn(console, "error").mockImplementation(() => {});
 });
 

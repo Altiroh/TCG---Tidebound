@@ -79,7 +79,7 @@ export const LANDES_SET: CardDefinition[] = [
     id: "cartographe-opalin-mefiant",
     name: "Cartographe Opalin méfiant",
     type: "creature",
-    subtypes: ["bete", "eclaireur"],
+    subtypes: ["mythique"],
     archetype: "opalin",
     showsArchetype: true,
     cost: 3,

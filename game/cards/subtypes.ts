@@ -12,6 +12,10 @@ import type { CardDefinition } from "@/game/cards/types";
  * Chevalier ; « vos Pirates gagnent +1 Puissance » touche les Pirates de
  * toutes les familles).
  *
+ * Le vocabulaire ne garde que ce qu'une carte porte (ménage du 09/10/2026 :
+ * Marchand, Chasseur, Spectral, Trésor, Arme, Armure, Fortification
+ * retirés faute de porteur) ; un sous-type revient avec sa première carte.
+ *
  * Une carte en porte au plus `MAX_SUBTYPES`, affichés sous son type. Le
  * vocabulaire est FERMÉ : un sous-type nouveau s'ajoute ici, avec son
  * libellé, jamais en texte libre sur une carte (pas de synonymes — « Oiseau »
@@ -40,36 +44,38 @@ export const SUBTYPE_LABELS = {
   amphibien: "Amphibien",
   squelette: "Squelette",
   crustace: "Crustacé",
-  // Ajouts du 09/10/2026, pour couvrir tout le bestiaire existant.
+  // Ajouts du 09/10/2026, validés carte par carte (Atelier des sous-types).
   bete: "Bête",
   reptile: "Reptile",
   monstre: "Monstre",
+  metahumain: "Métahumain",
+  "homme-poisson": "Homme-poisson",
+  "homme-bete": "Homme-bête",
+  gobelin: "Gobelin",
+  gnome: "Gnome",
+  nain: "Nain",
+  troll: "Troll",
+  geant: "Géant",
+  dragon: "Dragon",
+  fantome: "Fantôme",
+  "mort-vivant": "Mort-vivant",
 
   // --- Rôles ------------------------------------------------------------
   pirate: "Pirate",
   chevalier: "Chevalier",
-  marchand: "Marchand",
   gardien: "Gardien",
-  chasseur: "Chasseur",
-  // Ajouts du 09/10/2026 : les métiers de bord et les classes d'aventure.
-  officier: "Officier",
-  artisan: "Artisan",
+  // Ajouts du 09/10/2026, validés carte par carte (Atelier des sous-types).
   soigneur: "Soigneur",
   mage: "Mage",
-  eclaireur: "Éclaireur",
-  aventurier: "Aventurier",
+  hero: "Héros",
+  voleur: "Voleur",
+  necromancien: "Nécromancien",
 
   // --- Natures ----------------------------------------------------------
-  spectral: "Spectral",
   mecanique: "Mécanique",
   maudit: "Maudit",
   sauvage: "Sauvage",
-
-  // --- Objets, Équipements, Structures ------------------------------------
-  tresor: "Trésor",
-  arme: "Arme",
-  armure: "Armure",
-  fortification: "Fortification",
+  mythique: "Mythique",
 } as const;
 
 export type SubtypeId = keyof typeof SUBTYPE_LABELS;
@@ -77,10 +83,12 @@ export type SubtypeId = keyof typeof SUBTYPE_LABELS;
 /** Familles du vocabulaire, pour les outils (filtres de collection, conformité). */
 export const SUBTYPE_FAMILIES: Readonly<Record<string, readonly SubtypeId[]>> = {
   jeu: ["marionnette", "un-dead", "cavalerie", "altere", "eclat-chromatique", "objet-flottant", "objet"],
-  especes: ["volatile", "humain", "poisson", "amphibien", "squelette", "crustace", "bete", "reptile", "monstre"],
-  roles: ["pirate", "chevalier", "marchand", "gardien", "chasseur", "officier", "artisan", "soigneur", "mage", "eclaireur", "aventurier"],
-  natures: ["spectral", "mecanique", "maudit", "sauvage"],
-  objets: ["tresor", "arme", "armure", "fortification"],
+  especes: [
+    "volatile", "humain", "poisson", "amphibien", "squelette", "crustace", "bete", "reptile", "monstre",
+    "metahumain", "homme-poisson", "homme-bete", "gobelin", "gnome", "nain", "troll", "geant", "dragon", "fantome", "mort-vivant",
+  ],
+  roles: ["pirate", "chevalier", "gardien", "soigneur", "mage", "hero", "voleur", "necromancien"],
+  natures: ["mecanique", "maudit", "sauvage", "mythique"],
 };
 
 /** Au plus trois sous-types par carte (Notion : « deux visibles, sauf exception »). */
@@ -102,13 +110,24 @@ export function subtypesOf(def: Pick<CardDefinition, "subtype" | "subtypes">): s
 }
 
 /**
- * Sous-types IMPRIMÉS sous le type : tous, sauf celui qui répète l'archétype
- * (Un Dead, Cavalerie — déjà écrits en bas de la carte), dans la limite de
- * `MAX_SUBTYPES`.
+ * Familles historiques qui ne sont, pour le joueur, que l'ARCHÉTYPE de la
+ * carte (décision du 09/10/2026) : Un Dead, Altérés, Cavalerie. Le moteur
+ * garde ce sous-type — les textes et les effets le visent (« un Altéré »,
+ * « vos Un Dead ») —, mais il ne s'imprime pas sous le type : l'archétype
+ * est déjà écrit en bas de la carte. Marionnette, elle, reste un vrai
+ * sous-type, imprimé : l'archétype de sa troupe est le Théâtre Englouti.
  */
+const ARCHETYPE_FAMILY_SUBTYPES: Readonly<Record<string, string>> = {
+  "un-dead": "un-dead",
+  alteres: "altere",
+  cavalerie: "cavalerie",
+};
+
+/** Sous-types IMPRIMÉS sous le type : tous, sauf la famille qui n'est que l'archétype, dans la limite de `MAX_SUBTYPES`. */
 export function displayedSubtypes(def: Pick<CardDefinition, "subtype" | "subtypes" | "archetype">): string[] {
+  const hidden = def.archetype ? ARCHETYPE_FAMILY_SUBTYPES[def.archetype] : undefined;
   return subtypesOf(def)
-    .filter((subtype) => subtype !== def.archetype)
+    .filter((subtype) => subtype !== hidden)
     .slice(0, MAX_SUBTYPES);
 }
 

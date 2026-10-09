@@ -23,10 +23,11 @@ describe("catalogue du Lot 11", () => {
     expect(LOT_11.filter((def) => def.id.endsWith("-abyssal"))).toHaveLength(2);
   });
 
-  it("marque la troupe d'un SOUS-TYPE, jamais d'un archétype", () => {
-    // Un archétype ferait compter les Marionnettes dans les seuils
-    // Cra-Poiscail (`countArchetypeUnits`), ce qui n'a aucun sens.
-    for (const def of LOT_11) expect(def.archetype).toBeUndefined();
+  it("marque la troupe du sous-type Marionnette et de l'archétype Théâtre Englouti", () => {
+    // Décision du 09/10/2026 : la famille s'affiche en bas de la carte comme
+    // les autres. Son archétype est le SIEN — elle ne gonfle aucun seuil
+    // Cra-Poiscail (`countArchetypeUnits` compte archétype par archétype).
+    for (const def of LOT_11) expect(def.archetype).toBe("theatre-englouti");
     const standard = LOT_11.filter((def) => !def.id.endsWith("-abyssal"));
     for (const def of standard) expect(def.subtype).toBe(MARIONNETTE);
   });

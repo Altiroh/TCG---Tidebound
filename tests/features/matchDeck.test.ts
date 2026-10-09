@@ -25,6 +25,8 @@ const deckRows: DeckRow[] = [];
 const deckCardRows: { deck_id: string; card_id: string; quantity: number }[] = [];
 /** Collection des joueurs (`player_cards`). */
 const ownedRows: { user_id: string; card_id: string; quantity: number }[] = [];
+/** Préconstruits débloqués (`player_deck_unlocks`). */
+const unlockRows: { user_id: string; deck_id: string }[] = [];
 /** Erreur simulée sur la prochaine lecture — pour le cas « base injoignable ». */
 let readError: string | null = null;
 
@@ -47,6 +49,10 @@ function fakeService() {
         },
         maybeSingle() {
           if (readError) return Promise.resolve({ data: null, error: { message: readError } });
+          if (table === "player_deck_unlocks") {
+            const unlock = unlockRows.find((row) => row.user_id === filters.user_id && row.deck_id === filters.deck_id);
+            return Promise.resolve({ data: unlock ?? null, error: null });
+          }
           const row = deckRows.find(
             (deck) =>
               Object.entries(filters).every(([column, value]) => deck[column as keyof DeckRow] === value) &&
@@ -104,15 +110,26 @@ beforeEach(() => {
   deckRows.length = 0;
   deckCardRows.length = 0;
   ownedRows.length = 0;
+  unlockRows.length = 0;
   readError = null;
 });
 
 describe("resolveMatchDeck", () => {
-  it("rend une liste du jeu sans interroger la base", async () => {
+  it("rend un préconstruit DÉBLOQUÉ par ce joueur, et refuse les autres", async () => {
     const catalog = PLAYABLE_DECKS[0]!;
-    const result = await resolveMatchDeck(OWNER, catalog.id);
-    expect(result).toEqual({ ok: true, deck: catalog });
+    // Décision du 09/10/2026 : fin de l'accès libre, un préconstruit se débloque (Jeton).
+    expect(await resolveMatchDeck(OWNER, catalog.id)).toEqual({ ok: false, reason: "locked" });
+
+    unlockRows.push({ user_id: OWNER, deck_id: catalog.id });
+    expect(await resolveMatchDeck(OWNER, catalog.id)).toEqual({ ok: true, deck: catalog });
     expect(findCatalogDeck(catalog.id)).toBe(catalog);
+    // Le déblocage est personnel.
+    expect(await resolveMatchDeck(STRANGER, catalog.id)).toEqual({ ok: false, reason: "locked" });
+  });
+
+  it("dit « serveur indisponible » plutôt que « verrouillé » quand les déblocages ne se lisent pas", async () => {
+    readError = "panne";
+    expect(await resolveMatchDeck(OWNER, PLAYABLE_DECKS[0]!.id)).toEqual({ ok: false, reason: "unavailable" });
   });
 
   it("rend le deck personnel de son propriétaire, un exemplaire par carte", async () => {

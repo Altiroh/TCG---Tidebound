@@ -6,7 +6,11 @@ import { missingCopiesMessage, ownedPartOf } from "@/features/decks/deckComposit
  * Résolution SERVEUR du deck qu'un joueur emmène dans une partie arbitrée.
  *
  * Deux origines, une seule sortie :
- *   - une liste du jeu (`PLAYABLE_DECKS`) — un préconstruit ;
+ *   - une liste du jeu (`PLAYABLE_DECKS`) — un préconstruit, jouable
+ *     seulement s'il est DÉBLOQUÉ pour ce joueur (`player_deck_unlocks` :
+ *     le deck offert à l'arrivée, ou un Jeton de Préconstruit dépensé).
+ *     Décision du 09/10/2026 : fin de l'accès libre à tous les
+ *     préconstruits, ouvert le temps des essais ;
  *   - un deck MONTÉ par le joueur (`player_decks`), relu ici carte par
  *     carte.
  *
@@ -32,12 +36,17 @@ import { missingCopiesMessage, ownedPartOf } from "@/features/decks/deckComposit
 export type MatchDeckRejection =
   /** Aucun deck de ce nom, ni au catalogue ni chez ce joueur. */
   | { reason: "unknown" }
+  /** Préconstruit que ce joueur n'a pas débloqué (Jeton de Préconstruit). */
+  | { reason: "locked" }
   /** Le deck existe mais n'est pas jouable en l'état (taille, exemplaires, navire, cartes non possédées). */
   | { reason: "invalid"; detail: string }
   /** La base n'a pas répondu : ce n'est pas la faute du deck. */
   | { reason: "unavailable" };
 
 export type MatchDeckResult = { ok: true; deck: DeckList } | ({ ok: false } & MatchDeckRejection);
+
+/** Message montré quand un préconstruit n'est pas débloqué — partagé par toutes les entrées en partie. */
+export const LOCKED_PRECON_MESSAGE = "Ce préconstruit n'est pas encore débloqué : il s'obtient avec un Jeton de Préconstruit, depuis l'écran Decks.";
 
 /** Les identifiants du catalogue ne sont pas des uuid : inutile d'interroger `player_decks` avec, Postgres refuserait la comparaison. */
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -56,11 +65,24 @@ export function findCatalogDeck(deckId: string): DeckList | undefined {
  */
 export async function resolveMatchDeck(userId: string, deckId: string): Promise<MatchDeckResult> {
   const fromCatalog = findCatalogDeck(deckId);
-  if (fromCatalog) return { ok: true, deck: fromCatalog };
-  if (!UUID.test(deckId)) return { ok: false, reason: "unknown" };
+  if (!fromCatalog && !UUID.test(deckId)) return { ok: false, reason: "unknown" };
 
   try {
     const service = createSupabaseServiceRoleClient();
+
+    if (fromCatalog) {
+      const { data: unlock, error: unlockError } = await service
+        .from("player_deck_unlocks")
+        .select("deck_id")
+        .eq("user_id", userId)
+        .eq("deck_id", deckId)
+        .maybeSingle();
+      if (unlockError) {
+        console.error("[resolveMatchDeck] Lecture des déblocages impossible :", unlockError.message);
+        return { ok: false, reason: "unavailable" };
+      }
+      return unlock ? { ok: true, deck: fromCatalog } : { ok: false, reason: "locked" };
+    }
 
     // Le filtre porte le `user_id` : la clé service_role passe outre RLS, la
     // propriété doit donc être vérifiée dans la requête elle-même.

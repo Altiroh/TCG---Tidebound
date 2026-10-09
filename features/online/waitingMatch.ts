@@ -1,5 +1,5 @@
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
-import { resolveMatchDeck, type MatchDeckResult } from "@/features/decks/matchDeck";
+import { LOCKED_PRECON_MESSAGE, resolveMatchDeck, type MatchDeckResult } from "@/features/decks/matchDeck";
 import { generateInviteCode } from "@/features/online/inviteCode";
 
 /**
@@ -13,6 +13,7 @@ import { generateInviteCode } from "@/features/online/inviteCode";
 export function deckRejection(result: MatchDeckResult & { ok: false }): string {
   if (result.reason === "invalid") return `Ce deck n'est pas jouable en l'état : ${result.detail}`;
   if (result.reason === "unavailable") return "Le serveur ne peut pas lire ton deck pour l'instant — réessaie dans un instant.";
+  if (result.reason === "locked") return LOCKED_PRECON_MESSAGE;
   return "Deck inconnu.";
 }
 

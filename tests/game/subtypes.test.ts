@@ -37,9 +37,14 @@ describe("sous-types", () => {
     expect(hasSubtype(CARD_DATABASE.get("pulcinella-gonfle")!, "marionnette")).toBe(true);
   });
 
-  it("à l'affichage, le sous-type qui répète l'archétype s'efface (il est écrit en bas de la carte)", () => {
-    expect(displayedSubtypes(CARD_DATABASE.get("ptit-bout")!)).toEqual(["spectral"]);
-    expect(displayedSubtypes(CARD_DATABASE.get("pulcinella-gonfle")!)).toEqual(["marionnette", "maudit"]);
+  it("à l'affichage, la famille qui n'est que l'archétype s'efface (elle est écrite en bas de la carte)", () => {
+    // Un Dead, Altérés, Cavalerie : archétypes pour le joueur, sous-types pour le moteur.
+    expect(displayedSubtypes(CARD_DATABASE.get("ptit-bout")!)).toEqual(["mort-vivant"]);
+    expect(displayedSubtypes(CARD_DATABASE.get("le-feral")!)).toEqual(["sauvage", "metahumain"]);
+    expect(hasSubtype(CARD_DATABASE.get("le-feral")!, "altere")).toBe(true);
+    // Marionnette reste un sous-type imprimé ; la troupe est l'archétype Théâtre Englouti.
+    expect(displayedSubtypes(CARD_DATABASE.get("il-capitano-naufrage")!)).toEqual(["marionnette", "pirate"]);
+    expect(CARD_DATABASE.get("trappe-du-souffleur")!.archetype).toBe("theatre-englouti");
     expect(displayedSubtypes({ subtype: "marionnette", subtypes: ["humain", "pirate", "maudit"] })).toHaveLength(MAX_SUBTYPES);
   });
 });
