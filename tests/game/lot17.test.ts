@@ -225,7 +225,8 @@ describe("la lignée LV et l'Île-Tortue Opaline", () => {
     const state = table({ shipId: "ile-tortue-opaline", hand: [seren], reason: 8, reasonMax: 8 }, { board: [taverne] });
     const r = jouer(state, seren, taverne.instanceId);
     ok(r);
-    expect(joueur(r.state).reason).toBe(8 - (5 - 1));
+    // Seren coûte 6 depuis le 09/10/2026 (Opalins à 6 Raison, sauf LV1 et Cartographe).
+    expect(joueur(r.state).reason).toBe(8 - (6 - 1));
     expect(joueur(r.state).armor).toBe(1);
   });
 });
