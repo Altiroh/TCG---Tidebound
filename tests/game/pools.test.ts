@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CORE_SET, UN_DEAD } from "@/game/cards/sets/core";
+import { LOT18_UN_DEAD } from "@/game/cards/sets/lot18";
 import {
   BOOSTER_BIENVENUE,
   BOOSTER_DEFAUT,
@@ -64,10 +65,15 @@ describe("pools de boosters", () => {
   it("donne à La Veillée des Disparus son noyau Un Dead et des rééditions, pas un booster fermé", () => {
     const pool = BOOSTER_POOLS[BOOSTER_VEILLEE_DES_DISPARUS]!;
     const unDead = pool.filter((id) => CORE_SET.find((def) => def.id === id)?.subtype === UN_DEAD);
-    // Le cadrage du lot demande « environ 16 à 18 entrées Un Dead en
-    // comptant les variantes ».
-    expect(unDead.length).toBeGreaterThanOrEqual(16);
-    expect(unDead.length).toBeLessThanOrEqual(18);
+    // Le cadrage du Lot 13 demande « environ 16 à 18 entrées Un Dead en
+    // comptant les variantes » ; le Lot 18 (09/10/2026) y ajoute ses dix
+    // cartes du marqueur Mort, sur décision du propriétaire.
+    const lot13 = unDead.filter((id) => CORE_SET.find((def) => def.id === id)?.setCode !== LOT18_UN_DEAD);
+    expect(lot13.length).toBeGreaterThanOrEqual(16);
+    expect(lot13.length).toBeLessThanOrEqual(18);
+    const lot18 = CORE_SET.filter((def) => def.setCode === LOT18_UN_DEAD).map((def) => def.id);
+    expect(lot18).toHaveLength(10);
+    expect(lot18.filter((id) => !pool.includes(id))).toEqual([]);
     // …et assez de compléments pour que le booster ne soit pas mono-famille.
     expect(pool.length - unDead.length).toBeGreaterThanOrEqual(10);
   });
