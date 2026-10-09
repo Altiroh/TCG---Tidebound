@@ -789,18 +789,19 @@ describe("tour du bot par tranches — la fin de tour répond sans attendre le b
 });
 
 describe("quête « Nouvel équipage » : débloquer un préconstruit", () => {
-  it("le déblocage par Jeton crédite la journalière, une seule fois, et ouvre le deck en partie", async () => {
+  it("le déblocage par Jeton crédite l'hebdomadaire, une seule fois, et ouvre le deck en partie", async () => {
     const { unlockPreconstructedDeck } = await import("@/features/decks/catalogActions");
     const { questPeriodKey } = await import("@/game/quests");
     const third = PLAYABLE_DECKS[2]!;
     db.table("player_progression").push({ user_id: USER, xp_total: 0, level: 1, precon_tokens: 1 });
-    // La journalière du jour, attribuée (la rotation la tire selon le joueur et le jour).
-    const quest = db.one("quests", { code: "daily_unlock_precon_1" })!;
+    // L'hebdomadaire de la semaine, attribuée (la rotation la tire selon le joueur et la semaine).
+    const quest = db.one("quests", { code: "weekly_unlock_precon_1" })!;
+    expect(quest.quest_type).toBe("weekly");
     expect(quest.objective_key).toBe("unlock_precon_decks");
     db.table("player_quest_progress").push({
       user_id: USER,
       quest_id: quest.id,
-      period_key: questPeriodKey("daily", new Date()),
+      period_key: questPeriodKey("weekly", new Date()),
       progress_value: 0,
       progress_meta: [],
       completed_at: null,

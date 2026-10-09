@@ -281,7 +281,9 @@ export const QUEST_CATALOG: readonly QuestDefinition[] = [
   // Remplace « Essai en mer » (essai d'un préconstruit contre le bot), retiré
   // avec les essais le 09/10/2026 : un préconstruit se débloque désormais
   // avant de se jouer. Créditée au déblocage, hors partie (`recordQuestEvent`).
-  { code: "daily_unlock_precon_1", name: "Nouvel équipage", category: "decks", questType: "daily", objectiveKey: "unlock_precon_decks", targetValue: 1, ...DAILY.light, botProgressAllowed: true },
+  // HEBDOMADAIRE : les Jetons sont rares (niveaux 10, 20…), une journalière
+  // serait restée bloquée la plupart des jours.
+  { code: "weekly_unlock_precon_1", name: "Nouvel équipage", category: "decks", questType: "weekly", objectiveKey: "unlock_precon_decks", targetValue: 1, ...WEEKLY.standard, botProgressAllowed: true },
   { code: "weekly_distinct_decks_3", name: "Un peu de tout", category: "decks", questType: "weekly", objectiveKey: "distinct_decks_played", targetValue: 3, ...WEEKLY.standard, botProgressAllowed: true },
   { code: "weekly_distinct_decks_won_3", name: "Tous les horizons", category: "decks", questType: "weekly", objectiveKey: "distinct_decks_won", targetValue: 3, ...WEEKLY.standard, botProgressAllowed: true },
   { code: "weekly_distinct_decks_4", name: "Tour du port", category: "decks", questType: "weekly", objectiveKey: "distinct_decks_played", targetValue: 4, ...WEEKLY.standard, botProgressAllowed: true },

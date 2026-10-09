@@ -6,8 +6,9 @@
 -- Préconstruit) avant de se jouer, et le bouton « Essayer » disparaît. La
 -- journalière « Essai en mer » (`daily_precon_trial_1`, essayer un
 -- préconstruit contre le bot) n'a donc plus d'objet ; elle est remplacée
--- dans la rotation par « Nouvel équipage » (`daily_unlock_precon_1`,
--- objectif `unlock_precon_decks`). La rotation est tirée côté application
+-- par l'HEBDOMADAIRE « Nouvel équipage » (`weekly_unlock_precon_1`,
+-- objectif `unlock_precon_decks`) — hebdomadaire parce que les Jetons sont
+-- rares : une journalière serait restée bloquée la plupart des jours. La rotation est tirée côté application
 -- (`selectQuestsForPeriod`) : l'ancienne quête n'est simplement plus
 -- attribuée, sa ligne reste pour l'historique.
 --
@@ -24,7 +25,7 @@
 --      « Terminer N quêtes journalières » si une journalière vient de
 --      basculer. Même contrat que la partie : la réclamation reste
 --      `claim_quest_reward`.
---   3. La ligne de la quête `daily_unlock_precon_1` (sinon l'attribution,
+--   3. La ligne de la quête `weekly_unlock_precon_1` (sinon l'attribution,
 --      qui référence `quests.code`, l'ignorerait). `npm run seed:sql` la
 --      produirait aussi ; elle est posée ici pour ne pas dépendre d'un seed.
 --
@@ -136,11 +137,13 @@ insert into public.quests (
   reward_currency, reward_xp, reward_booster_definition_id, bot_progress_allowed, period, is_enabled
 )
 values (
-  'daily_unlock_precon_1', 'Nouvel équipage', 'decks', 'sum', 'daily', 'unlock_precon_decks', 1,
-  30, 150, null, true, 'daily', true
+  'weekly_unlock_precon_1', 'Nouvel équipage', 'decks', 'sum', 'weekly', 'unlock_precon_decks', 1,
+  120, 600, null, true, 'weekly', true
 )
 on conflict (code) do update set
   name = excluded.name,
+  quest_type = excluded.quest_type,
+  period = excluded.period,
   category = excluded.category,
   progress_kind = excluded.progress_kind,
   objective_key = excluded.objective_key,
@@ -148,3 +151,9 @@ on conflict (code) do update set
   reward_currency = excluded.reward_currency,
   reward_xp = excluded.reward_xp,
   is_enabled = true;
+
+-- Une première version de cette migration posait la quête en journalière
+-- (`daily_unlock_precon_1`). Si elle a été appliquée, cette ligne n'est
+-- plus jamais attribuée ; on la désactive pour qu'elle ne reste pas active
+-- par erreur.
+update public.quests set is_enabled = false where code = 'daily_unlock_precon_1';
