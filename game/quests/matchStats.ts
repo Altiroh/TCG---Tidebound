@@ -51,7 +51,7 @@ export const MAX_MATCH_SECONDS = 2 * 3600;
  */
 export type QuestLifetimeKey = Exclude<
   QuestObjectiveKey,
-  "play_days" | "play_streak" | "complete_daily_quests" | "distinct_decks_played" | "distinct_decks_won"
+  "play_days" | "play_streak" | "complete_daily_quests" | "distinct_decks_played" | "distinct_decks_won" | "unlock_precon_decks"
 >;
 
 /** Cumuls propres aux statistiques à vie — aucune quête ne les lit. */

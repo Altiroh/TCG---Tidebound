@@ -1028,6 +1028,11 @@ export interface Database {
         Args: { p_user_id: string; p_match_id: string; p_stats: Record<string, number> };
         Returns: { ok: boolean; error?: string; recorded?: boolean; applied?: number };
       };
+      /** Quête créditée hors partie (`20261031120000_quete_deblocage_preconstruit.sql`), idempotente par événement. */
+      record_quest_event_progress: {
+        Args: { p_user_id: string; p_event_key: string; p_period_keys: string[]; p_progress: Record<string, number> };
+        Returns: { ok: boolean; error?: string; recorded?: boolean; completed?: number };
+      };
       /** Banque d'équilibrage (`20261030120000_banque_statistiques.sql`) : relevé d'une partie, idempotent. */
       record_match_balance_report: {
         Args: { p_match_id: string; p_report: Record<string, unknown> };

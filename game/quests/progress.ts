@@ -119,6 +119,7 @@ const QUEST_KEYS_NOT_LIFETIME: ReadonlySet<QuestObjectiveKey> = new Set<QuestObj
   "complete_daily_quests",
   "distinct_decks_played",
   "distinct_decks_won",
+  "unlock_precon_decks",
 ]);
 
 /** Événements qui OUVRENT une action de joueur, dans un journal non signé (`actionIndex` absent). */
@@ -185,6 +186,8 @@ function analyserPartie({
     distinct_decks_won: 0,
     play_new_deck: deckIsNew ? 1 : 0,
     precon_trials: preconTrial ? 1 : 0,
+    // Crédité au déblocage d'un préconstruit, jamais par une partie.
+    unlock_precon_decks: 0,
     deal_damage: 0,
     take_damage: 0,
     pvp_ship_damage: 0,

@@ -53,6 +53,8 @@ const PRIMARY_KEYS: Record<string, string[]> = {
   match_voyage_progress: ["match_id", "user_id"],
   player_lifetime_stats: ["user_id", "stat_key"],
   match_lifetime_stats: ["match_id", "user_id"],
+  quest_event_progress: ["user_id", "event_key"],
+  player_deck_unlocks: ["user_id", "deck_id"],
 };
 
 let uuidCounter = 0;
@@ -772,6 +774,45 @@ function runRpc(db: FakeDatabase, fn: string, args: Row): any {
     }
 
     // `20261020120000_statistiques_a_vie.sql`
+    case "unlock_precon_deck": {
+      const progression = db.one("player_progression", { user_id: args.p_user_id });
+      if (db.one("player_deck_unlocks", { user_id: args.p_user_id, deck_id: args.p_deck_id })) return { ok: false, error: "Ce préconstruit est déjà débloqué." };
+      if (!progression || (progression.precon_tokens ?? 0) < 1) return { ok: false, error: "Aucun Jeton de Préconstruit disponible." };
+      progression.precon_tokens -= 1;
+      db.table("player_deck_unlocks").push({ user_id: args.p_user_id, deck_id: args.p_deck_id, source: "precon_token" });
+      return { ok: true, tokens: progression.precon_tokens };
+    }
+
+    case "record_quest_event_progress": {
+      const recorded = db.insertIfAbsent("quest_event_progress", { user_id: args.p_user_id, event_key: args.p_event_key, progress: args.p_progress ?? {} });
+      if (!recorded) return { ok: true, recorded: false, completed: 0 };
+      const periodKeys: string[] = args.p_period_keys ?? [];
+      const progress: Record<string, number> = args.p_progress ?? {};
+      let completed = 0;
+      let dailies = 0;
+      const mine = db.table("player_quest_progress").filter((row) => row.user_id === args.p_user_id && periodKeys.includes(row.period_key) && !row.completed_at);
+      for (const row of mine) {
+        const quest = db.one("quests", { id: row.quest_id });
+        const amount = quest ? progress[quest.objective_key] : undefined;
+        if (!quest || (quest.progress_kind ?? "sum") !== "sum" || !amount || amount <= 0) continue;
+        row.progress_value = Math.min(quest.target_value, row.progress_value + amount);
+        if (row.progress_value >= quest.target_value) {
+          row.completed_at = nowIso();
+          completed += 1;
+          if (quest.quest_type === "daily") dailies += 1;
+        }
+      }
+      if (dailies > 0) {
+        for (const row of mine) {
+          const quest = db.one("quests", { id: row.quest_id });
+          if (!quest || row.completed_at || quest.objective_key !== "complete_daily_quests") continue;
+          row.progress_value = Math.min(quest.target_value, row.progress_value + dailies);
+          if (row.progress_value >= quest.target_value) row.completed_at = nowIso();
+        }
+      }
+      return { ok: true, recorded: true, completed };
+    }
+
     case "record_match_lifetime_stats": {
       if (!args.p_user_id || !args.p_match_id) return { ok: false, error: "Partie ou joueur manquant." };
       const recorded = db.insertIfAbsent("match_lifetime_stats", { match_id: args.p_match_id, user_id: args.p_user_id, stats: args.p_stats ?? {} });

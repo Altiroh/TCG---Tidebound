@@ -87,8 +87,14 @@ export type QuestObjectiveKey =
   | "distinct_decks_won"
   /** Cumul : parties jouées avec un deck créé récemment (`NEW_DECK_WINDOW_HOURS`). */
   | "play_new_deck"
-  /** Cumul : parties jouées avec un préconstruit en essai (contre le bot). */
+  /** Cumul : parties jouées avec un préconstruit en essai (contre le bot). Plus aucune quête ne le lit (essais retirés le 09/10/2026). */
   | "precon_trials"
+  /**
+   * Cumul : préconstruits DÉBLOQUÉS (deck offert à l'arrivée ou Jeton de
+   * Préconstruit). Crédité au déblocage (`recordQuestEvent`), jamais par une
+   * partie : `computeMatchQuestProgress` le laisse à 0.
+   */
+  | "unlock_precon_decks"
   // --- Stats ------------------------------------------------------------
   | "deal_damage"
   | "take_damage"

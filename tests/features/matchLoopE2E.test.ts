@@ -787,3 +787,39 @@ describe("tour du bot par tranches — la fin de tour répond sans attendre le b
     expect(db.one("match_states", { match_id: matchId })!.version).toBe(version);
   });
 });
+
+describe("quête « Nouvel équipage » : débloquer un préconstruit", () => {
+  it("le déblocage par Jeton crédite la journalière, une seule fois, et ouvre le deck en partie", async () => {
+    const { unlockPreconstructedDeck } = await import("@/features/decks/catalogActions");
+    const { questPeriodKey } = await import("@/game/quests");
+    const third = PLAYABLE_DECKS[2]!;
+    db.table("player_progression").push({ user_id: USER, xp_total: 0, level: 1, precon_tokens: 1 });
+    // La journalière du jour, attribuée (la rotation la tire selon le joueur et le jour).
+    const quest = db.one("quests", { code: "daily_unlock_precon_1" })!;
+    expect(quest.objective_key).toBe("unlock_precon_decks");
+    db.table("player_quest_progress").push({
+      user_id: USER,
+      quest_id: quest.id,
+      period_key: questPeriodKey("daily", new Date()),
+      progress_value: 0,
+      progress_meta: [],
+      completed_at: null,
+      claimed_at: null,
+    });
+
+    // Verrouillé tant qu'il n'est pas débloqué.
+    expect((await startBotMatch(third.id, OTHER_DECK.id, "facile")).ok).toBe(false);
+
+    expect(await unlockPreconstructedDeck(third.id)).toMatchObject({ ok: true, tokens: 0 });
+    const progress = db.one("player_quest_progress", { user_id: USER, quest_id: quest.id })!;
+    expect(progress.progress_value).toBe(1);
+    expect(progress.completed_at).toBeTruthy();
+
+    // Rejouer l'événement ne compte pas deux fois.
+    const { recordQuestEvent } = await import("@/features/quests/questService");
+    await recordQuestEvent(USER, `unlock:${third.id}`, { unlock_precon_decks: 1 });
+    expect(db.where("quest_event_progress", { user_id: USER })).toHaveLength(1);
+
+    expect((await startBotMatch(third.id, OTHER_DECK.id, "facile")).ok).toBe(true);
+  });
+});

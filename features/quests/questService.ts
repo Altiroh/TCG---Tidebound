@@ -1,6 +1,6 @@
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import type { GameState, PlayerId } from "@/game";
-import { computeMatchQuestContribution, questPeriodKey, selectQuestsForPeriod, type QuestType } from "@/game/quests";
+import { computeMatchQuestContribution, questPeriodKey, selectQuestsForPeriod, type QuestObjectiveKey, type QuestType } from "@/game/quests";
 import { utcDayKey } from "@/game/progression";
 import { recordMatchVoyageProgress } from "@/features/quests/voyageService";
 
@@ -110,5 +110,33 @@ export async function recordMatchQuestProgress(input: RecordMatchQuestProgressIn
     await recordMatchVoyageProgress({ matchId: input.matchId, userId: input.userId, contribution: { progress, sets } });
   } catch (error) {
     console.error("[recordMatchQuestProgress] Échec :", error);
+  }
+}
+
+/**
+ * Crédite des objectifs de quête pour un ÉVÉNEMENT hors partie — à ce jour,
+ * le déblocage d'un préconstruit (`unlock_precon_decks`). Idempotent par
+ * `eventKey` (`record_quest_event_progress`) : un même déblocage ne compte
+ * qu'une fois, même si l'appel est rejoué.
+ *
+ * Ne lève jamais : une quête manquée ne doit pas faire échouer le déblocage
+ * qui vient de réussir. Tant que la migration
+ * `20261031120000_quete_deblocage_preconstruit` n'est pas appliquée,
+ * l'appel échoue et se journalise.
+ */
+export async function recordQuestEvent(userId: string, eventKey: string, progress: Partial<Record<QuestObjectiveKey, number>>, now: Date = new Date()): Promise<void> {
+  try {
+    // Une quête du jour non encore attribuée ne pourrait pas avancer.
+    await ensureCurrentQuests(userId, now);
+    const { data, error } = await createSupabaseServiceRoleClient().rpc("record_quest_event_progress", {
+      p_user_id: userId,
+      p_event_key: eventKey,
+      p_period_keys: QUEST_TYPES.map((questType) => questPeriodKey(questType, now)),
+      p_progress: progress as Record<string, number>,
+    });
+    if (error) console.error("[recordQuestEvent] Enregistrement refusé :", error.message);
+    else if (data && !data.ok) console.error("[recordQuestEvent] Événement refusé :", data.error);
+  } catch (error) {
+    console.error("[recordQuestEvent] Échec :", error);
   }
 }

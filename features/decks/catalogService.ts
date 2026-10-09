@@ -8,6 +8,7 @@ import {
   type DeckOwnership,
 } from "@/game";
 import { syncAchievements } from "@/features/achievements/achievementService";
+import { recordQuestEvent } from "@/features/quests/questService";
 
 /**
  * Préconstruits — opérations SERVEUR (pas de `"use server"`).
@@ -115,6 +116,8 @@ export async function claimFreePreconDeck(userId: string, deckId: string): Promi
       return { ok: false, error: "Choix impossible pour le moment." };
     }
     if (!data?.ok) return { ok: false, error: data?.error ?? "Choix impossible." };
+    // « Nouvel équipage » : le deck offert est un préconstruit débloqué comme un autre.
+    await recordQuestEvent(userId, `unlock:${deckId}`, { unlock_precon_decks: 1 });
     return { ok: true, deckId };
   } catch (error) {
     console.error("[claimFreePreconDeck] Échec :", error);
@@ -133,8 +136,8 @@ export async function unlockPreconDeck(userId: string, deckId: string): Promise<
       return { ok: false, error: "Déblocage impossible pour le moment." };
     }
     if (!data?.ok) return { ok: false, error: data?.error ?? "Déblocage impossible." };
-    // « Premier préconstruit débloqué » est un exploit (§10).
-    await syncAchievements(userId);
+    // « Premier préconstruit débloqué » est un exploit (§10) ; « Nouvel équipage », une quête.
+    await Promise.all([syncAchievements(userId), recordQuestEvent(userId, `unlock:${deckId}`, { unlock_precon_decks: 1 })]);
     return { ok: true, deckId, tokens: data.tokens };
   } catch (error) {
     console.error("[unlockPreconDeck] Échec :", error);

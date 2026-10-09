@@ -164,6 +164,7 @@ export const QUEST_OBJECTIVE_LABELS: Record<QuestObjectiveKey, (target: number) 
   distinct_decks_played: (n) => `Jouer avec ${n} decks différents`,
   distinct_decks_won: (n) => `Gagner avec ${n} decks différents`,
   precon_trials: (n) => (n > 1 ? `Essayer ${n} préconstruits contre le bot` : "Essayer un préconstruit contre le bot"),
+  unlock_precon_decks: (n) => (n > 1 ? `Débloquer ${n} préconstruits` : "Débloquer un préconstruit"),
   play_new_deck: (n) =>
     n > 1
       ? `Jouer ${n} parties avec un deck créé dans les ${NEW_DECK_WINDOW_HOURS} dernières heures`
@@ -277,7 +278,10 @@ export const QUEST_CATALOG: readonly QuestDefinition[] = [
   // ======================================================================
   { code: "daily_distinct_decks_2", name: "Changer d'air", category: "decks", questType: "daily", objectiveKey: "distinct_decks_played", targetValue: 2, ...DAILY.standard, botProgressAllowed: true },
   { code: "daily_distinct_decks_won_2", name: "Deux équipages", category: "decks", questType: "daily", objectiveKey: "distinct_decks_won", targetValue: 2, ...DAILY.heavy, botProgressAllowed: true },
-  { code: "daily_precon_trial_1", name: "Essai en mer", category: "decks", questType: "daily", objectiveKey: "precon_trials", targetValue: 1, ...DAILY.light, botProgressAllowed: true },
+  // Remplace « Essai en mer » (essai d'un préconstruit contre le bot), retiré
+  // avec les essais le 09/10/2026 : un préconstruit se débloque désormais
+  // avant de se jouer. Créditée au déblocage, hors partie (`recordQuestEvent`).
+  { code: "daily_unlock_precon_1", name: "Nouvel équipage", category: "decks", questType: "daily", objectiveKey: "unlock_precon_decks", targetValue: 1, ...DAILY.light, botProgressAllowed: true },
   { code: "weekly_distinct_decks_3", name: "Un peu de tout", category: "decks", questType: "weekly", objectiveKey: "distinct_decks_played", targetValue: 3, ...WEEKLY.standard, botProgressAllowed: true },
   { code: "weekly_distinct_decks_won_3", name: "Tous les horizons", category: "decks", questType: "weekly", objectiveKey: "distinct_decks_won", targetValue: 3, ...WEEKLY.standard, botProgressAllowed: true },
   { code: "weekly_distinct_decks_4", name: "Tour du port", category: "decks", questType: "weekly", objectiveKey: "distinct_decks_played", targetValue: 4, ...WEEKLY.standard, botProgressAllowed: true },
