@@ -11,6 +11,12 @@ pas en petit médaillon sur le cadre. Ce n'est pas un état : les états
 Plusieurs marqueurs du même genre s'empilent sur l'illustration (le nombre
 se lit sur la pile).
 
+**Qui les pose** : le moteur, automatiquement, et seulement quand le TEXTE
+d'une carte le dit (« Ramenez-la du Cimetière avec un marqueur Mort »).
+Aucun effet ne pose de marqueur en silence : si une carte en pose un, son
+texte l'écrit. Pool et règle détaillée du marqueur Mort : Notion, « Lot 18 —
+Un Dead / Mort-vivant — EN PRÉPARATION ».
+
 | Fichier | Marqueur | Statut |
 | --- | --- | --- |
 | `mort.webp` | **Mort** — deck Un Dead / Mort-vivant | Réservé : aucune règle ne le pose encore, il attend sa mécanique |
