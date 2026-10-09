@@ -174,6 +174,8 @@ const RULES = [
   { match: /\/board\/pont\/sens-(montante|descendante)\./, maxSize: 300, quality: 92 },
   // Socle des navires : ~260 px de large à l'écran.
   { match: /\/board\/pont\/socle-navire\./, maxSize: 640, quality: 90 },
+  // Cadenas de l'emplacement condamné : 46 % d'une case, ~250 px au plus.
+  { match: /\/board\/emplacement-condamne\/cadenas\./, maxSize: 320, quality: 90 },
   // Ombre de transition de page : étirée à 140 % de la hauteur d'écran, elle
   // est déjà agrandie à l'affichage. Ramenée de 1672 à 1254 px (audit du
   // 24/09, 330 → 134 Ko) : c'est une ombre floue qui traverse l'écran en
