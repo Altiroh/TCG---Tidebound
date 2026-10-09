@@ -273,7 +273,7 @@ describe("Lot 13 — le Cimetière comme ressource", () => {
   it("Promis, j'attends lit la fenêtre « depuis votre dernier tour », pas seulement le tour courant", () => {
     const def = getCardDefinition("promis-jattends");
     const condition = (def.abilities ?? [])[0]?.condition?.graveyardArrival;
-    expect(condition).toMatchObject({ subtype: UN_DEAD, since: "lastOwnTurn" });
+    expect(condition).toMatchObject({ subtype: "mort-vivant", since: "lastOwnTurn" });
 
     // La fenêtre elle-même : au tour 6, « depuis votre dernier tour » voit le
     // tour adverse (5) en plus du tour courant, « ce tour » non.
@@ -365,10 +365,10 @@ describe("Lot 13 — l'attrition", () => {
     expect(def.survivesLethalOncePerTurn?.from).toEqual(["combat"]);
   });
 
-  it("Doudou ne s'équipe qu'à un Un Dead", () => {
+  it("Doudou ne s'équipe qu'à un Mort-vivant (Un Dead → Mort-vivant, 09/10/2026)", () => {
     const def = getCardDefinition("doudou");
     expect(def.type).toBe("equipement");
-    expect(def.equipTargetSubtype).toBe(UN_DEAD);
+    expect(def.equipTargetSubtype).toBe("mort-vivant");
     expect((def.abilities ?? [])[0]?.triggeredBy?.equippedUnit).toBe(true);
   });
 });
@@ -476,6 +476,6 @@ describe("Lot 13 — choisir une carte du Cimetière ailleurs que sur un Bris", 
     // vient après, et `needsGraveyardTarget` la réclame.
     expect(ability.mode).toBe("optional");
     expect(ability.effects[0]?.type).toBe("moveGraveyardCardToHand");
-    expect(ability.effects[0]?.filter).toMatchObject({ subtype: UN_DEAD, maxCost: 1 });
+    expect(ability.effects[0]?.filter).toMatchObject({ subtype: "mort-vivant", maxCost: 1 });
   });
 });

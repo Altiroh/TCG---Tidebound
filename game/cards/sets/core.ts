@@ -3919,8 +3919,8 @@ export const CORE_SET: CardDefinition[] = [
     setCode: VEILLEE_DES_DISPARUS,
     cost: 1,
     health: 1,
-    equipTargetSubtype: UN_DEAD,
-    text: "Équipez une unité Un Dead. Quand l'unité équipée est détruite, piochez 1 carte puis défaussez 1 carte.",
+    equipTargetSubtype: "mort-vivant",
+    text: "Équipez une unité Mort-vivant. Quand l'unité équipée est détruite, piochez 1 carte puis défaussez 1 carte.",
     onPlayEffects: [{ type: "attachEquipment", target: { kind: "chosenUnit" } }],
     abilities: [
       {
@@ -3972,7 +3972,7 @@ export const CORE_SET: CardDefinition[] = [
     setCode: VEILLEE_DES_DISPARUS,
     cost: 2,
     text:
-      "Brisez cet Objet : piochez 1 carte puis défaussez 1 carte. Si une carte Un Dead a rejoint votre Cimetière " +
+      "Brisez cet Objet : piochez 1 carte puis défaussez 1 carte. Si une carte Mort-vivant a rejoint votre Cimetière " +
       "ce tour, piochez 1 carte supplémentaire.",
     // La condition est portée par l'EFFET et non par la carte : la défausse
     // qui précède peut elle-même la remplir, et c'est tout l'intérêt du
@@ -3987,7 +3987,7 @@ export const CORE_SET: CardDefinition[] = [
         // `excludeSource` : Le Goûter, lui-même Un Dead, rejoint le Cimetière
         // en se brisant, AVANT ses effets — il ne remplit pas sa propre
         // condition (il piochait sinon 2 cartes à chaque Bris).
-        conditionGraveyardArrival: { subtype: UN_DEAD, since: "thisTurn", excludeSource: true },
+        conditionGraveyardArrival: { subtype: "mort-vivant", since: "thisTurn", excludeSource: true },
       },
     ],
   },
@@ -4003,15 +4003,15 @@ export const CORE_SET: CardDefinition[] = [
     attack: 2,
     health: 2,
     text:
-      "Quand une autre de vos unités Un Dead est détruite, il gagne +1 Puissance. Une fois par tour.",
+      "Quand une autre de vos unités Mort-vivant est détruite, il gagne +1 Puissance. Une fois par tour.",
     // Standard Verrier (01/10/2026, validé par le propriétaire) : les gains de
     // la Veillée RESTENT. Coût et statistiques inchangés.
     abilities: [
       {
         trigger: "onDeath",
-        triggeredBy: { subtype: UN_DEAD, cardTypes: ["marin", "creature"], destroyedBy: ["combat", "effect", "tide"] },
+        triggeredBy: { subtype: "mort-vivant", cardTypes: ["marin", "creature"], destroyedBy: ["combat", "effect", "tide"] },
         oncePerTurnKey: "papaAllieDetruit",
-        description: "Un autre Un Dead meurt : +1 Puissance, conservée.",
+        description: "Un autre Mort-vivant meurt : +1 Puissance, conservée.",
         effects: [{ type: "buff", target: { kind: "self" }, attackAmount: { kind: "flat", value: 1 }, healthAmount: { kind: "flat", value: 0 }, permanent: true }],
       },
     ],
@@ -4028,7 +4028,7 @@ export const CORE_SET: CardDefinition[] = [
     attack: 1,
     health: 4,
     text:
-      "À votre début de tour, elle gagne +1 Puissance de façon permanente si une carte Un Dead a rejoint votre " +
+      "À votre début de tour, elle gagne +1 Puissance de façon permanente si une carte Mort-vivant a rejoint votre " +
       "Cimetière depuis votre dernier tour.",
     // Elle rendait 1 Raison. Elle ne rendait rien : la Raison se recharge à
     // son plafond au début de votre tour, JUSTE AVANT que ses capacités ne
@@ -4046,8 +4046,8 @@ export const CORE_SET: CardDefinition[] = [
         trigger: "startOfTurn",
         // « depuis votre dernier tour » : la fenêtre couvre le tour adverse
         // qui vient de s'écouler, pas seulement celui qui commence.
-        condition: { graveyardArrival: { subtype: UN_DEAD, since: "lastOwnTurn" } },
-        description: "Un Un Dead est parti au Cimetière depuis votre dernier tour : +1 Puissance, définitivement.",
+        condition: { graveyardArrival: { subtype: "mort-vivant", since: "lastOwnTurn" } },
+        description: "Un Mort-vivant est parti au Cimetière depuis votre dernier tour : +1 Puissance, définitivement.",
         effects: [
           {
             type: "buff",
@@ -4068,12 +4068,12 @@ export const CORE_SET: CardDefinition[] = [
     setCode: VEILLEE_DES_DISPARUS,
     cost: 2,
     maxCopies: 2,
-    text: "Brisez cet Objet : choisissez une unité Un Dead de coût 1 dans votre Cimetière. Remettez-la dans votre main.",
+    text: "Brisez cet Objet : choisissez une unité Mort-vivant de coût 1 dans votre Cimetière. Remettez-la dans votre main.",
     onBreakEffects: [
       {
         type: "moveGraveyardCardToHand",
         target: { kind: "controllerPlayer" },
-        filter: { subtype: UN_DEAD, cardTypes: ["marin", "creature"], maxCost: 1 },
+        filter: { subtype: "mort-vivant", cardTypes: ["marin", "creature"], maxCost: 1 },
       },
     ],
   },
@@ -4176,8 +4176,8 @@ export const CORE_SET: CardDefinition[] = [
     health: 4,
     maxCopies: 2,
     text:
-      "La première fois à chaque tour qu'une autre de vos unités Un Dead est détruite, vous pouvez choisir une " +
-      "unité Un Dead de coût 1 dans votre Cimetière. Remettez-la dans votre main.",
+      "La première fois à chaque tour qu'une autre de vos unités Mort-vivant est détruite, vous pouvez choisir une " +
+      "unité Mort-vivant de coût 1 dans votre Cimetière. Remettez-la dans votre main.",
     // « vous pouvez » → fenêtre de réaction ; le joueur y désigne ensuite la
     // carte du Cimetière (`chosenGraveyardInstanceId`). Deux décisions, deux
     // gestes : activer, puis choisir.
@@ -4185,14 +4185,14 @@ export const CORE_SET: CardDefinition[] = [
       {
         trigger: "onDeath",
         mode: "optional",
-        triggeredBy: { subtype: UN_DEAD, cardTypes: ["marin", "creature"], destroyedBy: ["combat", "effect", "tide"] },
+        triggeredBy: { subtype: "mort-vivant", cardTypes: ["marin", "creature"], destroyedBy: ["combat", "effect", "tide"] },
         oncePerTurnKey: "tuMavaisPromis",
-        description: "Un autre Un Dead meurt : repêchez une unité Un Dead de coût 1.",
+        description: "Un autre Mort-vivant meurt : repêchez une unité Mort-vivant de coût 1.",
         effects: [
           {
             type: "moveGraveyardCardToHand",
             target: { kind: "controllerPlayer" },
-            filter: { subtype: UN_DEAD, cardTypes: ["marin", "creature"], maxCost: 1 },
+            filter: { subtype: "mort-vivant", cardTypes: ["marin", "creature"], maxCost: 1 },
           },
         ],
       },
@@ -4233,13 +4233,13 @@ export const CORE_SET: CardDefinition[] = [
     cost: 3,
     maxCopies: 2,
     text:
-      "Brisez cet Objet : choisissez une unité Un Dead de coût 2 ou moins dans votre Cimetière. " +
+      "Brisez cet Objet : choisissez une unité Mort-vivant de coût 2 ou moins dans votre Cimetière. " +
       "Remettez-la dans votre main. Puis perdez 1 Raison.",
     onBreakEffects: [
       {
         type: "moveGraveyardCardToHand",
         target: { kind: "controllerPlayer" },
-        filter: { subtype: UN_DEAD, cardTypes: ["marin", "creature"], maxCost: 2 },
+        filter: { subtype: "mort-vivant", cardTypes: ["marin", "creature"], maxCost: 2 },
       },
       { type: "reasonLoss", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
     ],
@@ -4284,8 +4284,8 @@ export const CORE_SET: CardDefinition[] = [
     health: 4,
     maxCopies: 2,
     text:
-      "À son arrivée, choisissez une unité Un Dead de coût 2 ou moins dans votre Cimetière. Remettez-la dans " +
-      "votre main. Si une unité Un Dead a été détruite ce tour, elle coûte 1 Raison de moins à jouer ce tour, " +
+      "À son arrivée, choisissez une unité Mort-vivant de coût 2 ou moins dans votre Cimetière. Remettez-la dans " +
+      "votre main. Si une unité Mort-vivant a été détruite ce tour, elle coûte 1 Raison de moins à jouer ce tour, " +
       "minimum 1.",
     // La réduction porte sur la carte qu'on vient de repêcher, et sur elle
     // seule (`discountOnlyRecoveredCard`) : une autre unité Un Dead déjà en
@@ -4300,16 +4300,16 @@ export const CORE_SET: CardDefinition[] = [
       {
         type: "moveGraveyardCardToHand",
         target: { kind: "controllerPlayer" },
-        filter: { subtype: UN_DEAD, cardTypes: ["marin", "creature"], maxCost: 2 },
+        filter: { subtype: "mort-vivant", cardTypes: ["marin", "creature"], maxCost: 2 },
       },
       {
         type: "discountNextCards",
         target: { kind: "controllerPlayer" },
         amount: { kind: "flat", value: 1 },
-        filter: { subtype: UN_DEAD, cardTypes: ["marin", "creature"], maxCost: 2 },
+        filter: { subtype: "mort-vivant", cardTypes: ["marin", "creature"], maxCost: 2 },
         discountOnlyRecoveredCard: true,
         conditionGraveyardArrival: {
-          subtype: UN_DEAD,
+          subtype: "mort-vivant",
           fromZone: "board",
           cardTypes: ["marin", "creature"],
           destroyedBy: ["combat", "effect", "tide"],
@@ -4331,7 +4331,7 @@ export const CORE_SET: CardDefinition[] = [
     health: 5,
     maxCopies: 1,
     text:
-      "La première fois à chaque tour qu'une autre de vos cartes Un Dead est détruite ou rejoint votre Cimetière " +
+      "La première fois à chaque tour qu'une autre de vos cartes Mort-vivant est détruite ou rejoint votre Cimetière " +
       "depuis votre main ou votre pioche, infligez 1 dégât au Navire adverse.",
     // « Détruite OU défaussée / meulée » : deux déclencheurs, UNE seule clé de suivi.
     // (« ou votre pioche » : Test Verrier, 30/09/2026.)
@@ -4341,16 +4341,16 @@ export const CORE_SET: CardDefinition[] = [
     abilities: [
       {
         trigger: "onDeath",
-        triggeredBy: { subtype: UN_DEAD, destroyedBy: ["combat", "effect", "tide"] },
+        triggeredBy: { subtype: "mort-vivant", destroyedBy: ["combat", "effect", "tide"] },
         oncePerTurnKey: "tousEnsemble",
-        description: "Un autre Un Dead meurt : 1 dégât au Navire adverse.",
+        description: "Un autre Mort-vivant meurt : 1 dégât au Navire adverse.",
         effects: [{ type: "damage", target: { kind: "opponentPlayer" }, amount: { kind: "flat", value: 1 } }],
       },
       {
         trigger: "onCardPutIntoGraveyard",
-        triggeredBy: { subtype: UN_DEAD },
+        triggeredBy: { subtype: "mort-vivant" },
         oncePerTurnKey: "tousEnsemble",
-        description: "Un autre Un Dead rejoint le Cimetière (main ou pioche) : 1 dégât au Navire adverse.",
+        description: "Un autre Mort-vivant rejoint le Cimetière (main ou pioche) : 1 dégât au Navire adverse.",
         effects: [{ type: "damage", target: { kind: "opponentPlayer" }, amount: { kind: "flat", value: 1 } }],
       },
     ],
