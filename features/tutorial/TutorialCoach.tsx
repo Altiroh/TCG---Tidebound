@@ -3,7 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { TUTORIAL_STEPS, tutorialAnchor, tutorialProgress, type GameState, type PlayerId } from "@/game";
-import { placeCoach, type CoachPlacement } from "@/features/tutorial/coachPlacement";
+import { placeCoach, unionRect, type CoachPlacement } from "@/features/tutorial/coachPlacement";
 import { useAnchorRect } from "@/features/tutorial/useAnchorRect";
 import styles from "@/features/tutorial/Tutorial.module.css";
 import { playButtonClick } from "@/lib/sound";
@@ -58,6 +58,8 @@ export function TutorialCoach({ state, playerId, furthest, onFurthest, onSkip, o
   const waiting = step?.waitingFor?.(state, playerId) ?? null;
   const selector = step ? tutorialAnchor(step, state, playerId) : null;
   const anchorRect = useAnchorRect(selector, Boolean(step) && (isLesson || hinting) && !waiting);
+  // Zone d'arrivée du geste : lue sans halo, seulement pour que la fiche ne s'y pose pas.
+  const dropRect = useAnchorRect(step?.dropTarget ?? null);
 
   useEffect(() => setMounted(true), []);
 
@@ -84,12 +86,12 @@ export function TutorialCoach({ state, playerId, furthest, onFurthest, onSkip, o
     const panel = panelRef.current.getBoundingClientRect();
     const viewport = { width: window.innerWidth, height: window.innerHeight };
     // Sans zone désignée (leçon générale), la fiche se pose en haut au centre.
-    const anchor = anchorRect ?? { left: viewport.width / 2 - 1, top: viewport.height * 0.4, width: 2, height: 2 };
+    const anchor = (anchorRect ? unionRect([anchorRect, dropRect]) : null) ?? { left: viewport.width / 2 - 1, top: viewport.height * 0.4, width: 2, height: 2 };
     setPlacement(placeCoach(anchor, { width: panel.width, height: panel.height }, viewport));
     // `mounted` : au tout premier rendu la fiche n'existe pas encore (rien n'est
     // rendu avant le montage) ; sans lui, la mesure ne se refaisait jamais sur
     // une leçon sans ancre, et la fiche restait invisible.
-  }, [anchorRect, step?.id, waiting, mounted]);
+  }, [anchorRect, dropRect, step?.id, waiting, mounted]);
 
   if (!mounted) return null;
 

@@ -101,3 +101,18 @@ function bestSide(space: Record<CoachPlacement["side"], number>, order: CoachPla
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }
+
+/**
+ * Plus petit rectangle qui contient les zones données — l'ancre d'une étape
+ * et la zone où son geste se termine (`TutorialStep.dropTarget`). Placée à
+ * côté de cette réunion, la fiche ne couvre ni l'une ni l'autre.
+ */
+export function unionRect(rects: ReadonlyArray<AnchorRect | null | undefined>): AnchorRect | null {
+  const present = rects.filter((rect): rect is AnchorRect => Boolean(rect));
+  if (present.length === 0) return null;
+  const left = Math.min(...present.map((rect) => rect.left));
+  const top = Math.min(...present.map((rect) => rect.top));
+  const right = Math.max(...present.map((rect) => rect.left + rect.width));
+  const bottom = Math.max(...present.map((rect) => rect.top + rect.height));
+  return { left, top, width: right - left, height: bottom - top };
+}

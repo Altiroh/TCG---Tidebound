@@ -47,6 +47,13 @@ export interface TutorialStep {
   /** Zone à désigner (halo posé SUR l'élément) — fixe, ou calculée sur l'état (une carte précise). */
   anchor?: TutorialAnchor | ((state: GameState, playerId: PlayerId) => TutorialAnchor | null);
   /**
+   * Zone où le geste SE TERMINE quand elle n'est pas l'ancre (glisser une
+   * carte du plateau sur le Cimetière). La fiche du guide ne doit jamais la
+   * couvrir : elle se pose à côté de l'ancre ET de cette zone réunies.
+   * Pas de halo dessus — l'ancre reste la seule zone désignée.
+   */
+  dropTarget?: TutorialAnchor;
+  /**
    * Cartes de la main qui conviennent à cette étape, par `instanceId`. Le
    * guide désigne la première ; le plateau n'autorise que celles-ci, pour
    * qu'une carte posée à contretemps ne rende pas l'étape suivante
@@ -247,6 +254,9 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
       const id = onBoard(state, playerId, TUTORIAL_CARDS.structure);
       return id ? boardUnit(id) : ZONE.graveyard;
     },
+    // La Caisse se glisse SUR le Cimetière : posée à côté de la seule Caisse,
+    // la fiche retombait sur le crâne et empêchait le Sabordage.
+    dropTarget: ZONE.graveyard,
     isDone: (state, playerId) => state.eventLog.some((e) => e.type === "SABORDED" && e.playerId === playerId),
     waitingFor: (state, playerId) => (state.activePlayerId === playerId ? null : "Attends ton tour."),
   },

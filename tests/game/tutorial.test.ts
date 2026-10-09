@@ -12,7 +12,7 @@ import { PRECON_DECKS } from "@/game";
 import { dispatch } from "@/game/engine";
 import { runBotTurn } from "@/game/bot/runBotTurn";
 import { createGameState } from "@/game/state/createGameState";
-import { COACH_GAP, placeCoach } from "@/features/tutorial/coachPlacement";
+import { COACH_GAP, placeCoach, unionRect } from "@/features/tutorial/coachPlacement";
 import type { GameState, PlayerAction } from "@/game";
 import { enFinDeTour } from "./testHelpers";
 
@@ -193,6 +193,23 @@ describe("parcours guidé, de bout en bout", () => {
 describe("placement de la fiche du guide", () => {
   const viewport = { width: 1600, height: 900 };
   const panel = { width: 300, height: 220 };
+
+  it("Saborder : la fiche ne couvre ni la Caisse ni le Cimetière où elle se glisse", () => {
+    const step = TUTORIAL_STEPS.find((entry) => entry.id === "saborder")!;
+    expect(step.dropTarget).toBe('[data-graveyard="player"]');
+    const crate = { left: 1180, top: 560, width: 110, height: 150 };
+    const graveyard = { left: 1330, top: 600, width: 120, height: 160 };
+    const placed = placeCoach(unionRect([crate, graveyard])!, panel, viewport);
+    const overlaps = (zone: typeof crate) =>
+      placed.left < zone.left + zone.width && placed.left + panel.width > zone.left && placed.top < zone.top + zone.height && placed.top + panel.height > zone.top;
+    expect(overlaps(crate)).toBe(false);
+    expect(overlaps(graveyard)).toBe(false);
+  });
+
+  it("réunion des zones : ignore les absentes", () => {
+    expect(unionRect([null, undefined])).toBeNull();
+    expect(unionRect([{ left: 10, top: 20, width: 5, height: 5 }, null, { left: 30, top: 0, width: 10, height: 10 }])).toEqual({ left: 10, top: 0, width: 30, height: 25 });
+  });
 
   it("se pose À CÔTÉ de la main plutôt qu'au-dessus — sinon elle masque où déposer", () => {
     // Cas réel : la main commence après le Navire, il reste de la place à
