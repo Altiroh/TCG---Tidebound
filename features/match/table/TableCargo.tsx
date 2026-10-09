@@ -95,6 +95,10 @@ export function TableCargo({ side, ownerId, deck, graveyard, graveyardTop, grave
         )}
         {/* eslint-disable-next-line @next/next/no-img-element -- icône décorative */}
         <img src="/assets/board/graveyard-skull.webp" alt="" aria-hidden draggable={false} className={styles.graveyardSkull} />
+        {/* Plaque gravée : la pile se lit « Cimetière » au premier coup d'œil, même coiffée d'une carte. */}
+        <span className={styles.graveyardLabel} aria-hidden>
+          Cimetière
+        </span>
         <span className={styles.pileCount}>{graveyard}</span>
       </div>
     </div>

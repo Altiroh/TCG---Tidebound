@@ -307,6 +307,15 @@ export function TableBoard(props: TableBoardProps) {
   for (const player of state.players) {
     for (const instance of [...player.hand, ...player.board]) byId.set(instance.instanceId, { instance, owner: player });
   }
+  /**
+   * La Lande en jeu, en exemplaire de carte : elle ne vit dans aucune zone
+   * de joueur (`state.environment.lande`), donc hors de `byId` — mais elle
+   * se survole et s'agrandit comme toutes les autres (`HoverCardPreview`).
+   */
+  const landeInstance: CardInstance | null = lande
+    ? { instanceId: lande.instanceId, cardId: lande.cardId, ownerId: lande.ownerId, damageMarked: 0, modifiers: [], summoningSick: false, hasAttackedThisTurn: false }
+    : null;
+  const landeOwner = lande ? state.players.find((player) => player.id === lande.ownerId) : undefined;
 
   function renderFace(instance: CardInstance, owner?: PlayerState) {
     return (
@@ -1093,16 +1102,17 @@ export function TableBoard(props: TableBoardProps) {
               pont ? (
                 <PontLandeSlot
                   card={
-                    lande ? (
-                      <CardTile
-                        key={lande.instanceId}
-                        instance={{ instanceId: lande.instanceId, cardId: lande.cardId, ownerId: lande.ownerId, damageMarked: 0, modifiers: [], summoningSick: false, hasAttackedThisTurn: false }}
-                        tideState={tideState}
-                        widthClassName="w-full"
-                        scaleOnHover={false}
-                        showStatusBadges={false}
-                        variant="board"
-                      />
+                    landeInstance ? (
+                      <div key={landeInstance.instanceId} {...previewHandlers(landeInstance.instanceId)}>
+                        <CardTile
+                          instance={landeInstance}
+                          tideState={tideState}
+                          widthClassName="w-full"
+                          scaleOnHover={false}
+                          showStatusBadges={false}
+                          variant="board"
+                        />
+                      </div>
                     ) : undefined
                   }
                   turns={lande ? landeRemainingTableTurns(state.environment) : null}
@@ -1303,7 +1313,8 @@ export function TableBoard(props: TableBoardProps) {
         })()}
         {/* Pendant un geste (glisser, viser), pas d'aperçu : c'est le plateau qu'on regarde. */}
         {preview && !gesture && (() => {
-          const found = byId.get(preview.id);
+          const found =
+            byId.get(preview.id) ?? (landeInstance && preview.id === landeInstance.instanceId ? { instance: landeInstance, owner: landeOwner } : undefined);
           return found ? (
             <HoverCardPreview anchor={preview.rect} aside={<CardRulesPanel cardId={found.instance.cardId} />}>
               {renderFace(found.instance, found.owner)}
