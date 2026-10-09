@@ -1,3 +1,4 @@
+import { hasSubtype } from "@/game/cards/subtypes";
 import { isTextIgnored } from "@/game/cards/types";
 import { countArchetypeUnits } from "@/game/cards/archetypes";
 import { getCardDefinition } from "@/game/cards/sets/core";
@@ -227,7 +228,7 @@ export function collectAuraContributions(
     if (
       typeAura &&
       typeAura.targetTypes.includes(def.type) &&
-      (typeAura.targetSubtype === undefined || typeAura.targetSubtype === def.subtype) &&
+      (typeAura.targetSubtype === undefined || hasSubtype(def, typeAura.targetSubtype)) &&
       (!typeAura.whileSelfVisible || isVisibleDuringTide(sourceDef, tideState))
     ) {
       add(typeAura);

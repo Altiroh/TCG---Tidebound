@@ -1,3 +1,4 @@
+import { hasSubtype } from "@/game/cards/subtypes";
 import { applyShipArrivalPassives } from "@/game/rules/shipPassives";
 import { isTextIgnored } from "@/game/cards/types";
 import { playerFactTriggerEvents } from "@/game/triggers/playerFacts";
@@ -129,7 +130,7 @@ function matchesControlCondition(
   if (ability.condition?.attackTargetSubtype) {
     const cible = state.pendingAttack?.defenderInstanceId;
     const trouvee = cible ? findBoardUnit(state, cible) : undefined;
-    if (!trouvee || getCardDefinition(trouvee.unit.cardId).subtype !== ability.condition.attackTargetSubtype) return false;
+    if (!trouvee || !hasSubtype(getCardDefinition(trouvee.unit.cardId), ability.condition.attackTargetSubtype)) return false;
   }
   if (ability.condition?.selfHasKeyword) {
     const motCle = ability.condition.selfHasKeyword;
@@ -402,7 +403,7 @@ function matchesTriggerSource(
   if (filter.cardIds && !(event.cardId && filter.cardIds.includes(event.cardId))) return false;
   if (filter.archetype && !(event.cardId && getCardDefinition(event.cardId).archetype === filter.archetype)) return false;
   // Même logique pour le sous-type (Lot 11, « une autre Marionnette alliée »).
-  if (filter.subtype && !(event.cardId && getCardDefinition(event.cardId).subtype === filter.subtype)) return false;
+  if (filter.subtype && !(event.cardId && hasSubtype(getCardDefinition(event.cardId), filter.subtype))) return false;
   if (filter.minCost !== undefined && !(event.cardId && getCardDefinition(event.cardId).cost >= filter.minCost)) return false;
   // « quand une Structure... » : type de la carte déclencheuse.
   if (filter.cardTypes && !(event.cardId && filter.cardTypes.includes(getCardDefinition(event.cardId).type))) return false;

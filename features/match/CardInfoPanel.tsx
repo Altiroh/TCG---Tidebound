@@ -1,4 +1,4 @@
-import { getCardDefinition, getMaxCopies, isAbyssalVariant, UNIT_CARD_TYPES } from "@/game";
+import { displayedSubtypes, getCardDefinition, getMaxCopies, isAbyssalVariant, subtypeLabel, UNIT_CARD_TYPES } from "@/game";
 import { CARD_TYPE_LABELS } from "@/features/match/cardDisplay";
 
 /** Paliers de taille par longueur de nom — le panneau est étroit, un nom long ne doit jamais passer sur deux lignes (calibré sur les noms du catalogue). */
@@ -47,7 +47,7 @@ export function CardInfoPanel({ cardId }: CardInfoPanelProps) {
   const def = getCardDefinition(cardId);
   const isAbyssal = isAbyssalVariant(def);
   const isUnit = (UNIT_CARD_TYPES as readonly string[]).includes(def.type);
-  const otherSubtype = def.subtype ?? null;
+  const shownSubtypes = displayedSubtypes(def);
   const showAttack = isUnit || def.attack !== undefined;
   const showHealth = def.health !== undefined;
   const maxCopies = getMaxCopies(def);
@@ -57,7 +57,7 @@ export function CardInfoPanel({ cardId }: CardInfoPanelProps) {
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-semibold uppercase tracking-wider">
         <span className="text-slate-300">{CARD_TYPE_LABELS[def.type]}</span>
         {isAbyssal && <span className="text-fuchsia-300">· Abyssal</span>}
-        {otherSubtype && <span className="text-slate-500">· {otherSubtype}</span>}
+        {shownSubtypes.length > 0 && <span className="text-slate-500">· {shownSubtypes.map(subtypeLabel).join(" · ")}</span>}
       </div>
 
       <h2

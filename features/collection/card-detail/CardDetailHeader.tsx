@@ -12,7 +12,7 @@ import styles from "@/features/collection/card-detail/CardDetail.module.css";
  * apparaîtront d'elles-mêmes le jour où les données existeront.
  */
 export function CardDetailHeader({ model, titleId }: { model: CardDetailModel; titleId: string }) {
-  const { def, rarity, isAbyssal, otherSubtype } = model;
+  const { def, rarity, isAbyssal, subtypes } = model;
 
   return (
     <header>
@@ -33,7 +33,11 @@ export function CardDetailHeader({ model, titleId }: { model: CardDetailModel; t
             aussi plus net à petite taille et reste sélectionnable. */}
         <span className={styles.badge}>{CARD_TYPE_LABELS[def.type]}</span>
         {isAbyssal && <span className={`${styles.badge} ${styles.badgeAccent}`}>Abyssal</span>}
-        {otherSubtype && <span className={styles.badge}>{otherSubtype}</span>}
+        {subtypes.map((subtype) => (
+          <span key={subtype} className={styles.badge}>
+            {subtype}
+          </span>
+        ))}
       </div>
 
       <h2 id={titleId} className={styles.title}>

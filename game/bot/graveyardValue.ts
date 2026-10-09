@@ -1,3 +1,4 @@
+import { hasSubtype } from "@/game/cards/subtypes";
 import { slotsUsed } from "@/game/rules/ongoing";
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { eligibleGraveyardCards } from "@/game/effects/graveyardChoices";
@@ -110,7 +111,7 @@ function countIn(graveyard: PlayerState["graveyard"], subtype: string | undefine
   return graveyard.filter((card) => {
     try {
       const def = getCardDefinition(card.cardId);
-      return (!subtype || def.subtype === subtype) && (!cardTypes || cardTypes.includes(def.type));
+      return (!subtype || hasSubtype(def, subtype)) && (!cardTypes || cardTypes.includes(def.type));
     } catch {
       return false;
     }

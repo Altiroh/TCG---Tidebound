@@ -1,6 +1,6 @@
 "use client";
 
-import { ARCHETYPE_LABELS, isAbyssalVariant, type CardDefinition } from "@/game";
+import { ARCHETYPE_LABELS, displayedSubtypes, isAbyssalVariant, subtypeLabel, type CardDefinition } from "@/game";
 import { CARD_TYPE_LABELS } from "@/features/match/cardDisplay";
 import { useLayoutEffect, useRef } from "react";
 import { useDebordPleinCadre } from "@/features/match/useDebordPleinCadre";
@@ -65,6 +65,7 @@ export function NouveauCadreFace({ def, legendaire = false, attack, health, atta
   const hasPower = def.attack !== undefined;
   const hasResistance = def.health !== undefined;
   const abyssale = isAbyssalVariant(def);
+  const shownSubtypes = displayedSubtypes(def);
   const debord = abyssale ? `/assets/cards/illustrations/${def.id}-debord.webp` : null;
   const debordOk = useImageOk(debord);
   const debordPlein = useDebordPleinCadre(debordOk ? debord : null);
@@ -166,17 +167,28 @@ export function NouveauCadreFace({ def, legendaire = false, attack, health, atta
         >
           {CARD_TYPE_LABELS[def.type]}
         </span>
-        {/* La FAMILLE, discrète, juste sous le type (décision du 06/10/2026 :
-            toutes les familles, plus seulement les Opalins). */}
-        {def.archetype && (
+        {/* Les SOUS-TYPES, juste sous le type (décision du 09/10/2026) : ce
+            que les effets visent (« vos Chevaliers »), deux ou trois au plus. */}
+        {shownSubtypes.length > 0 && (
           <span
             className="whitespace-nowrap italic leading-none [font-family:var(--font-card-title)]"
-            style={{ fontSize: "2.6cqw", letterSpacing: "0.03em", opacity: 0.72, marginTop: "-0.2cqw" }}
+            style={{ fontSize: "2.6cqw", letterSpacing: "0.03em", opacity: 0.85, marginTop: "-0.2cqw" }}
           >
-            {ARCHETYPE_LABELS[def.archetype]}
+            {shownSubtypes.map(subtypeLabel).join(" · ")}
           </span>
         )}
       </div>
+
+      {/* L'ARCHÉTYPE, discret, tout en bas au centre (décision du 09/10/2026) :
+          la famille se lit sans prendre la place des sous-types. */}
+      {def.archetype && (
+        <span
+          className="absolute overflow-hidden text-ellipsis whitespace-nowrap text-center italic leading-none text-white [font-family:var(--font-card-title)]"
+          style={{ left: "32%", right: "32%", bottom: "4.6%", fontSize: "2.3cqw", letterSpacing: "0.05em", opacity: 0.6, textShadow: HALO_TEXTE }}
+        >
+          {ARCHETYPE_LABELS[def.archetype]}
+        </span>
+      )}
 
       {/* Nom : ancré par le BAS juste au-dessus de la zone d'effet — même place
           sur toutes les cartes, deux lignes au plus, en Lora gras italique, légèrement incliné. */}

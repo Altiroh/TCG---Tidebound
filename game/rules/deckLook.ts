@@ -1,3 +1,4 @@
+import { hasSubtype } from "@/game/cards/subtypes";
 import { getCardDefinition } from "@/game/cards/sets/core";
 import type { CardInstance } from "@/game/cards/types";
 import type { DeckLookChoice, DeckLookTakeGroup } from "@/game/state/types";
@@ -28,7 +29,7 @@ export function deckLookRefusal(choice: DeckLookChoice, card: CardInstance): Dec
   if (choice.takeableChromaticColors && !(def.chromatic?.colors ?? []).some((c) => choice.takeableChromaticColors!.includes(c))) {
     return "color";
   }
-  if (choice.takeableSubtype && def.subtype !== choice.takeableSubtype) return "subtype";
+  if (choice.takeableSubtype && !hasSubtype(def, choice.takeableSubtype)) return "subtype";
   if (choice.takeableMaxCost !== undefined && def.cost > choice.takeableMaxCost) return "cost";
   return null;
 }

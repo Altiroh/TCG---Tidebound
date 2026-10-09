@@ -8,6 +8,7 @@
  * Séparé de `resolveEffect.ts` pour que `triggerBus.ts` puisse s'en
  * servir sans dépendre de la résolution d'effets elle-même.
  */
+import { hasSubtype } from "@/game/cards/subtypes";
 import { isOngoingEffect } from "@/game/rules/ongoing";
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { KEYWORD_INCIBLABLE, UNIT_CARD_TYPES, type CardInstance } from "@/game/cards/types";
@@ -92,7 +93,7 @@ export function eligibleChosenUnits(
     // Objets de la troupe. Un texte qui dit « une UNITÉ Marionnette » le
     // déclare avec `unitsOnly` (nomenclature Notion : « unité » = Marin ou
     // Créature, « carte » = tout type).
-    if (filter.subtype && getCardDefinition(unit.cardId).subtype !== filter.subtype) return false;
+    if (filter.subtype && !hasSubtype(getCardDefinition(unit.cardId), filter.subtype)) return false;
     if (filter.tag && !getCardDefinition(unit.cardId).tags?.includes(filter.tag)) return false;
     if (filter.maxCost !== undefined && getCardDefinition(unit.cardId).cost > filter.maxCost) return false;
     if (filter.damaged && unit.damageMarked <= 0) return false;

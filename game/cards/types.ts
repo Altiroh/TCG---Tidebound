@@ -632,6 +632,15 @@ export interface CardDefinition {
   subtype?: string;
 
   /**
+   * Sous-types TRANSVERSAUX (`game/cards/subtypes.ts`) : espèce, rôle,
+   * nature (« Amphibien, Chevalier »). S'ajoutent à `subtype` ; ensemble, au
+   * plus `MAX_SUBTYPES`, affichés sous le type. Un effet qui vise un
+   * sous-type les lit tous (`hasSubtype`) : c'est ce qui fait passer une
+   * synergie d'un archétype à l'autre.
+   */
+  subtypes?: readonly import("@/game/cards/subtypes").SubtypeId[];
+
+  /**
    * Version de la carte : toute carte est STANDARD par défaut, ou
    * `"abyssale"` pour sa variante. Indépendant de `subtype` et de
    * `archetype`, et cohérent avec la rareté "abyssal" que
@@ -643,8 +652,9 @@ export interface CardDefinition {
   /**
    * Famille de cartes à laquelle appartient cette carte
    * (`game/cards/archetypes.ts`). Lue par le moteur pour compter/cibler
-   * les membres d'un archétype. Affichée DISCRÈTEMENT sur la face, sous la
-   * ligne de type, pour toutes les familles (décision du 06/10/2026).
+   * les membres d'un archétype. Affichée DISCRÈTEMENT sur la face, en petit,
+   * en bas au centre (décision du 09/10/2026 : la ligne sous le type
+   * revient aux sous-types).
    */
   archetype?: ArchetypeId;
 

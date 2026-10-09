@@ -20,6 +20,7 @@
  * faux (plus aucune Peu commune/Rare/Abyssale à tirer) sans que rien ne le
  * signale.
  */
+import { subtypesOf } from "@/game/cards/subtypes";
 import { CATALOG_DECKS, CORE_SET, getMaxCopies } from "@/game";
 import { RARITY_WEIGHTS } from "@/game/boosters";
 import { assertRarityCoverage, rarityForCardId } from "@/game/boosters/cardRarity";
@@ -42,7 +43,7 @@ export function cardRows(): SeedRow[] {
       id: def.id,
       name: def.name,
       card_type: def.type,
-      subtypes: def.subtype ? [def.subtype] : [],
+      subtypes: subtypesOf(def),
       reason_cost: def.cost,
       power: def.attack ?? null,
       resistance: def.health ?? null,

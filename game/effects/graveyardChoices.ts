@@ -1,3 +1,4 @@
+import { hasSubtype } from "@/game/cards/subtypes";
 import { getCardDefinition } from "@/game/cards/sets/core";
 import type { CardDefinition, CardInstance } from "@/game/cards/types";
 import type { EffectDefinition } from "@/game/effects/types";
@@ -28,7 +29,7 @@ export function eligibleGraveyardCards(state: GameState, playerId: PlayerId, eff
     if (allowedTypes && !(allowedTypes as readonly string[]).includes(cardDef.type)) return false;
     // « récupérez une Marionnette » (Rappel du Public), « une unité Un Dead »
     // (La Petite Chanson) : le sous-type restreint le choix comme le type.
-    if (effect.filter?.subtype && cardDef.subtype !== effect.filter.subtype) return false;
+    if (effect.filter?.subtype && !hasSubtype(cardDef, effect.filter.subtype)) return false;
     if (effect.filter?.maxCost !== undefined && cardDef.cost > effect.filter.maxCost) return false;
     return true;
   });

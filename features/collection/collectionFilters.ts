@@ -1,4 +1,4 @@
-import { ARCHETYPE_LABELS, CORE_SET, isAbyssalVariant, type CardDefinition, type CardType } from "@/game";
+import { ARCHETYPE_LABELS, CORE_SET, isAbyssalVariant, subtypeLabel, subtypesOf, type CardDefinition, type CardType } from "@/game";
 import { BOOSTER_EXTENSIONS, boostersContaining, rarityForCardId } from "@/game/boosters";
 import type { CardRarity } from "@/game/boosters/types";
 import { asRecord, oneOf, subsetOf } from "@/lib/persistCodecs";
@@ -143,9 +143,9 @@ function matchesBoosters(def: CardDefinition, boosters: string[]): boolean {
  */
 function familyTerms(def: CardDefinition): string[] {
   const terms: string[] = [];
-  for (const id of [def.subtype, def.archetype]) {
+  for (const id of [...subtypesOf(def), def.archetype]) {
     if (!id) continue;
-    terms.push(id, id.replace(/-/g, " "));
+    terms.push(id, id.replace(/-/g, " "), subtypeLabel(id));
   }
   if (def.archetype) terms.push(ARCHETYPE_LABELS[def.archetype]);
   return terms;

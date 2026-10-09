@@ -1,4 +1,4 @@
-import { CORE_SET, getCardDefinition, getMaxCopies, isAbyssalVariant, UNIT_CARD_TYPES, type CardDefinition } from "@/game";
+import { CORE_SET, displayedSubtypes, getCardDefinition, getMaxCopies, isAbyssalVariant, subtypeLabel, UNIT_CARD_TYPES, type CardDefinition } from "@/game";
 import { rarityForCardId } from "@/game/boosters/cardRarity";
 import type { CardRarity } from "@/game/boosters/types";
 import { GAME_TERMS } from "@/features/match/cardDisplay";
@@ -26,7 +26,8 @@ export interface CardDetailModel {
   rarity: CardRarity | null;
   isAbyssal: boolean;
   /** Sous-type affichable autre qu'« abyssal » (ex: « poisson »). */
-  otherSubtype: string | null;
+  /** Sous-types imprimés sous le type, en toutes lettres (`displayedSubtypes`). */
+  subtypes: string[];
   stats: CardDetailStat[];
   keywords: string[];
   maxCopies: number;
@@ -65,7 +66,7 @@ export function buildCardDetailModel(cardId: string): CardDetailModel {
     def,
     rarity: rarityForCardId(def.id),
     isAbyssal: isAbyssalVariant(def),
-    otherSubtype: def.subtype ?? null,
+    subtypes: displayedSubtypes(def).map(subtypeLabel),
     stats,
     keywords: def.keywords ?? [],
     maxCopies: getMaxCopies(def),

@@ -21,6 +21,7 @@ export const TOKEN_SET: CardDefinition[] = [
     id: "peon-cra-poiscail",
     name: "Péon Cra-Poiscail",
     type: "creature",
+    subtypes: ["amphibien"],
     archetype: "cra-poiscail",
     token: true,
     // Trois visuels pour une seule identité de gameplay : la variante est
@@ -97,6 +98,7 @@ export const TOKEN_SET: CardDefinition[] = [
     id: "peon-altere",
     name: "Péon Altéré",
     type: "marin",
+    subtypes: ["humain"],
     subtype: "altere",
     archetype: "alteres",
     token: true,
@@ -111,6 +113,7 @@ export const TOKEN_SET: CardDefinition[] = [
     id: "bestiole",
     name: "Bestiole",
     type: "creature",
+    subtypes: ["bete"],
     archetype: "dungeon-et-ladalle",
     token: true,
     cost: 0,

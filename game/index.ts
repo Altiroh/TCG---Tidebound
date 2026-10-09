@@ -129,6 +129,8 @@ export type { ChosenUnitFilter, EffectDefinition, EffectType, TargetSelector } f
 export { chosenTargetFilter, eligibleBreakTargets, eligibleChosenUnits } from "@/game/effects/chosenTargets";
 export { canActivateAbility } from "@/game/actions/activateAbility";
 export { ARCHETYPE_LABELS } from "@/game/cards/archetypes";
+export { MAX_SUBTYPES, SUBTYPE_FAMILIES, SUBTYPE_LABELS, hasSubtype, displayedSubtypes, subtypeLabel, subtypesOf } from "@/game/cards/subtypes";
+export type { SubtypeId } from "@/game/cards/subtypes";
 export type { ArchetypeId } from "@/game/cards/archetypes";
 export type { PendingReactionCandidate, TriggerEvent, TriggerType } from "@/game/triggers/types";
 export type { PendingReactionState, PendingChoice, HandDiscardChoice, DeckLookChoice, HealAllocationChoice, KeepUnitsChoice, PickUnitsChoice, DieRollChoice, DieSize } from "@/game/state/types";

@@ -1,3 +1,4 @@
+import { hasSubtype } from "@/game/cards/subtypes";
 import { addLevelMarkers } from "@/game/rules/levels";
 import { addNextRollModifier, pendingDieRoll, rerollPending, rollDie, shiftPending } from "@/game/rules/dice";
 import { consumeUnitDamageBonus } from "@/game/state/damageBonus";
@@ -156,7 +157,7 @@ export function discountApplies(
   if (discount.minCost !== undefined && def.cost < discount.minCost) return false;
   if (discount.archetype && def.archetype !== discount.archetype) return false;
   if (turnNumber > discount.expiresAfterTurn) return false;
-  if (discount.subtype && def.subtype !== discount.subtype) return false;
+  if (discount.subtype && !hasSubtype(def, discount.subtype)) return false;
   if (discount.cardTypes && !discount.cardTypes.includes(def.type)) return false;
   // « après la troisième unité jouée » : la carte en cours est la
   // (n+1)-ième, donc le seuil se compare à ce qui a DÉJÀ été posé.
@@ -244,7 +245,7 @@ export function hasGraveyardArrival(
     if (condition.excludeSource && sourceInstanceId !== undefined && entry.instanceId === sourceInstanceId) return false;
     if (condition.fromZone && entry.fromZone !== condition.fromZone) return false;
     if (condition.cardIds && !condition.cardIds.includes(entry.cardId)) return false;
-    if (condition.subtype && getCardDefinition(entry.cardId).subtype !== condition.subtype) return false;
+    if (condition.subtype && !hasSubtype(getCardDefinition(entry.cardId), condition.subtype)) return false;
     if (condition.cardTypes && !condition.cardTypes.includes(getCardDefinition(entry.cardId).type)) return false;
     if (condition.destroyedBy && !(entry.destructionCause && condition.destroyedBy.includes(entry.destructionCause))) return false;
     return true;
@@ -294,7 +295,7 @@ function amountValue(
     const joueur = amount.of === "opponent" ? getOpponent(state, controllerId) : getPlayer(state, controllerId);
     const cartes = joueur.graveyard.filter((c) => {
       const def = getCardDefinition(c.cardId);
-      if (amount.subtype && def.subtype !== amount.subtype) return false;
+      if (amount.subtype && !hasSubtype(def, amount.subtype)) return false;
       return !amount.cardTypes || amount.cardTypes.includes(def.type);
     }).length;
     const brut = Math.floor(cartes / Math.max(1, amount.perCards ?? 1));
@@ -409,7 +410,7 @@ function passesTargetFilter(
   if (filter.archetype && (def.archetype !== filter.archetype || !UNIT_CARD_TYPES.includes(def.type))) return false;
   if (filter.cardType && def.type !== filter.cardType) return false;
   if (filter.cardTypes && !filter.cardTypes.includes(def.type)) return false;
-  if (filter.subtype && def.subtype !== filter.subtype) return false;
+  if (filter.subtype && !hasSubtype(def, filter.subtype)) return false;
   if (filter.maxCost !== undefined && def.cost > filter.maxCost) return false;
   if (filter.minCost !== undefined && def.cost < filter.minCost) return false;
   if (filter.tag && !def.tags?.includes(filter.tag)) return false;
@@ -1143,7 +1144,7 @@ export function resolveEffect(
       if (effect.cardIdFrom === "chosenGraveyardCard") {
         const choisie = getPlayer(state, context.controllerId).graveyard.find((c) => c.instanceId === context.chosenGraveyardInstanceId);
         summonCardId =
-          choisie && (!effect.filter?.subtype || getCardDefinition(choisie.cardId).subtype === effect.filter.subtype)
+          choisie && (!effect.filter?.subtype || hasSubtype(getCardDefinition(choisie.cardId), effect.filter.subtype))
             ? choisie.cardId
             : undefined;
       }
@@ -1853,7 +1854,7 @@ export function resolveEffect(
       const card = player.graveyard.find((c) => c.instanceId === chosenId);
       if (!card) return { state, events };
       if (!matchesCardTypeFilter(effect.filter, getCardDefinition(card.cardId).type)) return { state, events };
-      if (effect.filter?.subtype && getCardDefinition(card.cardId).subtype !== effect.filter.subtype) return { state, events };
+      if (effect.filter?.subtype && !hasSubtype(getCardDefinition(card.cardId), effect.filter.subtype)) return { state, events };
       if (effect.filter?.maxCost !== undefined && getCardDefinition(card.cardId).cost > effect.filter.maxCost) {
         return { state, events };
       }
@@ -2259,7 +2260,7 @@ export function resolveEffect(
       const prenables = player.graveyard.filter((card) => {
         const def = getCardDefinition(card.cardId);
         if (!matchesCardTypeFilter(effect.filter, def.type)) return false;
-        if (effect.filter?.subtype && def.subtype !== effect.filter.subtype) return false;
+        if (effect.filter?.subtype && !hasSubtype(def, effect.filter.subtype)) return false;
         if (effect.filter?.archetype && def.archetype !== effect.filter.archetype) return false;
         // « coût ≤ moitié du résultat » (Norbert, Lot 17) : un plafond lu sur le jet en cours.
         const plafond = effect.amount?.kind === "dieResult" ? amountValue(effect.amount, state, context.controllerId, context) : effect.filter?.maxCost;
