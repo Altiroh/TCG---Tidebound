@@ -20,6 +20,7 @@ import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/match/NewMatch.module.css";
 import { playButtonClick, playGameStart, playTabClick } from "@/lib/sound";
 import { usePersistedState } from "@/lib/persistedState";
+import { getPreference, setPreference, subscribePreferences } from "@/lib/preferences";
 
 /**
  * Partie en ligne : recherche rapide (matchmaking au premier arrivé), ou
@@ -119,51 +120,35 @@ function normalizeInviteCode(raw: string): string {
   return raw.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
 }
 /**
- * Dernier deck lancé, retenu sur l'appareil. Écrit directement au
- * lancement, sans passer par un état : l'écran est démonté dans la foulée
- * (la partie le remplace), et un effet n'aurait jamais eu le temps de
- * l'écrire.
+ * Dernier deck lancé, retenu sur le compte (`lib/preferences.ts`). Écrit
+ * directement au lancement, sans passer par un état : l'écran est démonté
+ * dans la foulée (la partie le remplace), et un effet n'aurait jamais eu le
+ * temps de l'écrire.
  */
 const LAST_DECK_KEY = "tidebound:nouvelle-partie:dernier-deck";
 
 function readLastPlayedDeckId(): string | null {
-  try {
-    const raw = window.localStorage.getItem(LAST_DECK_KEY);
-    return raw && raw.length < 200 ? raw : null;
-  } catch {
-    return null;
-  }
+  const stored = getPreference(LAST_DECK_KEY);
+  return typeof stored === "string" && stored.length > 0 && stored.length < 200 ? stored : null;
 }
 
 function rememberLastPlayedDeckId(deckId: string): void {
-  try {
-    window.localStorage.setItem(LAST_DECK_KEY, deckId);
-  } catch {
-    // Stockage indisponible : la partie se lance, le choix n'est simplement pas retenu.
-  }
+  setPreference(LAST_DECK_KEY, deckId);
 }
 
 /**
- * Niveau du bot choisi en dernier, retenu sur l'appareil : écrit dès que le
+ * Niveau du bot choisi en dernier, retenu sur le compte : écrit dès que le
  * joueur le change, relu au montage (comme le dernier deck).
  */
 const BOT_DIFFICULTY_KEY = "tidebound:nouvelle-partie:niveau-bot";
 
 function readBotDifficulty(): BotDifficulty | null {
-  try {
-    const raw = window.localStorage.getItem(BOT_DIFFICULTY_KEY);
-    return BOT_DIFFICULTIES.some((d) => d.id === raw) ? (raw as BotDifficulty) : null;
-  } catch {
-    return null;
-  }
+  const stored = getPreference(BOT_DIFFICULTY_KEY);
+  return BOT_DIFFICULTIES.some((d) => d.id === stored) ? (stored as BotDifficulty) : null;
 }
 
 function rememberBotDifficulty(difficulty: BotDifficulty): void {
-  try {
-    window.localStorage.setItem(BOT_DIFFICULTY_KEY, difficulty);
-  } catch {
-    // Stockage indisponible : le choix vaut pour cette fois seulement.
-  }
+  setPreference(BOT_DIFFICULTY_KEY, difficulty);
 }
 
 /** 1 : mode · 2 : deck du joueur 1 (ou le sien contre le bot) · 3 : deck du joueur 2 (local à deux seulement). */
@@ -248,10 +233,17 @@ export function NewMatchScreen({
   );
   const [inviteCode, setInviteCode] = useState(() => normalizeInviteCode(initialInviteCode ?? ""));
   const [botDifficulty, setBotDifficulty] = useState<BotDifficulty>("moyen");
-  // Le niveau retenu remplace « moyen » après le montage (le serveur ne connaît pas l'appareil).
+  // Le niveau retenu remplace « moyen » après le montage (le rendu serveur ne le relit pas),
+  // puis suit le compte s'il est relu après coup (premier écran de la session).
   useEffect(() => {
-    const saved = readBotDifficulty();
-    if (saved) setBotDifficulty(saved);
+    const restore = () => {
+      const saved = readBotDifficulty();
+      if (saved) setBotDifficulty(saved);
+    };
+    restore();
+    return subscribePreferences((key, origin) => {
+      if (origin === "account" && key === BOT_DIFFICULTY_KEY) restore();
+    });
   }, []);
   function chooseBotDifficulty(difficulty: BotDifficulty) {
     setBotDifficulty(difficulty);

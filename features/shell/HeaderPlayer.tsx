@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { AudienceTip } from "@/features/audience/AudienceTip";
 import { RewardShortcuts } from "@/features/shell/RewardShortcuts";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { getPreference, hydratePreferences, setPreference } from "@/lib/preferences";
 import { fetchProgression, type ProgressionSummary } from "@/features/progression/actions";
 import { audienceMood } from "@/game/audience";
 import { onProgressionChanged, readProgression, rememberedProgression } from "@/features/progression/progressionSync";
@@ -31,43 +32,33 @@ const DailyStreakPopup = dynamic(() => import("@/features/progression/DailyStrea
   ssr: false,
 });
 
-/** Clé du jour (UTC, celui des escales) où le popup de série a déjà été montré sur cet appareil. */
+/**
+ * Clé du jour (UTC, celui des escales) où le popup de série a déjà été montré.
+ * Retenue sur le compte (`lib/preferences.ts`) : vu sur le téléphone, il ne
+ * revient pas sur l'ordinateur le même jour.
+ */
 const STREAK_POPUP_KEY = "tb:streak-popup-day";
 
 function streakPopupSeen(day: string): boolean {
-  try {
-    return window.localStorage.getItem(STREAK_POPUP_KEY) === day;
-  } catch {
-    return false;
-  }
+  return getPreference(STREAK_POPUP_KEY) === day;
 }
 
 function markStreakPopupSeen(day: string): void {
-  try {
-    window.localStorage.setItem(STREAK_POPUP_KEY, day);
-  } catch {
-    // Stockage indisponible (navigation privée) : le popup pourra revenir, rien de grave.
-  }
+  setPreference(STREAK_POPUP_KEY, day);
 }
 
-/** Mécènes vus par le joueur sur cet appareil : on n'annonce que ce qui est NOUVEAU, une fois. */
+/** Mécènes déjà vus par le joueur (sur le compte) : on n'annonce que ce qui est NOUVEAU, une fois. */
 const SPONSORS_SEEN_KEY = "tb:sponsors-seen";
 
 function readSponsorsSeen(): { watching: number; revealed: number } | null {
-  try {
-    const raw = window.localStorage.getItem(SPONSORS_SEEN_KEY);
-    return raw ? (JSON.parse(raw) as { watching: number; revealed: number }) : null;
-  } catch {
-    return null;
-  }
+  const stored = getPreference(SPONSORS_SEEN_KEY) as { watching?: unknown; revealed?: unknown } | undefined;
+  return stored && typeof stored.watching === "number" && typeof stored.revealed === "number"
+    ? { watching: stored.watching, revealed: stored.revealed }
+    : null;
 }
 
 function writeSponsorsSeen(seen: { watching: number; revealed: number }): void {
-  try {
-    window.localStorage.setItem(SPONSORS_SEEN_KEY, JSON.stringify(seen));
-  } catch {
-    // Stockage indisponible : l'annonce pourra revenir, rien de grave.
-  }
+  setPreference(SPONSORS_SEEN_KEY, seen);
 }
 
 /** « 1 240 » → « 1,2 k » au-delà de 10 000 : le bandeau n'a pas la place d'un compteur de stade. */
@@ -189,8 +180,11 @@ export function HeaderPlayer() {
       // Lecture partagée (`readProgression`) : mémorisée même si ce bandeau
       // a été démonté entre-temps, et réutilisée par le suivant tant
       // qu'elle est fraîche. Déconnecté : on n'en garde rien.
+      // Les marqueurs « déjà vu » viennent du compte : on attend sa relecture
+      // (immédiate dès la deuxième fois) avant de décider d'une annonce.
       readProgression(fetchProgression, force)
-        .then((result) => {
+        .then(async (result) => {
+          await hydratePreferences().catch(() => false);
           if (cancelled || request !== latest) return;
           setSummary(result);
           // Première venue du jour : le popup de série, une fois par jour et par appareil.

@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from "next";
 import { cardBodyFont, cardNewTitleFont, cardTitleFont, uiFont } from "@/lib/fonts";
 import { ScreenDiagnostic } from "@/components/ScreenDiagnostic";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
+import { PreferencesSync } from "@/components/PreferencesSync";
 import { InstallPromptCapture } from "@/components/InstallPrompt";
 import { OrientationGate } from "@/features/shell/OrientationGate";
 import { PageTransition } from "@/features/shell/PageTransition";
@@ -99,6 +100,8 @@ export default function RootLayout({
             {/* Musique du menu sur tous les écrans ; une partie la fait taire. */}
             <MenuAmbiance />
             <ServiceWorkerRegister />
+            {/* Préférences du joueur (son, filtres, niveau du bot…) relues sur le compte. */}
+            <PreferencesSync />
             {/* Temporaire : mesures d'écran, allumées depuis `/diagnostic-ecran`. */}
             <ScreenDiagnostic />
             {/* Invite d'installation (Android) captée dès le chargement ;

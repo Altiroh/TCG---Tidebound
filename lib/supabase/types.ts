@@ -606,6 +606,13 @@ export interface Database {
         Update: Record<string, never>;
         Relationships: [];
       };
+      /** Préférences du joueur (son, filtres, niveau du bot…), clé → valeur — migration 20261101120000. Écrites par `set_player_preferences`. */
+      player_preferences: {
+        Row: { user_id: string; preferences: unknown; updated_at: string };
+        Insert: { user_id: string; preferences?: unknown; updated_at?: string };
+        Update: Record<string, never>;
+        Relationships: [];
+      };
       /** Cartes favorites (le cœur du catalogue) — migration 20261014120000. */
       player_card_favorites: {
         Row: { user_id: string; card_id: string; created_at: string };
@@ -864,6 +871,11 @@ export interface Database {
           p_avatar_card_id?: string | null;
           p_clear_avatar?: boolean;
         };
+        Returns: { ok: boolean; error?: string };
+      };
+      /** Fusionne des préférences dans celles du joueur ; une valeur `null` retire la clé (migration 20261101120000). */
+      set_player_preferences: {
+        Args: { p_user_id: string; p_values: unknown };
         Returns: { ok: boolean; error?: string };
       };
       /** Crée une partie déjà commencée (bot, matchmaking) et son état privé, atomiquement. */
