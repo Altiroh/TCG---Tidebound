@@ -1149,7 +1149,9 @@ export function processTrigger(
     // Le Bris depuis la main est une propriété de l'ÉVÉNEMENT : sans ce
     // report, `conditionBrokenFromHand` serait toujours faux pour une
     // capacité déclenchée (Pantalone Sans-Sou).
-    const context = event.fromHand === undefined ? item.context : { ...item.context, brokenFromHand: event.fromHand };
+    const withHand = event.fromHand === undefined ? item.context : { ...item.context, brokenFromHand: event.fromHand };
+    // Même principe pour les dégâts que la déclencheuse vient d'infliger (Le Cerf-volant).
+    const context = event.damageAmount === undefined ? withHand : { ...withHand, triggerDamageAmount: event.damageAmount };
     // Aucune désignation d'office : une capacité automatique ne vise jamais
     // une unité CHOISIE (« jamais automatique, le joueur choisit » —
     // décision du 17/09/2026). L'invariant est tenu par

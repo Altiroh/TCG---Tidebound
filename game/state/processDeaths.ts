@@ -345,6 +345,37 @@ function hasRescueCandidate(
   return state.players.some((p) => collectReactionCandidates(state, events, p.id, turnNumber).length > 0);
 }
 
+/**
+ * Retire les modificateurs « tant que cette carte est en jeu »
+ * (`StatModifier.whileSourceInPlay`) dont la carte source n'est plus sur
+ * aucun plateau. Relu à chaque passe des morts : une Résistance prêtée qui
+ * tombe peut à son tour faire mourir son porteur.
+ */
+export function dropOrphanedModifiers(state: GameState): GameState {
+  const sources = new Set<string>();
+  for (const player of state.players) {
+    for (const unit of player.board) {
+      for (const modifier of unit.modifiers) if (modifier.whileSourceInPlay) sources.add(modifier.whileSourceInPlay);
+    }
+  }
+  if (sources.size === 0) return state;
+  for (const player of state.players) for (const unit of player.board) sources.delete(unit.instanceId);
+  if (sources.size === 0) return state;
+  const players = state.players.map((player) =>
+    player.board.some((unit) => unit.modifiers.some((m) => m.whileSourceInPlay && sources.has(m.whileSourceInPlay)))
+      ? {
+          ...player,
+          board: player.board.map((unit) =>
+            unit.modifiers.some((m) => m.whileSourceInPlay && sources.has(m.whileSourceInPlay))
+              ? { ...unit, modifiers: unit.modifiers.filter((m) => !(m.whileSourceInPlay && sources.has(m.whileSourceInPlay))) }
+              : unit
+          ),
+        }
+      : player
+  ) as GameState["players"];
+  return { ...state, players };
+}
+
 export function processDeaths(
   state: GameState,
   turnNumber: number
@@ -354,6 +385,7 @@ export function processDeaths(
   const MAX_ITERATIONS = 20;
 
   for (let iteration = 0; iteration < MAX_ITERATIONS; iteration++) {
+    current = dropOrphanedModifiers(current);
     // --- Substitutions de destruction (ex: Plaque de Fortune) : appliquées
     // AVANT la collecte des morts, pour qu'une unité sauvée ne soit jamais
     // envoyée au cimetière ce cycle-ci. Les paires (joueur, unité) à

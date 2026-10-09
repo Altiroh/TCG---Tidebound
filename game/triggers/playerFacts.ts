@@ -37,7 +37,13 @@ export function playerFactTriggerEvents(state: GameState, events: readonly GameE
         if (!event.dealerInstanceId || event.amount <= 0) break;
         const dealer = findCardInstance(state, event.dealerInstanceId);
         if (!dealer || dealer.zone !== "board") break;
-        derived.push({ trigger: "onDealtDamage", playerId: dealer.owner.id, cardId: dealer.card.cardId, sourceInstanceId: event.dealerInstanceId });
+        derived.push({
+          trigger: "onDealtDamage",
+          playerId: dealer.owner.id,
+          cardId: dealer.card.cardId,
+          sourceInstanceId: event.dealerInstanceId,
+          damageAmount: event.amount,
+        });
         break;
       }
       default:

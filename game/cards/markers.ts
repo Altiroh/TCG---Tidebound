@@ -35,6 +35,11 @@ export interface MarkerRule {
    * ailleurs, et le marqueur est retiré (`game/state/processDeaths.ts`).
    */
   insteadOfGraveyard?: "deckBottom";
+  /**
+   * Une carte qui porte DÉJÀ ce sous-type (imprimé) ne le reçoit jamais :
+   * le marqueur ne sert qu'à faire entrer une autre famille dans la sienne.
+   */
+  refusedOnSubtype?: SubtypeId;
 }
 
 /**
@@ -43,10 +48,13 @@ export interface MarkerRule {
  *  - un seul par unité ;
  *  - une unité marquée qui devrait rejoindre le Cimetière va SOUS la pioche
  *    de son propriétaire, et perd le marqueur : on ne ramène pas deux fois
- *    de suite la même unité, aucune boucle n'est possible.
+ *    de suite la même unité, aucune boucle n'est possible ;
+ *  - un Mort-vivant n'en porte JAMAIS (décision du 10/10/2026) : le marqueur
+ *    fait entrer les autres familles dans la sienne. Ramené « avec un
+ *    marqueur Mort », un Mort-vivant revient sans.
  */
 export const MARKER_RULES: Readonly<Record<MarkerId, MarkerRule>> = {
-  mort: { label: "Mort", max: 1, grantsSubtype: "mort-vivant", insteadOfGraveyard: "deckBottom" },
+  mort: { label: "Mort", max: 1, grantsSubtype: "mort-vivant", insteadOfGraveyard: "deckBottom", refusedOnSubtype: "mort-vivant" },
 };
 
 export type CardMarkers = Partial<Record<MarkerId, number>>;
@@ -62,8 +70,11 @@ export function hasMarker(card: Pick<CardInstance, "markers">, marker: MarkerId)
 }
 
 /** Peut-on encore lui en poser un (`MarkerRule.max`) ? */
-export function canReceiveMarker(card: Pick<CardInstance, "markers">, marker: MarkerId): boolean {
-  return markerCount(card, marker) < MARKER_RULES[marker].max;
+export function canReceiveMarker(card: Pick<CardInstance, "markers">, marker: MarkerId, def: Pick<CardDefinition, "subtype" | "subtypes">): boolean {
+  const rule = MARKER_RULES[marker];
+  // La famille qui le refuse (`refusedOnSubtype`) : jamais, même sans en porter.
+  if (rule.refusedOnSubtype && hasSubtype(def, rule.refusedOnSubtype)) return false;
+  return markerCount(card, marker) < rule.max;
 }
 
 /** La carte avec un marqueur `marker` de plus, sans dépasser le maximum de la règle. */

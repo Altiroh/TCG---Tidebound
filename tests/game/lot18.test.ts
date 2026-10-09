@@ -150,7 +150,20 @@ describe("retours du Cimetière sur le plateau", () => {
     expect(joueur(pris.state, "p2").graveyard.map((c) => c.instanceId)).toEqual([adverse.instanceId]);
   });
 
-  it("Coucou, c'est moi : détruite, elle revient à la fin du tour avec un marqueur Mort ; détruite marquée, elle part sous la pioche", () => {
+  it("Encore une histoire : jusqu'au coût 4 ; un Mort-vivant ramené revient SANS marqueur Mort", () => {
+    const histoire = instance("encore-une-histoire", "p1");
+    const chose = instance("chose-des-hauts-fonds", "p1"); // coût 4
+    const ptitBout = instance("ptit-bout", "p1"); // Mort-vivant
+    const r = dispatch(table({ board: [histoire], graveyard: [chose, ptitBout] }), { type: "breakObject", playerId: "p1", instanceId: histoire.instanceId });
+    ok(r);
+    const proposees = r.state.pendingChoice?.kind === "deckLook" ? r.state.pendingChoice.revealed.map((c) => c.instanceId) : [];
+    expect(proposees).toEqual(expect.arrayContaining([chose.instanceId, ptitBout.instanceId]));
+    const pris = prendre(r.state, ptitBout.instanceId);
+    ok(pris);
+    expect(markerCount(unite(pris.state, ptitBout.instanceId)!, "mort")).toBe(0);
+  });
+
+  it("Coucou, c'est moi : détruite, elle revient à la fin du tour, sans marqueur — et recommence au tour suivant", () => {
     const coucou = instance("coucou-cest-moi", "p1");
     const crabe = instance("crabe-de-fer", "p2");
     const mort = seJeterSurLeCrabe(table({ board: [coucou] }, { board: [crabe] }), coucou, crabe);
@@ -161,19 +174,31 @@ describe("retours du Cimetière sur le plateau", () => {
     ok(fin);
     const revenue = unite(fin.state, coucou.instanceId)!;
     expect(revenue).toBeDefined();
-    expect(markerCount(revenue, "mort")).toBe(1);
-    expect(joueur(fin.state).graveyard.some((c) => c.instanceId === coucou.instanceId)).toBe(false);
+    expect(markerCount(revenue, "mort")).toBe(0);
 
-    // Marquée, sa prochaine destruction l'envoie sous la pioche : pas de boucle.
-    const encore = seJeterSurLeCrabe({ ...fin.state, activePlayerId: "p1", priorityPlayerId: "p1", players: fin.state.players.map((p) => (p.id === "p1" ? { ...p, board: p.board.map((u) => ({ ...u, summoningSick: false, hasAttackedThisTurn: false })) } : p)) as GameState["players"] }, revenue, crabe);
+    // Sans marqueur, sa mort suivante la renvoie au Cimetière — d'où elle reviendra encore.
+    const prete = { ...fin.state, activePlayerId: "p1", priorityPlayerId: "p1", players: fin.state.players.map((p) => (p.id === "p1" ? { ...p, board: p.board.map((u) => ({ ...u, summoningSick: false, hasAttackedThisTurn: false })) } : p)) as GameState["players"] };
+    const encore = seJeterSurLeCrabe(prete, revenue, crabe);
     ok(encore);
-    expect(joueur(encore.state).graveyard.some((c) => c.instanceId === coucou.instanceId)).toBe(false);
-    expect(joueur(encore.state).deck.at(-1)!.instanceId).toBe(coucou.instanceId);
+    expect(joueur(encore.state).graveyard.some((c) => c.instanceId === coucou.instanceId)).toBe(true);
+  });
+
+  it("Coucou, c'est moi : défaussée, elle arrive sur le plateau à la fin du tour", () => {
+    const morts = instance("on-joue-aux-morts", "p1");
+    const coucou = instance("coucou-cest-moi", "p1");
+    const r = jouer(table({ hand: [morts, coucou] }), morts);
+    ok(r);
+    const defausse = answerHandDiscard(r.state, [coucou.instanceId]);
+    ok(defausse);
+    expect(joueur(defausse.state).graveyard.some((c) => c.instanceId === coucou.instanceId)).toBe(true);
+    const fin = dispatch(enFinDeTour(defausse.state), { type: "endTurn", playerId: "p1" });
+    ok(fin);
+    expect(unite(fin.state, coucou.instanceId)).toBeDefined();
   });
 });
 
 describe("cartes du pool", () => {
-  it("On joue aux morts : +1 Puissance, conservée, pour chaque carte défaussée", () => {
+  it("On joue aux morts : +1 / +1, conservé, pour chaque carte défaussée", () => {
     const morts = instance("on-joue-aux-morts", "p1");
     const a = instance("marin-des-jetees", "p1");
     const b = instance("marin-des-jetees", "p1");
@@ -183,7 +208,7 @@ describe("cartes du pool", () => {
     expect(r.state.pendingChoice?.kind).toBe("handDiscard");
     const defausse = answerHandDiscard(r.state, [a.instanceId, b.instanceId]);
     ok(defausse);
-    expect(stats(defausse.state, morts.instanceId).attack).toBe(1 + 2);
+    expect(stats(defausse.state, morts.instanceId)).toMatchObject({ attack: 1 + 2, health: 3 + 2 });
     expect(joueur(defausse.state).hand.map((h) => h.instanceId)).toEqual([c.instanceId]);
   });
 
@@ -197,49 +222,89 @@ describe("cartes du pool", () => {
     expect(stats(passe.state, morts.instanceId).attack).toBe(1);
   });
 
-  it("Le Grand Frère : +1 Puissance à vos unités marquées, lui compris s'il l'est", () => {
-    const frere = marque(instance("le-grand-frere", "p1"));
+  it("Chut, il dort : l'unité marquée gagne aussi +1 / +1", () => {
+    const chut = instance("chut-il-dort", "p1");
+    const matelot = instance("marin-des-jetees", "p1");
+    const avant = stats(table({ board: [matelot] }), matelot.instanceId);
+    const r = jouer(table({ hand: [chut], board: [matelot] }), chut, matelot.instanceId);
+    ok(r);
+    expect(stats(r.state, matelot.instanceId)).toMatchObject({ attack: avant.attack + 1, health: avant.health + 1 });
+  });
+
+  it("Le Grand Frère : +1 Puissance à vos AUTRES Mort-vivants, unités marquées comprises", () => {
+    const frere = instance("le-grand-frere", "p1");
+    const ptitBout = instance("ptit-bout", "p1");
     const marquee = marque(instance("marin-des-jetees", "p1"));
     const libre = instance("marin-des-jetees", "p1");
-    const state = table({ board: [frere, marquee, libre] });
+    const state = table({ board: [frere, ptitBout, marquee, libre] });
+    expect(stats(state, ptitBout.instanceId).attack).toBe(1 + 1);
     expect(stats(state, marquee.instanceId).attack).toBe(1 + 1);
     expect(stats(state, libre.instanceId).attack).toBe(1);
-    expect(stats(state, frere.instanceId).attack).toBe(2 + 1);
+    expect(stats(state, frere.instanceId).attack).toBe(2);
   });
 
-  it("Le Gardien des Jouets : +2 Puissance tant qu'au moins 2 de vos unités sont marquées", () => {
+  it("Le Gardien des Jouets : +1 / +1, conservé, chaque fois qu'un autre de vos Mort-vivants meurt", () => {
     const gardien = instance("le-gardien-des-jouets", "p1");
-    const une = marque(instance("marin-des-jetees", "p1"));
-    const deux = marque(instance("marin-des-jetees", "p1"));
-    expect(stats(table({ board: [gardien, une] }), gardien.instanceId).attack).toBe(3);
-    expect(stats(table({ board: [gardien, une, deux] }), gardien.instanceId).attack).toBe(3 + 2);
-  });
-
-  it("Pas sans moi : la première unité marquée détruite chaque tour inflige 1 dégât au Navire adverse", () => {
-    const pasSansMoi = instance("pas-sans-moi", "p1");
-    const m1 = marque(instance("murene-aveugle", "p1"));
-    const m2 = marque(instance("murene-aveugle", "p1"));
+    const ptitBout = instance("ptit-bout", "p1");
     const crabe = instance("crabe-de-fer", "p2");
-    const depart = table({ board: [pasSansMoi, m1, m2] }, { board: [crabe] });
-    const ancrage = joueur(depart, "p2").anchor;
-    const r1 = seJeterSurLeCrabe(depart, m1, crabe);
-    ok(r1);
-    expect(joueur(r1.state, "p2").anchor).toBe(ancrage - 1);
-    const r2 = seJeterSurLeCrabe(r1.state, m2, crabe);
-    ok(r2);
-    expect(joueur(r2.state, "p2").anchor).toBe(ancrage - 1);
+    const r = seJeterSurLeCrabe(table({ board: [gardien, ptitBout] }, { board: [crabe] }), ptitBout, crabe);
+    ok(r);
+    expect(joueur(r.state).graveyard.some((c) => c.instanceId === ptitBout.instanceId)).toBe(true);
+    expect(stats(r.state, gardien.instanceId)).toMatchObject({ attack: 3 + 1, health: 5 + 1 });
   });
 
-  it("Ceux d'en bas : une unité qui arrive marquée sur votre plateau fait piocher 1 carte", () => {
-    const ceux = instance("ceux-den-bas", "p1", { turnsRemaining: 4 });
-    const reveil = instance("reveille-toi", "p1");
-    const loup = instance("vieux-loup-de-mer", "p1");
-    const r = jouer(table({ hand: [reveil], board: [ceux], graveyard: [loup] }), reveil);
+  it("Pas sans moi : le premier Mort-vivant qui meurt chaque tour inflige 1 dégât au Navire adverse et rend 1 Ancrage", () => {
+    const pasSansMoi = instance("pas-sans-moi", "p1");
+    const b1 = instance("ptit-bout", "p1");
+    const b2 = instance("ptit-bout", "p1");
+    const crabe = instance("crabe-de-fer", "p2");
+    const depart = table({ board: [pasSansMoi, b1, b2], anchor: 10 }, { board: [crabe] });
+    const adverse = joueur(depart, "p2").anchor;
+    const r1 = seJeterSurLeCrabe(depart, b1, crabe);
+    ok(r1);
+    expect(joueur(r1.state, "p2").anchor).toBe(adverse - 1);
+    expect(joueur(r1.state).anchor).toBe(11);
+    // La première fois à chaque tour seulement.
+    const r2 = seJeterSurLeCrabe(r1.state, b2, crabe);
+    ok(r2);
+    expect(joueur(r2.state, "p2").anchor).toBe(adverse - 1);
+    expect(joueur(r2.state).anchor).toBe(11);
+  });
+
+  it("Pas sans moi : une carte Mort-vivant défaussée compte aussi", () => {
+    const pasSansMoi = instance("pas-sans-moi", "p1");
+    const morts = instance("on-joue-aux-morts", "p1");
+    const ptitBout = instance("ptit-bout", "p1");
+    const depart = table({ hand: [morts, ptitBout], board: [pasSansMoi] });
+    const adverse = joueur(depart, "p2").anchor;
+    const r = jouer(depart, morts);
     ok(r);
-    const main = joueur(r.state).hand.length;
-    const pris = prendre(r.state, loup.instanceId);
-    ok(pris);
-    expect(joueur(pris.state).hand.length).toBe(main + 1);
+    const defausse = answerHandDiscard(r.state, [ptitBout.instanceId]);
+    ok(defausse);
+    expect(joueur(defausse.state, "p2").anchor).toBe(adverse - 1);
+  });
+
+  it("Ceux d'en bas : une carte Mort-vivant défaussée donne +1 / +1 à vos Mort-vivants, tant que la Structure est en jeu", () => {
+    const ceux = instance("ceux-den-bas", "p1", { turnsRemaining: 4 });
+    const morts = instance("on-joue-aux-morts", "p1");
+    const ptitBout = instance("ptit-bout", "p1");
+    const enJeu = instance("ptit-bout", "p1");
+    const libre = instance("marin-des-jetees", "p1");
+    const r = jouer(table({ hand: [morts, ptitBout], board: [ceux, enJeu, libre] }), morts);
+    ok(r);
+    const defausse = answerHandDiscard(r.state, [ptitBout.instanceId]);
+    ok(defausse);
+    expect(stats(defausse.state, enJeu.instanceId)).toMatchObject({ attack: 1 + 1, health: 2 + 1 });
+    expect(stats(defausse.state, libre.instanceId).attack).toBe(1);
+
+    // La Structure quitte le jeu : le bonus tombe avec elle.
+    const sansElle: GameState = {
+      ...defausse.state,
+      players: defausse.state.players.map((p) => (p.id === "p1" ? { ...p, board: p.board.filter((u) => u.instanceId !== ceux.instanceId) } : p)) as GameState["players"],
+    };
+    const suite = dispatch(sansElle, { type: "advancePhase", playerId: "p1" });
+    ok(suite);
+    expect(stats(suite.state, enJeu.instanceId)).toMatchObject({ attack: 1, health: 2 });
   });
 
   it("Le Cerf-volant : n'équipe qu'un Mort-vivant — une unité marquée en est un", () => {
@@ -253,12 +318,18 @@ describe("cartes du pool", () => {
     expect(canBeEquipTarget(cerfVolant, board, ptitBout)).toBe(true);
   });
 
-  it("Le Cerf-volant : +1 / +1 au porteur, et sa mort fait piocher puis défausser", () => {
+  it("Le Cerf-volant : +1 / +1 au porteur, et ses dégâts rendent autant d'Ancrage", () => {
     const cerf = instance("le-cerf-volant", "p1");
     const ptitBout = instance("ptit-bout", "p1");
-    const r = jouer(table({ hand: [cerf], board: [ptitBout] }), cerf, ptitBout.instanceId);
+    const r = jouer(table({ hand: [cerf], board: [ptitBout], anchor: 10 }), cerf, ptitBout.instanceId);
     ok(r);
     expect(stats(r.state, ptitBout.instanceId)).toMatchObject({ attack: 1 + 1, health: 2 + 1 });
+
+    const adverse = joueur(r.state, "p2").anchor;
+    const frappe = dispatch({ ...r.state, phase: "combatPhase" }, { type: "attack", playerId: "p1", attackerInstanceId: ptitBout.instanceId });
+    ok(frappe);
+    expect(joueur(frappe.state, "p2").anchor).toBe(adverse - 2);
+    expect(joueur(frappe.state).anchor).toBe(10 + 2);
   });
 });
 

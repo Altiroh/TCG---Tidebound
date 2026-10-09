@@ -71,6 +71,13 @@ export interface TriggerEvent {
   repeatedArrival?: boolean;
   /** `onDieResolved` : issue du jet (Lot 17). */
   dieOutcome?: DieOutcome;
+  /**
+   * `onDealtDamage` : combien la carte vient d'infliger. Propagé dans
+   * `EffectContext.triggerDamageAmount` par `processTrigger`, et lu par le
+   * montant `{ kind: "triggerDamage" }` (« récupérez autant d'Ancrage »,
+   * Le Cerf-volant, Lot 18).
+   */
+  damageAmount?: number;
   /** `onDiscarded` / `onCardDiscardedFromHand` : propriétaire de la carte défaussée. */
   discardedOwnerId?: string;
   /**

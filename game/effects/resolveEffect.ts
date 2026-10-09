@@ -189,6 +189,8 @@ export interface EffectContext {
   brokenFromHand?: boolean;
   /** Carte qui a DÉCLENCHÉ la capacité en cours d'exécution (capacités d'observateur) — cible `{ kind: "triggerSource" }`. */
   triggerSourceInstanceId?: string;
+  /** `onDealtDamage` : dégâts que la déclencheuse vient d'infliger — montant `{ kind: "triggerDamage" }`. */
+  triggerDamageAmount?: number;
   /**
    * Réduction à appliquer aux dégâts visant un JOUEUR pendant cette
    * résolution (tir de Navire intercepté par un piège). Posée uniquement par
@@ -284,10 +286,11 @@ function amountValue(
   amount: EffectAmount | undefined,
   state: GameState,
   controllerId: PlayerId,
-  context?: Pick<EffectContext, "dieResult" | "discardedCount">
+  context?: Pick<EffectContext, "dieResult" | "discardedCount" | "triggerDamageAmount">
 ): number {
   if (amount === undefined) return 0;
   if (amount.kind === "discardedCount") return (context?.discardedCount ?? 0) * (amount.per ?? 1);
+  if (amount.kind === "triggerDamage") return Math.max(0, context?.triggerDamageAmount ?? 0);
   if (amount.kind === "handSize") return getPlayer(state, controllerId).hand.length;
   if (amount.kind === "dieResult") {
     // « ? » sur la carte : le résultat du jet en cours (Lot 17). Hors jet, 0.
@@ -561,6 +564,17 @@ function resolveUnitTargetsUnfiltered(
     // les unités » et « au hasard » ne les voient pas (`game/rules/ongoing.ts`).
     case "allAllyUnits":
       return noDraw(boardPermanents(controller.board).map((unit) => ({ unit, ownerId: controller.id })));
+    case "allAllyUnitsWithSubtype": {
+      const subtype = effect.target.subtype;
+      return noDraw(
+        boardPermanents(controller.board)
+          .filter((unit) => {
+            const def = getCardDefinition(unit.cardId);
+            return UNIT_CARD_TYPES.includes(def.type) && unitHasSubtype(def, unit, subtype);
+          })
+          .map((unit) => ({ unit, ownerId: controller.id }))
+      );
+    }
     case "allEnemyUnits":
       return noDraw(boardPermanents(opponent.board).map((unit) => ({ unit, ownerId: opponent.id })));
     case "allUnits":
@@ -1306,6 +1320,7 @@ export function resolveEffect(
               health: healthDelta,
               duration,
               ...(effect.expiresOnControllersTurn ? { appliedBy: context.controllerId } : {}),
+              ...(effect.whileSourceInPlay && context.sourceInstanceId ? { whileSourceInPlay: context.sourceInstanceId } : {}),
               ...(effect.grantKeywords ? { keywords: effect.grantKeywords } : {}),
               ...(effect.removeKeywords ? { removesKeywords: effect.removeKeywords } : {}),
               ...(effect.ignoresLande ? { ignoresLande: true } : {}),
@@ -1511,7 +1526,7 @@ export function resolveEffect(
       const { targets, rngState } = resolveUnitTargets(state, effect, context);
       let nextState: GameState = { ...state, rngState };
       for (const { unit, ownerId } of targets) {
-        if (!canReceiveMarker(unit, marker)) continue;
+        if (!canReceiveMarker(unit, marker, getCardDefinition(unit.cardId))) continue;
         nextState = replaceUnit(nextState, ownerId, unit.instanceId, (u) => withMarker(u, marker));
       }
       return { state: nextState, events };

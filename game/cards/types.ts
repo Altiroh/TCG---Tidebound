@@ -1813,6 +1813,13 @@ export interface StatModifier {
   attack: number;
   health: number;
   duration: StatModifierDuration;
+  /**
+   * « … tant que cette carte est en jeu » (Ceux d'en bas, Lot 18) :
+   * l'instance de la carte qui l'a posé. Le modificateur tombe dès qu'elle
+   * n'est plus sur un plateau — détruite, expirée, renvoyée — quelle que soit
+   * sa `duration` (`dropOrphanedModifiers`, `processDeaths`).
+   */
+  whileSourceInPlay?: string;
   /** Mots-clés accordés tant que le modificateur est en place (ex: "Pied marin jusqu'à la fin du tour" — P'tite Fesse, Grand Rêve abyssale). */
   keywords?: string[];
   /**

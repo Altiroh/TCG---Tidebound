@@ -1,5 +1,5 @@
 import { freeBoardSlots } from "@/game/rules/slotEffects";
-import { withMarker, type MarkerId } from "@/game/cards/markers";
+import { canReceiveMarker, withMarker, type MarkerId } from "@/game/cards/markers";
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { UNIT_CARD_TYPES, type CardInstance } from "@/game/cards/types";
 import type { GameEvent } from "@/game/events/types";
@@ -58,7 +58,8 @@ export function placeFromGraveyard(
     ...(def.durationTurns !== undefined ? { turnsRemaining: def.durationTurns } : {}),
     ...(card.illustrationVariant !== undefined ? { illustrationVariant: card.illustrationVariant } : {}),
   };
-  const posee = marker ? withMarker(neuve, marker) : neuve;
+  // Un Mort-vivant ramené « avec un marqueur Mort » revient sans (`refusedOnSubtype`).
+  const posee = marker && canReceiveMarker(neuve, marker, def) ? withMarker(neuve, marker) : neuve;
   const withBoard: GameState = {
     ...state,
     players: state.players.map((p) => (p.id === toPlayerId ? { ...p, board: [...p.board, posee] } : p)) as [PlayerState, PlayerState],

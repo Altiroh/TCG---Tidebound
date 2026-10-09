@@ -516,6 +516,12 @@ export type EffectAmount =
    * la même suite d'effets (`EffectContext.discardedCount`). 0 ailleurs.
    */
   | { kind: "discardedCount"; per?: number }
+  /**
+   * « autant que les dégâts infligés » (Le Cerf-volant, Lot 18 : « récupérez
+   * autant d'Ancrage ») : ce que la carte déclencheuse d'un `onDealtDamage`
+   * vient d'infliger (`EffectContext.triggerDamageAmount`). 0 ailleurs.
+   */
+  | { kind: "triggerDamage" }
   /** « autant de cartes que vous voulez » : la taille de la main du joueur visé, au moment de la résolution. */
   | { kind: "handSize" };
 
@@ -621,6 +627,12 @@ export type TargetSelector =
    */
   | { kind: "chosenUnit"; among?: ChosenUnitFilter }
   | { kind: "allAllyUnits" }
+  /**
+   * « vos unités <sous-type> » (Ceux d'en bas, Lot 18 : « vos unités
+   * Mort-vivant gagnent +1 / +1 ») : les UNITÉS du contrôleur qui portent ce
+   * sous-type, marqueurs compris (`unitHasSubtype`).
+   */
+  | { kind: "allAllyUnitsWithSubtype"; subtype: string }
   | { kind: "allEnemyUnits" }
   | { kind: "allUnits" }
   | { kind: "randomEnemyUnit" }
@@ -1160,7 +1172,14 @@ export interface EffectDefinition {
    * joué ce nombre de tours.
    */
   tableTurns?: number;
-  /** `condemnSlot` : la condamnation dure tant que la carte source est en jeu (Le Barrage des Égarés). */
+  /**
+   * « … tant que cette carte est en jeu » : l'effet tombe quand la carte
+   * SOURCE quitte le plateau.
+   *  - `condemnSlot` : la condamnation (Le Barrage des Égarés) ;
+   *  - `buff` : le modificateur (Ceux d'en bas, Lot 18 —
+   *    `StatModifier.whileSourceInPlay`). À combiner avec `permanent: true`,
+   *    sans quoi il tomberait aussi en fin de tour.
+   */
   whileSourceInPlay?: boolean;
 
   /**
