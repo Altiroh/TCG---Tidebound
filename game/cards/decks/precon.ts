@@ -160,44 +160,58 @@ export const DECK_CHEVALIERS_DU_GRAND_ETANG: DeckList = {
 };
 
 /**
- * 3 — La Veillée. Un Dead, Cimetière, attrition.
+ * 3 — La Veillée. Un Dead : la mort nourrit la meute.
  *
  * La Religieuse : Pénitence rend la dette moins chère, et ce deck en prend
  * beaucoup — il joue à découvert pour tenir la cadence.
  *
- * Le Naufragé Impossible (Lot 14) y est un vrai finisher de famille depuis
- * qu'il porte le sous-type. Pas de Filet de Sauvetage : la page prévient
- * que « certaines unités veulent mourir », et ce deck en compte trop pour
- * qu'un anti-destruction ne se retourne pas contre lui.
+ * RECONSTRUITE LE 10/10/2026 sur le Lot 18 réécrit. Chaque Mort-vivant
+ * détruit, Sabordé ou défaussé rapporte : Coucou, c'est moi revient en jeu,
+ * Pas sans moi draine, Le Gardien des Jouets grossit, Ceux d'en bas renforce
+ * toute la meute ; Le Grand Frère et Le Cerf-volant font frapper plus fort
+ * et rendre de l'Ancrage. Encore une histoire peut aussi voler un mort
+ * adverse, qui rejoint la meute avec son marqueur. Sortent les repêchages en
+ * main (La Petite Chanson, Bonne nuit, Maman revient), La Marelle,
+ * Mauvaise main et Le Naufragé Impossible.
+ *
+ * Mesuré au labo contre le reste du rayon (`scripts/preconLab/libraries/
+ * veilleeLot18.ts`, 60 parties par paire au bot moyen, 24 au difficile) :
+ * 43 % → 58,8 % (moyen), 39,5 % → 60,3 % (difficile). Avec deux Gardiens des
+ * Jouets, la carte qui pèse le plus (gagnée 79 % des fois où il est vu,
+ * 45 % sinon), la liste montait à 62,5 % / 64,2 % : écartée. Le bot pose
+ * encore peu Ceux d'en bas, On joue aux morts et Réveille-toi (24 à 38 %
+ * des fois où il les tient) — entre des mains humaines, le deck vaut
+ * probablement un peu plus que la mesure.
  */
 export const DECK_LA_VEILLEE: DeckList = {
   id: "la-veillee",
   name: "La Veillée",
   shipId: "la-religieuse",
   description:
-    "Attrition : la main et le Cimetière forment un circuit, et chaque perte revient sous une autre forme.",
+    "La meute se nourrit de ses morts : chaque Mort-vivant perdu revient, frappe ou renforce les autres.",
   cardIds: [
     // Les petits, qu'on est content de perdre.
-    ...repeat("ptit-bout", 3),
+    ...repeat("coucou-cest-moi", 3),
+    ...repeat("ptit-bout", 2),
     ...repeat("cache-cache", 3),
-    ...repeat("encore-cinq-minutes", 3),
-    ...repeat("papa-est-en-mer", 3),
-    ...repeat("promis-jattends", 3),
-    // Ce qui remonte du Cimetière, ou le remplit.
-    ...repeat("on-rentre-bientot", 3),
+    ...repeat("pas-sans-moi", 3),
+    ...repeat("encore-cinq-minutes", 2),
+    ...repeat("papa-est-en-mer", 2),
+    ...repeat("promis-jattends", 2),
+    // Ceux qui profitent de chaque perte.
     ...repeat("le-copain-du-dessous", 3),
-    ...repeat("maman-revient", 2),
+    ...repeat("le-grand-frere", 2),
     ...repeat("tu-mavais-promis", 2),
-    ...repeat("le-gouter", 3),
-    ...repeat("la-petite-chanson", 2),
-    ...repeat("bonne-nuit", 2),
-    ...repeat("la-marelle", 2),
-    // Ce qui ferme la partie.
-    ...repeat("tu-viens-jouer", 2),
+    ...repeat("on-rentre-bientot", 2),
+    ...repeat("le-gardien-des-jouets", 1),
+    ...repeat("on-joue-aux-morts", 2),
     ...repeat("on-avait-dit-tous-ensemble", 1),
-    ...repeat("le-naufrage-impossible", 1),
-    // Lot 14 : de quoi choisir ce qu'on jette, ce qui est tout le deck.
-    ...repeat("mauvaise-main", 2),
+    ...repeat("ceux-den-bas", 2),
+    ...repeat("le-cerf-volant", 2),
+    // Ce qui remonte du Cimetière, ou le remplit.
+    ...repeat("encore-une-histoire", 2),
+    ...repeat("reveille-toi", 2),
+    ...repeat("le-gouter", 2),
   ],
 };
 

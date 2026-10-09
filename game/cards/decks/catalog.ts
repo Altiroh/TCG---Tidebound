@@ -73,9 +73,9 @@ const DECK_META: Record<string, DeckMeta> = {
     mechanics: ["Unités qui se renforcent l'une l'autre", "Équipements", "Protection des pièces clés"],
   },
   "la-veillee": {
-    style: "Contrôle / Cimetière et attrition",
+    style: "Aggro / la meute se nourrit de ses morts",
     difficulty: 3,
-    mechanics: ["Défausse volontaire", "Récupération au Cimetière", "Pression continue"],
+    mechanics: ["Morts et défausses qui renforcent la meute", "Drain d'Ancrage", "Retours du Cimetière"],
   },
   "le-theatre-englouti-deck": {
     style: "Tempo / Marionnettes et arrivées rejouées",
