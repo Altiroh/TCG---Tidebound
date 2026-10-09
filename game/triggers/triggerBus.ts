@@ -1,4 +1,5 @@
 import { hasSubtype } from "@/game/cards/subtypes";
+import { unitHasSubtype } from "@/game/cards/markers";
 import { applyShipArrivalPassives } from "@/game/rules/shipPassives";
 import { isTextIgnored } from "@/game/cards/types";
 import { playerFactTriggerEvents } from "@/game/triggers/playerFacts";
@@ -130,7 +131,7 @@ function matchesControlCondition(
   if (ability.condition?.attackTargetSubtype) {
     const cible = state.pendingAttack?.defenderInstanceId;
     const trouvee = cible ? findBoardUnit(state, cible) : undefined;
-    if (!trouvee || !hasSubtype(getCardDefinition(trouvee.unit.cardId), ability.condition.attackTargetSubtype)) return false;
+    if (!trouvee || !unitHasSubtype(getCardDefinition(trouvee.unit.cardId), trouvee.unit, ability.condition.attackTargetSubtype)) return false;
   }
   if (ability.condition?.selfHasKeyword) {
     const motCle = ability.condition.selfHasKeyword;
@@ -403,7 +404,9 @@ function matchesTriggerSource(
   if (filter.cardIds && !(event.cardId && filter.cardIds.includes(event.cardId))) return false;
   if (filter.archetype && !(event.cardId && getCardDefinition(event.cardId).archetype === filter.archetype)) return false;
   // Même logique pour le sous-type (Lot 11, « une autre Marionnette alliée »).
-  if (filter.subtype && !(event.cardId && hasSubtype(getCardDefinition(event.cardId), filter.subtype))) return false;
+  // Un marqueur qui donne un sous-type compte (Lot 18 : une unité marquée Mort est Mort-vivant).
+  if (filter.subtype && !(event.cardId && unitHasSubtype(getCardDefinition(event.cardId), { markers: event.markers }, filter.subtype))) return false;
+  if (filter.withMarker && !((event.markers?.[filter.withMarker] ?? 0) > 0)) return false;
   if (filter.minCost !== undefined && !(event.cardId && getCardDefinition(event.cardId).cost >= filter.minCost)) return false;
   // « quand une Structure... » : type de la carte déclencheuse.
   if (filter.cardTypes && !(event.cardId && filter.cardTypes.includes(getCardDefinition(event.cardId).type))) return false;
@@ -803,6 +806,8 @@ export function processSummonEnterTriggers(
     // comme rejouée : les observateurs ne la tiennent pas pour une arrivée,
     // sauf `includeRepeatedArrival`.
     if (event.type !== "SUMMON" && event.type !== "ENTER_EFFECTS_REPEATED") continue;
+    // Les marqueurs avec lesquels elle arrive (« ramenez-la avec un marqueur Mort », Lot 18).
+    const arrivee = findBoardUnit(nextState, event.instanceId)?.unit;
     const result = processTrigger(
       nextState,
       {
@@ -810,6 +815,7 @@ export function processSummonEnterTriggers(
         playerId: event.playerId,
         cardId: event.cardId,
         sourceInstanceId: event.instanceId,
+        ...(arrivee?.markers ? { markers: arrivee.markers } : {}),
         ...(event.type === "SUMMON" ? (event.played ? {} : { fromSummon: true }) : { repeatedArrival: true }),
       },
       turnNumber,

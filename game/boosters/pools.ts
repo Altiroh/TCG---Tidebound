@@ -502,7 +502,8 @@ const BIENVENUE: readonly string[] = DEFAUT.filter((cardId) => {
 
 /**
  * Cartes du catalogue VOLONTAIREMENT hors de tout booster : les passerelles
- * du Lot 17 sorties des pools à l'audit du 06/10/2026. Leurs définitions
+ * du Lot 17 sorties des pools à l'audit du 06/10/2026, et le Lot 18 en
+ * attente de son booster. Leurs définitions
  * restent (les joueurs qui les possèdent les gardent ; Boussole fendue reste
  * dans le préconstruit Les Veilleurs d'Opale), mais aucun sachet ne les
  * donne plus. Toute AUTRE carte hors booster est une erreur (tests).
@@ -515,6 +516,19 @@ export const CARTES_HORS_POOLS: readonly string[] = [
   "maree-imprevisible",
   "terres-inconnues",
   "tour-de-guet-mobile",
+  // Lot 18 — Un Dead / Mort-vivant (09/10/2026) : codé, illustré, mais son
+  // booster n'est pas encore décidé. Ces cartes quittent cette liste le jour
+  // où un pool les accueille.
+  "coucou-cest-moi",
+  "on-joue-aux-morts",
+  "pas-sans-moi",
+  "chut-il-dort",
+  "encore-une-histoire",
+  "le-grand-frere",
+  "reveille-toi",
+  "le-cerf-volant",
+  "le-gardien-des-jouets",
+  "ceux-den-bas",
 ];
 
 /** Cartes éligibles par booster. La base en est le miroir (`booster_pool_cards`). */

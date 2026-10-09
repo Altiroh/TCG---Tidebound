@@ -605,6 +605,20 @@ const LOT17_RARITY: Record<string, CardRarity> = {
   "terres-inconnues": "rare",
 };
 
+/** Lot 18 — Un Dead / Mort-vivant (Notion, pool validé le 09/10/2026). */
+const LOT18_RARITY: Record<string, CardRarity> = {
+  "coucou-cest-moi": "common",
+  "on-joue-aux-morts": "legendary",
+  "pas-sans-moi": "common",
+  "chut-il-dort": "common",
+  "encore-une-histoire": "uncommon",
+  "le-grand-frere": "rare",
+  "reveille-toi": "uncommon",
+  "le-cerf-volant": "common",
+  "le-gardien-des-jouets": "rare",
+  "ceux-den-bas": "rare",
+};
+
 /**
  * Rareté d'une carte. Les variantes Abyssales sont déduites de leur slug
  * plutôt que listées une par une : c'est une règle de design, pas une
@@ -623,6 +637,7 @@ export function rarityForCardId(cardId: string): CardRarity | null {
     ALTERES_RARITY[cardId] ??
     LANDES_RARITY[cardId] ??
     LOT17_RARITY[cardId] ??
+    LOT18_RARITY[cardId] ??
     PROVISIONAL_RARITY[cardId] ??
     null
   );

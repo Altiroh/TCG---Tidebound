@@ -1,9 +1,11 @@
+import { unitHasSubtype } from "@/game/cards/markers";
 import { HIDDEN_CARD_DEFINITION, HIDDEN_CARD_ID } from "@/game/cards/hiddenCard";
 import { TOKEN_SET } from "@/game/cards/sets/tokens";
 import { ECLATS_EN_SELLE_SET } from "@/game/cards/sets/eclatsEnSelle";
 import { ALTERES_SET } from "@/game/cards/sets/alteres";
 import { LANDES_SET } from "@/game/cards/sets/landes";
 import { LOT17_SET } from "@/game/cards/sets/lot17";
+import { LOT18_SET } from "@/game/cards/sets/lot18";
 import { EQUIPPABLE_CARD_TYPES, type CardDefinition, type CardInstance } from "@/game/cards/types";
 
 /**
@@ -5462,6 +5464,8 @@ export const CORE_SET: CardDefinition[] = [
   // Landes (05/10/2026) : leur propre module (`game/cards/sets/landes.ts`).
   ...LANDES_SET,
   ...LOT17_SET,
+  // Lot 18 — Un Dead / Mort-vivant : le marqueur Mort (`game/cards/sets/lot18.ts`).
+  ...LOT18_SET,
 ];
 
 /**
@@ -5504,7 +5508,8 @@ export function canBeEquipTarget(
   // "Équipez un Cra-Poiscail" : la famille restreint la cible en plus du type.
   if (equipmentDef.equipTargetArchetype && candidateDef.archetype !== equipmentDef.equipTargetArchetype) return false;
   // "Équipez une unité Un Dead" : même restriction, exprimée en sous-type.
-  if (equipmentDef.equipTargetSubtype && candidateDef.subtype !== equipmentDef.equipTargetSubtype) return false;
+  // Tous ses sous-types comptent, et ceux que lui donnent ses marqueurs (Lot 18 : « un Mort-vivant »).
+  if (equipmentDef.equipTargetSubtype && !unitHasSubtype(candidateDef, candidate, equipmentDef.equipTargetSubtype)) return false;
   return !board.some(
     (u) => u.instanceId !== candidate.instanceId && u.attachedToInstanceId === candidate.instanceId
   );

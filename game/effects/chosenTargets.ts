@@ -8,6 +8,7 @@
  * Séparé de `resolveEffect.ts` pour que `triggerBus.ts` puisse s'en
  * servir sans dépendre de la résolution d'effets elle-même.
  */
+import { hasMarker, unitHasSubtype } from "@/game/cards/markers";
 import { hasSubtype } from "@/game/cards/subtypes";
 import { isOngoingEffect } from "@/game/rules/ongoing";
 import { getCardDefinition } from "@/game/cards/sets/core";
@@ -93,7 +94,13 @@ export function eligibleChosenUnits(
     // Objets de la troupe. Un texte qui dit « une UNITÉ Marionnette » le
     // déclare avec `unitsOnly` (nomenclature Notion : « unité » = Marin ou
     // Créature, « carte » = tout type).
-    if (filter.subtype && !hasSubtype(getCardDefinition(unit.cardId), filter.subtype)) return false;
+    // Un marqueur qui donne un sous-type compte (Lot 18 : marquée Mort = Mort-vivant).
+    if (filter.subtype && !unitHasSubtype(getCardDefinition(unit.cardId), unit, filter.subtype)) return false;
+    // « une unité (hors Mort-vivant) » (Chut, il dort, Lot 18).
+    if (filter.notSubtype && unitHasSubtype(getCardDefinition(unit.cardId), unit, filter.notSubtype)) return false;
+    // « qui porte un marqueur Mort » / « qui n'en porte pas ».
+    if (filter.withMarker && !hasMarker(unit, filter.withMarker)) return false;
+    if (filter.withoutMarker && hasMarker(unit, filter.withoutMarker)) return false;
     if (filter.tag && !getCardDefinition(unit.cardId).tags?.includes(filter.tag)) return false;
     if (filter.maxCost !== undefined && getCardDefinition(unit.cardId).cost > filter.maxCost) return false;
     if (filter.damaged && unit.damageMarked <= 0) return false;

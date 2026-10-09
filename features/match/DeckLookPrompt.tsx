@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { deckLookRefusal, deckLookSelectionFits, deckLookTakeLimit, getCardDefinition, isDeckLookTakeable, type CardInstance, type DeckLookChoice } from "@/game";
+import { MARKER_RULES, deckLookRefusal, deckLookSelectionFits, deckLookTakeLimit, getCardDefinition, isDeckLookTakeable, type CardInstance, type DeckLookChoice } from "@/game";
 import { CARD_TYPE_LABELS } from "@/features/match/cardDisplay";
 import { CardCarousel } from "@/features/match/CardCarousel";
 import { CarouselPromptFrame } from "@/features/match/CarouselPromptFrame";
@@ -52,6 +52,10 @@ export function DeckLookPrompt({ choice, onConfirm, onRefuse }: DeckLookPromptPr
   const [ordre, setOrdre] = useState<string[]>(() => choice.revealed.map((c) => c.instanceId));
   const rendues = ordre.filter((id) => !selected.includes(id));
   const depuisCimetiere = choice.zone === "graveyard";
+  // « Ramenez une unité du Cimetière sur le plateau » (Lot 18), éventuellement « d'UN Cimetière ».
+  const versPlateau = choice.takeTo === "board";
+  const deuxCimetieres = choice.graveyardOrigins !== undefined;
+  const marqueur = choice.withMarker ? MARKER_RULES[choice.withMarker].label : null;
 
   function deplacer(instanceId: string, sens: -1 | 1) {
     setOrdre((courant) => {
@@ -104,11 +108,15 @@ export function DeckLookPrompt({ choice, onConfirm, onRefuse }: DeckLookPromptPr
 
   return (
     <CarouselPromptFrame
-      ariaLabel={depuisCimetiere ? "Reprendre une carte de son Cimetière" : "Regarder le dessus de sa pioche"}
-      eyebrow={depuisCimetiere ? "Ton Cimetière" : "Dessus de ta pioche"}
-      title={limite > 1 ? `Prends jusqu'à ${limite} cartes` : "Prends une carte"}
+      ariaLabel={
+        versPlateau ? "Ramener une unité du Cimetière sur le plateau" : depuisCimetiere ? "Reprendre une carte de son Cimetière" : "Regarder le dessus de sa pioche"
+      }
+      eyebrow={deuxCimetieres ? "Les deux Cimetières" : depuisCimetiere ? "Ton Cimetière" : "Dessus de ta pioche"}
+      title={versPlateau ? "Ramène une unité sur ton plateau" : limite > 1 ? `Prends jusqu'à ${limite} cartes` : "Prends une carte"}
       description={
-        depuisCimetiere
+        versPlateau
+          ? `Elle arrive sur ton plateau${marqueur ? ` avec un marqueur ${marqueur}` : ""} ; les autres restent au Cimetière.`
+          : depuisCimetiere
           ? "Les autres restent dans ton Cimetière."
           : ordonnable
             ? aucunePrenable
@@ -140,7 +148,7 @@ export function DeckLookPrompt({ choice, onConfirm, onRefuse }: DeckLookPromptPr
             onClick={() => complete && confirmer(selected)}
             className="rounded-md bg-sky-600/80 px-4 py-2 text-sm font-semibold text-white shadow-[inset_0_0_0_1px_rgba(125,211,252,0.4)] transition-colors hover:bg-sky-500 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            Prendre
+            {versPlateau ? "Ramener" : "Prendre"}
           </button>
         </>
       }

@@ -88,6 +88,13 @@ export interface TriggerSourceFilter {
   subtype?: string;
   /** Coût IMPRIMÉ minimal (« la première unité coûtant 5 ou plus que vous jouez », Lot 17). */
   minCost?: number;
+  /**
+   * La carte déclencheuse porte (ou portait, pour `onDeath`) ce marqueur :
+   * « une de vos unités qui porte un marqueur Mort est détruite », « une
+   * unité arrive sur votre plateau avec un marqueur Mort » (Lot 18). Lu sur
+   * `TriggerEvent.markers`.
+   */
+  withMarker?: import("@/game/cards/markers").MarkerId;
   /** Ou est de l'un de ces TYPES de carte (ex: "quand une Structure est détruite" — Mécanicien aux Mains Noires). */
   cardTypes?: CardType[];
   /** Le déclencheur doit être contrôlé par le contrôleur de la capacité. Défaut : `true`. */
@@ -756,6 +763,22 @@ export interface CardDefinition {
 
   /** « Tant qu'il est blessé, il a +1 Puissance » (Duelliste de Verre). */
   selfBuffWhileDamaged?: { attackAmount?: number; healthAmount?: number };
+
+  /**
+   * « Tant qu'au moins 2 de vos unités portent un marqueur Mort, il gagne
+   * +2 Puissance » (Le Gardien des Jouets, Lot 18) : bonus sur soi, relu en
+   * direct, tant que le plateau de son contrôleur compte au moins `atLeast`
+   * UNITÉS qui portent `marker` (elle-même comprise si elle en porte un).
+   */
+  selfBuffWhileMarkedUnitsAtLeast?: { marker: import("@/game/cards/markers").MarkerId; atLeast: number; attackAmount?: number; healthAmount?: number };
+
+  /**
+   * « Vos unités qui portent un marqueur Mort gagnent +1 Puissance » (Le
+   * Grand Frère, Lot 18) : aura sur chaque UNITÉ de son contrôleur qui porte
+   * `marker` — la source comprise, si elle en porte un : le texte dit « vos
+   * unités », pas « vos autres unités ».
+   */
+  auraBuffMarkedUnits?: { marker: import("@/game/cards/markers").MarkerId; attackAmount?: number; healthAmount?: number };
 
   /** « Tant qu'il est votre seule unité, il a +1 Puissance » (Destrier du Ressac). */
   selfBuffWhileOnlyUnit?: { attackAmount?: number; healthAmount?: number };
@@ -1573,6 +1596,19 @@ export interface CardInstance {
   ownerId: string;
   /** Marqueurs Niveau posés sur cette carte en jeu (Lot 17 — lignée LV, `game/rules/levels.ts`). */
   levelMarkers?: number;
+  /**
+   * Marqueurs posés sur cette carte EN JEU (Lot 18 — marqueur Mort,
+   * `game/cards/markers.ts`). Ils partent avec elle quand elle quitte le
+   * plateau. Absent = aucun.
+   */
+  markers?: import("@/game/cards/markers").CardMarkers;
+  /**
+   * Dans un Cimetière : la carte revient sur le plateau de `playerId` à la
+   * fin du tour `turnNumber` (« ramenez-la du Cimetière sur le plateau à la
+   * fin du tour, avec un marqueur Mort » — Coucou, c'est moi). Posé par
+   * l'effet `scheduleGraveyardReturn`, lu par `endTurn`.
+   */
+  returnsToBoardAtEndOfTurn?: { turnNumber: number; playerId: string; withMarker?: import("@/game/cards/markers").MarkerId };
   /**
    * La carte est arrivée en REMPLAÇANT celle-ci, par son effet de lignée
    * (« S'il entre en jeu par l'effet d'Eidolon Opalin LV1… », Lot 17).

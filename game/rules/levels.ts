@@ -1,3 +1,4 @@
+import { stripMarkers } from "@/game/cards/markers";
 import { getCardDefinition } from "@/game/cards/sets/core";
 import type { CardInstance } from "@/game/cards/types";
 import type { GameEvent } from "@/game/events/types";
@@ -61,7 +62,7 @@ function evolve(state: GameState, ownerId: PlayerId, instanceId: string, intoCar
   if (unitArrivalsLeft(state, ownerId, turnNumber) <= 0) return { state, events: [] };
 
   const nouvelle: CardInstance = {
-    ...prise,
+    ...stripMarkers(prise),
     damageMarked: 0,
     modifiers: [],
     summoningSick: true,

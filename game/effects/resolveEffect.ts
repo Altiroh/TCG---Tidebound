@@ -1,3 +1,5 @@
+import { boardRoomFor } from "@/game/rules/graveyardReturn";
+import { canReceiveMarker, unitHasSubtype, withMarker } from "@/game/cards/markers";
 import { hasSubtype } from "@/game/cards/subtypes";
 import { addLevelMarkers } from "@/game/rules/levels";
 import { addNextRollModifier, pendingDieRoll, rerollPending, rollDie, shiftPending } from "@/game/rules/dice";
@@ -208,6 +210,12 @@ export interface EffectContext {
    * le montant `dieResult` (« gagne +?/+0 », « restaurez ? Résistance »).
    */
   dieResult?: number;
+  /**
+   * Cartes que le joueur vient de défausser en répondant à la défausse de
+   * cette suite d'effets (posé par `resolveChoice`) : lu par le montant
+   * `discardedCount` (« pour chaque carte défaussée », Lot 18).
+   */
+  discardedCount?: number;
   turnNumber: number;
 }
 
@@ -275,9 +283,11 @@ function amountValue(
   amount: EffectAmount | undefined,
   state: GameState,
   controllerId: PlayerId,
-  context?: Pick<EffectContext, "dieResult">
+  context?: Pick<EffectContext, "dieResult" | "discardedCount">
 ): number {
   if (amount === undefined) return 0;
+  if (amount.kind === "discardedCount") return (context?.discardedCount ?? 0) * (amount.per ?? 1);
+  if (amount.kind === "handSize") return getPlayer(state, controllerId).hand.length;
   if (amount.kind === "dieResult") {
     // « ? » sur la carte : le résultat du jet en cours (Lot 17). Hors jet, 0.
     const brut = context?.dieResult ?? 0;
@@ -410,7 +420,7 @@ function passesTargetFilter(
   if (filter.archetype && (def.archetype !== filter.archetype || !UNIT_CARD_TYPES.includes(def.type))) return false;
   if (filter.cardType && def.type !== filter.cardType) return false;
   if (filter.cardTypes && !filter.cardTypes.includes(def.type)) return false;
-  if (filter.subtype && !hasSubtype(def, filter.subtype)) return false;
+  if (filter.subtype && !unitHasSubtype(def, unit, filter.subtype)) return false;
   if (filter.maxCost !== undefined && def.cost > filter.maxCost) return false;
   if (filter.minCost !== undefined && def.cost < filter.minCost) return false;
   if (filter.tag && !def.tags?.includes(filter.tag)) return false;
@@ -1096,6 +1106,8 @@ export function resolveEffect(
             kind: "handDiscard",
             playerId: player.id,
             count: Math.min(amount, player.hand.length),
+            // « autant de cartes que vous voulez » (Lot 18) : un maximum, pas un compte exact.
+            ...(effect.discardAtMost ? { atMost: true } : {}),
             refusable: effect.refusable === true,
             // « Place une carte de sa main sous sa pioche » (Ylenn, Lot 17) : même question, autre destination.
             ...(effect.discardToDeckBottom ? { destination: "deckBottom" as const } : {}),
@@ -1458,6 +1470,41 @@ export function resolveEffect(
         events.push(...r.events);
       }
       return { state: nextState, events };
+    }
+
+    case "addMarker": {
+      // « Placez un marqueur Mort sur une unité » (Lot 18) : sur chaque
+      // cible qui peut encore en recevoir un (un seul marqueur Mort par unité).
+      const marker = effect.marker;
+      if (!marker) return { state, events };
+      const { targets, rngState } = resolveUnitTargets(state, effect, context);
+      let nextState: GameState = { ...state, rngState };
+      for (const { unit, ownerId } of targets) {
+        if (!canReceiveMarker(unit, marker)) continue;
+        nextState = replaceUnit(nextState, ownerId, unit.instanceId, (u) => withMarker(u, marker));
+      }
+      return { state: nextState, events };
+    }
+
+    case "scheduleGraveyardReturn": {
+      // « Ramenez-la du Cimetière sur le plateau à la fin du tour » (Coucou,
+      // c'est moi) : la carte source doit ÊTRE au Cimetière — partie sous la
+      // pioche (marqueur Mort) ou ailleurs, elle ne revient pas.
+      const id = context.sourceInstanceId;
+      if (!id) return { state, events };
+      const proprietaire = state.players.find((p) => p.graveyard.some((c) => c.instanceId === id));
+      if (!proprietaire) return { state, events };
+      return {
+        state: replacePlayer(state, {
+          ...proprietaire,
+          graveyard: proprietaire.graveyard.map((c) =>
+            c.instanceId === id
+              ? { ...c, returnsToBoardAtEndOfTurn: { turnNumber: context.turnNumber, playerId: proprietaire.id, ...(effect.marker ? { withMarker: effect.marker } : {}) } }
+              : c
+          ),
+        }),
+        events,
+      };
     }
 
     case "gainArmor": {
@@ -2257,7 +2304,10 @@ export function resolveEffect(
 
     case "pickFromGraveyard": {
       const player = getPlayer(state, context.controllerId);
-      const prenables = player.graveyard.filter((card) => {
+      // « d'UN Cimetière » (Lot 18) : les deux Cimetières sont ouverts.
+      const sources = effect.graveyards === "both" ? state.players : [player];
+      const vers = effect.takeTo ?? "hand";
+      const prenables = sources.flatMap((p) => p.graveyard).filter((card) => {
         const def = getCardDefinition(card.cardId);
         if (!matchesCardTypeFilter(effect.filter, def.type)) return false;
         if (effect.filter?.subtype && !hasSubtype(def, effect.filter.subtype)) return false;
@@ -2268,15 +2318,27 @@ export function resolveEffect(
       });
       // Rien à reprendre : le texte est sans objet, pas de question sans réponse possible.
       if (prenables.length === 0) return { state, events };
+      // Sur le plateau (Lot 18) : pas plus qu'il n'y a de place — sans place, pas de question.
+      const prises = vers === "board" ? Math.min(effect.uses ?? 1, boardRoomFor(state, player.id, prenables[0]!.cardId, context.turnNumber)) : (effect.uses ?? 1);
+      if (prises <= 0) return { state, events };
       const ids = new Set(prenables.map((card) => card.instanceId));
+      const origines = Object.fromEntries(
+        sources.flatMap((p) => p.graveyard.filter((card) => ids.has(card.instanceId)).map((card) => [card.instanceId, p.id] as const))
+      );
+      const sortis: GameState = {
+        ...state,
+        players: state.players.map((p) => ({ ...p, graveyard: p.graveyard.filter((card) => !ids.has(card.instanceId)) })) as [PlayerState, PlayerState],
+      };
       return {
-        state: openChoice(replacePlayer(state, { ...player, graveyard: player.graveyard.filter((card) => !ids.has(card.instanceId)) }), {
+        state: openChoice(sortis, {
           kind: "deckLook",
           playerId: player.id,
           zone: "graveyard",
           revealed: prenables,
-          take: effect.uses ?? 1,
+          take: prises,
           ...(effect.takeTo ? { takeTo: effect.takeTo } : {}),
+          ...(vers === "board" && effect.marker ? { withMarker: effect.marker } : {}),
+          ...(effect.graveyards === "both" ? { graveyardOrigins: origines } : {}),
           refusable: effect.refusable === true,
           ...(effect.thenEffects?.length
             ? {

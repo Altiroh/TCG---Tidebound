@@ -4,7 +4,8 @@ import { annoncerMaree, appliquerMareeAnnoncee } from "@/game/environment/resolv
 import { getShipDefinition } from "@/game/environment/shipData";
 import { deraisonAnchorDamage, deraisonDebt, naturalReasonRecovery, reasonCeiling, startingReasonCap } from "@/game/state/reason";
 import type { GameEvent } from "@/game/events/types";
-import { processTrigger } from "@/game/triggers/triggerBus";
+import { processSummonEnterTriggers, processTrigger } from "@/game/triggers/triggerBus";
+import { returnScheduledFromGraveyards } from "@/game/rules/graveyardReturn";
 import { markArrivalsBeforeTurnStart, pruneGraveyardArrivals } from "@/game/state/discard";
 import { RULES } from "@/game/rules/constants";
 import { landeRemovedKeywords, landeStrikesAtEndOfTurn } from "@/game/rules/lande";
@@ -120,6 +121,19 @@ export function endTurn(state: GameState, action: EndTurnAction): ActionResult {
       nextState = expire.state;
       events.push(...expire.events);
     }
+  }
+
+  // « Ramenez-la du Cimetière sur le plateau à la fin du tour » (Coucou,
+  // c'est moi — Lot 18) : les retours promis pour CE tour ont lieu
+  // maintenant, et leurs arrivées se réveillent comme une invocation.
+  const retours = returnScheduledFromGraveyards(nextState, state.turnNumber);
+  if (retours.events.length > 0) {
+    events.push(...retours.events);
+    const arrivees = processSummonEnterTriggers(retours.state, retours.events, state.turnNumber);
+    nextState = arrivees.state;
+    events.push(...arrivees.events);
+  } else {
+    nextState = retours.state;
   }
 
   // --- Limite de main (cadrage "Règles & mécaniques verrouillées" : main

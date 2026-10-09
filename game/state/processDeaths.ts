@@ -8,6 +8,7 @@ import { leaveChromaticShard } from "@/game/rules/chromaticShards";
 import type { DestructionCause } from "@/game/cards/types";
 import { applyOpponentRemovalShield, loseReason } from "@/game/state/shields";
 import { recordGraveyardArrival } from "@/game/state/discard";
+import { graveyardReplacementOf, stripMarkers } from "@/game/cards/markers";
 import { markOncePerTurnUsed, oncePerTurnAvailable } from "@/game/state/oncePerTurn";
 import type { GameState, PlayerState } from "@/game/state/types";
 
@@ -468,6 +469,11 @@ export function processDeaths(
             .reduce((sum, equip) => sum + (getCardDefinition(equip.cardId).controllerReasonLossOnOwnDestruction ?? 0), 0);
 
       const board = player.board.filter((u) => u.instanceId !== unit.instanceId);
+      // Marqueur Mort (Lot 18) : une unité marquée qui devrait rejoindre le
+      // Cimetière va SOUS la pioche de son propriétaire, sans son marqueur.
+      // Elle n'arrive pas au Cimetière : rien ne l'y voit entrer, rien ne
+      // l'en repêchera. Elle est bien DÉTRUITE pour autant — `onDeath` la voit.
+      const sousLaPioche = graveyardReplacementOf(unit) === "deckBottom";
 
       const cause = destructionCauseOf(
         unit,
@@ -477,29 +483,40 @@ export function processDeaths(
           tideOrientation: current.environment.tideOrientation,
         }).destroyedByTide
       );
-      const graveyard = [
-        ...player.graveyard,
-        {
-          ...unit,
-          damageMarked: 0,
-          modifiers: [],
-          pendingRemoval: undefined,
-          lastDamageCause: undefined,
-          lastDamageTurn: undefined,
-          graveyardCause: scuttled ? ("scuttled" as const) : ("destroyed" as const),
-          destructionCause: cause,
-        },
-      ];
+      const graveyard = sousLaPioche
+        ? player.graveyard
+        : [
+            ...player.graveyard,
+            {
+              ...stripMarkers(unit),
+              damageMarked: 0,
+              modifiers: [],
+              pendingRemoval: undefined,
+              lastDamageCause: undefined,
+              lastDamageTurn: undefined,
+              graveyardCause: scuttled ? ("scuttled" as const) : ("destroyed" as const),
+              destructionCause: cause,
+            },
+          ];
       // Une destruction est une ARRIVÉE au Cimetière comme une autre : sans
       // cette inscription, « une carte Un Dead a rejoint votre Cimetière ce
       // tour » (Lot 13) ne verrait que les défausses, et un Un Dead tué au
       // combat ne compterait pas — ce que son texte ne dit nulle part.
       // La cause est inscrite avec l'arrivée : « une unité Un Dead a été
       // DÉTRUITE ce tour » ne doit compter ni un Sabordage ni un Bris.
-      const updatedPlayer = recordGraveyardArrival(
-        { ...player, board, graveyard },
-        { cardId: unit.cardId, instanceId: unit.instanceId, turnNumber, fromZone: "board", destructionCause: cause }
-      );
+      const updatedPlayer = sousLaPioche
+        ? {
+            ...player,
+            board,
+            deck: [
+              ...player.deck,
+              { instanceId: unit.instanceId, cardId: unit.cardId, ownerId: unit.ownerId, damageMarked: 0, modifiers: [], summoningSick: false, hasAttackedThisTurn: false },
+            ],
+          }
+        : recordGraveyardArrival(
+            { ...player, board, graveyard },
+            { cardId: unit.cardId, instanceId: unit.instanceId, turnNumber, fromZone: "board", destructionCause: cause }
+          );
       next = {
         ...next,
         players: next.players.map((p) => (p.id === player.id ? updatedPlayer : p)) as [PlayerState, PlayerState],
@@ -524,6 +541,9 @@ export function processDeaths(
         turnNumber,
         timestamp: Date.now(),
       });
+      if (sousLaPioche) {
+        events.push({ type: "CARD_MOVED", instanceId: unit.instanceId, cardId: unit.cardId, ownerId: owner.id, fromZone: "board", toZone: "deck", deckPosition: "bottom", turnNumber, timestamp: Date.now() });
+      }
       if (equipReasonLost > 0) {
         events.push({ type: "REASON_CHANGED", playerId: player.id, delta: -equipReasonLost, turnNumber, timestamp: Date.now() });
       }
@@ -546,6 +566,7 @@ export function processDeaths(
           cardId: unit.cardId,
           playerId: owner.id,
           destructionCause: cause,
+          ...(unit.markers ? { markers: unit.markers } : {}),
         },
         turnNumber
       );

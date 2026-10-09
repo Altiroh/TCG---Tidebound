@@ -56,6 +56,22 @@ export type EffectType =
   /** « Placez N marqueurs Niveau sur [cible] » (Lot 17, `game/rules/levels.ts`) : au seuil de sa lignée, la carte est remplacée. */
   | "addLevelMarker"
   /**
+   * « Placez un marqueur Mort sur une unité » (Lot 18, `game/cards/markers.ts`) :
+   * pose `marker` sur chaque cible, dans la limite de ce que sa règle
+   * permet (un seul marqueur Mort par unité).
+   */
+  | "addMarker"
+  /**
+   * « Quand elle est détruite, ramenez-la du Cimetière sur le plateau à la
+   * fin du tour, avec un marqueur Mort » (Coucou, c'est moi — Lot 18) : la
+   * carte SOURCE, si elle est au Cimetière, y est marquée pour revenir sur le
+   * plateau de son propriétaire à la fin du tour en cours
+   * (`CardInstance.returnsToBoardAtEndOfTurn`, lu par `endTurn`), avec
+   * `withMarker`. Partie ailleurs entre-temps (sous la pioche, en main), elle
+   * ne revient pas.
+   */
+  | "scheduleGraveyardReturn"
+  /**
    * « Lancez » (Lot 17, `game/rules/dice.ts`) : lance le dé de la carte
    * source (`CardDefinition.die`, ou `die`) et résout les branches
    * (`dieBranches`) que le jet retenu satisfait, avec « ? » = le résultat
@@ -481,7 +497,15 @@ export type EffectAmount =
       perCards?: number;
       /** Plafond du montant obtenu. Absent = pas de plafond. */
       max?: number;
-    };
+    }
+  /**
+   * « pour chaque carte défaussée » (On joue aux morts, Lot 18) : le nombre
+   * de cartes que le joueur vient de défausser en répondant à la défausse de
+   * la même suite d'effets (`EffectContext.discardedCount`). 0 ailleurs.
+   */
+  | { kind: "discardedCount"; per?: number }
+  /** « autant de cartes que vous voulez » : la taille de la main du joueur visé, au moment de la résolution. */
+  | { kind: "handSize" };
 
 /**
  * Restriction d'une cible `chosenUnit` : le joueur désigne, mais seulement
@@ -508,6 +532,12 @@ export interface ChosenUnitFilter {
   subtype?: string;
   /** Porte cette ÉTIQUETTE (`CardDefinition.tags` — « une carte LV », Lot 17). */
   tag?: string;
+  /** N'est PAS de ce sous-type, marqueurs compris (« une unité hors Mort-vivant », Lot 18). */
+  notSubtype?: string;
+  /** Porte ce marqueur (« une de vos unités qui porte un marqueur Mort », Lot 18). */
+  withMarker?: import("@/game/cards/markers").MarkerId;
+  /** Ne porte PAS ce marqueur (« qui n'en porte pas » — un seul marqueur Mort par unité). */
+  withoutMarker?: import("@/game/cards/markers").MarkerId;
   /**
    * "un AUTRE Cra-Poiscail" : exclut la source de l'effet et — si cette
    * source est un Équipement — le permanent qu'elle équipe. C'est LUI que
@@ -771,7 +801,25 @@ export interface EffectDefinition {
     conditionControlledArchetypeAtLeast?: { archetype: import("@/game/cards/archetypes").ArchetypeId; count: number };
   }>;
   /** `lookAtDeckTop` / `pickFromGraveyard` : où vont les cartes PRISES (`DeckLookChoice.takeTo`). */
-  takeTo?: "hand" | "deckTop" | "deckBottom";
+  takeTo?: "hand" | "deckTop" | "deckBottom" | "board";
+  /**
+   * `pickFromGraveyard` : « d'UN Cimetière » — `"both"` ouvre aussi le
+   * Cimetière adverse (Encore une histoire, Lot 18). Défaut `"self"` : le
+   * Cimetière du contrôleur.
+   */
+  graveyards?: "self" | "both";
+  /**
+   * `addMarker` : le marqueur posé. `pickFromGraveyard` avec `takeTo:
+   * "board"` et `scheduleGraveyardReturn` : le marqueur avec lequel la carte
+   * revient sur le plateau (Lot 18, `game/cards/markers.ts`).
+   */
+  marker?: import("@/game/cards/markers").MarkerId;
+  /**
+   * `discard` : « défaussez JUSQU'À N cartes », « autant que vous voulez » —
+   * `amount` devient un maximum (`HandDiscardChoice.atMost`). Le nombre
+   * réellement défaussé est relu par le montant `discardedCount`.
+   */
+  discardAtMost?: boolean;
   /** `lookAtDeckTop` : regarder les cartes du DESSOUS de la pioche (Meraï, Opalin des Profondeurs). */
   fromBottom?: boolean;
   /**

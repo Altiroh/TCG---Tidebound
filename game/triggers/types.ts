@@ -106,6 +106,13 @@ export interface TriggerEvent {
    * des dégâts directs » ne s'ouvre pas sur un tir.
    */
   fromShipShot?: boolean;
+  /**
+   * Marqueurs que portait la carte concernée (Lot 18) : à son arrivée
+   * (`onEnterPlay`), ou juste avant de partir (`onDeath` — elle les a
+   * perdus en quittant le plateau, l'événement en garde la photo). Lus par
+   * `triggeredBy.withMarker` et par le sous-type qu'un marqueur donne.
+   */
+  markers?: import("@/game/cards/markers").CardMarkers;
 }
 
 /**

@@ -7,7 +7,8 @@ import { chromaticColorsOf } from "@/game/rules/chromatic";
 import { closeAndResolveDieRoll, closeDieRollIfIdle, resolveEffectSequence } from "@/game/effects/resolveSequence";
 import { adjustPending, keepCandidate, landeReroll } from "@/game/rules/dice";
 import { discardFromHand } from "@/game/state/discard";
-import { processGraveyardEntryTriggers, processGraveyardRecoveryTriggers, processTrigger } from "@/game/triggers/triggerBus";
+import { processGraveyardEntryTriggers, processGraveyardRecoveryTriggers, processSummonEnterTriggers, processTrigger } from "@/game/triggers/triggerBus";
+import { placeFromGraveyard } from "@/game/rules/graveyardReturn";
 import { finirTour } from "@/game/actions/endTurn";
 import type { GameEvent } from "@/game/events/types";
 import { assertGameActive, assertPlayerInGame, combine } from "@/game/rules/validation";
@@ -422,17 +423,50 @@ export function resolveChoice(state: GameState, action: ResolveChoiceAction): Ac
     // Où vont les cartes PRISES (Lot 17) : la main, le dessus, ou le dessous de la pioche.
     const piocheFinale =
       choice.takeTo === "deckTop" ? [...gardees, ...pioche] : choice.takeTo === "deckBottom" ? [...pioche, ...gardees] : pioche;
+    // « d'UN Cimetière » (Lot 18) : chaque carte non prise retourne dans le
+    // Cimetière d'où elle sortait.
+    const origineDe = (carte: (typeof rendues)[number]) => choice.graveyardOrigins?.[carte.instanceId] ?? choice.playerId;
+    const versPlateau = choice.takeTo === "board";
     const joueur = {
       ...player,
       hand: versMain ? [...player.hand, ...gardees] : player.hand,
-      deck: piocheFinale,
-      ...(depuisCimetiere ? { graveyard: [...player.graveyard, ...rendues] } : {}),
+      deck: versPlateau ? player.deck : piocheFinale,
+      ...(depuisCimetiere ? { graveyard: [...player.graveyard, ...rendues.filter((c) => origineDe(c) === choice.playerId)] } : {}),
     };
     nextState = { ...nextState, rngState: rng };
     nextState = {
       ...nextState,
-      players: nextState.players.map((p) => (p.id === choice.playerId ? joueur : p)) as [PlayerState, PlayerState],
+      players: nextState.players.map((p) =>
+        p.id === choice.playerId
+          ? joueur
+          : depuisCimetiere
+            ? { ...p, graveyard: [...p.graveyard, ...rendues.filter((c) => origineDe(c) === p.id)] }
+            : p
+      ) as [PlayerState, PlayerState],
     };
+    // SUR LE PLATEAU (Lot 18) : la carte prise ARRIVE, comme invoquée, avec
+    // le marqueur que le texte nomme ; sans place, elle retourne à son Cimetière.
+    if (versPlateau) {
+      const arrivees: GameEvent[] = [];
+      for (const carte of gardees) {
+        const place = placeFromGraveyard(nextState, carte, origineDe(carte), choice.playerId, choice.withMarker, choice.turnNumber);
+        if (place.placed) {
+          nextState = place.state;
+          arrivees.push(...place.events);
+          continue;
+        }
+        const origine = origineDe(carte);
+        nextState = {
+          ...nextState,
+          players: nextState.players.map((p) => (p.id === origine ? { ...p, graveyard: [...p.graveyard, carte] } : p)) as [PlayerState, PlayerState],
+        };
+      }
+      events.push(...arrivees);
+      const entrees = processSummonEnterTriggers(nextState, arrivees, choice.turnNumber);
+      nextState = entrees.state;
+      events.push(...entrees.events);
+      return { ok: true, state: nextState, events };
+    }
     for (const carte of gardees) {
       // Repêchée au Cimetière : c'est un déplacement, pas une pioche — les
       // déclencheurs de récupération (Maman revient) doivent la voir.
@@ -575,9 +609,10 @@ export function resolveChoice(state: GameState, action: ResolveChoiceAction): Ac
     events.push(...triggered.events);
 
     // Et seulement ensuite, la suite du texte — « si vous le faites… »,
-    // « si une carte Un Dead a rejoint votre Cimetière ce tour… ».
+    // « si une carte Un Dead a rejoint votre Cimetière ce tour… ». Elle sait
+    // combien de cartes sont parties (« pour chaque carte défaussée », Lot 18).
     if (choice.continuation) {
-      const rest = resolveEffectSequence(nextState, choice.continuation.effects, choice.continuation.context);
+      const rest = resolveEffectSequence(nextState, choice.continuation.effects, { ...choice.continuation.context, discardedCount: chosen.length });
       nextState = rest.state;
       events.push(...rest.events);
       const recovered = processGraveyardRecoveryTriggers(nextState, rest.events, choice.turnNumber);

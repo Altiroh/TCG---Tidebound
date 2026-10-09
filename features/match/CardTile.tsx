@@ -22,6 +22,8 @@ import {
   type ChromaticColor,
   type TideStateName,
   isAbyssalVariant,
+  MARKER_RULES,
+  type MarkerId,
 } from "@/game";
 import { CARD_TYPE_LABELS, THICK_TEXT_OUTLINE } from "@/features/match/cardDisplay";
 import { useCardBackSrcFor } from "@/features/cosmetics/MatchCosmeticsProvider";
@@ -749,6 +751,11 @@ export function CardTile({
             </div>
             {!isToken && <div className="pointer-events-none absolute inset-0 rounded-xl ring-1 ring-inset ring-black/60" />}
 
+            {/* Couche 2.5 : les MARQUEURS (Lot 18), posés à même l'illustration comme un jeton de carton sur
+                une vraie table — ce ne sont pas des états, qui restent des médaillons sur le cadre. Plusieurs
+                du même genre s'empilent : le nombre se lit sur la pile. */}
+            <BoardTileMarkers markers={instance.markers} />
+
             {/* Couche 3 : habillage. */}
             <div className="absolute inset-0">
               {!isToken && (
@@ -1182,5 +1189,38 @@ export function CardTile({
         </div>
       )}
     </button>
+  );
+}
+
+/**
+ * Jetons posés sur une carte EN JEU (`CardInstance.markers`, Lot 18) :
+ * `public/assets/markers/<marqueur>.webp`, au milieu de l'illustration,
+ * au-dessus du nom. Un jeton par genre, la pile chiffrée au-delà d'un.
+ */
+function BoardTileMarkers({ markers }: { markers: CardInstance["markers"] }) {
+  const poses = (Object.entries(markers ?? {}) as Array<[MarkerId, number]>).filter(([, count]) => count > 0);
+  if (poses.length === 0) return null;
+  return (
+    <div className="pointer-events-none absolute inset-x-0 top-[24%] flex justify-center gap-[4%]">
+      {poses.map(([marker, count]) => (
+        <div key={marker} className="relative w-[42%]" title={`Marqueur ${MARKER_RULES[marker].label}${count > 1 ? ` ×${count}` : ""}`}>
+          {/* eslint-disable-next-line @next/next/no-img-element -- jeton local, un par genre de marqueur */}
+          <img
+            src={`/assets/markers/${marker}.webp`}
+            alt={`Marqueur ${MARKER_RULES[marker].label}`}
+            draggable={false}
+            className="h-auto w-full -rotate-6 drop-shadow-[0_1.5cqw_2cqw_rgba(0,0,0,0.7)]"
+          />
+          {count > 1 && (
+            <span
+              className="absolute -bottom-[6%] -right-[6%] rounded-full bg-black/80 px-[12%] font-bold leading-tight text-white"
+              style={{ fontSize: "9cqw" }}
+            >
+              {count}
+            </span>
+          )}
+        </div>
+      ))}
+    </div>
   );
 }

@@ -1,3 +1,4 @@
+import { hasMarker, unitHasSubtype } from "@/game/cards/markers";
 import { hasSubtype } from "@/game/cards/subtypes";
 import { isTextIgnored } from "@/game/cards/types";
 import { countArchetypeUnits } from "@/game/cards/archetypes";
@@ -163,6 +164,32 @@ export function collectAuraContributions(
   // Duelliste de Verre : bonus tant qu'il porte des dégâts.
   if (def.selfBuffWhileDamaged && unit.damageMarked > 0) addSelf(def.selfBuffWhileDamaged);
 
+  // Le Gardien des Jouets (Lot 18) : bonus tant qu'assez d'unités alliées portent le marqueur.
+  const markedSelfBuff = def.selfBuffWhileMarkedUnitsAtLeast;
+  if (
+    markedSelfBuff &&
+    controllerBoard.filter((other) => UNIT_CARD_TYPES.includes(getCardDefinition(other.cardId).type) && hasMarker(other, markedSelfBuff.marker))
+      .length >= markedSelfBuff.atLeast
+  ) {
+    addSelf(markedSelfBuff);
+  }
+
+  // Le Grand Frère (Lot 18) : « vos unités qui portent un marqueur Mort » —
+  // la source comprise, d'où ce passage hors de la boucle des auras, qui
+  // l'écarte.
+  if (UNIT_CARD_TYPES.includes(def.type)) {
+    for (const source of controllerBoard) {
+      const markedAura = getCardDefinition(source.cardId).auraBuffMarkedUnits;
+      if (!markedAura || !hasMarker(unit, markedAura.marker)) continue;
+      contributions.push({
+        sourceCardId: source.cardId,
+        sourceInstanceId: source.instanceId,
+        attack: markedAura.attackAmount ?? 0,
+        health: markedAura.healthAmount ?? 0,
+      });
+    }
+  }
+
   // Destrier du Ressac : bonus tant qu'il est la SEULE unité de son camp.
   const onlyUnitBuff = def.selfBuffWhileOnlyUnit;
   if (
@@ -228,7 +255,7 @@ export function collectAuraContributions(
     if (
       typeAura &&
       typeAura.targetTypes.includes(def.type) &&
-      (typeAura.targetSubtype === undefined || hasSubtype(def, typeAura.targetSubtype)) &&
+      (typeAura.targetSubtype === undefined || unitHasSubtype(def, unit, typeAura.targetSubtype)) &&
       (!typeAura.whileSelfVisible || isVisibleDuringTide(sourceDef, tideState))
     ) {
       add(typeAura);

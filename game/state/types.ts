@@ -784,9 +784,20 @@ export interface DeckLookChoice {
    * Où vont les cartes PRISES (Lot 17). `"hand"` (défaut) ; `"deckTop"` :
    * « gardez-en une au-dessus » (Boussole fendue) ; `"deckBottom"` :
    * « placez-les sous votre pioche dans l'ordre de votre choix » — l'ordre
-   * de la réponse (Orram, Carte détrempée).
+   * de la réponse (Orram, Carte détrempée). `"board"` : « ramenez une unité
+   * du Cimetière sur le plateau » (Lot 18) — elle ARRIVE sur le plateau de
+   * celui qui choisit, comme invoquée, avec `withMarker` le cas échéant.
    */
-  takeTo?: "hand" | "deckTop" | "deckBottom";
+  takeTo?: "hand" | "deckTop" | "deckBottom" | "board";
+  /** `takeTo: "board"` : le marqueur avec lequel la carte arrive (« avec un marqueur Mort »). */
+  withMarker?: import("@/game/cards/markers").MarkerId;
+  /**
+   * « d'UN Cimetière » (Encore une histoire, Lot 18) : les cartes regardées
+   * viennent des deux Cimetières. Pour chacune, le Cimetière d'où elle sort
+   * — celles qu'on ne prend pas y retournent. Absent : toutes viennent du
+   * Cimetière de `playerId`.
+   */
+  graveyardOrigins?: Record<string, PlayerId>;
   /**
    * Effets à résoudre une fois la carte prise, avec
    * `chosenGraveyardInstanceId` = la carte prise (« s'il coûtait 2 ou

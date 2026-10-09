@@ -1,3 +1,4 @@
+import { stripMarkers } from "@/game/cards/markers";
 import { activeLandeRules } from "@/game/rules/lande";
 import { markTurnDiscountsUsed, turnDiscounts } from "@/game/rules/costReductions";
 import { boardPermanents, isOngoingEffect } from "@/game/rules/ongoing";
@@ -401,7 +402,9 @@ export function playCard(state: GameState, action: PlayCardAction): ActionResult
     events.push(...posee.events);
   } else if (isUnitCard(def.type) || asPermanent) {
     const boardUnit = {
-      ...instance,
+      // Un marqueur part avec la carte qui quitte le plateau : celle qui y
+      // revient depuis la main n'en porte aucun (Lot 18).
+      ...stripMarkers(instance),
       summoningSick: isUnitCard(def.type),
       hasAttackedThisTurn: false,
       damageMarked: 0,
