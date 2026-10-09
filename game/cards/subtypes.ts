@@ -59,6 +59,8 @@ export const SUBTYPE_LABELS = {
   dragon: "Dragon",
   fantome: "Fantôme",
   "mort-vivant": "Mort-vivant",
+  // 09/10/2026 : On joue aux morts (Lot 18).
+  grenouille: "Grenouille",
 
   // --- Rôles ------------------------------------------------------------
   pirate: "Pirate",
@@ -85,7 +87,7 @@ export const SUBTYPE_FAMILIES: Readonly<Record<string, readonly SubtypeId[]>> = 
   jeu: ["marionnette", "un-dead", "cavalerie", "altere", "eclat-chromatique", "objet-flottant", "objet"],
   especes: [
     "volatile", "humain", "poisson", "amphibien", "squelette", "crustace", "bete", "reptile", "monstre",
-    "metahumain", "homme-poisson", "homme-bete", "gobelin", "gnome", "nain", "troll", "geant", "dragon", "fantome", "mort-vivant",
+    "metahumain", "homme-poisson", "homme-bete", "gobelin", "gnome", "nain", "troll", "geant", "dragon", "fantome", "mort-vivant", "grenouille",
   ],
   roles: ["pirate", "chevalier", "gardien", "soigneur", "mage", "hero", "voleur", "necromancien"],
   natures: ["mecanique", "maudit", "sauvage", "mythique"],

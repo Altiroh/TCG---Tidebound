@@ -57,7 +57,7 @@ export const LOT18_SET: CardDefinition[] = [
     id: "on-joue-aux-morts",
     name: "On joue aux morts",
     type: "creature",
-    subtypes: ["mort-vivant"],
+    subtypes: ["mort-vivant", "grenouille"],
     cost: 4,
     attack: 1,
     health: 3,
