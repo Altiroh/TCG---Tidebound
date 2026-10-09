@@ -17,6 +17,7 @@ Posées par `features/match/StatusBadge.tsx`, superposées au cadre par
 | `pied-marin.webp` | Pied marin — peut attaquer dès son arrivée |
 | `eveil.webp` | Éveil (Lot 16) — la carte a un effet « Éveil — » ; le nombre d'Éveils du tour s'y inscrit |
 | `tour.webp` | Médaillon du compteur de tours restants (Structures à durée) |
+| `mort.webp` | Marqueur **Mort** (09/10/2026, deck Un Dead / Mort-vivant) — jeton de carton posé sur une carte. **Réservé** : aucune règle ne le pose encore ; il attend sa mécanique |
 
 `tour.webp` porte un médaillon CLAIR : le texte superposé y est sombre, là
 où il est clair sur les autres. C'est `StatusBadge` qui en décide, pas
