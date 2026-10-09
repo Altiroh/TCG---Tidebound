@@ -1,4 +1,3 @@
-import { describe, expect, it } from "vitest";
 import { createGameState } from "@/game/state/createGameState";
 import { PLAYABLE_DECKS } from "@/game/cards/decks/catalog";
 import { chooseBotAction } from "@/game/bot/chooseAction";
@@ -29,13 +28,19 @@ import type { GameState } from "@/game/state/types";
  * n'apprend rien à personne — et pire, on finit par le relancer au lieu de
  * le lire. La graine rend chaque exécution identique : ce qui bouge alors,
  * c'est le bot, pas le dé.
+ *
+ * TESTS LENTS (10/10/2026). Les trois affrontements jouaient 168 parties
+ * complètes à la suite dans un seul fichier : 495 s sur les 527 de toute la
+ * suite. Chacun vit désormais dans son fichier `*.lent.test.ts` — ils
+ * tournent en parallèle — et ils sortent de `npm test` : on les lance avec
+ * `npm run test:lents` dès qu'on touche au bot ou à son évaluation.
  */
 
 /**
  * Générateur déterministe substitué à `Math.random()` le temps d'une
  * mesure — même suite de "hésitations" à chaque exécution.
  */
-function withSeededRandom<T>(seed: number, run: () => T): T {
+export function withSeededRandom<T>(seed: number, run: () => T): T {
   const original = Math.random;
   let state = seed >>> 0;
   Math.random = () => {
@@ -53,7 +58,7 @@ function withSeededRandom<T>(seed: number, run: () => T): T {
   }
 }
 
-function playMatch(a: BotDifficulty, b: BotDifficulty, seed: number): "A" | "B" | null {
+export function playMatch(a: BotDifficulty, b: BotDifficulty, seed: number): "A" | "B" | null {
   let state: GameState = createGameState({
     gameId: `ladder-${seed}`,
     player1: { id: "A", deck: PLAYABLE_DECKS[seed % PLAYABLE_DECKS.length]! },
@@ -73,7 +78,7 @@ function playMatch(a: BotDifficulty, b: BotDifficulty, seed: number): "A" | "B" 
 }
 
 /** Parties gagnées par `strong` contre `weak`, les deux couleurs jouées. */
-function winsOfStronger(strong: BotDifficulty, weak: BotDifficulty, seeds: number): { wins: number; played: number } {
+export function winsOfStronger(strong: BotDifficulty, weak: BotDifficulty, seeds: number): { wins: number; played: number } {
   let wins = 0;
   let played = 0;
   for (let seed = 1; seed <= seeds; seed += 1) {
@@ -86,45 +91,3 @@ function winsOfStronger(strong: BotDifficulty, weak: BotDifficulty, seeds: numbe
   }
   return { wins, played };
 }
-
-describe("échelle de difficulté du bot", () => {
-  it("« moyen » bat « facile » — l'échelle était inversée", () => {
-    // 120 PARTIES (29/09/2026). Seize, puis quarante, ne suffisaient pas :
-    // chaque révision de préconstruit change les appariements tirés, et le
-    // score retombait sur le seuil (8/16, puis 24/40 = 0,600 pile) alors que
-    // la mesure sur 120 parties donne 0,717. À 120, l'écart-type est
-    // d'environ 0,04 : le seuil est à près de trois écarts-types.
-    const { wins, played } = withSeededRandom(20260918, () => winsOfStronger("moyen", "facile", 60));
-    expect(played).toBeGreaterThan(100);
-    expect(wins / played).toBeGreaterThan(0.6);
-  });
-
-  it("« difficile » bat « moyen »", () => {
-    // Écart mesuré sur 120 parties (22/09/2026) : ≈ 0,68. Le seuil est placé
-    // sous cette valeur, avec assez de marge pour qu'un réglage mineur ne
-    // fasse pas tomber le test — mais pas au point d'accepter la parité.
-    //
-    // 36 PARTIES ET NON 20 : la refonte des decks d'emprunt (22/09/2026)
-    // fait passer `PLAYABLE_DECKS` de dix à dix-huit listes, et
-    // l'échantillon en tire d'autres appariements. Sur vingt parties, la
-    // variance d'appariement pesait plus lourd que l'écart de difficulté —
-    // 0,550 tout rond, pile sur le seuil, alors que la même mesure sur 120
-    // parties donnait 0,678. Sur trente-six, quatre graines de hasard
-    // distinctes rendent 0,600 à 0,639 : c'est stable, et ça coûte une
-    // quinzaine de secondes de plus.
-    const { wins, played } = withSeededRandom(20260918, () => winsOfStronger("difficile", "moyen", 18));
-    expect(played).toBeGreaterThan(30);
-    expect(wins / played).toBeGreaterThan(0.55);
-  });
-
-  it("« difficile » écrase « facile »", () => {
-    // 24 PARTIES ET NON 12 (29/09/2026) : une révision de liste de
-    // préconstruit a suffi à changer les appariements tirés, et le score
-    // est tombé à 8/12 — 0,667, sous le seuil — alors que la même mesure
-    // sur 60 parties donnait 53/60 (0,88). À douze parties, un seul match
-    // décidait du test.
-    const { wins, played } = withSeededRandom(20260918, () => winsOfStronger("difficile", "facile", 12));
-    expect(played).toBeGreaterThan(16);
-    expect(wins / played).toBeGreaterThan(0.7);
-  });
-});

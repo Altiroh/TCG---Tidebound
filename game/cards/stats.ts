@@ -3,8 +3,8 @@ import { hasSubtype } from "@/game/cards/subtypes";
 import { isTextIgnored } from "@/game/cards/types";
 import { countArchetypeUnits } from "@/game/cards/archetypes";
 import { getCardDefinition } from "@/game/cards/sets/core";
-import { isVisibleDuringTide, UNIT_CARD_TYPES, type CardInstance } from "@/game/cards/types";
-import { CHROMATIC_TUNING, signalSources } from "@/game/rules/chromatic";
+import { isVisibleDuringTide, UNIT_CARD_TYPES, type CardDefinition, type CardInstance } from "@/game/cards/types";
+import { CHROMATIC_TUNING, SENTINELLE_CHROMATIQUE, signalSources } from "@/game/rules/chromatic";
 import type { TideStateName } from "@/game/environment/types";
 import type { GameState } from "@/game/state/types";
 
@@ -294,8 +294,24 @@ const NO_AURA = { attack: 0, health: 0 } as const;
  * la même Marée et le même contexte, donnent forcément le même total. La clé
  * est donc l'identité des objets ; `WeakMap` laisse partir les états que
  * plus personne ne tient.
+ *
+ * Le reste du contexte (Marée, Raison, sens, joueur actif, Lande) se range
+ * sous une clé NUMÉRIQUE (`auraContextKey`) : la clé en chaîne recomposée à
+ * chaque appel coûtait à elle seule une bonne part du temps de la fonction
+ * (3,3 millions d'appels pour une partie du bot difficile, 10/10/2026).
  */
-const auraTotalsCache = new WeakMap<readonly CardInstance[], WeakMap<CardInstance, Map<string, { attack: number; health: number }>>>();
+const auraTotalsCache = new WeakMap<readonly CardInstance[], WeakMap<CardInstance, Map<number, { attack: number; health: number }>>>();
+
+const TIDE_KEY: Record<TideStateName, number> = { calme: 0, houle: 1, tempete: 2, abysses: 3 };
+/** Trois valeurs : absent, faux, vrai. */
+const tri = (value: boolean | undefined) => (value === undefined ? 0 : value ? 1 : 2);
+
+/** Clé numérique du contexte d'aura : un entier distinct par combinaison (Raison bornée à ±10 000). */
+function auraContextKey(tideState: TideStateName, aura: AuraContext): number {
+  const orientation = aura.tideOrientation === undefined ? 0 : aura.tideOrientation === "montante" ? 1 : 2;
+  const flags = TIDE_KEY[tideState] * 27 + orientation * 9 + tri(aura.controllerIsActive) * 3 + tri(aura.landeActive);
+  return (aura.controllerReason + 10_000) * 108 + flags;
+}
 
 function auraTotals(unit: CardInstance, tideState: TideStateName, aura: AuraContext): { attack: number; health: number } {
   let byUnit = auraTotalsCache.get(aura.controllerBoard);
@@ -308,22 +324,69 @@ function auraTotals(unit: CardInstance, tideState: TideStateName, aura: AuraCont
     byContext = new Map();
     byUnit.set(unit, byContext);
   }
-  const key = `${tideState}|${aura.controllerReason}|${aura.tideOrientation ?? ""}|${aura.controllerIsActive ?? ""}|${aura.landeActive ?? ""}`;
+  const key = auraContextKey(tideState, aura);
   const cached = byContext.get(key);
   if (cached) return cached;
 
   // « Son texte est ignoré » (Lot 17) : ni ses bonus sur elle-même, ni ceux
   // qu'elle donne aux autres.
-  const muettes = new Set(aura.controllerBoard.filter(isTextIgnored).map((u) => u.instanceId));
-  const contributions = collectAuraContributions(unit, tideState, aura).filter(
-    (c) => !(c.sourceInstanceId && muettes.has(c.sourceInstanceId)) && !(c.sourceInstanceId === unit.instanceId && isTextIgnored(unit))
-  );
-  const totals = {
-    attack: contributions.reduce((sum, c) => sum + c.attack, 0),
-    health: contributions.reduce((sum, c) => sum + c.health, 0),
-  };
+  let muettes: Set<string> | null = null;
+  for (const other of aura.controllerBoard) {
+    if (isTextIgnored(other)) (muettes ??= new Set()).add(other.instanceId);
+  }
+  const selfIgnored = isTextIgnored(unit);
+  const totals = { attack: 0, health: 0 };
+  for (const c of collectAuraContributions(unit, tideState, aura)) {
+    if (c.sourceInstanceId && muettes?.has(c.sourceInstanceId)) continue;
+    if (c.sourceInstanceId === unit.instanceId && selfIgnored) continue;
+    totals.attack += c.attack;
+    totals.health += c.health;
+  }
   byContext.set(key, totals);
   return totals;
+}
+
+/**
+ * CHEMIN RAPIDE DES AURAS (10/10/2026). La plupart des plateaux n'ont aucune
+ * carte qui en donne, et la plupart des unités aucun bonus sur elles-mêmes —
+ * mais chaque lecture de Puissance payait quand même le cache et ses clés.
+ *
+ * Toute contribution de `collectAuraContributions` vient de l'une de ces
+ * trois sources, et d'aucune autre :
+ *   - un champ `selfBuff…` de la carte elle-même ;
+ *   - un Signal chromatique, qui ne profite qu'aux Sentinelles ;
+ *   - un champ `auraBuff…` ou `equipGrantsBuff…` d'une carte du plateau.
+ * Sans aucune des trois, le total est nul et on s'épargne le calcul. Un
+ * nouveau bonus de plateau doit donc garder l'un de ces préfixes.
+ */
+const auraProfileCache = new WeakMap<CardDefinition, { receivesOwn: boolean; grants: boolean }>();
+
+function auraProfile(def: CardDefinition): { receivesOwn: boolean; grants: boolean } {
+  let profile = auraProfileCache.get(def);
+  if (!profile) {
+    const keys = Object.keys(def).filter((key) => def[key as keyof CardDefinition] !== undefined);
+    profile = {
+      receivesOwn: def.archetype === SENTINELLE_CHROMATIQUE || keys.some((key) => key.startsWith("selfBuff")),
+      grants: keys.some((key) => key.startsWith("auraBuff") || key.startsWith("equipGrantsBuff")),
+    };
+    auraProfileCache.set(def, profile);
+  }
+  return profile;
+}
+
+const boardGrantsCache = new WeakMap<readonly CardInstance[], boolean>();
+
+function boardGrantsAura(board: readonly CardInstance[]): boolean {
+  let grants = boardGrantsCache.get(board);
+  if (grants === undefined) {
+    grants = board.some((card) => auraProfile(getCardDefinition(card.cardId)).grants);
+    boardGrantsCache.set(board, grants);
+  }
+  return grants;
+}
+
+function mayReceiveAura(def: CardDefinition, board: readonly CardInstance[]): boolean {
+  return auraProfile(def).receivesOwn || boardGrantsAura(board);
 }
 
 /**
@@ -345,7 +408,8 @@ export function computeEffectiveStats(unit: CardInstance, tideState: TideStateNa
   const modifierAttack = unit.modifiers.reduce((sum, m) => sum + m.attack, 0);
   const modifierHealth = unit.modifiers.reduce((sum, m) => sum + m.health, 0);
 
-  const { attack: auraAttack, health: auraHealth } = aura ? auraTotals(unit, tideState, aura) : NO_AURA;
+  const { attack: auraAttack, health: auraHealth } =
+    aura && mayReceiveAura(def, aura.controllerBoard) ? auraTotals(unit, tideState, aura) : NO_AURA;
 
   return {
     attack: baseAttack + modifierAttack + auraAttack,

@@ -7,10 +7,11 @@ Projet Next.js 14 (app router) + Supabase + moteur de jeu pur TypeScript. Fichie
 ```bash
 npm run typecheck   # tsc --noEmit
 npm run lint        # next lint
-npm test            # vitest run (toute la suite, ~1 min)
+npm test            # vitest run (toute la suite hors tests lents)
+npm run test:lents  # *.lent.test.ts : échelle de difficulté du bot (plusieurs minutes)
 ```
 
-Une modification n'est terminée que si les trois passent.
+Une modification n'est terminée que si les trois premières passent. `npm run test:lents` en plus dès qu'on touche au bot (`game/bot/`), à son évaluation ou à la liste des préconstruits. Un test qui joue des centaines de parties complètes s'appelle `*.lent.test.ts` et sort de `npm test`.
 
 ## Couches et sens des dépendances
 

@@ -305,6 +305,41 @@ function report(aggs: Map<string, DeckAgg>, decks: DeckList[], detail: boolean):
 
 // --- Orchestration --------------------------------------------------------
 
+/**
+ * TRAVAILLEUR PRÉ-COMPILÉ (10/10/2026). Sous `tsx`, chaque fonction — closures
+ * comprises — passe par un `__name(…)` ajouté à la volée, et le chargeur pèse
+ * encore à côté : un tiers du temps d'une partie du bot difficile, mesuré au
+ * profileur. Un bundle esbuild, sans ce surcoût, joue la même partie en
+ * 18 s au lieu de 26. Le module de `--setup` y est importé en tête : il
+ * modifie les mêmes tables que le moteur du bundle.
+ *
+ * Repli sur `tsx` si esbuild n'est pas joignable : plus lent, même résultat.
+ */
+async function bundleWorker(dir: string, setup: string | undefined): Promise<string | null> {
+  try {
+    const { build } = await import("esbuild");
+    const entry = join(dir, "worker-entry.ts");
+    const toImport = (file: string) => JSON.stringify(file.replace(/\\/g, "/"));
+    writeFileSync(entry, `${setup ? `import ${toImport(setup)};\n` : ""}import ${toImport(resolve(__filename))};\n`);
+    const outfile = join(dir, "worker.cjs");
+    await build({
+      entryPoints: [entry],
+      bundle: true,
+      platform: "node",
+      format: "cjs",
+      outfile,
+      // `lab.ts` importe esbuild pour se compiler : le travailleur n'en a pas besoin.
+      external: ["esbuild"],
+      tsconfig: resolve(__dirname, "../../tsconfig.json"),
+      logLevel: "warning",
+    });
+    return outfile;
+  } catch (error) {
+    console.warn(`Bundle du travailleur impossible, repli sur tsx : ${(error as Error).message}`);
+    return null;
+  }
+}
+
 async function main() {
   const games = Number(arg("--games") ?? 20);
   const bot = (arg("--bot") ?? "moyen") as BotDifficulty;
@@ -366,6 +401,7 @@ async function main() {
   }
 
   const dir = mkdtempSync(join(tmpdir(), "preconlab-"));
+  const worker = await bundleWorker(dir, setup);
   const chunks: Job[][] = Array.from({ length: workers }, () => []);
   jobs.forEach((job, k) => chunks[k % workers]!.push(job));
   // Un orchestrateur interrompu ne laisse pas ses travailleurs tourner.
@@ -380,8 +416,11 @@ async function main() {
           new Promise<GameRecord[]>((ok, ko) => {
             const input = join(dir, `in-${k}.json`);
             const output = join(dir, `out-${k}.json`);
-            writeFileSync(input, JSON.stringify({ decks, jobs: chunk, bot, setup } satisfies WorkerInput));
-            const child = fork(__filename, ["--worker", input, output], { execArgv: ["--import", "tsx"], stdio: "inherit" });
+            // Le module de `--setup` est déjà dans le bundle : le travailleur ne le réimporte pas.
+            writeFileSync(input, JSON.stringify({ decks, jobs: chunk, bot, setup: worker ? undefined : setup } satisfies WorkerInput));
+            const child = worker
+              ? fork(worker, ["--worker", input, output], { execArgv: [], stdio: "inherit" })
+              : fork(__filename, ["--worker", input, output], { execArgv: ["--import", "tsx"], stdio: "inherit" });
             children.push(child);
             child.on("exit", (code) => (code === 0 ? ok(JSON.parse(readFileSync(output, "utf8"))) : ko(new Error(`travailleur ${k} : code ${code}`))));
           })

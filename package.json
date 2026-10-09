@@ -10,6 +10,7 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:lents": "vitest run --config vitest.lents.config.ts",
     "test:watch": "vitest",
     "check:board-preview": "node scripts/checkBoardPreviewLayout.mjs",
     "seed:cards": "tsx --env-file=.env.local scripts/seedCards.ts",
