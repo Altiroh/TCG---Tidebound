@@ -311,8 +311,8 @@ function check(def: CardDefinition): Violation[] {
   }
 
   // --- Lande ---------------------------------------------------------------
-  // Sa durée se compte en TOURS DE TABLE (`lande.durationTableTurns`), pas en
-  // tours de son contrôleur (`durationTurns`) ; ses règles sont des données
+  // Sa durée se compte en TOURS DE TABLE (`lande.durationTableTurns`)
+  // et non par `durationTurns` ; ses règles sont des données
   // de `lande`, relues par le moteur tant qu'elle est en jeu.
   if (def.type === "lande") {
     const rules = def.lande;
@@ -342,6 +342,10 @@ function check(def: CardDefinition): Violation[] {
     push("duration", `« Durée : ${duration[1]} tours » mais durationTurns = ${def.durationTurns ?? "absent"}`);
   }
   if (!duration && def.durationTurns !== undefined) push("duration", `durationTurns = ${def.durationTurns} mais le texte n'annonce aucune durée`);
+  // Toute durée s'écrit en tours de table (09/10/2026) ; seul « Pendant N
+  // tours, au début de chaque tour… » compte des tours de joueur.
+  const written = /Dur[ée]e\s*:\s*\d+\s*tours?\b(?!\s+de table)/i.exec(text);
+  if (written) push("duration", `« ${written[0]} » : une durée s'écrit « Durée : N tours de table »`);
 
   const visible = /Visible\s*(?:uniquement\s*)?(?:pendant|:)\s*([^.]+)\./i.exec(text);
   if (visible) {

@@ -985,8 +985,9 @@ export interface CardDefinition {
   abilities?: TriggeredAbility[];
 
   /**
-   * Pour Structure/Objet uniquement : durée de vie en tours JOUÉS (tous
-   * joueurs confondus, même convention que `RULES.TIDE_STATE_DURATION`).
+   * Pour Structure/Objet uniquement : durée de vie en TOURS DE TABLE
+   * (« Durée : N tours de table »). Le décompte a lieu à l'entame du tour
+   * de son contrôleur : N tours de table = N de ses tours.
    * `undefined` = reste en jeu indéfiniment (jusqu'à destruction/Sabordage/
    * bris). Décompté par `game/environment/resolveEnvironment.ts` ; à 0, la
    * carte quitte le board (expiration — ni mort ni Sabordage).
@@ -1658,7 +1659,7 @@ export interface CardInstance {
   /**
    * Pour Structure/Objet avec `durationTurns` : tours restants avant
    * expiration. Fixé à `def.durationTurns` à l'entrée en jeu, décompté une
-   * fois par tour joué (tous joueurs confondus). `undefined` si la carte
+   * fois par tour de table, à l'entame du tour de son contrôleur. `undefined` si la carte
    * n'a pas de durée limitée.
    */
   turnsRemaining?: number;

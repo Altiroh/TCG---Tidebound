@@ -27,7 +27,7 @@ const atelier = getCardDefinition("atelier-de-calfatage");
 db.set("lab-atelier-offensif", {
   ...atelier,
   id: "lab-atelier-offensif",
-  text: "Durée : 4 tours. La première fois à chaque tour qu'une autre Structure que vous contrôlez est Sabordée, infligez 1 dégât au Navire adverse.",
+  text: "Durée : 4 tours de table. La première fois à chaque tour qu'une autre Structure que vous contrôlez est Sabordée, infligez 1 dégât au Navire adverse.",
   abilities: (atelier.abilities ?? []).map((ability) =>
     ability.trigger === "onSaborde"
       ? { ...ability, effects: [{ type: "damage" as const, target: { kind: "opponentPlayer" as const }, amount: { kind: "flat" as const, value: 1 } }] }

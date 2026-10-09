@@ -455,12 +455,13 @@ export function appliquerMareeAnnoncee(
   }
 
   // --- Expiration des permanents à durée limitée (Structures/Objets) -----
-  // « Durée : 3 tours » sur une CARTE compte les tours de SON CONTRÔLEUR,
-  // pas les tours de table (décision du 17/09/2026) : c'est ainsi que se lit
-  // « à chacun de vos tours », et une carte posée ne doit pas fondre deux
-  // fois plus vite parce que l'adversaire joue aussi. La durée d'un état de
-  // Marée, elle, reste comptée en tours de table — la mer n'appartient à
-  // personne.
+  // « Durée : 3 tours de table » sur une CARTE (harmonisation du
+  // 09/10/2026 : toute durée s'écrit en tours de table) : un tour de table,
+  // c'est un tour de chaque joueur, donc UN tour de son contrôleur — c'est
+  // ainsi que se lit « à chacun de vos tours », et une carte posée ne fond
+  // pas deux fois plus vite parce que l'adversaire joue aussi (décision du
+  // 17/09/2026). La durée d'un état de Marée se compte, elle aussi, en tours
+  // de table.
   //
   // Le décompte a donc lieu au début du tour de son propriétaire, et
   // `resolveTideTurnStep` est appelée juste après le passage de main : le

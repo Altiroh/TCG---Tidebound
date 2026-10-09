@@ -86,7 +86,7 @@ enregistrer({
   health: 4,
   durationTurns: 4,
   visibleDuringTide: undefined,
-  text: "Durée : 4 tours. Au début de votre tour, placez les 2 premières cartes de votre pioche dans votre Cimetière.",
+  text: "Durée : 4 tours de table. Au début de votre tour, placez les 2 premières cartes de votre pioche dans votre Cimetière.",
   abilities: [
     {
       trigger: "startOfTurn",

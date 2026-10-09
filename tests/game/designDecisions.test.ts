@@ -2,8 +2,9 @@
  * Décisions de design du 17/09/2026, une par bloc : chacune est ici pour
  * qu'un futur remaniement ne la reprenne pas silencieusement.
  *
- * 1. Une « Durée : N tours » sur une CARTE compte les tours de son
- *    contrôleur, pas les tours de table.
+ * 1. Une « Durée : N tours de table » sur une CARTE se décompte à l'entame
+ *    du tour de son contrôleur : N tours de table = N de ses tours, jamais
+ *    N tours de joueur (harmonisé en « tours de table » le 09/10/2026).
  * 2. « Les trois » d'un archétype acceptent la variante Abyssale.
  * 3. « La première fois que » sans « à chaque tour » : un seul usage pour
  *    toute la partie (Brise-Vague de Fortune).

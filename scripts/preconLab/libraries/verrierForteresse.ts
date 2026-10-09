@@ -38,7 +38,7 @@ enregistrer({ ...base("le-dernier-rempart"), id: "lab-rempart-verrier" });
 enregistrer({
   ...base("brise-vague-de-fortune"),
   id: "lab-brise-vague-verrier",
-  text: "Durée : 3 tours. Visible pendant Houle et Tempête. Tant qu'elle est visible, vos unités ont +1 Puissance.",
+  text: "Durée : 3 tours de table. Visible pendant Houle et Tempête. Tant qu'elle est visible, vos unités ont +1 Puissance.",
   abilities: [],
   reduceTideShipDamageOncePerTurn: undefined,
   auraBuffControllerCardTypes: { targetTypes: [...UNITES], attackAmount: 1, whileSelfVisible: true },

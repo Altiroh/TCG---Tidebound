@@ -454,7 +454,7 @@ const EQUIPAGE_DE_VERRE: CardDefinition[] = [
     health: 3,
     durationTurns: 4,
     text:
-      "Durée : 4 tours. La première fois pendant chacun de vos tours qu'une unité que vous contrôlez survit à des " +
+      "Durée : 4 tours de table. La première fois pendant chacun de vos tours qu'une unité que vous contrôlez survit à des " +
       "dégâts infligés par l'un de vos effets, restaurez 1 Résistance à une autre unité que vous contrôlez.",
     abilities: [
       {
@@ -1397,7 +1397,7 @@ const SENTINELLES: CardDefinition[] = [
     health: 3,
     durationTurns: 4,
     text:
-      "Durée : 4 tours. La première fois pendant chacun de vos tours que vous jouez une Sentinelle d'une couleur " +
+      "Durée : 4 tours de table. La première fois pendant chacun de vos tours que vous jouez une Sentinelle d'une couleur " +
       "que vous ne contrôliez pas encore, elle gagne +1 Résistance jusqu'à votre prochain tour.",
     // Deux moments pour un seul texte : la couleur d'une Sentinelle JOUÉE
     // se lit à son arrivée — ou, si elle la choisit en arrivant (Émissaire

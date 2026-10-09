@@ -49,7 +49,7 @@ enregistrer({
   ...theatre,
   id: "lab-theatre-verrier",
   text:
-    "Durée : 4 tours. La première fois à chaque tour qu'une unité Marionnette que vous contrôlez revient dans " +
+    "Durée : 4 tours de table. La première fois à chaque tour qu'une unité Marionnette que vous contrôlez revient dans " +
     "votre main, récupérez 1 Raison et infligez 2 dégâts au Navire adverse.",
   abilities: [
     {
@@ -77,7 +77,7 @@ enregistrer({
   ...theatre,
   id: "lab-theatre-arrivee",
   text:
-    "Durée : 4 tours. Chaque fois qu'une unité Marionnette arrive sous votre contrôle, infligez 1 dégât au " +
+    "Durée : 4 tours de table. Chaque fois qu'une unité Marionnette arrive sous votre contrôle, infligez 1 dégât au " +
     "Navire adverse.",
   abilities: [
     {

@@ -210,7 +210,7 @@ export const CORE_SET: CardDefinition[] = [
     // cachée s'ajoute. Le vrai apport est le CHOIX — garder la carte pour
     // 2 Ancrage plus tard, ou la brûler maintenant pour encaisser un coup.
     text:
-      "Durée : 4 tours. Visible pendant Calme et Houle. Sabordage : récupérez 2 Ancrage. Réaction cachée : " +
+      "Durée : 4 tours de table. Visible pendant Calme et Houle. Sabordage : récupérez 2 Ancrage. Réaction cachée : " +
       "lorsque votre Navire devrait subir des dégâts directs, vous pouvez révéler puis Saborder Caisses " +
       "Arrimées : réduisez ces dégâts de 2.",
     abilities: [
@@ -244,7 +244,7 @@ export const CORE_SET: CardDefinition[] = [
     durationTurns: 3,
     visibleDuringTide: ["houle", "tempete"],
     text:
-      "Durée : 3 tours. Visible pendant Houle et Tempête. La première fois que votre Navire subit des dégâts de " +
+      "Durée : 3 tours de table. Visible pendant Houle et Tempête. La première fois que votre Navire subit des dégâts de " +
       "Tempête, réduisez-les de 1.",
     // « La première fois que » se lit au pied de la lettre : UN seul usage
     // pour toute la partie, jamais réarmé d'un tour à l'autre (décision du
@@ -311,7 +311,7 @@ export const CORE_SET: CardDefinition[] = [
     // choisi. C'est un renforcement net, signalé comme à valider au
     // playtest par le cadrage lui-même.
     text:
-      "Durée : 3 tours. Visible pendant Houle et Tempête. La première fois à chaque tour que votre Navire devrait " +
+      "Durée : 3 tours de table. Visible pendant Houle et Tempête. La première fois à chaque tour que votre Navire devrait " +
       "subir des dégâts directs d'une attaque, vous pouvez annuler ces dégâts et infliger autant de dégâts à un " +
       "permanent adverse de votre choix. Détruisez ensuite Cylindre flottant. Réaction cachée : lorsqu'une unité " +
       "adverse attaque directement votre Navire, vous pouvez révéler Cylindre flottant : annulez les dégâts de " +
@@ -372,7 +372,7 @@ export const CORE_SET: CardDefinition[] = [
     visibleDuringTide: ["calme", "houle"],
     maxCopies: 2,
     text:
-      "Durée : 3 tours. Visible pendant Calme et Houle. La première fois à chaque tour que l'adversaire Brise un " +
+      "Durée : 3 tours de table. Visible pendant Calme et Houle. La première fois à chaque tour que l'adversaire Brise un " +
       "Objet, il doit payer 1 Raison supplémentaire. S'il ne peut pas payer, l'Objet ne peut pas être Brisé.",
     // La taxe s'ajoute au coût du Bris (depuis la main : demi-coût + 1 ;
     // depuis le plateau : 1 au lieu de rien) ET le rend impossible si la
@@ -412,7 +412,7 @@ export const CORE_SET: CardDefinition[] = [
     maxCopies: 2,
     visibleDuringTide: ["tempete", "abysses"],
     text:
-      "Durée : 3 tours. Visible pendant Tempête et Abysses. La première fois à chaque tour qu'une unité adverse " +
+      "Durée : 3 tours de table. Visible pendant Tempête et Abysses. La première fois à chaque tour qu'une unité adverse " +
       "arrive alors que l'adversaire contrôle au moins 4 unités, infligez 1 dégât à chaque unité adverse. " +
       "Réaction cachée : lorsqu'une unité adverse arrive alors que l'adversaire contrôle au moins 4 unités, vous " +
       "pouvez révéler La Nasse Trop Pleine : infligez 1 dégât à chaque unité adverse. Détruisez ensuite La Nasse " +
@@ -465,7 +465,7 @@ export const CORE_SET: CardDefinition[] = [
     durationTurns: 4,
     maxCopies: 2,
     text:
-      "Durée : 4 tours. À la fin de votre tour, si l'adversaire contrôle au moins 3 unités, il perd 1 Raison " +
+      "Durée : 4 tours de table. À la fin de votre tour, si l'adversaire contrôle au moins 3 unités, il perd 1 Raison " +
       "pour chaque unité qu'il contrôle au-delà de 2.",
     abilities: [
       {
@@ -626,7 +626,7 @@ export const CORE_SET: CardDefinition[] = [
     durationTurns: 4,
     visibleDuringTide: ["houle"],
     text:
-      "Durée : 4 tours. Visible pendant Houle uniquement. Chaque fois qu'elle devient visible, vous pouvez défausser 1 " +
+      "Durée : 4 tours de table. Visible pendant Houle uniquement. Chaque fois qu'elle devient visible, vous pouvez défausser 1 " +
       "carte. Si vous le faites, piochez 1 carte.",
     // Réaction facultative à sa propre apparition (`STRUCTURE_REVEALED`).
     // Dans l'ordre du texte : le joueur DÉSIGNE la carte à défausser (choix
@@ -783,7 +783,7 @@ export const CORE_SET: CardDefinition[] = [
     // Anti-swarm : aucun seuil de Puissance, contrairement au Filet qui
     // Respire, qui vise les grosses menaces.
     text:
-      "Durée : 3 tours. Visible pendant Calme et Houle. La première fois à chaque tour qu'une unité adverse " +
+      "Durée : 3 tours de table. Visible pendant Calme et Houle. La première fois à chaque tour qu'une unité adverse " +
       "attaque, elle perd 1 Puissance pour cette attaque. Réaction cachée : lorsqu'une unité adverse attaque, " +
       "vous pouvez révéler Filet à la Dérive : cette unité perd 2 Puissance pour cette attaque.",
     abilities: [
@@ -816,7 +816,7 @@ export const CORE_SET: CardDefinition[] = [
     visibleDuringTide: ["houle", "tempete", "abysses"],
     maxCopies: 2,
     text:
-      "Durée : 4 tours. Visible pendant Houle, Tempête et Abysses. La première fois à chaque tour que la Marée " +
+      "Durée : 4 tours de table. Visible pendant Houle, Tempête et Abysses. La première fois à chaque tour que la Marée " +
       "change, vous pouvez perdre 1 Raison. Si vous le faites, augmentez de 1 tour la durée du nouvel état.",
     abilities: [
       {
@@ -1037,7 +1037,7 @@ export const CORE_SET: CardDefinition[] = [
     // à 2, et la fenêtre perd Calme. `maxCopies` reste à 2 pendant le
     // prototype, comme demandé.
     text:
-      "Durée : 4 tours. Visible pendant Houle et Tempête. La première fois à chaque tour que votre Navire devrait " +
+      "Durée : 4 tours de table. Visible pendant Houle et Tempête. La première fois à chaque tour que votre Navire devrait " +
       "subir des dégâts directs d'une attaque, réduisez ces dégâts de 2. Réaction cachée : lorsque votre Navire " +
       "devrait subir des dégâts directs d'une attaque, vous pouvez révéler Cage de Flottaison : réduisez ces " +
       "dégâts de 3. Sabordez ensuite Cage de Flottaison.",
@@ -1330,7 +1330,7 @@ export const CORE_SET: CardDefinition[] = [
     // Standard Verrier (30/09/2026, validé par le propriétaire) : la Forteresse
     // « encaisse, grandit, frappe ». Coût et statistiques inchangés.
     text:
-      "Durée : 4 tours. Visible pendant Houle, Tempête et Abysses. Si elle est visible, la première fois à chaque " +
+      "Durée : 4 tours de table. Visible pendant Houle, Tempête et Abysses. Si elle est visible, la première fois à chaque " +
       "tour qu'une de vos unités survit à des dégâts, cette unité gagne +1 Puissance.",
     abilities: [
       {
@@ -1386,7 +1386,7 @@ export const CORE_SET: CardDefinition[] = [
     durationTurns: 3,
     visibleDuringTide: ["calme", "houle", "tempete"],
     text:
-      "Durée : 3 tours. Visible pendant Calme, Houle et Tempête. Sabordage : réduisez de 1 tour la durée " +
+      "Durée : 3 tours de table. Visible pendant Calme, Houle et Tempête. Sabordage : réduisez de 1 tour la durée " +
       "restante de la Marée actuelle. Si cette réduction la fait prendre fin, passez immédiatement à la Marée " +
       "suivante.",
     abilities: [
@@ -1409,7 +1409,7 @@ export const CORE_SET: CardDefinition[] = [
     durationTurns: 4,
     visibleDuringTide: ["houle", "tempete"],
     text:
-      "Durée : 4 tours. Visible pendant Houle et Tempête. Sabordage : uniquement pendant Houle ou Tempête, " +
+      "Durée : 4 tours de table. Visible pendant Houle et Tempête. Sabordage : uniquement pendant Houle ou Tempête, " +
       "avancez immédiatement la Marée d'un état, puis perdez 1 Raison.",
     abilities: [
       {
@@ -1438,7 +1438,7 @@ export const CORE_SET: CardDefinition[] = [
     durationTurns: 4,
     visibleDuringTide: ["tempete", "abysses"],
     text:
-      "Durée : 4 tours. Visible pendant Tempête et Abysses. Sabordage : reculez immédiatement la Marée d'un " +
+      "Durée : 4 tours de table. Visible pendant Tempête et Abysses. Sabordage : reculez immédiatement la Marée d'un " +
       "état. La Marée ne peut pas reculer au-delà de Calme.",
     abilities: [
       {
@@ -1458,7 +1458,7 @@ export const CORE_SET: CardDefinition[] = [
     health: 2,
     durationTurns: 3,
     text:
-      "Durée : 3 tours. Visible pendant toutes les Marées. Sabordage : choisissez soit de réduire de 2 tours " +
+      "Durée : 3 tours de table. Visible pendant toutes les Marées. Sabordage : choisissez soit de réduire de 2 tours " +
       "la durée actuelle, soit de l'augmenter de 1 tour.",
     // Deux capacités automatiques d'un même `choiceGroup` : au Sabordage, le
     // moteur ouvre un choix (`GameState.pendingChoice`) et le joueur désigne
@@ -1504,7 +1504,7 @@ export const CORE_SET: CardDefinition[] = [
     durationTurns: 3,
     visibleDuringTide: ["abysses"],
     text:
-      "Durée : 3 tours. Visible pendant Abysses. À chaque entrée en Abysses, vous pouvez perdre 2 Raison. Si vous " +
+      "Durée : 3 tours de table. Visible pendant Abysses. À chaque entrée en Abysses, vous pouvez perdre 2 Raison. Si vous " +
       "le faites, augmentez de 1 tour la durée des Abysses.",
     abilities: [
       {
@@ -1791,7 +1791,7 @@ export const CORE_SET: CardDefinition[] = [
     health: 3,
     durationTurns: 3,
     text:
-      "Durée : 3 tours. La première fois à chaque tour qu'une autre unité Cra-Poiscail que vous contrôlez arrive en " +
+      "Durée : 3 tours de table. La première fois à chaque tour qu'une autre unité Cra-Poiscail que vous contrôlez arrive en " +
       "jeu, cette unité gagne +1 Résistance jusqu'à votre prochain tour.",
     abilities: [
       {
@@ -2309,7 +2309,7 @@ export const CORE_SET: CardDefinition[] = [
     maxCopies: 2,
     durationTurns: 4,
     text:
-      "Durée : 4 tours. La première fois à chaque tour que votre Chevalier Cra-Poiscail attaque alors que vous " +
+      "Durée : 4 tours de table. La première fois à chaque tour que votre Chevalier Cra-Poiscail attaque alors que vous " +
       "contrôlez un Destrier du Grand Étang, récupérez 1 Raison.",
     abilities: [
       {
@@ -2806,7 +2806,7 @@ export const CORE_SET: CardDefinition[] = [
     durationTurns: 4,
     maxCopies: 1,
     text:
-      "Durée : 4 tours. La première fois à chaque tour qu'une unité Marionnette que vous contrôlez revient dans " +
+      "Durée : 4 tours de table. La première fois à chaque tour qu'une unité Marionnette que vous contrôlez revient dans " +
       "votre main, récupérez 1 Raison.",
     abilities: [
       {
@@ -3230,7 +3230,7 @@ export const CORE_SET: CardDefinition[] = [
     durationTurns: 4,
     maxCopies: 2,
     text:
-      "Durée : 4 tours. La première fois à chaque tour qu'une autre Structure que vous contrôlez est Sabordée, " +
+      "Durée : 4 tours de table. La première fois à chaque tour qu'une autre Structure que vous contrôlez est Sabordée, " +
       "récupérez 1 Ancrage.",
     abilities: [
       {
@@ -3251,7 +3251,7 @@ export const CORE_SET: CardDefinition[] = [
     health: 4,
     durationTurns: 3,
     maxCopies: 2,
-    text: "Durée : 3 tours. À la fin de votre tour, si vous avez 3 Raison ou moins, récupérez 1 Ancrage.",
+    text: "Durée : 3 tours de table. À la fin de votre tour, si vous avez 3 Raison ou moins, récupérez 1 Ancrage.",
     abilities: [
       {
         trigger: "endOfTurn",
@@ -3275,7 +3275,7 @@ export const CORE_SET: CardDefinition[] = [
     cost: 2,
     health: 3,
     durationTurns: 4,
-    text: "Durée : 4 tours. À votre début de tour, piochez 1 carte puis défaussez 1 carte.",
+    text: "Durée : 4 tours de table. À votre début de tour, piochez 1 carte puis défaussez 1 carte.",
     abilities: [
       {
         trigger: "startOfTurn",
@@ -3295,7 +3295,7 @@ export const CORE_SET: CardDefinition[] = [
     cost: 3,
     health: 4,
     durationTurns: 3,
-    text: "Durée : 3 tours. Sabordage : récupérez 1 Ancrage et piochez 1 carte.",
+    text: "Durée : 3 tours de table. Sabordage : récupérez 1 Ancrage et piochez 1 carte.",
     abilities: [
       {
         trigger: "onSaborde",
@@ -3318,7 +3318,7 @@ export const CORE_SET: CardDefinition[] = [
     durationTurns: 3,
     maxCopies: 1,
     text:
-      "Durée : 3 tours. Sabordage : récupérez 2 Ancrage et piochez 1 carte. Si vous avez 0 Raison ou moins, " +
+      "Durée : 3 tours de table. Sabordage : récupérez 2 Ancrage et piochez 1 carte. Si vous avez 0 Raison ou moins, " +
       "récupérez également 1 Raison.",
     abilities: [
       {
@@ -3611,7 +3611,7 @@ export const CORE_SET: CardDefinition[] = [
     health: 3,
     durationTurns: 3,
     text:
-      "Durée : 3 tours. La première fois à chaque tour qu'une unité Cra-Poiscail que vous contrôlez est détruite, " +
+      "Durée : 3 tours de table. La première fois à chaque tour qu'une unité Cra-Poiscail que vous contrôlez est détruite, " +
       "cette Structure gagne +1 Résistance. Sabordage : récupérez 1 Ancrage.",
     abilities: [
       {
@@ -3723,7 +3723,7 @@ export const CORE_SET: CardDefinition[] = [
     durationTurns: 3,
     maxCopies: 2,
     text:
-      "Durée : 3 tours. La première fois à chaque tour qu'une carte Marionnette que vous contrôlez revient dans " +
+      "Durée : 3 tours de table. La première fois à chaque tour qu'une carte Marionnette que vous contrôlez revient dans " +
       "votre main, récupérez 1 Ancrage.",
     abilities: [
       {
@@ -3774,7 +3774,7 @@ export const CORE_SET: CardDefinition[] = [
     durationTurns: 3,
     visibleDuringTide: ["houle", "tempete"],
     maxCopies: 2,
-    text: "Durée : 3 tours. Visible pendant Houle et Tempête. À votre début de tour, si elle est visible, récupérez 1 Ancrage.",
+    text: "Durée : 3 tours de table. Visible pendant Houle et Tempête. À votre début de tour, si elle est visible, récupérez 1 Ancrage.",
     abilities: [
       {
         trigger: "startOfTurn",
@@ -3827,7 +3827,7 @@ export const CORE_SET: CardDefinition[] = [
     health: 3,
     durationTurns: 4,
     maxCopies: 2,
-    text: "Durée : 4 tours. La première fois à chaque tour que la Marée change, piochez 1 carte puis défaussez 1 carte.",
+    text: "Durée : 4 tours de table. La première fois à chaque tour que la Marée change, piochez 1 carte puis défaussez 1 carte.",
     abilities: [
       {
         trigger: "onTideStateEntered",
@@ -4208,7 +4208,7 @@ export const CORE_SET: CardDefinition[] = [
     durationTurns: 4,
     maxCopies: 2,
     text:
-      "Durée : 4 tours. La première fois à chaque tour qu'une carte rejoint votre Cimetière depuis votre main ou votre pioche, " +
+      "Durée : 4 tours de table. La première fois à chaque tour qu'une carte rejoint votre Cimetière depuis votre main ou votre pioche, " +
       "infligez 1 dégât au Navire adverse.",
     // « ou votre pioche » (Test Verrier, 30/09/2026) : vider sa pioche devient une menace.
     abilities: [
@@ -4254,7 +4254,7 @@ export const CORE_SET: CardDefinition[] = [
     durationTurns: 4,
     maxCopies: 2,
     text:
-      "Durée : 4 tours. La première fois à chaque tour qu'une de vos unités est détruite, piochez 1 carte " +
+      "Durée : 4 tours de table. La première fois à chaque tour qu'une de vos unités est détruite, piochez 1 carte " +
       "puis défaussez 1 carte.",
     abilities: [
       {
@@ -4419,7 +4419,7 @@ export const CORE_SET: CardDefinition[] = [
     maxCopies: 1,
     visibleDuringTide: ["tempete", "abysses"],
     text:
-      "Durée : 3 tours. Visible pendant Tempête et Abysses. La première fois à chaque tour qu'une unité adverse " +
+      "Durée : 3 tours de table. Visible pendant Tempête et Abysses. La première fois à chaque tour qu'une unité adverse " +
       "arrive alors que l'adversaire contrôle au moins 4 unités, cette unité subit 2 dégâts. Réaction cachée : " +
       "lorsqu'une unité adverse arrive alors que l'adversaire contrôle au moins 5 unités, vous pouvez payer " +
       "3 Ancrage : détruisez toutes les unités adverses. Détruisez ensuite Jugement du Phare.",
@@ -4462,7 +4462,7 @@ export const CORE_SET: CardDefinition[] = [
     maxCopies: 2,
     visibleDuringTide: ["tempete", "abysses"],
     text:
-      "Durée : 3 tours. Visible pendant Tempête et Abysses. La première unité adverse jouée après la troisième " +
+      "Durée : 3 tours de table. Visible pendant Tempête et Abysses. La première unité adverse jouée après la troisième " +
       "chaque tour subit 1 dégât. Réaction cachée : lorsqu'une unité adverse arrive alors que l'adversaire en " +
       "contrôle au moins 4, infligez 2 dégâts à toutes les unités adverses. Détruisez ensuite Barils de Poudre.",
     abilities: [
@@ -4502,7 +4502,7 @@ export const CORE_SET: CardDefinition[] = [
     maxCopies: 2,
     visibleDuringTide: ["tempete", "abysses"],
     text:
-      "Durée : 3 tours. Visible pendant Tempête et Abysses. La première unité adverse de Puissance 5 ou plus qui " +
+      "Durée : 3 tours de table. Visible pendant Tempête et Abysses. La première unité adverse de Puissance 5 ou plus qui " +
       "attaque chaque tour perd 2 Puissance pour cette attaque. Réaction cachée : lorsqu'une unité adverse de " +
       "Puissance 5 ou plus attaque, détruisez cette unité avant qu'elle n'inflige ses dégâts. Détruisez ensuite " +
       "Pont Miné.",
@@ -4538,7 +4538,7 @@ export const CORE_SET: CardDefinition[] = [
     maxCopies: 2,
     visibleDuringTide: ["tempete", "abysses"],
     text:
-      "Durée : 3 tours. Visible pendant Tempête et Abysses. Vos autres Structures ont +1 Résistance. Réaction " +
+      "Durée : 3 tours de table. Visible pendant Tempête et Abysses. Vos autres Structures ont +1 Résistance. Réaction " +
       "cachée : lorsqu'une de vos Structures devrait être détruite, elle reste en jeu avec 1 Résistance. " +
       "Détruisez ensuite Cloison Étanche.",
     // L'aura ne porte que tant qu'elle est visible : une Structure masquée
@@ -4571,7 +4571,7 @@ export const CORE_SET: CardDefinition[] = [
     maxCopies: 2,
     visibleDuringTide: ["tempete", "abysses"],
     text:
-      "Durée : 3 tours. Visible pendant Tempête et Abysses. Si l'adversaire contrôle plus d'unités que vous, la " +
+      "Durée : 3 tours de table. Visible pendant Tempête et Abysses. Si l'adversaire contrôle plus d'unités que vous, la " +
       "première unité adverse qui attaque chaque tour perd 1 Puissance pour cette attaque. Réaction cachée : " +
       "lorsque la troisième unité adverse attaque pendant un même tour, toutes les unités adverses perdent " +
       "3 Puissance jusqu'à la fin du tour. Détruisez ensuite Cale Inondable.",
@@ -4615,7 +4615,7 @@ export const CORE_SET: CardDefinition[] = [
     maxCopies: 2,
     visibleDuringTide: ["tempete", "abysses"],
     text:
-      "Durée : 3 tours. Visible pendant Tempête et Abysses. La première unité adverse jouée chaque tour perd " +
+      "Durée : 3 tours de table. Visible pendant Tempête et Abysses. La première unité adverse jouée chaque tour perd " +
       "1 Puissance jusqu'à la fin du tour. Réaction cachée : lorsqu'une unité adverse arrive, elle ne peut ni " +
       "attaquer ni activer ses effets jusqu'au prochain tour de son propriétaire. Détruisez ensuite Chaîne de " +
       "Travers.",
@@ -4664,7 +4664,7 @@ export const CORE_SET: CardDefinition[] = [
     maxCopies: 2,
     visibleDuringTide: ["tempete", "abysses"],
     text:
-      "Durée : 3 tours. Visible pendant Tempête et Abysses. La première fois à chaque tour que votre Navire subit " +
+      "Durée : 3 tours de table. Visible pendant Tempête et Abysses. La première fois à chaque tour que votre Navire subit " +
       "des dégâts directs d'une attaque, réduisez-les de 1. Réaction cachée : lorsque votre Navire devrait subir " +
       "des dégâts directs d'une attaque, annulez ces dégâts. Détruisez ensuite Dernière Barricade.",
     abilities: [
@@ -4699,7 +4699,7 @@ export const CORE_SET: CardDefinition[] = [
     maxCopies: 2,
     visibleDuringTide: ["tempete", "abysses"],
     text:
-      "Durée : 3 tours. Visible pendant Tempête et Abysses. La première activation d'Objet adverse de chaque tour " +
+      "Durée : 3 tours de table. Visible pendant Tempête et Abysses. La première activation d'Objet adverse de chaque tour " +
       "coûte 1 Raison supplémentaire. Réaction cachée : lorsqu'un adversaire Brise un Objet, annulez l'effet de " +
       "cet Objet. Détruisez ensuite Fausse Cargaison.",
     // Même champ de données que la Cloche d'Alerte : une taxe de Bris
@@ -4731,7 +4731,7 @@ export const CORE_SET: CardDefinition[] = [
     maxCopies: 2,
     visibleDuringTide: ["tempete", "abysses"],
     text:
-      "Durée : 3 tours. Visible pendant Tempête et Abysses. Les unités que vous contrôlez ont +2 Résistance tant " +
+      "Durée : 3 tours de table. Visible pendant Tempête et Abysses. Les unités que vous contrôlez ont +2 Résistance tant " +
       "que Filet de Sauvetage est visible. Réaction cachée : lorsqu'une de vos unités devrait être détruite, " +
       "empêchez cette destruction et elle gagne +2 Résistance. Détruisez ensuite Filet de Sauvetage.",
     // BUFF DE RÉSISTANCE MAXIMALE, jamais une restauration (correction

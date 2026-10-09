@@ -55,7 +55,7 @@ describe("valeur des capacités d'un permanent", () => {
       cost: 3,
       health: 4,
       durationTurns: 4,
-      text: "Durée : 4 tours. Au début de votre tour, placez les 2 premières cartes de votre pioche dans votre Cimetière.",
+      text: "Durée : 4 tours de table. Au début de votre tour, placez les 2 premières cartes de votre pioche dans votre Cimetière.",
       abilities: [{ trigger: "startOfTurn", effects: [{ type: "mill", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 2 } }] }],
     } as unknown as CardDefinition;
     const table = CARD_DATABASE as Map<string, CardDefinition>;
