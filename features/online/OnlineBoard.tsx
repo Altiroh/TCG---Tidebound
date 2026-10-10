@@ -139,7 +139,7 @@ export function OnlineBoard({
     // Signal Rouge (Lot 15) : un bonus « pendant votre tour ».
     controllerIsActive: state.activePlayerId === player.id,
   });
-  const bannerEvent = usePhaseBannerEvent(state);
+  const bannerEvent = usePhaseBannerEvent(state, myUserId);
   const actionToasts = useActionToasts(state);
   const board = useBoardInteraction({
     liveState,

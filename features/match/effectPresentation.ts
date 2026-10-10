@@ -4,13 +4,17 @@ import { getCardDefinition, type CardInstance, type GameEvent, type GameState, t
  * Mise en scène des EFFETS (hors coup d'attaque) — la partie pure, testable
  * sans DOM : quoi animer, d'où, vers où, et quel état afficher en attendant.
  *
- *   - dégâts d'un effet (sort, capacité, tir de Navire) : un projectile part
- *     du LANCEUR (`DamageEvent.origin`) — la carte si elle est sur un
- *     plateau, sinon le Navire de son contrôleur — vers chaque cible, tous
- *     en même temps ;
- *   - soin : un voile se pose sur la carte ou le Navire soigné ;
- *   - gain / perte de caractéristiques ou de mot-clé : une pastille surgit
- *     au-dessus de la carte, puis file se ranger là où la valeur s'affiche ;
+ *   - la carte qui déclenche sa capacité se RÉVEILLE : elle se soulève,
+ *     pulse d'une lueur, puis retombe (`awakens`) ;
+ *   - un SORT (dégâts d'effet, soin, renfort, malus) : une orbe se forme
+ *     devant le LANCEUR (`origin` de l'événement) — la carte si elle est sur
+ *     un plateau, sinon le Navire de son contrôleur —, puis file vers chaque
+ *     cible, toutes en même temps, en comète de sa famille (attaque, soin,
+ *     malus) ; le tir du canon de Navire garde son boulet, sans orbe ;
+ *   - soin : à l'arrivée du sort, un voile se pose sur la carte ou le Navire soigné ;
+ *   - gain / perte de caractéristiques ou de mot-clé : à l'arrivée du sort,
+ *     une pastille surgit au-dessus de la carte, puis file se ranger là où
+ *     la valeur s'affiche ;
  *   - Raison payée ou gagnée : le chiffre flotte au-dessus de la jauge du
  *     Navire, puis s'abat dessus. Une carte payée MOINS que son coût imprimé
  *     (Assemblage) montre le coût imprimé qui se décompte jusqu'au prix payé.
@@ -22,8 +26,15 @@ import { getCardDefinition, type CardInstance, type GameEvent, type GameState, t
  * encaisse le coup avant de se briser.
  */
 
-/** Temps de vol d'un projectile, du lanceur à la cible. */
+/** Temps de vol d'un projectile, du lanceur (ou de son orbe) à la cible. */
 export const SHOT_FLIGHT_MS = 400;
+/** Réveil d'une carte qui déclenche sa capacité : elle se soulève pendant `AWAKE_LIFT_MS`, pulse, puis retombe. */
+export const AWAKE_LIFT_MS = 180;
+export const AWAKE_MS = 720;
+/** L'orbe se forme devant le lanceur et grossit avant de partir vers ses cibles. */
+export const ORB_CHARGE_MS = 420;
+/** Garde : le bouclier quitte son badge, vient au centre, pulse, puis regagne sa carte (`revealGuard`) ; l'attaque attend. */
+export const GUARD_REVEAL_MS = 1400;
 /** Instant où le voile de soin recouvre la cible : la Résistance remonte dessous. */
 export const HEAL_APPLY_MS = 420;
 /** Durée totale du voile. */
@@ -49,9 +60,19 @@ export interface EffectShot {
   look: "magic" | "cannon";
 }
 
+/**
+ * D'où part le sort d'un soin ou d'un renfort, quand le moteur l'a dit
+ * (`origin`) : sans lanceur connu, l'effet se pose directement sur sa cible.
+ */
+export interface SpellSource {
+  from: FxTarget;
+  originPlayerId: PlayerId;
+}
+
 export interface EffectHeal {
   to: FxTarget;
   amount: number;
+  source?: SpellSource;
 }
 
 export interface EffectBuff {
@@ -61,6 +82,7 @@ export interface EffectBuff {
   keywords: string[];
   /** `DEBUFF_APPLIED` : la pastille est une perte. */
   loss: boolean;
+  source?: SpellSource;
 }
 
 /** Raison payée (négatif) ou gagnée grâce à une carte (positif), sur le Navire de `playerId`. */
@@ -86,6 +108,13 @@ export interface EffectVolley {
   id: number;
   /** Attente avant le départ (lanceur tout juste posé). */
   delayMs: number;
+  /** Cartes en jeu qui déclenchent leur capacité dans ce lot : elles se réveillent au départ. */
+  awakens: string[];
+  /**
+   * Temps, après `delayMs`, avant que les sorts ne quittent leur orbe : le
+   * réveil du lanceur, puis la charge de l'orbe. `0` sans sort à lancer.
+   */
+  castMs: number;
   shots: EffectShot[];
   heals: EffectHeal[];
   buffs: EffectBuff[];
@@ -116,6 +145,23 @@ export function deriveEffectVolley(events: GameEvent[], before: GameState, after
   const heals: EffectHeal[] = [];
   const buffs: EffectBuff[] = [];
   const reason: EffectReason[] = [];
+  const awakens = new Set<string>();
+  const onBoard = (id: string) => onBoardBefore.has(id) || onBoardAfter.has(id);
+
+  /**
+   * D'où part le sort d'un lanceur : la carte EN JEU (ou qui l'était juste
+   * avant, comme un Objet brisé), qui se réveille pour le lancer ; sinon —
+   * sort joué de la main, capacité de Navire — le Navire de son contrôleur.
+   */
+  const sourceOf = (origin: { playerId: PlayerId; instanceId?: string }): SpellSource => {
+    const id = origin.instanceId;
+    if (id !== undefined && onBoard(id)) {
+      if (!onBoardBefore.has(id)) arrived = true;
+      awakens.add(id);
+      return { from: { kind: "unit", id }, originPlayerId: origin.playerId };
+    }
+    return { from: { kind: "ship", id: origin.playerId }, originPlayerId: origin.playerId };
+  };
   /** Dernière carte jouée, en attente de son paiement : le `REASON_CHANGED` qui suit est son prix. */
   let jouee: { playerId: PlayerId; cardId: string } | null = null;
 
@@ -142,6 +188,11 @@ export function deriveEffectVolley(events: GameEvent[], before: GameState, after
       });
       continue;
     }
+    // Une capacité déclenchée, un Éveil, un effet d'arrivée rejoué : la carte se réveille, même sans sort à lancer.
+    if ((event.type === "ABILITY_RESOLVED" || event.type === "EVEIL" || event.type === "ENTER_EFFECTS_REPEATED") && onBoard(event.instanceId)) {
+      awakens.add(event.instanceId);
+      continue;
+    }
     if (event.type === "DAMAGE" && event.origin && !event.combat && event.amount > 0) {
       const to: FxTarget | null = event.targetInstanceId
         ? { kind: "unit", id: event.targetInstanceId }
@@ -149,18 +200,12 @@ export function deriveEffectVolley(events: GameEvent[], before: GameState, after
           ? { kind: "ship", id: event.targetPlayerId }
           : null;
       if (!to) continue;
-      const source = event.origin.instanceId;
-      // Le lanceur est une carte EN JEU (ou qui l'était juste avant, comme
-      // un Objet brisé) : le projectile part d'elle. Sinon — sort joué de
-      // la main, capacité de Navire — il part du Navire.
-      const fromCard = source !== undefined && (onBoardBefore.has(source) || onBoardAfter.has(source));
-      if (fromCard && !onBoardBefore.has(source!)) arrived = true;
+      const source = sourceOf(event.origin);
       shots.push({
-        from: fromCard ? { kind: "unit", id: source! } : { kind: "ship", id: event.origin.playerId },
-        originPlayerId: event.origin.playerId,
+        ...source,
         to,
         amount: event.amount,
-        look: cannon && !fromCard ? "cannon" : "magic",
+        look: cannon && source.from.kind === "ship" ? "cannon" : "magic",
       });
     } else if (event.type === "HEAL" && event.amount > 0) {
       const to: FxTarget | null = event.targetInstanceId
@@ -168,7 +213,7 @@ export function deriveEffectVolley(events: GameEvent[], before: GameState, after
         : event.targetPlayerId
           ? { kind: "ship", id: event.targetPlayerId }
           : null;
-      if (to) heals.push({ to, amount: event.amount });
+      if (to) heals.push({ to, amount: event.amount, ...(event.origin ? { source: sourceOf(event.origin) } : {}) });
     } else if (event.type === "BUFF_APPLIED" || event.type === "DEBUFF_APPLIED") {
       const keywords = event.type === "BUFF_APPLIED" ? (event.keywords ?? []) : [];
       if (event.attack === 0 && event.health === 0 && keywords.length === 0) continue;
@@ -181,23 +226,41 @@ export function deriveEffectVolley(events: GameEvent[], before: GameState, after
         health: event.health,
         keywords,
         loss: event.type === "DEBUFF_APPLIED",
+        ...(event.origin ? { source: sourceOf(event.origin) } : {}),
       });
     }
   }
 
-  if (shots.length === 0 && heals.length === 0 && buffs.length === 0 && reason.length === 0) return null;
-  return { id, delayMs: arrived ? ARRIVAL_DELAY_MS : 0, shots, heals, buffs, reason };
+  if (shots.length === 0 && heals.length === 0 && buffs.length === 0 && reason.length === 0 && awakens.size === 0) return null;
+  const casts = shots.some((shot) => shot.look === "magic") || heals.some((heal) => heal.source) || buffs.some((buff) => buff.source);
+  const castMs = casts ? (awakens.size > 0 ? AWAKE_LIFT_MS : 0) + ORB_CHARGE_MS : 0;
+  return { id, delayMs: arrived ? ARRIVAL_DELAY_MS : 0, awakens: [...awakens], castMs, shots, heals, buffs, reason };
+}
+
+/**
+ * Instant, après `delayMs`, où un effet ARRIVE sur sa cible : un sort lancé
+ * d'une orbe après la charge et le vol, le boulet du canon après son vol, un
+ * effet sans lanceur aussitôt.
+ */
+export function shotArrivalMs(volley: Pick<EffectVolley, "castMs">, shot: Pick<EffectShot, "look">): number {
+  return (shot.look === "magic" ? volley.castMs : 0) + SHOT_FLIGHT_MS;
+}
+
+export function spellArrivalMs(volley: Pick<EffectVolley, "castMs">, source: SpellSource | undefined): number {
+  return source ? volley.castMs + SHOT_FLIGHT_MS : 0;
 }
 
 /** Instant, depuis le début du lot, où tous les effets ont « touché » : l'état réel peut s'afficher. */
 export function volleyLandingMs(volley: EffectVolley): number {
   const landings = [
-    volley.shots.length > 0 ? SHOT_FLIGHT_MS : 0,
-    volley.heals.length > 0 ? HEAL_APPLY_MS : 0,
-    volley.buffs.length > 0 ? BUFF_LAND_MS : 0,
+    ...volley.shots.map((shot) => shotArrivalMs(volley, shot)),
+    ...volley.heals.map((heal) => spellArrivalMs(volley, heal.source) + HEAL_APPLY_MS),
+    ...volley.buffs.map((buff) => spellArrivalMs(volley, buff.source) + BUFF_LAND_MS),
   ];
+  // Un réveil seul ne retient rien : la carte se soulève sur l'état réel.
+  const effects = landings.length > 0 ? volley.delayMs + Math.max(...landings) : 0;
   // Le prix se paie à la pose, pas après l'atterrissage : il ne subit pas le délai d'arrivée.
-  return Math.max(volley.delayMs + Math.max(...landings), reasonLandingMs(volley));
+  return Math.max(effects, reasonLandingMs(volley));
 }
 
 /** Instant où le dernier chiffre de Raison touche sa jauge (0 : aucun). */
@@ -222,20 +285,22 @@ export function patchedDisplay(before: GameState, after: GameState, volley: Effe
     if (target.kind === "ship") ships.add(target.id);
     else if (onBoardBefore.has(target.id)) restore.add(target.id);
   };
-  for (const shot of volley.shots) {
-    note(shot.to);
-    if (shot.from.kind === "unit") note(shot.from);
-  }
-  for (const heal of volley.heals) note(heal.to);
-  for (const buff of volley.buffs) note({ kind: "unit", id: buff.targetInstanceId });
+  const targets: FxTarget[] = [
+    ...volley.shots.map((shot) => shot.to),
+    ...volley.heals.map((heal) => heal.to),
+    ...volley.buffs.map((buff): FxTarget => ({ kind: "unit", id: buff.targetInstanceId })),
+  ];
+  const casters: FxTarget[] = [...volley.shots, ...volley.heals.map((heal) => heal.source), ...volley.buffs.map((buff) => buff.source)].flatMap(
+    (source) => (source && source.from.kind === "unit" ? [source.from] : [])
+  );
+  targets.forEach(note);
 
   // Le lanceur resté en jeu n'a pas à revenir en arrière : seul celui qui a
-  // quitté le plateau (Objet brisé, carte sabordée) est rappelé.
+  // quitté le plateau (Objet brisé, carte sabordée) est rappelé — le temps
+  // de lancer son sort.
   const onBoardAfter = boardIndex(after);
-  for (const shot of volley.shots) {
-    if (shot.from.kind === "unit" && onBoardAfter.has(shot.from.id) && !volley.shots.some((s) => s.to.kind === "unit" && s.to.id === shot.from.id)) {
-      restore.delete(shot.from.id);
-    }
+  for (const caster of casters) {
+    if (!onBoardAfter.has(caster.id)) note(caster);
   }
 
   const players = after.players.map((player) => {

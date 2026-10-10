@@ -18,7 +18,7 @@ import { axisAngle, eulerMatrix, multiply, placeFaces, restMatrix, rollPath, rot
 import { LANCER, dieSettleMs as settleMs } from "@/features/match/dice/diceTimings";
 import { useDiceThrow, type DiceThrow } from "@/features/match/dice/useDiceThrow";
 import { loadImageStatus } from "@/features/match/imageStatusCache";
-import { playButtonClick, playDiceLanded } from "@/lib/sound";
+import { playButtonClick, playDiceLanded, playDiceRoll } from "@/lib/sound";
 import styles from "@/features/match/dice/TableDice.module.css";
 
 interface TableDiceProps {
@@ -440,9 +440,15 @@ function ThrownDie({ throwKey, die, face, fromViewer, outcome, onPick }: ThrownD
       if (now - t0 < total) frame = requestAnimationFrame(step);
     };
     step(t0);
+    // Le roulé (1,25 s) part avec le lancer et couvre chute + bascules
+    // (~1,3 s) ; le « clac » du contact se pose dessus à `airMs`. Par une
+    // minuterie annulée au démontage : le mode strict rejoue l'effet, le son
+    // ne doit partir qu'une fois.
+    const roule = window.setTimeout(playDiceRoll, 0);
     const clac = window.setTimeout(playDiceLanded, geste.airMs);
     return () => {
       cancelAnimationFrame(frame);
+      window.clearTimeout(roule);
       window.clearTimeout(clac);
       flight.style.transform = "";
       flight.style.opacity = "";

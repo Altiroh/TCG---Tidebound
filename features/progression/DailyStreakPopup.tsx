@@ -9,7 +9,7 @@ import { loginGainsText } from "@/features/progression/dailyLogin";
 import { notifyProgressionChanged } from "@/features/progression/progressionSync";
 import { RewardIcon } from "@/features/progression/RewardIcon";
 import styles from "@/features/progression/DailyStreakPopup.module.css";
-import { playButtonClick, playRewardClaimed } from "@/lib/sound";
+import { playButtonClick, playStreakClaimed } from "@/lib/sound";
 
 interface DailyStreakPopupProps {
   onClose: () => void;
@@ -79,7 +79,7 @@ export function DailyStreakPopup({ onClose, initialLogin }: DailyStreakPopupProp
         setError(result.error ?? "Réclamation impossible.");
         return;
       }
-      playRewardClaimed();
+      playStreakClaimed();
       setGains(loginGainsText(result) || "Escale franchie.");
       if (result.streak) setClaimedStreak(result.streak);
       notifyProgressionChanged();

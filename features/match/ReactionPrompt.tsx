@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { getCardDefinition, isAbyssalVariant, type PendingReactionCandidate } from "@/game";
 import { useImageOk } from "@/features/match/useImageOk";
-import { playButtonClick } from "@/lib/sound";
+import { playButtonClick, playReactionWindow } from "@/lib/sound";
 
 /** Le joueur a ce temps pour répondre avant que la fenêtre se referme d'elle-même (équivaut à "Non"). */
 const TIMEOUT_MS = 60_000;
@@ -73,6 +73,8 @@ export function ReactionPrompt({ candidates, onActivateMany, onPass }: ReactionP
   // composant que pendant qu'elle est ouverte) — jamais réarmé par un re-render du parent, seul le callback
   // appelé reste à jour via `onPassRef`.
   useEffect(() => {
+    // Le montage EST l'ouverture de la fenêtre : on la signale à l'oreille, même plateau masqué par la main.
+    playReactionWindow();
     const id = setTimeout(() => onPassRef.current(), TIMEOUT_MS);
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps

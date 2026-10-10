@@ -181,10 +181,7 @@ export function DeckListPanel({
               <button
                 type="button"
                 className={styles.rowRemove}
-                onClick={() => {
-                  playButtonClick();
-                  onRemove(entry.cardId);
-                }}
+                onClick={() => onRemove(entry.cardId)}
                 aria-label={`Retirer un exemplaire de ${entry.def.name}`}
               >
                 <svg viewBox="0 0 24 24" fill="none" width="12" height="12" aria-hidden>

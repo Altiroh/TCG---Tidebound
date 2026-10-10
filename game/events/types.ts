@@ -161,6 +161,12 @@ export interface HealEvent extends BaseGameEvent {
   targetInstanceId?: string;
   targetPlayerId?: PlayerId;
   amount: number;
+  /**
+   * Lanceur du soin, pour l'interface (comme `DamageEvent.origin`) : le sort
+   * part de cette carte — ou du Navire de son contrôleur — vers la cible.
+   * Absent pour un soin que rien ne lance (bouclier, choix résolu).
+   */
+  origin?: EffectOrigin;
 }
 
 export interface SummonEvent extends BaseGameEvent {
@@ -218,6 +224,8 @@ export interface BuffAppliedEvent extends BaseGameEvent {
   health: number;
   /** Mots-clés accordés par ce même modificateur (« gagne Garde »), pour que l'interface les montre arriver. */
   keywords?: string[];
+  /** Lanceur du renfort, pour l'interface (cf. `HealEvent.origin`). */
+  origin?: EffectOrigin;
 }
 
 export interface DebuffAppliedEvent extends BaseGameEvent {
@@ -225,6 +233,8 @@ export interface DebuffAppliedEvent extends BaseGameEvent {
   targetInstanceId: string;
   attack: number;
   health: number;
+  /** Lanceur du malus, pour l'interface (cf. `HealEvent.origin`). Absent pour un malus que rien ne lance (Signal, bouclier). */
+  origin?: EffectOrigin;
 }
 
 export interface ResourceChangedEvent extends BaseGameEvent {

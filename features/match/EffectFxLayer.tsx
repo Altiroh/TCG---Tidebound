@@ -2,10 +2,13 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { centerOf, findElement, FloatingDamage, ImpactFlash, shake, SmokeBurst, type Point } from "@/features/match/AttackImpactLayer";
+import { awakenCard } from "@/features/match/cardFx";
 import { keywordLabel, THICK_TEXT_OUTLINE } from "@/features/match/cardDisplay";
 import {
+  AWAKE_LIFT_MS,
   BUFF_LAND_MS,
   HEAL_APPLY_MS,
+  ORB_CHARGE_MS,
   REASON_COUNT_MS,
   REASON_FALL_MS,
   HEAL_TOTAL_MS,
@@ -15,20 +18,30 @@ import {
   type EffectShot,
   type EffectVolley,
   type FxTarget,
+  type SpellSource,
 } from "@/features/match/effectPresentation";
+import { playSpellCast } from "@/lib/sound";
 
 /**
  * Mise en scène des EFFETS (`effectPresentation.ts`) — tout en coordonnées
  * VIEWPORT (`fixed inset-0`), mesuré sur les éléments du plateau au moment
  * du départ :
  *
- *   - projectile : un HARPON (ou le boulet du canon) part du lanceur et file
- *     vers sa cible en arc, la pointe dans le sens du vol ; toutes les cibles d'un même effet sont visées
- *     EN MÊME TEMPS. À l'arrivée : flash, plaque de dégâts, tremblement ;
+ *   - réveil : la carte qui déclenche sa capacité se soulève, pulse et
+ *     retombe (`awakenCard`, `cardFx.ts`) ;
+ *   - sort : une ORBE se forme devant le lanceur (vers le centre du
+ *     plateau), grossit en pulsant, puis s'éclate en COMÈTES — une par
+ *     cible, toutes en même temps — qui filent en arc, la tête dans le sens
+ *     du vol. Trois familles peintes : attaque (bleu), soin et renfort (or),
+ *     malus (pourpre). À l'arrivée d'un sort d'attaque : flash, plaque de
+ *     dégâts, tremblement. Le boulet du canon de Navire part sans orbe ;
  *   - soin : un voile lumineux descend sur la cible, scintille et s'efface ;
  *   - gain / perte : le chiffre (+1, −1…) surgit au-dessus de la carte, se montre,
  *     puis file se ranger sur la valeur qu’il modifie (Puissance,
  *     Résistance, ou la rangée des badges pour un mot-clé).
+ *
+ * Soin et renfort lancés par une carte (ou un Navire) attendent l'arrivée
+ * de leur comète ; sans lanceur connu, ils se posent aussitôt.
  */
 
 interface Box {
@@ -68,7 +81,7 @@ function arc(from: Point, to: Point, steps = 12): Point[] {
   });
 }
 
-// ── Projectile ──────────────────────────────────────────────────────────
+// ── Sorts : l'orbe, puis les comètes ─────────────────────────────────────
 
 interface ShotGeometry {
   shot: EffectShot;
@@ -78,31 +91,54 @@ interface ShotGeometry {
   size: number;
 }
 
-const ORB_LOOKS = {
-  magic: {
-    background: "radial-gradient(circle at 40% 38%, #ffffff 0%, #cffafe 22%, #67e8f9 42%, #a78bfa 70%, rgba(139,92,246,0) 100%)",
-    boxShadow: "0 0 14px 5px rgba(125,211,252,0.75), 0 0 34px 12px rgba(167,139,250,0.45)",
-  },
-  cannon: {
-    background: "radial-gradient(circle at 35% 32%, #9ca3af 0%, #374151 38%, #111827 75%)",
-    boxShadow: "0 0 10px 3px rgba(251,146,60,0.55), 0 3px 6px rgba(0,0,0,0.6)",
-  },
-} as const;
+/** Famille d'un sort, d'après ce qu'il fait : chacune a sa comète et sa couleur d'orbe. */
+export type SpellKind = "attack" | "heal" | "malus";
 
 /**
- * LE HARPON des projectiles d'effet (26/09/2026 : « un harpon pour tout ce
- * qui est projectile lancé »). Peint pointe en haut à droite, à -14,5° de
- * l'horizontale (mesuré sur l'image) : il est tourné, à chaque point de
- * l'arc, selon la TANGENTE du vol — la pointe mène, il plonge sur sa cible.
+ * Les comètes peintes (lot du 10/10/2026) : la TÊTE est à droite de l'image
+ * (`head`, en fractions), la traînée part vers la gauche, le vol est
+ * horizontal à quelques degrés près (`nativeDeg`). Elles sont tournées, à
+ * chaque point de l'arc, selon la tangente du vol — la tête mène.
  */
-const HARPOON_SRC = "/assets/fx/harpon.webp";
-const HARPOON_NATIVE_DEG = -14.5;
-const HARPOON_RATIO = 512 / 167;
+const COMETS: Record<SpellKind, { src: string; head: { x: number; y: number }; nativeDeg: number; orb: string; glow: string }> = {
+  attack: {
+    src: "/assets/fx/sorts/sort-attaque.webp",
+    head: { x: 0.85, y: 0.39 },
+    nativeDeg: -4,
+    orb: "radial-gradient(circle at 45% 42%, #ffffff 0%, #dbeafe 24%, #60a5fa 52%, rgba(37,99,235,0) 74%)",
+    glow: "rgba(96,165,250,0.85)",
+  },
+  heal: {
+    src: "/assets/fx/sorts/sort-soin.webp",
+    head: { x: 0.85, y: 0.36 },
+    nativeDeg: -6,
+    orb: "radial-gradient(circle at 45% 42%, #ffffff 0%, #fef3c7 24%, #fbbf24 52%, rgba(217,119,6,0) 74%)",
+    glow: "rgba(251,191,36,0.85)",
+  },
+  malus: {
+    src: "/assets/fx/sorts/sort-malus.webp",
+    head: { x: 0.87, y: 0.5 },
+    nativeDeg: 0,
+    orb: "radial-gradient(circle at 45% 42%, #ffffff 0%, #f5d0fe 22%, #a21caf 52%, rgba(88,28,135,0) 74%)",
+    glow: "rgba(192,38,211,0.85)",
+  },
+};
+const COMET_RATIO = 640 / 480;
 
-function Harpoon({ geometry }: { geometry: ShotGeometry }) {
+/** Une comète de sort, du point de départ (l'orbe) à sa cible, le long d'un arc. */
+export interface CometFlight {
+  kind: SpellKind;
+  from: Point;
+  to: Point;
+  size: number;
+}
+
+export function Comet({ flight }: { flight: CometFlight }) {
   const host = useRef<HTMLImageElement>(null);
-  const { from, to, size } = geometry;
-  const length = Math.max(70, Math.min(170, size * 0.95));
+  const { kind, from, to, size } = flight;
+  const comet = COMETS[kind];
+  const width = Math.max(120, Math.min(260, size * 1.5));
+  const height = width / COMET_RATIO;
 
   useLayoutEffect(() => {
     const el = host.current;
@@ -113,40 +149,88 @@ function Harpoon({ geometry }: { geometry: ShotGeometry }) {
       const b = points[Math.min(points.length - 1, i + 1)]!;
       const heading = (Math.atan2(b.y - a.y, b.x - a.x) * 180) / Math.PI;
       return {
-        transform: `translate(${point.x - from.x}px, ${point.y - from.y}px) translate(-50%, -50%) rotate(${heading - HARPOON_NATIVE_DEG}deg)`,
-        opacity: i === 0 ? 0 : 1,
+        transform: `translate(${point.x - from.x}px, ${point.y - from.y}px) rotate(${heading - comet.nativeDeg}deg) scale(${i === 0 ? 0.5 : 1})`,
+        opacity: i === 0 ? 0 : i === points.length - 1 ? 0.6 : 1,
       };
     });
     const animation = el.animate(keyframes, { duration: SHOT_FLIGHT_MS, easing: "cubic-bezier(.45,.05,.75,.95)", fill: "forwards" });
     return () => animation.cancel();
-  }, [from, to]);
+  }, [from, to, comet.nativeDeg]);
 
   return (
-    // eslint-disable-next-line @next/next/no-img-element -- projectile peint, animé à la main
+    // eslint-disable-next-line @next/next/no-img-element -- comète peinte, animée à la main
     <img
       ref={host}
-      src={HARPOON_SRC}
+      src={comet.src}
       alt=""
       aria-hidden
       draggable={false}
       className="pointer-events-none absolute z-30 select-none"
       style={{
-        left: from.x,
-        top: from.y,
-        width: length,
-        height: length / HARPOON_RATIO,
+        // La TÊTE est posée sur le point de départ, et c'est autour d'elle que la comète pivote.
+        left: from.x - comet.head.x * width,
+        top: from.y - comet.head.y * height,
+        width,
+        height,
         opacity: 0,
-        filter: "drop-shadow(0 6px 6px rgba(0,0,0,0.55))",
+        transformOrigin: `${comet.head.x * 100}% ${comet.head.y * 100}%`,
+        mixBlendMode: "screen",
       }}
     />
   );
 }
 
-/** Un projectile d'effet : le harpon ; le tir de canon du Navire garde son boulet. */
-function Projectile({ geometry }: { geometry: ShotGeometry }) {
-  if (geometry.shot.look === "magic") return <Harpoon geometry={geometry} />;
-  return <CannonBall geometry={geometry} />;
+/** L'orbe qui se forme devant le lanceur : elle naît petite, grossit en pulsant, puis éclate en comètes. */
+export function SpellOrb({ kind, point, size }: { kind: SpellKind; point: Point; size: number }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const comet = COMETS[kind];
+  const diameter = Math.max(34, Math.min(80, size * 0.42));
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    const animation = el.animate(
+      [
+        { transform: "translate(-50%, -50%) scale(0.15)", opacity: 0, filter: `drop-shadow(0 0 4px ${comet.glow})` },
+        { offset: 0.35, transform: "translate(-50%, -50%) scale(0.85)", opacity: 1, filter: `drop-shadow(0 0 16px ${comet.glow})` },
+        { offset: 0.6, transform: "translate(-50%, -50%) scale(0.75)", opacity: 1, filter: `drop-shadow(0 0 8px ${comet.glow})` },
+        { offset: 0.88, transform: "translate(-50%, -50%) scale(1.1)", opacity: 1, filter: `drop-shadow(0 0 22px ${comet.glow})` },
+        { transform: "translate(-50%, -50%) scale(1.25)", opacity: 0.2, filter: `drop-shadow(0 0 26px ${comet.glow})` },
+      ],
+      { duration: ORB_CHARGE_MS, easing: "ease-out", fill: "forwards" }
+    );
+    return () => animation.cancel();
+  }, [comet.glow]);
+
+  return (
+    <span
+      ref={ref}
+      aria-hidden
+      className="pointer-events-none absolute z-30"
+      style={{ left: point.x, top: point.y, width: diameter, height: diameter, borderRadius: "9999px", background: comet.orb, opacity: 0, mixBlendMode: "screen" }}
+    />
+  );
 }
+
+/**
+ * Où se forme l'orbe : DEVANT le lanceur, c'est-à-dire décalée de sa
+ * position vers le centre de l'écran (le milieu du plateau, entre les deux
+ * camps), d'un peu plus d'une demi-hauteur de carte.
+ */
+export function orbPointFor(caster: DOMRect): Point {
+  const center = centerOf(caster);
+  const dx = window.innerWidth / 2 - center.x;
+  const dy = window.innerHeight / 2 - center.y;
+  const distance = Math.hypot(dx, dy) || 1;
+  const reach = Math.min(distance * 0.6, caster.height * 0.65);
+  return { x: center.x + (dx / distance) * reach, y: center.y + (dy / distance) * reach };
+}
+
+/** Le boulet du canon : fonte sombre, liseré de feu. */
+const CANNON_LOOK = {
+  background: "radial-gradient(circle at 35% 32%, #9ca3af 0%, #374151 38%, #111827 75%)",
+  boxShadow: "0 0 10px 3px rgba(251,146,60,0.55), 0 3px 6px rgba(0,0,0,0.6)",
+} as const;
 
 /** Le boulet du canon et sa traînée : trois échos plus petits qui suivent le même arc avec un léger retard. */
 function CannonBall({ geometry }: { geometry: ShotGeometry }) {
@@ -174,7 +258,7 @@ function CannonBall({ geometry }: { geometry: ShotGeometry }) {
     return () => animations.forEach((animation) => animation.cancel());
   }, [from, to]);
 
-  const look = ORB_LOOKS[shot.look];
+  const look = CANNON_LOOK;
   return (
     <div ref={host} aria-hidden className="pointer-events-none absolute z-30" style={{ left: from.x, top: from.y }}>
       {[0, 1, 2, 3].map((index) => (
@@ -554,52 +638,118 @@ function ReasonDrop({ entry }: { entry: EffectReason }) {
 
 // ── Une volée ───────────────────────────────────────────────────────────
 
+/** Une orbe en charge devant un lanceur. */
+interface Orb {
+  key: string;
+  kind: SpellKind;
+  point: Point;
+  size: number;
+}
+
 interface Launched {
-  shots: ShotGeometry[];
-  heals: Array<{ key: string; box: Box; amount: number }>;
-  chips: Chip[];
+  orbs: Orb[];
+  /** Comètes d'attaque (avec leur impact) et boulets de canon. */
+  shots: Array<ShotGeometry & { kind: SpellKind; start: Point }>;
+  /** Comètes sans impact de dégâts : soin, renfort, malus — l'effet se pose à leur arrivée. */
+  comets: Array<CometFlight & { key: string }>;
+  heals: Array<{ key: string; box: Box; amount: number; sourced: boolean }>;
+  chips: Array<Chip & { sourced: boolean }>;
+}
+
+function sourceKey(source: SpellSource): string {
+  return `${source.from.kind}-${source.from.id}`;
 }
 
 function Volley({ volley }: { volley: EffectVolley }) {
   const [launched, setLaunched] = useState<Launched | null>(null);
-  const [impacted, setImpacted] = useState(false);
+  /** Phase de la volée : l'orbe se charge, les comètes volent, puis tout a touché. */
+  const [phase, setPhase] = useState<"charge" | "flight" | "landed">("charge");
 
   useEffect(() => {
     const timers: number[] = [];
     // Tout se mesure AU DÉPART : un lanceur tout juste posé a fini de glisser.
     timers.push(
       window.setTimeout(() => {
-        const shots: ShotGeometry[] = [];
-        for (const shot of volley.shots) {
-          // Lanceur introuvable à l'écran (Structure cachée, carte déjà partie) : le Navire de son contrôleur.
-          const fromEl = elementOf(shot.from) ?? findElement("ship", shot.originPlayerId);
-          const toEl = elementOf(shot.to);
-          if (!fromEl || !toEl) continue;
-          const toRect = toEl.getBoundingClientRect();
-          shots.push({ shot, from: centerOf(fromEl.getBoundingClientRect()), to: centerOf(toRect), size: Math.min(toRect.height, 220) });
+        // Les cartes qui déclenchent leur capacité se réveillent : elles se soulèvent, pulsent, retombent.
+        for (const id of volley.awakens) {
+          const el = findElement("unit", id);
+          if (el) awakenCard(el);
         }
+
+        /** Élément d'un lanceur : sa carte, ou — introuvable (Structure cachée, carte partie) — le Navire de son contrôleur. */
+        const casterEl = (source: SpellSource) => elementOf(source.from) ?? findElement("ship", source.originPlayerId);
+        const orbs = new Map<string, Orb>();
+        const orbFor = (source: SpellSource, kind: SpellKind): Point | null => {
+          const key = sourceKey(source);
+          const known = orbs.get(key);
+          if (known) return known.point;
+          const el = casterEl(source);
+          if (!el) return null;
+          const rect = el.getBoundingClientRect();
+          const orb = { key, kind, point: orbPointFor(rect), size: Math.min(rect.height, 220) };
+          orbs.set(key, orb);
+          return orb.point;
+        };
+
+        const shots: Launched["shots"] = [];
+        for (const shot of volley.shots) {
+          const toEl = elementOf(shot.to);
+          if (!toEl) continue;
+          const toRect = toEl.getBoundingClientRect();
+          const size = Math.min(toRect.height, 220);
+          if (shot.look === "magic") {
+            const start = orbFor(shot, "attack");
+            if (start) shots.push({ shot, kind: "attack", from: start, start, to: centerOf(toRect), size });
+          } else {
+            const fromEl = casterEl(shot);
+            if (fromEl) {
+              const from = centerOf(fromEl.getBoundingClientRect());
+              shots.push({ shot, kind: "attack", from, start: from, to: centerOf(toRect), size });
+            }
+          }
+        }
+
+        const comets: Launched["comets"] = [];
         const heals = volley.heals.flatMap((heal, index) => {
           const el = elementOf(heal.to);
-          return el ? [{ key: `${heal.to.kind}-${heal.to.id}-${index}`, box: boxOf(el), amount: heal.amount }] : [];
+          if (!el) return [];
+          const box = boxOf(el);
+          const start = heal.source ? orbFor(heal.source, "heal") : null;
+          if (start) comets.push({ key: `h${index}`, kind: "heal", from: start, to: centerOf(el.getBoundingClientRect()), size: Math.min(box.height, 220) });
+          return [{ key: `${heal.to.kind}-${heal.to.id}-${index}`, box, amount: heal.amount, sourced: Boolean(start) }];
         });
-        const chips = volley.buffs.flatMap((buff, index) => chipsFor(buff).map((chip) => ({ ...chip, key: `${index}-${chip.key}` })));
-        setLaunched({ shots, heals, chips });
+        const chips = volley.buffs.flatMap((buff, index) => {
+          const kind: SpellKind = buff.loss ? "malus" : "heal";
+          const start = buff.source ? orbFor(buff.source, kind) : null;
+          const target = findElement("unit", buff.targetInstanceId);
+          if (start && target) {
+            const rect = target.getBoundingClientRect();
+            comets.push({ key: `b${index}`, kind, from: start, to: centerOf(rect), size: Math.min(rect.height, 220) });
+          }
+          return chipsFor(buff).map((chip) => ({ ...chip, key: `${index}-${chip.key}`, sourced: Boolean(start) }));
+        });
 
-        if (volley.shots.length > 0) {
-          timers.push(
-            window.setTimeout(() => {
-              setImpacted(true);
-              // Un Navire ne joue pas d'animation de choc à lui : on le secoue.
-              // Une unité qui encaisse joue déjà `animate-card-impact` quand
-              // l'état réel s'affiche, au même instant.
-              for (const shot of volley.shots) {
-                if (shot.to.kind !== "ship") continue;
-                const el = elementOf(shot.to);
-                if (el) shake(el);
-              }
-            }, SHOT_FLIGHT_MS)
-          );
+        setLaunched({ orbs: [...orbs.values()], shots, comets, heals, chips });
+        if (orbs.size > 0) {
+          // L'orbe se forme pendant que le lanceur est soulevé : le son du sort part avec elle.
+          timers.push(window.setTimeout(playSpellCast, volley.awakens.length > 0 ? AWAKE_LIFT_MS : 0));
         }
+
+        // Les comètes quittent leur orbe ; le boulet du canon, lui, est parti tout de suite.
+        timers.push(window.setTimeout(() => setPhase("flight"), volley.castMs));
+        timers.push(
+          window.setTimeout(() => {
+            setPhase("landed");
+            // Un Navire ne joue pas d'animation de choc à lui : on le secoue.
+            // Une unité qui encaisse joue déjà `animate-card-impact` quand
+            // l'état réel s'affiche, au même instant.
+            for (const shot of volley.shots) {
+              if (shot.to.kind !== "ship") continue;
+              const el = elementOf(shot.to);
+              if (el) shake(el);
+            }
+          }, volley.castMs + SHOT_FLIGHT_MS)
+        );
       }, volley.delayMs)
     );
     return () => timers.forEach((timer) => window.clearTimeout(timer));
@@ -607,18 +757,42 @@ function Volley({ volley }: { volley: EffectVolley }) {
   }, []);
 
   if (!launched) return null;
+  const charging = phase === "charge" && volley.castMs > 0;
+  const landed = phase === "landed";
   return (
     <>
-      {!impacted && launched.shots.map((geometry, index) => <Projectile key={`p${index}`} geometry={geometry} />)}
-      {impacted && launched.shots.map((geometry, index) => <ShotImpact key={`i${index}`} geometry={geometry} />)}
-      {launched.heals.map((heal) => (
-        <HealVeil key={heal.key} box={heal.box} amount={heal.amount} />
-      ))}
-      {launched.chips.map((chip) => (
-        <BuffChip key={chip.key} chip={chip} />
-      ))}
+      {charging &&
+        launched.orbs.map((orb) => (
+          // L'orbe attend que le lanceur soit soulevé pour naître.
+          <DelayedMount key={orb.key} delayMs={volley.awakens.length > 0 ? AWAKE_LIFT_MS : 0}>
+            <SpellOrb kind={orb.kind} point={orb.point} size={orb.size} />
+          </DelayedMount>
+        ))}
+      {launched.shots.map((geometry, index) =>
+        // Le boulet vole dès le départ ; une comète d'attaque après la charge de son orbe.
+        geometry.shot.look === "cannon"
+          ? !landed && <CannonBall key={`p${index}`} geometry={geometry} />
+          : phase === "flight" && <Comet key={`p${index}`} flight={geometry} />
+      )}
+      {phase === "flight" && launched.comets.map((comet) => <Comet key={comet.key} flight={comet} />)}
+      {landed && launched.shots.map((geometry, index) => <ShotImpact key={`i${index}`} geometry={geometry} />)}
+      {launched.heals.map((heal) =>
+        !heal.sourced || landed ? <HealVeil key={heal.key} box={heal.box} amount={heal.amount} /> : null
+      )}
+      {launched.chips.map((chip) => (!chip.sourced || landed ? <BuffChip key={chip.key} chip={chip} /> : null))}
     </>
   );
+}
+
+/** Monte ses enfants après `delayMs` (l'orbe naît quand le lanceur est soulevé). */
+function DelayedMount({ delayMs, children }: { delayMs: number; children: React.ReactNode }) {
+  const [shown, setShown] = useState(delayMs <= 0);
+  useEffect(() => {
+    if (delayMs <= 0) return undefined;
+    const id = window.setTimeout(() => setShown(true), delayMs);
+    return () => window.clearTimeout(id);
+  }, [delayMs]);
+  return shown ? <>{children}</> : null;
 }
 
 export function EffectFxLayer({ volleys }: { volleys: EffectVolley[] }) {

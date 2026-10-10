@@ -1041,7 +1041,7 @@ export function resolveEffect(
           ...u,
           damageMarked: Math.max(0, u.damageMarked - soin),
         }));
-        events.push({ ...base, type: "HEAL", targetInstanceId: unit.instanceId, amount: soin });
+        events.push({ ...base, type: "HEAL", targetInstanceId: unit.instanceId, amount: soin, origin: originOf(context) });
       }
 
       for (const player of resolvePlayerTargets(state, effect, context)) {
@@ -1057,7 +1057,7 @@ export function resolveEffect(
         nextState = replacePlayer(nextState, { ...current, anchor: current.anchor + soigne });
         // Le montant JOURNALISÉ est celui qui a porté : annoncer 3 quand la
         // coque n'en reprend qu'un ment au joueur et au banc d'essai.
-        events.push({ ...base, type: "HEAL", targetPlayerId: player.id, amount: soigne });
+        events.push({ ...base, type: "HEAL", targetPlayerId: player.id, amount: soigne, origin: originOf(context) });
       }
 
       return { state: nextState, events };
@@ -1337,6 +1337,7 @@ export function resolveEffect(
           attack: differe ? 0 : attackDelta,
           health: healthDelta,
           ...(effect.grantKeywords?.length ? { keywords: [...effect.grantKeywords] } : {}),
+          origin: originOf(context),
         });
       }
       return { state: nextState, events };
@@ -1369,7 +1370,14 @@ export function resolveEffect(
             },
           ],
         }));
-        events.push({ ...base, type: "DEBUFF_APPLIED", targetInstanceId: unit.instanceId, attack: -attackDelta, health: -healthDelta });
+        events.push({
+          ...base,
+          type: "DEBUFF_APPLIED",
+          targetInstanceId: unit.instanceId,
+          attack: -attackDelta,
+          health: -healthDelta,
+          origin: originOf(context),
+        });
       }
       return { state: nextState, events };
     }
@@ -1651,6 +1659,7 @@ export function resolveEffect(
             targetInstanceId: state.pendingAttack.attackerInstanceId,
             attack: -(state.pendingAttack.attackerPower - apres),
             health: 0,
+            origin: originOf(context),
           },
         ],
       };

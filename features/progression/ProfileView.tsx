@@ -48,7 +48,7 @@ import styles from "@/features/progression/Profile.module.css";
 import sceneStyles from "@/features/progression/ProfileScene.module.css";
 import { ProfileScene } from "@/features/progression/ProfileScene";
 import { RewardsHub } from "@/features/progression/RewardsHub";
-import { playButtonClick, playRewardClaimed, playTabClick } from "@/lib/sound";
+import { playButtonClick, playStreakClaimed, playTabClick } from "@/lib/sound";
 import type { ProfileTab } from "@/features/progression/profileTabs";
 
 export type { ProfileTab };
@@ -117,7 +117,7 @@ export function ProfileView({
   const setTab = (next: ProfileTab) => (onTabChange ? onTabChange(next) : setOwnTab(next));
   const [signingOut, startSignOut] = useTransition();
   const { apply: applyCardBack } = useCardBack();
-  const [reveal, setReveal] = useState<{ levels: RevealedLevel[]; choices: PendingCardChoice[]; extraItems?: RewardItem[]; title?: string } | null>(null);
+  const [reveal, setReveal] = useState<{ levels: RevealedLevel[]; choices: PendingCardChoice[]; extraItems?: RewardItem[]; title?: string; sound?: "reward" | "exploit" } | null>(null);
   const [claiming, setClaiming] = useState<number | "all" | "everything" | string | null>(null);
   /**
    * Une réclamation réussie reste marquée jusqu'à l'arrivée du profil RELU
@@ -260,7 +260,7 @@ export function ProfileView({
     try {
       const result = await claimAchievement(code);
       if (!result.ok) setClaimError(result.error ?? "Réclamation impossible.");
-      else setReveal({ levels: [], choices: [], extraItems: [{ kind: "tides", amount: result.tides ?? 0 }], title: "Exploit réclamé !" });
+      else setReveal({ levels: [], choices: [], extraItems: [{ kind: "tides", amount: result.tides ?? 0 }], title: "Exploit réclamé !", sound: "exploit" });
       notifyProgressionChanged();
       onRefresh();
       refreshed = true;
@@ -326,6 +326,7 @@ export function ProfileView({
       choices={reveal.choices}
       extraItems={reveal.extraItems}
       title={reveal.title}
+      sound={reveal.sound}
       onDone={() => {
         setReveal(null);
         notifyProgressionChanged();
@@ -563,7 +564,7 @@ function LogbookTab({ profile, onRefresh, onShowRewards }: { profile: ProfileSum
         return;
       }
       const gains = loginGainsText(result);
-      playRewardClaimed();
+      playStreakClaimed();
       setMessage(gains ? `Escale franchie — ${gains}.` : "Escale franchie.");
       notifyProgressionChanged();
       onRefresh();

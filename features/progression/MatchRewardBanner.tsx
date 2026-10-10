@@ -1,7 +1,9 @@
 "use client";
 
+import { useEffect } from "react";
 import type { MatchRewardSummary } from "@/features/progression/actions";
 import { useMatchReward } from "@/features/progression/useMatchReward";
+import { playLevelUp } from "@/lib/sound";
 import styles from "@/features/progression/MatchRewardBanner.module.css";
 
 interface MatchRewardBannerProps {
@@ -23,10 +25,16 @@ interface MatchRewardBannerProps {
  */
 export function MatchRewardBanner({ matchId, preview }: MatchRewardBannerProps) {
   const reward = useMatchReward(matchId, preview);
+  const leveledUp = reward ? reward.levelAfter > reward.levelBefore : false;
+
+  // Le bandeau n'a pas d'entrée chorégraphiée : la montée de niveau sonne dès
+  // qu'elle s'affiche. Il ne vit que dans le repli sans joueur de
+  // `MatchEndScreen`, jamais à côté de `MatchResultScreen` qui a son propre son.
+  useEffect(() => {
+    if (leveledUp) playLevelUp();
+  }, [leveledUp]);
 
   if (!reward) return null;
-
-  const leveledUp = reward.levelAfter > reward.levelBefore;
 
   return (
     <div className={styles.banner} role="status">

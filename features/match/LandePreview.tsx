@@ -6,6 +6,7 @@ import { getCardDefinition, PRECON_DECKS, type CardInstance, type GameState } fr
 import { createLocalMatch } from "@/features/match/createLocalMatch";
 import { MatchBoard } from "@/features/match/MatchBoard";
 import { LandeTuningPanel } from "@/features/match/landes/LandeTuningPanel";
+import { FxLabPanel } from "@/features/match/FxLabPanel";
 
 const LANDES = ["pluie-corrosive", "chaine-de-construction", "vallee-de-verre", "le-donjon-de-ladalle"] as const;
 
@@ -23,6 +24,9 @@ function carte(cardId: string, ownerId: string, index: number): CardInstance {
  * « Réglages » (`LandeTuningPanel`) fait varier la scène en direct.
  *
  * Gaston (D6) est aussi en main : de quoi voir un jet de dé sur la scène.
+ *
+ * Le panneau « Animations » (`FxLabPanel`) lance à la demande les
+ * animations de cartes et de sorts sur les cartes du plateau.
  */
 export function LandePreview() {
   const params = useSearchParams();
@@ -61,6 +65,7 @@ export function LandePreview() {
     <>
       <MatchBoard initialState={state} onExit={() => window.history.back()} />
       <LandeTuningPanel />
+      <FxLabPanel />
     </>
   ) : null;
 }

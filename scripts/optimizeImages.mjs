@@ -242,6 +242,11 @@ const RULES = [
   { match: /\/mecenes\/scene\/etoile-de-mer\./, maxSize: 400, quality: 88 },
   // Le harpon des projectiles d'effet : il vole à ~150 px de long au plus.
   { match: /\/fx\/harpon\./, maxSize: 512, quality: 90 },
+  // Sorts (attaque, soin, malus) : comètes qui volent de la carte à sa cible,
+  // ~220 px de long au plus (~440 sur un écran dense). Halo sur alpha.
+  { match: /\/fx\/sorts\//, maxSize: 640, quality: 88 },
+  // Bannière de tour : posée au centre de l'écran, ~640 px de large au plus.
+  { match: /\/ui\/bandeaux\/banniere-tour\./, maxSize: 1280, quality: 86 },
   // Landes : pièces de scène (pics, segments de chaîne, anneaux) que le
   // code place le long des bords, jamais plus hautes qu'un tiers d'écran
   // (`public/assets/landes/README.md`). Les segments de chaîne, en longueur,

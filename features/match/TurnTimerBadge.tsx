@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { GameState, PlayerId } from "@/game";
 import { nextTimeoutEndsGame, warningThresholdsRemaining } from "@/game";
+import { playTimerAlert } from "@/lib/sound";
 
 /**
  * Le temps qui reste avant que l'inactivité n'arrête la partie.
@@ -61,11 +62,25 @@ export function TurnTimerBadge({ state, viewerId }: TurnTimerBadgeProps) {
     return () => clearInterval(id);
   }, [deadlineAt]);
 
+  const mine = timer?.awaitingPlayerId === viewerId;
+  const palier = palierPour(remaining);
+
+  // Un palier franchi s'entend — pour celui qui doit jouer seulement : l'attente de l'adversaire n'a rien à
+  // lui reprocher. Une échéance neuve repart du calme ; un délai déjà réduit qui démarre en alerte sonne aussitôt.
+  const palierEntendu = useRef<{ deadlineAt: number | undefined; palier: Palier }>({ deadlineAt, palier: "calme" });
+  useEffect(() => {
+    if (palierEntendu.current.deadlineAt !== deadlineAt) palierEntendu.current = { deadlineAt, palier: "calme" };
+    // Recalculé ici : au rendu qui apporte une échéance neuve, `remaining` vaut encore celui de l'ancienne.
+    const actuel = deadlineAt === undefined ? "calme" : palierPour(deadlineAt - Date.now());
+    const avant = palierEntendu.current.palier;
+    palierEntendu.current.palier = actuel;
+    if (!mine || state.status !== "active" || actuel === avant || actuel === "calme") return;
+    playTimerAlert(actuel);
+  }, [palier, deadlineAt, mine, state.status]);
+
   if (!timer || state.status !== "active") return null;
 
-  const mine = timer.awaitingPlayerId === viewerId;
   const seconds = Math.max(0, Math.ceil(remaining / 1000));
-  const palier = palierPour(remaining);
   // Ce que l'échéance coûtera VRAIMENT : le tour (ou la fenêtre) les deux
   // premières fois d'affilée, la partie la troisième.
   const forfait = nextTimeoutEndsGame(state, timer.awaitingPlayerId);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import Link from "next/link";
 import { getCardDefinition, isAbyssalVariant, type ShipDefinition } from "@/game";
 import { audienceMood } from "@/game/audience";
@@ -16,7 +16,7 @@ import type { QuestRecapEntry } from "@/features/quests/actions";
 import { useMatchQuestRecap } from "@/features/quests/useMatchQuestRecap";
 import type { VoyageRecap } from "@/features/quests/voyageActions";
 import { useNoMenuAmbiance } from "@/components/menu/MenuAmbiance";
-import { playMatchEnd, playQuestCompleted, startEndTheme } from "@/lib/sound";
+import { playLevelUp, playMatchEnd, playQuestCompleted, startEndTheme } from "@/lib/sound";
 import styles from "@/features/match/MatchResultScreen.module.css";
 import { VictoryConfetti } from "@/features/match/VictoryConfetti";
 
@@ -29,6 +29,12 @@ const FILL_STAGGER_MS = 350;
 const FILL_MS = 900;
 /** Le bruitage de l'issue tombe avec le titre, qui s'imprime de 200 à 900 ms (`title-in`). */
 const END_SOUND_AT_MS = 250;
+/**
+ * Le gain (`.rewards`) monte de 1600 à 2200 ms (`rise-in`) : la montée de
+ * niveau sonne quand la ligne « Niveau N atteint » finit d'arriver, pas
+ * avant qu'on puisse la lire.
+ */
+const LEVEL_UP_SOUND_AT_MS = 2000;
 
 /**
  * Ce qui change d'une issue à l'autre : les assets peints, la fenêtre du
@@ -151,8 +157,6 @@ function photoLayers(player: MatchResultScreenProps["player"]): { src: string | 
 export function MatchResultScreen({ outcome, player, matchId, preview, audience, onExit, exitHref, epilogue }: MatchResultScreenProps) {
   const look = OUTCOMES[outcome];
   const isVictory = outcome === "victory";
-  // Pas de musique propre au nul : celle, retenue, de la défaite — jamais la fanfare.
-  const soundOutcome = outcome === "draw" ? "defeat" : outcome;
   const { shown } = useMatchAudience({ matchId, preview: preview?.audience });
   const reward = useMatchReward(matchId, preview?.reward);
   const { entries, voyage } = useMatchQuestRecap(matchId, preview?.quests, preview?.voyage);
@@ -165,13 +169,13 @@ export function MatchResultScreen({ outcome, player, matchId, preview, audience,
   // monté hors partie, en a besoin).
   useNoMenuAmbiance();
   useEffect(() => {
-    const timer = window.setTimeout(() => playMatchEnd(soundOutcome), END_SOUND_AT_MS);
-    const stopTheme = startEndTheme(soundOutcome);
+    const timer = window.setTimeout(() => playMatchEnd(outcome), END_SOUND_AT_MS);
+    const stopTheme = startEndTheme(outcome);
     return () => {
       window.clearTimeout(timer);
       stopTheme();
     };
-  }, [soundOutcome]);
+  }, [outcome]);
 
   const slots: QuestSlot[] = [
     ...entries.slice(0, voyage ? QUEST_SLOTS - 1 : QUEST_SLOTS).map((entry) => ({
@@ -223,6 +227,18 @@ export function MatchResultScreen({ outcome, player, matchId, preview, audience,
   const anyPositive = signals.some((signal) => signal.weight > 0);
   const signalsTitle = isVictory ? "Moments forts" : outcome === "draw" ? (anyPositive ? "Ce qui a marqué" : "Ce qui a pesé") : anyPositive ? "Malgré tout…" : "Ce qui a pesé";
   const leveledUp = reward ? reward.levelAfter > reward.levelBefore : false;
+
+  // La montée de niveau sonne une fois, quand sa ligne s'affiche. Le gain
+  // peut n'arriver qu'après coup (en PvP, l'octroi est relu jusqu'à 4 s
+  // plus tard) : on vise l'arrivée du gain à l'écran, ou tout de suite s'il
+  // est relu après elle. Le repli sans joueur (`MatchRewardBanner`) a son
+  // propre son : les deux écrans ne s'affichent jamais ensemble.
+  const mountedAt = useRef(Date.now());
+  useEffect(() => {
+    if (!leveledUp) return;
+    const timer = window.setTimeout(playLevelUp, Math.max(0, LEVEL_UP_SOUND_AT_MS - (Date.now() - mountedAt.current)));
+    return () => window.clearTimeout(timer);
+  }, [leveledUp]);
   const photo = photoLayers(player);
   const windowStyle = {
     "--win-x": `${look.window.x}%`,

@@ -2,7 +2,8 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { ATTACK_IMPACT_AT_MS, ATTACK_TIMINGS, ATTACK_TOTAL_MS, type AttackAnimation } from "@/features/match/useAttackPresentation";
-import { playAttackImpact } from "@/lib/sound";
+import { playAttackImpact, playCardAwake, playShipHit } from "@/lib/sound";
+import { revealGuard } from "@/features/match/cardFx";
 
 export interface Point {
   x: number;
@@ -318,20 +319,31 @@ function SingleAttack({ attack }: { attack: AttackAnimation }) {
 
     const targetRect = targetEl.getBoundingClientRect();
     setGeometry({ from: centerOf(attackerEl.getBoundingClientRect()), to: centerOf(targetRect), size: Math.min(targetRect.height, 220) });
-    const attackerAnimation = animateAttacker(attackerEl, targetRect);
+    // Une cible qui porte Garde le montre d'abord : son bouclier vient au centre, pulse, regagne sa carte —
+    // et l'attaquant ne part qu'ensuite.
+    const lead = attack.guard ? revealGuard(targetEl) : 0;
+    let attackerAnimation: Animation | null = null;
+    const startTimer = setTimeout(() => {
+      // La carte se soulève pour frapper : elle se réveille, à l'oreille aussi.
+      playCardAwake();
+      attackerAnimation = animateAttacker(attackerEl, targetRect);
+    }, lead);
 
     const impactTimer = setTimeout(() => {
       setImpacted(true);
       playAttackImpact();
+      // Attaque directe qui porte : le Navire encaisse, en plus du choc.
+      if (!attack.defenderInstanceId && attack.amount > 0) playShipHit();
       // Une cible qui survit et perd de la Résistance joue déjà `animate-card-impact` (CardTile) au moment où
       // l'état réel s'affiche : on ne double le tremblement que pour un Navire, une cible détruite ou un coup à 0.
       const target = attack.defenderInstanceId ? findElement("unit", attack.defenderInstanceId) : findElement("ship", attack.defenderPlayerId!);
       if (target && (!attack.defenderInstanceId || attack.defenderDies || attack.amount === 0)) shake(target);
-    }, ATTACK_IMPACT_AT_MS);
+    }, lead + ATTACK_IMPACT_AT_MS);
     return () => {
+      clearTimeout(startTimer);
       clearTimeout(impactTimer);
       // Démontage (ou double montage du mode strict en dev) : ne jamais laisser une animation orpheline empilée.
-      attackerAnimation.cancel();
+      attackerAnimation?.cancel();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- un seul cycle d'animation par attaque, jamais rejoué.
   }, []);

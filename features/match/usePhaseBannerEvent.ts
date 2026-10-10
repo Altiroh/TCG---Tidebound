@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { GameState, PlayerId } from "@/game";
+import { playCombatPhase, playTurnStart } from "@/lib/sound";
 
 export interface PhaseBannerEvent {
   id: number;
@@ -20,11 +21,14 @@ const BANNER_DURATION_MS = 1600;
  * de rejouer son animation même si le texte affiché est identique au
  * précédent.
  */
-export function usePhaseBannerEvent(state: GameState): PhaseBannerEvent | null {
+export function usePhaseBannerEvent(state: GameState, viewerId: PlayerId): PhaseBannerEvent | null {
   const [event, setEvent] = useState<PhaseBannerEvent | null>(null);
   const prev = useRef<{ turnNumber: number; phase: GameState["phase"]; activePlayerId: PlayerId } | null>(null);
   const nextId = useRef(0);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // En hot-seat le joueur qui regarde suit le joueur actif : on lit sa valeur du moment, sans relancer l'effet.
+  const viewerIdRef = useRef(viewerId);
+  viewerIdRef.current = viewerId;
 
   useEffect(() => {
     const previous = prev.current;
@@ -40,6 +44,10 @@ export function usePhaseBannerEvent(state: GameState): PhaseBannerEvent | null {
       next = { kind: "mainPhase2", playerId: state.activePlayerId };
     }
     if (!next) return;
+
+    // La bannière s'entend aussi : début de tour (le sien ou celui d'en face), passage en combat.
+    if (next.kind === "turnStart") playTurnStart(next.playerId === viewerIdRef.current);
+    else if (next.kind === "combatPhase") playCombatPhase();
 
     nextId.current += 1;
     setEvent({ ...next, id: nextId.current });

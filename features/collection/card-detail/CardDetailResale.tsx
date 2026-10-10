@@ -7,7 +7,7 @@ import { keptCopiesOf, recycleValueOf } from "@/features/collection/recycleValue
 import { notifyProgressionChanged } from "@/features/progression/progressionSync";
 import { TideCoin } from "@/features/shell/GameIcons";
 import styles from "@/features/collection/card-detail/CardDetail.module.css";
-import { playButtonClick } from "@/lib/sound";
+import { playButtonClick, playSurplusSell } from "@/lib/sound";
 
 interface CardDetailResaleProps {
   cardId: string;
@@ -65,6 +65,9 @@ export function CardDetailResale({ cardId, owned }: CardDetailResaleProps) {
         setError(result.error ?? "Revente impossible.");
         return;
       }
+      // Même son que la revente du surplus, et au même moment : une fois la
+      // vente écrite côté serveur, jamais au clic.
+      playSurplusSell();
       setQuantity(1);
       setMessage(
         result.remaining === 0

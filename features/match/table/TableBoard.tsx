@@ -80,6 +80,7 @@ import { useTableMetrics, type BoardPreviewBreakpoint } from "@/features/match/t
 import { useTableGestures } from "@/features/match/table/useTableGestures";
 import type { ShipAbilityPanelView } from "@/features/match/table/TableShip";
 import { useTableMotion } from "@/features/match/table/useTableMotion";
+import { playLandeArrival, preloadMatchSounds, startMatchAmbiance } from "@/lib/sound";
 
 export type { TableTargeting } from "@/features/match/table/legalTargets";
 
@@ -282,6 +283,14 @@ export function TableBoard(props: TableBoardProps) {
   const opponentRow = boardSlotLayout(boardPermanents(opponent.board), opponentCapacity);
   const tideState = state.environment.tideState;
 
+  // Ambiance de partie (mer, pont, vent, musique légère) tant que la table
+  // est montée ; les sons de partie sont décodés d'emblée pour que le
+  // premier de chacun arrive à l'heure.
+  useEffect(() => {
+    preloadMatchSounds();
+    return startMatchAmbiance();
+  }, []);
+
   // ── Lande ──────────────────────────────────────────────────────────
   // Une Lande qui ARRIVE sous les yeux du joueur se joue en grand
   // (`LandeArrival`) ; celle déjà en jeu au chargement de la partie est là
@@ -290,7 +299,10 @@ export function TableBoard(props: TableBoardProps) {
   const [landeArrival, setLandeArrival] = useState<NonNullable<typeof lande> | null>(null);
   const seenLande = useRef(lande?.instanceId);
   useEffect(() => {
-    if (lande && lande.instanceId !== seenLande.current) setLandeArrival(lande);
+    if (lande && lande.instanceId !== seenLande.current) {
+      setLandeArrival(lande);
+      playLandeArrival();
+    }
     seenLande.current = lande?.instanceId;
     // Seule l'identité de la Lande compte : son décompte change à chaque tour.
     // eslint-disable-next-line react-hooks/exhaustive-deps

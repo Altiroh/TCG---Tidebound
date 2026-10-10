@@ -130,7 +130,7 @@ export function MatchBoard({
   useScreenWakeLock(liveState.status !== "finished");
   // `state` = état AFFICHÉ (retenu avant le choc pendant une attaque, cf. `useAttackPresentation`) ; toute
   // action se valide et s'applique sur `liveState`, l'état de jeu réel.
-  const { displayState: state, attacks, volleys, diceHolding } = useAttackPresentation(liveState);
+  const { displayState: state, attacks, volleys, holding } = useAttackPresentation(liveState);
   // Observateur externe (tutoriel) : notifié de l'état RÉEL, pas de l'état
   // affiché — une étape ne doit pas attendre la fin d'une animation.
   useEffect(() => {
@@ -192,7 +192,7 @@ export function MatchBoard({
     // Signal Rouge (Lot 15) : un bonus « pendant votre tour ».
     controllerIsActive: state.activePlayerId === player.id,
   });
-  const bannerEvent = usePhaseBannerEvent(state);
+  const bannerEvent = usePhaseBannerEvent(state, viewerPlayerId);
   const actionToasts = useActionToasts(state);
   const board = useBoardInteraction({
     liveState,
@@ -253,9 +253,10 @@ export function MatchBoard({
   // boucle, pas le joueur actif : quand le bot ouvre une fenêtre au joueur
   // pendant son propre tour, il doit reprendre la main une fois qu'on y a
   // répondu, alors que le joueur actif, lui, n'a pas changé.
-  // Un dé qui roule encore retient l'issue de son jet (`dicePresentation.ts`) :
-  // le bot attend qu'elle s'affiche avant de rejouer.
-  const botToAct = Boolean(botPlayerId) && !diceHolding && liveState.status === "active" && botHasSomethingToDo(liveState, botPlayerId!);
+  // Un dé qui roule encore retient l'issue de son jet (`dicePresentation.ts`),
+  // une attaque ou un sort retient l'état d'avant le choc : le bot attend
+  // qu'ils aient touché avant de rejouer, sinon son coup suivant les coupe.
+  const botToAct = Boolean(botPlayerId) && !holding && liveState.status === "active" && botHasSomethingToDo(liveState, botPlayerId!);
   useEffect(() => {
     if (!botToAct || !botDifficulty || !botPlayerId) return;
 

@@ -8,7 +8,7 @@ import { CardTile } from "@/features/match/CardTile";
 import { chooseRewardCard, type PendingCardChoice } from "@/features/progression/profileActions";
 import { RewardIcon, type RewardItem } from "@/features/progression/RewardIcon";
 import styles from "@/features/progression/RewardReveal.module.css";
-import { playButtonClick, playRewardObtained } from "@/lib/sound";
+import { playButtonClick, playExploitClaimed, playRewardObtained } from "@/lib/sound";
 
 export interface RevealedLevel {
   level: number;
@@ -24,6 +24,11 @@ interface RewardRevealProps {
   extraItems?: readonly RewardItem[];
   /** Titre imposé — sinon déduit des paliers. */
   title?: string;
+  /**
+   * Son de l'ouverture. Un exploit a le sien (`playExploitClaimed`) : il
+   * REMPLACE celui de la récompense, jouer les deux les ferait se chevaucher.
+   */
+  sound?: "reward" | "exploit";
   onDone: () => void;
 }
 
@@ -53,7 +58,7 @@ function choiceInstance(choiceId: string, cardId: string): CardInstance {
  * se présentent face visible : on en garde une, et elle rejoint la
  * collection (`resolve_card_choice`, vérifiée côté serveur).
  */
-export function RewardReveal({ levels, choices, extraItems = [], title: forcedTitle, onDone }: RewardRevealProps) {
+export function RewardReveal({ levels, choices, extraItems = [], title: forcedTitle, sound = "reward", onDone }: RewardRevealProps) {
   const [mounted, setMounted] = useState(false);
   const [choiceIndex, setChoiceIndex] = useState(0);
   const [picked, setPicked] = useState<string | null>(null);
@@ -68,9 +73,9 @@ export function RewardReveal({ levels, choices, extraItems = [], title: forcedTi
   // deux fois en développement, le son ne doit partir qu'une.
   useEffect(() => {
     setMounted(true);
-    const timer = window.setTimeout(playRewardObtained, 0);
+    const timer = window.setTimeout(sound === "exploit" ? playExploitClaimed : playRewardObtained, 0);
     return () => window.clearTimeout(timer);
-  }, []);
+  }, [sound]);
 
   /** Récompenses à montrer : les Tides additionnés, le reste tel quel (les choix de carte ont leur étape). */
   const shown = useMemo(() => {

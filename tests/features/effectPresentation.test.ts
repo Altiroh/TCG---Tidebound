@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   ARRIVAL_DELAY_MS,
+  AWAKE_LIFT_MS,
   BUFF_LAND_MS,
+  HEAL_APPLY_MS,
+  ORB_CHARGE_MS,
   deriveEffectVolley,
   patchedDisplay,
   REASON_COUNT_MS,
@@ -73,7 +76,10 @@ describe("d'où part le projectile", () => {
     const volley = deriveEffectVolley(events, before, after, 1)!;
     expect(volley.shots[0]!.from).toEqual({ kind: "unit", id: pose.instanceId });
     expect(volley.delayMs).toBe(ARRIVAL_DELAY_MS);
-    expect(volleyLandingMs(volley)).toBe(ARRIVAL_DELAY_MS + SHOT_FLIGHT_MS);
+    // Elle atterrit, se réveille, son orbe se charge, puis le sort vole.
+    expect(volley.awakens).toEqual([pose.instanceId]);
+    expect(volley.castMs).toBe(AWAKE_LIFT_MS + ORB_CHARGE_MS);
+    expect(volleyLandingMs(volley)).toBe(ARRIVAL_DELAY_MS + AWAKE_LIFT_MS + ORB_CHARGE_MS + SHOT_FLIGHT_MS);
   });
 
   it("les coups de combat et les dégâts sans lanceur ne tirent rien", () => {
@@ -97,6 +103,42 @@ describe("soins et gains", () => {
     expect(volley.buffs).toEqual([{ targetInstanceId: unite.instanceId, attack: 1, health: 0, keywords: ["garde"], loss: false }]);
     expect(volley.heals).toEqual([{ to: { kind: "ship", id: "p1" }, amount: 2 }]);
     expect(volleyLandingMs(volley)).toBe(BUFF_LAND_MS);
+  });
+
+  it("un soin lancé par une carte part de son orbe, la carte se réveille", () => {
+    const lanceuse = instance("poisson-lanterne", "p1");
+    const s = state([lanceuse], []);
+    const events: GameEvent[] = [
+      { ...base, type: "HEAL", targetPlayerId: "p1", amount: 2, origin: { playerId: "p1", instanceId: lanceuse.instanceId } },
+    ];
+    const volley = deriveEffectVolley(events, s, s, 1)!;
+    expect(volley.heals).toEqual([
+      { to: { kind: "ship", id: "p1" }, amount: 2, source: { from: { kind: "unit", id: lanceuse.instanceId }, originPlayerId: "p1" } },
+    ]);
+    expect(volley.awakens).toEqual([lanceuse.instanceId]);
+    expect(volleyLandingMs(volley)).toBe(AWAKE_LIFT_MS + ORB_CHARGE_MS + SHOT_FLIGHT_MS + HEAL_APPLY_MS);
+  });
+
+  it("un sort joué de la main part du Navire de son lanceur, sans réveil", () => {
+    const unite = instance("poisson-lanterne", "p2");
+    const s = state([], [unite]);
+    const events: GameEvent[] = [
+      { ...base, type: "DEBUFF_APPLIED", targetInstanceId: unite.instanceId, attack: -1, health: 0, origin: { playerId: "p1" } },
+    ];
+    const volley = deriveEffectVolley(events, s, s, 1)!;
+    expect(volley.buffs[0]!.source).toEqual({ from: { kind: "ship", id: "p1" }, originPlayerId: "p1" });
+    expect(volley.awakens).toEqual([]);
+    expect(volley.castMs).toBe(ORB_CHARGE_MS);
+  });
+
+  it("une capacité déclenchée sans sort réveille seulement sa carte, sans retenir l'affichage", () => {
+    const unite = instance("poisson-lanterne", "p1");
+    const s = state([unite], []);
+    const events: GameEvent[] = [{ ...base, type: "ABILITY_RESOLVED", playerId: "p1", instanceId: unite.instanceId, cardId: unite.cardId }];
+    const volley = deriveEffectVolley(events, s, s, 1)!;
+    expect(volley.awakens).toEqual([unite.instanceId]);
+    expect(volley.castMs).toBe(0);
+    expect(volleyLandingMs(volley)).toBe(0);
   });
 });
 

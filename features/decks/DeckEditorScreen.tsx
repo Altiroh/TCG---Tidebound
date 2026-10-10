@@ -24,7 +24,7 @@ import { ShipPicker } from "@/features/ships/ShipPicker";
 import browser from "@/features/collection/CardBrowser.module.css";
 import styles from "@/features/decks/DeckBuilder.module.css";
 import game from "@/features/shell/GameScreen.module.css";
-import { playButtonClick } from "@/lib/sound";
+import { playDeckAddCard, playDeckRemoveCard } from "@/lib/sound";
 import book from "@/features/decks/DeckEditorBook.module.css";
 import { BookSearch } from "@/features/decks/BookSearch";
 
@@ -174,18 +174,28 @@ function DeckEditorScreenBody({ ownedCardIds, ownedCounts, initialDeck }: DeckEd
         return;
       }
       if (!canAdd(def)) return;
-      playButtonClick();
+      // Le son du deck vit ICI, au seul point où une carte entre (clic de la
+      // grille, bouton +, glisser-déposer) : il remplace le clic de bouton,
+      // et un ajout refusé (deck plein, exemplaires épuisés) reste muet.
+      playDeckAddCard();
       setCardIds((current) => [...current, cardId]);
     },
     [canAdd]
   );
 
-  const removeCard = useCallback((cardId: string) => {
-    setCardIds((current) => {
-      const index = current.lastIndexOf(cardId);
-      return index === -1 ? current : current.filter((_, i) => i !== index);
-    });
-  }, []);
+  const removeCard = useCallback(
+    (cardId: string) => {
+      // Même règle que `addCard` : le son au point unique de sortie (bouton −
+      // de la grille, croix de la liste), et seulement si la carte y était.
+      if (!cardIds.includes(cardId)) return;
+      playDeckRemoveCard();
+      setCardIds((current) => {
+        const index = current.lastIndexOf(cardId);
+        return index === -1 ? current : current.filter((_, i) => i !== index);
+      });
+    },
+    [cardIds]
+  );
 
   async function handleSave(): Promise<boolean> {
     setIsSaving(true);
@@ -309,7 +319,6 @@ function DeckEditorScreenBody({ ownedCardIds, ownedCounts, initialDeck }: DeckEd
             disabled={inDeck === 0}
             onClick={(event) => {
               event.stopPropagation();
-              playButtonClick();
               removeCard(def.id);
             }}
             aria-label={`Retirer un exemplaire de ${def.name}`}

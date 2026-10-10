@@ -19,7 +19,7 @@ import { notifyProgressionChanged } from "@/features/progression/progressionSync
 import { RewardIcon } from "@/features/progression/RewardIcon";
 import { PreconToken, TideCoin } from "@/features/shell/GameIcons";
 import styles from "@/features/progression/ProfileScene.module.css";
-import { playButtonClick, playRewardClaimed } from "@/lib/sound";
+import { playButtonClick, playStreakClaimed } from "@/lib/sound";
 
 interface ProfileSceneProps {
   profile: ProfileSummary;
@@ -373,7 +373,7 @@ function LoginPanel({
         return;
       }
       const gains = loginGainsText(result);
-      playRewardClaimed();
+      playStreakClaimed();
       setMessage(gains ? `Escale franchie — ${gains}.` : "Escale franchie.");
       notifyProgressionChanged();
       onRefresh();

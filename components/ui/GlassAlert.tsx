@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import styles from "@/components/ui/GlassAlert.module.css";
+import { playActionRefused } from "@/lib/sound";
 
 export type AlertSeverity = "error" | "warning";
 
@@ -39,8 +40,11 @@ export function GlassAlert({ message, severity = "error", onDismiss, onExpire }:
 
   useEffect(() => {
     if (!message) return;
+    // Une erreur, c'est un geste que le jeu refuse : elle s'entend, à chaque nouveau message.
+    if (severity === "error") playActionRefused();
     const id = setTimeout(() => onTimeoutRef.current(), AUTO_DISMISS_MS);
     return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- un son par MESSAGE, pas à chaque changement de gravité.
   }, [message]);
 
   if (!message) return null;

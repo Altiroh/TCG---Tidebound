@@ -11,7 +11,7 @@ import { TideCoin } from "@/features/shell/GameIcons";
 import { Dialog } from "@/features/shell/Dialog";
 import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/collection/SurplusResale.module.css";
-import { playButtonClick } from "@/lib/sound";
+import { playButtonClick, playSurplusSell } from "@/lib/sound";
 
 interface SurplusResaleDialogProps {
   lines: readonly SurplusLine[];
@@ -50,6 +50,9 @@ export function SurplusResaleDialog({ lines, onClose }: SurplusResaleDialogProps
         setError(result.error ?? "Revente impossible.");
         return;
       }
+      // Le son de la vente à la RÉPONSE du serveur : c'est elle qui vend
+      // (le clic n'a joué que le bouton), un refus reste muet.
+      playSurplusSell();
       setDone({ tides: result.tidesGained ?? 0, cards: result.cardsSold ?? 0 });
       notifyProgressionChanged();
       router.refresh();
