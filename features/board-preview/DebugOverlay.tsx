@@ -23,6 +23,9 @@ interface DebugOverlayProps {
   /** Labo du pont : faire défiler les Landes (aucune → chacune → aucune). Absent : pas de bouton. */
   onNextLande?: () => void;
   landeLabel?: string;
+  /** Panneau « Animations » (`FxLabPanel`) affiché. Absent : pas de bouton. */
+  fxPanel?: boolean;
+  onToggleFxPanel?: () => void;
 }
 
 /**
@@ -49,6 +52,8 @@ export function DebugOverlay({
   tideLabel,
   onNextLande,
   landeLabel,
+  fxPanel,
+  onToggleFxPanel,
 }: DebugOverlayProps) {
   if (collapsed) {
     return (
@@ -96,6 +101,11 @@ export function DebugOverlay({
       {onNextLande && (
         <button type="button" className={styles.debugButton} onClick={onNextLande} title="Lande suivante">
           Lande : {landeLabel} ›
+        </button>
+      )}
+      {onToggleFxPanel && (
+        <button type="button" className={styles.debugButton} onClick={onToggleFxPanel} title="Lancer les animations de cartes et de sorts">
+          Animations : {fxPanel ? "affichées" : "masquées"}
         </button>
       )}
       <button type="button" className={styles.debugButton} onClick={onReset}>

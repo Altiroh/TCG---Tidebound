@@ -12,6 +12,7 @@ import { DebugOverlay } from "@/features/board-preview/DebugOverlay";
 import { DragLayer, type AimTone } from "@/features/match/table/DragLayer";
 import { EquipLinks } from "@/features/match/table/EquipLinks";
 import { EffectsLayer } from "@/features/board-preview/EffectsLayer";
+import { FxLabPanel } from "@/features/match/FxLabPanel";
 import { GameStage } from "@/features/match/table/GameStage";
 import { GameViewport } from "@/features/match/table/GameViewport";
 import { MotionLayer, type ImpactFx } from "@/features/match/table/MotionLayer";
@@ -98,6 +99,8 @@ export function BoardPreviewPage() {
   const metrics = useTableMetrics(stageRef);
   const [zonesVisible, setZonesVisible] = useState(false);
   const [debugCollapsed, setDebugCollapsed] = useState(false);
+  // Panneau « Animations » (`FxLabPanel`), en option : il lance les animations de cartes et de sorts du vrai plateau.
+  const [fxPanel, setFxPanel] = useState(false);
 
   const { opponent, player, turn, phaseLabel } = PREVIEW_FIXTURES;
   // État de Marée piloté depuis la barre de debug : fond, piste et stats des cartes suivent.
@@ -367,6 +370,8 @@ export function BoardPreviewPage() {
             return (
               <div
                 data-card-id={card.id}
+                // Repère des animations du vrai plateau (`findElement`) : le panneau « Animations » vise ces cartes.
+                data-board-unit={card.id}
                 data-drop={drop}
                 // Carte adverse : jamais prise, seulement lisible (appui long / toucher / clic droit).
                 onPointerDown={startGesture("inspect", card.id)}
@@ -380,6 +385,7 @@ export function BoardPreviewPage() {
           wrapShip={(ship) => (
             <div
               data-drop="ship"
+              data-ship-target="opponent"
               className={`${styles.shipTarget} ${aimingAttacker ? styles.targetable : ""} ${hover === "ship" ? styles.targetHover : ""}`}
             >
               {ship}
@@ -425,6 +431,12 @@ export function BoardPreviewPage() {
               onClick: () => setCannonArmed((armed) => !armed),
             },
           }}
+          // Repère des animations du vrai plateau : un sort peut partir du Navire ou le viser.
+          wrapShip={(ship) => (
+            <div data-ship-target="player" className={styles.shipTarget}>
+              {ship}
+            </div>
+          )}
           board={playerBoard}
           capacity={BOARD_CAPACITY}
           deck={playerDeck.length}
@@ -444,6 +456,7 @@ export function BoardPreviewPage() {
             return (
               <div
                 data-card-id={card.id}
+                data-board-unit={card.id}
                 data-drop={drop}
                 data-armable={attacker ? "" : undefined}
                 onPointerDown={startGesture("aim", card.id)}
@@ -541,7 +554,10 @@ export function BoardPreviewPage() {
         tideLabel={tide.states[tideIndex]?.label ?? ""}
         onNextLande={() => setLandeIndex((index) => (index + 1 >= PONT_LANDES.length ? -1 : index + 1))}
         landeLabel={landeId ? getCardDefinition(landeId).name : "aucune"}
+        fxPanel={fxPanel}
+        onToggleFxPanel={() => setFxPanel((open) => !open)}
       />
+      {fxPanel && <FxLabPanel />}
     </GameViewport>
   );
 }
