@@ -124,6 +124,21 @@ export interface ActivateReactionAction {
   chosenGraveyardInstanceId?: string;
 }
 
+/**
+ * Active un effet d'arrivée MIS EN RÉSERVE (`GameState.deferredArrivals`) :
+ * le joueur actif, en Phase principale, pendant le tour où la carte est
+ * arrivée. Mêmes paramètres qu'une réaction (cible, carte du Cimetière),
+ * même résolution (`activateReaction`).
+ */
+export interface ActivateArrivalAction {
+  type: "activateArrival";
+  playerId: PlayerId;
+  sourceInstanceId: string;
+  abilityIndex: number;
+  targetInstanceId?: string;
+  chosenGraveyardInstanceId?: string;
+}
+
 /** Passe la priorité pendant une fenêtre de réaction — n'active rien. */
 export interface PassReactionAction {
   type: "passReaction";
@@ -266,6 +281,7 @@ export type PlayerAction =
   | BreakObjectAction
   | AdvancePhaseAction
   | ActivateReactionAction
+  | ActivateArrivalAction
   | PassReactionAction
   | ActivateAbilityAction
   | ActivateShipAbilityAction

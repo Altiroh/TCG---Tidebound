@@ -12,7 +12,6 @@ import {
   getShipDefinition,
   graveyardChoicesForBreak,
   isMainPhase,
-  previewBreakReason,
   applyBotAction,
   botHasSomethingToDo,
   type BotDifficulty,
@@ -33,7 +32,7 @@ import { AssemblagePrompt } from "@/features/match/AssemblagePrompt";
 import { GraveyardViewer } from "@/features/match/GraveyardViewer";
 import { MatchEndScreen } from "@/features/match/MatchEndScreen";
 import { MatchPauseMenu } from "@/features/match/MatchPauseMenu";
-import { ObjectBreakPrompt } from "@/features/match/ObjectBreakPrompt";
+import { FocusedCardHost } from "@/features/match/FocusedCardHost";
 import { ShipAbilityPrompt } from "@/features/match/ShipAbilityPrompt";
 import { PendingChoicePrompt } from "@/features/match/PendingChoicePrompt";
 import { graveyardPickView } from "@/features/match/graveyardPickRequest";
@@ -442,9 +441,9 @@ export function MatchBoard({
   const phase = phaseButtonFor({ isMyTurn: isViewerTurn, phase: state.phase === "mainPhase" && !hasCombatToPlay(state, state.activePlayerId) ? "mainPhase2" : state.phase });
   const hint = targetingHint(pending?.kind === "reaction" ? null : pending?.kind ?? null);
 
-  // Objets d'invite en constantes locales : `board.breakPrompt` ne se
+  // Objets d'invite en constantes locales : `board.graveyardPick` ne se
   // rétrécit pas à travers une fermeture, une constante si.
-  const { breakPrompt, graveyardPick, detailInstance, graveyardViewerPlayerId } = board;
+  const { graveyardPick, detailInstance, graveyardViewerPlayerId } = board;
 
   /*
    * Cosmétiques par camp. Contre le bot : le bot n'a rien équipé, il joue
@@ -531,6 +530,8 @@ export function MatchBoard({
         }
         onBreakOnTarget={(instanceId, targetInstanceId) => runAction({ type: "breakObject", playerId: activePlayerId, instanceId, targetInstanceId })}
         onDropOnGraveyard={board.handleDropOnGraveyard}
+        arrivalReadyIds={board.arrivalReadyIds}
+        onArrivalTap={board.openArrivalFocus}
         onBoardCardClick={handleAnyBoardCardClick}
         shipAbility={shipAbility.panel}
         opponentShipAbility={shipAbility.opponentPanel}
@@ -680,23 +681,8 @@ export function MatchBoard({
       {shipAbility.prompt && (
         <ShipAbilityPrompt {...shipAbility.prompt} onConfirm={shipAbility.confirm} onCancel={shipAbility.cancel} />
       )}
-      {breakPrompt && (
-        <ObjectBreakPrompt
-          card={breakPrompt.card}
-          source={breakPrompt.source}
-          handCost={previewBreakReason(liveState, activePlayerId, breakPrompt.card.instanceId, breakPrompt.source === "hand")}
-          onBreak={() => board.requestBreak(breakPrompt.card, breakPrompt.source === "hand")}
-          onScuttle={
-            breakPrompt.source === "board"
-              ? () => {
-                  board.setBreakPrompt(null);
-                  runAction({ type: "saborder", playerId: activePlayerId, instanceId: breakPrompt.card.instanceId });
-                }
-              : undefined
-          }
-          onCancel={() => board.setBreakPrompt(null)}
-        />
-      )}
+      {/* La carte posée à droite : effet d'arrivée en réserve, Bris d'un Objet lâché sur le Cimetière. */}
+      <FocusedCardHost board={board} liveState={liveState} actorId={activePlayerId} tideState={state.environment.tideState} />
       {graveyardPick && (() => {
         // Une réaction ne part pas comme une action normale (elle peut
         // survenir hors de son tour) : `runReactionAction` pour elle,

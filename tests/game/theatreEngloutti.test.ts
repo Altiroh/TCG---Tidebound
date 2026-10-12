@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dispatch } from "@/game/engine";
+import { dispatch, offeredTo } from "@/tests/game/arrivalDispatch";
 import { getCardDefinition, MARIONNETTE } from "@/game/cards/sets/core";
 import { resolveEffect } from "@/game/effects/resolveEffect";
 import { eligibleChosenUnits } from "@/game/effects/chosenTargets";
@@ -323,7 +323,7 @@ describe("Il Dottore des Noyés — un camp par mode", () => {
     const played = dispatch(state, { type: "playCard", playerId: "p1", instanceId: dottore.instanceId });
     expect(played.ok).toBe(true);
     if (!played.ok) throw new Error(played.error);
-    expect(played.state.pendingReaction?.awaitingPlayerId).toBe("p1");
+    expect(offeredTo(played.state)).toBe("p1");
     return { state: played.state, dottore, ally, enemy };
   }
 
@@ -365,14 +365,14 @@ describe("Il Dottore des Noyés — un camp par mode", () => {
     const played = dispatch(state, { type: "playCard", playerId: "p1", instanceId: colombina.instanceId });
     expect(played.ok).toBe(true);
     if (!played.ok) return;
-    expect(played.state.pendingReaction?.awaitingPlayerId).toBe("p1");
+    expect(offeredTo(played.state)).toBe("p1");
 
     const repeated = dispatch(played.state, { type: "activateReaction", playerId: "p1", sourceInstanceId: colombina.instanceId, abilityIndex: 0, targetInstanceId: dottore.instanceId });
     expect(repeated.ok).toBe(true);
     if (!repeated.ok) return;
     expect(repeated.events.some((event) => event.type === "ENTER_EFFECTS_REPEATED")).toBe(true);
     // L'arrivée d'Il Dottore se rejoue : sa fenêtre de choix s'ouvre à nouveau.
-    expect(repeated.state.pendingReaction?.awaitingPlayerId).toBe("p1");
+    expect(offeredTo(repeated.state)).toBe("p1");
 
     const buffed = dispatch(repeated.state, { type: "activateReaction", playerId: "p1", sourceInstanceId: dottore.instanceId, abilityIndex: 1, targetInstanceId: enemy.instanceId });
     expect(buffed.ok).toBe(true);

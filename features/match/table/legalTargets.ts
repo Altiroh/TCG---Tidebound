@@ -19,6 +19,12 @@ import { needsPlayTarget } from "@/features/match/needsPlayTarget";
 export type TableTargeting =
   | { kind: "playCard" | "break" | "attack" | "ability"; sourceInstanceId: string }
   | { kind: "reaction"; sourceInstanceId: string; abilityIndex: number; triggerSourceInstanceId?: string }
+  /**
+   * Effet d'arrivée en réserve, peut-être à plusieurs modes (« choisissez :
+   * A ou B ») : les cibles de TOUS les modes s'éclairent, et c'est la cible
+   * touchée qui dit lequel s'applique (`arrivalModeFor`).
+   */
+  | { kind: "arrival"; sourceInstanceId: string; abilityIndexes: readonly number[] }
   | { kind: "shipShot" | "shipTarget"; sourceInstanceId?: undefined }
   | null;
 
@@ -36,6 +42,38 @@ function chosenAmong(
     (e) => new Set(eligibleChosenUnits(state, e.target, controllerId, sourceInstanceId, triggerSourceInstanceId).map((c) => c.unit.instanceId))
   );
   return new Set([...sets[0]!].filter((id) => sets.every((set) => set.has(id))));
+}
+
+/** Cibles légales de CHAQUE mode d'un effet d'arrivée, par index de capacité. */
+export function arrivalTargetsByMode(
+  state: GameState,
+  viewerId: PlayerId,
+  sourceInstanceId: string,
+  abilityIndexes: readonly number[]
+): Map<number, Set<string>> {
+  const card = state.players.flatMap((p) => p.board).find((c) => c.instanceId === sourceInstanceId);
+  const modes = new Map<number, Set<string>>();
+  if (!card) return modes;
+  for (const index of abilityIndexes) {
+    const ability = getCardDefinition(card.cardId).abilities?.[index];
+    const among = ability ? chosenAmong(state, ability.effects, viewerId, card.instanceId) : null;
+    if (among) modes.set(index, among);
+  }
+  return modes;
+}
+
+/** Le mode qu'une cible touchée désigne : le premier dont elle est une cible légale. */
+export function arrivalModeFor(
+  state: GameState,
+  viewerId: PlayerId,
+  sourceInstanceId: string,
+  abilityIndexes: readonly number[],
+  targetInstanceId: string
+): number | undefined {
+  for (const [index, targets] of arrivalTargetsByMode(state, viewerId, sourceInstanceId, abilityIndexes)) {
+    if (targets.has(targetInstanceId)) return index;
+  }
+  return undefined;
 }
 
 /**
@@ -85,6 +123,13 @@ export function legalTargetsFor(state: GameState, viewerId: PlayerId, targeting:
       const card = viewer.board.find((c) => c.instanceId === targeting.sourceInstanceId);
       const spec = card && getCardDefinition(card.cardId).activatableOncePerTurn;
       return card && spec ? chosenAmong(state, spec.effects, viewerId, card.instanceId) : null;
+    }
+    case "arrival": {
+      const union = new Set<string>();
+      for (const targets of arrivalTargetsByMode(state, viewerId, targeting.sourceInstanceId, targeting.abilityIndexes).values()) {
+        for (const id of targets) union.add(id);
+      }
+      return union;
     }
     case "reaction": {
       // La source peut être EN MAIN : un Objet réactif qui se Brise, ou une

@@ -62,7 +62,8 @@ export function graveyardPickView(
     sourceCardId: candidate.cardId,
     choices: graveyardChoicesForAbility(state, playerId, candidate.cardId, candidate.abilityIndex),
     actionFor: (chosen) => ({
-      type: "activateReaction",
+      // Effet d'arrivée en réserve : activé depuis la carte posée à droite, pas depuis une fenêtre.
+      type: request.arrival ? "activateArrival" : "activateReaction",
       playerId,
       sourceInstanceId: candidate.sourceInstanceId,
       abilityIndex: candidate.abilityIndex,

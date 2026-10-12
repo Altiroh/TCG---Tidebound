@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getCardDefinition, UNIT_CARD_TYPES, type GameState, type PlayerId } from "@/game";
 import type { ChoiceBannerAction } from "@/features/match/ChoiceBanner";
 import { effectsPolarity, type TargetPolarity } from "@/features/match/table/targetPolarity";
@@ -19,6 +19,9 @@ export interface BoardPickMode {
 
 type Answer = { pickInstanceIds: string[] } | { keepInstanceIds: string[] };
 
+/** Délai entre la dernière désignation et l'envoi : la marque a le temps de se poser. */
+const AUTO_SUBMIT_MS = 320;
+
 /**
  * DÉSIGNER PLUSIEURS UNITÉS, SUR LE PLATEAU (05/10/2026) — « Choisissez
  * jusqu'à N unités » (`pickUnits`) et « choisissez jusqu'à N unités que
@@ -35,6 +38,23 @@ export function useBoardPick(state: GameState, viewerId: PlayerId, submit: (answ
   const [picked, setPicked] = useState<string[]>([]);
   const key = active ? `${active.kind}:${active.turnNumber}:${active.sourceInstanceId ?? ""}:${active.kind === "pickUnits" ? active.among.join(",") : active.kept.join(",")}` : null;
   useEffect(() => setPicked([]), [key]);
+
+  // Sélection COMPLÈTE : elle part d'elle-même, le temps de voir la dernière
+  // marque se poser (retour du 12/10/2026 : « on clique sur une cible,
+  // directe résolution, pas de Valider »). Valider reste pour en désigner moins.
+  const complete = active ? Math.min(active.kind === "keepUnits" ? active.keep : active.pick, active.kind === "keepUnits" ? Infinity : active.among.length) : 0;
+  const submitRef = useRef(submit);
+  submitRef.current = submit;
+  useEffect(() => {
+    if (!active || complete <= 0 || picked.length < complete) return;
+    const ids = picked;
+    const timer = window.setTimeout(() => {
+      setPicked([]);
+      submitRef.current(active.kind === "keepUnits" ? { keepInstanceIds: ids } : { pickInstanceIds: ids });
+    }, AUTO_SUBMIT_MS);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- seule la sélection déclenche l'envoi
+  }, [picked, key]);
 
   if (!active || !key) return { mode: null as BoardPickMode | null, banner: null, locked: [] as HeldTarget[] };
 

@@ -3,7 +3,7 @@ import { sensibleDieAnswer } from "@/game/rules/dice";
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { isDeckLookTakeable } from "@/game/rules/deckLook";
 import { hasResistance, UNIT_CARD_TYPES } from "@/game/cards/types";
-import type { CardDefinition } from "@/game/cards/types";
+import type { CardDefinition, CardInstance } from "@/game/cards/types";
 import {
   graveyardChoicesForAbility,
   graveyardChoicesForBreak,
@@ -13,6 +13,8 @@ import type { PlayerAction } from "@/game/actions/types";
 import { eligibleBreakTargets, eligibleChosenUnits } from "@/game/effects/chosenTargets";
 import { findAssemblage } from "@/game/rules/chromatic";
 import { eligibleCandidatesFor } from "@/game/reactions/reactionWindow";
+import { activatableArrivals } from "@/game/reactions/deferredArrivals";
+import type { PendingReactionCandidate } from "@/game/triggers/types";
 import { canUnitAttack } from "@/game/rules/validation";
 import { discardableHand } from "@/game/state/discard";
 import { shipAbilityView } from "@/game/state/shipAbility";
@@ -199,49 +201,7 @@ export function enumerateCandidateActions(state: GameState, playerId: PlayerId):
       state.pendingReaction.turnNumber,
       state.pendingReaction.usedCandidateKeys
     );
-    for (const candidate of candidates) {
-      if (candidate.needsTarget) {
-        // Cibles réellement légales pour CETTE capacité ("choisissez un
-        // Cra-Poiscail") : pas une duplication de la validation, c'est la
-        // fonction du moteur elle-même — proposer le reste ne ferait que
-        // brûler des `dispatch` refusés.
-        const abilityEffects = getCardDefinition(candidate.cardId).abilities?.[candidate.abilityIndex]?.effects ?? [];
-        const targeting = abilityEffects.find((e) => e.target.kind === "chosenUnit");
-        const legalTargets = targeting
-          ? eligibleChosenUnits(state, targeting.target, playerId, candidate.sourceInstanceId, candidate.triggerSourceInstanceId).map(
-              (c) => c.unit
-            )
-          : allBoardUnits;
-        for (const target of legalTargets) {
-          actions.push({
-            type: "activateReaction",
-            playerId,
-            sourceInstanceId: candidate.sourceInstanceId,
-            abilityIndex: candidate.abilityIndex,
-            targetInstanceId: target.instanceId,
-          });
-        }
-      } else if (candidate.needsGraveyardTarget) {
-        // « choisissez une unité Un Dead dans votre Cimetière » : chaque
-        // carte éligible est un coup distinct, `evaluateState` tranche.
-        for (const card of graveyardChoicesForAbility(state, playerId, candidate.cardId, candidate.abilityIndex)) {
-          actions.push({
-            type: "activateReaction",
-            playerId,
-            sourceInstanceId: candidate.sourceInstanceId,
-            abilityIndex: candidate.abilityIndex,
-            chosenGraveyardInstanceId: card.instanceId,
-          });
-        }
-      } else {
-        actions.push({
-          type: "activateReaction",
-          playerId,
-          sourceInstanceId: candidate.sourceInstanceId,
-          abilityIndex: candidate.abilityIndex,
-        });
-      }
-    }
+    for (const candidate of candidates) actions.push(...candidateActions(state, playerId, candidate, "activateReaction", allBoardUnits));
     // Capacité de NAVIRE qui déclare cette fenêtre pour terrain
     // (`activationWindow`, aucune aujourd'hui) : elle s'active
     // là et nulle part ailleurs, donc elle doit être proposée ICI, avant
@@ -254,6 +214,13 @@ export function enumerateCandidateActions(state: GameState, playerId: PlayerId):
 
     actions.push({ type: "passReaction", playerId });
     return actions;
+  }
+
+  // Effets d'arrivée EN RÉSERVE (`deferredArrivals.ts`) : chacun est un coup
+  // de la Phase principale, comme poser une carte. Ne pas l'activer, c'est
+  // passer — l'évaluation départage.
+  for (const { candidate } of activatableArrivals(state, playerId)) {
+    actions.push(...candidateActions(state, playerId, candidate, "activateArrival", allBoardUnits));
   }
 
   // Capacité activable du NAVIRE (Le Goliath — Canon de proue). Ni les
@@ -392,4 +359,40 @@ export function enumerateCandidateActions(state: GameState, playerId: PlayerId):
   }
 
   return actions;
+}
+
+/**
+ * Les coups d'UNE capacité facultative éligible (réaction ou effet d'arrivée
+ * en réserve) : une action par cible légale, par carte du Cimetière
+ * prenable, ou une seule.
+ */
+function candidateActions(
+  state: GameState,
+  playerId: PlayerId,
+  candidate: PendingReactionCandidate,
+  type: "activateReaction" | "activateArrival",
+  allBoardUnits: readonly CardInstance[]
+): PlayerAction[] {
+  const base = { type, playerId, sourceInstanceId: candidate.sourceInstanceId, abilityIndex: candidate.abilityIndex } as const;
+  if (candidate.needsTarget) {
+    // Cibles réellement légales pour CETTE capacité ("choisissez un
+    // Cra-Poiscail") : pas une duplication de la validation, c'est la
+    // fonction du moteur elle-même — proposer le reste ne ferait que
+    // brûler des `dispatch` refusés.
+    const abilityEffects = getCardDefinition(candidate.cardId).abilities?.[candidate.abilityIndex]?.effects ?? [];
+    const targeting = abilityEffects.find((e) => e.target.kind === "chosenUnit");
+    const legalTargets = targeting
+      ? eligibleChosenUnits(state, targeting.target, playerId, candidate.sourceInstanceId, candidate.triggerSourceInstanceId).map((c) => c.unit)
+      : allBoardUnits;
+    return legalTargets.map((target) => ({ ...base, targetInstanceId: target.instanceId }));
+  }
+  if (candidate.needsGraveyardTarget) {
+    // « choisissez une unité Un Dead dans votre Cimetière » : chaque
+    // carte éligible est un coup distinct, `evaluateState` tranche.
+    return graveyardChoicesForAbility(state, playerId, candidate.cardId, candidate.abilityIndex).map((card) => ({
+      ...base,
+      chosenGraveyardInstanceId: card.instanceId,
+    }));
+  }
+  return [{ ...base }];
 }

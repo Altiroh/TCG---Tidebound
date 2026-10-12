@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dispatch } from "@/game/engine";
+import { dispatch } from "@/tests/game/arrivalDispatch";
 import { auraContextOf, computeEffectiveStats } from "@/game/cards/stats";
 import { hasEffectiveKeyword } from "@/game/rules/validation";
 import type { CardInstance } from "@/game/cards/types";

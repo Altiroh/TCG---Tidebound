@@ -6,7 +6,7 @@
  * Rappel du Public, Arlecchino abyssal).
  */
 import { describe, expect, it } from "vitest";
-import { dispatch } from "@/game/engine";
+import { dispatch, offeredTo } from "@/tests/game/arrivalDispatch";
 import { computeEffectiveStats } from "@/game/cards/stats";
 import { previewHandBreakReason } from "@/game/actions/breakObject";
 import { graveyardChoicesForBreak } from "@/game/effects/graveyardChoices";
@@ -34,9 +34,7 @@ function ok<T extends { ok: boolean }>(result: T): asserts result is T & { ok: t
   expect(result.ok).toBe(true);
 }
 function candidates(state: GameState) {
-  const pending = state.pendingReaction;
-  if (!pending) return [];
-  return eligibleCandidatesFor(state, pending.events, pending.awaitingPlayerId, pending.turnNumber, pending.usedCandidateKeys);
+  return pendingCandidates(state);
 }
 
 describe("Cylindre flottant — Contrecoup", () => {
@@ -454,7 +452,7 @@ describe("Théâtre Englouti et Cra-Poiscail — écarts relevés le 17/09/2026"
     const posed = dispatch(state, { type: "playCard", playerId: "p1", instanceId: pulcinella.instanceId });
     ok(posed);
     // La fenêtre s'ouvre pour le joueur : le moteur ne choisit pas la cible à sa place.
-    expect(posed.state.pendingReaction?.awaitingPlayerId).toBe("p1");
+    expect(offeredTo(posed.state)).toBe("p1");
     expect(board(posed.state, "p2").every((u) => u.damageMarked === 0)).toBe(true);
 
     const result = activateReactionFor(posed.state, "pulcinella-gonfle", creature.instanceId);

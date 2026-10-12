@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dispatch } from "@/game/engine";
+import { dispatch } from "@/tests/game/arrivalDispatch";
 import { canActivateAbility } from "@/game/actions/activateAbility";
 import { auraContextOf, computeEffectiveStats } from "@/game/cards/stats";
 import { chromaticColorsOf, emittedSignalsOf, findAssemblage } from "@/game/rules/chromatic";

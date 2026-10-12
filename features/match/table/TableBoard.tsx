@@ -37,7 +37,7 @@ import { AttackImpactLayer } from "@/features/match/AttackImpactLayer";
 import { useCardBackSrcFor } from "@/features/cosmetics/MatchCosmeticsProvider";
 import { CardTile, cardStatusLegend } from "@/features/match/CardTile";
 import { TIDE_STATE_LABELS } from "@/features/match/cardDisplay";
-import { legalTargetsFor, type TableTargeting } from "@/features/match/table/legalTargets";
+import { arrivalTargetsByMode, legalTargetsFor, type TableTargeting } from "@/features/match/table/legalTargets";
 import { sourcePolarity, type TargetPolarity } from "@/features/match/table/targetPolarity";
 import { targetingHint } from "@/features/match/table/tableLabels";
 import type { AttackAnimation } from "@/features/match/useAttackPresentation";
@@ -200,6 +200,9 @@ export interface TableBoardProps {
   onOpenGraveyard: (playerId: PlayerId) => void;
   /** Carte de main en cours de glisser (avertissement de Déraison). */
   onHandDragChange?: (instanceId: string | null) => void;
+  /** Cartes du joueur dont l'effet d'arrivée attend en réserve : elles luisent, et un toucher les envoie à droite. */
+  arrivalReadyIds?: readonly string[];
+  onArrivalTap?: (instanceId: string) => void;
 }
 
 const BADGE_SIZE: Record<BoardPreviewBreakpoint, number> = {
@@ -697,6 +700,11 @@ export function TableBoard(props: TableBoardProps) {
         props.onHandCardClick(sourceId);
         return true;
       }
+      // Carte qui luit d'un effet d'arrivée en réserve : elle vole à droite, « Activer » dessous.
+      if (!targeting && kind === "aim" && props.arrivalReadyIds?.includes(sourceId) && props.onArrivalTap) {
+        props.onArrivalTap(sourceId);
+        return true;
+      }
       // Un ciblage est en cours côté conteneur : une cible LÉGALE touchée lui
       // revient. Au doigt, toute autre carte s'affiche en grand : on la
       // touchait pour la lire, pas pour lancer un geste que le moteur
@@ -761,7 +769,18 @@ export function TableBoard(props: TableBoardProps) {
           ? polarityOf(targeting.sourceInstanceId, targeting.kind)
           : targeting?.kind === "reaction"
             ? polarityOf(targeting.sourceInstanceId, "reaction", targeting.abilityIndex)
-            : "friendly";
+            : targeting?.kind === "arrival"
+              ? polarityOf(targeting.sourceInstanceId, "reaction", targeting.abilityIndexes[0])
+              : "friendly";
+  // Effet d'arrivée à plusieurs modes : chaque cible prend la couleur de SON mode
+  // (bleue pour le bonus sur une alliée, rouge pour le malus sur une ennemie).
+  const arrivalTone = new Map<string, TargetPolarity>();
+  if (targeting?.kind === "arrival") {
+    for (const [index, targets] of arrivalTargetsByMode(state, viewerId, targeting.sourceInstanceId, targeting.abilityIndexes)) {
+      const mode = polarityOf(targeting.sourceInstanceId, "reaction", index);
+      for (const id of targets) if (!arrivalTone.has(id)) arrivalTone.set(id, mode);
+    }
+  }
   const tone: AimTone =
     casting || abilityDrag || (aimSource && !aimAttacks)
       ? activePolarity === "hostile"
@@ -886,12 +905,14 @@ export function TableBoard(props: TableBoardProps) {
           aiming?.sourceId === card.id ? styles.aimSource : "",
           // Ciblage bienfaisant (soin, bonus, Équipement) : bleu ; nuisible : le rouge de l'attaque.
           targetable && !held
-            ? `${styles.targetable} ${(effectTarget && activePolarity === "friendly") || (allocatable && mine) || (pickable && pick?.polarity === "friendly") ? styles.effectTone : ""}`
+            ? `${styles.targetable} ${(effectTarget && (arrivalTone.get(card.id) ?? activePolarity) === "friendly") || (allocatable && mine) || (pickable && pick?.polarity === "friendly") ? styles.effectTone : ""}`
             : "",
           targetable && hover === drop ? styles.targetHover : "",
           targeting?.sourceInstanceId === card.id ? styles.aimSource : "",
           dimmed ? styles.targetDim : "",
           props.reactionSourceIds?.includes(card.id) || activatable || breakable ? "animate-reaction-pulse" : "",
+          // Effet d'arrivée en réserve : la carte luit (or) tant qu'on peut l'activer ce tour.
+          mine && !targeting && props.arrivalReadyIds?.includes(card.id) ? styles.arrivalReady : "",
         ].join(" ")}
       >
         {!mine && !visible ? (
@@ -1327,6 +1348,8 @@ export function TableBoard(props: TableBoardProps) {
           <TableHand
             cards={(discardMode ? viewer.hand.filter((card) => !discardMode.staged.has(card.instanceId)) : viewer.hand).map(toModel)}
             dragging={placing !== null || casting !== null}
+            // Une cible de plateau se désigne (effet d'arrivée, Bris, capacité) : la main s'estompe aussi.
+            dimmed={targeting !== null && targeting.kind !== "playCard" && selectionTargets !== null}
             renderCard={(card) => {
               const instance = byId.get(card.id)?.instance;
               if (!instance) return null;

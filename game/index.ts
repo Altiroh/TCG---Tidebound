@@ -164,6 +164,8 @@ export type { PendingReactionCandidate, TriggerEvent, TriggerType } from "@/game
 export type { PendingReactionState, PendingChoice, HandDiscardChoice, DeckLookChoice, HealAllocationChoice, KeepUnitsChoice, PickUnitsChoice, DieRollChoice, DieSize } from "@/game/state/types";
 export type { ResolveChoiceAction } from "@/game/actions/types";
 export { eligibleCandidatesFor } from "@/game/reactions/reactionWindow";
+export { activatableArrivals } from "@/game/reactions/deferredArrivals";
+export type { ActivatableArrival } from "@/game/reactions/deferredArrivals";
 
 // --- Délai de tour (`game/rules/turnTimer.ts`) : le serveur constate
 // l'heure, le moteur décide de ce qu'elle produit -----------------------

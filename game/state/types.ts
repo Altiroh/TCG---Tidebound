@@ -330,6 +330,16 @@ export interface DestructionProtection {
 /** Plancher absolu d'un coût après réduction (Lot 11, règle générale). */
 export const MIN_DISCOUNTED_COST = 1;
 
+/** Une capacité d'arrivée facultative mise en réserve (`GameState.deferredArrivals`). */
+export interface DeferredArrival {
+  controllerId: PlayerId;
+  sourceInstanceId: string;
+  cardId: string;
+  abilityIndex: number;
+  /** Tour de table de la pose : la réserve ne vaut que pour celui-ci. */
+  turnNumber: number;
+}
+
 export type GamePhase =
   | "waitingForPlayers"
   | "mainPhase"
@@ -390,6 +400,15 @@ export interface GameState {
    * nouvelle action normale ne peut être commencée").
    */
   pendingReaction?: PendingReactionState;
+  /**
+   * EFFETS D'ARRIVÉE EN RÉSERVE (règle du 12/10/2026) : les capacités
+   * facultatives « à son arrivée » d'une carte posée par le joueur ACTIF en
+   * Phase principale n'ouvrent plus de fenêtre de réaction. Elles attendent
+   * ici, et le joueur les active quand il veut pendant les Phases
+   * principales de CE tour (`activateArrival`) — la carte luit sur le
+   * plateau. Perdues à la fin du tour, ou si la carte quitte le jeu.
+   */
+  deferredArrivals?: DeferredArrival[];
 
   /**
    * Déclencheurs de réaction produits pendant que la table était OCCUPÉE —

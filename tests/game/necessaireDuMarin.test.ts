@@ -483,8 +483,17 @@ describe("L'Amiral sans Pavillon : « si l'adversaire contrôle plus d'unités q
     const { lui, cible, state } = amiral(1, 2);
     const pose = dispatch(state, { type: "playCard", playerId: "p1", instanceId: lui.instanceId, targetInstanceId: cible.instanceId });
     ok(pose);
-    expect(enJeu(pose.state, "p2", cible.instanceId)).toBe(false);
-    expect(enJeu(pose.state, "p1", lui.instanceId)).toBe(true);
+    // Les Guetteurs Méfiants répondent d'abord à la pose (ils passent) ; l'effet de l'Amiral, en réserve, s'active ensuite.
+    let apres = pose.state;
+    for (let garde = 0; apres.pendingReaction && garde < 4; garde += 1) {
+      const passe = dispatch(apres, { type: "passReaction", playerId: apres.pendingReaction.awaitingPlayerId });
+      ok(passe);
+      apres = passe.state;
+    }
+    const effet = dispatch(apres, { type: "activateArrival", playerId: "p1", sourceInstanceId: lui.instanceId, abilityIndex: 0, targetInstanceId: cible.instanceId });
+    ok(effet);
+    expect(enJeu(effet.state, "p2", cible.instanceId)).toBe(false);
+    expect(enJeu(effet.state, "p1", lui.instanceId)).toBe(true);
   });
 
   it("ne détruit rien à égalité d'unités", () => {

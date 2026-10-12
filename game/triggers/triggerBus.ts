@@ -1392,6 +1392,14 @@ function collectReactionCandidatesOnBoard(
       }
       const key = `${item.context.sourceInstanceId}:${item.abilityIndex}`;
       if (seen.has(key)) continue;
+      // Effet d'arrivée en réserve : il s'active depuis le plateau (`activateArrival`), pas dans une fenêtre.
+      if (
+        state.deferredArrivals?.some(
+          (entry) => entry.sourceInstanceId === item.context.sourceInstanceId && entry.abilityIndex === item.abilityIndex && entry.turnNumber === turnNumber
+        )
+      ) {
+        continue;
+      }
 
       // Bris SUSPENDU (Fausse Cargaison) : sa fenêtre n'appelle que ce qui
       // l'annule — ce qui réagit au Bris lui-même se propose à sa reprise,

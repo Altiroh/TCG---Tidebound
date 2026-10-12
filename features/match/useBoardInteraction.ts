@@ -1,24 +1,27 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   boardPermanents,
   boardSlotLayout,
   findAssemblage,
   getCardDefinition,
   getShipDefinition,
+  graveyardChoicesForAbility,
   graveyardChoicesForBreak,
   graveyardChoicesForPlay,
   type CardInstance,
   type ChromaticColor,
   type GameState,
+  activatableArrivals,
+  type ActivatableArrival,
   type PendingReactionCandidate,
   type PlayerAction,
   type PlayerId,
   type PlayerState,
 } from "@/game";
 import { needsPlayTarget } from "@/features/match/needsPlayTarget";
-import type { TableTargeting } from "@/features/match/table/legalTargets";
+import { arrivalModeFor, type TableTargeting } from "@/features/match/table/legalTargets";
 
 /**
  * Interactions du plateau, partagées par la partie LOCALE (`MatchBoard`) et
@@ -71,6 +74,8 @@ export type BoardSelection =
   | { kind: "attack"; attackerId: string }
   | { kind: "break"; instanceId: string; needsTarget: boolean; fromHand?: boolean }
   | { kind: "reaction"; sourceInstanceId: string; abilityIndex: number; needsTarget: boolean; triggerSourceInstanceId?: string }
+  /** Effet d'arrivée en réserve activé depuis la carte posée à droite : sa cible se désigne sur le plateau. */
+  | { kind: "arrival"; sourceInstanceId: string; abilityIndexes: number[] }
   /** Canon de Navire armé : le joueur désigne ce qu'il vise (un permanent adverse, ou le Navire adverse). */
   | { kind: "shipShot" }
   /**
@@ -108,6 +113,8 @@ export function tableTargetingFor(selection: BoardSelection | null): TableTarget
     };
   }
   if (selection.kind === "ability") return { kind: "ability", sourceInstanceId: selection.instanceId };
+  // Les cibles de tous ses modes : c'est la cible touchée qui choisit le mode.
+  if (selection.kind === "arrival") return { kind: "arrival", sourceInstanceId: selection.sourceInstanceId, abilityIndexes: selection.abilityIndexes };
   return { kind: selection.kind, sourceInstanceId: selection.instanceId };
 }
 
@@ -152,7 +159,30 @@ export interface BoardInteractionConfig {
 export type GraveyardPickRequest =
   | { kind: "break"; card: CardInstance; fromHand: boolean }
   | { kind: "play"; card: CardInstance; boardSlot?: number }
-  | { kind: "reaction"; candidate: PendingReactionCandidate };
+  | { kind: "reaction"; candidate: PendingReactionCandidate; arrival?: true };
+
+/**
+ * LA CARTE POSÉE À DROITE (`FocusedCard`, retour du 12/10/2026) : ce qu'on
+ * s'apprête à faire d'une carte — activer son effet d'arrivée en réserve,
+ * Briser un Objet — sans fenêtre par-dessus la table.
+ *
+ *   - `choose` : la carte est arrivée, ses boutons attendent ;
+ *   - `targeting` : l'effet demande une cible, le plateau l'éclaire ;
+ *   - `resolving` : l'action est partie, l'effet part de la carte ;
+ *   - `leaving` : elle rentre (à sa place, ou au Cimetière).
+ */
+export type FocusRequest =
+  | { kind: "arrival"; card: CardInstance; options: ActivatableArrival[] }
+  | { kind: "break"; card: CardInstance; source: "hand" | "board" };
+
+export interface FocusState {
+  request: FocusRequest;
+  stage: "choose" | "targeting" | "resolving";
+  leaving: boolean;
+}
+
+/** Temps que la carte reste à droite une fois l'action partie : l'effet s'envole d'elle. */
+const FOCUS_RESOLVE_HOLD_MS = 1100;
 
 export interface BoardInteraction {
   selection: BoardSelection | null;
@@ -205,6 +235,29 @@ export interface BoardInteraction {
   requestAbility: (instanceId: string) => void;
   /** Pastille de capacité glissée jusqu'à une cible : l'activation part sur elle, sans étape de sélection. */
   activateAbilityOn: (instanceId: string, targetInstanceId: string) => void;
+
+  /** La carte posée à droite, s'il y en a une (`FocusedCard`). */
+  focus: FocusState | null;
+  /** Cartes du joueur dont l'effet d'arrivée attend en réserve : elles luisent. */
+  arrivalReadyIds: string[];
+  /** Carte lumineuse touchée : elle vole à droite, avec « Activer » et « Annuler ». */
+  openArrivalFocus: (instanceId: string) => void;
+  /** « Activer » (une option si la carte en a plusieurs — « choisissez : A ou B »). */
+  activateFocusedArrival: (option: ActivatableArrival) => void;
+  /**
+   * « Activer » d'un effet à plusieurs modes qui visent tous une unité : les
+   * cibles de tous les modes s'éclairent, le toucher choisit le mode.
+   * `false` si un mode ne vise rien (il faut alors choisir le mode d'abord).
+   */
+  startFocusedArrival: () => boolean;
+  /** « Briser » de la carte posée à droite. */
+  breakFocused: () => void;
+  /** « Saborder » d'un Objet posé, depuis la carte à droite. */
+  scuttleFocused: () => void;
+  /** « Annuler » : la carte rentre à sa place. */
+  cancelFocus: () => void;
+  /** Fin du vol de retour. */
+  focusDone: () => void;
 }
 
 export function useBoardInteraction({
@@ -226,6 +279,90 @@ export function useBoardInteraction({
   const [detailInstance, setDetailInstance] = useState<CardInstance | null>(null);
   const [showPauseMenu, setShowPauseMenu] = useState(false);
   const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [focus, setFocus] = useState<FocusState | null>(null);
+  const holdTimer = useRef<number | undefined>(undefined);
+  useEffect(() => () => window.clearTimeout(holdTimer.current), []);
+
+  // Effets d'arrivée en réserve que le joueur peut activer maintenant — sur l'état VIVANT.
+  const arrivals = canAct ? activatableArrivals(liveState, actorId) : [];
+  const arrivalReadyIds = Array.from(new Set(arrivals.map(({ entry }) => entry.sourceInstanceId)));
+
+  /** L'action de la carte à droite vient de partir : elle reste le temps que l'effet s'envole d'elle, puis rentre. */
+  function focusResolving() {
+    setFocus((current) => (current ? { ...current, stage: "resolving" } : current));
+    window.clearTimeout(holdTimer.current);
+    holdTimer.current = window.setTimeout(() => setFocus((current) => (current ? { ...current, leaving: true } : current)), FOCUS_RESOLVE_HOLD_MS);
+  }
+
+  function cancelFocus() {
+    if (selection?.kind === "arrival" || selection?.kind === "break") clearSelection();
+    window.clearTimeout(holdTimer.current);
+    setFocus((current) => (current ? { ...current, leaving: true } : current));
+  }
+
+  function focusDone() {
+    setFocus(null);
+  }
+
+  function openArrivalFocus(instanceId: string) {
+    const card = viewer.board.find((c) => c.instanceId === instanceId);
+    const options = arrivals.filter(({ entry }) => entry.sourceInstanceId === instanceId);
+    if (!card || options.length === 0 || focus) return;
+    onGestureStart?.();
+    clearSelection();
+    setFocus({ request: { kind: "arrival", card, options }, stage: "choose", leaving: false });
+  }
+
+  function activateFocusedArrival({ candidate }: ActivatableArrival) {
+    if (!canAct) return;
+    const base = { type: "activateArrival" as const, playerId: actorId, sourceInstanceId: candidate.sourceInstanceId, abilityIndex: candidate.abilityIndex };
+    if (candidate.needsTarget) {
+      // Les cibles s'éclairent sur le plateau ; le reste s'estompe. Un toucher sur l'une, et c'est parti.
+      setSelection({ kind: "arrival", sourceInstanceId: candidate.sourceInstanceId, abilityIndexes: [candidate.abilityIndex] });
+      setFocus((current) => (current ? { ...current, stage: "targeting" } : current));
+      return;
+    }
+    // Plusieurs cartes à repêcher : la question se pose ; une seule, le moteur la prend d'office.
+    if (candidate.needsGraveyardTarget && graveyardChoicesForAbility(liveState, actorId, candidate.cardId, candidate.abilityIndex).length > 1) {
+      setGraveyardPick({ kind: "reaction", candidate, arrival: true });
+      focusResolving();
+      return;
+    }
+    act(base);
+    focusResolving();
+  }
+
+  function startFocusedArrival(): boolean {
+    if (!canAct || focus?.request.kind !== "arrival") return false;
+    const { options } = focus.request;
+    if (options.length === 1) {
+      activateFocusedArrival(options[0]!);
+      return true;
+    }
+    if (!options.every((option) => option.candidate.needsTarget)) return false;
+    setSelection({ kind: "arrival", sourceInstanceId: focus.request.card.instanceId, abilityIndexes: options.map((option) => option.entry.abilityIndex) });
+    setFocus({ ...focus, stage: "targeting" });
+    return true;
+  }
+
+  function breakFocused() {
+    if (focus?.request.kind !== "break") return;
+    const { card, source } = focus.request;
+    const def = getCardDefinition(card.cardId);
+    if ((def.onBreakEffects ?? []).some((effect) => effect.target.kind === "chosenUnit")) {
+      setSelection({ kind: "break", instanceId: card.instanceId, needsTarget: true, fromHand: source === "hand" });
+      setFocus({ ...focus, stage: "targeting" });
+      return;
+    }
+    requestBreak(card, source === "hand");
+    focusResolving();
+  }
+
+  function scuttleFocused() {
+    if (focus?.request.kind !== "break" || focus.request.source !== "board") return;
+    act({ type: "saborder", playerId: actorId, instanceId: focus.request.card.instanceId });
+    focusResolving();
+  }
 
   // Échap : bascule le menu de pause, sauf si une fenêtre est déjà ouverte —
   // Échap y vaut « annuler », jamais « quitter la partie ».
@@ -319,12 +456,25 @@ export function useBoardInteraction({
       };
     }
     if (!canAct) return null;
+    if (selection?.kind === "arrival") {
+      // Plusieurs modes : la cible touchée dit lequel (une alliée pour le bonus, une ennemie pour le malus).
+      const abilityIndex = arrivalModeFor(liveState, actorId, selection.sourceInstanceId, selection.abilityIndexes, instanceId);
+      if (abilityIndex === undefined) return null;
+      act({ type: "activateArrival", playerId: actorId, sourceInstanceId: selection.sourceInstanceId, abilityIndex, targetInstanceId: instanceId });
+      clearSelection();
+      focusResolving();
+      return null;
+    }
     if (selection?.kind === "playCard" && selection.needsTarget) {
       act({ type: "playCard", playerId: actorId, instanceId: selection.instanceId, targetInstanceId: instanceId });
       return null;
     }
     if (selection?.kind === "break" && selection.needsTarget) {
       act({ type: "breakObject", playerId: actorId, instanceId: selection.instanceId, targetInstanceId: instanceId, fromHand: selection.fromHand });
+      if (focus?.request.kind === "break") {
+        clearSelection();
+        focusResolving();
+      }
       return null;
     }
     if (selection?.kind === "ability") {
@@ -416,13 +566,26 @@ export function useBoardInteraction({
     const card = zone.find((c) => c.instanceId === instanceId);
     if (!card) return;
     if (getCardDefinition(card.cardId).type === "objet") {
-      setBreakPrompt({ card, source: from });
+      // L'Objet vole à droite, « Briser » ou « Annuler » dessous — plus de fenêtre par-dessus la table.
+      if (focus) return;
+      onGestureStart?.();
+      clearSelection();
+      setFocus({ request: { kind: "break", card, source: from }, stage: "choose", leaving: false });
       return;
     }
     if (from === "board") act({ type: "saborder", playerId: actorId, instanceId });
   }
 
   return {
+    focus,
+    arrivalReadyIds,
+    openArrivalFocus,
+    activateFocusedArrival,
+    startFocusedArrival,
+    breakFocused,
+    scuttleFocused,
+    cancelFocus,
+    focusDone,
     selection,
     setSelection,
     requestAbility,

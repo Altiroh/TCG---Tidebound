@@ -14,6 +14,8 @@ import { saborder } from "@/game/actions/saborder";
 import { timeout, withDeadlineMet } from "@/game/actions/timeout";
 import type { ActionResult, PlayerAction } from "@/game/actions/types";
 import { deriveReactionTriggerEvents, ouvrirFenetrePour } from "@/game/reactions/reactionWindow";
+import { deferArrivals, pruneDeferredArrivals } from "@/game/reactions/deferredArrivals";
+import { activateArrival } from "@/game/actions/activateArrival";
 import { resolveOceanJudgment } from "@/game/rules/oceanJudgment";
 import { refreshTurnTimer } from "@/game/rules/turnTimer";
 import { assertValidDefender, hasEffectiveKeyword } from "@/game/rules/validation";
@@ -38,6 +40,12 @@ import { findCardInstance, type GameState } from "@/game/state/types";
 
 /** Actions réservées à une fenêtre de réaction ouverte — leurs propres résultats ne rouvrent pas de fenêtre, elles déterminent déjà elles-mêmes le prochain état de `pendingReaction` (seul ce qui les SUIT dans `dispatch` se propose). */
 const REACTION_ACTION_TYPES = new Set<PlayerAction["type"]>(["activateReaction", "passReaction"]);
+/**
+ * Actions dont les effets ont DÉJÀ été versés à une fenêtre (celle qu'elles
+ * ont continuée ou ouverte) : `dispatch` ne les repropose pas. L'activation
+ * d'un effet d'arrivée en réserve en est, sans être admise pendant une fenêtre.
+ */
+const CHAINED_ACTION_TYPES = new Set<PlayerAction["type"]>([...REACTION_ACTION_TYPES, "activateArrival"]);
 
 /**
  * Point d'entrée unique du moteur : reçoit une action de joueur, la valide
@@ -345,8 +353,11 @@ export function dispatch(state: GameState, action: PlayerAction): ActionResult {
   // survie vient seulement d'être jugée.
   const aDeriver: GameEvent[] = [
     ...(survieJugee ? coupsReportes : []),
-    ...(REACTION_ACTION_TYPES.has(action.type) ? finalEvents.slice(evenementsDeLAction) : finalEvents),
+    ...(CHAINED_ACTION_TYPES.has(action.type) ? finalEvents.slice(evenementsDeLAction) : finalEvents),
   ];
+
+  // Effets d'arrivée du joueur actif : en réserve, pas en fenêtre (`deferredArrivals.ts`).
+  finalState = pruneDeferredArrivals(deferArrivals(finalState, aDeriver));
   const declencheurs = sansDoublons([
     ...(finalState.reactionsEnAttente ?? []),
     ...deriveReactionTriggerEvents(finalState, aDeriver),
@@ -467,6 +478,8 @@ function applyAction(state: GameState, action: PlayerAction): ActionResult {
       return advancePhase(state, action);
     case "activateReaction":
       return activateReaction(state, action);
+    case "activateArrival":
+      return activateArrival(state, action);
     case "passReaction":
       return passReaction(state, action);
     case "activateAbility":

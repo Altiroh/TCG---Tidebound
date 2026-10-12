@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import styles from "@/features/match/table/Table.module.css";
 import type { Gesture } from "@/features/match/table/useTableGestures";
 
@@ -69,8 +69,57 @@ function aimArrow(origin: { x: number; y: number }, pointer: { x: number; y: num
  * Suit le pointeur avec son PROPRE état : le plateau ne se re-rend pas à
  * chaque mouvement de souris, seulement quand la cible survolée change.
  */
+/**
+ * LA CARTE QUI FLOTTE (retour du 12/10/2026) : la carte glissée ne colle plus
+ * au pointeur comme un tampon. Elle le suit avec un soupçon de retard, et
+ * BASCULE selon sa vitesse — penchée dans le sens du mouvement, inclinée en
+ * profondeur, puis elle se remet d'aplomb quand le geste ralentit. Calculé à
+ * chaque image et écrit directement sur l'élément : aucun rendu React par
+ * mouvement.
+ */
+function useFloatingGhost(active: boolean, start: { x: number; y: number } | null) {
+  const anchor = useRef<HTMLDivElement>(null);
+  const tilt = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!active || !start) return undefined;
+    const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    let target = { ...start };
+    let pos = { ...start };
+    let last = { ...start };
+    let vel = { x: 0, y: 0 };
+    let angle = { z: 0, x: 0, y: 0 };
+    let frame = 0;
+    const onMove = (e: PointerEvent) => {
+      target = { x: e.clientX, y: e.clientY };
+    };
+    const step = () => {
+      // Suivi amorti : la carte rattrape le pointeur, elle ne s'y téléporte pas.
+      pos = reduce ? target : { x: pos.x + (target.x - pos.x) * 0.38, y: pos.y + (target.y - pos.y) * 0.38 };
+      const instant = { x: pos.x - last.x, y: pos.y - last.y };
+      last = pos;
+      vel = { x: vel.x + (instant.x - vel.x) * 0.25, y: vel.y + (instant.y - vel.y) * 0.25 };
+      const clamp = (v: number, m: number) => Math.max(-m, Math.min(m, v));
+      const want = reduce ? { z: 0, x: 0, y: 0 } : { z: clamp(vel.x * 1.1, 16), y: clamp(vel.x * 1.6, 24), x: clamp(-vel.y * 1.6, 24) };
+      angle = { z: angle.z + (want.z - angle.z) * 0.18, x: angle.x + (want.x - angle.x) * 0.18, y: angle.y + (want.y - angle.y) * 0.18 };
+      if (anchor.current) anchor.current.style.transform = `translate3d(${pos.x}px, ${pos.y}px, 0)`;
+      if (tilt.current) tilt.current.style.transform = `perspective(700px) rotateX(${angle.x.toFixed(2)}deg) rotateY(${angle.y.toFixed(2)}deg) rotateZ(${angle.z.toFixed(2)}deg)`;
+      frame = window.requestAnimationFrame(step);
+    };
+    window.addEventListener("pointermove", onMove);
+    frame = window.requestAnimationFrame(step);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.cancelAnimationFrame(frame);
+    };
+    // `start` est lu une fois, à la prise de la carte.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active]);
+  return { anchor, tilt };
+}
+
 export function DragLayer({ gesture, onTarget, tone, renderGhost }: DragLayerProps) {
   const [pointer, setPointer] = useState<{ x: number; y: number } | null>(null);
+  const floating = useFloatingGhost(gesture?.kind === "place", gesture?.pointer ?? null);
 
   useEffect(() => {
     if (!gesture) {
@@ -104,14 +153,17 @@ export function DragLayer({ gesture, onTarget, tone, renderGhost }: DragLayerPro
       // Le pointeur déplace l'ANCRE par `transform` (composité, sans mise en
       // page) ; la carte et son ombre, dessous, ne changent pas d'une image
       // à l'autre — le navigateur n'a plus à repeindre son flou.
-      <div aria-hidden className={styles.dragGhostAnchor} style={{ transform: `translate3d(${pointer.x}px, ${pointer.y}px, 0)` }}>
+      <div ref={floating.anchor} aria-hidden className={styles.dragGhostAnchor} style={{ transform: `translate3d(${gesture.pointer.x}px, ${gesture.pointer.y}px, 0)` }}>
         <div
           // Au doigt, la carte flotte AU-DESSUS du pouce, agrandie : centrée
           // dessous, le pouce cachait à la fois la carte et l'emplacement visé.
           className={gesture.touch ? `${styles.dragGhost} ${styles.dragGhostTouch}` : styles.dragGhost}
           style={{ width: gesture.origin.width }}
         >
-          {renderGhost(gesture.sourceId)}
+          {/* La bascule, à part de la position : la carte penche dans le sens du geste. */}
+          <div ref={floating.tilt} className={styles.dragTilt}>
+            {renderGhost(gesture.sourceId)}
+          </div>
         </div>
       </div>
     );

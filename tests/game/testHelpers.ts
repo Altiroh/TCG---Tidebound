@@ -1,3 +1,4 @@
+import { activatableArrivals } from "@/game/reactions/deferredArrivals";
 import type { CardInstance } from "@/game/cards/types";
 import { dispatch } from "@/game/engine";
 import { eligibleCandidatesFor } from "@/game/reactions/reactionWindow";
@@ -110,7 +111,8 @@ export function testGameState(overrides: Partial<GameState> = {}): GameState {
  */
 export function pendingCandidates(state: GameState) {
   const pending = state.pendingReaction;
-  if (!pending) return [];
+  // Sans fenêtre : les effets d'arrivée en réserve que le joueur actif peut activer.
+  if (!pending) return activatableArrivals(state, state.activePlayerId).map(({ candidate }) => candidate);
   return eligibleCandidatesFor(state, pending.events, pending.awaitingPlayerId, pending.turnNumber, pending.usedCandidateKeys);
 }
 
@@ -122,6 +124,17 @@ export function pendingCandidates(state: GameState) {
  */
 export function activateReactionFor(state: GameState, cardId: string, targetInstanceId?: string) {
   const pending = state.pendingReaction;
+  // Effet d'arrivée EN RÉSERVE (12/10/2026) : la carte luit, le joueur l'active depuis le plateau.
+  const enReserve = !pending ? activatableArrivals(state, state.activePlayerId).find(({ entry }) => entry.cardId === cardId) : undefined;
+  if (enReserve) {
+    return dispatch(state, {
+      type: "activateArrival",
+      playerId: enReserve.entry.controllerId,
+      sourceInstanceId: enReserve.entry.sourceInstanceId,
+      abilityIndex: enReserve.entry.abilityIndex,
+      ...(targetInstanceId ? { targetInstanceId } : {}),
+    });
+  }
   if (!pending) throw new Error(`Aucune fenêtre de réaction ouverte pour ${cardId}.`);
   const candidate = pendingCandidates(state).find((c) => c.cardId === cardId);
   if (!candidate) throw new Error(`${cardId} n'est pas proposée dans la fenêtre de réaction.`);

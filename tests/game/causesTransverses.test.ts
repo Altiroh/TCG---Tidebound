@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dispatch } from "@/game/engine";
+import { dispatch } from "@/tests/game/arrivalDispatch";
 import type { GameState, PlayerState } from "@/game/state/types";
 import { activateReactionFor, instance, pendingCandidates, testGameState, testPlayer } from "./testHelpers";
 

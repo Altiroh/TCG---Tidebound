@@ -6,6 +6,14 @@ import type { EffectDefinition } from "@/game/effects/types";
  * « Les cartes qui ont des effets à l'arrivée ne doivent s'appliquer qu'à
  * l'arrivée, selon l'envie du joueur, et non s'imposer. »
  *
+ * PRÉCISÉE le même jour : « si l'effet est positif, comme pour les dés, on
+ * ne demande pas — il faut que ça nécessite un CHOIX de l'utilisateur ».
+ * Seul un effet d'arrivée qui demande une DÉCISION devient facultatif : une
+ * unité à désigner (`chosenUnit`), une carte du Cimetière à choisir. Un
+ * effet sans décision (piocher, gagner de la Raison, un bonus, un jet de dé)
+ * s'applique à la pose, sans rien demander. Les capacités que le texte rend
+ * déjà facultatives (« vous pouvez », « choisissez : A ou B ») le restent.
+ *
  * Un permanent (unité, Structure, Objet, Équipement) qui arrive en jeu ne
  * résout plus son effet d'arrivée d'office : il se propose dans la fenêtre
  * de réaction habituelle (Appliquer / Passer), comme toute capacité
@@ -46,6 +54,15 @@ export function isArrivalCost(effect: EffectDefinition): boolean {
   }
 }
 
+/**
+ * Un effet qui demande au joueur de DÉCIDER : une unité à désigner, une
+ * carte du Cimetière à choisir (même liste que `graveyardEffectIn`).
+ */
+export function asksDecision(effect: EffectDefinition): boolean {
+  if (effect.target.kind === "chosenUnit") return true;
+  return effect.type === "moveGraveyardCardToHand" || (effect.type === "summon" && effect.cardIdFrom === "chosenGraveyardCard");
+}
+
 /** Ce qui ne se refuse jamais, même mêlé à un bonus. */
 function isImposed(effect: EffectDefinition): boolean {
   return effect.type === "attachEquipment" || effect.type === "chooseChromaticColor";
@@ -70,7 +87,7 @@ export function withOptionalArrival(def: CardDefinition): CardDefinition {
   const kept = onPlay.filter(isImposed);
   const arrival = onPlay.filter((effect) => !isImposed(effect));
   let extra: TriggeredAbility | null = null;
-  if (arrival.length > 0 && !arrival.every(isArrivalCost)) {
+  if (arrival.length > 0 && !arrival.every(isArrivalCost) && arrival.some(asksDecision)) {
     extra = { trigger: "onEnterPlay", mode: "optional", arrivalEffect: true, description: arrivalSentence(def), effects: arrival };
     changed = true;
   }
@@ -78,7 +95,7 @@ export function withOptionalArrival(def: CardDefinition): CardDefinition {
   // 2. Les capacités d'arrivée qui se déclenchaient d'office (`onEnterPlay` sur elle-même).
   const abilities = (def.abilities ?? []).map((ability): TriggeredAbility => {
     const own = ability.trigger === "onEnterPlay" && !ability.triggeredBy && (ability.mode ?? "auto") === "auto";
-    if (!own || ability.effects.some(isImposed) || ability.effects.every(isArrivalCost)) return ability;
+    if (!own || ability.effects.some(isImposed) || ability.effects.every(isArrivalCost) || !ability.effects.some(asksDecision)) return ability;
     changed = true;
     return { ...ability, mode: "optional", arrivalEffect: true };
   });

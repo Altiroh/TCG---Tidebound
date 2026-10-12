@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 // Effets d'arrivée facultatifs (12/10/2026) : jouer une carte accepte son effet d'arrivée, comme « Appliquer ».
-import { dispatch } from "@/tests/game/arrivalDispatch";
+import { dispatch, offeredTo } from "@/tests/game/arrivalDispatch";
 import { auraContextOf, computeEffectiveStats } from "@/game/cards/stats";
 import { hasEffectiveKeyword } from "@/game/rules/validation";
 import { toPlayerView } from "@/game/state/playerView";
@@ -101,7 +101,7 @@ describe("combat et Garde", () => {
     });
     ok(a);
     // L'attaque est suspendue, et c'est l'ATTAQUANT qu'on attend.
-    expect(a.state.pendingReaction?.awaitingPlayerId).toBe("p1");
+    expect(offeredTo(a.state)).toBe("p1");
     const r = activateReactionFor(a.state, "ouvrez-la-ligne");
     ok(r);
     // Reprise : 3 + 2 sur le Rempart, l'Objet est parti, le bonus est dépensé.
@@ -133,7 +133,7 @@ describe("combat et Garde", () => {
     const state = table({ board: [destrier, instance("matelot-fele", "p1"), objet] }, { board: [rempart] }, { phase: "combatPhase", activePlayerId: "p2" });
     const a = dispatch(state, { type: "attack", playerId: "p2", attackerInstanceId: rempart.instanceId, defenderInstanceId: destrier.instanceId });
     ok(a);
-    expect(a.state.pendingReaction?.awaitingPlayerId).toBe("p1");
+    expect(offeredTo(a.state)).toBe("p1");
     const r = activateReactionFor(a.state, "ouvrez-la-ligne");
     ok(r);
     expect(unite(r.state, rempart.instanceId)!.damageMarked).toBe(5);

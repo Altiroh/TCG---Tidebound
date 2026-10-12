@@ -8,6 +8,8 @@ interface PreviewHandProps {
   renderCard: (card: TableCardModel) => ReactNode;
   /** Une carte est en cours de glisser : la levée au survol se coupe. */
   dragging?: boolean;
+  /** Une cible se désigne sur le plateau : la main s'estompe avec tout ce qui n'est pas visé. */
+  dimmed?: boolean;
 }
 
 /**
@@ -21,11 +23,11 @@ interface PreviewHandProps {
  * variables posées par carte : `--fan-offset` (écart signé au centre) et
  * `--fan-dist` (sa valeur absolue — `abs()` CSS n'est pas encore partout).
  */
-export function TableHand({ cards, renderCard, dragging = false }: PreviewHandProps) {
+export function TableHand({ cards, renderCard, dragging = false, dimmed = false }: PreviewHandProps) {
   const center = (cards.length - 1) / 2;
 
   return (
-    <div className={`${styles.hand} ${dragging ? styles.handDragging : ""}`} data-zone="PlayerHand">
+    <div className={`${styles.hand} ${dragging ? styles.handDragging : ""} ${dimmed ? styles.handDim : ""}`} data-zone="PlayerHand">
       <div className={styles.handRow}>
         {cards.map((card, index) => (
           <div

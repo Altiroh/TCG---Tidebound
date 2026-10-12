@@ -4729,3 +4729,43 @@
   filter: drop-shadow(0 0.8cqw 1cqw rgba(0, 0, 0, 0.75));
   pointer-events: none;
 }
+
+/*
+ * EFFET D'ARRIVÉE EN RÉSERVE (12/10/2026) : la carte vient d'arriver, son
+ * effet attend que le joueur la touche. Une lueur d'or qui respire, distincte
+ * du cyan des cibles : « cette carte a quelque chose à faire ».
+ */
+.arrivalReady {
+  animation: arrivalBreath 1.8s ease-in-out infinite;
+  cursor: var(--tb-cursor-pointer);
+}
+
+@keyframes arrivalBreath {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 4px rgba(250, 204, 21, 0.55)) drop-shadow(0 0 10px rgba(245, 158, 11, 0.25));
+  }
+  50% {
+    filter: drop-shadow(0 0 9px rgba(250, 204, 21, 0.9)) drop-shadow(0 0 22px rgba(245, 158, 11, 0.5));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arrivalReady {
+    animation: none;
+    filter: drop-shadow(0 0 7px rgba(250, 204, 21, 0.8));
+  }
+}
+
+/* Désignation de cible en cours : la main s'efface avec le reste de ce qui n'est pas visé. */
+.handDim {
+  filter: brightness(0.42) saturate(0.6);
+  transition: filter 180ms ease-out;
+}
+
+/* La bascule de la carte glissée (`DragLayer`, `useFloatingGhost`) : pivot au centre, en 3D. */
+.dragTilt {
+  transform-origin: 50% 40%;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
