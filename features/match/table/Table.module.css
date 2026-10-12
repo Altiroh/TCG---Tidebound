@@ -4243,6 +4243,11 @@
     content: none;
   }
 
+  /* Un jeton est ovale : son halo de cible aussi, pas le rectangle d'une carte. */
+  .tableCard[data-token].targetable::after {
+    border-radius: 50%;
+  }
+
   .cardZoom {
     background: rgba(2, 6, 23, 0.86);
     backdrop-filter: none;

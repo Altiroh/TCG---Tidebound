@@ -7,6 +7,7 @@ import { AWAKE_LIFT_MS, GLOW_LAND_MS, ORB_CHARGE_MS, SHOT_FLIGHT_MS, type Effect
 import { EffectFxLayer } from "@/features/match/EffectFxLayer";
 import { applyLabEffect, applyLabPatch, LAB_EFFECTS, type LabEffect } from "@/features/match/labEffects";
 import { PhaseBanner } from "@/features/match/PhaseBanner";
+import { silhouetteOf } from "@/features/match/silhouette";
 import { ATTACK_TOTAL_MS, type AttackAnimation } from "@/features/match/useAttackPresentation";
 import {
   activateQualifications,
@@ -102,13 +103,21 @@ function label(target: FxTarget | null): string {
   return target.kind === "ship" ? `Navire (${target.id})` : name;
 }
 
-/** Le plateau marque la sélection d'un liseré (source dorée, cibles bleues). */
+/**
+ * Le plateau marque la sélection d'un liseré (source dorée, cibles bleues).
+ * Une carte : un contour arrondi. Un jeton (ovale) ou un Navire (arche) : un
+ * liseré qui suit leur forme (`drop-shadow` épouse leur image), jamais un
+ * rectangle autour.
+ */
 function outline(target: FxTarget, color: string | null) {
   const el = findElement(target.kind, target.id);
-  if (el) el.style.outline = color ? `3px solid ${color}` : "";
-  if (el) el.style.outlineOffset = color ? "3px" : "";
-  // Un jeton est ovale : son liseré de sélection aussi.
-  if (el && el.dataset.token !== undefined) el.style.borderRadius = color ? "50%" : "";
+  if (!el) return;
+  if (silhouetteOf(el) === "card") {
+    el.style.outline = color ? `3px solid ${color}` : "";
+    el.style.outlineOffset = color ? "3px" : "";
+    return;
+  }
+  el.style.filter = color ? `drop-shadow(0 0 1.5px ${color}) drop-shadow(0 0 1.5px ${color}) drop-shadow(0 0 6px ${color})` : "";
 }
 
 /**

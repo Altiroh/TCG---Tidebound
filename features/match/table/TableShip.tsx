@@ -333,18 +333,20 @@ export function TableShip({ name, ownerId, illustration, hull, maxHull, reason, 
   return (
     <div
       className={styles.ship}
+      // Repère des effets : ils prennent la forme de ce cadre (`silhouette.ts`), pas celle de sa cellule.
+      data-ship-frame=""
       style={{ "--frame-aspect": frame.aspect, "--plate-top": frame.plateTop } as CSSProperties}
       role="img"
       aria-label={`${name} — Ancrage ${hull}/${maxHull}, Raison ${reason}/${maxReason}${armor > 0 ? `, Armure ${armor}` : ""}`}
     >
-      <div className={styles.shipArt} style={{ ...frame.zone, clipPath: frame.clip }}>
+      <div className={styles.shipArt} data-ship-art="" style={{ ...frame.zone, clipPath: frame.clip }}>
         {illustration && (
           // eslint-disable-next-line @next/next/no-img-element -- asset local, taille pilotée par la grille
           <img src={shipIllustrationUrl(illustration)} alt="" draggable={false} className={styles.fill} />
         )}
       </div>
       {/* eslint-disable-next-line @next/next/no-img-element -- cadre décoratif */}
-      <img src={frame.src} alt="" aria-hidden draggable={false} className={styles.shipFrame} />
+      <img src={frame.src} alt="" aria-hidden draggable={false} className={styles.shipFrame} data-ship-frame-img="" />
       {ability && <ShipAbilityPanel {...ability} />}
       <div className={styles.shipGauges}>
         <ShipGauge kind="anchor" value={hull} max={maxHull} />

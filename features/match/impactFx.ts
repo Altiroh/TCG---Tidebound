@@ -55,7 +55,7 @@ export interface DustPlan {
   rect: DustRect;
   /** D'où vient le coup (centre de l'attaquant) — le bord frappé chasse un peu plus de poussière. */
   from?: Point;
-  /** Un jeton est ovale : la poussière s'échappe de son ovale, pas d'un rectangle (`silhouette.ts`). */
+  /** Un jeton est ovale, un Navire en arche : la poussière s'échappe de leur forme, pas d'un rectangle (`silhouette.ts`). */
   shape?: Silhouette;
 }
 
@@ -144,7 +144,12 @@ export function createDustPainter(plan: DustPlan): (ctx: CanvasRenderingContext2
   const outside = new Path2D();
   outside.rect(rect.left - 400, rect.top - 400, rect.width + 800, rect.height + 800);
   if (oval) outside.ellipse(rect.left + rect.width / 2, rect.top + rect.height / 2, rect.width / 2 - inset, rect.height / 2 - inset, 0, 0, Math.PI * 2);
-  else outside.rect(rect.left + inset, rect.top + inset, rect.width - inset * 2, rect.height - inset * 2);
+  else if (plan.shape === "ship" && typeof outside.roundRect === "function") {
+    // Un Navire : une arche (haut en plein cintre) posée sur sa plaque — la poussière n'entre pas sous l'arche.
+    const w = rect.width - inset * 2;
+    const arch = w * 0.42;
+    outside.roundRect(rect.left + inset, rect.top + inset, w, rect.height - inset * 2, [arch, arch, 6 * scale, 6 * scale]);
+  } else outside.rect(rect.left + inset, rect.top + inset, rect.width - inset * 2, rect.height - inset * 2);
 
   return (ctx, elapsed) => {
     ctx.globalCompositeOperation = "source-over";

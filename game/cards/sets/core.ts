@@ -3920,17 +3920,15 @@ export const CORE_SET: CardDefinition[] = [
     cost: 1,
     health: 1,
     equipTargetSubtype: "mort-vivant",
-    text: "Équipez une unité Mort-vivant. Quand l'unité équipée est détruite, piochez 1 carte puis défaussez 1 carte.",
+    // 12/10/2026 (décision du propriétaire) : il fait seulement piocher — la défausse est retirée.
+    text: "Équipez une unité Mort-vivant. Quand l'unité équipée est détruite, piochez 1 carte.",
     onPlayEffects: [{ type: "attachEquipment", target: { kind: "chosenUnit" } }],
     abilities: [
       {
         trigger: "onDeath",
         triggeredBy: { equippedUnit: true, destroyedBy: ["combat", "effect", "tide"] },
-        description: "Le porteur meurt : piochez 1 carte puis défaussez 1 carte.",
-        effects: [
-          { type: "draw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
-          { type: "discard", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
-        ],
+        description: "Le porteur meurt : piochez 1 carte.",
+        effects: [{ type: "draw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } }],
       },
     ],
   },

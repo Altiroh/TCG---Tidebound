@@ -422,7 +422,7 @@ describe("morts d'unités Un Dead : Tout le monde à table, Doudou", () => {
     expect(p(state, "p1").deck).toHaveLength(3);
   });
 
-  it("Doudou : quand l'unité équipée est détruite, piochez 1 carte puis défaussez 1 carte", () => {
+  it("Doudou : quand l'unité équipée est détruite, piochez 1 carte — sans défausse (12/10/2026)", () => {
     const porteur = instance("ptit-bout", "p1");
     const doudou = instance("doudou", "p1", { attachedToInstanceId: porteur.instanceId });
     let state = testGameState({
@@ -431,8 +431,6 @@ describe("morts d'unités Un Dead : Tout le monde à table, Doudou", () => {
     });
     state = ok(dispatch(detruire(state, [porteur.instanceId]), { type: "advancePhase", playerId: "p1" }));
     expect(p(state, "p1").hand).toHaveLength(2);
-    expect(state.pendingChoice?.kind).toBe("handDiscard");
-    state = ok(answerHandDiscard(state));
-    expect(p(state, "p1").hand).toHaveLength(1);
+    expect(state.pendingChoice).toBeUndefined();
   });
 });

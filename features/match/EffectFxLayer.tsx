@@ -3,7 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { centerOf, findElement, FloatingDamage, ImpactDust, ImpactFlash, shake, SicknessBubbles, tremble, type Point } from "@/features/match/AttackImpactLayer";
 import { FxCanvas } from "@/features/match/FxCanvas";
-import { silhouetteOf, type Silhouette } from "@/features/match/silhouette";
+import { silhouetteMask, silhouetteOf, type Silhouette } from "@/features/match/silhouette";
 import { awakenCard, breakObject } from "@/features/match/cardFx";
 import { keywordLabel, THICK_TEXT_OUTLINE } from "@/features/match/cardDisplay";
 import {
@@ -223,9 +223,10 @@ function ShotImpact({ geometry }: { geometry: ShotGeometry }) {
 
 const SPARKS = 9;
 
-function HealVeil({ box, amount, shape = "card" }: { box: Box; amount: number; shape?: Silhouette }) {
+function HealVeil({ box, amount, shape = "card", mask = null }: { box: Box; amount: number; shape?: Silhouette; mask?: Record<string, string> | null }) {
   // Un jeton est ovale : le rideau de lumière épouse son ovale, pas le rectangle d'une carte.
-  const round = shape === "oval" ? "50%" : "10px";
+  // Un Navire : le rideau est découpé à la forme de son cadre (`mask`), arche comprise.
+  const round = shape === "oval" ? "50%" : shape === "ship" ? "0px" : "10px";
   const veil = useRef<HTMLDivElement>(null);
   const sparks = useRef<HTMLDivElement>(null);
   const label = useRef<HTMLSpanElement>(null);
@@ -284,8 +285,9 @@ function HealVeil({ box, amount, shape = "card" }: { box: Box; amount: number; s
         ref={veil}
         style={{
           position: "absolute",
-          inset: -4,
-          borderRadius: shape === "oval" ? "50%" : 12,
+          inset: mask ? 0 : -4,
+          borderRadius: shape === "oval" ? "50%" : mask ? 0 : 12,
+          ...(mask ?? {}),
           opacity: 0,
           background:
             "linear-gradient(180deg, rgba(236,253,245,0.85) 0%, rgba(167,243,208,0.55) 38%, rgba(110,231,183,0.35) 70%, rgba(52,211,153,0.15) 100%)",
@@ -584,7 +586,7 @@ interface Launched {
   /* `kind` : la famille de la comète — `attack` pour un sort, `malus` (pourpre) pour l'orbe de la Marée. */
   /** Comètes sans impact de dégâts : soin, renfort, malus — l'effet se pose à leur arrivée. */
   comets: Array<CometFlight & { key: string }>;
-  heals: Array<{ key: string; box: Box; amount: number; at: Landing; shape: Silhouette }>;
+  heals: Array<{ key: string; box: Box; amount: number; at: Landing; shape: Silhouette; mask: Record<string, string> | null }>;
   chips: Array<Chip & { at: Landing }>;
 }
 
@@ -704,7 +706,7 @@ function Volley({ volley }: { volley: EffectVolley }) {
             comets.push({ key: `h${index}`, kind: "heal", from: start.point, to: centerOf(el.getBoundingClientRect()), size: Math.min(box.height, 220), forward: start.forward });
           }
           const at: Landing = heal.source?.glow ? "glow" : start ? "landed" : "now";
-          return [{ key: `${heal.to.kind}-${heal.to.id}-${index}`, box, amount: heal.amount, at, shape: silhouetteOf(el) }];
+          return [{ key: `${heal.to.kind}-${heal.to.id}-${index}`, box, amount: heal.amount, at, shape: silhouetteOf(el), mask: silhouetteMask(el) }];
         });
         const chips = volley.buffs.flatMap((buff, index) => {
           const kind: SpellKind = buff.loss ? "malus" : "heal";
@@ -788,7 +790,7 @@ function Volley({ volley }: { volley: EffectVolley }) {
         (geometry.shot.look === "glow" ? glowed : landed) ? <ShotImpact key={`i${index}`} geometry={geometry} /> : null
       )}
       {launched.heals.map((heal) =>
-        heal.at === "now" || (heal.at === "glow" ? glowed : landed) ? <HealVeil key={heal.key} box={heal.box} amount={heal.amount} shape={heal.shape} /> : null
+        heal.at === "now" || (heal.at === "glow" ? glowed : landed) ? <HealVeil key={heal.key} box={heal.box} amount={heal.amount} shape={heal.shape} mask={heal.mask} /> : null
       )}
       {launched.chips.map((chip) => (chip.at === "now" || (chip.at === "glow" ? glowed : landed) ? <BuffChip key={chip.key} chip={chip} /> : null))}
     </>
