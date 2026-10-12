@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { centerOf, findElement, FloatingDamage, ImpactDust, ImpactFlash, shake, tremble, type Point } from "@/features/match/AttackImpactLayer";
+import { centerOf, findElement, FloatingDamage, ImpactDust, ImpactFlash, shake, SicknessBubbles, tremble, type Point } from "@/features/match/AttackImpactLayer";
 import { FxCanvas } from "@/features/match/FxCanvas";
 import { awakenCard } from "@/features/match/cardFx";
 import { keywordLabel, THICK_TEXT_OUTLINE } from "@/features/match/cardDisplay";
@@ -572,6 +572,7 @@ interface Launched {
   orbs: Orb[];
   /** Comètes d'attaque (avec leur impact) et boulets de canon. */
   shots: Array<ShotGeometry & { kind: SpellKind; start: Point; forward: number }>;
+  /* `kind` : la famille de la comète — `attack` pour un sort, `malus` (pourpre) pour l'orbe de la Marée. */
   /** Comètes sans impact de dégâts : soin, renfort, malus — l'effet se pose à leur arrivée. */
   comets: Array<CometFlight & { key: string }>;
   heals: Array<{ key: string; box: Box; amount: number; sourced: boolean }>;
@@ -622,6 +623,23 @@ function Volley({ volley }: { volley: EffectVolley }) {
           if (shot.look === "magic") {
             const orb = orbFor(shot, "attack");
             if (orb) shots.push({ shot, kind: "attack", from: orb.point, start: orb.point, to: centerOf(toRect), size, forward: orb.forward });
+          } else if (shot.look === "tide") {
+            // La Marée frappe : une orbe pourpre se forme sur sa piste, et ses comètes partent vers chaque cible.
+            const track = document.querySelector<HTMLElement>("[data-tide-track]");
+            if (!track) continue;
+            const trackRect = track.getBoundingClientRect();
+            let orb = orbs.get("tide");
+            if (!orb) {
+              orb = { key: "tide", kind: "malus", point: centerOf(trackRect), size: Math.min(trackRect.height * 1.4, 160), forward: 0 };
+              orbs.set("tide", orb);
+            }
+            const to = centerOf(toRect);
+            // Toujours « devant » l'orbe : l'arc simple, vers le haut ou vers le bas de la table.
+            shots.push({ shot, kind: "malus", from: orb.point, start: orb.point, to, size, forward: Math.sign(to.y - orb.point.y) || 1 });
+          } else if (shot.look === "sickness") {
+            // La maladie : pas de projectile, des bulles qui éclatent sur l'unité elle-même.
+            const at = centerOf(toRect);
+            shots.push({ shot, kind: "malus", from: at, start: at, to: at, size, forward: 0, rect: toRect });
           } else {
             const fromEl = casterEl(shot);
             if (fromEl) {
@@ -699,7 +717,10 @@ function Volley({ volley }: { volley: EffectVolley }) {
         // Le boulet vole dès le départ ; une comète d'attaque après la charge de son orbe.
         geometry.shot.look === "cannon"
           ? !landed && <CannonBall key={`p${index}`} geometry={geometry} />
-          : phase !== "charge" && <Comet key={`p${index}`} flight={geometry} />
+          : geometry.shot.look === "sickness"
+            ? // Les bulles montent pendant le « vol » ; le dégât tombe sur leurs éclats.
+              phase !== "charge" && geometry.rect && <SicknessBubbles key={`p${index}`} rect={geometry.rect} />
+            : phase !== "charge" && <Comet key={`p${index}`} flight={geometry} />
       )}
       {phase !== "charge" && launched.comets.map((comet) => <Comet key={comet.key} flight={comet} />)}
       {landed && launched.shots.map((geometry, index) => <ShotImpact key={`i${index}`} geometry={geometry} />)}

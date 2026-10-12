@@ -55,7 +55,8 @@ export function CenterZone({ tide, hint, cargo, track, shipColumn }: CenterZoneP
         )}
       </div>
       <div className={styles.zoneSlotBoard}>
-        <div className={styles.centerStack}>
+        {/* `data-tide-track` : d'où partent les orbes de la Marée quand elle frappe (`EffectFxLayer`). */}
+        <div className={styles.centerStack} data-tide-track="">
           {track ?? <TideIndicator tide={tide} />}
           {hint}
         </div>

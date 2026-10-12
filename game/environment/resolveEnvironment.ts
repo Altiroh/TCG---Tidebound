@@ -149,7 +149,7 @@ function applyHouleSickness(state: GameState, turnNumber: number): { state: Game
     events.push(...shield.events);
     const amount = Math.max(0, RULES.HOULE_SICKNESS_DAMAGE - shield.reduction);
     if (amount === 0) continue;
-    events.push({ ...base, type: "DAMAGE", targetInstanceId: instanceId, amount });
+    events.push({ ...base, type: "DAMAGE", targetInstanceId: instanceId, amount, fx: "sickness" });
     damaged = {
       ...damaged,
       players: damaged.players.map((p) =>
@@ -207,7 +207,7 @@ function applyTideStructureDamage(
     ...player,
     board: player.board.map((unit) => {
       if (!touchee(unit)) return unit;
-      events.push({ ...base, type: "DAMAGE", targetInstanceId: unit.instanceId, amount });
+      events.push({ ...base, type: "DAMAGE", targetInstanceId: unit.instanceId, amount, fx: "tide" });
       return { ...unit, damageMarked: unit.damageMarked + amount, lastDamageCause: "tide" as const, lastDamageBy: undefined, lastDamageTurn: turnNumber };
     }),
   })) as [PlayerState, PlayerState];
@@ -308,7 +308,7 @@ export function applyTideTurnEffects(
     };
 
     if (anchorLoss > 0) {
-      events.push({ ...base, type: "DAMAGE", targetPlayerId: player.id, amount: anchorLoss, targetAnchorAfter: player.anchor - anchorLoss });
+      events.push({ ...base, type: "DAMAGE", targetPlayerId: player.id, amount: anchorLoss, targetAnchorAfter: player.anchor - anchorLoss, fx: "tide" });
     }
     if (reasonLoss > 0) events.push({ ...base, type: "REASON_CHANGED", playerId: player.id, delta: -reasonLoss });
   }

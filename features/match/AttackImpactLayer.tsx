@@ -4,7 +4,16 @@ import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from
 import { ATTACK_IMPACT_AT_MS, ATTACK_TIMINGS, ATTACK_TOTAL_MS, type AttackAnimation } from "@/features/match/useAttackPresentation";
 import { playAttackImpact, playCardAwake, playShipHit } from "@/lib/sound";
 import { FxCanvas, reducedMotion } from "@/features/match/FxCanvas";
-import { createDustPainter, dustBounds, IMPACT_DUST_MS, type DustPlan } from "@/features/match/impactFx";
+import {
+  createDustPainter,
+  createSicknessPainter,
+  dustBounds,
+  IMPACT_DUST_MS,
+  SICKNESS_BUBBLES_MS,
+  sicknessBounds,
+  type DustPlan,
+  type DustRect,
+} from "@/features/match/impactFx";
 
 export interface Point {
   x: number;
@@ -57,6 +66,12 @@ export function tremble(el: HTMLElement) {
     ],
     { duration: 340, easing: "ease-out", composite: "add" }
   );
+}
+
+/** Les bulles vertes de la maladie, qui éclatent sur l'unité MALADE (`impactFx.ts`). */
+export function SicknessBubbles({ rect }: { rect: DustRect }) {
+  const [paint] = useState(() => createSicknessPainter(rect));
+  return <FxCanvas bounds={sicknessBounds(rect)} durationMs={SICKNESS_BUBBLES_MS} paint={paint} />;
 }
 
 /** La poussière qui s'échappe tout autour de la cible au choc (`impactFx.ts`). */
@@ -254,6 +269,8 @@ const FLASH_TINTS = {
   strike: "radial-gradient(circle, rgba(255,255,255,0.95) 0%, rgba(255,241,214,0.7) 35%, rgba(239,68,68,0) 72%)",
   magic: "radial-gradient(circle, rgba(255,255,255,0.95) 0%, rgba(165,243,252,0.75) 30%, rgba(167,139,250,0.35) 55%, rgba(129,140,248,0) 74%)",
   cannon: "radial-gradient(circle, rgba(255,255,255,0.95) 0%, rgba(254,215,170,0.8) 30%, rgba(234,88,12,0.35) 55%, rgba(234,88,12,0) 74%)",
+  tide: "radial-gradient(circle, rgba(255,255,255,0.95) 0%, rgba(245,208,254,0.8) 30%, rgba(162,28,175,0.4) 55%, rgba(112,26,117,0) 74%)",
+  sickness: "radial-gradient(circle, rgba(240,253,244,0.9) 0%, rgba(134,239,172,0.75) 30%, rgba(22,163,74,0.35) 55%, rgba(22,163,74,0) 74%)",
 } as const;
 
 export function ImpactFlash({ point, tint = "strike" }: { point: Point; tint?: keyof typeof FLASH_TINTS }) {

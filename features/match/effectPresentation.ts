@@ -57,8 +57,13 @@ export interface EffectShot {
   originPlayerId: PlayerId;
   to: FxTarget;
   amount: number;
-  /** Boulet du canon de Navire, ou projectile d'effet. */
-  look: "magic" | "cannon";
+  /**
+   * Boulet du canon de Navire, projectile d'effet — ou dégât
+   * d'environnement (`DamageEvent.fx`) : `"tide"`, une orbe pourpre se
+   * forme sur la piste de Marée et ses comètes frappent ; `"sickness"`, des
+   * bulles vertes éclatent sur l'unité MALADE (`from` vaut alors `to`).
+   */
+  look: "magic" | "cannon" | "tide" | "sickness";
 }
 
 /**
@@ -194,6 +199,18 @@ export function deriveEffectVolley(events: GameEvent[], before: GameState, after
       awakens.add(event.instanceId);
       continue;
     }
+    // La Marée qui frappe, la maladie qui ronge : pas de lanceur, la mer elle-même.
+    if (event.type === "DAMAGE" && event.fx && !event.origin && !event.combat && event.amount > 0) {
+      const to: FxTarget | null = event.targetInstanceId
+        ? { kind: "unit", id: event.targetInstanceId }
+        : event.targetPlayerId
+          ? { kind: "ship", id: event.targetPlayerId }
+          : null;
+      if (!to) continue;
+      const owner = to.kind === "ship" ? to.id : (onBoardBefore.get(to.id)?.ownerId ?? onBoardAfter.get(to.id)?.ownerId ?? before.activePlayerId);
+      shots.push({ from: to, originPlayerId: owner, to, amount: event.amount, look: event.fx });
+      continue;
+    }
     if (event.type === "DAMAGE" && event.origin && !event.combat && event.amount > 0) {
       const to: FxTarget | null = event.targetInstanceId
         ? { kind: "unit", id: event.targetInstanceId }
@@ -233,7 +250,7 @@ export function deriveEffectVolley(events: GameEvent[], before: GameState, after
   }
 
   if (shots.length === 0 && heals.length === 0 && buffs.length === 0 && reason.length === 0 && awakens.size === 0) return null;
-  const casts = shots.some((shot) => shot.look === "magic") || heals.some((heal) => heal.source) || buffs.some((buff) => buff.source);
+  const casts = shots.some((shot) => shot.look === "magic" || shot.look === "tide") || heals.some((heal) => heal.source) || buffs.some((buff) => buff.source);
   const castMs = casts ? (awakens.size > 0 ? AWAKE_LIFT_MS : 0) + ORB_CHARGE_MS : 0;
   return { id, delayMs: arrived ? ARRIVAL_DELAY_MS : 0, awakens: [...awakens], castMs, shots, heals, buffs, reason };
 }
@@ -244,7 +261,8 @@ export function deriveEffectVolley(events: GameEvent[], before: GameState, after
  * effet sans lanceur aussitôt.
  */
 export function shotArrivalMs(volley: Pick<EffectVolley, "castMs">, shot: Pick<EffectShot, "look">): number {
-  return (shot.look === "magic" ? volley.castMs : 0) + SHOT_FLIGHT_MS;
+  // Le boulet part tout de suite ; un sort ou l'orbe de la Marée après sa charge ; les bulles éclatent avec eux.
+  return (shot.look === "cannon" ? 0 : volley.castMs) + SHOT_FLIGHT_MS;
 }
 
 export function spellArrivalMs(volley: Pick<EffectVolley, "castMs">, source: SpellSource | undefined): number {

@@ -176,3 +176,105 @@ export function dustBounds(plan: DustPlan): DustRect {
   const margin = 110 * Math.max(0.6, Math.min(1.6, Math.min(plan.rect.height, 220) / 140));
   return { left: plan.rect.left - margin, top: plan.rect.top - margin, width: plan.rect.width + margin * 2, height: plan.rect.height + margin * 2 };
 }
+
+// ── Maladie : les bulles vertes ─────────────────────────────────────────
+
+/**
+ * MALADE (Houle) : en début de tour, la maladie ronge l'unité — des bulles
+ * vertes montent de la carte, enflent en tremblotant et ÉCLATENT (anneau
+ * qui s'ouvre, gouttelettes), et c'est sur ces éclats que l'unité encaisse
+ * son dégât (demande du 12/10/2026). Dessinées SUR la carte et juste
+ * au-dessus : c'est elle qui est malade.
+ */
+export const SICKNESS_BUBBLES_MS = 950;
+
+interface Bubble {
+  x: number;
+  y: number;
+  rise: number;
+  wobble: number;
+  phase: number;
+  radius: number;
+  delay: number;
+  life: number;
+}
+
+export function createSicknessPainter(rect: DustRect): (ctx: CanvasRenderingContext2D, elapsed: number) => void {
+  const random = seededRandom(seedFrom(rect.left, rect.top, rect.width, 7));
+  const scale = Math.max(0.6, Math.min(1.6, Math.min(rect.height, 220) / 140));
+  const bubbles: Bubble[] = Array.from({ length: 16 }, () => ({
+    x: rect.left + rect.width * (0.12 + random() * 0.76),
+    y: rect.top + rect.height * (0.35 + random() * 0.55),
+    rise: (40 + random() * 70) * scale,
+    wobble: (3 + random() * 5) * scale,
+    phase: random() * Math.PI * 2,
+    radius: (5 + random() * 9) * scale,
+    // Les dernières éclatent autour de l'impact (≈ 400 ms) : le dégât tombe avec elles.
+    delay: random() * 380,
+    life: 300 + random() * 280,
+  }));
+
+  return (ctx, elapsed) => {
+    // Une lueur maladive voile la carte, le temps des bulles.
+    const veil = Math.sin(Math.min(1, elapsed / SICKNESS_BUBBLES_MS) * Math.PI) * 0.28;
+    if (veil > 0) {
+      ctx.fillStyle = `rgba(74,222,128,${veil})`;
+      ctx.globalCompositeOperation = "soft-light";
+      ctx.fillRect(rect.left, rect.top, rect.width, rect.height);
+      ctx.globalCompositeOperation = "source-over";
+    }
+
+    for (const bubble of bubbles) {
+      const local = elapsed - bubble.delay;
+      if (local <= 0) continue;
+      const k = local / bubble.life;
+      const seconds = local / 1000;
+      const x = bubble.x + Math.sin(bubble.phase + seconds * 14) * bubble.wobble;
+      const y = bubble.y - bubble.rise * seconds;
+      if (k < 1) {
+        // La bulle : verte, translucide, un reflet clair ; elle enfle avant d'éclater.
+        const r = bubble.radius * (0.35 + 0.75 * k);
+        const body = ctx.createRadialGradient(x - r * 0.3, y - r * 0.35, r * 0.1, x, y, r);
+        body.addColorStop(0, "rgba(220,252,231,0.85)");
+        body.addColorStop(0.35, "rgba(134,239,172,0.45)");
+        body.addColorStop(0.85, "rgba(22,163,74,0.35)");
+        body.addColorStop(1, "rgba(22,163,74,0.05)");
+        ctx.fillStyle = body;
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = "rgba(187,247,208,0.9)";
+        ctx.lineWidth = Math.max(0.8, r * 0.12);
+        ctx.stroke();
+        ctx.fillStyle = "rgba(255,255,255,0.85)";
+        ctx.beginPath();
+        ctx.arc(x - r * 0.38, y - r * 0.38, r * 0.18, 0, Math.PI * 2);
+        ctx.fill();
+        continue;
+      }
+      // L'éclat : un anneau qui s'ouvre et quelques gouttelettes.
+      const popK = (local - bubble.life) / 260;
+      if (popK >= 1) continue;
+      const r = bubble.radius * (1.1 + popK * 1.2);
+      ctx.strokeStyle = `rgba(187,247,208,${0.9 * (1 - popK)})`;
+      ctx.lineWidth = Math.max(0.6, bubble.radius * 0.16 * (1 - popK));
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.stroke();
+      for (let i = 0; i < 5; i += 1) {
+        const a = bubble.phase + (i / 5) * Math.PI * 2;
+        const d = r * (1 + popK * 0.8);
+        ctx.fillStyle = `rgba(74,222,128,${0.85 * (1 - popK)})`;
+        ctx.beginPath();
+        ctx.arc(x + Math.cos(a) * d, y + Math.sin(a) * d + popK * 6 * scale, Math.max(0.8, bubble.radius * 0.16), 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  };
+}
+
+/** Rectangle à couvrir pour les bulles : la carte, et de quoi les laisser monter. */
+export function sicknessBounds(rect: DustRect): DustRect {
+  const margin = 50 * Math.max(0.6, Math.min(1.6, Math.min(rect.height, 220) / 140));
+  return { left: rect.left - margin, top: rect.top - margin * 2, width: rect.width + margin * 2, height: rect.height + margin * 3 };
+}

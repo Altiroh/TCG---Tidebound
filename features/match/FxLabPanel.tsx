@@ -114,6 +114,26 @@ export function FxLabPanel() {
     return target ? findElement(target.kind, target.id) : null;
   }
 
+  /** Dégâts d'environnement : l'orbe pourpre de la Marée, ou les bulles de la maladie — sans lanceur. */
+  function environment(look: "tide" | "sickness") {
+    const { to } = resolve();
+    if (to.length === 0) return;
+    const castMs = look === "tide" ? ORB_CHARGE_MS : 0;
+    const volley: EffectVolley = {
+      id: nextId.current++,
+      delayMs: 0,
+      awakens: [],
+      castMs,
+      shots: to.map((target) => ({ from: target, originPlayerId: anyShip() ?? "p1", to: target, amount: 1, look })),
+      heals: [],
+      buffs: [],
+      reason: [],
+    };
+    setVolleys((current) => [...current, volley]);
+    window.setTimeout(playMagicImpact, castMs + SHOT_FLIGHT_MS);
+    window.setTimeout(() => setVolleys((current) => current.filter((it) => it.id !== volley.id)), castMs + SHOT_FLIGHT_MS + 2200);
+  }
+
   function spell(kind: "attack" | "heal" | "buff" | "malus") {
     const { from, to } = resolve();
     if (!from || to.length === 0) return;
@@ -271,6 +291,12 @@ export function FxLabPanel() {
             </button>
             <button type="button" style={button} onClick={() => spell("malus")}>
               Sort de malus (−1/−1)
+            </button>
+            <button type="button" style={button} onClick={() => environment("tide")}>
+              La Marée frappe (cibles)
+            </button>
+            <button type="button" style={button} onClick={() => environment("sickness")}>
+              Maladie en début de tour (cibles)
             </button>
 
             <div style={section}>Bannières</div>

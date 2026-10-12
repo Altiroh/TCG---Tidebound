@@ -87,7 +87,7 @@ export function applyAbyssesEntryOrExit(
       const after = players[i]!;
       const loss = computeAbyssesEntryLoss(before);
       if (before.anchor - after.anchor > 0) {
-        events.push({ ...base, type: "DAMAGE", targetPlayerId: before.id, amount: before.anchor - after.anchor, targetAnchorAfter: after.anchor });
+        events.push({ ...base, type: "DAMAGE", targetPlayerId: before.id, amount: before.anchor - after.anchor, targetAnchorAfter: after.anchor, fx: "tide" });
       }
       if (after.reason !== before.reason) {
         events.push({ ...base, type: "REASON_CHANGED", playerId: before.id, delta: after.reason - before.reason });

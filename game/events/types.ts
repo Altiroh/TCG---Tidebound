@@ -133,6 +133,14 @@ export interface DamageEvent extends BaseGameEvent {
   cause?: "combat" | "effect" | "tide";
   sourcePlayerId?: PlayerId;
   /**
+   * MISE EN SCÈNE d'un dégât d'environnement : `"sickness"` — le statut
+   * MALADE de la Houle ronge l'unité en début de tour ; `"tide"` — la
+   * Marée frappe (Structures, Ancrage d'un Navire). Présentation seulement :
+   * aucune règle ne le lit (celles qui qualifient un dégât lisent `cause`),
+   * l'interface en tire bulles vertes et orbe pourpre.
+   */
+  fx?: "sickness" | "tide";
+  /**
    * LANCEUR d'un effet de carte ou de Navire qui inflige ces dégâts — lu par
    * l'interface pour faire partir le projectile du bon endroit : de la
    * carte `instanceId` si elle est (ou était) sur un plateau, sinon du

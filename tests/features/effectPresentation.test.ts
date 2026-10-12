@@ -210,3 +210,40 @@ describe("la Raison qui s'abat sur la jauge", () => {
     expect(shown.players[0].reason).toBe(10);
   });
 });
+
+describe("dégâts d'environnement : la Marée qui frappe, la maladie qui ronge", () => {
+  const structure = instance("murene-aveugle", "p2");
+  const malade = instance("marin-des-jetees", "p1");
+  const before = state([malade], [structure]);
+
+  it("la Marée : une orbe se charge sur sa piste, puis ses comètes touchent unités et Navires", () => {
+    const events: GameEvent[] = [
+      { ...base, type: "DAMAGE", targetInstanceId: structure.instanceId, amount: 1, fx: "tide" },
+      { ...base, type: "DAMAGE", targetPlayerId: "p1", amount: 2, targetAnchorAfter: 28, fx: "tide" },
+    ];
+    const volley = deriveEffectVolley(events, before, before, 1)!;
+    expect(volley.shots.map((shot) => [shot.look, shot.to])).toEqual([
+      ["tide", { kind: "unit", id: structure.instanceId }],
+      ["tide", { kind: "ship", id: "p1" }],
+    ]);
+    expect(volley.castMs).toBe(ORB_CHARGE_MS);
+    expect(volleyLandingMs(volley)).toBe(ORB_CHARGE_MS + SHOT_FLIGHT_MS);
+  });
+
+  it("la maladie : des bulles sur l'unité, sans orbe ; le dégât tombe sur leurs éclats", () => {
+    const events: GameEvent[] = [{ ...base, type: "DAMAGE", targetInstanceId: malade.instanceId, amount: 1, fx: "sickness" }];
+    const volley = deriveEffectVolley(events, before, before, 1)!;
+    expect(volley.shots).toEqual([
+      { from: { kind: "unit", id: malade.instanceId }, originPlayerId: "p1", to: { kind: "unit", id: malade.instanceId }, amount: 1, look: "sickness" },
+    ]);
+    expect(volley.castMs).toBe(0);
+    expect(volleyLandingMs(volley)).toBe(SHOT_FLIGHT_MS);
+  });
+
+  it("le plateau garde l'état d'avant le coup tant que l'effet n'a pas touché", () => {
+    const after = state([{ ...malade, damageMarked: 1 }], [structure]);
+    const events: GameEvent[] = [{ ...base, type: "DAMAGE", targetInstanceId: malade.instanceId, amount: 1, fx: "sickness" }];
+    const volley = deriveEffectVolley(events, before, after, 1)!;
+    expect(patchedDisplay(before, after, volley).players[0].board[0]!.damageMarked).toBe(0);
+  });
+});
