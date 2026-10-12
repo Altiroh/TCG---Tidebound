@@ -235,7 +235,8 @@ export function showBadges(card: HTMLElement, badges: readonly BadgeActivation[]
     const size = visibleBadge ? badgeBox!.width : cardBox.width * (hidden.length > 1 ? 0.26 : 0.3);
     const center = visibleBadge
       ? { x: badgeBox!.left + badgeBox!.width / 2, y: badgeBox!.top + badgeBox!.height / 2 }
-      : { x: cardBox.left + cardBox.width / 2 + (slot - (hidden.length - 1) / 2) * size * 1.1, y: cardBox.top + cardBox.height * 0.2 };
+      : // Comme un médaillon du plateau : à cheval sur le haut de la carte, au-dessus d'elle.
+        { x: cardBox.left + cardBox.width / 2 + (slot - (hidden.length - 1) / 2) * size * 1.1, y: cardBox.top - size * 0.15 };
     showBadgeShimmer({ center, size, cardCenter, cardHeight: cardBox.height, color: activation.color, icon: visibleBadge ? badge! : null, iconSrc: activation.iconSrc });
   });
 }

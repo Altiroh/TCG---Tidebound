@@ -60,6 +60,36 @@ function ships(): string[] {
   return Array.from(document.querySelectorAll<HTMLElement>("[data-ship-target]")).flatMap((el) => (el.dataset.shipTarget ? [el.dataset.shipTarget] : []));
 }
 
+/**
+ * Les VOISINS d'une carte sur son rang, tels qu'à l'écran : la carte juste à
+ * gauche et celle juste à droite (une seule au bord, aucune si elle est seule).
+ */
+function neighboursOf(instanceId: string): string[] {
+  const el = findElement("unit", instanceId);
+  if (!el) return [];
+  const box = el.getBoundingClientRect();
+  const row = Array.from(document.querySelectorAll<HTMLElement>("[data-board-unit]"))
+    .map((node) => ({ id: node.dataset.boardUnit!, box: node.getBoundingClientRect() }))
+    .filter((it) => Math.abs(it.box.top - box.top) < box.height * 0.3)
+    .sort((a, b) => a.box.left - b.box.left);
+  const at = row.findIndex((it) => it.id === instanceId);
+  return [row[at - 1], row[at + 1]].flatMap((it) => (it ? [it.id] : []));
+}
+
+/** Le halo d'attaque qui se rallume (Carnage) : en partie, c'est l'état qui le rallume ; au labo, on le montre. */
+function rearmAttacker(el: HTMLElement) {
+  el.animate(
+    [
+      { filter: "none" },
+      { filter: "drop-shadow(0 0 10px rgba(248,113,113,0.95)) brightness(1.12)", offset: 0.25 },
+      { filter: "drop-shadow(0 0 4px rgba(248,113,113,0.7))", offset: 0.5 },
+      { filter: "drop-shadow(0 0 12px rgba(248,113,113,0.95)) brightness(1.12)", offset: 0.75 },
+      { filter: "none" },
+    ],
+    { duration: 1200 }
+  );
+}
+
 function anyShip(): string | null {
   return document.querySelector<HTMLElement>("[data-ship-target]")?.dataset.shipTarget ?? null;
 }
@@ -238,23 +268,28 @@ export function FxLabPanel({ cardEffects = false }: { cardEffects?: boolean } = 
    * demandées, mise en scène comme en partie : les spé. de déclaration
    * s'activent sur l'attaquant avant qu'il ne parte ; les autres, une fois
    * l'attaque jouée, s'activent (comme la Garde) puis lancent leur sort.
-   * Éclaboussure et Salve visent les autres cibles (à défaut, la 1re) ;
-   * Brèche et Ponction le Navire adverse ; Sangsue le Navire du joueur.
+   * Éclaboussure vise les VOISINS de la cible sur le plateau (à droite
+   * seulement si elle est au bord gauche ; seule, elle ne s'active pas) ;
+   * Salve, les autres cibles désignées ; Brèche le Navire adverse ; Ponction
+   * attaque le Navire adverse lui-même ; Sangsue soigne le Navire du joueur.
    */
   function qualifiedAttack(ids: QualificationId[]) {
     const { from, to } = resolve();
-    const target = to[0];
-    if (!from || from.kind !== "unit" || !target) return;
+    if (!from || from.kind !== "unit" || !to[0]) return;
     const [enemyShip, ownShip] = [ships()[0], ships()[ships().length - 1]];
+    // Ponction seule : « lors de l'attaque sur le Navire » — l'attaque vise le Navire adverse.
+    const target: FxTarget = ids.length === 1 && ids[0] === "ponction" && enemyShip ? { kind: "ship", id: enemyShip } : to[0];
     const defenderShip = target.kind === "ship" ? target.id : enemyShip;
     const fx: QualificationFx[] = ids.flatMap((qualification): QualificationFx[] => {
       const base = { qualification, sourceInstanceId: from.id };
       switch (qualification) {
         case "eclaboussure":
-        case "salve": {
-          const autres = to.slice(1).filter((t) => t.kind === "unit");
-          return (autres.length > 0 ? autres : [target]).map((t) => ({ ...base, targetInstanceId: t.id, amount: qualification === "salve" ? 1 : 2 }));
-        }
+          return target.kind === "unit" ? neighboursOf(target.id).map((id) => ({ ...base, targetInstanceId: id, amount: 2 })) : [];
+        case "salve":
+          return to
+            .slice(1)
+            .filter((t) => t.kind === "unit")
+            .map((t) => ({ ...base, targetInstanceId: t.id, amount: 1 }));
         case "breche":
         case "ponction":
           return defenderShip ? [{ ...base, targetPlayerId: defenderShip, amount: 2 }] : [];
@@ -285,6 +320,9 @@ export function FxLabPanel({ cardEffects = false }: { cardEffects?: boolean } = 
       qualificationCues: [...declareCues(fx), ...steps.map((step) => ({ sourceInstanceId: step.sourceInstanceId, qualification: step.qualification, atMs: step.atMs }))],
     };
     setAttacks((current) => [...current, animation]);
+    // Carnage : une fois la spé. activée, le halo d'attaque se rallume — il peut attaquer encore.
+    const carnage = steps.find((step) => step.qualification === "carnage");
+    if (carnage) window.setTimeout(() => { const el = elementOf(from); if (el) rearmAttacker(el); }, carnage.doneMs);
     const spells = steps.flatMap((step) => (step.volley ? [step.volley] : []));
     setVolleys((current) => [...current, ...spells]);
     const endMs = steps.length > 0 ? steps[steps.length - 1]!.doneMs : leadMs + ATTACK_TOTAL_MS;
