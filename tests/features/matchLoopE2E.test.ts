@@ -54,6 +54,7 @@ const { PLAYABLE_DECKS } = await import("@/game");
 const { ABANDONED_MATCH_XP, MIN_REWARDED_MATCH_MS, SAME_OPPONENT_DAILY_REWARDED_MATCHES } = await import("@/game/progression");
 const { cardRows, questRows, boosterPoolCardRows } = await import("@/scripts/seedRows");
 const { createSeededRandom } = await import("@/game/rng");
+const { dispatch } = await import("@/game");
 
 /**
  * Données de référence : le catalogue de cartes, de quêtes et les pools de
@@ -93,6 +94,7 @@ function seedReferenceData(): void {
 beforeEach(() => {
   for (const key of Object.keys(db.tables)) delete db.tables[key];
   db.rpcCalls.length = 0;
+  db.beforeRpc = null;
   sessionUserId = USER;
   seedReferenceData();
   // Depuis le 09/10/2026, un préconstruit ne se joue que débloqué : chaque
@@ -692,6 +694,82 @@ describe("délai de tour — l'autorité reste au serveur", () => {
     // les deux joueurs sont payés, une fois chacun.
     expect(db.one("match_rewards", { match_id: matchId, user_id: USER })).toBeTruthy();
     expect(db.one("match_rewards", { match_id: matchId, user_id: OPPONENT })).toBeTruthy();
+  });
+});
+
+describe("écritures concurrentes — un coup ne se perd pas sur le verrou", () => {
+  /** Une partie amicale à deux, rejointe : de quoi jouer depuis l'un ou l'autre siège. */
+  async function tableADeux(): Promise<string> {
+    sessionUserId = USER;
+    const { matchId, inviteCode } = (await createOnlineMatch(DECK.id)).data!;
+    sessionUserId = OPPONENT;
+    await joinOnlineMatch(inviteCode, OTHER_DECK.id);
+    return matchId;
+  }
+
+  /** Simule UNE écriture d'un autre écran entre la lecture du coup et son enregistrement. */
+  function ecritureConcurrente(matchId: string, change: (state: any) => any = (state) => state): void {
+    let done = false;
+    db.beforeRpc = (fn, args) => {
+      if (done || fn !== "commit_match_state" || args.p_match_id !== matchId) return;
+      done = true;
+      const row = db.one("match_states", { match_id: matchId })!;
+      row.state = change(row.state);
+      row.version += 1;
+      db.one("matches", { id: matchId })!.state_version = row.version;
+    };
+  }
+
+  it("rejoue le coup sur l'état frais au lieu de renvoyer « la partie a changé »", async () => {
+    const matchId = await tableADeux();
+    const before = db.one("match_states", { match_id: matchId })!;
+    const versionAvant = before.version;
+    const phaseAvant: string = before.state.phase;
+    const toPlay: string = before.state.activePlayerId;
+    sessionUserId = toPlay;
+    ecritureConcurrente(matchId);
+
+    const result = await submitMatchAction(matchId, { type: "advancePhase", playerId: toPlay });
+    expect(result.error).toBeUndefined();
+    expect(result.ok).toBe(true);
+    // L'écriture concurrente, PUIS le coup : rien n'a été écrasé, rien n'a été perdu.
+    expect(db.one("match_states", { match_id: matchId })!.version).toBe(versionAvant + 2);
+    expect(db.rpcCalls.filter((call) => call.fn === "commit_match_state")).toHaveLength(2);
+    expect(db.one("match_states", { match_id: matchId })!.state.phase).not.toBe(phaseAvant);
+  });
+
+  it("le coup rejoué est revalidé : si l'écriture concurrente a passé le tour, il est refusé", async () => {
+    const matchId = await tableADeux();
+    const state = db.one("match_states", { match_id: matchId })!.state;
+    const late: string = state.turnTimer.awaitingPlayerId;
+    sessionUserId = late;
+    // L'écran de l'adversaire constate l'échéance au même instant : le tour passe.
+    ecritureConcurrente(matchId, (current) => {
+      const timedOut = dispatch(current, { type: "timeout", playerId: late, now: current.turnTimer.deadlineAt + 1 });
+      expect(timedOut.ok).toBe(true);
+      return timedOut.ok ? timedOut.state : current;
+    });
+
+    const result = await submitMatchAction(matchId, { type: "advancePhase", playerId: late });
+    expect(result.ok).toBe(false);
+    // Le refus vient du moteur, sur l'état réel — pas d'un conflit à « réessayer ».
+    expect(result.error).not.toMatch(/a changé entre-temps/);
+    expect(db.one("match_states", { match_id: matchId })!.state.activePlayerId).not.toBe(late);
+  });
+
+  it("face à des écritures qui ne s'arrêtent pas, abandonne au bout de quelques tentatives", async () => {
+    const matchId = await tableADeux();
+    const toPlay: string = db.one("match_states", { match_id: matchId })!.state.activePlayerId;
+    sessionUserId = toPlay;
+    db.beforeRpc = (fn) => {
+      if (fn !== "commit_match_state") return;
+      db.one("match_states", { match_id: matchId })!.version += 1;
+    };
+
+    const result = await submitMatchAction(matchId, { type: "advancePhase", playerId: toPlay });
+    expect(result.ok).toBe(false);
+    expect(result.error).toMatch(/a changé entre-temps/);
+    expect(db.rpcCalls.filter((call) => call.fn === "commit_match_state").length).toBeLessThanOrEqual(3);
   });
 });
 

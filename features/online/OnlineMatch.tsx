@@ -11,6 +11,7 @@ import { unpackFrames } from "@/features/matches/matchFrames";
 import { predictView } from "@/features/online/predictView";
 import { WaitingRoom } from "@/features/online/WaitingRoom";
 import { createChannelRecoveryTracker, useResyncOnReturn } from "@/features/online/resync";
+import { isOffline, presentUserIds, useOffline, useOpponentPresence, waitUntilOnline } from "@/features/online/connection";
 
 /**
  * Pause entre deux états successifs renvoyés par le serveur pour le tour du
@@ -81,6 +82,17 @@ export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: On
    */
   const [cosmetics, setCosmetics] = useState<Record<string, PlayerCosmetics>>({});
   const opponentUserId = match.player1_id === myUserId ? match.player2_id : match.player1_id;
+  const opponentIdRef = useRef(opponentUserId);
+  opponentIdRef.current = opponentUserId;
+
+  /**
+   * CONNEXION — la sienne (le navigateur hors ligne) et celle de
+   * l'adversaire (sa présence sur le canal de la partie, grâce comprise).
+   * Affichage seulement : voir `features/online/connection.ts`.
+   */
+  const offline = useOffline();
+  const [opponentOnChannel, setOpponentOnChannel] = useState<boolean | null>(null);
+  const opponentPresence = useOpponentPresence(isBotMatch ? null : opponentOnChannel);
   useEffect(() => {
     if (isBotMatch || !opponentUserId) return;
     let cancelled = false;
@@ -121,6 +133,10 @@ export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: On
       result = await fetchMatchView(matchId);
       refreshFailures.current = 0;
     } catch (error) {
+      // Hors ligne, l'échec est attendu : ni compté, ni suivi d'un
+      // rechargement (qui tomberait sur une page d'erreur). Le retour du
+      // réseau redemande la vue de lui-même (`useResyncOnReturn`).
+      if (isOffline()) return;
       refreshFailures.current += 1;
       console.error("[OnlineMatch] Rafraîchissement impossible :", error);
       if (refreshFailures.current === 1) {
@@ -194,8 +210,13 @@ export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: On
     const supabase = createSupabaseBrowserClient();
     const channelRecovered = createChannelRecoveryTracker();
     let unmounted = false;
-    const channel = supabase
-      .channel(`match-${matchId}`)
+    // Chaque écran s'annonce sous la clé de SON joueur : les clés présentes sont les joueurs à la table.
+    const channel = supabase.channel(`match-${matchId}`, { config: { presence: { key: myUserId } } });
+    channel
+      .on("presence", { event: "sync" }, () => {
+        const opponent = opponentIdRef.current;
+        if (!unmounted && opponent) setOpponentOnChannel(presentUserIds(channel.presenceState()).has(opponent));
+      })
       .on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "matches", filter: `id=eq.${matchId}` },
@@ -209,6 +230,8 @@ export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: On
         }
       )
       .subscribe((status) => {
+        // (Ré)abonné : on se (ré)annonce — une socket rétablie repart sans présence.
+        if (!unmounted && status === "SUBSCRIBED") void channel.track({ at: Date.now() });
         // Canal rétabli après une erreur ou une fermeture : ce qui a été
         // diffusé pendant la coupure ne sera jamais rejoué, on le redemande.
         if (!unmounted && channelRecovered(status)) requestResync();
@@ -253,6 +276,10 @@ export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: On
     while (queue.current.length > 0) {
       const item = queue.current.shift()!;
       if (!item.predicted) setPending(true);
+      // Hors ligne, le coup n'est pas encore parti : il attend le réseau
+      // (affiché s'il se prédit) plutôt que d'échouer. Un échec EN VOL, lui,
+      // n'est jamais renvoyé — le serveur l'a peut-être déjà enregistré.
+      await waitUntilOnline();
 
       const result = await submitMatchAction(matchId, item.action).catch(() => ({ ok: false as const, error: "Coup non enregistré, réessaie.", data: undefined }));
 
@@ -379,6 +406,7 @@ export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: On
         opponentName={isBotMatch ? "Le bot" : "L'adversaire"}
         exitHref="/partie"
         matchId={matchId}
+        connection={{ offline, opponent: opponentPresence }}
       />
     </MatchCosmeticsProvider>
   );

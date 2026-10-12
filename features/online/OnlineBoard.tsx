@@ -44,6 +44,8 @@ import { PhaseBanner } from "@/features/match/PhaseBanner";
 import { ReactionPrompt } from "@/features/match/ReactionPrompt";
 import { ShipWindowHint } from "@/features/match/ShipWindowHint";
 import { TurnTimerBadge } from "@/features/match/TurnTimerBadge";
+import { ConnectionBadge } from "@/features/online/ConnectionBadge";
+import type { OpponentPresence } from "@/features/online/connection";
 import { reactionTargetHint } from "@/features/match/reactionTargetHint";
 import { TableBoard } from "@/features/match/table/TableBoard";
 import { phaseButtonFor, phaseTitle, targetingHint } from "@/features/match/table/tableLabels";
@@ -71,6 +73,8 @@ interface OnlineBoardProps {
   exitHref?: string;
   /** Partie arbitrée : l'écran de fin y lit le relevé de quêtes. */
   matchId?: string;
+  /** Sa propre connexion et la présence de l'adversaire (`features/online/connection.ts`). */
+  connection?: { offline: boolean; opponent: OpponentPresence };
 }
 
 /**
@@ -88,6 +92,7 @@ export function OnlineBoard({
   opponentName = "L'adversaire",
   exitHref = "/en-ligne",
   matchId,
+  connection,
 }: OnlineBoardProps) {
   // En partie, la musique du menu se tait.
   useNoMenuAmbiance();
@@ -334,6 +339,9 @@ export function OnlineBoard({
           locale n'a pas de serveur pour constater une échéance, et un
           compteur qui ne compte pour rien vaut mieux ne pas être montré. */}
       <TurnTimerBadge state={state} viewerId={myUserId} />
+      {connection && (
+        <ConnectionBadge offline={connection.offline} opponent={connection.opponent} finished={state.status === "finished"} />
+      )}
 
       {canRespondToReaction &&
         myReactionCandidates.length > 0 &&

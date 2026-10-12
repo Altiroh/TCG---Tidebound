@@ -77,6 +77,12 @@ export class FakeDatabase {
   readonly tables: Record<string, Row[]> = {};
   /** Journal des appels RPC, dans l'ordre — ce que le test relit pour vérifier la chaîne. */
   readonly rpcCalls: { fn: string; args: Row }[] = [];
+  /**
+   * Appelé juste AVANT chaque RPC : de quoi glisser une écriture
+   * concurrente entre la lecture d'un service et son enregistrement (la
+   * concurrence que la base en mémoire ne produit pas d'elle-même).
+   */
+  beforeRpc: ((fn: string, args: Row) => void) | null = null;
 
   table(name: string): Row[] {
     return (this.tables[name] ??= []);
@@ -1021,6 +1027,7 @@ export function createFakeClient(db: FakeDatabase) {
     from: (name: string) => new QueryBuilder(db, name),
     rpc: async (fn: string, args: Row = {}) => {
       db.rpcCalls.push({ fn, args });
+      db.beforeRpc?.(fn, args);
       try {
         return { data: runRpc(db, fn, args), error: null };
       } catch (cause) {

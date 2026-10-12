@@ -60,6 +60,9 @@ export interface MatchUpdate {
 
 export type StoreResult<T> = { ok: true; data: T } | { ok: false; error: string };
 
+/** Résultat d'un enregistrement : `conflict` quand une autre écriture est passée entre la lecture et le verrou. */
+type CommitResult = { ok: true; data: MatchUpdate } | { ok: false; error: string; conflict?: boolean };
+
 export function isParticipant(match: MatchRow, userId: string): boolean {
   return match.player1_id === userId || match.player2_id === userId;
 }
@@ -123,6 +126,23 @@ export async function submitAction(matchId: string, userId: string, action: Play
   // Forme avant légalité : nombres finis, chaînes et tableaux bornés.
   if (!hasSaneActionShape(action)) return { ok: false, error: "Action refusée." };
 
+  // Une écriture concurrente — l'écran de l'adversaire qui constate une
+  // échéance au même instant, typiquement — fait échouer l'enregistrement
+  // sous verrou optimiste. Le coup n'a alors PAS eu lieu : on le rejoue sur
+  // l'état frais, que le moteur revalide entièrement (un coup devenu
+  // illégal est refusé comme n'importe quel autre). Le joueur n'a plus à
+  // refaire son geste sur un « la partie a changé entre-temps ».
+  let attempt = await submitActionOnce(matchId, userId, action);
+  for (let retry = 1; retry < MAX_COMMIT_ATTEMPTS && !attempt.ok && attempt.conflict; retry += 1) {
+    attempt = await submitActionOnce(matchId, userId, action);
+  }
+  return attempt;
+}
+
+/** Tentatives d'enregistrement d'un même coup face à des écritures concurrentes. */
+const MAX_COMMIT_ATTEMPTS = 3;
+
+async function submitActionOnce(matchId: string, userId: string, action: PlayerAction): Promise<CommitResult> {
   // Les deux lectures en parallèle : un aller-retour en base de moins par
   // coup. L'état complet ne quitte jamais cette fonction, il n'y a donc rien
   // à protéger en attendant la vérification de participation.
@@ -265,7 +285,7 @@ async function commitAndSettle(
   expectedVersion: number,
   frames: GameState[],
   finalState: GameState
-): Promise<StoreResult<MatchUpdate>> {
+): Promise<CommitResult> {
   const finished = finalState.status === "finished";
 
   const { data: commit, error } = await service().rpc("commit_match_state", {
@@ -277,10 +297,8 @@ async function commitAndSettle(
   });
   if (error) return { ok: false, error: error.message };
   if (!commit?.ok) {
-    return {
-      ok: false,
-      error: commit?.error === "conflict" ? "La partie a changé entre-temps : réessaie." : commit?.error ?? "Coup non enregistré.",
-    };
+    if (commit?.error === "conflict") return { ok: false, error: "La partie a changé entre-temps : réessaie.", conflict: true };
+    return { ok: false, error: commit?.error ?? "Coup non enregistré." };
   }
 
   const updatedMatch: MatchRow = {
