@@ -77,9 +77,9 @@ export function LandePreview() {
   }
   return state ? (
     <>
-      <MatchBoard initialState={state} onExit={() => window.history.back()} />
+      <MatchBoard initialState={state} onExit={() => window.history.back()} labPatchable />
       <LandeTuningPanel />
-      <FxLabPanel />
+      <FxLabPanel cardEffects />
     </>
   ) : null;
 }

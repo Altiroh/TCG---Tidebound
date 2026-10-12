@@ -58,6 +58,7 @@ import { useAvatarCardId, useDisplayNames, useEquippedTitle } from "@/features/m
 import { usePhaseBannerEvent } from "@/features/match/usePhaseBannerEvent";
 import { tableTargetingFor, useBoardInteraction } from "@/features/match/useBoardInteraction";
 import { interceptBlockedAttack } from "@/features/match/guardBlock";
+import { useLabPatchTarget } from "@/features/match/labEffects";
 import { useShipAbility } from "@/features/match/useShipAbility";
 import { playButtonClick } from "@/lib/sound";
 import { thinkBotAction } from "@/features/match/bot/botThinker";
@@ -95,6 +96,12 @@ interface MatchBoardProps {
   playableHandCards?: ReadonlySet<string> | null;
   /** Masque l'écran de fin de partie : le tutoriel a le sien. */
   hideEndScreen?: boolean;
+  /**
+   * Labo seulement : le panneau « Animations » peut écrire l'état de cette
+   * partie (états, mots-clés, statistiques d'une carte — `labEffects.ts`).
+   * Absent partout ailleurs : seul le moteur écrit l'état d'une partie.
+   */
+  labPatchable?: boolean;
 }
 
 type Pending =
@@ -123,10 +130,12 @@ export function MatchBoard({
   onStateChange,
   playableHandCards,
   hideEndScreen = false,
+  labPatchable = false,
 }: MatchBoardProps) {
   // En partie, la musique du menu se tait.
   useNoMenuAmbiance();
   const [liveState, setState] = useState<GameState>(initialState);
+  useLabPatchTarget(Boolean(labPatchable), setState);
   // L'écran reste allumé pendant la partie, pas sur l'écran de fin.
   useScreenWakeLock(liveState.status !== "finished");
   // `state` = état AFFICHÉ (retenu avant le choc pendant une attaque, cf. `useAttackPresentation`) ; toute

@@ -5,6 +5,7 @@ import { AttackImpactLayer, findElement } from "@/features/match/AttackImpactLay
 import { awakenCard, dropToken, flipCard, showGuard } from "@/features/match/cardFx";
 import { AWAKE_LIFT_MS, ORB_CHARGE_MS, SHOT_FLIGHT_MS, type EffectVolley, type FxTarget } from "@/features/match/effectPresentation";
 import { EffectFxLayer } from "@/features/match/EffectFxLayer";
+import { applyLabEffect, applyLabPatch, LAB_EFFECTS, type LabEffect } from "@/features/match/labEffects";
 import { PhaseBanner } from "@/features/match/PhaseBanner";
 import { ATTACK_TOTAL_MS, type AttackAnimation } from "@/features/match/useAttackPresentation";
 import { playCombatPhase, playMagicImpact, playSpellImpact, playTurnStart } from "@/lib/sound";
@@ -62,7 +63,12 @@ function outline(target: FxTarget, color: string | null) {
   if (el) el.style.outlineOffset = color ? "3px" : "";
 }
 
-export function FxLabPanel() {
+/**
+ * `cardEffects` : la section « États et effets », qui écrit l'état RÉEL de
+ * la partie — seulement là où le plateau l'accepte (`MatchBoard
+ * labPatchable`, labo des Landes).
+ */
+export function FxLabPanel({ cardEffects = false }: { cardEffects?: boolean } = {}) {
   const [open, setOpen] = useState(true);
   const [picking, setPicking] = useState<Picking>(null);
   const [source, setSource] = useState<FxTarget | null>(null);
@@ -184,6 +190,14 @@ export function FxLabPanel() {
     window.setTimeout(() => setAttacks((current) => current.filter((it) => it.id !== animation.id)), ATTACK_TOTAL_MS + 900);
   }
 
+  /** Un effet de carte sur les cibles (à défaut, la dernière carte du plateau) — sur l'état réel de la partie du labo. */
+  function cardEffect(effect: LabEffect) {
+    const { to } = resolve();
+    const ids = to.flatMap((t) => (t.kind === "unit" ? [t.id] : []));
+    if (ids.length === 0) return;
+    applyLabPatch((state) => applyLabEffect(state, effect, ids));
+  }
+
   function showBanner(text: string, play: () => void) {
     play();
     const key = nextId.current++;
@@ -279,6 +293,16 @@ export function FxLabPanel() {
               Structure révélée (cibles)
             </button>
 
+            {cardEffects && <div style={section}>États et effets (cibles)</div>}
+            {cardEffects && (["États", "Mots-clés", "Statistiques", "Entraves", "Marqueurs"] as const).map((group) => (
+              <div key={group} style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                {LAB_EFFECTS.filter((effect) => effect.group === group).map((effect) => (
+                  <button key={effect.id} type="button" style={{ ...button, flex: "1 1 auto" }} title={`${group} — appliqué (ou retiré) sur les cibles`} onClick={() => cardEffect(effect)}>
+                    {effect.label}
+                  </button>
+                ))}
+              </div>
+            ))}
             <div style={section}>Sorts (source → cibles)</div>
             <button type="button" style={button} onClick={() => spell("attack")}>
               Sort d&apos;attaque
