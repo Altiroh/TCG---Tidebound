@@ -1,0 +1,62 @@
+# Statistiques des parties : cartes les plus jouées, durées, déroulé type,
+# causes de victoire, Navires, decks, niveau du bot. Lancé à la main depuis
+# GitHub : onglet Actions → « Statistiques des parties » → Run workflow.
+# Le rapport s'affiche dans le résumé du job (et reste téléchargeable en
+# artefact `statistiques-parties`). Même script que `npm run stats:parties`.
+#
+# LECTURE SEULE : rien n'est écrit en base.
+#
+# Secrets requis (les mêmes que « Seed du catalogue ») :
+#   NEXT_PUBLIC_SUPABASE_URL      l'URL du projet Supabase
+#   SUPABASE_SERVICE_ROLE_KEY     la clé service_role — elle ne sort jamais
+#                                 des secrets GitHub, le journal la masque.
+name: Statistiques des parties
+
+on:
+  workflow_dispatch:
+    inputs:
+      jours:
+        description: "Fenêtre en jours (0 = depuis toujours)"
+        required: true
+        default: "30"
+      mode:
+        description: "Parties à analyser"
+        required: true
+        default: tous
+        type: choice
+        options:
+          - tous
+          - bot
+          - pvp
+      classement:
+        description: "Longueur des classements"
+        required: false
+        default: "15"
+
+permissions:
+  contents: read
+
+jobs:
+  stats:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npx tsx scripts/matchStatsReport.ts
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          STATS_DAYS: ${{ inputs.jours }}
+          STATS_MODE: ${{ inputs.mode }}
+          STATS_TOP: ${{ inputs.classement }}
+          STATS_OUTPUT: statistiques-parties.md
+      - run: cat statistiques-parties.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: statistiques-parties
+          path: statistiques-parties.md

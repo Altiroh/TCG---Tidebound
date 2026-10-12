@@ -18,6 +18,7 @@
     "optimize:images": "node scripts/optimizeImages.mjs",
     "balance": "tsx scripts/balanceReport.ts",
     "banque": "tsx --env-file=.env.local scripts/banqueReport.ts",
+    "stats:parties": "tsx --env-file=.env.local scripts/matchStatsReport.ts",
     "playtest": "tsx scripts/playtestReport.ts",
     "swarm": "tsx scripts/swarmReport.ts",
     "coverage": "tsx scripts/catalogCoverage.ts",
