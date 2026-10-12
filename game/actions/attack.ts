@@ -29,6 +29,7 @@ import { getOpponent, getPlayer, type GameState, type PlayerState } from "@/game
 import { recordGraveyardArrival } from "@/game/state/discard";
 import type { ActionResult, AttackAction } from "@/game/actions/types";
 import { attacksMade, hasQualification } from "@/game/rules/qualificationCombat";
+import { salveError } from "@/game/rules/salve";
 import type { QualificationId } from "@/game/cards/qualifications";
 import { applyDirectHitQualifications, applyRetaliationQualifications, applyStrikeQualifications, remainingResistance } from "@/game/rules/qualificationStrike";
 
@@ -250,8 +251,15 @@ function validate(state: GameState, action: AttackAction) {
     assertIsActivePlayer(state, action.playerId),
     assertInPhase(state, action.playerId, "combatPhase"),
     assertUnitCanAttack(state, action.playerId, action.attackerInstanceId),
-    assertValidDefender(state, action.playerId, action.attackerInstanceId, action.defenderInstanceId)
+    assertValidDefender(state, action.playerId, action.attackerInstanceId, action.defenderInstanceId),
+    salveCheck(state, action)
   );
+}
+
+/** La répartition d'une Salve (`game/rules/salve.ts`), au format des autres vérifications. */
+function salveCheck(state: GameState, action: AttackAction): { ok: true } | { ok: false; error: string } {
+  const error = salveError(state, action);
+  return error ? { ok: false, error } : { ok: true };
 }
 
 /**
@@ -689,7 +697,16 @@ function resolveAttack(state: GameState, action: AttackAction): ActionResult {
     // « La prochaine fois qu'une de vos unités inflige des dégâts ce tour » (Dhar, Lot 17).
     const bonusDhar = consumeUnitDamageBonus(nextState, attackerPlayer.id, etat.turnNumber);
     nextState = bonusDhar.state;
-    const totalAttackerDamage = attackerDamage + bonusDamageAgainst(attackerUnit, defenderType, nextState) + contreMotCle.bonus + bonusDhar.bonus;
+    const fullAttackerDamage = attackerDamage + bonusDamageAgainst(attackerUnit, defenderType, nextState) + contreMotCle.bonus + bonusDhar.bonus;
+    // Salve : les parts envoyées ailleurs quittent le coup principal, qui garde au moins 1 — si la
+    // Puissance a baissé depuis la déclaration (piège), les dernières parts sont rognées.
+    let resteAPartager = Math.max(0, fullAttackerDamage - 1);
+    const partsSalve = (action.salve ?? []).map((share) => {
+      const amount = Math.min(share.amount, resteAPartager);
+      resteAPartager -= amount;
+      return { targetInstanceId: share.targetInstanceId, amount };
+    });
+    const totalAttackerDamage = fullAttackerDamage - partsSalve.reduce((sum, share) => sum + share.amount, 0);
 
     // Dégâts au défenseur, réduits, si c'est une Structure, par la
     // restauration de Résistance de Wood Vy.
@@ -736,53 +753,89 @@ function resolveAttack(state: GameState, action: AttackAction): ActionResult {
     nextState = qualifie.state;
     events.push(...qualifie.events);
 
-    // Riposte : la Puissance effective du défenseur (0 pour un permanent
-    // sans Puissance) blesse l'attaquant en retour, symétriquement — soumise
-    // au même bouclier "1ère fois par tour" côté attaquant, cette fois.
-    // Un bonus « pour son prochain combat contre une Garde » vaut aussi en
-    // riposte, quand c'est la Garde qui attaque.
-    const riposteMotCle = consumePendingBonusVsKeyword(nextState, opponent.id, defenderUnit, attackerUnit);
-    nextState = riposteMotCle.state;
-    const riposteBrute = effectiveAttack(defenderUnit, nextState) + riposteMotCle.bonus;
-    // Une riposte est un coup porté : le bonus de Dhar du défenseur s'y applique (Lot 17).
-    const bonusRiposte = riposteBrute > 0 ? consumeUnitDamageBonus(nextState, opponent.id, etat.turnNumber) : { state: nextState, bonus: 0 };
-    nextState = bonusRiposte.state;
-    const retaliationDamage = riposteBrute + bonusRiposte.bonus;
-    if (retaliationDamage > 0) {
-      const attackerDamageResult = applyCombatDamageToUnit(nextState, attackerPlayer.id, attackerUnit, retaliationDamage, etat.turnNumber);
-      nextState = attackerDamageResult.state;
-      if (attackerDamageResult.amountApplied > 0) {
-        events.push({
-          ...base,
-          type: "DAMAGE",
-          targetInstanceId: attackerUnit.instanceId,
-          amount: attackerDamageResult.amountApplied,
-          combat: "retaliation",
-          cause: "combat",
-          dealerInstanceId: defenderUnit.instanceId,
-        });
-        const rendu = restoreStructureResistanceAfterLoss(nextState, attackerPlayer.id, attackerUnit.instanceId, attackerDamageResult.amountApplied, etat.turnNumber);
+    // Riposte d'une cible touchée (la cible déclarée, puis chaque cible d'une Salve).
+    const riposter = (riposteur: CardInstance) => {
+      // Riposte : la Puissance effective du défenseur (0 pour un permanent
+      // sans Puissance) blesse l'attaquant en retour, symétriquement — soumise
+      // au même bouclier "1ère fois par tour" côté attaquant, cette fois.
+      // Un bonus « pour son prochain combat contre une Garde » vaut aussi en
+      // riposte, quand c'est la Garde qui attaque.
+      const riposteMotCle = consumePendingBonusVsKeyword(nextState, opponent.id, riposteur, attackerUnit);
+      nextState = riposteMotCle.state;
+      const riposteBrute = effectiveAttack(riposteur, nextState) + riposteMotCle.bonus;
+      // Une riposte est un coup porté : le bonus de Dhar du défenseur s'y applique (Lot 17).
+      const bonusRiposte = riposteBrute > 0 ? consumeUnitDamageBonus(nextState, opponent.id, etat.turnNumber) : { state: nextState, bonus: 0 };
+      nextState = bonusRiposte.state;
+      const retaliationDamage = riposteBrute + bonusRiposte.bonus;
+      if (retaliationDamage > 0) {
+        const attackerDamageResult = applyCombatDamageToUnit(nextState, attackerPlayer.id, attackerUnit, retaliationDamage, etat.turnNumber);
+        nextState = attackerDamageResult.state;
+        if (attackerDamageResult.amountApplied > 0) {
+          events.push({
+            ...base,
+            type: "DAMAGE",
+            targetInstanceId: attackerUnit.instanceId,
+            amount: attackerDamageResult.amountApplied,
+            combat: "retaliation",
+            cause: "combat",
+            dealerInstanceId: riposteur.instanceId,
+          });
+          const rendu = restoreStructureResistanceAfterLoss(nextState, attackerPlayer.id, attackerUnit.instanceId, attackerDamageResult.amountApplied, etat.turnNumber);
+          nextState = rendu.state;
+          events.push(...rendu.events);
+
+          const attackerDamagedTrigger = processTrigger(
+            nextState,
+            { trigger: "onDamaged", playerId: attackerPlayer.id, sourceInstanceId: attackerUnit.instanceId },
+            etat.turnNumber
+          );
+          nextState = attackerDamagedTrigger.state;
+          events.push(...attackerDamagedTrigger.events);
+
+          // Qualifications du DÉFENSEUR qui riposte : Entaille, Sangsue.
+          const riposteQualifiee = applyRetaliationQualifications(
+            nextState,
+            { defenderOwnerId: opponent.id, defender: riposteur, attackerOwnerId: attackerPlayer.id, attacker: attackerUnit, applied: attackerDamageResult.amountApplied },
+            base
+          );
+          nextState = riposteQualifiee.state;
+          events.push(...riposteQualifiee.events);
+        }
+      }
+    };
+    riposter(defenderUnit);
+
+    // Salve : chaque autre cible encaisse sa part, puis riposte à son tour.
+    for (const part of partsSalve) {
+      if (part.amount <= 0) continue;
+      const cible = getOpponent(nextState, action.playerId).board.find((u) => u.instanceId === part.targetInstanceId);
+      if (!cible) continue;
+      const tireur = getPlayer(nextState, attackerPlayer.id).board.find((u) => u.instanceId === attackerUnit.instanceId) ?? attackerUnit;
+      events.push({ ...base, type: "QUALIFICATION_TRIGGERED", qualification: "salve", sourceInstanceId: attackerUnit.instanceId, targetInstanceId: cible.instanceId, amount: part.amount });
+      const avant = remainingResistance(nextState, opponent.id, cible);
+      const coup = applyCombatDamageToUnit(nextState, opponent.id, cible, part.amount, etat.turnNumber);
+      nextState = coup.state;
+      if (coup.amountApplied > 0) {
+        // Pas de `combat` : la plaque du coup principal ne compte que la cible déclarée ; la Salve a sa propre mise en scène.
+        events.push({ ...base, type: "DAMAGE", targetInstanceId: cible.instanceId, amount: coup.amountApplied, cause: "combat", dealerInstanceId: attackerUnit.instanceId });
+        const rendu = restoreStructureResistanceAfterLoss(nextState, opponent.id, cible.instanceId, coup.amountApplied, etat.turnNumber);
         nextState = rendu.state;
         events.push(...rendu.events);
-
-        const attackerDamagedTrigger = processTrigger(
-          nextState,
-          { trigger: "onDamaged", playerId: attackerPlayer.id, sourceInstanceId: attackerUnit.instanceId },
-          etat.turnNumber
-        );
-        nextState = attackerDamagedTrigger.state;
-        events.push(...attackerDamagedTrigger.events);
-
-        // Qualifications du DÉFENSEUR qui riposte : Entaille, Sangsue.
-        const riposteQualifiee = applyRetaliationQualifications(
-          nextState,
-          { defenderOwnerId: opponent.id, defender: defenderUnit, attackerOwnerId: attackerPlayer.id, attacker: attackerUnit, applied: attackerDamageResult.amountApplied },
-          base
-        );
-        nextState = riposteQualifiee.state;
-        events.push(...riposteQualifiee.events);
+        const touche = processTrigger(nextState, { trigger: "onDamaged", playerId: opponent.id, sourceInstanceId: cible.instanceId }, etat.turnNumber);
+        nextState = touche.state;
+        events.push(...touche.events);
       }
+      const qualifiee = applyStrikeQualifications(
+        nextState,
+        { attackerOwnerId: attackerPlayer.id, attacker: tireur, defenderOwnerId: opponent.id, defender: cible, strikeApplied: coup.amountApplied, remainingBefore: avant },
+        base
+      );
+      nextState = qualifiee.state;
+      events.push(...qualifiee.events);
+      const ripostant = getOpponent(nextState, action.playerId).board.find((u) => u.instanceId === cible.instanceId);
+      if (ripostant) riposter(ripostant);
     }
+
   }
 
   // « Après qu'elle attaque, elle subit 1 dégât » (Bretteuse au Bord) : le

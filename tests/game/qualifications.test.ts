@@ -52,8 +52,9 @@ describe("registre des qualifications", () => {
       expect(rule.describe(2).length).toBeGreaterThan(10);
       expect(rule.glyph.length).toBeGreaterThan(0);
       expect(rule.compatibleTypes).toEqual(["creature", "marin"]);
-      // Une règle provisoire dit TOUJOURS ce qui attend validation.
-      if (rule.rules !== "validated") expect(rule.pending?.length).toBeGreaterThan(0);
+      // Toutes validées le 12/10/2026 : chacune (sauf Contournement, que son texte suffit à trancher) dit ses décisions.
+      expect(rule.rules).toBe("validated");
+      if (rule.id !== "contournement") expect(rule.rulings?.length).toBeGreaterThan(0);
     }
   });
 
@@ -214,13 +215,58 @@ describe("effets du coup", () => {
     expect(joueur(s, "p2").reason).toBe(1 - 3);
   });
 
-  it("Salve : règles de répartition en attente — l'unité attaque normalement une seule cible", () => {
-    expect(QUALIFICATIONS.salve.rules).toBe("notImplemented");
+  it("Salve sans répartition : une attaque ordinaire, toute la Puissance sur la cible", () => {
     const a = avec(instance("matelot-du-sans-nom", "p1"), { id: "salve" });
     const c1 = instance("murene-aveugle", "p2");
     const c2 = instance("murene-aveugle", "p2");
     const s = ok(table([a], [c1, c2]), a.instanceId, c1.instanceId);
     expect(board(s, "p2").map((u) => u.instanceId)).toEqual([c2.instanceId]);
+  });
+
+  it("Salve : 3 Puissance répartie 1 / 2 — chaque cible encaisse sa part et riposte", () => {
+    const a = avec(instance("matelot-du-sans-nom", "p1"), { id: "salve" }); // 3 / 4
+    const c1 = instance("murene-aveugle", "p2"); // 3 / 1
+    const c2 = instance("charpentier-de-bord", "p2"); // 2 / 3
+    const r = dispatch(table([a], [c1, c2]), { type: "attack", playerId: "p1", attackerInstanceId: a.instanceId, defenderInstanceId: c1.instanceId, salve: [{ targetInstanceId: c2.instanceId, amount: 2 }] });
+    if (!r.ok) throw new Error(r.error);
+    // La Murène (1 Résistance) tombe sur 1 ; le Charpentier encaisse 2.
+    expect(board(r.state, "p2").map((u) => [u.instanceId, u.damageMarked])).toEqual([[c2.instanceId, 2]]);
+    // Deux ripostes : 3 (Murène) + 2 (Charpentier) sur 4 Résistance — le Matelot tombe.
+    expect(board(r.state, "p1")).toHaveLength(0);
+    expect(r.state.eventLog.some((e) => e.type === "QUALIFICATION_TRIGGERED" && e.qualification === "salve" && e.targetInstanceId === c2.instanceId && e.amount === 2)).toBe(true);
+  });
+
+  it("Salve : la cible déclarée garde au moins 1, au moins 1 par part, pas deux fois la même cible", () => {
+    const a = avec(instance("matelot-du-sans-nom", "p1"), { id: "salve" });
+    const c1 = instance("charpentier-de-bord", "p2");
+    const c2 = instance("charpentier-de-bord", "p2");
+    const s = table([a], [c1, c2]);
+    const essai = (salve: { targetInstanceId: string; amount: number }[]) =>
+      dispatch(s, { type: "attack", playerId: "p1", attackerInstanceId: a.instanceId, defenderInstanceId: c1.instanceId, salve });
+    expect(essai([{ targetInstanceId: c2.instanceId, amount: 3 }]).ok).toBe(false);
+    expect(essai([{ targetInstanceId: c2.instanceId, amount: 0 }]).ok).toBe(false);
+    expect(essai([{ targetInstanceId: c2.instanceId, amount: 1 }, { targetInstanceId: c2.instanceId, amount: 1 }]).ok).toBe(false);
+    expect(essai([{ targetInstanceId: c1.instanceId, amount: 1 }]).ok).toBe(false);
+  });
+
+  it("Salve : la Garde vaut pour chaque cible ; sans Salve, pas de répartition", () => {
+    const a = avec(instance("matelot-du-sans-nom", "p1"), { id: "salve" });
+    const gardien = garde(instance("charpentier-de-bord", "p2"));
+    const autre = instance("charpentier-de-bord", "p2");
+    const s = table([a], [gardien, autre]);
+    const versAutre = dispatch(s, { type: "attack", playerId: "p1", attackerInstanceId: a.instanceId, defenderInstanceId: gardien.instanceId, salve: [{ targetInstanceId: autre.instanceId, amount: 1 }] });
+    expect(versAutre.ok).toBe(false);
+    const simple = instance("matelot-du-sans-nom", "p1");
+    const cible = instance("charpentier-de-bord", "p2");
+    const sansSalve = dispatch(table([simple], [cible, autre]), {
+      type: "attack",
+      playerId: "p1",
+      attackerInstanceId: simple.instanceId,
+      defenderInstanceId: cible.instanceId,
+      salve: [{ targetInstanceId: autre.instanceId, amount: 1 }],
+    });
+    expect(sansSalve.ok || sansSalve.error).toMatch(/Salve/);
+    expect(sansSalve.ok).toBe(false);
   });
 });
 

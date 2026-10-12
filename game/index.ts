@@ -103,6 +103,7 @@ export {
   hasQualification,
   unitQualifications,
 } from "@/game/rules/qualificationCombat";
+export { salvePower, salveTargets } from "@/game/rules/salve";
 export { auraContextOf, collectAuraContributions } from "@/game/cards/stats";
 export type { AuraContext, AuraContribution } from "@/game/cards/stats";
 export { computeEffectiveStats, computeStatModifierDelta } from "@/game/cards/stats";

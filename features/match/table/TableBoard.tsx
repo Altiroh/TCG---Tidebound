@@ -165,6 +165,8 @@ export interface TableBoardProps {
   handLimitDiscard?: HandLimitDiscardMode | null;
   /** Répartition de soins sur le plateau (`useHealAllocation`) : toucher = +1, clic droit = −1. */
   boardAllocation?: BoardAllocationMode | null;
+  /** Répartition d'une Salve sur les unités ADVERSES (`useSalveAllocation`) : toucher = +1 point, clic droit = −1. */
+  salveAllocation?: BoardAllocationMode | null;
   /** Désignation de plusieurs unités sur le plateau (`useBoardPick`) : toucher = désigner / reprendre. */
   boardPick?: BoardPickMode | null;
   /**
@@ -793,7 +795,7 @@ export function TableBoard(props: TableBoardProps) {
       props.onActivateAbility !== undefined &&
       canActivateAbility(state, viewerId, card.id);
     const attackTarget = !mine && attackTargeting;
-    const allocation = mine ? (props.boardAllocation ?? null) : null;
+    const allocation = mine ? (props.boardAllocation ?? null) : (props.salveAllocation ?? null);
     const allocated = allocation?.amounts.get(card.id) ?? 0;
     const allocatable = allocation?.eligible.has(card.id) ?? false;
     const pick = props.boardPick ?? null;
@@ -854,7 +856,7 @@ export function TableBoard(props: TableBoardProps) {
           aiming?.sourceId === card.id ? styles.aimSource : "",
           // Ciblage bienfaisant (soin, bonus, Équipement) : bleu ; nuisible : le rouge de l'attaque.
           targetable && !held
-            ? `${styles.targetable} ${(effectTarget && activePolarity === "friendly") || allocatable || (pickable && pick?.polarity === "friendly") ? styles.effectTone : ""}`
+            ? `${styles.targetable} ${(effectTarget && activePolarity === "friendly") || (allocatable && mine) || (pickable && pick?.polarity === "friendly") ? styles.effectTone : ""}`
             : "",
           targetable && hover === drop ? styles.targetHover : "",
           targeting?.sourceInstanceId === card.id ? styles.aimSource : "",
@@ -890,9 +892,15 @@ export function TableBoard(props: TableBoardProps) {
           </span>
         )}
         {allocated > 0 && (
-          <span className={styles.allocationBadge} aria-label={`${allocated} point${allocated > 1 ? "s" : ""} de Résistance versé${allocated > 1 ? "s" : ""}`}>
-            +{allocated}
-          </span>
+          mine ? (
+            <span className={styles.allocationBadge} aria-label={`${allocated} point${allocated > 1 ? "s" : ""} de Résistance versé${allocated > 1 ? "s" : ""}`}>
+              +{allocated}
+            </span>
+          ) : (
+            <span className={styles.allocationBadge} data-tone="attack" aria-label={`${allocated} dégât${allocated > 1 ? "s" : ""} de la Salve`}>
+              {allocated}
+            </span>
+          )
         )}
         {/* APRÈS la carte : posé avant, il était recouvert par elle et ne recevait aucun clic. */}
         {activatable && (

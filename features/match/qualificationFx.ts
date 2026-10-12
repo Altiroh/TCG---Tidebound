@@ -17,7 +17,8 @@ import { playCardAwake, playMagicImpact, playShipHit } from "@/lib/sound";
  *   - à la DÉCLARATION, sur l'attaquant qui se lève : ce qui rend l'attaque
  *     possible (Rafale pour la 2e attaque, Déluge, Contournement) ;
  *   - au CHOC : ce que le coup provoque (Coup de grâce et Entaille sur la
- *     cible, Éclaboussure sur chaque voisin, qui tremble ; Brèche et
+ *     cible, Éclaboussure sur chaque voisin et Salve sur chaque autre cible,
+ *     qui tremblent ; Brèche et
  *     Ponction sur le Navire adverse, qui encaisse ; Sangsue sur le Navire du
  *     porteur, qui récupère) — décalés pour se lire l'un après l'autre ;
  *   - APRÈS le retour : Carnage, l'attaque de plus.
@@ -194,7 +195,7 @@ export function playQualificationFx(fx: QualificationFx, timing: { impactAtMs: n
     showQualification(el, fx.qualification, { caption: spec.caption(fx.amount) });
     if (spec.moment === "declare") playCardAwake();
     else playMagicImpact();
-    if (fx.qualification === "eclaboussure" || fx.qualification === "coup-de-grace") {
+    if (fx.qualification === "eclaboussure" || fx.qualification === "coup-de-grace" || fx.qualification === "salve") {
       shake(el);
       tremble(el);
     }

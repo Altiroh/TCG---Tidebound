@@ -227,7 +227,7 @@ export function FxLabPanel({ cardEffects = false }: { cardEffects?: boolean } = 
   /**
    * Une attaque de la source sur la 1re cible, avec les QUALIFICATIONS
    * demandées : leurs glyphes jouent comme en partie (déclaration, choc,
-   * retour). Éclaboussure touche les autres cibles (à défaut, la 1re) ;
+   * retour). Éclaboussure et Salve touchent les autres cibles (à défaut, la 1re) ;
    * Brèche et Ponction le Navire adverse ; Sangsue le Navire du joueur.
    */
   function qualifiedAttack(ids: QualificationId[]) {
@@ -239,9 +239,10 @@ export function FxLabPanel({ cardEffects = false }: { cardEffects?: boolean } = 
     const fx: QualificationFx[] = ids.flatMap((qualification): QualificationFx[] => {
       const base = { qualification, sourceInstanceId: from.id };
       switch (qualification) {
-        case "eclaboussure": {
-          const voisins = to.slice(1).filter((t) => t.kind === "unit");
-          return (voisins.length > 0 ? voisins : [target]).map((t) => ({ ...base, targetInstanceId: t.id, amount: 2 }));
+        case "eclaboussure":
+        case "salve": {
+          const autres = to.slice(1).filter((t) => t.kind === "unit");
+          return (autres.length > 0 ? autres : [target]).map((t) => ({ ...base, targetInstanceId: t.id, amount: qualification === "salve" ? 1 : 2 }));
         }
         case "breche":
           return [{ ...base, targetPlayerId: defenderShip, amount: 2 }];

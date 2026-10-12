@@ -38,6 +38,7 @@ import { HandDiscardPrompt } from "@/features/match/HandDiscardPrompt";
 import { ChoiceBanner } from "@/features/match/ChoiceBanner";
 import { useHandLimitDiscard } from "@/features/match/useHandLimitDiscard";
 import { useHealAllocation } from "@/features/match/useHealAllocation";
+import { useSalveAllocation } from "@/features/match/useSalveAllocation";
 import { useBoardPick } from "@/features/match/useBoardPick";
 import { useHeldTarget } from "@/features/match/useHeldTarget";
 import { PhaseBanner } from "@/features/match/PhaseBanner";
@@ -114,6 +115,8 @@ export function OnlineBoard({
   const healAllocation = useHealAllocation(state, myUserId, (allocation) =>
     act({ type: "resolveChoice", playerId: myUserId, choice: { healAllocation: allocation } })
   );
+  // Salve : l'attaque attend que le joueur répartisse la Puissance sur le plateau.
+  const salveAllocation = useSalveAllocation(liveState, myUserId, (action) => act(action));
   // Plusieurs unités à désigner : sur le plateau, toucher = désigner / reprendre.
   const boardPick = useBoardPick(state, myUserId, (answer) => act({ type: "resolveChoice", playerId: myUserId, choice: answer }));
   // La première cible d'une action qui n'est pas allée au bout reste marquée.
@@ -156,6 +159,7 @@ export function OnlineBoard({
     act: (action) => {
       // Attaque visée à côté d'une Garde : la Garde se montre, rien ne part, l'attaquant reste prêt.
       if (interceptBlockedAttack(liveState, action)) return;
+      if (salveAllocation.intercept(action)) return;
       heldTarget.note(liveState, action);
       onAction(action);
       board.clearSelection();
@@ -188,6 +192,7 @@ export function OnlineBoard({
   /** Envoie une action au serveur, et referme la sélection en cours. */
   function act(action: PlayerAction) {
     if (interceptBlockedAttack(liveState, action)) return;
+    if (salveAllocation.intercept(action)) return;
     heldTarget.note(liveState, action);
     onAction(action);
     board.clearSelection();
@@ -275,6 +280,7 @@ export function OnlineBoard({
         onCancelHint={board.clearSelection}
         handLimitDiscard={handLimit.mode}
         boardAllocation={healAllocation.mode}
+        salveAllocation={salveAllocation.mode}
         boardPick={boardPick.mode}
         heldTargets={[...boardPick.locked, ...(heldTarget.held ? [heldTarget.held] : [])]}
         phaseButton={{
@@ -394,6 +400,16 @@ export function OnlineBoard({
           detail={boardPick.banner.detail}
           actions={boardPick.banner.actions}
           onExpire={boardPick.banner.onExpire}
+        />
+      )}
+      {salveAllocation.banner && (
+        <ChoiceBanner
+          choiceKey={salveAllocation.banner.choiceKey}
+          source={salveAllocation.banner.source}
+          title={salveAllocation.banner.title}
+          detail={salveAllocation.banner.detail}
+          actions={salveAllocation.banner.actions}
+          onExpire={salveAllocation.banner.onExpire}
         />
       )}
       {healAllocation.banner && (

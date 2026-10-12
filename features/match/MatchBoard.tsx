@@ -43,6 +43,7 @@ import { HandDiscardPrompt } from "@/features/match/HandDiscardPrompt";
 import { ChoiceBanner } from "@/features/match/ChoiceBanner";
 import { useHandLimitDiscard } from "@/features/match/useHandLimitDiscard";
 import { useHealAllocation } from "@/features/match/useHealAllocation";
+import { useSalveAllocation } from "@/features/match/useSalveAllocation";
 import { useBoardPick } from "@/features/match/useBoardPick";
 import { useHeldTarget } from "@/features/match/useHeldTarget";
 import { PhaseBanner } from "@/features/match/PhaseBanner";
@@ -174,6 +175,8 @@ export function MatchBoard({
   const healAllocation = useHealAllocation(state, viewerPlayerId, (allocation) =>
     runReactionAction({ type: "resolveChoice", playerId: viewerPlayerId, choice: { healAllocation: allocation } })
   );
+  // Salve : l'attaque attend que le joueur répartisse la Puissance sur le plateau.
+  const salveAllocation = useSalveAllocation(liveState, viewerPlayerId, (action) => runAction(action));
   // Plusieurs unités à désigner : sur le plateau, toucher = désigner / reprendre.
   const boardPick = useBoardPick(state, viewerPlayerId, (answer) =>
     runReactionAction({ type: "resolveChoice", playerId: viewerPlayerId, choice: answer })
@@ -325,6 +328,8 @@ export function MatchBoard({
     if (!isViewerTurn) return;
     // Attaque visée à côté d'une Garde : la Garde se montre, rien ne part, l'attaquant reste prêt.
     if (interceptBlockedAttack(liveState, action)) return;
+    // Salve : la répartition se fait d'abord sur le plateau, l'attaque part ensuite.
+    if (salveAllocation.intercept(action)) return;
     const result = dispatch(liveState, action);
     if (!result.ok) {
       setError(result.error);
@@ -477,6 +482,7 @@ export function MatchBoard({
         onCancelHint={board.clearSelection}
         handLimitDiscard={handLimit.mode}
         boardAllocation={healAllocation.mode}
+        salveAllocation={salveAllocation.mode}
         boardPick={boardPick.mode}
         heldTargets={[...boardPick.locked, ...(heldTarget.held ? [heldTarget.held] : [])]}
         phaseButton={{
@@ -601,6 +607,16 @@ export function MatchBoard({
           detail={boardPick.banner.detail}
           actions={boardPick.banner.actions}
           onExpire={boardPick.banner.onExpire}
+        />
+      )}
+      {salveAllocation.banner && (
+        <ChoiceBanner
+          choiceKey={salveAllocation.banner.choiceKey}
+          source={salveAllocation.banner.source}
+          title={salveAllocation.banner.title}
+          detail={salveAllocation.banner.detail}
+          actions={salveAllocation.banner.actions}
+          onExpire={salveAllocation.banner.onExpire}
         />
       )}
       {healAllocation.banner && (

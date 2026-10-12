@@ -45,6 +45,14 @@ export interface AttackAction {
   attackerInstanceId: string;
   /** Absent = attaque directe du joueur adverse. */
   defenderInstanceId?: string;
+  /**
+   * SALVE (qualification) : la part de la Puissance que le joueur envoie sur
+   * d'AUTRES unités adverses que la cible déclarée, au moins 1 chacune. La
+   * cible déclarée garde le reste (au moins 1). Chaque cible doit être
+   * attaquable pour elle-même (Garde comprise), et chacune riposte.
+   * Absent ou vide : une attaque ordinaire, toute la Puissance sur la cible.
+   */
+  salve?: Array<{ targetInstanceId: string; amount: number }>;
 }
 
 export interface EndTurnAction {

@@ -4606,6 +4606,14 @@
   animation: allocationPop 260ms cubic-bezier(0.2, 1.4, 0.4, 1) both;
 }
 
+/* Salve : la part de Puissance envoyée sur une unité adverse — le rouge de l'attaque. */
+.allocationBadge[data-tone="attack"] {
+  border-color: rgba(255, 210, 200, 0.9);
+  background: linear-gradient(180deg, #e0523f, #9b2418);
+  box-shadow: 0 0 12px rgba(255, 110, 80, 0.7), 0 3px 8px rgba(0, 0, 0, 0.55);
+  color: #fff5f2;
+}
+
 @keyframes allocationPop {
   from { transform: translate(-50%, -50%) scale(0.4); opacity: 0; }
   to { transform: translate(-50%, -50%) scale(1); opacity: 1; }
