@@ -3892,7 +3892,7 @@
  * avec quelques règles de structure assumées, toutes dans ce bloc :
  *   - plus de symétrie : la colonne des navires a la largeur du navire
  *     (elle réservait ~110 px de feutre vide pour centrer le plateau) ;
- *   - pioche et Cimetière en petites piles (62 % d'une carte) ;
+ *   - pioche et Cimetière à la taille d'une carte de plateau ;
  *   - bande de Marée en hauteur FIXE (~36 px) : piste compacte, seul l'état
  *     courant est nommé, avec son décompte ; au doigt toute la piste ouvre
  *     l'infobulle ;
@@ -3919,18 +3919,19 @@
     --fs-value: clamp(12px, 3.4cqh, 16px);
     --fs-title: clamp(12px, 3.6cqh, 17px);
 
-    /* Navire à sa largeur propre ; piles réduites à 62 % d'une carte. */
+    /* Navire à sa largeur propre ; piles à la taille d'une carte de plateau
+       (réduites, le Cimetière et la pioche ne se lisaient plus au doigt). */
     --ship-w: calc(var(--row-h) * 0.8);
-    --pile-w: calc(var(--card-w) * 0.62);
+    --pile-w: var(--card-w);
     --cargo-w: calc(2 * var(--pile-w) + var(--pile-gap));
 
     /* Plus grande carte qui laisse tenir la rangée : navire (≈ 1,12 carte),
-       emplacements, deux piles (1,24 carte), colonne de droite, gouttières.
+       emplacements, deux piles (2 cartes), colonne de droite, gouttières.
        Zones sûres retirées (encoche). */
     --card-h-fit: calc(
       (min(100cqw - var(--safe-left) - var(--safe-right), var(--stage-max-w)) - 2 * var(--gutter-x) - var(--rail-w) - 3 * var(--col-gap) -
           var(--board-slots) * var(--board-gap) - 6px) /
-        (var(--board-slots) + 2.4) * 7 / 5
+        (var(--board-slots) + 3.16) * 7 / 5
     );
     /* 27cqh : la hauteur rendue par la Marée compacte et la main adverse
        réduite. Deux rangées, une bande de 36 px, la main : ça tient à 375. */
@@ -3994,11 +3995,6 @@
   .cargoDeck,
   .cargoGraveyard {
     width: var(--pile-w);
-  }
-
-  /* La dernière carte du Cimetière n'est qu'un fond à cette taille. */
-  .graveyardTop {
-    opacity: 0.6;
   }
 
   /* ── Cartes de plateau : face compacte ──
