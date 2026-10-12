@@ -266,8 +266,9 @@ describe("signalement des qualifications (QUALIFICATION_TRIGGERED)", () => {
 
 describe("Équipement qui confère une qualification (equipGrantsQualifications)", () => {
   it("l'unité équipée la porte tant qu'il est attaché, l'Équipement lui-même jamais", () => {
-    // Aucune carte du catalogue n'en confère encore : on l'accorde le temps du test.
+    // Le Cerf-volant confère Sangsue ; on lui fait conférer Rafale le temps du test.
     const def = getCardDefinition("le-cerf-volant");
+    const avant = def.equipGrantsQualifications;
     def.equipGrantsQualifications = [{ id: "rafale" }];
     try {
       const a = instance("matelot-du-sans-nom", "p1");
@@ -276,7 +277,7 @@ describe("Équipement qui confère une qualification (equipGrantsQualifications)
       expect(attacksAllowed(s, "p1", a)).toBe(2);
       expect(attacksAllowed(table([a, { ...equip, attachedToInstanceId: undefined }], []), "p1", a)).toBe(1);
     } finally {
-      delete def.equipGrantsQualifications;
+      def.equipGrantsQualifications = avant;
     }
   });
 });

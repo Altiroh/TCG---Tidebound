@@ -229,17 +229,12 @@ export const LOT18_SET: CardDefinition[] = [
     // Une unité marquée Mort est Mort-vivant : elle peut le porter aussi.
     equipTargetSubtype: MORT_VIVANT,
     equipGrantsBuff: { attackAmount: 1, healthAmount: 1 },
-    text:
-      "Équipez un Mort-vivant que vous contrôlez. Il gagne +1 / +1. Quand il inflige des dégâts, récupérez autant " +
-      "d'Ancrage. Quand il est détruit, piochez 1 carte.",
+    // Décision du 12/10/2026 : « récupérez autant d'Ancrage » devient Sangsue, CONFÉRÉE au porteur
+    // (un Équipement ne porte pas de qualification, il la donne).
+    equipGrantsQualifications: [{ id: "sangsue" }],
+    text: "Équipez un Mort-vivant que vous contrôlez. Il gagne +1 / +1 et Sangsue. Quand il est détruit, piochez 1 carte.",
     onPlayEffects: [{ type: "attachEquipment", target: { kind: "chosenUnit" } }],
     abilities: [
-      {
-        trigger: "onDealtDamage",
-        triggeredBy: { equippedUnit: true },
-        description: "Le porteur inflige des dégâts : récupérez autant d'Ancrage.",
-        effects: [{ type: "heal", target: { kind: "controllerPlayer" }, amount: { kind: "triggerDamage" } }],
-      },
       {
         trigger: "onDeath",
         triggeredBy: { equippedUnit: true, destroyedBy: [...DETRUITE] },

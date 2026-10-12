@@ -318,7 +318,7 @@ describe("cartes du pool", () => {
     expect(canBeEquipTarget(cerfVolant, board, ptitBout)).toBe(true);
   });
 
-  it("Le Cerf-volant : +1 / +1 au porteur, et ses dégâts rendent autant d'Ancrage", () => {
+  it("Le Cerf-volant : +1 / +1 au porteur, et Sangsue conférée — ses dégâts rendent autant d'Ancrage", () => {
     const cerf = instance("le-cerf-volant", "p1");
     const ptitBout = instance("ptit-bout", "p1");
     const r = jouer(table({ hand: [cerf], board: [ptitBout], anchor: 10 }), cerf, ptitBout.instanceId);
@@ -330,6 +330,9 @@ describe("cartes du pool", () => {
     ok(frappe);
     expect(joueur(frappe.state, "p2").anchor).toBe(adverse - 2);
     expect(joueur(frappe.state).anchor).toBe(10 + 2);
+    expect(frappe.state.eventLog.some((e) => e.type === "QUALIFICATION_TRIGGERED" && e.qualification === "sangsue" && e.sourceInstanceId === ptitBout.instanceId)).toBe(true);
+    // Le Cerf-volant lui-même ne la porte pas : il la confère.
+    expect(getCardDefinition("le-cerf-volant").qualifications).toBeUndefined();
   });
 });
 
