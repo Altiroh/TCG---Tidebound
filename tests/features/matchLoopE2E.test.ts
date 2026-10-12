@@ -384,6 +384,22 @@ describe("pile ou face — le bot gagne la pièce", () => {
     expect(after.activePlayerId).toBe(USER);
     expect(after.turnNumber).toBe(2);
   });
+
+  it("la table ouverte demande elle-même le tour du bot (advanceBotMatch), sans attendre un coup du joueur", async () => {
+    forcedFirst = "player2";
+    const started = await startBotMatch(DECK.id, OTHER_DECK.id, "facile");
+    const matchId = started.matchId!;
+    // Ce que fait `OnlineMatch` à l'ouverture : tranche après tranche, jusqu'à rendre la main.
+    let more = true;
+    for (let garde = 0; more && garde < 30; garde += 1) {
+      const slice = await advanceBotMatch(matchId);
+      expect(slice.ok).toBe(true);
+      more = slice.data!.botToMove;
+    }
+    expect(more).toBe(false);
+    const after = db.one("match_states", { match_id: matchId })!.state;
+    expect(after.activePlayerId).toBe(USER);
+  });
 });
 
 describe("boucle complète — partie en ligne entre deux joueurs", () => {

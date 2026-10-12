@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { GameState, PlayerAction } from "@/game";
+import { botHasSomethingToDo, type GameState, type PlayerAction } from "@/game";
+import { COIN_TOSS_MS } from "@/features/match/CoinToss";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { advanceBotMatch, fetchMatchCosmetics, fetchMatchView, submitMatchAction } from "@/features/online/actions";
 import { OnlineBoard } from "@/features/online/OnlineBoard";
@@ -380,6 +381,53 @@ export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: On
       await refresh();
     }
   }
+
+  /**
+   * LE BOT A LA MAIN À L'OUVERTURE (retour du 12/10/2026) : il a gagné la
+   * pièce, ou la table a été rouverte pendant son tour. La page se charge
+   * sans rattrapage, et le bot n'était relancé qu'après un coup du joueur —
+   * qui attendait donc devant une table figée. On lui demande son tour tout
+   * de suite, tranche par tranche, rejouées à leur rythme ; après la pièce
+   * d'ouverture si elle tombe encore (`CoinToss`).
+   */
+  async function playBotTurn() {
+    if (busy.current) return;
+    busy.current = true;
+    const replay = paceFrames(viewRef.current, viewRef.current);
+    let more = true;
+    while (more) {
+      const slice = await advanceBotMatch(matchId).catch(() => ({ ok: false as const, error: "Le bot n'a pas pu jouer, réessaie.", data: undefined }));
+      if (!slice.ok || !slice.data) {
+        await replay.finished();
+        await refresh();
+        break;
+      }
+      shownVersion.current = slice.data.match.state_version;
+      setMatch(slice.data.match);
+      replay.enqueue(unpackFrames(slice.data.frames));
+      more = slice.data.botToMove;
+    }
+    await replay.finished();
+    busy.current = false;
+    if (resyncAfterBusy.current || latestRemoteVersion.current > shownVersion.current) {
+      resyncAfterBusy.current = false;
+      await refresh();
+    }
+  }
+
+  const botKickedOff = useRef(false);
+  useEffect(() => {
+    if (botKickedOff.current || initialMatch.mode !== "bot" || !initialView || initialView.status !== "active") return;
+    const botId = initialView.players.find((player) => player.id !== myUserId)?.id;
+    if (!botId || !botHasSomethingToDo(initialView, botId)) return;
+    botKickedOff.current = true;
+    // La pièce d'ouverture se lance d'abord : le bot joue une fois qu'elle est retombée.
+    const coin = initialView.turnNumber === 1 && initialView.eventLog.some((event) => event.type === "GAME_STARTED" && event.coinToss);
+    const timer = setTimeout(() => void playBotTurn(), coin ? COIN_TOSS_MS : 0);
+    timers.current.push(timer);
+    // Une fois, à l'ouverture de la table.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /**
    * Rejeu cadencé des états du bot : chacun s'affiche au plus tôt
