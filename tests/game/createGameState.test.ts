@@ -61,3 +61,53 @@ describe("createGameState", () => {
     expect(totalP1).toBe(DECK_LE_GRAND_BANC.cardIds.length);
   });
 });
+
+describe("createGameState — pile ou face pour le premier joueur", () => {
+  const start = (seed: number, firstPlayer?: "player1" | "player2" | "coin") =>
+    createGameState({
+      gameId: "pile-ou-face",
+      player1: { id: "p1", deck: DECK_LE_GRAND_BANC },
+      player2: { id: "p2", deck: DECK_LE_THEATRE_ENGLOUTI },
+      seed,
+      firstPlayer,
+    });
+
+  it("sans tirage, le joueur 1 commence, comme avant", () => {
+    const state = start(7);
+    expect(state.activePlayerId).toBe("p1");
+    const started = state.eventLog.find((event) => event.type === "GAME_STARTED");
+    expect(started).toMatchObject({ firstPlayerId: "p1" });
+    expect(started).not.toHaveProperty("coinToss");
+  });
+
+  it("le joueur 2 désigné commence, et c'est le joueur 1 qui reçoit la carte en plus", () => {
+    const state = start(7, "player2");
+    expect(state.activePlayerId).toBe("p2");
+    expect(state.priorityPlayerId).toBe("p2");
+    expect(state.turnTimer?.awaitingPlayerId).toBe("p2");
+    expect(state.eventLog.find((event) => event.type === "TURN_STARTED")).toMatchObject({ playerId: "p2" });
+    expect(state.players[0].hand).toHaveLength(RULES.STARTING_HAND_SIZE + RULES.SECOND_PLAYER_EXTRA_CARD);
+    expect(state.players[1].hand).toHaveLength(RULES.STARTING_HAND_SIZE);
+    // Aucune carte créée ni perdue : seule la coupe main / pioche change.
+    expect(state.players[0].hand.length + state.players[0].deck.length).toBe(DECK_LE_GRAND_BANC.cardIds.length);
+  });
+
+  it("la pièce tombe des deux côtés selon la graine, reproductible, et s'annonce", () => {
+    const firsts = new Set<string>();
+    for (let seed = 1; seed <= 30; seed += 1) {
+      const state = start(seed, "coin");
+      expect(start(seed, "coin").activePlayerId).toBe(state.activePlayerId);
+      expect(state.eventLog.find((event) => event.type === "GAME_STARTED")).toMatchObject({ coinToss: true, firstPlayerId: state.activePlayerId });
+      const second = state.players.find((player) => player.id !== state.activePlayerId)!;
+      expect(second.hand).toHaveLength(RULES.STARTING_HAND_SIZE + RULES.SECOND_PLAYER_EXTRA_CARD);
+      firsts.add(state.activePlayerId);
+    }
+    expect(firsts).toEqual(new Set(["p1", "p2"]));
+  });
+
+  it("le tirage ne change pas les mélanges d'une graine", () => {
+    const sans = start(11);
+    const avec = start(11, "coin");
+    expect(avec.players[1].deck.slice(-5).map((card) => card.cardId)).toEqual(sans.players[1].deck.slice(-5).map((card) => card.cardId));
+  });
+});

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { type GameEvent, type GameState, type PlayerId } from "@/game";
 import { deriveEffectVolley, patchedDisplay, volleyLandingMs, type EffectVolley } from "@/features/match/effectPresentation";
 import {
@@ -11,6 +11,7 @@ import {
   type QualificationCue,
   type QualificationFx,
 } from "@/features/match/qualificationFxData";
+import { withoutSettledPrompts } from "@/features/match/settledPrompts";
 import { beforeDieDisplay, dieHoldMs, freshDieRoll, type DieHold } from "@/features/match/dicePresentation";
 
 export interface AttackAnimation {
@@ -276,8 +277,14 @@ export function useAttackPresentation(live: GameState): {
     return () => timers.forEach((timer) => clearTimeout(timer));
   }, [staged, volley, finalBlow, post]);
 
+  // Mémorisé : un nouvel objet à chaque rendu ferait croire au plateau que la partie a changé.
+  const displayState = useMemo(
+    () => (presentation.held ? withoutSettledPrompts(presentation.held, presentation.live) : presentation.live),
+    [presentation.held, presentation.live]
+  );
+
   return {
-    displayState: presentation.held ?? presentation.live,
+    displayState,
     attacks,
     volleys,
     diceHolding: presentation.dice !== null,

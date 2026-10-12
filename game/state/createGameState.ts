@@ -2,7 +2,7 @@ import { getCardDefinition } from "@/game/cards/sets/core";
 import type { CardInstance } from "@/game/cards/types";
 import { getShipDefinition } from "@/game/environment/shipData";
 import { RULES } from "@/game/rules/constants";
-import { createSeed, shuffle } from "@/game/rng";
+import { createSeed, nextInt, shuffle } from "@/game/rng";
 import { startingReasonCap } from "@/game/state/reason";
 import type { GameState, PlayerId, PlayerState } from "@/game/state/types";
 import type { DeckList } from "@/game/cards/decks/types";
@@ -50,6 +50,15 @@ export interface CreateGameStateInput {
    * infranchissable et bloque le joueur sans explication.
    */
   guaranteedOpeningTypes?: readonly string[];
+  /**
+   * Qui joue le premier tour. `"coin"` : une pièce lancée sur la graine de
+   * la partie (reproductible), annoncée par `GAME_STARTED.coinToss`. Absent :
+   * le joueur 1, comme avant (tests, tutoriel, aperçus).
+   *
+   * Le joueur qui ne commence PAS reçoit la carte de compensation
+   * (`SECOND_PLAYER_EXTRA_CARD`), quel que soit son siège.
+   */
+  firstPlayer?: "player1" | "player2" | "coin";
 }
 
 /**
@@ -107,13 +116,21 @@ export function createGameState(input: CreateGameStateInput): GameState {
   const shuffled1 = shuffle(player1Deck, rngState);
   const shuffled2 = shuffle(player2Deck, shuffled1.nextState);
 
-  const dealt1 = dealOpeningHand(shuffled1.value, RULES.STARTING_HAND_SIZE, input.guaranteedOpeningTypes);
-  const player1Hand = dealt1.hand;
-  const player1Remaining = dealt1.rest;
+  // Pile ou face APRÈS les mélanges : les decks d'une graine donnée restent
+  // les mêmes, que la pièce soit lancée ou non.
+  const toss = input.firstPlayer === "coin" ? nextInt(shuffled2.nextState, 2) : null;
+  const rngAfterSetup = toss ? toss.nextState : shuffled2.nextState;
+  const player2First = toss ? toss.value === 1 : input.firstPlayer === "player2";
+  const firstId = player2First ? input.player2.id : input.player1.id;
 
   // Le second joueur pioche une carte supplémentaire pour compenser le
   // désavantage de ne pas jouer en premier.
-  const player2HandSize = RULES.STARTING_HAND_SIZE + RULES.SECOND_PLAYER_EXTRA_CARD;
+  const secondHandSize = RULES.STARTING_HAND_SIZE + RULES.SECOND_PLAYER_EXTRA_CARD;
+  const dealt1 = dealOpeningHand(shuffled1.value, player2First ? secondHandSize : RULES.STARTING_HAND_SIZE, input.guaranteedOpeningTypes);
+  const player1Hand = dealt1.hand;
+  const player1Remaining = dealt1.rest;
+
+  const player2HandSize = player2First ? RULES.STARTING_HAND_SIZE : secondHandSize;
   const player2Hand = shuffled2.value.slice(0, player2HandSize);
   const player2Remaining = shuffled2.value.slice(player2HandSize);
 
@@ -159,10 +176,10 @@ export function createGameState(input: CreateGameStateInput): GameState {
     createdAt: Date.now(),
     players: [player1, player2],
     turnNumber: 1,
-    activePlayerId: player1.id,
-    priorityPlayerId: player1.id,
+    activePlayerId: firstId,
+    priorityPlayerId: firstId,
     phase: "mainPhase",
-    rngState: shuffled2.nextState,
+    rngState: rngAfterSetup,
     environment: {
       tideState: "calme",
       tideRemainingTurns: RULES.TIDE_STATE_DURATION.calme,
@@ -175,19 +192,21 @@ export function createGameState(input: CreateGameStateInput): GameState {
         type: "GAME_STARTED",
         turnNumber: 1,
         timestamp: Date.now(),
+        firstPlayerId: firstId,
+        ...(toss ? { coinToss: true as const } : {}),
       },
       {
         type: "TURN_STARTED",
         turnNumber: 1,
         timestamp: Date.now(),
-        playerId: player1.id,
+        playerId: firstId,
       },
     ],
     // Le chrono du premier tour part avec la partie : sans lui, le premier
     // joueur pourrait ne jamais jouer sans que rien ne l'y oblige
     // (`game/rules/turnTimer.ts`).
     turnTimer: {
-      awaitingPlayerId: player1.id,
+      awaitingPlayerId: firstId,
       kind: "turn",
       deadlineAt: Date.now() + RULES.INACTIVITY_LIMIT_MS,
     },

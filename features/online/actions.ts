@@ -84,6 +84,7 @@ export async function joinOnlineMatch(inviteCode: string, deckId: string): Promi
     gameId: match.id,
     player1: { id: hostId, deck: deck1 },
     player2: { id: user.id, deck: deck2 },
+    firstPlayer: "coin",
   });
 
   // Atomique : passage en `active` et création de l'état privé réussissent

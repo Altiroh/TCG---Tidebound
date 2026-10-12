@@ -54,6 +54,7 @@ import { TableBoard } from "@/features/match/table/TableBoard";
 import { phaseButtonFor, phaseTitle, targetingHint } from "@/features/match/table/tableLabels";
 import { useActionToasts } from "@/features/match/useActionToasts";
 import { useAttackPresentation } from "@/features/match/useAttackPresentation";
+import { useCoinToss } from "@/features/match/CoinToss";
 import { useDeraisonWarning } from "@/features/match/useDeraisonWarning";
 import { useAvatarCardId, useDisplayNames, useEquippedTitle } from "@/features/match/useDisplayNames";
 import { usePhaseBannerEvent } from "@/features/match/usePhaseBannerEvent";
@@ -103,6 +104,7 @@ export function OnlineBoard({
   useScreenWakeLock(liveState.status !== "finished");
   // `state` = état AFFICHÉ, retenu avant le choc pendant une attaque (cf. `useAttackPresentation`).
   const { displayState: state, attacks, volleys } = useAttackPresentation(liveState);
+  const coin = useCoinToss(liveState, myUserId);
   const me = state.players.find((p) => p.id === myUserId)!;
   const opponent = state.players.find((p) => p.id !== myUserId)!;
   const displayNames = useDisplayNames([me.id, opponent.id]);
@@ -260,6 +262,7 @@ export function OnlineBoard({
 
   return (
     <>
+      {coin.overlay}
       <TableBoard
         state={state}
         viewerId={myUserId}

@@ -35,6 +35,14 @@ vi.mock("@/lib/supabase/sessionUser", () => ({
 }));
 
 vi.mock("next/cache", () => ({ revalidatePath: () => {} }));
+// Ces parcours jouent l'humain EN PREMIER : la pièce d'ouverture (`firstPlayer: "coin"`)
+// est figée ici (`forcedFirst`, joueur 1 par défaut) ; le tirage a ses propres tests
+// (`createGameState.test.ts`).
+let forcedFirst: "player1" | "player2" = "player1";
+vi.mock("@/game", async (importOriginal) => {
+  const game = await importOriginal<typeof import("@/game")>();
+  return { ...game, createGameState: (input: Parameters<typeof game.createGameState>[0]) => game.createGameState({ ...input, firstPlayer: forcedFirst }) };
+});
 vi.mock("next/navigation", () => ({
   redirect: () => {
     throw new Error("redirection vers /connexion");
@@ -96,6 +104,7 @@ beforeEach(() => {
   db.rpcCalls.length = 0;
   db.beforeRpc = null;
   sessionUserId = USER;
+  forcedFirst = "player1";
   seedReferenceData();
   // Depuis le 09/10/2026, un préconstruit ne se joue que débloqué : chaque
   // joueur de ces parties a débloqué les deux listes qu'il emmène.
@@ -356,6 +365,24 @@ describe("boucle complète — partie contre bot, arbitrée côté serveur", () 
     // nulle part dans ce qui part au navigateur.
     const opponentHandIds = full.players[1].hand.map((card: { instanceId: string }) => card.instanceId);
     for (const instanceId of opponentHandIds) expect(projected).not.toContain(instanceId);
+  });
+});
+
+describe("pile ou face — le bot gagne la pièce", () => {
+  it("le serveur joue le premier tour du bot à la première lecture, et la main revient à l'humain", async () => {
+    forcedFirst = "player2";
+    const started = await startBotMatch(DECK.id, OTHER_DECK.id, "facile");
+    const matchId = started.matchId!;
+    const initial = db.one("match_states", { match_id: matchId })!.state;
+    expect(initial.activePlayerId).toBe("bot");
+    // L'humain, second, reçoit la carte de compensation.
+    expect(initial.players.find((p: { id: string }) => p.id === USER).hand).toHaveLength(6);
+
+    const view = await fetchMatchView(matchId);
+    expect(view.ok).toBe(true);
+    const after = db.one("match_states", { match_id: matchId })!.state;
+    expect(after.activePlayerId).toBe(USER);
+    expect(after.turnNumber).toBe(2);
   });
 });
 

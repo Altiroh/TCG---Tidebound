@@ -94,6 +94,8 @@ async function createBotMatch(deckId: string, botDeckId: string, difficulty: Bot
     gameId: matchId,
     player1: { id: user.id, deck: playerDeck },
     player2: { id: BOT_PLAYER_ID, deck: botDeck },
+    // Pile ou face : si le bot commence, le serveur joue son premier tour à la première lecture.
+    firstPlayer: "coin",
   });
 
   const { data, error } = await service.rpc("create_active_match", {

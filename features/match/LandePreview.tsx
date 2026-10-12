@@ -40,7 +40,7 @@ export function LandePreview() {
   // eslint-disable-next-line react-hooks/exhaustive-deps -- lu une fois, à l'arrivée
   useEffect(() => setState(build()), []);
   function build(): GameState {
-    const base = createLocalMatch(PRECON_DECKS[0]!, PRECON_DECKS[1]!);
+    const base = createLocalMatch(PRECON_DECKS[0]!, PRECON_DECKS[1]!, "player1");
     const deja = params.get("lande");
     const lande = deja && LANDES.includes(deja as (typeof LANDES)[number]) ? deja : null;
     const combat = params.get("combat") === "1";

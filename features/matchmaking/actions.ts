@@ -131,6 +131,7 @@ async function tryPair(userId: string, deckId: string): Promise<ActionResult<Mat
     gameId: matchId,
     player1: { id: userId, deck: selfDeck.deck },
     player2: { id: opponent.opponent_user_id, deck: opponentDeck.deck },
+    firstPlayer: "coin",
   });
 
   // Partie et état privé créés dans la même transaction, avec la clé

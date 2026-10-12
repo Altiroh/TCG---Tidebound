@@ -411,6 +411,10 @@ export interface EndTurnEvent extends BaseGameEvent {
 
 export interface GameStartedEvent extends BaseGameEvent {
   type: "GAME_STARTED";
+  /** Joueur du premier tour (absent sur les états d'avant le tirage : le joueur 1). */
+  firstPlayerId?: PlayerId;
+  /** Le premier joueur a été tiré à pile ou face : l'écran lance la pièce. */
+  coinToss?: true;
 }
 
 export interface GameEndedEvent extends BaseGameEvent {

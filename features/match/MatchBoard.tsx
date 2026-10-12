@@ -54,6 +54,7 @@ import { reactionTargetHint } from "@/features/match/reactionTargetHint";
 import { TableBoard } from "@/features/match/table/TableBoard";
 import { phaseButtonFor, phaseTitle, targetingHint } from "@/features/match/table/tableLabels";
 import { useActionToasts } from "@/features/match/useActionToasts";
+import { useCoinToss } from "@/features/match/CoinToss";
 import { useAttackPresentation } from "@/features/match/useAttackPresentation";
 import { useDeraisonWarning } from "@/features/match/useDeraisonWarning";
 import { useAvatarCardId, useDisplayNames, useEquippedTitle } from "@/features/match/useDisplayNames";
@@ -142,7 +143,7 @@ export function MatchBoard({
   useScreenWakeLock(liveState.status !== "finished");
   // `state` = état AFFICHÉ (retenu avant le choc pendant une attaque, cf. `useAttackPresentation`) ; toute
   // action se valide et s'applique sur `liveState`, l'état de jeu réel.
-  const { displayState: state, attacks, volleys, holding } = useAttackPresentation(liveState);
+  const { displayState: state, attacks, volleys, holding: presenting } = useAttackPresentation(liveState);
   // Observateur externe (tutoriel) : notifié de l'état RÉEL, pas de l'état
   // affiché — une étape ne doit pas attendre la fin d'une animation.
   useEffect(() => {
@@ -162,6 +163,9 @@ export function MatchBoard({
   // fenêtre de réaction). Contre un bot, le joueur humain reste toujours en bas.
   const respondingPlayerId = state.pendingReaction?.awaitingPlayerId ?? activePlayerId;
   const viewerPlayerId = humanPlayerId ?? respondingPlayerId;
+  // Pile ou face d'ouverture : le bot attend que la pièce soit retombée.
+  const coin = useCoinToss(liveState, humanPlayerId);
+  const holding = presenting || coin.holding;
   const viewerPlayer = state.players.find((p) => p.id === viewerPlayerId)!;
   const otherPlayer = state.players.find((p) => p.id !== viewerPlayerId)!;
   const isViewerTurn = activePlayerId === viewerPlayerId;
@@ -459,6 +463,7 @@ export function MatchBoard({
 
   return withCosmetics(
     <>
+      {coin.overlay}
       <TableBoard
         state={state}
         viewerId={viewerPlayerId}
