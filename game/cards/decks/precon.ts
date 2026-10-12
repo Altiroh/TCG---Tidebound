@@ -182,6 +182,16 @@ export const DECK_CHEVALIERS_DU_GRAND_ETANG: DeckList = {
  * encore peu Ceux d'en bas, On joue aux morts et Réveille-toi (24 à 38 %
  * des fois où il les tient) — entre des mains humaines, le deck vaut
  * probablement un peu plus que la mesure.
+ *
+ * 12/10/2026 — Coucou, c'est moi passe à UN exemplaire par deck (décision du
+ * propriétaire : la boucle qui revient sans fin portait la force des
+ * Morts-vivants). Deux places rendues, mesurées au labo (`scripts/preconLab/
+ * libraries/veilleeCoucou.ts`, 40 parties par paire, bot moyen) : CONTRE
+ * TOUTE ATTENTE, toutes les variantes à un Coucou gagnent PLUS que la liste
+ * à trois (58,4 %) — de 61,9 % à 67,8 % : le bot tire peu de la boucle,
+ * qu'un humain exploite (défausse, Sabordage). Retenue la plus sobre :
+ * un P'tit Bout et un Goûter de plus (61,9 %). Deux Gardiens montaient à
+ * 67,8 % : écartés, comme le 10/10.
  */
 export const DECK_LA_VEILLEE: DeckList = {
   id: "la-veillee",
@@ -191,8 +201,9 @@ export const DECK_LA_VEILLEE: DeckList = {
     "La meute se nourrit de ses morts : chaque Mort-vivant perdu revient, frappe ou renforce les autres.",
   cardIds: [
     // Les petits, qu'on est content de perdre.
-    ...repeat("coucou-cest-moi", 3),
-    ...repeat("ptit-bout", 2),
+    // Un seul Coucou depuis le 12/10/2026 (limite par deck) : un P'tit Bout de plus à sa place.
+    ...repeat("coucou-cest-moi", 1),
+    ...repeat("ptit-bout", 3),
     ...repeat("cache-cache", 3),
     ...repeat("pas-sans-moi", 3),
     ...repeat("encore-cinq-minutes", 2),
@@ -211,7 +222,7 @@ export const DECK_LA_VEILLEE: DeckList = {
     // Ce qui remonte du Cimetière, ou le remplit.
     ...repeat("encore-une-histoire", 2),
     ...repeat("reveille-toi", 2),
-    ...repeat("le-gouter", 2),
+    ...repeat("le-gouter", 3),
   ],
 };
 

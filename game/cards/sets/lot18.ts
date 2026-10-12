@@ -73,7 +73,9 @@ export const LOT18_SET: CardDefinition[] = [
     cost: 1,
     attack: 1,
     health: 1,
-    maxCopies: 3,
+    // Un seul exemplaire par deck (décision du 12/10/2026) : la carte qui
+    // revient sans fin portait la force des Morts-vivants. Notion mis à jour.
+    maxCopies: 1,
     text: "Quand elle est détruite ou Sabordée, ou défaussée, ramenez-la du Cimetière sur le plateau à la fin du tour.",
     // Elle ne revient qu'à la FIN du tour : une fois par tour au plus, sans
     // qu'il faille le suivre. Défaussée, elle arrive en jeu — c'est la carte
