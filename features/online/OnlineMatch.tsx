@@ -24,6 +24,8 @@ import { isOffline, presentUserIds, useOffline, useOpponentPresence, waitUntilOn
 
 /** Intervalle des relances tant qu'une échéance passée n'a pas encore été constatée par le serveur. */
 const DEADLINE_RETRY_MS = 5_000;
+/** Filet sous Realtime : intervalle de relecture pendant qu'on attend l'autre joueur. */
+const WAITING_POLL_MS = 3_000;
 
 interface OnlineMatchProps {
   matchId: string;
@@ -156,7 +158,7 @@ export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: On
   useEffect(() => cancelPendingRemote, []);
 
   /** `paced` : vue d'un coup adverse arrivée par Realtime — elle attend la fin de la scène en cours. */
-  async function refresh({ paced = false }: { paced?: boolean } = {}) {
+  async function refresh({ paced = false, onlyIfNewer = false }: { paced?: boolean; onlyIfNewer?: boolean } = {}) {
     let result: Awaited<ReturnType<typeof fetchMatchView>>;
     try {
       result = await fetchMatchView(matchId);
@@ -178,6 +180,8 @@ export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: On
       return;
     }
     if (!result.ok || !result.data) return;
+    // Relecture de garde : rien de neuf, rien ne bouge à l'écran.
+    if (onlyIfNewer && result.data.match.state_version <= shownVersion.current) return;
     shownVersion.current = result.data.match.state_version;
     latestRemoteVersion.current = Math.max(latestRemoteVersion.current, shownVersion.current);
     setMatch(result.data.match);
@@ -224,6 +228,30 @@ export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: On
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `refresh` est stable pour une partie donnée.
   }, [deadlineAt, awaiting, match.status]);
+
+  /**
+   * FILET SOUS REALTIME (retour du 12/10/2026, partie en ligne à deux) :
+   * l'écran n'apprenait le coup adverse QUE par la diffusion Realtime de
+   * `matches.state_version`. Quand elle n'arrive pas — publication absente
+   * en base, socket qui décroche sans le dire, réseau mobile —, la table
+   * restait figée : on ne voyait ni l'autre jouer, ni que c'était à soi.
+   *
+   * Tant que la partie attend L'AUTRE joueur, on relit donc la vue toutes
+   * les `WAITING_POLL_MS`, onglet visible et aucun coup en route. Seule une
+   * version plus récente change l'affichage, cadencée comme une vue Realtime.
+   */
+  // Qui la table attend : son chrono, à défaut la fenêtre, le choix ou le joueur actif.
+  const awaitedId = awaiting ?? view?.pendingReaction?.awaitingPlayerId ?? view?.pendingChoice?.playerId ?? view?.activePlayerId;
+  const waitingOnOpponent = !isBotMatch && match.status === "active" && Boolean(awaitedId) && awaitedId !== myUserId;
+  useEffect(() => {
+    if (!waitingOnOpponent) return;
+    const id = setInterval(() => {
+      if (busy.current || document.visibilityState !== "visible" || isOffline()) return;
+      void refresh({ paced: true, onlyIfNewer: true });
+    }, WAITING_POLL_MS);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `refresh` est stable pour une partie donnée.
+  }, [waitingOnOpponent]);
 
   /**
    * RATTRAPAGE — iOS suspend l'app en arrière-plan, le réseau tombe, le
