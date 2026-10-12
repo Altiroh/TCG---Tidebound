@@ -344,7 +344,8 @@ export function resolveChoice(state: GameState, action: ResolveChoiceAction): Ac
     // La part du Navire : de l'Ancrage, jusqu'à son Ancrage de départ.
     if (partNavire > 0) {
       const coque = getPlayer(nextState, choice.playerId);
-      const soigne = Math.max(0, Math.min(getShipDefinition(coque.shipId).startingAnchor, coque.anchor + partNavire) - coque.anchor);
+      // Sans plafond (12/10/2026) : la part du Navire porte entière, même au-delà de l'Ancrage de départ.
+      const soigne = Math.max(0, partNavire);
       if (soigne > 0) {
         nextState = { ...nextState, players: nextState.players.map((p) => (p.id === coque.id ? { ...coque, anchor: coque.anchor + soigne } : p)) as [PlayerState, PlayerState] };
         events.push({ ...base, type: "HEAL", targetPlayerId: coque.id, amount: soigne });

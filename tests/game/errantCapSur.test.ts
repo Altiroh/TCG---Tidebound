@@ -60,7 +60,7 @@ describe("L'Errant — Cap sûr", () => {
     expect(reasonOf(again.state)).toBe(-1);
   });
 
-  it("jamais au-delà de la Raison maximale", () => {
+  it("la Raison rendue peut dépasser la Raison maximale (sans plafond depuis le 12/10/2026)", () => {
     const { state, matelot } = table("lerrant", 3);
     const capped: GameState = {
       ...state,
@@ -68,7 +68,7 @@ describe("L'Errant — Cap sûr", () => {
     };
     const r = dispatch(capped, { type: "playCard", playerId: "p1", instanceId: matelot });
     ok(r);
-    expect(reasonOf(r.state)).toBe(2);
+    expect(reasonOf(r.state)).toBeGreaterThan(2);
   });
 
   it("un autre Navire ne rend rien", () => {

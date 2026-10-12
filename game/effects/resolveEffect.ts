@@ -1046,13 +1046,11 @@ export function resolveEffect(
 
       for (const player of resolvePlayerTargets(state, effect, context)) {
         const current = getPlayer(nextState, player.id);
-        // PLAFOND : l'Ancrage de départ du Navire fait office de maximum
-        // (22/09/2026). Sans lui, soigner était une ressource infinie — une
-        // conversion répétable comme « Réparation d'urgence » (2 Raison
-        // contre 2 Ancrage, chaque tour) aurait suffi à rendre une partie
-        // interminable. Le soin remplit une coque, il ne l'agrandit pas.
-        const plafond = getShipDefinition(current.shipId).startingAnchor;
-        const soigne = Math.max(0, Math.min(plafond, current.anchor + amount) - current.anchor);
+        // SANS PLAFOND (décision du 12/10/2026, qui remplace celle du
+        // 22/09/2026) : un soin peut porter l'Ancrage AU-DELÀ de l'Ancrage
+        // de départ, comme la Raison au-delà de son maximum. L'Ancrage de
+        // départ reste la référence de la jauge, pas une limite.
+        const soigne = Math.max(0, amount);
         if (soigne === 0) continue;
         nextState = replacePlayer(nextState, { ...current, anchor: current.anchor + soigne });
         // Le montant JOURNALISÉ est celui qui a porté : annoncer 3 quand la
@@ -1395,7 +1393,9 @@ export function resolveEffect(
         // `source: "card"` : récupérée GRÂCE À UNE CARTE (Survivant de la
         // Mousse), par opposition à la régénération de début de tour.
         events.push({ ...base, type: "REASON_CHANGED", playerId: player.id, delta: amount, source: "card" });
-        nextState = replacePlayer(nextState, { ...player, reason: Math.min(reasonCeiling(player), player.reason + amount) });
+        // Sans plafond (12/10/2026) : un gain de carte peut dépasser la Raison max. Seule la récupération
+        // naturelle de début de tour s'arrête au maximum (`endTurn.ts`).
+        nextState = replacePlayer(nextState, { ...player, reason: player.reason + amount });
       }
       return { state: nextState, events };
     }
@@ -2228,7 +2228,8 @@ export function resolveEffect(
       // Rien à réparer, ou rien à répartir : on ne pose pas une question
       // sans réponse utile. « Répartie entre les UNITÉS » : une Structure
       // blessée n'entre pas dans la répartition (cf. `resolveChoice`).
-      const navireBlesse = effect.includeShip === true && player.anchor < getShipDefinition(player.shipId).startingAnchor;
+      // L'Ancrage n'a plus de plafond (12/10/2026) : un Navire inclus peut toujours recevoir sa part.
+      const navireBlesse = effect.includeShip === true;
       if (budget <= 0 || (!navireBlesse && !player.board.some((u) => u.damageMarked > 0 && UNIT_CARD_TYPES.includes(getCardDefinition(u.cardId).type)))) {
         return { state, events };
       }

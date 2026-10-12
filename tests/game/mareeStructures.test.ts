@@ -175,7 +175,7 @@ describe("La Religieuse — Réparation d'urgence", () => {
     expect(apres.anchor).toBe(22);
   });
 
-  it("l'Ancrage ne dépasse pas le maximum du Navire", () => {
+  it("l'Ancrage peut dépasser l'Ancrage de départ du Navire (sans plafond depuis le 12/10/2026)", () => {
     const ship = 30; // La Religieuse
     const state = religieuse({
       players: [
@@ -185,6 +185,6 @@ describe("La Religieuse — Réparation d'urgence", () => {
     });
     const result = dispatch(state, { type: "activateShipAbility", playerId: "p1" });
     ok(result);
-    expect(result.state.players.find((p) => p.id === "p1")!.anchor).toBeLessThanOrEqual(ship);
+    expect(result.state.players.find((p) => p.id === "p1")!.anchor).toBeGreaterThan(ship);
   });
 });

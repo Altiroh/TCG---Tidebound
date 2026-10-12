@@ -138,7 +138,7 @@ export const QUALIFICATIONS: Record<QualificationId, QualificationRule> = {
     glyph: "sangsue",
     rules: "validated",
     rulings: [
-      "Le cahier dit « Coque » : le moteur appelle Ancrage les points de vie du Navire.",
+      "Le cahier dit « Coque » : le moteur appelle Ancrage les points de vie du Navire. Sans plafond depuis le 12/10/2026 : l'Ancrage peut dépasser l'Ancrage de départ.",
       "Les dégâts de riposte comptent : « inflige des dégâts » ne distingue pas l'attaque de la riposte.",
       "Seuls les dégâts de combat comptent, pas ceux de ses capacités écrites.",
     ],

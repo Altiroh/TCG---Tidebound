@@ -51,7 +51,8 @@ export function applyReasonDepletion(before: GameState, after: GameState): { sta
       // « Vous ne pouvez pas récupérer de Raison » (La Gueule Sous la Mer) :
       // la première fois a bien eu lieu, mais elle ne rend rien.
       if (player.statusFlags.includes(STATUS_NO_REASON_GAIN)) return withOncePerGameUse(next, DEPLETION_KEY);
-      const reason = Math.min(next.reasonMax, next.reason + amount);
+      // Sans plafond (12/10/2026) : un gain de carte peut dépasser la Raison max.
+      const reason = next.reason + amount;
       events.push({ type: "REASON_CHANGED", turnNumber, timestamp: Date.now(), playerId: player.id, delta: reason - next.reason });
       next = withOncePerGameUse({ ...next, reason }, DEPLETION_KEY);
     }

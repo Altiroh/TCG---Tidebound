@@ -60,13 +60,10 @@ function mapUnit(state: GameState, ownerId: PlayerId, instanceId: string, update
   };
 }
 
-/** Sangsue : le Navire du porteur récupère autant d'Ancrage, plafonné à son Ancrage de départ. */
+/** Sangsue : le Navire du porteur récupère autant d'Ancrage — sans plafond depuis le 12/10/2026. */
 function leech(ctx: Ctx, holder: CardInstance, holderOwnerId: PlayerId, dealt: number): void {
   if (dealt <= 0 || !hasQualification(holder, "sangsue", ctx.state)) return;
-  const player = getPlayer(ctx.state, holderOwnerId);
-  const cap = getShipDefinition(player.shipId).startingAnchor;
-  const healed = Math.max(0, Math.min(dealt, cap - player.anchor));
-  if (healed <= 0) return;
+  const healed = dealt;
   ctx.state = {
     ...ctx.state,
     players: ctx.state.players.map((p) => (p.id === holderOwnerId ? { ...p, anchor: p.anchor + healed } : p)) as [PlayerState, PlayerState],

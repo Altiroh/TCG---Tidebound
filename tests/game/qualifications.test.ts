@@ -166,12 +166,12 @@ describe("effets du coup", () => {
     expect(ancrage(s, "p2")).toBe(30);
   });
 
-  it("Sangsue, Ancrage presque plein : le soin s'arrête au plafond du Navire", () => {
+  it("Sangsue, Ancrage presque plein : le soin passe au-delà de l'Ancrage de départ (sans plafond depuis le 12/10/2026)", () => {
     const max = getShipDefinition("le-brise-lames").startingAnchor;
     const a = avec(instance("matelot-du-sans-nom", "p1"), { id: "sangsue" });
     const s = ok(table([a], [], { anchor: max - 1 }), a.instanceId);
-    expect(ancrage(s, "p1")).toBe(max);
-    expect(s.eventLog.some((e) => e.type === "HEAL" && e.targetPlayerId === "p1" && e.amount === 1)).toBe(true);
+    expect(ancrage(s, "p1")).toBe(max - 1 + 3);
+    expect(s.eventLog.some((e) => e.type === "HEAL" && e.targetPlayerId === "p1" && e.amount === 3)).toBe(true);
   });
 
   it("Coup de grâce : 1 dégât suffit à détruire ; un coup ramené à 0 ne détruit rien", () => {

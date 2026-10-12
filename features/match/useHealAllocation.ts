@@ -40,7 +40,8 @@ export function useHealAllocation(state: GameState, viewerId: PlayerId, submit: 
   const viewer = state.players.find((p) => p.id === viewerId);
   const board = viewer?.board ?? [];
   // « … entre vos unités et votre Navire » (Frère Michel) : le Navire reçoit sa part par un bouton du bandeau.
-  const shipRoom = active.includeShip && viewer ? Math.max(0, getShipDefinition(viewer.shipId).startingAnchor - viewer.anchor) : 0;
+  // L'Ancrage n'a plus de plafond (12/10/2026) : le Navire peut recevoir tout le budget.
+  const shipRoom = active.includeShip && viewer ? active.budget : 0;
   const shipPart = parts[SHIP] ?? 0;
   const spent = Object.values(parts).reduce((sum, n) => sum + n, 0);
   const left = active.budget - spent;
