@@ -419,6 +419,12 @@
 .iconButton:hover { border-color: #00aef0; box-shadow: 0 0 8px rgba(0, 174, 240, 0.25); }
 .iconButton:focus-visible { outline: 2px solid #00b7ff; outline-offset: 2px; }
 
+/* L'ancre du menu « ⋯ » : sans elle, le menu se calait sur un ancêtre lointain et
+   s'ouvrait hors de la page, sous le décor (retour du 12/10/2026). */
+.menuAnchor {
+  position: relative;
+}
+
 .menuUp {
   position: absolute;
   right: 0;

@@ -117,6 +117,8 @@ function DeckEditorScreenBody({ ownedCardIds, ownedCounts, initialDeck }: DeckEd
   // reste de ce qu'elle montre se déduit des cartes.
   const [description, setDescription] = useState(initialDeck?.description ?? "");
   const [artPickerOpen, setArtPickerOpen] = useState(false);
+  /** Filtre « déjà dans le deck » (retour du 12/10/2026) : la grille ne montre que les cartes du deck en cours. */
+  const [inDeckOnly, setInDeckOnly] = useState(false);
   const [savedSnapshot, setSavedSnapshot] = useState(() => serializeState(name, shipId, cardIds, artCardId, description));
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -134,6 +136,11 @@ function DeckEditorScreenBody({ ownedCardIds, ownedCounts, initialDeck }: DeckEd
   const owned = useMemo(() => (isSignedIn ? new Set(ownedCardIds) : null), [isSignedIn, ownedCardIds]);
   const initialFilters = useMemo(() => (isSignedIn ? { ownership: "owned" as const } : {}), [isSignedIn]);
   const cardBrowser = useCardBrowser({ owned, initialFilters, persistKey: "editeur-de-deck" });
+  const inDeck = useMemo(() => new Set(cardIds), [cardIds]);
+  const shownCards = useMemo(
+    () => (inDeckOnly ? cardBrowser.cards.filter((card) => inDeck.has(card.id)) : cardBrowser.cards),
+    [inDeckOnly, cardBrowser.cards, inDeck]
+  );
 
   const isDirty = serializeState(name, shipId, cardIds, artCardId, description) !== savedSnapshot;
   const issue = useMemo(() => {
@@ -396,12 +403,13 @@ function DeckEditorScreenBody({ ownedCardIds, ownedCounts, initialDeck }: DeckEd
             showCreateDeck={false}
             shelfCards={cardBrowser.shelfCards}
             order="editeur"
+            deckFilter={{ active: inDeckOnly, count: inDeck.size, onToggle: () => setInDeckOnly((on) => !on) }}
           />
         </aside>
 
         <main className={`${game.panel} ${browser.main} ${book.frame} ${book.center}`}>
           <CollectionToolbar
-            count={cardBrowser.cards.length}
+            count={shownCards.length}
             sort={cardBrowser.sort}
             onSortChange={cardBrowser.setSort}
             onOpenFilters={() => cardBrowser.setDrawerOpen((open) => !open)}
@@ -415,7 +423,7 @@ function DeckEditorScreenBody({ ownedCardIds, ownedCounts, initialDeck }: DeckEd
           />
 
           <CardGrid
-            cards={cardBrowser.cards}
+            cards={shownCards}
             onCardClick={addCard}
             hasAnyCards={!isSignedIn || ownedCardIds.length > 0}
             owned={owned}
@@ -479,6 +487,19 @@ function DeckEditorScreenBody({ ownedCardIds, ownedCounts, initialDeck }: DeckEd
       )}
 
       {shipPickerOpen && <ShipPicker currentShipId={shipId} onSelect={setShipId} onClose={() => setShipPickerOpen(false)} />}
+
+      {/* L'illustration du deck : le bouton de la plaque l'ouvrait, mais la fenêtre n'était jamais rendue (retour du 12/10/2026). */}
+      {artPickerOpen && (
+        <DeckArtPicker
+          cardIds={cardIds}
+          artCardId={artCardId}
+          onChoose={(cardId) => {
+            setArtCardId(cardId);
+            setArtPickerOpen(false);
+          }}
+          onClose={() => setArtPickerOpen(false)}
+        />
+      )}
 
       {pendingLeave && (
         <Dialog

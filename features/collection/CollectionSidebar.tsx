@@ -52,6 +52,11 @@ interface CollectionSidebarProps {
    * Raison, « Favoris & carnets » en bas.
    */
   order?: "collection" | "editeur";
+  /**
+   * Éditeur de deck : le filtre « Déjà dans le deck » (retour du
+   * 12/10/2026) — la grille ne montre que les cartes du deck en cours.
+   */
+  deckFilter?: { active: boolean; count: number; onToggle: () => void };
 }
 
 /** Couleur de chaque gemme de rareté — celles du récapitulatif de boosters. */
@@ -273,6 +278,7 @@ export function CollectionSidebar({
   showCreateDeck = true,
   shelfCards = null,
   order = "collection",
+  deckFilter,
 }: CollectionSidebarProps) {
   /** Ordre et axes de la maquette de l'Éditeur : carnets en bas, pas de Raison. */
   const editorOrder = order === "editeur";
@@ -297,6 +303,16 @@ export function CollectionSidebar({
       </div>
 
       {!editorOrder && <ShelfSection filters={filters} onChange={onChange} countFor={countFor} />}
+
+      {deckFilter && (
+        <section className={styles.filterSection}>
+          <h2 className={styles.sectionTitle}>Deck en cours</h2>
+          <FilterList rowCount={2}>
+            <FilterRow label="Toutes les cartes" active={!deckFilter.active} onClick={() => deckFilter.active && deckFilter.onToggle()} />
+            <FilterRow label="Déjà dans le deck" active={deckFilter.active} count={deckFilter.count} onClick={() => !deckFilter.active && deckFilter.onToggle()} />
+          </FilterList>
+        </section>
+      )}
 
       <section className={styles.filterSection}>
         <h2 className={styles.sectionTitle}>Variante</h2>
