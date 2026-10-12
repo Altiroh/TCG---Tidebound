@@ -382,6 +382,9 @@ export function guardsBlockingAttack(
   const opponent = state.players.find((p) => p.id !== attackerOwnerId);
   if (!opponent) return [];
   if (attackerBypassesGardeNow(state, attackerOwnerId, attackerInstanceId)) return [];
+  // Déluge ne vise jamais le Navire : ce n'est pas la Garde qui refuse cette attaque-là.
+  const attackerUnit = attackerInstanceId ? state.players.find((p) => p.id === attackerOwnerId)?.board.find((u) => u.instanceId === attackerInstanceId) : undefined;
+  if (!defenderInstanceId && attackerUnit && !canAttackShipDirectly(attackerUnit)) return [];
   const guards = opponent.board.filter((u) => hasEffectiveKeyword(state, opponent, u, "garde"));
   if (guards.length === 0) return [];
   if (defenderInstanceId && guards.some((u) => u.instanceId === defenderInstanceId)) return [];

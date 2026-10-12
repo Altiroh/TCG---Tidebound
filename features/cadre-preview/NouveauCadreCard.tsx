@@ -5,6 +5,7 @@ import { CARD_TYPE_LABELS } from "@/features/match/cardDisplay";
 import { useLayoutEffect, useRef } from "react";
 import { useDebordPleinCadre } from "@/features/match/useDebordPleinCadre";
 import { useImageOk } from "@/features/match/useImageOk";
+import { qualificationLead, type QualificationChip } from "@/features/match/qualificationDisplay";
 import styles from "@/features/cadre-preview/NouveauCadreCard.module.css";
 
 /**
@@ -47,6 +48,8 @@ export interface NouveauCadreFaceProps {
   /** Classes du chiffre (couleur de bonus/malus, animation), fournies par `CardTile`. */
   attackClassName?: string;
   healthClassName?: string;
+  /** Qualifications (« spé. ») à écrire en tête de l'effet, en gras : « Sangsue — … ». */
+  qualifications?: readonly QualificationChip[];
 }
 
 /** Enveloppe à largeur fixe de la page de test : la face y compose tout en `cqw`. */
@@ -59,7 +62,7 @@ export function NouveauCadreCard({ widthClassName = "w-64", ...props }: NouveauC
 }
 
 /** La face seule : elle remplit son parent (format 5:7) et y ouvre son propre conteneur de `cqw`. */
-export function NouveauCadreFace({ def, legendaire = false, attack, health, attackClassName = "", healthClassName = "" }: NouveauCadreFaceProps) {
+export function NouveauCadreFace({ def, legendaire = false, attack, health, attackClassName = "", healthClassName = "", qualifications }: NouveauCadreFaceProps) {
   const illustration = `/assets/cards/illustrations/${def.id}.webp`;
   const illustrationOk = useImageOk(illustration);
   const hasPower = def.attack !== undefined;
@@ -72,7 +75,10 @@ export function NouveauCadreFace({ def, legendaire = false, attack, health, atta
   const nomRef = useRef<HTMLHeadingElement>(null);
   const effetRef = useRef<HTMLParagraphElement>(null);
   useFitText(nomRef, def.name, nameSizeCqw(def.name), 6.5);
-  useFitText(effetRef, def.text ?? "", rulesSizeCqw(def.text ?? ""), 2.6, EFFET_LISIBLE_CQW);
+  const spe = qualifications && qualifications.length > 0 ? qualificationLead(qualifications) : "";
+  // Le texte mesuré inclut la « spé. » : c'est lui qui occupe la zone d'effet.
+  const texteEffet = spe ? (def.text ? `${spe} — ${def.text}` : spe) : (def.text ?? "");
+  useFitText(effetRef, texteEffet, rulesSizeCqw(texteEffet), 2.6, EFFET_LISIBLE_CQW);
 
   const cadre = frameName(def, legendaire);
   const calage = CALAGES[cadre];
@@ -218,7 +224,7 @@ export function NouveauCadreFace({ def, legendaire = false, attack, health, atta
 
       {/* Effet : une zone FIXE, plus étroite que la carte pour laisser la
           colonne des stats ; au-delà de sa hauteur, le texte défile. */}
-      {def.text && (
+      {texteEffet && (
         <p
           ref={effetRef}
           className={`absolute font-semibold text-white [font-family:var(--font-card-body)] ${styles.regles}`}
@@ -227,11 +233,17 @@ export function NouveauCadreFace({ def, legendaire = false, attack, health, atta
             bottom: hasPower || hasResistance ? "14%" : "5%",
             left: "9%",
             right: "9%",
-            fontSize: `${rulesSizeCqw(def.text)}cqw`,
+            fontSize: `${rulesSizeCqw(texteEffet)}cqw`,
             lineHeight: 1.18,
             textShadow: HALO_TEXTE,
           }}
         >
+          {spe && (
+            <strong data-qualifications className="font-extrabold">
+              {spe}
+            </strong>
+          )}
+          {spe && def.text ? " — " : null}
           {def.text}
         </p>
       )}

@@ -6,6 +6,7 @@ import { rarityForCardId } from "@/game/boosters/cardRarity";
 import { CORE_SET, isAbyssalVariant, type CardDefinition, type CardType } from "@/game";
 import { CardTile } from "@/features/match/CardTile";
 import { NouveauCadreCard } from "@/features/cadre-preview/NouveauCadreCard";
+import { qualificationChips } from "@/features/match/qualificationDisplay";
 
 /** La carte de la maquette d'abord, puis une carte par type (une sans stats, une Résistance seule…), puis deux Abyssales, puis le texte le plus long du catalogue (zone qui défile). */
 const MAQUETTE_ID = "la-bete-quon-nattend-plus";
@@ -56,7 +57,7 @@ export function CadrePreview() {
         {cartes.map((def) => (
           <div key={def.id} className="flex gap-3">
             <div style={{ width: largeur }}>
-              <NouveauCadreCard def={def} legendaire={legendaire || rarityForCardId(def.id) === "legendary"} widthClassName="w-full" />
+              <NouveauCadreCard def={def} legendaire={legendaire || rarityForCardId(def.id) === "legendary"} widthClassName="w-full" qualifications={qualificationChips(def)} />
             </div>
             {comparer && (
               <div style={{ width: largeur }} className="opacity-90">

@@ -14,6 +14,9 @@ import {
   playCardRefusal,
   previewBreakReason,
   previewPlayCardReason,
+  attacksAllowed,
+  attacksRemaining,
+  canAttackShipDirectly,
   canUnitAttack,
   deraisonAnchorDamage,
   getCardDefinition,
@@ -445,6 +448,17 @@ export function TableBoard(props: TableBoardProps) {
     );
   }
 
+  /**
+   * Attaques restantes d'une unité du joueur qui en a plus d'une ce combat
+   * (Rafale, Déluge, Carnage) — `undefined` hors de sa phase de combat, ou
+   * pour une unité à une seule attaque (rien à signaler).
+   */
+  function multiAttacksLeft(instance: CardInstance): number | undefined {
+    if (state.phase !== "combatPhase" || state.activePlayerId !== viewerId) return undefined;
+    if (attacksAllowed(state, viewerId, instance) <= 1) return undefined;
+    return attacksRemaining(state, viewerId, instance);
+  }
+
   /** Cibles légales d'une carte de main à effet ciblé (`null` = se pose sans cible). */
   function playTargets(instance: CardInstance): Set<string> | null {
     return legalTargetsFor(state, viewerId, { kind: "playCard", sourceInstanceId: instance.instanceId });
@@ -556,7 +570,8 @@ export function TableBoard(props: TableBoardProps) {
         // Une unité ARMÉE pour l'attaque ne vise que l'adversaire : un
         // toucher sur le Cimetière ne la Saborde pas.
         if (drop === "graveyard") return canPlayCards && !gesture?.armed;
-        if (drop === "ship") return attackReady(instance);
+        // Déluge : ses attaques ne visent jamais le Navire.
+        if (drop === "ship") return attackReady(instance) && canAttackShipDirectly(instance);
         if (drop.startsWith("unit:") && attackReady(instance)) return true;
         const targets = breakTargets(instance);
         return Boolean(targets && (drop.startsWith("own:") || drop.startsWith("unit:")) && targets.has(dropId(drop)));
@@ -729,6 +744,10 @@ export function TableBoard(props: TableBoardProps) {
   // Capacité de Navire ciblée : tout ce qui a une Résistance, des deux
   // côtés, et les deux Navires — le ton « effet », puisque ce n'est pas une attaque.
   const anyTargeting = targeting?.kind === "shipTarget";
+  /** L'attaquant désigné (touché ou glissé) peut-il viser le Navire ? Non avec Déluge. */
+  const attackerId = targeting?.kind === "attack" ? targeting.sourceInstanceId : aimAttacks ? aimSource?.instanceId : undefined;
+  const attackerUnit = attackerId ? byId.get(attackerId)?.instance : undefined;
+  const shipAttackable = targeting?.kind === "shipShot" || (attackTargeting && (!attackerUnit || canAttackShipDirectly(attackerUnit)));
 
   // Capacité activable qui attend sa cible : ce sont SES cibles légales qu'on éclaire.
   // Pendant le glisser de sa pastille aussi.
@@ -858,6 +877,7 @@ export function TableBoard(props: TableBoardProps) {
             auraContext={auraContextFor(owner)}
             turnNumber={state.turnNumber}
             variant="board"
+            attacksLeft={mine ? multiAttacksLeft(instance) : undefined}
           />
         )}
         {held && (
@@ -1115,7 +1135,7 @@ export function TableBoard(props: TableBoardProps) {
                   setShipInfoFor(opponent.id);
                 }}
                 title={attackTargeting || anyTargeting ? undefined : "Fiche du Navire adverse"}
-                className={`${styles.shipTarget} ${attackTargeting || anyTargeting ? styles.targetable : styles.shipInspectable} ${hover === "ship" ? styles.targetHover : ""}`}
+                className={`${styles.shipTarget} ${shipAttackable || anyTargeting ? styles.targetable : styles.shipInspectable} ${hover === "ship" && (shipAttackable || anyTargeting) ? styles.targetHover : ""}`}
               >
                 {ship}
               </div>

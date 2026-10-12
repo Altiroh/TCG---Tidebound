@@ -14,12 +14,14 @@ const EMPHASIS_CLASS = {
  * découpe le texte ORIGINAL sans jamais le réécrire, et la concaténation
  * des fragments rendus redonne la phrase exacte du catalogue.
  */
-export function CardDetailEffect({ text }: { text: string }) {
+export function CardDetailEffect({ text, lead }: { text: string; /** « Spé. » en tête de l'effet : « Sangsue · Rafale ». */ lead?: string }) {
   return (
     <section>
       <span className={styles.sectionLabel}>Effet de carte</span>
       <div className={styles.effect}>
         <p className={styles.effectText}>
+          {lead && <strong className={styles.effectValue}>{lead}</strong>}
+          {lead && text ? " — " : null}
           {segmentEffectText(text).map((segment, index) =>
             segment.emphasis === "none" ? (
               segment.text

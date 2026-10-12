@@ -31,6 +31,8 @@ import { StatusBadge } from "@/features/match/StatusBadge";
 import { useDecreaseFlash } from "@/features/match/useDecreaseFlash";
 import { useImageOk } from "@/features/match/useImageOk";
 import { NouveauCadreFace } from "@/features/cadre-preview/NouveauCadreCard";
+import { QualificationBadge } from "@/features/match/QualificationBadge";
+import { qualificationChips, qualificationLead } from "@/features/match/qualificationDisplay";
 import { useDebordPleinCadre } from "@/features/match/useDebordPleinCadre";
 import { NOUVEAU_CADRE } from "@/features/match/cardFrame";
 import { rarityForCardId } from "@/game/boosters";
@@ -98,6 +100,12 @@ interface CardTileProps {
    * rendent la carte entière. Défaut : `"full"` (main, survol, fiches).
    */
   variant?: "full" | "board";
+  /**
+   * Attaques qu'il reste à cette unité pendant le combat, quand elle en a
+   * plus d'une (Rafale, Déluge, Carnage) : un médaillon « × N » le dit.
+   * Fourni par le plateau (il lit l'état) ; absent ailleurs.
+   */
+  attacksLeft?: number;
 }
 
 /**
@@ -562,6 +570,7 @@ export function CardTile({
   onDragStart,
   liftOnHover = false,
   variant = "full",
+  attacksLeft,
 }: CardTileProps) {
   // Face cachée : le dos est celui du PROPRIÉTAIRE de la carte (hors partie,
   // « booster » ou « preview » n'ont pas de contexte : dos local).
@@ -569,6 +578,8 @@ export function CardTile({
   const def = getCardDefinition(instance.cardId);
   const isAbyssal = isAbyssalVariant(def);
   const stats = computeEffectiveStats(instance, tideState, auraContext);
+  // Qualifications (« spé. ») : en tête de l'effet, et en médaillons au-dessus d'une carte en jeu.
+  const qualifications = instance.cardId === HIDDEN_CARD_ID ? [] : qualificationChips(def, instance);
   // Bonus actuellement reçus du plateau — alimente la puce du bloc de règles.
   const boardBonuses = auraContext ? collectAuraContributions(instance, tideState, auraContext) : [];
   const hasActiveBoardBonus = boardBonuses.length > 0;
@@ -639,6 +650,8 @@ export function CardTile({
   const isBoardTile = variant === "board";
   // Nouveau cadre (`cardFrame.ts`) : seulement la carte complète d'une
   // vraie carte — ni la tuile de plateau, ni un jeton, ni une carte cachée.
+  /** Texte de l'ancien cadre, « spé. » comprise : c'est sur lui que se calcule la taille de police. */
+  const oldFrameRules = qualifications.length > 0 ? `${qualificationLead(qualifications)}${def.text ? ` — ${def.text}` : ""}` : (def.text ?? "");
   const nouveauCadreActif = NOUVEAU_CADRE && !isBoardTile && def.token !== true && instance.cardId !== HIDDEN_CARD_ID;
   // Assets d'habillage de la tuile : sondés seulement quand la tuile est rendue.
   const reasonBannerOk = useImageOk(isBoardTile ? BOARD_REASON_BANNER : null);
@@ -879,6 +892,7 @@ export function CardTile({
             healthClassName={`inline-block ${
               resistanceFlashing ? "animate-stat-hit text-white" : `${statColorClass(resistanceDelta)} ${healthChanged ? "animate-stat-buff" : ""}`
             }`}
+            qualifications={qualifications}
           />
         ) : (
         <>
@@ -1011,7 +1025,7 @@ export function CardTile({
             </span>
           </div>
 
-          {def.text && (
+          {(def.text || qualifications.length > 0) && (
             <div
               className={`overflow-hidden border px-[3%] leading-snug [font-family:var(--font-card-body)] ${
                 isToken
@@ -1020,7 +1034,7 @@ export function CardTile({
                     ? `rounded-sm text-left text-slate-800 ${isAbyssal ? "border-slate-600/70" : "border-sky-600/50"}`
                     : "rounded-sm border-transparent bg-black/50 text-left text-slate-100"
               }`}
-              style={{ ...zoneStyle(isToken ? tokenRulesZone : rulesZone), fontSize: `${rulesFontSizeCqw(def.text)}cqw` }}
+              style={{ ...zoneStyle(isToken ? tokenRulesZone : rulesZone), fontSize: `${rulesFontSizeCqw(oldFrameRules)}cqw` }}
             >
               {/* Puce discrète : une condition de plateau est REMPLIE en ce
                   moment (banc assez grand, Destrier présent, Marée dans le
@@ -1040,6 +1054,8 @@ export function CardTile({
                   }}
                 />
               )}
+              {qualifications.length > 0 && <strong data-qualifications>{qualificationLead(qualifications)}</strong>}
+              {qualifications.length > 0 && def.text ? " — " : null}
               {def.text}
             </div>
           )}
@@ -1086,6 +1102,8 @@ export function CardTile({
         instance.turnsRemaining !== undefined ||
         hasGarde ||
         couleursChromatiques.length > 0 ||
+        qualifications.length > 0 ||
+        (attacksLeft !== undefined && attacksLeft > 0) ||
         (instance.statuses && instance.statuses.length > 0)) && (
         <div
           // Une seule ligne, toujours au-dessus de la carte : en passant à la
@@ -1097,6 +1115,26 @@ export function CardTile({
           style={{ top: -(badgeSize / 2 + 12), gap: badgeSize / 16 + 1.5 }}
         >
           {stats.inactive && <StatusBadge {...immobiliseInfo(instance)} size={badgeSize} />}
+          {qualifications.map((chip) => (
+            <QualificationBadge key={chip.key} chip={chip} size={badgeSize} />
+          ))}
+          {attacksLeft !== undefined && attacksLeft > 0 && (
+            <StatusBadge
+              icon=""
+              label={attacksLeft > 1 ? `${attacksLeft} attaques restantes` : "1 attaque restante"}
+              description="Ce que ses qualifications lui laissent d'attaques pour ce combat (Rafale, Déluge, Carnage)."
+              size={badgeSize}
+              placeholder={
+                <span
+                  data-attacks-left={attacksLeft}
+                  className="flex h-full w-full select-none items-center justify-center rounded-full border border-rose-200/80 bg-rose-950/90 font-bold leading-none text-rose-50 shadow-[0_2px_8px_rgba(0,0,0,0.75)]"
+                  style={{ fontSize: Math.round(badgeSize * 0.42) }}
+                >
+                  ×{attacksLeft}
+                </span>
+              }
+            />
+          )}
           {engourdi && (
             <StatusBadge
               icon={ENGOURDI_ICON_INFO.icon}

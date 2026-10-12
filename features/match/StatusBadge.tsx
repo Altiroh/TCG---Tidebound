@@ -25,6 +25,8 @@ interface StatusBadgeProps {
    * son ombrage — la couleur a l'air d'être dans le verre, pas collée dessus.
    */
   fill?: string;
+  /** Rendu à la place de l'icône tant qu'elle n'existe pas (glyphe de qualification pas encore livré). */
+  placeholder?: ReactNode;
 }
 
 /** Verre du médaillon vierge (`tour.webp`, 1254 px) : disque centré, rayon ≈ 36 % du côté. */
@@ -51,6 +53,7 @@ export function StatusBadge({
   overlayText,
   overlayTextClassName = "text-slate-900",
   fill,
+  placeholder,
 }: StatusBadgeProps) {
   const [open, setOpen] = useState(false);
   const [coords, setCoords] = useState<{ left: number; top: number } | null>(null);
@@ -83,13 +86,15 @@ export function StatusBadge({
         className="pointer-events-auto relative block shrink-0 rounded-full transition-transform duration-150 ease-out hover:z-10 hover:scale-125"
         style={{ width: size, height: size }}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element -- icône de statut, taille fixe (pixels réels, pas cqw) */}
-        <img
-          src={icon}
-          alt=""
-          draggable={false}
-          className="h-full w-full select-none rounded-full object-cover shadow-[0_2px_8px_rgba(0,0,0,0.75)]"
-        />
+        {placeholder ?? (
+          // eslint-disable-next-line @next/next/no-img-element -- icône de statut, taille fixe (pixels réels, pas cqw)
+          <img
+            src={icon}
+            alt=""
+            draggable={false}
+            className="h-full w-full select-none rounded-full object-cover shadow-[0_2px_8px_rgba(0,0,0,0.75)]"
+          />
+        )}
         {fill && (
           <span
             aria-hidden

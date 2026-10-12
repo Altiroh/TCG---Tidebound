@@ -81,6 +81,28 @@ export type { SlotEffect } from "@/game/rules/slotEffects";
 export { boardSlotLayout, chooseBoardSlot } from "@/game/rules/boardSlots";
 export { hasCombatToPlay } from "@/game/rules/combatAvailable";
 export { canUnitAttack, guardsBlockingAttack, hasKeywordInContext, type KeywordContext } from "@/game/rules/validation";
+export {
+  QUALIFICATIONS,
+  QUALIFICATION_ORDER,
+  effectiveQualifications,
+  isQualificationId,
+  qualificationGlyphUrl,
+  qualificationLabel,
+  qualificationValue,
+  type CardQualification,
+  type QualificationId,
+  type QualificationRule,
+} from "@/game/cards/qualifications";
+export { QUALIFICATION_EQUIVALENTS, type QualificationEquivalent } from "@/game/cards/qualificationEquivalents";
+export {
+  attacksAllowed,
+  attacksMade,
+  attacksRemaining,
+  bypassesGardeByQualification,
+  canAttackShipDirectly,
+  hasQualification,
+  unitQualifications,
+} from "@/game/rules/qualificationCombat";
 export { auraContextOf, collectAuraContributions } from "@/game/cards/stats";
 export type { AuraContext, AuraContribution } from "@/game/cards/stats";
 export { computeEffectiveStats, computeStatModifierDelta } from "@/game/cards/stats";

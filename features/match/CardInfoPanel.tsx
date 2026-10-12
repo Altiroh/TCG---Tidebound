@@ -1,5 +1,7 @@
 import { displayedSubtypes, getCardDefinition, getMaxCopies, isAbyssalVariant, subtypeLabel, UNIT_CARD_TYPES } from "@/game";
 import { CARD_TYPE_LABELS } from "@/features/match/cardDisplay";
+import { QualificationDescription } from "@/features/match/QualificationBadge";
+import { qualificationChips, qualificationLead } from "@/features/match/qualificationDisplay";
 
 /** Paliers de taille par longueur de nom — le panneau est étroit, un nom long ne doit jamais passer sur deux lignes (calibré sur les noms du catalogue). */
 function panelTitleFontSizeRem(name: string): number {
@@ -51,6 +53,7 @@ export function CardInfoPanel({ cardId }: CardInfoPanelProps) {
   const showAttack = isUnit || def.attack !== undefined;
   const showHealth = def.health !== undefined;
   const maxCopies = getMaxCopies(def);
+  const qualifications = qualificationChips(def);
 
   return (
     <div className="w-72 shrink-0 [font-family:var(--font-card-body)]">
@@ -73,8 +76,22 @@ export function CardInfoPanel({ cardId }: CardInfoPanelProps) {
         {showHealth && <Stat value={def.health ?? 0} label="Résistance" accentClassName="text-emerald-300" />}
       </div>
 
-      {def.text && (
-        <p className="mt-4 border-l border-white/15 pl-3 text-[15px] leading-relaxed text-slate-200">{def.text}</p>
+      {(def.text || qualifications.length > 0) && (
+        <p className="mt-4 border-l border-white/15 pl-3 text-[15px] leading-relaxed text-slate-200">
+          {qualifications.length > 0 && <strong className="font-bold text-white">{qualificationLead(qualifications)}</strong>}
+          {qualifications.length > 0 && def.text ? " — " : null}
+          {def.text}
+        </p>
+      )}
+
+      {qualifications.length > 0 && (
+        <ul className="mt-3 space-y-2 text-xs leading-snug text-slate-300">
+          {qualifications.map((chip) => (
+            <li key={chip.key} data-qualification={chip.id}>
+              <span className="font-semibold text-amber-100">{chip.label}</span> — <QualificationDescription chip={chip} />
+            </li>
+          ))}
+        </ul>
       )}
 
       {def.keywords && def.keywords.length > 0 && (
