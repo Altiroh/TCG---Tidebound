@@ -57,6 +57,7 @@ import { useDeraisonWarning } from "@/features/match/useDeraisonWarning";
 import { useAvatarCardId, useDisplayNames, useEquippedTitle } from "@/features/match/useDisplayNames";
 import { usePhaseBannerEvent } from "@/features/match/usePhaseBannerEvent";
 import { tableTargetingFor, useBoardInteraction } from "@/features/match/useBoardInteraction";
+import { interceptBlockedAttack } from "@/features/match/guardBlock";
 import { useShipAbility } from "@/features/match/useShipAbility";
 import { playButtonClick } from "@/lib/sound";
 import { thinkBotAction } from "@/features/match/bot/botThinker";
@@ -313,6 +314,8 @@ export function MatchBoard({
 
   function runAction(action: PlayerAction) {
     if (!isViewerTurn) return;
+    // Attaque visée à côté d'une Garde : la Garde se montre, rien ne part, l'attaquant reste prêt.
+    if (interceptBlockedAttack(liveState, action)) return;
     const result = dispatch(liveState, action);
     if (!result.ok) {
       setError(result.error);

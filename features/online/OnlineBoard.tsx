@@ -45,6 +45,7 @@ import { ReactionPrompt } from "@/features/match/ReactionPrompt";
 import { ShipWindowHint } from "@/features/match/ShipWindowHint";
 import { TurnTimerBadge } from "@/features/match/TurnTimerBadge";
 import { ConnectionBadge } from "@/features/online/ConnectionBadge";
+import { interceptBlockedAttack } from "@/features/match/guardBlock";
 import type { OpponentPresence } from "@/features/online/connection";
 import { reactionTargetHint } from "@/features/match/reactionTargetHint";
 import { TableBoard } from "@/features/match/table/TableBoard";
@@ -153,6 +154,8 @@ export function OnlineBoard({
     canPlayCards,
     canAct: canPlay,
     act: (action) => {
+      // Attaque visée à côté d'une Garde : la Garde se montre, rien ne part, l'attaquant reste prêt.
+      if (interceptBlockedAttack(liveState, action)) return;
       heldTarget.note(liveState, action);
       onAction(action);
       board.clearSelection();
@@ -184,6 +187,7 @@ export function OnlineBoard({
 
   /** Envoie une action au serveur, et referme la sélection en cours. */
   function act(action: PlayerAction) {
+    if (interceptBlockedAttack(liveState, action)) return;
     heldTarget.note(liveState, action);
     onAction(action);
     board.clearSelection();

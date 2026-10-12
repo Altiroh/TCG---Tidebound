@@ -351,6 +351,29 @@ export function assertValidDefender(
 }
 
 /**
+ * Les porteurs de Garde qui REFUSENT cette attaque — vide si elle est
+ * permise par Garde (pas de Garde en face, cible qui porte elle-même Garde,
+ * attaquant qui la contourne). Mêmes règles que `assertValidDefender`, mais
+ * la réponse dit QUI s'interpose : l'interface montre ces cartes-là au lieu
+ * d'afficher un refus (décision du 12/10/2026 — la Garde se montre quand on
+ * attaque À CÔTÉ d'elle, pas quand on l'attaque).
+ */
+export function guardsBlockingAttack(
+  state: GameState,
+  attackerOwnerId: PlayerId,
+  attackerInstanceId: string | undefined,
+  defenderInstanceId?: string
+): string[] {
+  const opponent = state.players.find((p) => p.id !== attackerOwnerId);
+  if (!opponent) return [];
+  if (attackerBypassesGardeNow(state, attackerOwnerId, attackerInstanceId)) return [];
+  const guards = opponent.board.filter((u) => hasEffectiveKeyword(state, opponent, u, "garde"));
+  if (guards.length === 0) return [];
+  if (defenderInstanceId && guards.some((u) => u.instanceId === defenderInstanceId)) return [];
+  return guards.map((u) => u.instanceId);
+}
+
+/**
  * Cible d'une capacité « n'importe quelle cible » (`ShipActivatableAbility
  * .targeting: "anyTarget"`) : EXACTEMENT un permanent doté de Résistance,
  * de n'importe quel côté de la table, OU un des deux Navires. Ni Garde ni

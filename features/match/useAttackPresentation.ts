@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { hasKeywordInContext, type GameEvent, type GameState, type PlayerId } from "@/game";
-import { deriveEffectVolley, GUARD_REVEAL_MS, patchedDisplay, volleyLandingMs, type EffectVolley } from "@/features/match/effectPresentation";
+import { type GameEvent, type GameState, type PlayerId } from "@/game";
+import { deriveEffectVolley, patchedDisplay, volleyLandingMs, type EffectVolley } from "@/features/match/effectPresentation";
 import { beforeDieDisplay, dieHoldMs, freshDieRoll, type DieHold } from "@/features/match/dicePresentation";
 
 export interface AttackAnimation {
@@ -20,32 +20,6 @@ export interface AttackAnimation {
   defenderDies: boolean;
   /** L'attaquant a quitté le plateau (riposte mortelle). */
   attackerDies: boolean;
-  /**
-   * La cible portait Garde quand le coup est parti : son bouclier se montre
-   * d'abord (`revealGuard`), l'attaque attend `GUARD_REVEAL_MS` pour partir.
-   */
-  guard?: boolean;
-}
-
-/** Temps d'attente avant que l'attaquant ne parte : le bouclier d'une cible qui porte Garde se montre d'abord. */
-export function attackLeadMs(attack: Pick<AttackAnimation, "guard">): number {
-  return attack.guard ? GUARD_REVEAL_MS : 0;
-}
-
-/** La cible unité portait-elle Garde (imprimée, conditionnelle ou transmise) dans cet état ? */
-function defenderHasGuard(state: GameState, defenderInstanceId: string | undefined): boolean {
-  if (!defenderInstanceId) return false;
-  for (const player of state.players) {
-    const unit = player.board.find((card) => card.instanceId === defenderInstanceId);
-    if (unit) {
-      return hasKeywordInContext(unit, "garde", {
-        tideState: state.environment.tideState,
-        controllerBoard: player.board,
-        controllerReason: player.reason,
-      });
-    }
-  }
-  return false;
 }
 
 /**
@@ -126,7 +100,8 @@ interface Presentation {
 /** Mise en scène d'un lot d'événements : l'attaque, sinon les effets, et l'état à afficher en attendant. */
 function stage(previous: GameState, live: GameState, events: GameEvent[], nextId: { current: number }): Omit<Presentation, "dice"> {
   const derived = deriveAttack(events, live, nextId.current);
-  const attack = derived && defenderHasGuard(previous, derived.defenderInstanceId) ? { ...derived, guard: true } : derived;
+  // Attaquer une Garde ne la montre pas : le coup part. Elle se montre quand on attaque À CÔTÉ d'elle (`showGuard`).
+  const attack = derived;
   if (attack) nextId.current += 1;
   const volley = deriveEffectVolley(events, previous, live, nextId.current);
   if (volley) nextId.current += 1;
@@ -226,13 +201,12 @@ export function useAttackPresentation(live: GameState): {
     if (volley) setVolleys((current) => (current.some((it) => it.id === volley.id) ? current : [...current, volley]));
 
     // L'attaque retient l'état si elle est là ; sinon, la volée jusqu'à son dernier impact.
-    const lead = staged ? attackLeadMs(staged) : 0;
     const baseHold = staged
-      ? lead + (staged.defenderDies || staged.attackerDies ? ATTACK_TOTAL_MS : ATTACK_IMPACT_AT_MS)
+      ? (staged.defenderDies || staged.attackerDies ? ATTACK_TOTAL_MS : ATTACK_IMPACT_AT_MS)
       : volleyLandingMs(volley!);
     // Le coup de grâce : l'écran de fin n'arrive qu'une fois le coup joué
     // jusqu'au bout, retour compris, et le temps d'un souffle.
-    const holdMs = finalBlow ? Math.max(baseHold, staged ? lead + ATTACK_TOTAL_MS : 0) + FINAL_BLOW_LINGER_MS : baseHold;
+    const holdMs = finalBlow ? Math.max(baseHold, staged ? ATTACK_TOTAL_MS : 0) + FINAL_BLOW_LINGER_MS : baseHold;
     const release = setTimeout(
       () =>
         setPresentation((current) =>
@@ -240,7 +214,7 @@ export function useAttackPresentation(live: GameState): {
         ),
       holdMs
     );
-    if (staged) setTimeout(() => setAttacks((current) => current.filter((it) => it.id !== staged.id)), lead + ATTACK_TOTAL_MS + 900);
+    if (staged) setTimeout(() => setAttacks((current) => current.filter((it) => it.id !== staged.id)), ATTACK_TOTAL_MS + 900);
     if (volley) setTimeout(() => setVolleys((current) => current.filter((it) => it.id !== volley.id)), volleyLandingMs(volley) + 1400);
     return () => clearTimeout(release);
   }, [staged, volley, finalBlow]);

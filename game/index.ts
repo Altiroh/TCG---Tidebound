@@ -80,7 +80,7 @@ export { MAX_BOARD_SLOTS, boardCapacity, condemnedSlots, extraSlots } from "@/ga
 export type { SlotEffect } from "@/game/rules/slotEffects";
 export { boardSlotLayout, chooseBoardSlot } from "@/game/rules/boardSlots";
 export { hasCombatToPlay } from "@/game/rules/combatAvailable";
-export { canUnitAttack, hasKeywordInContext, type KeywordContext } from "@/game/rules/validation";
+export { canUnitAttack, guardsBlockingAttack, hasKeywordInContext, type KeywordContext } from "@/game/rules/validation";
 export { auraContextOf, collectAuraContributions } from "@/game/cards/stats";
 export type { AuraContext, AuraContribution } from "@/game/cards/stats";
 export { computeEffectiveStats, computeStatModifierDelta } from "@/game/cards/stats";

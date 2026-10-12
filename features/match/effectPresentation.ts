@@ -34,8 +34,8 @@ export const AWAKE_LIFT_MS = 180;
 export const AWAKE_MS = 800;
 /** L'orbe se forme devant le lanceur et grossit avant de partir vers ses cibles. */
 export const ORB_CHARGE_MS = 420;
-/** Garde : le bouclier quitte son badge, vient au centre, pulse, puis regagne sa carte (`revealGuard`) ; l'attaque attend. */
-export const GUARD_REVEAL_MS = 1400;
+/** Garde : la carte qui la porte se lève, son badge scintille, puis elle se repose (`showGuard`) — quand une attaque vise à côté d'elle. */
+export const GUARD_SHOW_MS = 1100;
 /** Instant où le voile de soin recouvre la cible : la Résistance remonte dessous. */
 export const HEAL_APPLY_MS = 420;
 /** Durée totale du voile. */

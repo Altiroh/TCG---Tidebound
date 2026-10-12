@@ -1,7 +1,7 @@
 "use client";
 
 import { playCardAwake, playCardFlip, playGuardIntercept, playTokenDrop } from "@/lib/sound";
-import { AWAKE_LIFT_MS, AWAKE_MS, GUARD_REVEAL_MS, ORB_CHARGE_MS } from "@/features/match/effectPresentation";
+import { AWAKE_LIFT_MS, AWAKE_MS, GUARD_SHOW_MS, ORB_CHARGE_MS } from "@/features/match/effectPresentation";
 
 /**
  * Animations ponctuelles d'UNE carte du plateau (demande du 10/10/2026),
@@ -13,8 +13,8 @@ import { AWAKE_LIFT_MS, AWAKE_MS, GUARD_REVEAL_MS, ORB_CHARGE_MS } from "@/featu
  *   - jeton : il tombe d'au-dessus du plateau et provoque une onde
  *     (\`dropToken\`) ;
  *   - Structure révélée : elle se retourne face visible (\`flipCard\`) ;
- *   - Garde : le bouclier quitte son badge, vient au centre de l'écran,
- *     pulse, puis regagne sa carte (\`revealGuard\`).
+ *   - Garde : quand une attaque vise à côté d'elle, la carte qui la porte
+ *     se lève, son badge scintille, puis elle se repose (\`showGuard\`).
  *
  * Fonctions impératives, sans état React : le vrai plateau les appelle au
  * bon moment (\`useTableMotion\`, \`EffectFxLayer\`, \`AttackImpactLayer\`), le
@@ -164,99 +164,165 @@ export function flipCard(el: HTMLElement, delayMs = 0): void {
 
 // ── Garde ───────────────────────────────────────────────────────────────
 
-const GUARD_AT_CENTER = 0.3;
-const GUARD_LEAVES_CENTER = 0.72;
 const GUARD_ICON_SRC = "/assets/status/garde.webp";
+const GUARD_GOLD = "rgba(253,224,71,0.95)";
 
 /**
- * Animation de Garde sur la carte \`defender\` : son badge de Garde (s'il est
- * affiché) s'en détache, file au centre de l'écran en grandissant, pulse
- * d'une lueur d'activation, puis revient se poser sur le badge, qui
- * réapparaît. Sans badge visible, le bouclier part du haut de la carte.
- * Rendue \`GUARD_REVEAL_MS\` : l'attaque attend la fin pour frapper.
+ * La Garde SE MONTRE sur la carte \`guard\` : elle se lève, son badge de
+ * Garde scintille (halo qui pulse deux fois, anneaux qui s'ouvrent, éclats
+ * qui étincellent), puis elle se repose — \`GUARD_SHOW_MS\` en tout.
+ *
+ * Jouée quand une attaque vise À CÔTÉ d'elle — le Navire adverse, ou une
+ * autre unité — et que la Garde la refuse (décision du 12/10/2026) : c'est
+ * la réponse de la table à un geste interdit, l'attaque n'est pas envoyée et
+ * l'attaquant reste prêt à viser la Garde. Attaquer la Garde elle-même ne
+ * la montre pas : le coup part, simplement.
  */
-export function revealGuard(defender: HTMLElement): number {
-  const badge = defender.querySelector<HTMLImageElement>(`img[src*="/status/garde"]`);
-  window.setTimeout(playGuardIntercept, GUARD_REVEAL_MS * GUARD_AT_CENTER * 0.7);
-  if (reducedMotion()) return GUARD_REVEAL_MS;
+export function showGuard(guard: HTMLElement): void {
+  window.setTimeout(playGuardIntercept, GUARD_SHOW_MS * 0.18);
+  if (reducedMotion()) return;
 
-  const card = defender.getBoundingClientRect();
-  const fromBox = badge?.getBoundingClientRect();
-  const start = fromBox && fromBox.width > 0
-    ? { x: fromBox.left + fromBox.width / 2, y: fromBox.top + fromBox.height / 2, size: fromBox.width }
-    : { x: card.left + card.width / 2, y: card.top, size: Math.max(24, card.width * 0.22) };
-  const big = Math.min(180, Math.max(110, window.innerHeight * 0.22));
-  const scale = big / start.size;
-  const dx = window.innerWidth / 2 - start.x;
-  const dy = window.innerHeight / 2 - start.y;
+  const lifted = "translateY(-9%) scale(1.07)";
+  const glow = (px: number) => `brightness(1.18) drop-shadow(0 0 ${px}px ${GUARD_GOLD})`;
+  guard.animate(
+    [
+      { transform: "none", filter: "none", easing: "cubic-bezier(.2,.8,.3,1)" },
+      { offset: 0.16, transform: lifted, filter: glow(6) },
+      { offset: 0.34, transform: lifted, filter: glow(18) },
+      { offset: 0.48, transform: lifted, filter: glow(7) },
+      { offset: 0.62, transform: lifted, filter: glow(18) },
+      { offset: 0.8, transform: lifted, filter: glow(6), easing: "cubic-bezier(.5,0,.7,1)" },
+      { transform: "none", filter: "none" },
+    ],
+    { duration: GUARD_SHOW_MS }
+  );
 
-  const layer = fxLayer();
-  const host = document.createElement("div");
+  // Le scintillement se pose SUR la carte (il se lève avec elle) : au badge s'il est affiché, sinon en haut au centre.
+  const badge = guard.querySelector<HTMLImageElement>(`img[src*="/status/garde"]`);
+  const cardBox = guard.getBoundingClientRect();
+  const badgeBox = badge?.getBoundingClientRect();
+  // La carte peut être mise à l'échelle par la scène : on revient à ses pixels CSS.
+  const ratio = cardBox.width > 0 ? guard.offsetWidth / cardBox.width : 1;
+  const visibleBadge = badgeBox && badgeBox.width > 0;
+  const size = (visibleBadge ? badgeBox.width : cardBox.width * 0.3) * ratio;
+  const center = visibleBadge
+    ? { x: (badgeBox.left + badgeBox.width / 2 - cardBox.left) * ratio, y: (badgeBox.top + badgeBox.height / 2 - cardBox.top) * ratio }
+    : { x: guard.offsetWidth / 2, y: guard.offsetHeight * 0.2 };
+
+  const host = document.createElement("span");
+  host.setAttribute("aria-hidden", "true");
   Object.assign(host.style, {
     position: "absolute",
-    left: `${start.x - start.size / 2}px`,
-    top: `${start.y - start.size / 2}px`,
-    width: `${start.size}px`,
-    height: `${start.size}px`,
+    left: `${center.x - size / 2}px`,
+    top: `${center.y - size / 2}px`,
+    width: `${size}px`,
+    height: `${size}px`,
+    pointerEvents: "none",
+    zIndex: "30",
   });
+  if (getComputedStyle(guard).position === "static") guard.style.position = "relative";
+
   const halo = document.createElement("span");
   Object.assign(halo.style, {
     position: "absolute",
-    inset: "-35%",
+    inset: "-90%",
     borderRadius: "50%",
-    background: "radial-gradient(circle, rgba(253,230,138,0.55) 0%, rgba(251,191,36,0.25) 45%, rgba(251,191,36,0) 70%)",
+    background: "radial-gradient(circle, rgba(255,251,235,0.95) 0%, rgba(253,224,71,0.6) 22%, rgba(251,191,36,0.22) 48%, rgba(251,191,36,0) 70%)",
+    mixBlendMode: "screen",
     opacity: "0",
   });
-  const icon = document.createElement("img");
-  icon.src = badge?.currentSrc || badge?.src || GUARD_ICON_SRC;
-  icon.alt = "";
-  icon.draggable = false;
-  Object.assign(icon.style, { position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "contain" });
-  host.append(halo, icon);
-  layer.appendChild(host);
-  if (badge) badge.style.visibility = "hidden";
-
-  const atCenter = `translate(${dx}px, ${dy}px) scale(${scale})`;
-  const flight = host.animate(
-    [
-      { transform: "translate(0, 0) scale(1)", easing: "cubic-bezier(.3,.7,.3,1)" },
-      { offset: GUARD_AT_CENTER, transform: atCenter },
-      { offset: GUARD_LEAVES_CENTER, transform: atCenter, easing: "cubic-bezier(.5,0,.6,1)" },
-      { transform: "translate(0, 0) scale(1)" },
-    ],
-    { duration: GUARD_REVEAL_MS, fill: "both" }
-  );
-  // Lueur d'activation : deux pulsations pendant que le bouclier tient le centre.
-  const glow = "drop-shadow(0 0 14px rgba(253,224,71,0.95)) brightness(1.25)";
-  icon.animate(
-    [
-      { filter: "none", offset: 0 },
-      { filter: "none", offset: GUARD_AT_CENTER },
-      { filter: glow, offset: 0.42 },
-      { filter: "brightness(1.05)", offset: 0.53 },
-      { filter: glow, offset: 0.63 },
-      { filter: "none", offset: GUARD_LEAVES_CENTER },
-      { filter: "none" },
-    ],
-    { duration: GUARD_REVEAL_MS, fill: "both" }
-  );
+  host.appendChild(halo);
   halo.animate(
     [
-      { opacity: 0, transform: "scale(0.6)", offset: 0 },
-      { opacity: 0, transform: "scale(0.6)", offset: GUARD_AT_CENTER },
-      { opacity: 1, transform: "scale(1.1)", offset: 0.42 },
-      { opacity: 0.45, transform: "scale(0.95)", offset: 0.53 },
-      { opacity: 1, transform: "scale(1.15)", offset: 0.63 },
-      { opacity: 0, transform: "scale(0.8)", offset: GUARD_LEAVES_CENTER },
-      { opacity: 0 },
+      { opacity: 0, transform: "scale(0.5)", offset: 0 },
+      { opacity: 0.2, transform: "scale(0.7)", offset: 0.18 },
+      { opacity: 1, transform: "scale(1.05)", offset: 0.3 },
+      { opacity: 0.45, transform: "scale(0.85)", offset: 0.52 },
+      { opacity: 1, transform: "scale(1.12)", offset: 0.64 },
+      { opacity: 0, transform: "scale(0.9)", offset: 0.82 },
+      { opacity: 0, offset: 1 },
     ],
-    { duration: GUARD_REVEAL_MS, fill: "both" }
+    { duration: GUARD_SHOW_MS, fill: "both" }
   );
-  const done = () => {
-    host.remove();
-    if (badge) badge.style.visibility = "";
-  };
-  flight.onfinish = done;
-  flight.oncancel = done;
-  return GUARD_REVEAL_MS;
+
+  // Deux anneaux qui s'ouvrent, un par pulsation.
+  for (const at of [0.3, 0.64]) {
+    const ring = document.createElement("span");
+    Object.assign(ring.style, {
+      position: "absolute",
+      inset: "0",
+      borderRadius: "50%",
+      border: `${Math.max(1.5, size * 0.06)}px solid rgba(253,230,138,0.95)`,
+      boxShadow: "0 0 10px rgba(253,224,71,0.8)",
+      opacity: "0",
+    });
+    host.appendChild(ring);
+    ring.animate(
+      [
+        { opacity: 0, transform: "scale(0.7)", offset: 0 },
+        { opacity: 0, transform: "scale(0.7)", offset: at },
+        { opacity: 1, transform: "scale(1)", offset: Math.min(1, at + 0.03) },
+        { opacity: 0, transform: "scale(2.3)", offset: Math.min(1, at + 0.22) },
+        { opacity: 0, transform: "scale(2.3)", offset: 1 },
+      ],
+      { duration: GUARD_SHOW_MS, fill: "both", easing: "ease-out" }
+    );
+  }
+
+  // Éclats : de petites étoiles qui s'allument tour à tour autour du badge.
+  const STARS = 6;
+  for (let i = 0; i < STARS; i += 1) {
+    const angle = (i / STARS) * Math.PI * 2 + 0.4;
+    const distance = size * (0.78 + (i % 2) * 0.22);
+    const star = document.createElement("span");
+    const starSize = size * (0.34 + (i % 3) * 0.08);
+    Object.assign(star.style, {
+      position: "absolute",
+      left: `${size / 2 + Math.cos(angle) * distance - starSize / 2}px`,
+      top: `${size / 2 + Math.sin(angle) * distance - starSize / 2}px`,
+      width: `${starSize}px`,
+      height: `${starSize}px`,
+      background:
+        "linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,251,235,1) 50%, rgba(255,255,255,0) 100%) center / 100% 14% no-repeat, " +
+        "linear-gradient(0deg, rgba(255,255,255,0) 0%, rgba(255,251,235,1) 50%, rgba(255,255,255,0) 100%) center / 14% 100% no-repeat",
+      filter: "drop-shadow(0 0 3px rgba(253,224,71,0.95))",
+      opacity: "0",
+    });
+    host.appendChild(star);
+    const start = 0.26 + (i / STARS) * 0.4;
+    star.animate(
+      [
+        { opacity: 0, transform: "scale(0.2) rotate(0deg)", offset: 0 },
+        { opacity: 0, transform: "scale(0.2) rotate(0deg)", offset: start },
+        { opacity: 1, transform: "scale(1) rotate(45deg)", offset: start + 0.07 },
+        { opacity: 0, transform: "scale(0.3) rotate(90deg)", offset: start + 0.16 },
+        { opacity: 0, transform: "scale(0.3) rotate(90deg)", offset: 1 },
+      ],
+      { duration: GUARD_SHOW_MS, fill: "both" }
+    );
+  }
+
+  // Le badge lui-même s'illumine et gonfle à chaque pulsation ; sans badge affiché, le bouclier apparaît le temps de se montrer.
+  const icon = visibleBadge && badge ? badge : document.createElement("img");
+  if (icon !== badge) {
+    icon.src = GUARD_ICON_SRC;
+    icon.alt = "";
+    icon.draggable = false;
+    Object.assign(icon.style, { position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "contain" });
+    host.appendChild(icon);
+  }
+  icon.animate(
+    [
+      { transform: "scale(1)", filter: "none", opacity: visibleBadge ? 1 : 0 },
+      { transform: "scale(1.35)", filter: `brightness(1.5) drop-shadow(0 0 8px ${GUARD_GOLD})`, opacity: 1, offset: 0.3 },
+      { transform: "scale(1.1)", filter: `brightness(1.15) drop-shadow(0 0 4px ${GUARD_GOLD})`, opacity: 1, offset: 0.48 },
+      { transform: "scale(1.38)", filter: `brightness(1.55) drop-shadow(0 0 10px ${GUARD_GOLD})`, opacity: 1, offset: 0.64 },
+      { transform: "scale(1)", filter: "none", opacity: visibleBadge ? 1 : 0, offset: 0.84 },
+      { transform: "scale(1)", filter: "none", opacity: visibleBadge ? 1 : 0 },
+    ],
+    { duration: GUARD_SHOW_MS, fill: visibleBadge ? "none" : "both" }
+  );
+
+  guard.appendChild(host);
+  window.setTimeout(() => host.remove(), GUARD_SHOW_MS + 50);
 }

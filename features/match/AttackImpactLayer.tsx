@@ -3,7 +3,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { ATTACK_IMPACT_AT_MS, ATTACK_TIMINGS, ATTACK_TOTAL_MS, type AttackAnimation } from "@/features/match/useAttackPresentation";
 import { playAttackImpact, playCardAwake, playShipHit } from "@/lib/sound";
-import { revealGuard } from "@/features/match/cardFx";
 import { FxCanvas, reducedMotion } from "@/features/match/FxCanvas";
 import { createDustPainter, dustBounds, IMPACT_DUST_MS, type DustPlan } from "@/features/match/impactFx";
 
@@ -297,9 +296,8 @@ function SingleAttack({ attack }: { attack: AttackAnimation }) {
 
     const targetRect = targetEl.getBoundingClientRect();
     setGeometry({ from: centerOf(attackerEl.getBoundingClientRect()), to: centerOf(targetRect), size: Math.min(targetRect.height, 220), rect: targetRect });
-    // Une cible qui porte Garde le montre d'abord : son bouclier vient au centre, pulse, regagne sa carte —
-    // et l'attaquant ne part qu'ensuite.
-    const lead = attack.guard ? revealGuard(targetEl) : 0;
+    // Le coup part tout de suite, Garde ou non : une Garde se montre quand on attaque À CÔTÉ d'elle (`showGuard`).
+    const lead = 0;
     let attackerAnimation: Animation | null = null;
     const startTimer = setTimeout(() => {
       // La carte se soulève pour frapper : elle se réveille, à l'oreille aussi.

@@ -25,6 +25,10 @@ function carte(cardId: string, ownerId: string, index: number): CardInstance {
  *
  * Gaston (D6) est aussi en main : de quoi voir un jet de dé sur la scène.
  *
+ * `?combat=1` : la partie s'ouvre au 3e tour, en Phase de combat, avec une
+ * Garde en face (Mouette du Brise-Lames) — de quoi voir le halo des cartes
+ * prêtes à attaquer, et la Garde qui s'interpose quand on vise le Navire.
+ *
  * Le panneau « Animations » (`FxLabPanel`) lance à la demande les
  * animations de cartes et de sorts sur les cartes du plateau.
  */
@@ -39,8 +43,10 @@ export function LandePreview() {
     const base = createLocalMatch(PRECON_DECKS[0]!, PRECON_DECKS[1]!);
     const deja = params.get("lande");
     const lande = deja && LANDES.includes(deja as (typeof LANDES)[number]) ? deja : null;
+    const combat = params.get("combat") === "1";
     return {
       ...base,
+      ...(combat ? { turnNumber: 3, phase: "combatPhase" as const } : {}),
       environment: {
         ...base.environment,
         ...(lande ? { lande: { instanceId: "lab_lande", cardId: lande, ownerId: "p1", remainingPlayerTurns: 2 * getCardDefinition(lande).lande!.durationTableTurns } } : {}),
@@ -57,7 +63,15 @@ export function LandePreview() {
               ],
               board: [carte("crabe-de-fer", p.id, 0), carte("marin-des-jetees", p.id, 1)],
             }
-          : { ...p, board: [carte("crabe-de-fer", p.id, 0), carte("murene-aveugle", p.id, 1), carte("marin-des-jetees", p.id, 2)] }
+          : {
+              ...p,
+              board: [
+                carte("crabe-de-fer", p.id, 0),
+                carte("murene-aveugle", p.id, 1),
+                carte("marin-des-jetees", p.id, 2),
+                ...(combat ? [carte("mouette-du-brise-lames", p.id, 3)] : []),
+              ],
+            }
       ) as GameState["players"],
     };
   }

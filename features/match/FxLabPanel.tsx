@@ -2,11 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AttackImpactLayer, findElement } from "@/features/match/AttackImpactLayer";
-import { awakenCard, dropToken, flipCard, revealGuard } from "@/features/match/cardFx";
+import { awakenCard, dropToken, flipCard, showGuard } from "@/features/match/cardFx";
 import { AWAKE_LIFT_MS, ORB_CHARGE_MS, SHOT_FLIGHT_MS, type EffectVolley, type FxTarget } from "@/features/match/effectPresentation";
 import { EffectFxLayer } from "@/features/match/EffectFxLayer";
 import { PhaseBanner } from "@/features/match/PhaseBanner";
-import { ATTACK_TOTAL_MS, attackLeadMs, type AttackAnimation } from "@/features/match/useAttackPresentation";
+import { ATTACK_TOTAL_MS, type AttackAnimation } from "@/features/match/useAttackPresentation";
 import { playCombatPhase, playMagicImpact, playSpellImpact, playTurnStart } from "@/lib/sound";
 
 /**
@@ -148,7 +148,7 @@ export function FxLabPanel() {
     window.setTimeout(() => setVolleys((current) => current.filter((it) => it.id !== volley.id)), castMs + SHOT_FLIGHT_MS + 2200);
   }
 
-  function attack(guard: boolean) {
+  function attack() {
     const { from, to } = resolve();
     const target = to[0];
     if (!from || from.kind !== "unit" || !target) return;
@@ -159,10 +159,9 @@ export function FxLabPanel() {
       amount: 2,
       defenderDies: false,
       attackerDies: false,
-      guard,
     };
     setAttacks((current) => [...current, animation]);
-    window.setTimeout(() => setAttacks((current) => current.filter((it) => it.id !== animation.id)), attackLeadMs(animation) + ATTACK_TOTAL_MS + 900);
+    window.setTimeout(() => setAttacks((current) => current.filter((it) => it.id !== animation.id)), ATTACK_TOTAL_MS + 900);
   }
 
   function showBanner(text: string, play: () => void) {
@@ -246,14 +245,12 @@ export function FxLabPanel() {
             <button type="button" style={button} onClick={() => { const el = elementOf(from); if (el) awakenCard(el); }}>
               Réveil (capacité déclenchée)
             </button>
-            <button type="button" style={button} onClick={() => attack(false)}>
+            <button type="button" style={button} onClick={() => attack()}>
               Attaque (source → 1re cible)
             </button>
-            <button type="button" style={button} onClick={() => attack(true)}>
-              Attaque sur une Garde
-            </button>
-            <button type="button" style={button} onClick={() => { const el = elementOf(to[0] ?? null); if (el) revealGuard(el); }}>
-              Garde seule (1re cible)
+            {/* La Garde qui refuse une attaque visée à côté d'elle : la carte se lève, son badge scintille, elle se repose. */}
+            <button type="button" style={button} onClick={() => to.forEach((t) => { const el = elementOf(t); if (el) showGuard(el); })}>
+              Garde qui s&apos;interpose (cibles)
             </button>
             <button type="button" style={button} onClick={() => to.forEach((t) => { const el = elementOf(t); if (el) dropToken(el); })}>
               Jeton qui tombe (cibles)
