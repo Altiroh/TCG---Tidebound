@@ -11,6 +11,7 @@ import {
   BREAK_SHATTER_MS,
   breakShatterAtMs,
   BUFF_LAND_MS,
+  GLOW_LAND_MS,
   HEAL_APPLY_MS,
   ORB_CHARGE_MS,
   REASON_COUNT_MS,
@@ -210,7 +211,7 @@ function CannonBall({ geometry }: { geometry: ShotGeometry }) {
 function ShotImpact({ geometry }: { geometry: ShotGeometry }) {
   return (
     <>
-      <ImpactFlash point={geometry.to} tint={geometry.shot.look} />
+      <ImpactFlash point={geometry.to} tint={geometry.shot.look === "glow" ? "magic" : geometry.shot.look} />
       {geometry.shot.look === "cannon" && geometry.rect && <ImpactDust plan={{ rect: geometry.rect, from: geometry.from, shape: geometry.shape }} />}
       <FloatingDamage point={geometry.to} amount={geometry.shot.amount} />
     </>
@@ -582,9 +583,12 @@ interface Launched {
   /* `kind` : la famille de la comète — `attack` pour un sort, `malus` (pourpre) pour l'orbe de la Marée. */
   /** Comètes sans impact de dégâts : soin, renfort, malus — l'effet se pose à leur arrivée. */
   comets: Array<CometFlight & { key: string }>;
-  heals: Array<{ key: string; box: Box; amount: number; sourced: boolean; shape: Silhouette }>;
-  chips: Array<Chip & { sourced: boolean }>;
+  heals: Array<{ key: string; box: Box; amount: number; at: Landing; shape: Silhouette }>;
+  chips: Array<Chip & { at: Landing }>;
 }
+
+/** Quand un effet se pose : tout de suite (sans lanceur), à la lueur de sa carte (effet activé), ou à l'arrivée de sa comète (sort lancé). */
+type Landing = "now" | "glow" | "landed";
 
 function sourceKey(source: SpellSource): string {
   return `${source.from.kind}-${source.from.id}`;
@@ -594,6 +598,8 @@ function Volley({ volley }: { volley: EffectVolley }) {
   const [launched, setLaunched] = useState<Launched | null>(null);
   /** Phase de la volée : l'orbe se charge, les comètes volent, puis tout a touché. */
   const [phase, setPhase] = useState<"charge" | "flight" | "landed">("charge");
+  /** Les effets ACTIVÉS (sans projectile) ont touché : au plus fort de la lueur de leur carte. */
+  const [glowed, setGlowed] = useState(false);
 
   useEffect(() => {
     const timers: number[] = [];
@@ -603,7 +609,7 @@ function Volley({ volley }: { volley: EffectVolley }) {
         // Les cartes qui déclenchent leur capacité se réveillent : elles se soulèvent, pulsent, retombent.
         for (const id of volley.awakens) {
           const el = findElement("unit", id);
-          if (el) awakenCard(el);
+          if (el) awakenCard(el, 0, volley.awakenTones?.[id]);
         }
 
         // Objets brisés : chacun quitte sa place pour se tenir au-dessus de son Cimetière, s'y illumine, puis éclate
@@ -668,6 +674,10 @@ function Volley({ volley }: { volley: EffectVolley }) {
             const to = centerOf(toRect);
             // Toujours « devant » l'orbe : l'arc simple, vers le haut ou vers le bas de la table.
             shots.push({ shot, kind: "malus", from: orb.point, start: orb.point, to, size, forward: Math.sign(to.y - orb.point.y) || 1 });
+          } else if (shot.look === "glow") {
+            // Effet ACTIVÉ par un permanent : pas de projectile, la carte s'illumine et le coup tombe sur sa cible.
+            const at = centerOf(toRect);
+            shots.push({ shot, kind: "attack", from: at, start: at, to: at, size, forward: 0, rect: toRect, shape: silhouetteOf(toEl) });
           } else if (shot.look === "sickness") {
             // La maladie : pas de projectile, des bulles qui éclatent sur l'unité elle-même.
             const at = centerOf(toRect);
@@ -686,21 +696,24 @@ function Volley({ volley }: { volley: EffectVolley }) {
           const el = elementOf(heal.to);
           if (!el) return [];
           const box = boxOf(el);
-          const start = heal.source ? orbFor(heal.source, "heal") : null;
+          // Un sort lancé part de son orbe ; un effet activé se pose au plus fort de la lueur de sa carte.
+          const start = heal.source && !heal.source.glow ? orbFor(heal.source, "heal") : null;
           if (start) {
             comets.push({ key: `h${index}`, kind: "heal", from: start.point, to: centerOf(el.getBoundingClientRect()), size: Math.min(box.height, 220), forward: start.forward });
           }
-          return [{ key: `${heal.to.kind}-${heal.to.id}-${index}`, box, amount: heal.amount, sourced: Boolean(start), shape: silhouetteOf(el) }];
+          const at: Landing = heal.source?.glow ? "glow" : start ? "landed" : "now";
+          return [{ key: `${heal.to.kind}-${heal.to.id}-${index}`, box, amount: heal.amount, at, shape: silhouetteOf(el) }];
         });
         const chips = volley.buffs.flatMap((buff, index) => {
           const kind: SpellKind = buff.loss ? "malus" : "heal";
-          const start = buff.source ? orbFor(buff.source, kind) : null;
+          const start = buff.source && !buff.source.glow ? orbFor(buff.source, kind) : null;
           const target = findElement("unit", buff.targetInstanceId);
           if (start && target) {
             const rect = target.getBoundingClientRect();
             comets.push({ key: `b${index}`, kind, from: start.point, to: centerOf(rect), size: Math.min(rect.height, 220), forward: start.forward });
           }
-          return chipsFor(buff).map((chip) => ({ ...chip, key: `${index}-${chip.key}`, sourced: Boolean(start) }));
+          const at: Landing = buff.source?.glow ? "glow" : start ? "landed" : "now";
+          return chipsFor(buff).map((chip) => ({ ...chip, key: `${index}-${chip.key}`, at }));
         });
 
         setLaunched({ orbs: [...orbs.values()], shots, comets, heals, chips });
@@ -709,6 +722,17 @@ function Volley({ volley }: { volley: EffectVolley }) {
           timers.push(window.setTimeout(playSpellCast, volley.awakens.length > 0 ? AWAKE_LIFT_MS : 0));
         }
 
+        // Un effet activé touche au plus fort de la lueur de sa carte.
+        timers.push(
+          window.setTimeout(() => {
+            setGlowed(true);
+            for (const shot of volley.shots) {
+              if (shot.look !== "glow" || shot.to.kind !== "ship") continue;
+              const el = elementOf(shot.to);
+              if (el) shake(el);
+            }
+          }, GLOW_LAND_MS)
+        );
         // Les comètes quittent leur orbe ; le boulet du canon, lui, est parti tout de suite.
         timers.push(window.setTimeout(() => setPhase("flight"), volley.castMs));
         timers.push(
@@ -753,14 +777,18 @@ function Volley({ volley }: { volley: EffectVolley }) {
           : geometry.shot.look === "sickness"
             ? // Les bulles montent pendant le « vol » ; le dégât tombe sur leurs éclats.
               phase !== "charge" && geometry.rect && <SicknessBubbles key={`p${index}`} rect={geometry.rect} shape={geometry.shape} />
-            : phase !== "charge" && <Comet key={`p${index}`} flight={geometry} />
+            : geometry.shot.look === "glow"
+              ? null
+              : phase !== "charge" && <Comet key={`p${index}`} flight={geometry} />
       )}
       {phase !== "charge" && launched.comets.map((comet) => <Comet key={comet.key} flight={comet} />)}
-      {landed && launched.shots.map((geometry, index) => <ShotImpact key={`i${index}`} geometry={geometry} />)}
-      {launched.heals.map((heal) =>
-        !heal.sourced || landed ? <HealVeil key={heal.key} box={heal.box} amount={heal.amount} shape={heal.shape} /> : null
+      {launched.shots.map((geometry, index) =>
+        (geometry.shot.look === "glow" ? glowed : landed) ? <ShotImpact key={`i${index}`} geometry={geometry} /> : null
       )}
-      {launched.chips.map((chip) => (!chip.sourced || landed ? <BuffChip key={chip.key} chip={chip} /> : null))}
+      {launched.heals.map((heal) =>
+        heal.at === "now" || (heal.at === "glow" ? glowed : landed) ? <HealVeil key={heal.key} box={heal.box} amount={heal.amount} shape={heal.shape} /> : null
+      )}
+      {launched.chips.map((chip) => (chip.at === "now" || (chip.at === "glow" ? glowed : landed) ? <BuffChip key={chip.key} chip={chip} /> : null))}
     </>
   );
 }

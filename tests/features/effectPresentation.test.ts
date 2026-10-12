@@ -6,6 +6,7 @@ import {
   BREAK_SHATTER_MS,
   breakShatterAtMs,
   BUFF_LAND_MS,
+  GLOW_LAND_MS,
   HEAL_APPLY_MS,
   ORB_CHARGE_MS,
   deriveEffectVolley,
@@ -35,15 +36,19 @@ describe("d'où part le projectile", () => {
   const cible = instance("murene-aveugle", "p2");
   const before = state([lanceur], [cible]);
 
-  it("de la carte en jeu qui porte l'effet", () => {
+  it("une carte en jeu qui ACTIVE son effet s'illumine — pas de projectile, pas d'orbe (12/10/2026)", () => {
     const events: GameEvent[] = [
       { ...base, type: "DAMAGE", targetInstanceId: cible.instanceId, amount: 1, cause: "effect", origin: { playerId: "p1", instanceId: lanceur.instanceId } },
     ];
     const volley = deriveEffectVolley(events, before, before, 1)!;
     expect(volley.shots).toEqual([
-      { from: { kind: "unit", id: lanceur.instanceId }, originPlayerId: "p1", to: { kind: "unit", id: cible.instanceId }, amount: 1, look: "magic" },
+      { from: { kind: "unit", id: lanceur.instanceId }, originPlayerId: "p1", to: { kind: "unit", id: cible.instanceId }, amount: 1, look: "glow" },
     ]);
-    expect(volley.delayMs).toBe(0);
+    expect(volley.awakens).toEqual([lanceur.instanceId]);
+    // Sa lueur dit ce que fait l'effet : des dégâts, en bleu.
+    expect(volley.awakenTones).toEqual({ [lanceur.instanceId]: "attack" });
+    expect(volley.castMs).toBe(0);
+    expect(volleyLandingMs(volley)).toBe(GLOW_LAND_MS);
   });
 
   it("du Navire pour un sort joué de la main, et toutes les cibles à la fois", () => {
@@ -70,7 +75,7 @@ describe("d'où part le projectile", () => {
     expect(deriveEffectVolley(events, before, before, 1)!.shots[0]!.look).toBe("cannon");
   });
 
-  it("une carte tout juste posée tire une fois arrivée", () => {
+  it("une carte tout juste posée active son effet une fois arrivée", () => {
     const pose = instance("poisson-lanterne", "p1");
     const after = state([lanceur, pose], [cible]);
     const events: GameEvent[] = [
@@ -79,10 +84,10 @@ describe("d'où part le projectile", () => {
     const volley = deriveEffectVolley(events, before, after, 1)!;
     expect(volley.shots[0]!.from).toEqual({ kind: "unit", id: pose.instanceId });
     expect(volley.delayMs).toBe(ARRIVAL_DELAY_MS);
-    // Elle atterrit, se réveille, son orbe se charge, puis le sort vole.
+    // Elle atterrit, s'illumine, et l'effet touche au plus fort de sa lueur.
     expect(volley.awakens).toEqual([pose.instanceId]);
-    expect(volley.castMs).toBe(AWAKE_LIFT_MS + ORB_CHARGE_MS);
-    expect(volleyLandingMs(volley)).toBe(ARRIVAL_DELAY_MS + AWAKE_LIFT_MS + ORB_CHARGE_MS + SHOT_FLIGHT_MS);
+    expect(volley.shots[0]!.look).toBe("glow");
+    expect(volleyLandingMs(volley)).toBe(ARRIVAL_DELAY_MS + GLOW_LAND_MS);
   });
 
   it("les coups de combat et les dégâts sans lanceur ne tirent rien", () => {
@@ -108,7 +113,7 @@ describe("soins et gains", () => {
     expect(volleyLandingMs(volley)).toBe(BUFF_LAND_MS);
   });
 
-  it("un soin lancé par une carte part de son orbe, la carte se réveille", () => {
+  it("un soin ACTIVÉ par une carte en jeu : elle s'illumine en or, le soin se pose à sa lueur", () => {
     const lanceuse = instance("poisson-lanterne", "p1");
     const s = state([lanceuse], []);
     const events: GameEvent[] = [
@@ -116,10 +121,12 @@ describe("soins et gains", () => {
     ];
     const volley = deriveEffectVolley(events, s, s, 1)!;
     expect(volley.heals).toEqual([
-      { to: { kind: "ship", id: "p1" }, amount: 2, source: { from: { kind: "unit", id: lanceuse.instanceId }, originPlayerId: "p1" } },
+      { to: { kind: "ship", id: "p1" }, amount: 2, source: { from: { kind: "unit", id: lanceuse.instanceId }, originPlayerId: "p1", glow: true } },
     ]);
     expect(volley.awakens).toEqual([lanceuse.instanceId]);
-    expect(volleyLandingMs(volley)).toBe(AWAKE_LIFT_MS + ORB_CHARGE_MS + SHOT_FLIGHT_MS + HEAL_APPLY_MS);
+    expect(volley.awakenTones).toEqual({ [lanceuse.instanceId]: "heal" });
+    expect(volley.castMs).toBe(0);
+    expect(volleyLandingMs(volley)).toBe(GLOW_LAND_MS + HEAL_APPLY_MS);
   });
 
   it("un sort joué de la main part du Navire de son lanceur, sans réveil", () => {

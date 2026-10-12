@@ -34,6 +34,8 @@ export const AWAKE_LIFT_MS = 180;
 export const AWAKE_MS = 800;
 /** L'orbe se forme devant le lanceur et grossit avant de partir vers ses cibles. */
 export const ORB_CHARGE_MS = 420;
+/** Effet activé par un permanent : il s'illumine, et l'effet touche sa cible au plus fort de la lueur. */
+export const GLOW_LAND_MS = AWAKE_LIFT_MS + 240;
 /** Bris d'un Objet : la carte quitte sa place et vient se tenir au-dessus de son Cimetière. */
 export const BREAK_LEAD_MS = 420;
 /** …puis, au départ des comètes, elle éclate et ses éclats tombent dans le Cimetière. */
@@ -67,7 +69,7 @@ export interface EffectShot {
    * forme sur la piste de Marée et ses comètes frappent ; `"sickness"`, des
    * bulles vertes éclatent sur l'unité MALADE (`from` vaut alors `to`).
    */
-  look: "magic" | "cannon" | "tide" | "sickness";
+  look: "magic" | "cannon" | "tide" | "sickness" | "glow";
 }
 
 /**
@@ -77,6 +79,15 @@ export interface EffectShot {
 export interface SpellSource {
   from: FxTarget;
   originPlayerId: PlayerId;
+  /**
+   * EFFET ACTIVÉ, pas SORT LANCÉ (retour de partie du 12/10/2026) : la
+   * source est un permanent EN JEU qui active son effet (capacité
+   * déclenchée ou activable, effet d'arrivée, Éveil). Il s'illumine, et
+   * l'effet se pose directement sur sa cible — sans orbe ni projectile.
+   * Absent : un sort LANCÉ (joué de la main, Objet brisé, capacité de
+   * Navire), qui part en projectile.
+   */
+  glow?: true;
 }
 
 export interface EffectHeal {
@@ -145,6 +156,8 @@ export interface EffectVolley {
   reason: EffectReason[];
   /** Objets brisés : ils se montrent au-dessus du Cimetière avant que leur sort ne parte. Absent = aucun. */
   breaks?: EffectBreak[];
+  /** Couleur de la lueur des cartes qui activent leur effet (dégâts, soin ou gain, malus). Absent : l'or du réveil. */
+  awakenTones?: Record<string, "attack" | "heal" | "malus">;
 }
 
 type Located = { ownerId: PlayerId; index: number; instance: CardInstance };
@@ -188,7 +201,8 @@ export function deriveEffectVolley(events: GameEvent[], before: GameState, after
     if (id !== undefined && onBoard(id)) {
       if (!onBoardBefore.has(id)) arrived = true;
       awakens.add(id);
-      return { from: { kind: "unit", id }, originPlayerId: origin.playerId };
+      // Un permanent en jeu ACTIVE son effet : il s'illumine, pas de projectile.
+      return { from: { kind: "unit", id }, originPlayerId: origin.playerId, glow: true };
     }
     return { from: { kind: "ship", id: origin.playerId }, originPlayerId: origin.playerId };
   };
@@ -244,10 +258,11 @@ export function deriveEffectVolley(events: GameEvent[], before: GameState, after
       if (!to) continue;
       const source = sourceOf(event.origin);
       shots.push({
-        ...source,
+        from: source.from,
+        originPlayerId: source.originPlayerId,
         to,
         amount: event.amount,
-        look: cannon && source.from.kind === "ship" ? "cannon" : "magic",
+        look: source.glow ? "glow" : cannon && source.from.kind === "ship" ? "cannon" : "magic",
       });
     } else if (event.type === "HEAL" && event.amount > 0) {
       const to: FxTarget | null = event.targetInstanceId
@@ -275,6 +290,14 @@ export function deriveEffectVolley(events: GameEvent[], before: GameState, after
 
   // Un Objet brisé ne se réveille pas à sa place : il se montre au-dessus de son Cimetière.
   for (const id of broken) awakens.delete(id);
+  // La lueur d'une carte qui active son effet prend la couleur de cet effet.
+  const awakenTones: Record<string, "attack" | "heal" | "malus"> = {};
+  const fromUnit = (source: SpellSource | undefined, id: string) => source?.from.kind === "unit" && source.from.id === id;
+  for (const id of awakens) {
+    if (shots.some((shot) => fromUnit(shot, id))) awakenTones[id] = "attack";
+    else if (buffs.some((buff) => buff.loss && fromUnit(buff.source, id))) awakenTones[id] = "malus";
+    else if (heals.some((heal) => fromUnit(heal.source, id)) || buffs.some((buff) => fromUnit(buff.source, id))) awakenTones[id] = "heal";
+  }
   const breaks: EffectBreak[] = brokenEvents.map((event) => {
     const fromThis = (source: SpellSource | undefined) => source?.from.kind === "unit" && source.from.id === event.instanceId;
     const tone: EffectBreak["tone"] = shots.some((shot) => fromThis(shot))
@@ -286,7 +309,11 @@ export function deriveEffectVolley(events: GameEvent[], before: GameState, after
   });
 
   if (shots.length === 0 && heals.length === 0 && buffs.length === 0 && reason.length === 0 && awakens.size === 0 && breaks.length === 0) return null;
-  const casts = shots.some((shot) => shot.look === "magic" || shot.look === "tide") || heals.some((heal) => heal.source) || buffs.some((buff) => buff.source);
+  // Seuls les sorts LANCÉS chargent une orbe ; un effet activé s'illumine sur sa carte.
+  const casts =
+    shots.some((shot) => shot.look === "magic" || shot.look === "tide") ||
+    heals.some((heal) => heal.source && !heal.source.glow) ||
+    buffs.some((buff) => buff.source && !buff.source.glow);
   // Avant la charge de l'orbe : le réveil du lanceur, ou l'Objet brisé qui gagne son Cimetière.
   const lead = Math.max(awakens.size > 0 ? AWAKE_LIFT_MS : 0, breaks.length > 0 ? BREAK_LEAD_MS : 0);
   const castMs = casts ? lead + ORB_CHARGE_MS : 0;
@@ -300,6 +327,7 @@ export function deriveEffectVolley(events: GameEvent[], before: GameState, after
     buffs,
     reason,
     ...(breaks.length > 0 ? { breaks } : {}),
+    ...(Object.keys(awakenTones).length > 0 ? { awakenTones } : {}),
   };
 }
 
@@ -309,11 +337,14 @@ export function deriveEffectVolley(events: GameEvent[], before: GameState, after
  * effet sans lanceur aussitôt.
  */
 export function shotArrivalMs(volley: Pick<EffectVolley, "castMs">, shot: Pick<EffectShot, "look">): number {
+  // Un effet activé touche au plus fort de la lueur de sa carte.
+  if (shot.look === "glow") return GLOW_LAND_MS;
   // Le boulet part tout de suite ; un sort ou l'orbe de la Marée après sa charge ; les bulles éclatent avec eux.
   return (shot.look === "cannon" ? 0 : volley.castMs) + SHOT_FLIGHT_MS;
 }
 
 export function spellArrivalMs(volley: Pick<EffectVolley, "castMs">, source: SpellSource | undefined): number {
+  if (source?.glow) return GLOW_LAND_MS;
   return source ? volley.castMs + SHOT_FLIGHT_MS : 0;
 }
 

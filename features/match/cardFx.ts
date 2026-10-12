@@ -52,7 +52,7 @@ function soundAt(delayMs: number, play: () => void) {
 
 // ── Réveil ──────────────────────────────────────────────────────────────
 
-const AWAKE_GLOW = "rgba(253, 224, 71, 0.95)";
+const AWAKE_GOLD = "rgba(253, 224, 71, 0.95)";
 
 /**
  * La carte se soulève (\`AWAKE_LIFT_MS\`), sa lueur pulse deux fois, puis elle
@@ -60,9 +60,11 @@ const AWAKE_GLOW = "rgba(253, 224, 71, 0.95)";
  * soulevée que l'orbe de son sort se forme, accrochée à son bord bas
  * (\`EffectFxLayer\`) : elle reste levée jusqu'au départ des comètes.
  */
-export function awakenCard(el: HTMLElement, delayMs = 0): void {
+export function awakenCard(el: HTMLElement, delayMs = 0, tone?: "attack" | "heal" | "malus"): void {
   soundAt(delayMs, playCardAwake);
   if (reducedMotion()) return;
+  // La lueur dit ce que l'effet fait : dégâts (bleu), soin ou gain (or), malus (pourpre).
+  const AWAKE_GLOW = tone ? `rgba(${BREAK_TONES[tone]},0.95)` : AWAKE_GOLD;
   const lifted = "translateY(-9%) scale(1.07)";
   el.animate(
     [

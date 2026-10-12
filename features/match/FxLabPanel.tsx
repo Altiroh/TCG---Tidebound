@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { AttackImpactLayer, findElement } from "@/features/match/AttackImpactLayer";
 import { awakenCard, dropToken, flipCard, showGuard } from "@/features/match/cardFx";
-import { AWAKE_LIFT_MS, ORB_CHARGE_MS, SHOT_FLIGHT_MS, type EffectVolley, type FxTarget } from "@/features/match/effectPresentation";
+import { AWAKE_LIFT_MS, GLOW_LAND_MS, ORB_CHARGE_MS, SHOT_FLIGHT_MS, type EffectVolley, type FxTarget } from "@/features/match/effectPresentation";
 import { EffectFxLayer } from "@/features/match/EffectFxLayer";
 import { applyLabEffect, applyLabPatch, LAB_EFFECTS, type LabEffect } from "@/features/match/labEffects";
 import { PhaseBanner } from "@/features/match/PhaseBanner";
@@ -140,6 +140,31 @@ export function FxLabPanel({ cardEffects = false }: { cardEffects?: boolean } = 
     setVolleys((current) => [...current, volley]);
     window.setTimeout(playMagicImpact, castMs + SHOT_FLIGHT_MS);
     window.setTimeout(() => setVolleys((current) => current.filter((it) => it.id !== volley.id)), castMs + SHOT_FLIGHT_MS + 2200);
+  }
+
+  /**
+   * EFFET ACTIVÉ par la source (une carte en jeu) : elle s'illumine de la
+   * couleur de l'effet, et l'effet se pose sur ses cibles — sans orbe ni
+   * projectile, ce qui le distingue d'un sort lancé.
+   */
+  function activated(kind: "attack" | "heal") {
+    const { from, to } = resolve();
+    if (!from || from.kind !== "unit" || to.length === 0) return;
+    const sourceRef = { from, originPlayerId: anyShip() ?? "p1", glow: true as const };
+    const volley: EffectVolley = {
+      id: nextId.current++,
+      delayMs: 0,
+      awakens: [from.id],
+      awakenTones: { [from.id]: kind },
+      castMs: 0,
+      shots: kind === "attack" ? to.map((target) => ({ from, originPlayerId: sourceRef.originPlayerId, to: target, amount: 2, look: "glow" as const })) : [],
+      heals: kind === "heal" ? to.map((target) => ({ to: target, amount: 2, source: sourceRef })) : [],
+      buffs: [],
+      reason: [],
+    };
+    setVolleys((current) => [...current, volley]);
+    window.setTimeout(() => (kind === "attack" ? playMagicImpact() : playSpellImpact(kind)), GLOW_LAND_MS);
+    window.setTimeout(() => setVolleys((current) => current.filter((it) => it.id !== volley.id)), GLOW_LAND_MS + 2200);
   }
 
   function spell(kind: "attack" | "heal" | "buff" | "malus") {
@@ -305,7 +330,14 @@ export function FxLabPanel({ cardEffects = false }: { cardEffects?: boolean } = 
                 ))}
               </div>
             ))}
-            <div style={section}>Sorts (source → cibles)</div>
+            <div style={section}>Effet activé (source en jeu → cibles)</div>
+            <button type="button" style={button} onClick={() => activated("attack")}>
+              Effet activé — dégâts (lueur bleue)
+            </button>
+            <button type="button" style={button} onClick={() => activated("heal")}>
+              Effet activé — soin (lueur dorée)
+            </button>
+            <div style={section}>Sorts lancés (source → cibles)</div>
             <button type="button" style={button} onClick={() => spell("attack")}>
               Sort d&apos;attaque
             </button>

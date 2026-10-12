@@ -9,17 +9,17 @@ import { MatchCosmeticsProvider, type PlayerCosmetics } from "@/features/cosmeti
 import type { MatchRow } from "@/features/matches/matchStore";
 import { unpackFrames } from "@/features/matches/matchFrames";
 import { predictView } from "@/features/online/predictView";
+import { BASE_FRAME_MS, framePaceMs } from "@/features/match/framePacing";
 import { WaitingRoom } from "@/features/online/WaitingRoom";
 import { createChannelRecoveryTracker, useResyncOnReturn } from "@/features/online/resync";
 import { isOffline, presentUserIds, useOffline, useOpponentPresence, waitUntilOnline } from "@/features/online/connection";
 
-/**
- * Pause entre deux états successifs renvoyés par le serveur pour le tour du
- * bot — même rythme que la partie locale (`MatchBoard`), assez long pour voir
- * chaque pioche/pose/attaque se jouer avant l'action suivante. Longtemps
- * 1,1 s : un tour du bot se regardait plus qu'il ne se jouait.
+/*
+ * Pause entre deux états successifs du tour adverse (le bot, ou un joueur en
+ * ligne) : chaque coup a le temps de SA mise en scène (`framePacing.ts`) —
+ * une attaque, un sort, un dé se voient jusqu'au bout avant le coup suivant.
+ * Le rythme fixe de 550 ms les coupait en plein vol (12/10/2026).
  */
-const BOT_FRAME_DELAY_MS = 550;
 
 /** Intervalle des relances tant qu'une échéance passée n'a pas encore été constatée par le serveur. */
 const DEADLINE_RETRY_MS = 5_000;
@@ -127,7 +127,35 @@ export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: On
    */
   const refreshFailures = useRef(0);
 
-  async function refresh() {
+  /**
+   * Coups de l'ADVERSAIRE en ligne, l'un après l'autre : une vue arrivée par
+   * Realtime attend que la mise en scène du coup précédent soit allée au
+   * bout (`framePaceMs`) — sinon une attaque suivie aussitôt d'un sort se
+   * coupait l'une l'autre. `remoteReadyAt` : quand la scène sera libre.
+   */
+  const remoteReadyAt = useRef(0);
+  const pendingRemote = useRef<ReturnType<typeof setTimeout> | null>(null);
+  function showPaced(next: GameState | null) {
+    if (pendingRemote.current) clearTimeout(pendingRemote.current);
+    pendingRemote.current = null;
+    const reveal = () => {
+      pendingRemote.current = null;
+      const previous = viewRef.current;
+      showView(next);
+      remoteReadyAt.current = performance.now() + (previous && next ? framePaceMs(previous, next) : 0);
+    };
+    const wait = remoteReadyAt.current - performance.now();
+    if (wait <= 0) reveal();
+    else pendingRemote.current = setTimeout(reveal, wait);
+  }
+  function cancelPendingRemote() {
+    if (pendingRemote.current) clearTimeout(pendingRemote.current);
+    pendingRemote.current = null;
+  }
+  useEffect(() => cancelPendingRemote, []);
+
+  /** `paced` : vue d'un coup adverse arrivée par Realtime — elle attend la fin de la scène en cours. */
+  async function refresh({ paced = false }: { paced?: boolean } = {}) {
     let result: Awaited<ReturnType<typeof fetchMatchView>>;
     try {
       result = await fetchMatchView(matchId);
@@ -152,7 +180,14 @@ export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: On
     shownVersion.current = result.data.match.state_version;
     latestRemoteVersion.current = Math.max(latestRemoteVersion.current, shownVersion.current);
     setMatch(result.data.match);
-    showView(result.data.frames ? unpackFrames(result.data.frames)[0]! : null);
+    const next = result.data.frames ? unpackFrames(result.data.frames)[0]! : null;
+    if (paced) {
+      showPaced(next);
+      return;
+    }
+    // Une vue demandée (reprise, rattrapage, réalignement) fait foi tout de suite : une vue cadencée en attente, plus ancienne, est abandonnée.
+    cancelPendingRemote();
+    showView(next);
   }
 
   /**
@@ -226,7 +261,7 @@ export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: On
           setMatch((current) => ({ ...current, ...next }));
           // Pendant un coup en cours, sa réponse fera foi ; on ne recharge
           // qu'ensuite, si une version plus récente est apparue entre-temps.
-          if (!busy.current && next.state_version > shownVersion.current) void refresh();
+          if (!busy.current && next.state_version > shownVersion.current) void refresh({ paced: true });
         }
       )
       .subscribe((status) => {
@@ -272,6 +307,8 @@ export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: On
 
   async function drainQueue() {
     busy.current = true;
+    // Le coup du joueur part de ce qu'il voit : la réponse du serveur fera foi, pas une vue adverse en attente.
+    cancelPendingRemote();
 
     while (queue.current.length > 0) {
       const item = queue.current.shift()!;
@@ -300,6 +337,7 @@ export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: On
       setMatch(updated);
 
       const [first, ...botFrames] = views;
+      const beforeFirst = viewRef.current;
       // Le coup suivant est déjà affiché par prédiction : remettre la vue du
       // serveur maintenant le ferait disparaître un instant. Sa propre
       // réponse fera foi.
@@ -312,7 +350,7 @@ export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: On
       // qu'on regarde ce qu'il vient de jouer. La promesse du coup ne se
       // résout qu'à la fin du rejeu, pour que l'activation enchaînée de
       // plusieurs réactions n'envoie jamais la suivante pendant celui-ci.
-      const replay = paceFrames();
+      const replay = paceFrames(beforeFirst, first ?? null);
       replay.enqueue(botFrames);
       let botStillToMove = botToMove;
       while (botStillToMove) {
@@ -348,14 +386,19 @@ export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: On
    * `BOT_FRAME_DELAY_MS` après le précédent. Une tranche arrivée en retard
    * s'affiche dès son arrivée — jamais d'attente ajoutée à la réflexion.
    */
-  function paceFrames() {
+  function paceFrames(shownBefore: GameState | null, shownNow: GameState | null) {
     let lastShownAt = performance.now();
+    // Le coup du joueur lui-même (une attaque, un sort) se joue jusqu'au bout avant que le bot ne réponde.
+    let holdAfterLast = shownBefore && shownNow ? framePaceMs(shownBefore, shownNow) : BASE_FRAME_MS;
+    let lastFrame = shownNow;
     const shown: Promise<void>[] = [];
     return {
       enqueue(frames: GameState[]) {
         for (const frame of frames) {
-          const at = Math.max(lastShownAt + BOT_FRAME_DELAY_MS, performance.now());
+          const at = Math.max(lastShownAt + holdAfterLast, performance.now());
           lastShownAt = at;
+          holdAfterLast = lastFrame ? framePaceMs(lastFrame, frame) : BASE_FRAME_MS;
+          lastFrame = frame;
           shown.push(
             new Promise<void>((resolve) => {
               const timer = setTimeout(() => {
