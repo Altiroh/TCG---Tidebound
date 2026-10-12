@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from
 import { ATTACK_IMPACT_AT_MS, ATTACK_TIMINGS, ATTACK_TOTAL_MS, type AttackAnimation } from "@/features/match/useAttackPresentation";
 import { playAttackImpact, playCardAwake, playShipHit } from "@/lib/sound";
 import { FxCanvas, reducedMotion } from "@/features/match/FxCanvas";
+import { silhouetteOf, type Silhouette } from "@/features/match/silhouette";
 import {
   createDustPainter,
   createSicknessPainter,
@@ -69,8 +70,8 @@ export function tremble(el: HTMLElement) {
 }
 
 /** Les bulles vertes de la maladie, qui éclatent sur l'unité MALADE (`impactFx.ts`). */
-export function SicknessBubbles({ rect }: { rect: DustRect }) {
-  const [paint] = useState(() => createSicknessPainter(rect));
+export function SicknessBubbles({ rect, shape }: { rect: DustRect; shape?: Silhouette }) {
+  const [paint] = useState(() => createSicknessPainter(rect, shape));
   return <FxCanvas bounds={sicknessBounds(rect)} durationMs={SICKNESS_BUBBLES_MS} paint={paint} />;
 }
 
@@ -298,7 +299,7 @@ export function ImpactFlash({ point, tint = "strike" }: { point: Point; tint?: k
 }
 
 function SingleAttack({ attack }: { attack: AttackAnimation }) {
-  const [geometry, setGeometry] = useState<{ from: Point; to: Point; size: number; rect: DOMRect } | null>(null);
+  const [geometry, setGeometry] = useState<{ from: Point; to: Point; size: number; rect: DOMRect; shape: Silhouette } | null>(null);
   const [impacted, setImpacted] = useState(false);
 
   // `useLayoutEffect` : l'état affiché est encore celui d'avant l'attaque (`useAttackPresentation`), attaquant et cible sont en place.
@@ -312,7 +313,7 @@ function SingleAttack({ attack }: { attack: AttackAnimation }) {
     if (!attackerEl || !targetEl) return undefined;
 
     const targetRect = targetEl.getBoundingClientRect();
-    setGeometry({ from: centerOf(attackerEl.getBoundingClientRect()), to: centerOf(targetRect), size: Math.min(targetRect.height, 220), rect: targetRect });
+    setGeometry({ from: centerOf(attackerEl.getBoundingClientRect()), to: centerOf(targetRect), size: Math.min(targetRect.height, 220), rect: targetRect, shape: silhouetteOf(targetEl) });
     // Le coup part tout de suite, Garde ou non : une Garde se montre quand on attaque À CÔTÉ d'elle (`showGuard`).
     const lead = 0;
     let attackerAnimation: Animation | null = null;
@@ -349,7 +350,7 @@ function SingleAttack({ attack }: { attack: AttackAnimation }) {
       {impacted && (
         <>
           <ImpactFlash point={geometry.to} />
-          <ImpactDust plan={{ rect: geometry.rect, from: geometry.from }} />
+          <ImpactDust plan={{ rect: geometry.rect, from: geometry.from, shape: geometry.shape }} />
           <FloatingDamage point={geometry.to} amount={attack.amount} />
           {attack.retaliation !== undefined && <FloatingDamage point={geometry.from} amount={attack.retaliation} />}
         </>

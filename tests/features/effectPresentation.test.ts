@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   ARRIVAL_DELAY_MS,
   AWAKE_LIFT_MS,
+  BREAK_LEAD_MS,
+  BREAK_SHATTER_MS,
+  breakShatterAtMs,
   BUFF_LAND_MS,
   HEAL_APPLY_MS,
   ORB_CHARGE_MS,
@@ -245,5 +248,33 @@ describe("dégâts d'environnement : la Marée qui frappe, la maladie qui ronge"
     const events: GameEvent[] = [{ ...base, type: "DAMAGE", targetInstanceId: malade.instanceId, amount: 1, fx: "sickness" }];
     const volley = deriveEffectVolley(events, before, after, 1)!;
     expect(patchedDisplay(before, after, volley).players[0].board[0]!.damageMarked).toBe(0);
+  });
+});
+
+describe("Bris d'un Objet : il se montre au-dessus de son Cimetière, s'illumine, puis éclate", () => {
+  const objet = instance("eclat-de-bouteille", "p1");
+  const cible = instance("murene-aveugle", "p2");
+  const before = state([objet], [cible]);
+  const after = state([], [{ ...cible, damageMarked: 1 }]);
+
+  it("son sort part de lui, après son vol jusqu'au Cimetière — et il ne se réveille pas à sa place", () => {
+    const events: GameEvent[] = [
+      { ...base, type: "OBJECT_BROKEN", playerId: "p1", instanceId: objet.instanceId, cardId: objet.cardId, fromHand: false },
+      { ...base, type: "DAMAGE", targetInstanceId: cible.instanceId, amount: 1, cause: "effect", origin: { playerId: "p1", instanceId: objet.instanceId } },
+    ];
+    const volley = deriveEffectVolley(events, before, after, 1)!;
+    expect(volley.breaks).toEqual([{ instanceId: objet.instanceId, ownerId: "p1", fromHand: false, tone: "attack" }]);
+    expect(volley.awakens).toEqual([]);
+    expect(volley.shots[0]!.from).toEqual({ kind: "unit", id: objet.instanceId });
+    expect(volley.castMs).toBe(BREAK_LEAD_MS + ORB_CHARGE_MS);
+  });
+
+  it("couleur de l'effet : or pour un gain, et l'état réel attend que les éclats soient tombés", () => {
+    const thermos = instance("thermos-du-dernier-quart", "p1");
+    const avant = state([thermos], []);
+    const events: GameEvent[] = [{ ...base, type: "OBJECT_BROKEN", playerId: "p1", instanceId: thermos.instanceId, cardId: thermos.cardId, fromHand: false }];
+    const volley = deriveEffectVolley(events, avant, state([], []), 1)!;
+    expect(volley.breaks?.[0]?.tone).toBe("heal");
+    expect(volleyLandingMs(volley)).toBe(breakShatterAtMs(volley) + BREAK_SHATTER_MS);
   });
 });

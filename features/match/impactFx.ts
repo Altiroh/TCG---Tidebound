@@ -1,4 +1,5 @@
 import { seededRandom, seedFrom, type Point } from "@/features/match/spellFx";
+import type { Silhouette } from "@/features/match/silhouette";
 
 /**
  * CHOC PHYSIQUE — la poussière qui jaillit quand un coup porte (attaque de
@@ -54,6 +55,21 @@ export interface DustPlan {
   rect: DustRect;
   /** D'où vient le coup (centre de l'attaquant) — le bord frappé chasse un peu plus de poussière. */
   from?: Point;
+  /** Un jeton est ovale : la poussière s'échappe de son ovale, pas d'un rectangle (`silhouette.ts`). */
+  shape?: Silhouette;
+}
+
+/** Un point du pourtour de l'OVALE inscrit dans le rectangle, et sa normale sortante. */
+export function ovalPoint(rect: DustRect, u: number): { point: Point; normal: Point } {
+  const a = u * Math.PI * 2;
+  const rx = rect.width / 2;
+  const ry = rect.height / 2;
+  const point = { x: rect.left + rx + Math.cos(a) * rx, y: rect.top + ry + Math.sin(a) * ry };
+  // Normale d'une ellipse : (cos/rx, sin/ry), normalisée.
+  const nx = Math.cos(a) / rx;
+  const ny = Math.sin(a) / ry;
+  const length = Math.hypot(nx, ny) || 1;
+  return { point, normal: { x: nx / length, y: ny / length } };
 }
 
 /**
@@ -75,6 +91,8 @@ export function perimeterPoint(rect: DustRect, u: number): { point: Point; norma
 
 export function createDustPainter(plan: DustPlan): (ctx: CanvasRenderingContext2D, elapsed: number) => void {
   const { rect } = plan;
+  const oval = plan.shape === "oval";
+  const edge = (u: number) => (oval ? ovalPoint(rect, u) : perimeterPoint(rect, u));
   const random = seededRandom(seedFrom(rect.left, rect.top, rect.width, rect.height));
   const scale = Math.max(0.6, Math.min(1.6, Math.min(rect.height, 220) / 140));
   const center = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
@@ -87,7 +105,7 @@ export function createDustPainter(plan: DustPlan): (ctx: CanvasRenderingContext2
   const PUFFS = 34;
   const puffs: Puff[] = Array.from({ length: PUFFS }, (_, index) => {
     // Répartis régulièrement sur le pourtour, avec un peu de jeu : pas de trou, pas de motif.
-    const { point, normal } = perimeterPoint(rect, (index + random() * 0.8) / PUFFS);
+    const { point, normal } = edge((index + random() * 0.8) / PUFFS);
     const strength = push(normal);
     const speed = (38 + random() * 46) * scale * strength;
     // Légèrement en biais le long du bord, pour que les volutes ne partent pas en rayons.
@@ -108,7 +126,7 @@ export function createDustPainter(plan: DustPlan): (ctx: CanvasRenderingContext2
   });
 
   const debris: Debris[] = Array.from({ length: 12 }, () => {
-    const { point, normal } = perimeterPoint(rect, random());
+    const { point, normal } = edge(random());
     const speed = (120 + random() * 150) * scale * push(normal);
     return {
       x: point.x,
@@ -125,7 +143,8 @@ export function createDustPainter(plan: DustPlan): (ctx: CanvasRenderingContext2
   const inset = 4 * scale;
   const outside = new Path2D();
   outside.rect(rect.left - 400, rect.top - 400, rect.width + 800, rect.height + 800);
-  outside.rect(rect.left + inset, rect.top + inset, rect.width - inset * 2, rect.height - inset * 2);
+  if (oval) outside.ellipse(rect.left + rect.width / 2, rect.top + rect.height / 2, rect.width / 2 - inset, rect.height / 2 - inset, 0, 0, Math.PI * 2);
+  else outside.rect(rect.left + inset, rect.top + inset, rect.width - inset * 2, rect.height - inset * 2);
 
   return (ctx, elapsed) => {
     ctx.globalCompositeOperation = "source-over";
@@ -199,7 +218,7 @@ interface Bubble {
   life: number;
 }
 
-export function createSicknessPainter(rect: DustRect): (ctx: CanvasRenderingContext2D, elapsed: number) => void {
+export function createSicknessPainter(rect: DustRect, shape: Silhouette = "card"): (ctx: CanvasRenderingContext2D, elapsed: number) => void {
   const random = seededRandom(seedFrom(rect.left, rect.top, rect.width, 7));
   const scale = Math.max(0.6, Math.min(1.6, Math.min(rect.height, 220) / 140));
   const bubbles: Bubble[] = Array.from({ length: 16 }, () => ({
@@ -220,7 +239,14 @@ export function createSicknessPainter(rect: DustRect): (ctx: CanvasRenderingCont
     if (veil > 0) {
       ctx.fillStyle = `rgba(74,222,128,${veil})`;
       ctx.globalCompositeOperation = "soft-light";
-      ctx.fillRect(rect.left, rect.top, rect.width, rect.height);
+      // La forme de l'unité : un jeton ovale n'a pas de coins à teinter.
+      if (shape === "oval") {
+        ctx.beginPath();
+        ctx.ellipse(rect.left + rect.width / 2, rect.top + rect.height / 2, rect.width / 2, rect.height / 2, 0, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        ctx.fillRect(rect.left, rect.top, rect.width, rect.height);
+      }
       ctx.globalCompositeOperation = "source-over";
     }
 

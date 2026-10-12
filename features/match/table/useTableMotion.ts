@@ -18,7 +18,7 @@ import {
   playTideChange,
   playTurnTimedOut,
 } from "@/lib/sound";
-import { dropToken, flipCard } from "@/features/match/cardFx";
+import { consumeShownBreak, dropToken, flipCard, hasShownBreak } from "@/features/match/cardFx";
 
 /**
  * Mouvements des cartes du VRAI plateau, pour les deux camps.
@@ -187,7 +187,8 @@ function playBatchSounds(
     if (was.zone === "hand" && located.zone === "board") placed = true;
     else if (was.zone === "hand" && located.zone === "graveyard") discarded = true;
     else if (was.zone === "board" && located.zone === "graveyard") {
-      if (breaksApart(originId, located, destroyed)) shattered = true;
+      // Un Objet brisé au-dessus du Cimetière (`breakObject`) a déjà fait entendre ses éclats.
+      if (breaksApart(originId, located, destroyed) && !hasShownBreak(originId)) shattered = true;
       else toGraveyard = true;
     }
   }
@@ -367,6 +368,8 @@ export function useTableMotion(state: GameState, viewerId: PlayerId, renderFace:
         // DÉTRUITE (ou un Objet brisé) se brise d'abord sur place, puis ses
         // éclats rejoignent le Cimetière.
         if (now.zone === "graveyard") {
+          // Objet dont le Bris vient d'être joué au-dessus du Cimetière (`breakObject`) : ses éclats y sont déjà tombés.
+          if (consumeShownBreak(originId)) continue;
           const from = before.boxes.get(originId) ?? (was.zone === "deck" ? pileOf("deck", was.ownerId) : null);
           const to = pileOf("graveyard", now.ownerId);
           const ending = was.zone === "board" && breaksApart(originId, now, destroyed) ? "shatter" : "vanish";

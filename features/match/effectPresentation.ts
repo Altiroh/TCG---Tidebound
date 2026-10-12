@@ -34,6 +34,10 @@ export const AWAKE_LIFT_MS = 180;
 export const AWAKE_MS = 800;
 /** L'orbe se forme devant le lanceur et grossit avant de partir vers ses cibles. */
 export const ORB_CHARGE_MS = 420;
+/** Bris d'un Objet : la carte quitte sa place et vient se tenir au-dessus de son Cimetière. */
+export const BREAK_LEAD_MS = 420;
+/** …puis, au départ des comètes, elle éclate et ses éclats tombent dans le Cimetière. */
+export const BREAK_SHATTER_MS = 560;
 /** Garde : la carte qui la porte se lève, son badge scintille, puis elle se repose (`showGuard`) — quand une attaque vise à côté d'elle. */
 export const GUARD_SHOW_MS = 1100;
 /** Instant où le voile de soin recouvre la cible : la Résistance remonte dessous. */
@@ -110,6 +114,20 @@ function reasonDurationMs(entry: Pick<EffectReason, "printed">): number {
   return (entry.printed !== undefined ? REASON_COUNT_MS : 0) + REASON_FALL_MS;
 }
 
+/**
+ * Un Objet qui se BRISE dans ce lot : il vient au-dessus de son Cimetière,
+ * s'illumine de la couleur de son effet (`tone`), et éclate quand son sort
+ * part (demande du 12/10/2026). Son sort part de lui, là, pas de sa place.
+ */
+export interface EffectBreak {
+  instanceId: string;
+  ownerId: PlayerId;
+  /** Brisé depuis la main (Objet réactif) : il n'était pas sur le plateau. */
+  fromHand: boolean;
+  /** Couleur de l'effet : dégâts (bleu), soin ou renfort (or), malus (pourpre). */
+  tone: "attack" | "heal" | "malus";
+}
+
 export interface EffectVolley {
   id: number;
   /** Attente avant le départ (lanceur tout juste posé). */
@@ -125,6 +143,8 @@ export interface EffectVolley {
   heals: EffectHeal[];
   buffs: EffectBuff[];
   reason: EffectReason[];
+  /** Objets brisés : ils se montrent au-dessus du Cimetière avant que leur sort ne parte. Absent = aucun. */
+  breaks?: EffectBreak[];
 }
 
 type Located = { ownerId: PlayerId; index: number; instance: CardInstance };
@@ -153,6 +173,9 @@ export function deriveEffectVolley(events: GameEvent[], before: GameState, after
   const reason: EffectReason[] = [];
   const awakens = new Set<string>();
   const onBoard = (id: string) => onBoardBefore.has(id) || onBoardAfter.has(id);
+  // Les Objets brisés du lot : leur sort part d'EUX (au-dessus du Cimetière), même brisés depuis la main.
+  const brokenEvents = events.flatMap((event) => (event.type === "OBJECT_BROKEN" ? [event] : []));
+  const broken = new Set(brokenEvents.map((event) => event.instanceId));
 
   /**
    * D'où part le sort d'un lanceur : la carte EN JEU (ou qui l'était juste
@@ -161,6 +184,7 @@ export function deriveEffectVolley(events: GameEvent[], before: GameState, after
    */
   const sourceOf = (origin: { playerId: PlayerId; instanceId?: string }): SpellSource => {
     const id = origin.instanceId;
+    if (id !== undefined && broken.has(id)) return { from: { kind: "unit", id }, originPlayerId: origin.playerId };
     if (id !== undefined && onBoard(id)) {
       if (!onBoardBefore.has(id)) arrived = true;
       awakens.add(id);
@@ -249,10 +273,34 @@ export function deriveEffectVolley(events: GameEvent[], before: GameState, after
     }
   }
 
-  if (shots.length === 0 && heals.length === 0 && buffs.length === 0 && reason.length === 0 && awakens.size === 0) return null;
+  // Un Objet brisé ne se réveille pas à sa place : il se montre au-dessus de son Cimetière.
+  for (const id of broken) awakens.delete(id);
+  const breaks: EffectBreak[] = brokenEvents.map((event) => {
+    const fromThis = (source: SpellSource | undefined) => source?.from.kind === "unit" && source.from.id === event.instanceId;
+    const tone: EffectBreak["tone"] = shots.some((shot) => fromThis(shot))
+      ? "attack"
+      : buffs.some((buff) => buff.loss && fromThis(buff.source))
+        ? "malus"
+        : "heal";
+    return { instanceId: event.instanceId, ownerId: event.playerId, fromHand: event.fromHand, tone };
+  });
+
+  if (shots.length === 0 && heals.length === 0 && buffs.length === 0 && reason.length === 0 && awakens.size === 0 && breaks.length === 0) return null;
   const casts = shots.some((shot) => shot.look === "magic" || shot.look === "tide") || heals.some((heal) => heal.source) || buffs.some((buff) => buff.source);
-  const castMs = casts ? (awakens.size > 0 ? AWAKE_LIFT_MS : 0) + ORB_CHARGE_MS : 0;
-  return { id, delayMs: arrived ? ARRIVAL_DELAY_MS : 0, awakens: [...awakens], castMs, shots, heals, buffs, reason };
+  // Avant la charge de l'orbe : le réveil du lanceur, ou l'Objet brisé qui gagne son Cimetière.
+  const lead = Math.max(awakens.size > 0 ? AWAKE_LIFT_MS : 0, breaks.length > 0 ? BREAK_LEAD_MS : 0);
+  const castMs = casts ? lead + ORB_CHARGE_MS : 0;
+  return {
+    id,
+    delayMs: arrived ? ARRIVAL_DELAY_MS : 0,
+    awakens: [...awakens],
+    castMs,
+    shots,
+    heals,
+    buffs,
+    reason,
+    ...(breaks.length > 0 ? { breaks } : {}),
+  };
 }
 
 /**
@@ -276,10 +324,17 @@ export function volleyLandingMs(volley: EffectVolley): number {
     ...volley.heals.map((heal) => spellArrivalMs(volley, heal.source) + HEAL_APPLY_MS),
     ...volley.buffs.map((buff) => spellArrivalMs(volley, buff.source) + BUFF_LAND_MS),
   ];
+  // Un Objet brisé éclate au départ de son sort (ou, sans sort, une fois arrivé au-dessus du Cimetière).
+  if (volley.breaks && volley.breaks.length > 0) landings.push(breakShatterAtMs(volley) + BREAK_SHATTER_MS);
   // Un réveil seul ne retient rien : la carte se soulève sur l'état réel.
   const effects = landings.length > 0 ? volley.delayMs + Math.max(...landings) : 0;
   // Le prix se paie à la pose, pas après l'atterrissage : il ne subit pas le délai d'arrivée.
   return Math.max(effects, reasonLandingMs(volley));
+}
+
+/** Instant, après `delayMs`, où un Objet brisé éclate : au départ des comètes, ou dès qu'il est au-dessus de son Cimetière. */
+export function breakShatterAtMs(volley: Pick<EffectVolley, "castMs">): number {
+  return Math.max(volley.castMs, BREAK_LEAD_MS + 260);
 }
 
 /** Instant où le dernier chiffre de Raison touche sa jauge (0 : aucun). */

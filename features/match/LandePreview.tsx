@@ -61,7 +61,12 @@ export function LandePreview() {
                 carte("gaston-aventurier-de-ladalle", p.id, 0),
                 ...p.hand.slice(0, 3),
               ],
-              board: [carte("crabe-de-fer", p.id, 0), carte("marin-des-jetees", p.id, 1)],
+              // Un jeton de chaque côté : les animations doivent épouser son cadre ovale.
+              board: [carte("crabe-de-fer", p.id, 0), carte("marin-des-jetees", p.id, 1), { ...carte("peon-cra-poiscail", p.id, 2), illustrationVariant: 1 },
+                // Deux Objets à Briser : l'un vise une unité (dégâts, bleu), l'autre rend de la Raison (or).
+                carte("eclat-de-bouteille", p.id, 3),
+                carte("thermos-du-dernier-quart", p.id, 4),
+              ],
             }
           : {
               ...p,
@@ -69,6 +74,7 @@ export function LandePreview() {
                 carte("crabe-de-fer", p.id, 0),
                 carte("murene-aveugle", p.id, 1),
                 carte("marin-des-jetees", p.id, 2),
+                carte("eclat-chromatique-bleu", p.id, 4),
                 ...(combat ? [carte("mouette-du-brise-lames", p.id, 3)] : []),
               ],
             }

@@ -799,6 +799,8 @@ export function TableBoard(props: TableBoardProps) {
       <div
         data-card-id={card.id}
         data-board-unit={card.id}
+        // Un jeton a un cadre ovale : les effets prennent sa silhouette, pas le rectangle d'une carte (`silhouette.ts`).
+        data-token={def.token ? "" : undefined}
         data-drop={drop}
         data-armable={ready ? "" : undefined}
         // Une Structure adverse invisible ne s'aperçoit pas non plus : on n'en voit que le dos.

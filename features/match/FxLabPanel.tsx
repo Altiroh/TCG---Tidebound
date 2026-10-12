@@ -61,6 +61,8 @@ function outline(target: FxTarget, color: string | null) {
   const el = findElement(target.kind, target.id);
   if (el) el.style.outline = color ? `3px solid ${color}` : "";
   if (el) el.style.outlineOffset = color ? "3px" : "";
+  // Un jeton est ovale : son liseré de sélection aussi.
+  if (el && el.dataset.token !== undefined) el.style.borderRadius = color ? "50%" : "";
 }
 
 /**

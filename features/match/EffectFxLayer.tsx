@@ -3,10 +3,13 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { centerOf, findElement, FloatingDamage, ImpactDust, ImpactFlash, shake, SicknessBubbles, tremble, type Point } from "@/features/match/AttackImpactLayer";
 import { FxCanvas } from "@/features/match/FxCanvas";
-import { awakenCard } from "@/features/match/cardFx";
+import { silhouetteOf, type Silhouette } from "@/features/match/silhouette";
+import { awakenCard, breakObject } from "@/features/match/cardFx";
 import { keywordLabel, THICK_TEXT_OUTLINE } from "@/features/match/cardDisplay";
 import {
   AWAKE_LIFT_MS,
+  BREAK_SHATTER_MS,
+  breakShatterAtMs,
   BUFF_LAND_MS,
   HEAL_APPLY_MS,
   ORB_CHARGE_MS,
@@ -78,6 +81,8 @@ interface ShotGeometry {
   size: number;
   /** La cible, mesurée au départ : la poussière d'un boulet s'échappe tout autour. */
   rect?: DOMRect;
+  /** Sa silhouette : un jeton est ovale (`silhouette.ts`). */
+  shape?: Silhouette;
 }
 
 /**
@@ -206,7 +211,7 @@ function ShotImpact({ geometry }: { geometry: ShotGeometry }) {
   return (
     <>
       <ImpactFlash point={geometry.to} tint={geometry.shot.look} />
-      {geometry.shot.look === "cannon" && geometry.rect && <ImpactDust plan={{ rect: geometry.rect, from: geometry.from }} />}
+      {geometry.shot.look === "cannon" && geometry.rect && <ImpactDust plan={{ rect: geometry.rect, from: geometry.from, shape: geometry.shape }} />}
       <FloatingDamage point={geometry.to} amount={geometry.shot.amount} />
     </>
   );
@@ -216,7 +221,9 @@ function ShotImpact({ geometry }: { geometry: ShotGeometry }) {
 
 const SPARKS = 9;
 
-function HealVeil({ box, amount }: { box: Box; amount: number }) {
+function HealVeil({ box, amount, shape = "card" }: { box: Box; amount: number; shape?: Silhouette }) {
+  // Un jeton est ovale : le rideau de lumière épouse son ovale, pas le rectangle d'une carte.
+  const round = shape === "oval" ? "50%" : "10px";
   const veil = useRef<HTMLDivElement>(null);
   const sparks = useRef<HTMLDivElement>(null);
   const label = useRef<HTMLSpanElement>(null);
@@ -231,10 +238,10 @@ function HealVeil({ box, amount }: { box: Box; amount: number }) {
       animations.push(
         veil.current.animate(
           [
-            { clipPath: "inset(0 0 100% 0 round 10px)", opacity: 0.2, filter: "brightness(1)" },
-            { clipPath: "inset(0 0 0% 0 round 10px)", opacity: 0.95, filter: "brightness(1.25)", offset: covered },
-            { clipPath: "inset(0 0 0% 0 round 10px)", opacity: 0.75, filter: "brightness(1)", offset: 0.62 },
-            { clipPath: "inset(0 0 0% 0 round 10px)", opacity: 0, filter: "brightness(1)" },
+            { clipPath: `inset(0 0 100% 0 round ${round})`, opacity: 0.2, filter: "brightness(1)" },
+            { clipPath: `inset(0 0 0% 0 round ${round})`, opacity: 0.95, filter: "brightness(1.25)", offset: covered },
+            { clipPath: `inset(0 0 0% 0 round ${round})`, opacity: 0.75, filter: "brightness(1)", offset: 0.62 },
+            { clipPath: `inset(0 0 0% 0 round ${round})`, opacity: 0, filter: "brightness(1)" },
           ],
           { duration: t, easing: "cubic-bezier(.3,.7,.3,1)", fill: "forwards" }
         )
@@ -276,7 +283,7 @@ function HealVeil({ box, amount }: { box: Box; amount: number }) {
         style={{
           position: "absolute",
           inset: -4,
-          borderRadius: 12,
+          borderRadius: shape === "oval" ? "50%" : 12,
           opacity: 0,
           background:
             "linear-gradient(180deg, rgba(236,253,245,0.85) 0%, rgba(167,243,208,0.55) 38%, rgba(110,231,183,0.35) 70%, rgba(52,211,153,0.15) 100%)",
@@ -575,7 +582,7 @@ interface Launched {
   /* `kind` : la famille de la comète — `attack` pour un sort, `malus` (pourpre) pour l'orbe de la Marée. */
   /** Comètes sans impact de dégâts : soin, renfort, malus — l'effet se pose à leur arrivée. */
   comets: Array<CometFlight & { key: string }>;
-  heals: Array<{ key: string; box: Box; amount: number; sourced: boolean }>;
+  heals: Array<{ key: string; box: Box; amount: number; sourced: boolean; shape: Silhouette }>;
   chips: Array<Chip & { sourced: boolean }>;
 }
 
@@ -599,6 +606,30 @@ function Volley({ volley }: { volley: EffectVolley }) {
           if (el) awakenCard(el);
         }
 
+        // Objets brisés : chacun quitte sa place pour se tenir au-dessus de son Cimetière, s'y illumine, puis éclate
+        // au départ de son sort — qui part de LÀ (`breakRects`).
+        const breakRects = new Map<string, DOMRect>();
+        for (const broken of volley.breaks ?? []) {
+          const ship = findElement("ship", broken.ownerId)?.getBoundingClientRect();
+          const piles = Array.from(document.querySelectorAll<HTMLElement>("[data-graveyard]"));
+          const pile = ship
+            ? piles.sort((a, b) => Math.abs(centerOf(a.getBoundingClientRect()).y - (ship.top + ship.height / 2)) - Math.abs(centerOf(b.getBoundingClientRect()).y - (ship.top + ship.height / 2)))[0]
+            : piles[0];
+          if (!pile) continue;
+          const onBoardFace = broken.fromHand ? null : findElement("unit", broken.instanceId);
+          const face = onBoardFace ?? pile.querySelector<HTMLElement>("[data-graveyard-top] > *");
+          const to = pile.getBoundingClientRect();
+          const from = face?.getBoundingClientRect();
+          if (!face || !from || from.width === 0) continue;
+          breakObject(broken.instanceId, face, from, to, broken.tone, breakShatterAtMs(volley), BREAK_SHATTER_MS);
+          // Là où elle se tient : au-dessus de la pile, un peu plus grande qu'elle.
+          const height = to.height * 1.18;
+          const width = from.width * (height / from.height);
+          const cx = to.left + to.width / 2;
+          const cy = to.top + to.height / 2 - to.height * 0.12;
+          breakRects.set(broken.instanceId, new DOMRect(cx - width / 2, cy - height / 2, width, height));
+        }
+
         /** Élément d'un lanceur : sa carte, ou — introuvable (Structure cachée, carte partie) — le Navire de son contrôleur. */
         const casterEl = (source: SpellSource) => elementOf(source.from) ?? findElement("ship", source.originPlayerId);
         const orbs = new Map<string, Orb>();
@@ -606,9 +637,10 @@ function Volley({ volley }: { volley: EffectVolley }) {
           const key = sourceKey(source);
           const known = orbs.get(key);
           if (known) return known;
-          const el = casterEl(source);
-          if (!el) return null;
-          const rect = el.getBoundingClientRect();
+          const brokenAt = source.from.kind === "unit" ? breakRects.get(source.from.id) : undefined;
+          const el = brokenAt ? null : casterEl(source);
+          if (!brokenAt && !el) return null;
+          const rect = brokenAt ?? el!.getBoundingClientRect();
           const orb = { key, kind, point: orbPointFor(rect), size: Math.min(rect.height, 220), forward: forwardOf(rect) };
           orbs.set(key, orb);
           return orb;
@@ -639,12 +671,12 @@ function Volley({ volley }: { volley: EffectVolley }) {
           } else if (shot.look === "sickness") {
             // La maladie : pas de projectile, des bulles qui éclatent sur l'unité elle-même.
             const at = centerOf(toRect);
-            shots.push({ shot, kind: "malus", from: at, start: at, to: at, size, forward: 0, rect: toRect });
+            shots.push({ shot, kind: "malus", from: at, start: at, to: at, size, forward: 0, rect: toRect, shape: silhouetteOf(toEl) });
           } else {
             const fromEl = casterEl(shot);
             if (fromEl) {
               const from = centerOf(fromEl.getBoundingClientRect());
-              shots.push({ shot, kind: "attack", from, start: from, to: centerOf(toRect), size, forward: 0, rect: toRect });
+              shots.push({ shot, kind: "attack", from, start: from, to: centerOf(toRect), size, forward: 0, rect: toRect, shape: silhouetteOf(toEl) });
             }
           }
         }
@@ -658,7 +690,7 @@ function Volley({ volley }: { volley: EffectVolley }) {
           if (start) {
             comets.push({ key: `h${index}`, kind: "heal", from: start.point, to: centerOf(el.getBoundingClientRect()), size: Math.min(box.height, 220), forward: start.forward });
           }
-          return [{ key: `${heal.to.kind}-${heal.to.id}-${index}`, box, amount: heal.amount, sourced: Boolean(start) }];
+          return [{ key: `${heal.to.kind}-${heal.to.id}-${index}`, box, amount: heal.amount, sourced: Boolean(start), shape: silhouetteOf(el) }];
         });
         const chips = volley.buffs.flatMap((buff, index) => {
           const kind: SpellKind = buff.loss ? "malus" : "heal";
@@ -709,7 +741,8 @@ function Volley({ volley }: { volley: EffectVolley }) {
       {charging &&
         launched.orbs.map((orb) => (
           // L'orbe attend que le lanceur soit soulevé pour naître.
-          <DelayedMount key={orb.key} delayMs={volley.awakens.length > 0 ? AWAKE_LIFT_MS : 0}>
+          // L'orbe naît quand son lanceur est prêt : soulevé, ou arrivé au-dessus de son Cimetière s'il se brise.
+          <DelayedMount key={orb.key} delayMs={Math.max(0, volley.castMs - ORB_CHARGE_MS)}>
             <SpellOrb kind={orb.kind} point={orb.point} size={orb.size} />
           </DelayedMount>
         ))}
@@ -719,13 +752,13 @@ function Volley({ volley }: { volley: EffectVolley }) {
           ? !landed && <CannonBall key={`p${index}`} geometry={geometry} />
           : geometry.shot.look === "sickness"
             ? // Les bulles montent pendant le « vol » ; le dégât tombe sur leurs éclats.
-              phase !== "charge" && geometry.rect && <SicknessBubbles key={`p${index}`} rect={geometry.rect} />
+              phase !== "charge" && geometry.rect && <SicknessBubbles key={`p${index}`} rect={geometry.rect} shape={geometry.shape} />
             : phase !== "charge" && <Comet key={`p${index}`} flight={geometry} />
       )}
       {phase !== "charge" && launched.comets.map((comet) => <Comet key={comet.key} flight={comet} />)}
       {landed && launched.shots.map((geometry, index) => <ShotImpact key={`i${index}`} geometry={geometry} />)}
       {launched.heals.map((heal) =>
-        !heal.sourced || landed ? <HealVeil key={heal.key} box={heal.box} amount={heal.amount} /> : null
+        !heal.sourced || landed ? <HealVeil key={heal.key} box={heal.box} amount={heal.amount} shape={heal.shape} /> : null
       )}
       {launched.chips.map((chip) => (!chip.sourced || landed ? <BuffChip key={chip.key} chip={chip} /> : null))}
     </>

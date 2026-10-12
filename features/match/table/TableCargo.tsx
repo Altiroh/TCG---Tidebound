@@ -89,7 +89,7 @@ export function TableCargo({ side, ownerId, deck, graveyard, graveyardTop, grave
         data-drop={graveyardDropState ? "graveyard" : undefined}
       >
         {graveyard > 0 && graveyardTop && (
-          <span className={styles.graveyardTop} aria-hidden>
+          <span className={styles.graveyardTop} aria-hidden data-graveyard-top="">
             {graveyardTop}
           </span>
         )}
