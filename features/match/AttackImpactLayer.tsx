@@ -4,6 +4,8 @@ import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from
 import { ATTACK_IMPACT_AT_MS, ATTACK_TIMINGS, ATTACK_TOTAL_MS, type AttackAnimation } from "@/features/match/useAttackPresentation";
 import { playAttackImpact, playCardAwake, playShipHit } from "@/lib/sound";
 import { revealGuard } from "@/features/match/cardFx";
+import { FxCanvas, reducedMotion } from "@/features/match/FxCanvas";
+import { createDustPainter, dustBounds, IMPACT_DUST_MS, type DustPlan } from "@/features/match/impactFx";
 
 export interface Point {
   x: number;
@@ -33,6 +35,35 @@ export function shake(el: HTMLElement) {
     ],
     { duration: 320, easing: "ease-out" }
   );
+}
+
+/**
+ * TREMBLEMENT au choc d'un coup physique : court, léger, dans tous les sens
+ * (quelques pixels et une fraction de degré), comme une carte qui encaisse
+ * sur la table. Ajouté (`composite: "add"`) à la transformation de la
+ * carte, sans l'écraser — il se cumule aussi au balancement rouge d'une
+ * carte qui perd de la Résistance (`animate-card-impact`).
+ */
+export function tremble(el: HTMLElement) {
+  if (reducedMotion()) return;
+  el.animate(
+    [
+      { transform: "translate(0, 0) rotate(0deg)" },
+      { transform: "translate(-3px, 1.5px) rotate(-0.8deg)", offset: 0.12 },
+      { transform: "translate(3px, -1px) rotate(0.7deg)", offset: 0.26 },
+      { transform: "translate(-2px, -1.5px) rotate(-0.5deg)", offset: 0.42 },
+      { transform: "translate(1.5px, 1px) rotate(0.35deg)", offset: 0.6 },
+      { transform: "translate(-0.8px, 0.5px) rotate(-0.15deg)", offset: 0.8 },
+      { transform: "translate(0, 0) rotate(0deg)" },
+    ],
+    { duration: 340, easing: "ease-out", composite: "add" }
+  );
+}
+
+/** La poussière qui s'échappe tout autour de la cible au choc (`impactFx.ts`). */
+export function ImpactDust({ plan }: { plan: DustPlan }) {
+  const [paint] = useState(() => createDustPainter(plan));
+  return <FxCanvas bounds={dustBounds(plan)} durationMs={IMPACT_DUST_MS} paint={paint} />;
 }
 
 /**
@@ -250,61 +281,8 @@ export function ImpactFlash({ point, tint = "strike" }: { point: Point; tint?: k
   );
 }
 
-/**
- * Un peu de FUMÉE au point de choc : quelques volutes grises qui gonflent,
- * s'écartent en montant et se dissipent. `size` est la hauteur de la cible
- * à l'écran — la fumée suit la taille du plateau. Déterministe (pas de
- * hasard au rendu) : les volutes sont réparties en éventail.
- */
-export function SmokeBurst({ point, size, puffs = 7 }: { point: Point; size: number; puffs?: number }) {
-  const host = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const el = host.current;
-    if (!el) return undefined;
-    const animations = Array.from(el.children).map((child, index) => {
-      // Éventail vers le haut : de -160° à -20°, alterné pour ne pas tourner en rond.
-      const angle = ((-160 + (140 * index) / Math.max(1, puffs - 1)) * Math.PI) / 180;
-      const reach = size * (0.28 + ((index * 37) % 5) * 0.05);
-      const dx = Math.cos(angle) * reach;
-      const dy = Math.sin(angle) * reach - size * 0.12;
-      return (child as HTMLElement).animate(
-        [
-          { transform: "translate(-50%, -50%) scale(0.25)", opacity: 0 },
-          { transform: `translate(calc(-50% + ${dx * 0.35}px), calc(-50% + ${dy * 0.35}px)) scale(0.8)`, opacity: 0.75, offset: 0.2 },
-          { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(1.6)`, opacity: 0 },
-        ],
-        { duration: 820 + index * 40, delay: index * 18, easing: "cubic-bezier(.2,.7,.3,1)", fill: "forwards" }
-      );
-    });
-    return () => animations.forEach((animation) => animation.cancel());
-  }, [puffs, size]);
-
-  const puff = size * 0.3;
-  return (
-    <div ref={host} aria-hidden className="pointer-events-none absolute z-30" style={{ left: point.x, top: point.y }}>
-      {Array.from({ length: puffs }, (_, index) => (
-        <span
-          key={index}
-          style={{
-            position: "absolute",
-            left: 0,
-            top: 0,
-            width: puff,
-            height: puff,
-            borderRadius: "9999px",
-            opacity: 0,
-            background: "radial-gradient(circle, rgba(226,232,240,0.85) 0%, rgba(148,163,184,0.55) 45%, rgba(100,116,139,0) 72%)",
-            filter: "blur(2px)",
-          }}
-        />
-      ))}
-    </div>
-  );
-}
-
 function SingleAttack({ attack }: { attack: AttackAnimation }) {
-  const [geometry, setGeometry] = useState<{ from: Point; to: Point; size: number } | null>(null);
+  const [geometry, setGeometry] = useState<{ from: Point; to: Point; size: number; rect: DOMRect } | null>(null);
   const [impacted, setImpacted] = useState(false);
 
   // `useLayoutEffect` : l'état affiché est encore celui d'avant l'attaque (`useAttackPresentation`), attaquant et cible sont en place.
@@ -318,7 +296,7 @@ function SingleAttack({ attack }: { attack: AttackAnimation }) {
     if (!attackerEl || !targetEl) return undefined;
 
     const targetRect = targetEl.getBoundingClientRect();
-    setGeometry({ from: centerOf(attackerEl.getBoundingClientRect()), to: centerOf(targetRect), size: Math.min(targetRect.height, 220) });
+    setGeometry({ from: centerOf(attackerEl.getBoundingClientRect()), to: centerOf(targetRect), size: Math.min(targetRect.height, 220), rect: targetRect });
     // Une cible qui porte Garde le montre d'abord : son bouclier vient au centre, pulse, regagne sa carte —
     // et l'attaquant ne part qu'ensuite.
     const lead = attack.guard ? revealGuard(targetEl) : 0;
@@ -338,6 +316,8 @@ function SingleAttack({ attack }: { attack: AttackAnimation }) {
       // l'état réel s'affiche : on ne double le tremblement que pour un Navire, une cible détruite ou un coup à 0.
       const target = attack.defenderInstanceId ? findElement("unit", attack.defenderInstanceId) : findElement("ship", attack.defenderPlayerId!);
       if (target && (!attack.defenderInstanceId || attack.defenderDies || attack.amount === 0)) shake(target);
+      // Et toujours, un coup physique fait trembler ce qu'il touche — légèrement.
+      if (target) tremble(target);
     }, lead + ATTACK_IMPACT_AT_MS);
     return () => {
       clearTimeout(startTimer);
@@ -354,7 +334,7 @@ function SingleAttack({ attack }: { attack: AttackAnimation }) {
       {impacted && (
         <>
           <ImpactFlash point={geometry.to} />
-          <SmokeBurst point={geometry.to} size={geometry.size} />
+          <ImpactDust plan={{ rect: geometry.rect, from: geometry.from }} />
           <FloatingDamage point={geometry.to} amount={attack.amount} />
           {attack.retaliation !== undefined && <FloatingDamage point={geometry.from} amount={attack.retaliation} />}
         </>

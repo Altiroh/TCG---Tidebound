@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { centerOf, findElement, FloatingDamage, ImpactFlash, shake, SmokeBurst, type Point } from "@/features/match/AttackImpactLayer";
+import { centerOf, findElement, FloatingDamage, ImpactDust, ImpactFlash, shake, tremble, type Point } from "@/features/match/AttackImpactLayer";
+import { FxCanvas } from "@/features/match/FxCanvas";
 import { awakenCard } from "@/features/match/cardFx";
 import { keywordLabel, THICK_TEXT_OUTLINE } from "@/features/match/cardDisplay";
 import {
@@ -75,6 +76,8 @@ interface ShotGeometry {
   to: Point;
   /** Hauteur de la cible à l'écran : les effets suivent la taille du plateau. */
   size: number;
+  /** La cible, mesurée au départ : la poussière d'un boulet s'échappe tout autour. */
+  rect?: DOMRect;
 }
 
 /**
@@ -92,59 +95,6 @@ export interface CometFlight {
   size: number;
   /** Sens « devant » du lanceur (`forwardOf`) : une cible qui n'y est pas reçoit le tir en boomerang. */
   forward: number;
-}
-
-/** Mouvement réduit : les sorts se posent sans voler. */
-function reducedMotion(): boolean {
-  return typeof window !== "undefined" && Boolean(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches);
-}
-
-/**
- * Un canvas posé sur `bounds` (coordonnées viewport), net sur écran dense,
- * qui appelle `paint` à chaque image pendant `durationMs` — en coordonnées
- * VIEWPORT, le canvas s'en charge — puis se vide.
- */
-function FxCanvas({
-  bounds,
-  durationMs,
-  paint,
-}: {
-  bounds: { left: number; top: number; width: number; height: number };
-  durationMs: number;
-  paint: (ctx: CanvasRenderingContext2D, elapsed: number) => void;
-}) {
-  const ref = useRef<HTMLCanvasElement>(null);
-  useLayoutEffect(() => {
-    const canvas = ref.current;
-    const ctx = canvas?.getContext("2d");
-    if (!canvas || !ctx || reducedMotion()) return undefined;
-    // Plafonné à 2 : au-delà, le coût monte sans que l'œil y gagne.
-    const dpr = Math.min(2, window.devicePixelRatio || 1);
-    canvas.width = Math.ceil(bounds.width * dpr);
-    canvas.height = Math.ceil(bounds.height * dpr);
-    const startedAt = performance.now();
-    let frame = 0;
-    const tick = (now: number) => {
-      const elapsed = now - startedAt;
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      if (elapsed >= durationMs) return;
-      ctx.setTransform(dpr, 0, 0, dpr, -bounds.left * dpr, -bounds.top * dpr);
-      paint(ctx, elapsed);
-      frame = requestAnimationFrame(tick);
-    };
-    frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- un effet ne se joue qu'une fois.
-  }, []);
-  return (
-    <canvas
-      ref={ref}
-      aria-hidden
-      className="pointer-events-none absolute z-30"
-      style={{ left: bounds.left, top: bounds.top, width: bounds.width, height: bounds.height }}
-    />
-  );
 }
 
 export function Comet({ flight }: { flight: CometFlight }) {
@@ -256,7 +206,7 @@ function ShotImpact({ geometry }: { geometry: ShotGeometry }) {
   return (
     <>
       <ImpactFlash point={geometry.to} tint={geometry.shot.look} />
-      {geometry.shot.look === "cannon" && <SmokeBurst point={geometry.to} size={geometry.size} puffs={6} />}
+      {geometry.shot.look === "cannon" && geometry.rect && <ImpactDust plan={{ rect: geometry.rect, from: geometry.from }} />}
       <FloatingDamage point={geometry.to} amount={geometry.shot.amount} />
     </>
   );
@@ -676,7 +626,7 @@ function Volley({ volley }: { volley: EffectVolley }) {
             const fromEl = casterEl(shot);
             if (fromEl) {
               const from = centerOf(fromEl.getBoundingClientRect());
-              shots.push({ shot, kind: "attack", from, start: from, to: centerOf(toRect), size, forward: 0 });
+              shots.push({ shot, kind: "attack", from, start: from, to: centerOf(toRect), size, forward: 0, rect: toRect });
             }
           }
         }
@@ -718,9 +668,12 @@ function Volley({ volley }: { volley: EffectVolley }) {
             // Une unité qui encaisse joue déjà `animate-card-impact` quand
             // l'état réel s'affiche, au même instant.
             for (const shot of volley.shots) {
-              if (shot.to.kind !== "ship") continue;
               const el = elementOf(shot.to);
-              if (el) shake(el);
+              if (!el) continue;
+              // Un boulet est un coup physique : ce qu'il touche tremble, comme au combat.
+              if (shot.look === "cannon") tremble(el);
+              if (shot.to.kind !== "ship") continue;
+              shake(el);
             }
           }, volley.castMs + SHOT_FLIGHT_MS)
         );
