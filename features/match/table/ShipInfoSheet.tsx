@@ -17,6 +17,13 @@ interface ShipInfoSheetProps {
   /** « Ton Navire », « Navire adverse »… */
   ownerLabel: string;
   onClose: () => void;
+  /**
+   * Ouverte au SURVOL (souris) : elle se lit sans s'ouvrir d'un clic, comme
+   * la carte d'une capacité, et se referme quand le pointeur quitte le
+   * Navire — pas de capteur de clic par-dessus le plateau, qui volerait la
+   * sortie du pointeur. Au doigt, elle reste ouverte au toucher.
+   */
+  hover?: boolean;
 }
 
 /** Attribut `data-kind` de chaque trait d'identité — il porte la couleur de la ligne. */
@@ -50,7 +57,7 @@ function tideTraits(ship: ShipDefinition): Array<{ label: string; bad: boolean }
  * passif, capacité, faiblesse, réactions à la Marée. Rien de caché n'y
  * figure : ce sont des informations publiques de la table.
  */
-export function ShipInfoSheet({ player, ship, capacity = ship.slotCount, ownerLabel, onClose }: ShipInfoSheetProps) {
+export function ShipInfoSheet({ player, ship, capacity = ship.slotCount, ownerLabel, onClose, hover = false }: ShipInfoSheetProps) {
   useEffect(() => {
     // En capture, et sans propagation : Échap ferme la fiche, il n'ouvre pas
     // AUSSI le menu de pause du plateau (qui écoute la même touche).
@@ -107,11 +114,15 @@ export function ShipInfoSheet({ player, ship, capacity = ship.slotCount, ownerLa
   return (
     <>
       {/* Toucher le plateau referme la fiche : il reste visible, rien ne le voile. */}
-      <div className={dock.catcher} onClick={onClose} role="presentation" />
+      {!hover && <div className={dock.catcher} onClick={onClose} role="presentation" />}
       <div
         ref={panelRef}
         className={dock.panel}
-        style={place ? { left: place.left, top: place.top } : { left: 0, top: 0, visibility: "hidden" }}
+        style={{
+          ...(place ? { left: place.left, top: place.top } : { left: 0, top: 0, visibility: "hidden" as const }),
+          // Au survol, elle se lit sans s'interposer : le pointeur reste sur le Navire.
+          ...(hover ? { pointerEvents: "none" as const } : {}),
+        }}
         role="dialog"
         aria-modal
         aria-label={`${ownerLabel} — ${ship.name}`}

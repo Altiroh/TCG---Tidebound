@@ -316,6 +316,36 @@ export function TableBoard(props: TableBoardProps) {
   const landeArriving = (lande !== undefined && lande.instanceId !== seenLande.current) || landeArrival?.instanceId === lande?.instanceId;
   /** Navire dont la fiche est ouverte (clic sur un Navire hors ciblage d'attaque). */
   const [shipInfoFor, setShipInfoFor] = useState<PlayerId | null>(null);
+  /**
+   * La fiche est-elle ouverte au SURVOL (souris) ? Retour du 12/10/2026 :
+   * les infos du Navire s'affichent au survol, comme la carte d'une
+   * capacité, et non au clic — sauf au doigt, où le toucher l'ouvre.
+   */
+  const [shipInfoHover, setShipInfoHover] = useState(false);
+  const shipPointer = useRef<string>("mouse");
+  /** Survol, toucher et clic d'un Navire : ce qui ouvre ou referme sa fiche. */
+  const shipInfoHandlers = (id: PlayerId, targetNow: () => boolean) => ({
+    onPointerEnter: (event: React.PointerEvent<HTMLElement>) => {
+      shipPointer.current = event.pointerType;
+      if (event.pointerType !== "mouse" || targetNow()) return;
+      setShipInfoFor(id);
+      setShipInfoHover(true);
+    },
+    onPointerLeave: () => {
+      if (!shipInfoHover) return;
+      setShipInfoFor((current) => (current === id ? null : current));
+      setShipInfoHover(false);
+    },
+    onPointerDown: (event: React.PointerEvent<HTMLElement>) => {
+      shipPointer.current = event.pointerType;
+    },
+    /** Au doigt seulement : le toucher ouvre la fiche (la souris l'a déjà au survol). */
+    openOnTap: () => {
+      if (shipPointer.current === "mouse") return;
+      setShipInfoFor(id);
+      setShipInfoHover(false);
+    },
+  });
 
   const auraContextFor = (player: PlayerState) => ({
     controllerBoard: player.board,
@@ -1132,17 +1162,19 @@ export function TableBoard(props: TableBoardProps) {
               <div
                 data-drop="ship"
                 data-ship-target={opponent.id}
-                onClick={() => {
-                  // Pendant un ciblage d'attaque, le Navire est une CIBLE ; sinon on consulte sa fiche.
-                  // Tout autre ciblage ne vise pas de Navire : le toucher le lit.
-                  if (targeting?.kind === "attack" || targeting?.kind === "shipShot" || anyTargeting) props.onShipClick(opponent.id);
-                  else setShipInfoFor(opponent.id);
-                }}
+                {...(() => {
+                  const info = shipInfoHandlers(opponent.id, () => Boolean(targeting?.kind === "attack" || targeting?.kind === "shipShot" || anyTargeting || attackTargeting));
+                  return { onPointerEnter: info.onPointerEnter, onPointerLeave: info.onPointerLeave, onPointerDown: info.onPointerDown, onClick: () => {
+                    // Pendant un ciblage d'attaque, le Navire est une CIBLE ; sinon, au doigt, on consulte sa fiche.
+                    if (targeting?.kind === "attack" || targeting?.kind === "shipShot" || anyTargeting) props.onShipClick(opponent.id);
+                    else info.openOnTap();
+                  } };
+                })()}
                 onContextMenu={(event) => {
                   event.preventDefault();
+                  setShipInfoHover(false);
                   setShipInfoFor(opponent.id);
                 }}
-                title={attackTargeting || anyTargeting ? undefined : "Fiche du Navire adverse"}
                 className={`${styles.shipTarget} ${shipAttackable || anyTargeting ? styles.targetable : styles.shipInspectable} ${hover === "ship" && (shipAttackable || anyTargeting) ? styles.targetHover : ""}`}
               >
                 {ship}
@@ -1260,14 +1292,17 @@ export function TableBoard(props: TableBoardProps) {
               <div
                 data-ship-target={viewer.id}
                 className={`${styles.shipTarget} ${anyTargeting ? `${styles.targetable} ${styles.effectTone}` : styles.shipInspectable}`}
-                title={anyTargeting ? undefined : "Fiche de ton Navire"}
-                onClick={() => {
-                  // Seule une capacité ciblée vise son propre Navire.
-                  if (anyTargeting) props.onShipClick(viewer.id);
-                  else setShipInfoFor(viewer.id);
-                }}
+                {...(() => {
+                  const info = shipInfoHandlers(viewer.id, () => anyTargeting);
+                  return { onPointerEnter: info.onPointerEnter, onPointerLeave: info.onPointerLeave, onPointerDown: info.onPointerDown, onClick: () => {
+                    // Seule une capacité ciblée vise son propre Navire ; sinon, au doigt, on consulte sa fiche.
+                    if (anyTargeting) props.onShipClick(viewer.id);
+                    else info.openOnTap();
+                  } };
+                })()}
                 onContextMenu={(event) => {
                   event.preventDefault();
+                  setShipInfoHover(false);
                   setShipInfoFor(viewer.id);
                 }}
               >
@@ -1438,6 +1473,7 @@ export function TableBoard(props: TableBoardProps) {
           capacity={shipInfoFor === viewer.id ? viewerCapacity : opponentCapacity}
           ownerLabel={shipInfoFor === viewer.id ? "Ton Navire" : "Navire adverse"}
           onClose={() => setShipInfoFor(null)}
+          hover={shipInfoHover}
         />
       )}
       <AttackImpactLayer attacks={props.attacks} />
