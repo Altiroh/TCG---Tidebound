@@ -2,6 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { ATTACK_IMPACT_AT_MS, ATTACK_TIMINGS, ATTACK_TOTAL_MS, type AttackAnimation } from "@/features/match/useAttackPresentation";
+import { playQualificationFx } from "@/features/match/qualificationFx";
 import { playAttackImpact, playCardAwake, playShipHit } from "@/lib/sound";
 import { FxCanvas, reducedMotion } from "@/features/match/FxCanvas";
 import { silhouetteOf, type Silhouette } from "@/features/match/silhouette";
@@ -322,6 +323,10 @@ function SingleAttack({ attack }: { attack: AttackAnimation }) {
       playCardAwake();
       attackerAnimation = animateAttacker(attackerEl, targetRect);
     }, lead);
+    // Les qualifications de cette attaque : leur glyphe à la déclaration, au choc ou après le retour (`qualificationFx.ts`).
+    const cancelQualifications = (attack.qualifications ?? []).map((fx, index) =>
+      playQualificationFx(fx, { impactAtMs: lead + ATTACK_IMPACT_AT_MS, afterMs: lead + ATTACK_TOTAL_MS }, index)
+    );
 
     const impactTimer = setTimeout(() => {
       setImpacted(true);
@@ -338,6 +343,7 @@ function SingleAttack({ attack }: { attack: AttackAnimation }) {
     return () => {
       clearTimeout(startTimer);
       clearTimeout(impactTimer);
+      cancelQualifications.forEach((cancel) => cancel());
       // Démontage (ou double montage du mode strict en dev) : ne jamais laisser une animation orpheline empilée.
       attackerAnimation?.cancel();
     };

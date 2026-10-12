@@ -1,3 +1,4 @@
+import type { QualificationId } from "@/game/cards/qualifications";
 import type { PlayerId } from "@/game/state/types";
 
 /**
@@ -48,7 +49,8 @@ export type GameEventType =
   | "SHIP_ABILITY_FIRED"
   | "TURN_TIMED_OUT"
   | "STRUCTURE_REHIDDEN"
-  | "UNIT_TARGETED";
+  | "UNIT_TARGETED"
+  | "QUALIFICATION_TRIGGERED";
 
 export interface BaseGameEvent {
   type: GameEventType;
@@ -356,6 +358,27 @@ export interface CardMovedEvent extends BaseGameEvent {
  * pas (Lot 15 — Signal Violet, « est ciblée par un effet adverse »). Émis par
  * `resolveEffect` au moment où l'effet lit sa cible désignée.
  */
+/**
+ * Une QUALIFICATION a joué (`game/cards/qualifications.ts`) : Rafale pour
+ * sa deuxième attaque, Contournement qui passe une Garde, Brèche qui
+ * déborde sur le Navire, Sangsue qui soigne… Purement informatif : l'effet
+ * lui-même a déjà ses événements ordinaires (`DAMAGE`, `HEAL`,
+ * `REASON_CHANGED`, `DEBUFF_APPLIED`). La mise en scène le lit pour montrer
+ * le glyphe de la qualification au bon endroit, au bon moment.
+ */
+export interface QualificationTriggeredEvent extends BaseGameEvent {
+  type: "QUALIFICATION_TRIGGERED";
+  qualification: QualificationId;
+  /** Le porteur de la qualification. */
+  sourceInstanceId: string;
+  /** Ce qu'elle touche : une unité… */
+  targetInstanceId?: string;
+  /** …ou un Navire (Brèche, Ponction ; pour Sangsue, celui du porteur, qui récupère l'Ancrage). */
+  targetPlayerId?: PlayerId;
+  /** Ce qu'elle a fait, s'il y a un montant (excédent, soin, Raison, Puissance perdue). */
+  amount?: number;
+}
+
 export interface UnitTargetedEvent extends BaseGameEvent {
   type: "UNIT_TARGETED";
   instanceId: string;
@@ -659,4 +682,5 @@ export type GameEvent =
   | ShipAbilityFiredEvent
   | TurnTimedOutEvent
   | StructureRehiddenEvent
-  | UnitTargetedEvent;
+  | UnitTargetedEvent
+  | QualificationTriggeredEvent;

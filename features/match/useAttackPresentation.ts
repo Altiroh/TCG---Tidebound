@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { type GameEvent, type GameState, type PlayerId } from "@/game";
 import { deriveEffectVolley, patchedDisplay, volleyLandingMs, type EffectVolley } from "@/features/match/effectPresentation";
+import { qualificationFxFrom, type QualificationFx } from "@/features/match/qualificationFxData";
 import { beforeDieDisplay, dieHoldMs, freshDieRoll, type DieHold } from "@/features/match/dicePresentation";
 
 export interface AttackAnimation {
@@ -20,6 +21,8 @@ export interface AttackAnimation {
   defenderDies: boolean;
   /** L'attaquant a quitté le plateau (riposte mortelle). */
   attackerDies: boolean;
+  /** Qualifications qui ont joué pendant cette attaque (`QUALIFICATION_TRIGGERED`) : leur glyphe se montre au bon moment. */
+  qualifications?: QualificationFx[];
 }
 
 /**
@@ -45,10 +48,13 @@ export function deriveAttack(events: GameEvent[], after: GameState, id: number):
   let amount = 0;
   let defenderPlayerId: PlayerId | undefined;
   let retaliation: number | undefined;
+  const qualifications: QualificationFx[] = [];
   // Seuls les coups marqués par le moteur (`DamageEvent.combat`) : un
   // Contrecoup renvoyé ou les dégâts d'une capacité ne sont pas « le coup ».
   for (const next of events.slice(index + 1)) {
     if (next.type === "ATTACK") break;
+    const fx = qualificationFxFrom(next);
+    if (fx) qualifications.push(fx);
     if (next.type !== "DAMAGE" || !next.combat) continue;
     if (next.combat === "retaliation") {
       retaliation = (retaliation ?? 0) + next.amount;
@@ -70,6 +76,7 @@ export function deriveAttack(events: GameEvent[], after: GameState, id: number):
     retaliation,
     defenderDies: Boolean(event.defenderInstanceId) && !onAnyBoard(after, event.defenderInstanceId!),
     attackerDies: !onAnyBoard(after, event.attackerInstanceId),
+    ...(qualifications.length > 0 ? { qualifications } : {}),
   };
 }
 

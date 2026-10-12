@@ -32,7 +32,7 @@ function reducedMotion(): boolean {
 }
 
 /** Calque plein écran des éléments éphémères, créé au premier besoin. Jamais cliquable. */
-function fxLayer(): HTMLElement {
+export function fxLayer(): HTMLElement {
   let layer = document.querySelector<HTMLElement>("[data-card-fx-layer]");
   if (!layer) {
     layer = document.createElement("div");

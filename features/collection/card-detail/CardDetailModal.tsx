@@ -12,7 +12,7 @@ import { CardDetailNavigation } from "@/features/collection/card-detail/CardDeta
 import { CardDetailResale } from "@/features/collection/card-detail/CardDetailResale";
 import { CardDetailStats } from "@/features/collection/card-detail/CardDetailStats";
 import { CardDetailQualifications } from "@/features/collection/card-detail/CardDetailQualifications";
-import { qualificationChips, qualificationLead } from "@/features/match/qualificationDisplay";
+import { effectLead, qualificationChips } from "@/features/match/qualificationDisplay";
 import { CardShelfControls } from "@/features/collection/shelf/CardShelfControls";
 import styles from "@/features/collection/card-detail/CardDetail.module.css";
 
@@ -120,6 +120,7 @@ export function CardDetailModal({ cardId, onClose, onPrevious, onNext, onShowCar
 
   const { def, isAbyssal, stats, keywords } = model;
   const qualifications = qualificationChips(def);
+  const ligne = effectLead(def.text, qualifications);
 
   const fiche = (
     <div
@@ -159,7 +160,7 @@ export function CardDetailModal({ cardId, onClose, onPrevious, onNext, onShowCar
           {/* Favori et carnets — seulement dans un écran qui fournit l'étagère (Collection, Éditeur de deck). */}
           <CardShelfControls cardId={cardId} />
           <CardDetailStats stats={stats} />
-          {(def.text || qualifications.length > 0) && <CardDetailEffect text={def.text ?? ""} lead={qualificationLead(qualifications)} />}
+          {(ligne.lead || ligne.text) && <CardDetailEffect text={ligne.text} lead={ligne.lead} />}
           {qualifications.length > 0 && <CardDetailQualifications chips={qualifications} />}
           {keywords.length > 0 && <CardDetailKeywords keywords={keywords} />}
           <CardDetailMeta model={model} onShowCounterpart={onShowCard} />

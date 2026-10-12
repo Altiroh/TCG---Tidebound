@@ -32,7 +32,7 @@ import { useDecreaseFlash } from "@/features/match/useDecreaseFlash";
 import { useImageOk } from "@/features/match/useImageOk";
 import { NouveauCadreFace } from "@/features/cadre-preview/NouveauCadreCard";
 import { QualificationBadge } from "@/features/match/QualificationBadge";
-import { qualificationChips, qualificationLead } from "@/features/match/qualificationDisplay";
+import { effectLead, effectLine, qualificationChips } from "@/features/match/qualificationDisplay";
 import { useDebordPleinCadre } from "@/features/match/useDebordPleinCadre";
 import { NOUVEAU_CADRE } from "@/features/match/cardFrame";
 import { rarityForCardId } from "@/game/boosters";
@@ -579,7 +579,7 @@ export function CardTile({
   const isAbyssal = isAbyssalVariant(def);
   const stats = computeEffectiveStats(instance, tideState, auraContext);
   // Qualifications (« spé. ») : en tête de l'effet, et en médaillons au-dessus d'une carte en jeu.
-  const qualifications = instance.cardId === HIDDEN_CARD_ID ? [] : qualificationChips(def, instance);
+  const qualifications = instance.cardId === HIDDEN_CARD_ID ? [] : qualificationChips(def, instance, auraContext?.controllerBoard);
   // Bonus actuellement reçus du plateau — alimente la puce du bloc de règles.
   const boardBonuses = auraContext ? collectAuraContributions(instance, tideState, auraContext) : [];
   const hasActiveBoardBonus = boardBonuses.length > 0;
@@ -651,7 +651,8 @@ export function CardTile({
   // Nouveau cadre (`cardFrame.ts`) : seulement la carte complète d'une
   // vraie carte — ni la tuile de plateau, ni un jeton, ni une carte cachée.
   /** Texte de l'ancien cadre, « spé. » comprise : c'est sur lui que se calcule la taille de police. */
-  const oldFrameRules = qualifications.length > 0 ? `${qualificationLead(qualifications)}${def.text ? ` — ${def.text}` : ""}` : (def.text ?? "");
+  const oldFrameRules = effectLine(def.text, qualifications);
+  const oldFrameLead = effectLead(def.text, qualifications);
   const nouveauCadreActif = NOUVEAU_CADRE && !isBoardTile && def.token !== true && instance.cardId !== HIDDEN_CARD_ID;
   // Assets d'habillage de la tuile : sondés seulement quand la tuile est rendue.
   const reasonBannerOk = useImageOk(isBoardTile ? BOARD_REASON_BANNER : null);
@@ -1025,7 +1026,7 @@ export function CardTile({
             </span>
           </div>
 
-          {(def.text || qualifications.length > 0) && (
+          {oldFrameRules && (
             <div
               className={`overflow-hidden border px-[3%] leading-snug [font-family:var(--font-card-body)] ${
                 isToken
@@ -1054,9 +1055,9 @@ export function CardTile({
                   }}
                 />
               )}
-              {qualifications.length > 0 && <strong data-qualifications>{qualificationLead(qualifications)}</strong>}
-              {qualifications.length > 0 && def.text ? " — " : null}
-              {def.text}
+              {oldFrameLead.lead && <strong data-qualifications>{oldFrameLead.lead}</strong>}
+              {oldFrameLead.lead && oldFrameLead.text ? " — " : null}
+              {oldFrameLead.text}
             </div>
           )}
 
@@ -1115,6 +1116,32 @@ export function CardTile({
           style={{ top: -(badgeSize / 2 + 12), gap: badgeSize / 16 + 1.5 }}
         >
           {stats.inactive && <StatusBadge {...immobiliseInfo(instance)} size={badgeSize} />}
+          {engourdi && (
+            <StatusBadge
+              icon={ENGOURDI_ICON_INFO.icon}
+              label={ENGOURDI_ICON_INFO.label}
+              description={ENGOURDI_ICON_INFO.description}
+              size={badgeSize}
+            />
+          )}
+          {hasGarde && (
+            <span className={gardeGained ? "animate-badge-arrive" : undefined} style={{ display: "inline-flex" }}>
+              <StatusBadge
+                icon={GARDE_ICON_INFO.icon}
+                label={GARDE_ICON_INFO.label}
+                description={GARDE_ICON_INFO.description}
+                size={badgeSize}
+              />
+            </span>
+          )}
+          {piedMarinVisible && (
+            <StatusBadge
+              icon={PIED_MARIN_INFO.icon}
+              label={PIED_MARIN_INFO.label}
+              description={PIED_MARIN_INFO.description}
+              size={badgeSize}
+            />
+          )}
           {qualifications.map((chip) => (
             <QualificationBadge key={chip.key} chip={chip} size={badgeSize} />
           ))}
@@ -1134,32 +1161,6 @@ export function CardTile({
                 </span>
               }
             />
-          )}
-          {engourdi && (
-            <StatusBadge
-              icon={ENGOURDI_ICON_INFO.icon}
-              label={ENGOURDI_ICON_INFO.label}
-              description={ENGOURDI_ICON_INFO.description}
-              size={badgeSize}
-            />
-          )}
-          {piedMarinVisible && (
-            <StatusBadge
-              icon={PIED_MARIN_INFO.icon}
-              label={PIED_MARIN_INFO.label}
-              description={PIED_MARIN_INFO.description}
-              size={badgeSize}
-            />
-          )}
-          {hasGarde && (
-            <span className={gardeGained ? "animate-badge-arrive" : undefined} style={{ display: "inline-flex" }}>
-              <StatusBadge
-                icon={GARDE_ICON_INFO.icon}
-                label={GARDE_ICON_INFO.label}
-                description={GARDE_ICON_INFO.description}
-                size={badgeSize}
-              />
-            </span>
           )}
           {eveilVisible && (
             <StatusBadge

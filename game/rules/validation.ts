@@ -103,7 +103,7 @@ function attackerBypassesGardeNow(state: GameState, attackerOwnerId: PlayerId, a
   const attacker = attackerPlayer?.board.find((u) => u.instanceId === attackerInstanceId);
   if (!attacker) return false;
   // Contournement (qualification) : elle atteint le Navire malgré la Garde.
-  if (bypassesGardeByQualification(attacker)) return true;
+  if (bypassesGardeByQualification(attacker, state)) return true;
   const def = getCardDefinition(attacker.cardId);
   return (def.bypassesGardeTideStateIn ?? []).includes(state.environment.tideState);
 }
@@ -287,7 +287,7 @@ export function assertUnitCanAttack(state: GameState, playerId: PlayerId, instan
   }
   // Le nombre d'attaques de la phase : 1, ou ce que ses qualifications lui accordent (Rafale, Déluge, Carnage).
   if (attacksRemaining(state, playerId, unit) <= 0) {
-    if (attacksMade(unit) === 0 && hasQualification(unit, "deluge")) {
+    if (attacksMade(unit) === 0 && hasQualification(unit, "deluge", state)) {
       return fail("Déluge : aucune Créature ni aucun Marin adverse à attaquer.");
     }
     return fail(attacksMade(unit) > 1 ? "Cette unité a fait toutes ses attaques ce tour-ci." : "Cette unité a déjà attaqué ce tour-ci.");
@@ -338,7 +338,7 @@ export function assertValidDefender(
 
   // Déluge (qualification) : ses attaques ne ciblent jamais directement le Navire.
   const attackerUnit = state.players.find((p) => p.id === attackerOwnerId)?.board.find((u) => u.instanceId === attackerInstanceId);
-  if (!defenderInstanceId && attackerUnit && !canAttackShipDirectly(attackerUnit)) {
+  if (!defenderInstanceId && attackerUnit && !canAttackShipDirectly(attackerUnit, state)) {
     return fail("Déluge : ses attaques ne peuvent pas viser directement le Navire adverse.");
   }
 
@@ -384,7 +384,7 @@ export function guardsBlockingAttack(
   if (attackerBypassesGardeNow(state, attackerOwnerId, attackerInstanceId)) return [];
   // Déluge ne vise jamais le Navire : ce n'est pas la Garde qui refuse cette attaque-là.
   const attackerUnit = attackerInstanceId ? state.players.find((p) => p.id === attackerOwnerId)?.board.find((u) => u.instanceId === attackerInstanceId) : undefined;
-  if (!defenderInstanceId && attackerUnit && !canAttackShipDirectly(attackerUnit)) return [];
+  if (!defenderInstanceId && attackerUnit && !canAttackShipDirectly(attackerUnit, state)) return [];
   const guards = opponent.board.filter((u) => hasEffectiveKeyword(state, opponent, u, "garde"));
   if (guards.length === 0) return [];
   if (defenderInstanceId && guards.some((u) => u.instanceId === defenderInstanceId)) return [];

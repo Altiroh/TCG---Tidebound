@@ -8,6 +8,8 @@ import { EffectFxLayer } from "@/features/match/EffectFxLayer";
 import { applyLabEffect, applyLabPatch, LAB_EFFECTS, type LabEffect } from "@/features/match/labEffects";
 import { PhaseBanner } from "@/features/match/PhaseBanner";
 import { ATTACK_TOTAL_MS, type AttackAnimation } from "@/features/match/useAttackPresentation";
+import { QUALIFICATION_FX, QUALIFICATION_SHOW_MS, type QualificationFx } from "@/features/match/qualificationFx";
+import { QUALIFICATION_ORDER, QUALIFICATIONS, type QualificationId } from "@/game";
 import { playCombatPhase, playMagicImpact, playSpellImpact, playTurnStart } from "@/lib/sound";
 
 /**
@@ -42,6 +44,11 @@ function targetAt(node: EventTarget | null): FxTarget | null {
 
 function units(): string[] {
   return Array.from(document.querySelectorAll<HTMLElement>("[data-board-unit]")).flatMap((el) => (el.dataset.boardUnit ? [el.dataset.boardUnit] : []));
+}
+
+/** Les Navires à l'écran, dans l'ordre du plateau : l'adverse d'abord (en haut), puis celui du joueur. */
+function ships(): string[] {
+  return Array.from(document.querySelectorAll<HTMLElement>("[data-ship-target]")).flatMap((el) => (el.dataset.shipTarget ? [el.dataset.shipTarget] : []));
 }
 
 function anyShip(): string | null {
@@ -217,6 +224,52 @@ export function FxLabPanel({ cardEffects = false }: { cardEffects?: boolean } = 
     window.setTimeout(() => setAttacks((current) => current.filter((it) => it.id !== animation.id)), ATTACK_TOTAL_MS + 900);
   }
 
+  /**
+   * Une attaque de la source sur la 1re cible, avec les QUALIFICATIONS
+   * demandées : leurs glyphes jouent comme en partie (déclaration, choc,
+   * retour). Éclaboussure touche les autres cibles (à défaut, la 1re) ;
+   * Brèche et Ponction le Navire adverse ; Sangsue le Navire du joueur.
+   */
+  function qualifiedAttack(ids: QualificationId[]) {
+    const { from, to } = resolve();
+    const target = to[0];
+    if (!from || from.kind !== "unit" || !target) return;
+    const [enemyShip, ownShip] = [ships()[0], ships()[ships().length - 1]];
+    const defenderShip = target.kind === "ship" ? target.id : enemyShip;
+    const fx: QualificationFx[] = ids.flatMap((qualification): QualificationFx[] => {
+      const base = { qualification, sourceInstanceId: from.id };
+      switch (qualification) {
+        case "eclaboussure": {
+          const voisins = to.slice(1).filter((t) => t.kind === "unit");
+          return (voisins.length > 0 ? voisins : [target]).map((t) => ({ ...base, targetInstanceId: t.id, amount: 2 }));
+        }
+        case "breche":
+          return [{ ...base, targetPlayerId: defenderShip, amount: 2 }];
+        case "ponction":
+          return [{ ...base, targetPlayerId: defenderShip, amount: 2 }];
+        case "sangsue":
+          return [{ ...base, targetPlayerId: ownShip, amount: 3 }];
+        case "coup-de-grace":
+        case "entaille":
+        case "carnage":
+          return [{ ...base, ...(target.kind === "unit" ? { targetInstanceId: target.id } : {}), amount: qualification === "entaille" ? 2 : undefined }];
+        default:
+          return [base];
+      }
+    });
+    const animation: AttackAnimation = {
+      id: nextId.current++,
+      attackerInstanceId: from.id,
+      ...(target.kind === "unit" ? { defenderInstanceId: target.id } : { defenderPlayerId: target.id }),
+      amount: 2,
+      defenderDies: false,
+      attackerDies: false,
+      qualifications: fx,
+    };
+    setAttacks((current) => [...current, animation]);
+    window.setTimeout(() => setAttacks((current) => current.filter((it) => it.id !== animation.id)), ATTACK_TOTAL_MS + QUALIFICATION_SHOW_MS + 900);
+  }
+
   /** Un effet de carte sur les cibles (à défaut, la dernière carte du plateau) — sur l'état réel de la partie du labo. */
   function cardEffect(effect: LabEffect) {
     const { to } = resolve();
@@ -321,7 +374,28 @@ export function FxLabPanel({ cardEffects = false }: { cardEffects?: boolean } = 
             </button>
 
             {cardEffects && <div style={section}>États et effets (cibles)</div>}
-            {cardEffects && (["États", "Mots-clés", "Statistiques", "Entraves", "Marqueurs"] as const).map((group) => (
+            <div style={section}>Qualifications (source → cibles)</div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+              {QUALIFICATION_ORDER.map((id) => (
+                <button
+                  key={id}
+                  type="button"
+                  style={{ ...button, flex: "1 1 auto" }}
+                  title={`Attaque avec ${QUALIFICATIONS[id].name} — glyphe ${QUALIFICATION_FX[id].moment === "declare" ? "à la déclaration" : QUALIFICATION_FX[id].moment === "impact" ? "au choc" : "après le retour"}`}
+                  onClick={() => qualifiedAttack([id])}
+                >
+                  {QUALIFICATIONS[id].name}
+                </button>
+              ))}
+            </div>
+            <button type="button" style={button} onClick={() => qualifiedAttack(["rafale", "coup-de-grace", "breche", "ponction", "sangsue", "carnage"])}>
+              Enchaînement (Rafale, Coup de grâce, Brèche, Ponction, Sangsue, Carnage)
+            </button>
+            <button type="button" style={button} onClick={() => qualifiedAttack(["eclaboussure", "entaille", "sangsue"])}>
+              Enchaînement (Éclaboussure, Entaille, Sangsue)
+            </button>
+
+            {cardEffects && (["États", "Mots-clés", "Qualifications", "Statistiques", "Entraves", "Marqueurs"] as const).map((group) => (
               <div key={group} style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
                 {LAB_EFFECTS.filter((effect) => effect.group === group).map((effect) => (
                   <button key={effect.id} type="button" style={{ ...button, flex: "1 1 auto" }} title={`${group} — appliqué (ou retiré) sur les cibles`} onClick={() => cardEffect(effect)}>

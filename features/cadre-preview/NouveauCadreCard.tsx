@@ -5,7 +5,7 @@ import { CARD_TYPE_LABELS } from "@/features/match/cardDisplay";
 import { useLayoutEffect, useRef } from "react";
 import { useDebordPleinCadre } from "@/features/match/useDebordPleinCadre";
 import { useImageOk } from "@/features/match/useImageOk";
-import { qualificationLead, type QualificationChip } from "@/features/match/qualificationDisplay";
+import { effectLead, effectLine, type QualificationChip } from "@/features/match/qualificationDisplay";
 import styles from "@/features/cadre-preview/NouveauCadreCard.module.css";
 
 /**
@@ -75,9 +75,10 @@ export function NouveauCadreFace({ def, legendaire = false, attack, health, atta
   const nomRef = useRef<HTMLHeadingElement>(null);
   const effetRef = useRef<HTMLParagraphElement>(null);
   useFitText(nomRef, def.name, nameSizeCqw(def.name), 6.5);
-  const spe = qualifications && qualifications.length > 0 ? qualificationLead(qualifications) : "";
-  // Le texte mesuré inclut la « spé. » : c'est lui qui occupe la zone d'effet.
-  const texteEffet = spe ? (def.text ? `${spe} — ${def.text}` : spe) : (def.text ?? "");
+  // « Spé. » : mots-clés de tête (Garde, Pied marin) et qualifications, en gras devant le reste du texte.
+  const { lead: spe, text: reste } = effectLead(def.text, qualifications ?? []);
+  // Le texte mesuré inclut la spé. : c'est lui qui occupe la zone d'effet.
+  const texteEffet = effectLine(def.text, qualifications ?? []);
   useFitText(effetRef, texteEffet, rulesSizeCqw(texteEffet), 2.6, EFFET_LISIBLE_CQW);
 
   const cadre = frameName(def, legendaire);
@@ -243,8 +244,8 @@ export function NouveauCadreFace({ def, legendaire = false, attack, health, atta
               {spe}
             </strong>
           )}
-          {spe && def.text ? " — " : null}
-          {def.text}
+          {spe && reste ? " — " : null}
+          {reste}
         </p>
       )}
 

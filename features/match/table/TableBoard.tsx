@@ -571,7 +571,7 @@ export function TableBoard(props: TableBoardProps) {
         // toucher sur le Cimetière ne la Saborde pas.
         if (drop === "graveyard") return canPlayCards && !gesture?.armed;
         // Déluge : ses attaques ne visent jamais le Navire.
-        if (drop === "ship") return attackReady(instance) && canAttackShipDirectly(instance);
+        if (drop === "ship") return attackReady(instance) && canAttackShipDirectly(instance, state);
         if (drop.startsWith("unit:") && attackReady(instance)) return true;
         const targets = breakTargets(instance);
         return Boolean(targets && (drop.startsWith("own:") || drop.startsWith("unit:")) && targets.has(dropId(drop)));
@@ -747,7 +747,7 @@ export function TableBoard(props: TableBoardProps) {
   /** L'attaquant désigné (touché ou glissé) peut-il viser le Navire ? Non avec Déluge. */
   const attackerId = targeting?.kind === "attack" ? targeting.sourceInstanceId : aimAttacks ? aimSource?.instanceId : undefined;
   const attackerUnit = attackerId ? byId.get(attackerId)?.instance : undefined;
-  const shipAttackable = targeting?.kind === "shipShot" || (attackTargeting && (!attackerUnit || canAttackShipDirectly(attackerUnit)));
+  const shipAttackable = targeting?.kind === "shipShot" || (attackTargeting && (!attackerUnit || canAttackShipDirectly(attackerUnit, state)));
 
   // Capacité activable qui attend sa cible : ce sont SES cibles légales qu'on éclaire.
   // Pendant le glisser de sa pastille aussi.

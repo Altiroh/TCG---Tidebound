@@ -28,7 +28,8 @@ import {
 import { getOpponent, getPlayer, type GameState, type PlayerState } from "@/game/state/types";
 import { recordGraveyardArrival } from "@/game/state/discard";
 import type { ActionResult, AttackAction } from "@/game/actions/types";
-import { attacksMade } from "@/game/rules/qualificationCombat";
+import { attacksMade, hasQualification } from "@/game/rules/qualificationCombat";
+import type { QualificationId } from "@/game/cards/qualifications";
 import { applyDirectHitQualifications, applyRetaliationQualifications, applyStrikeQualifications, remainingResistance } from "@/game/rules/qualificationStrike";
 
 function effectiveAttack(unit: CardInstance, state: GameState): number {
@@ -437,6 +438,19 @@ function resolveAttack(state: GameState, action: AttackAction): ActionResult {
     attackerInstanceId: action.attackerInstanceId,
     defenderInstanceId: action.defenderInstanceId,
   });
+
+  // Les qualifications qui rendent CETTE attaque possible : la mise en scène montre leur glyphe à la déclaration.
+  {
+    const deja = attacksMade(declaredAttacker);
+    const signale = (qualification: QualificationId) =>
+      events.push({ ...base, type: "QUALIFICATION_TRIGGERED", qualification, sourceInstanceId: declaredAttacker.instanceId, targetInstanceId: action.defenderInstanceId });
+    if (hasQualification(declaredAttacker, "deluge", etat)) signale("deluge");
+    else if (hasQualification(declaredAttacker, "rafale", etat) && deja === 1) signale("rafale");
+    if (!action.defenderInstanceId && hasQualification(declaredAttacker, "contournement", etat)) {
+      const adverse = etat.players.find((p) => p.id !== action.playerId)!;
+      if (adverse.board.some((u) => hasEffectiveKeyword(etat, adverse, u, "garde"))) signale("contournement");
+    }
+  }
 
   // Une attaque résolue de plus : Rafale, Déluge et Carnage en permettent plusieurs (`attacksRemaining`).
   const markAttacked = (unit: CardInstance): CardInstance =>

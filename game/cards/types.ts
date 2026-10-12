@@ -1146,6 +1146,15 @@ export interface CardDefinition {
   equipGrantsKeywords?: string[];
 
   /**
+   * Pour un Équipement UNIQUEMENT : les QUALIFICATIONS qu'il CONFÈRE à
+   * l'unité qu'il équipe, tant qu'il reste attaché (« Il gagne Sangsue »).
+   * Un Équipement n'en porte jamais pour lui-même (`qualifications` est
+   * réservé aux unités) : la spé. et le médaillon s'affichent sur l'unité
+   * équipée. Lu par `unitQualifications` (`game/rules/qualificationCombat.ts`).
+   */
+  equipGrantsQualifications?: import("@/game/cards/qualifications").CardQualification[];
+
+  /**
    * Pour un Équipement UNIQUEMENT : son contrôleur perd cette Raison quand
    * l'unité qu'il équipe est DÉTRUITE — combat, effet ou Marée, tout départ
    * réglé par `processDeaths` (ex: Chaîne de Fer Noir, "Si elle est

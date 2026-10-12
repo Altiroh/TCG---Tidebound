@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { getCardDefinition, guardsBlockingAttack, QUALIFICATION_EQUIVALENTS, type CardInstance, type GameState } from "@/game";
-import { qualificationChips, qualificationLead } from "@/features/match/qualificationDisplay";
+import { effectLead, effectLine, qualificationChips, qualificationLead } from "@/features/match/qualificationDisplay";
 import { instance, testGameState, testPlayer } from "@/tests/game/testHelpers";
 
 /**
@@ -58,5 +58,37 @@ describe("Garde et Déluge", () => {
     const simple = instance("matelot-du-sans-nom", "p1");
     const sansDeluge: GameState = { ...state, players: [testPlayer("p1", { board: [simple] }), state.players[1]] };
     expect(guardsBlockingAttack(sansDeluge, "p1", simple.instanceId)).toEqual([gardien.instanceId]);
+  });
+});
+
+describe("effectLead : la spé. en tête de l'effet", () => {
+  it("les mots-clés qui OUVRENT le texte passent dans la spé., devant les qualifications", () => {
+    const unit = avec(instance("matelot-du-sans-nom", "p1"), [{ id: "sangsue" }]);
+    const chips = qualificationChips(getCardDefinition(unit.cardId), unit);
+    expect(effectLead("Garde. Pied marin. La première fois à chaque tour qu'il attaque, récupérez 1 Raison.", chips)).toEqual({
+      lead: "Garde · Pied marin · Sangsue",
+      text: "La première fois à chaque tour qu'il attaque, récupérez 1 Raison.",
+    });
+    expect(effectLine("Garde. Pied marin.", [])).toBe("Garde · Pied marin");
+  });
+
+  it("un mot-clé au milieu d'une phrase reste à sa place", () => {
+    expect(effectLead("Pendant Tempête, il gagne +1 Puissance et ignore Garde.", [])).toEqual({
+      lead: "",
+      text: "Pendant Tempête, il gagne +1 Puissance et ignore Garde.",
+    });
+    expect(effectLead("Garde. Perd Garde pendant Calme.", [])).toEqual({ lead: "Garde", text: "Perd Garde pendant Calme." });
+  });
+});
+
+describe("Équipement : il confère, il ne porte pas", () => {
+  it("Le Cerf-volant ne montre aucune spé. ; l'unité qu'il équipe montre Sangsue, avec son nom", () => {
+    expect(qualificationChips(getCardDefinition("le-cerf-volant"))).toEqual([]);
+    const porteur = instance("matelot-du-sans-nom", "p1");
+    const cerf = { ...instance("le-cerf-volant", "p1"), attachedToInstanceId: porteur.instanceId };
+    const chips = qualificationChips(getCardDefinition(porteur.cardId), porteur, [porteur, cerf]);
+    expect(chips.map((c) => c.label)).toEqual(["Sangsue (Le Cerf-volant)"]);
+    // Hors plateau (fiche de collection), rien n'est conféré.
+    expect(qualificationChips(getCardDefinition(porteur.cardId), porteur)).toEqual([]);
   });
 });

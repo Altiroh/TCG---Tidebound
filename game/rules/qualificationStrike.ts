@@ -1,3 +1,4 @@
+import type { QualificationId } from "@/game/cards/qualifications";
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { auraContextOf, computeEffectiveStats } from "@/game/cards/stats";
 import { hasResistance, type CardInstance } from "@/game/cards/types";
@@ -30,6 +31,16 @@ interface Ctx {
   base: { turnNumber: number; timestamp: number };
 }
 
+/** Signale qu'une qualification a joué (`QUALIFICATION_TRIGGERED`) — la mise en scène y montre son glyphe. */
+function triggered(
+  ctx: Ctx,
+  qualification: QualificationId,
+  holder: CardInstance,
+  fields: { targetInstanceId?: string; targetPlayerId?: PlayerId; amount?: number } = {}
+): void {
+  ctx.events.push({ ...ctx.base, type: "QUALIFICATION_TRIGGERED", qualification, sourceInstanceId: holder.instanceId, ...fields });
+}
+
 function findOn(state: GameState, ownerId: PlayerId, instanceId: string): CardInstance | undefined {
   return getPlayer(state, ownerId).board.find((u) => u.instanceId === instanceId);
 }
@@ -51,7 +62,7 @@ function mapUnit(state: GameState, ownerId: PlayerId, instanceId: string, update
 
 /** Sangsue : le Navire du porteur récupère autant d'Ancrage, plafonné à son Ancrage de départ. */
 function leech(ctx: Ctx, holder: CardInstance, holderOwnerId: PlayerId, dealt: number): void {
-  if (dealt <= 0 || !hasQualification(holder, "sangsue")) return;
+  if (dealt <= 0 || !hasQualification(holder, "sangsue", ctx.state)) return;
   const player = getPlayer(ctx.state, holderOwnerId);
   const cap = getShipDefinition(player.shipId).startingAnchor;
   const healed = Math.max(0, Math.min(dealt, cap - player.anchor));
@@ -61,6 +72,7 @@ function leech(ctx: Ctx, holder: CardInstance, holderOwnerId: PlayerId, dealt: n
     players: ctx.state.players.map((p) => (p.id === holderOwnerId ? { ...p, anchor: p.anchor + healed } : p)) as [PlayerState, PlayerState],
   };
   ctx.events.push({ ...ctx.base, type: "HEAL", targetPlayerId: holderOwnerId, amount: healed });
+  triggered(ctx, "sangsue", holder, { targetPlayerId: holderOwnerId, amount: healed });
 }
 
 /** Entaille X : la cible blessée perd X Puissance (permanent — provisoire). */
@@ -69,7 +81,7 @@ function gash(ctx: Ctx, holder: CardInstance, target: CardInstance, targetOwnerI
   if (!current) return;
   // Jamais sous 0 : Entaille retire au plus la Puissance qui reste (le moteur, lui, ne borne pas une Puissance).
   const power = computeEffectiveStats(current, ctx.state.environment.tideState, auraContextOf(ctx.state, targetOwnerId)).attack;
-  const amount = Math.min(unitQualificationValue(holder, "entaille"), Math.max(0, power));
+  const amount = Math.min(unitQualificationValue(holder, "entaille", ctx.state), Math.max(0, power));
   if (amount <= 0) return;
   ctx.state = mapUnit(ctx.state, targetOwnerId, target.instanceId, (u) => ({
     ...u,
@@ -79,15 +91,19 @@ function gash(ctx: Ctx, holder: CardInstance, target: CardInstance, targetOwnerI
     ],
   }));
   ctx.events.push({ ...ctx.base, type: "DEBUFF_APPLIED", targetInstanceId: target.instanceId, attack: -amount, health: 0 });
+  triggered(ctx, "entaille", holder, { targetInstanceId: target.instanceId, amount });
 }
 
 /** Ponction X : le Navire adverse touché perd aussi X Raison (bouclier de perte de Raison compris). */
 function drain(ctx: Ctx, holder: CardInstance, victimId: PlayerId, shipDamage: number): void {
-  const amount = unitQualificationValue(holder, "ponction");
+  const amount = unitQualificationValue(holder, "ponction", ctx.state);
   if (amount <= 0 || shipDamage <= 0) return;
   const perte = loseReason(ctx.state, victimId, amount, ctx.base.turnNumber);
   ctx.state = perte.state;
-  if (perte.lost > 0) ctx.events.push({ ...ctx.base, type: "REASON_CHANGED", playerId: victimId, delta: -perte.lost });
+  if (perte.lost > 0) {
+    ctx.events.push({ ...ctx.base, type: "REASON_CHANGED", playerId: victimId, delta: -perte.lost });
+    triggered(ctx, "ponction", holder, { targetPlayerId: victimId, amount: perte.lost });
+  }
 }
 
 /** Des dégâts de combat portés par le porteur à une unité, hors du coup principal (Éclaboussure). Retourne le montant marqué. */
@@ -151,34 +167,40 @@ export function applyStrikeQualifications(state: GameState, strike: StrikeOnUnit
 
   if (strikeApplied > 0) {
     // Coup de grâce : au moins 1 dégât réellement infligé détruit la cible.
-    if (hasQualification(attacker, "coup-de-grace")) {
+    if (hasQualification(attacker, "coup-de-grace", ctx.state)) {
       const target = findOn(ctx.state, defenderOwnerId, defender.instanceId);
       if (target) {
         const left = remainingResistance(ctx.state, defenderOwnerId, target);
-        if (left > 0) ctx.state = mapUnit(ctx.state, defenderOwnerId, defender.instanceId, (u) => ({ ...u, damageMarked: u.damageMarked + left }));
+        if (left > 0) {
+          ctx.state = mapUnit(ctx.state, defenderOwnerId, defender.instanceId, (u) => ({ ...u, damageMarked: u.damageMarked + left }));
+          triggered(ctx, "coup-de-grace", attacker, { targetInstanceId: defender.instanceId });
+        }
       }
     }
     gash(ctx, attacker, defender, defenderOwnerId);
   }
 
   // Détruite au coup : le coup suffisait, ou Coup de grâce l'achève (sans excédent pour Brèche).
-  const lethal = strikeApplied > 0 && (strikeApplied >= remainingBefore || hasQualification(attacker, "coup-de-grace"));
+  const lethal = strikeApplied > 0 && (strikeApplied >= remainingBefore || hasQualification(attacker, "coup-de-grace", ctx.state));
   if (lethal) {
     // Brèche : l'excédent, au-delà de ce qu'il fallait pour détruire, file au Navire adverse.
     const overflow = strikeApplied - Math.max(0, remainingBefore);
-    if (overflow > 0 && hasQualification(attacker, "breche")) {
+    if (overflow > 0 && hasQualification(attacker, "breche", ctx.state)) {
+      triggered(ctx, "breche", attacker, { targetPlayerId: defenderOwnerId, amount: overflow });
       const onShip = hitShip(ctx, attacker, defenderOwnerId, overflow);
-      dealt += onShip;
+      // L'excédent n'est compté qu'une fois : il quitte la cible pour le Navire (Sangsue).
+      dealt += onShip - overflow;
       drain(ctx, attacker, defenderOwnerId, onShip);
     }
     // Carnage : une cible détruite, une attaque de plus ce tour.
-    if (hasQualification(attacker, "carnage")) {
+    if (hasQualification(attacker, "carnage", ctx.state)) {
       ctx.state = mapUnit(ctx.state, attackerOwnerId, attacker.instanceId, (u) => ({ ...u, bonusAttacksThisTurn: (u.bonusAttacksThisTurn ?? 0) + 1 }));
+      triggered(ctx, "carnage", attacker, { targetInstanceId: defender.instanceId });
     }
   }
 
   // Éclaboussure X : les voisins d'emplacement de la cible, sur son rang.
-  const splash = unitQualificationValue(attacker, "eclaboussure");
+  const splash = unitQualificationValue(attacker, "eclaboussure", ctx.state);
   if (splash > 0) {
     const owner = getPlayer(ctx.state, defenderOwnerId);
     const layout = boardSlotLayout(owner.board, boardCapacity(ctx.state, owner));
@@ -186,6 +208,7 @@ export function applyStrikeQualifications(state: GameState, strike: StrikeOnUnit
     if (at >= 0) {
       for (const neighbour of [layout[at - 1], layout[at + 1]]) {
         if (!neighbour || !hasResistance(getCardDefinition(neighbour.cardId))) continue;
+        triggered(ctx, "eclaboussure", attacker, { targetInstanceId: neighbour.instanceId, amount: splash });
         const marked = hitUnit(ctx, attacker, defenderOwnerId, neighbour, splash);
         dealt += marked;
         if (marked > 0) gash(ctx, attacker, neighbour, defenderOwnerId);

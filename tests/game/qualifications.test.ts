@@ -223,3 +223,60 @@ describe("effets du coup", () => {
     expect(board(s, "p2").map((u) => u.instanceId)).toEqual([c2.instanceId]);
   });
 });
+
+describe("signalement des qualifications (QUALIFICATION_TRIGGERED)", () => {
+  const signaux = (s: GameState) =>
+    s.eventLog.flatMap((e) => (e.type === "QUALIFICATION_TRIGGERED" ? [{ q: e.qualification, cible: e.targetInstanceId ?? e.targetPlayerId, n: e.amount }] : []));
+
+  it("Rafale ne se signale qu'à la deuxième attaque", () => {
+    const a = avec(instance("matelot-du-sans-nom", "p1"), { id: "rafale" });
+    let s = ok(table([a], []), a.instanceId);
+    expect(signaux(s)).toEqual([]);
+    s = ok(s, a.instanceId);
+    expect(signaux(s).map((x) => x.q)).toEqual(["rafale"]);
+  });
+
+  it("Contournement ne se signale que s'il passe vraiment une Garde", () => {
+    const contourne = avec(instance("murene-aveugle", "p1"), { id: "contournement" });
+    expect(signaux(ok(table([contourne], []), contourne.instanceId))).toEqual([]);
+    const gardien = garde(instance("matelot-du-sans-nom", "p2"));
+    expect(signaux(ok(table([contourne], [gardien]), contourne.instanceId)).map((x) => x.q)).toEqual(["contournement"]);
+  });
+
+  it("Brèche, Ponction et Sangsue : chacune avec ce qu'elle touche et son montant", () => {
+    const a = avec(instance("matelot-du-sans-nom", "p1"), { id: "breche" }, { id: "ponction", value: 1 }, { id: "sangsue" });
+    const cible = instance("murene-aveugle", "p2");
+    const s = ok(table([a], [cible], { anchor: 20 }, { reason: 5 }), a.instanceId, cible.instanceId);
+    expect(signaux(s)).toEqual([
+      { q: "breche", cible: "p2", n: 2 },
+      { q: "ponction", cible: "p2", n: 1 },
+      { q: "sangsue", cible: "p1", n: 3 },
+    ]);
+  });
+
+  it("Éclaboussure se signale sur chaque voisin, Entaille sur chaque blessé", () => {
+    const a = avec(instance("matelot-du-sans-nom", "p1"), { id: "eclaboussure", value: 1 }, { id: "entaille", value: 1 });
+    const [g, m, d] = [instance("charpentier-de-bord", "p2"), instance("le-naufrage-impossible", "p2"), instance("charpentier-de-bord", "p2")];
+    const s = ok(table([a], [g, m, d]), a.instanceId, m.instanceId);
+    const vus = signaux(s);
+    expect(vus.filter((x) => x.q === "eclaboussure").map((x) => x.cible).sort()).toEqual([g.instanceId, d.instanceId].sort());
+    expect(vus.filter((x) => x.q === "entaille").map((x) => x.cible).sort()).toEqual([m.instanceId, g.instanceId, d.instanceId].sort());
+  });
+});
+
+describe("Équipement qui confère une qualification (equipGrantsQualifications)", () => {
+  it("l'unité équipée la porte tant qu'il est attaché, l'Équipement lui-même jamais", () => {
+    // Aucune carte du catalogue n'en confère encore : on l'accorde le temps du test.
+    const def = getCardDefinition("le-cerf-volant");
+    def.equipGrantsQualifications = [{ id: "rafale" }];
+    try {
+      const a = instance("matelot-du-sans-nom", "p1");
+      const equip = { ...instance("le-cerf-volant", "p1"), attachedToInstanceId: a.instanceId };
+      const s = table([a, equip], []);
+      expect(attacksAllowed(s, "p1", a)).toBe(2);
+      expect(attacksAllowed(table([a, { ...equip, attachedToInstanceId: undefined }], []), "p1", a)).toBe(1);
+    } finally {
+      delete def.equipGrantsQualifications;
+    }
+  });
+});

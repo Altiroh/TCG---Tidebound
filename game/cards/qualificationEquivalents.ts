@@ -36,6 +36,7 @@ export const QUALIFICATION_EQUIVALENTS: Readonly<Record<string, readonly Qualifi
   ],
   "albatros-de-mauvais-temps": [{ id: "contournement", condition: "Tempête" }],
   "anguille-des-profondeurs": [{ id: "ponction", value: 1, condition: "Abysses" }],
-  // Un Équipement : la Sangsue est celle de l'unité qu'il équipe.
-  "le-cerf-volant": [{ id: "sangsue", condition: "à l'unité équipée" }],
+  // Un Équipement CONFÈRE : la Sangsue s'affiche sur l'unité qu'il équipe, jamais sur lui
+  // (`features/match/qualificationDisplay.ts`), comme `equipGrantsQualifications`.
+  "le-cerf-volant": [{ id: "sangsue" }],
 };

@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { STATUS_IMMOBILISE, STATUS_MALADE, STATUS_SILENCE, type CardInstance, type GameEvent, type GameState, type StatModifier } from "@/game";
+import { QUALIFICATION_ORDER, QUALIFICATIONS, STATUS_IMMOBILISE, STATUS_MALADE, STATUS_SILENCE, type CardInstance, type GameEvent, type GameState, type StatModifier } from "@/game";
 
 /**
  * EFFETS DE LABO — appliquer d'un clic, à de VRAIES cartes du plateau du
@@ -43,7 +43,7 @@ export interface LabEffect {
   id: string;
   label: string;
   /** Section du panneau. */
-  group: "États" | "Mots-clés" | "Statistiques" | "Entraves" | "Marqueurs";
+  group: "États" | "Mots-clés" | "Qualifications" | "Statistiques" | "Entraves" | "Marqueurs";
   /** Ce que l'effet fait à UNE carte, et l'événement qu'une vraie carte aurait émis. */
   apply: (unit: CardInstance, state: GameState) => { unit: CardInstance; events: Omit<GameEvent, "turnNumber" | "timestamp">[] };
 }
@@ -100,6 +100,15 @@ export const LAB_EFFECTS: LabEffect[] = [
     group: "Mots-clés",
     apply: toggleModifier("pied-marin", { keywords: ["pied-marin"] }, (unit) => ({ type: "BUFF_APPLIED", targetInstanceId: unit.instanceId, attack: 0, health: 0, keywords: ["pied-marin"] }) as Ev),
   },
+  // Qualifications accordées (valeur X = 2) : une VRAIE attaque du labo les joue alors par le moteur, glyphes compris.
+  ...QUALIFICATION_ORDER.map(
+    (id): LabEffect => ({
+      id: `q-${id}`,
+      label: QUALIFICATIONS[id].hasValue ? `${QUALIFICATIONS[id].name} 2` : QUALIFICATIONS[id].name,
+      group: "Qualifications",
+      apply: toggleModifier(`q-${id}`, { qualifications: [{ id, ...(QUALIFICATIONS[id].hasValue ? { value: 2 } : {}) }] }),
+    })
+  ),
   {
     id: "buff",
     label: "+1/+1",

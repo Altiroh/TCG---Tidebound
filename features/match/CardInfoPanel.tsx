@@ -1,7 +1,7 @@
 import { displayedSubtypes, getCardDefinition, getMaxCopies, isAbyssalVariant, subtypeLabel, UNIT_CARD_TYPES } from "@/game";
 import { CARD_TYPE_LABELS } from "@/features/match/cardDisplay";
 import { QualificationDescription } from "@/features/match/QualificationBadge";
-import { qualificationChips, qualificationLead } from "@/features/match/qualificationDisplay";
+import { effectLead, qualificationChips } from "@/features/match/qualificationDisplay";
 
 /** Paliers de taille par longueur de nom — le panneau est étroit, un nom long ne doit jamais passer sur deux lignes (calibré sur les noms du catalogue). */
 function panelTitleFontSizeRem(name: string): number {
@@ -54,6 +54,7 @@ export function CardInfoPanel({ cardId }: CardInfoPanelProps) {
   const showHealth = def.health !== undefined;
   const maxCopies = getMaxCopies(def);
   const qualifications = qualificationChips(def);
+  const ligne = effectLead(def.text, qualifications);
 
   return (
     <div className="w-72 shrink-0 [font-family:var(--font-card-body)]">
@@ -76,11 +77,11 @@ export function CardInfoPanel({ cardId }: CardInfoPanelProps) {
         {showHealth && <Stat value={def.health ?? 0} label="Résistance" accentClassName="text-emerald-300" />}
       </div>
 
-      {(def.text || qualifications.length > 0) && (
+      {(ligne.lead || ligne.text) && (
         <p className="mt-4 border-l border-white/15 pl-3 text-[15px] leading-relaxed text-slate-200">
-          {qualifications.length > 0 && <strong className="font-bold text-white">{qualificationLead(qualifications)}</strong>}
-          {qualifications.length > 0 && def.text ? " — " : null}
-          {def.text}
+          {ligne.lead && <strong className="font-bold text-white">{ligne.lead}</strong>}
+          {ligne.lead && ligne.text ? " — " : null}
+          {ligne.text}
         </p>
       )}
 
