@@ -14,9 +14,9 @@ import {
   loginRewardLabel,
 } from "@/game/progression";
 import {
+  claimAllMasteryLevels,
   claimAudienceMilestoneReward,
   claimDailyLogin,
-  claimMasteryLevel,
   openSponsorGift,
   openWeeklyChest,
   type ProfileSummary,
@@ -33,7 +33,8 @@ interface RewardsHubProps {
   profile: ProfileSummary;
   /** Réclamation de palier en cours (`ProfileView`). */
   claiming: number | "all" | "everything" | string | null;
-  onClaimLevel: (level: number) => void;
+  /** Un palier, ou `"all"` : tous ceux qui attendent. */
+  onClaimLevel: (level: number | "all") => void;
   /** Ouvre la révélation (`RewardReveal`) sur ce qui vient d'être reçu. */
   onReveal: (items: RewardItem[], title: string) => void;
   onRefresh: () => void;
@@ -124,8 +125,19 @@ export function RewardsHub({ profile, claiming, onClaimLevel, onReveal, onRefres
     })();
   }
 
-  function claimMastery(mastery: MasteryView, level: number) {
-    run(() => claimMasteryLevel(mastery.shipId, level), `Maîtrise — ${mastery.shipName}, niveau ${level}`);
+  /** Tous les paliers en attente d'UN Navire : un clic, pas un par niveau. */
+  function claimMastery(mastery: MasteryView) {
+    const levels = mastery.claimableLevels;
+    if (levels.length === 0) return;
+    run(
+      () => claimAllMasteryLevels(mastery.shipId),
+      levels.length > 1 ? `Maîtrise — ${mastery.shipName}, niveaux ${levels[0]} à ${levels[levels.length - 1]}` : `Maîtrise — ${mastery.shipName}, niveau ${levels[0]}`
+    );
+  }
+
+  /** Tous les paliers de Maîtrise de tous les Navires. */
+  function claimAllMasteries() {
+    run(() => claimAllMasteryLevels(), "Maîtrises réclamées !");
   }
 
   function claimMilestone(milestone: AudienceMilestoneView) {
@@ -178,6 +190,7 @@ export function RewardsHub({ profile, claiming, onClaimLevel, onReveal, onRefres
             masteries={profile.hub.masteries}
             busy={pending}
             onClaim={claimMastery}
+            onClaimAll={claimAllMasteries}
             onShowAll={() => setSheet("masteries")}
           />
         )}
@@ -210,7 +223,7 @@ export function RewardsHub({ profile, claiming, onClaimLevel, onReveal, onRefres
           />
         )}
         {sheet === "masteries" && profile.hub && (
-          <MasteriesSheet masteries={profile.hub.masteries} busy={pending} onClaim={claimMastery} onClose={closeSheet} />
+          <MasteriesSheet masteries={profile.hub.masteries} busy={pending} onClaim={claimMastery} onClaimAll={claimAllMasteries} onClose={closeSheet} />
         )}
 
         {gift && <GiftOpening color={gift.color} name={gift.name} onDone={() => setGift(null)} />}
@@ -246,6 +259,11 @@ function RouteOfLevels({ profile, claiming, onClaimLevel }: Pick<RewardsHubProps
           <h2 className={styles.routeTitle}>Route des paliers</h2>
           <p className={styles.routeSub}>Une récompense à chaque niveau, un gros palier tous les cinq.</p>
         </div>
+        {profile.claimableLevels.length > 1 && (
+          <button type="button" className={`${styles.claimButton} ${styles.claimAll}`} onClick={() => onClaimLevel("all")} disabled={claiming !== null}>
+            {claiming === "all" ? "…" : `Tout réclamer (${profile.claimableLevels.length})`}
+          </button>
+        )}
         <div className={styles.routeXp}>
           <span className={styles.routeLevelBadge}>{view.level}</span>
           <span className={styles.routeXpBody}>
@@ -560,83 +578,52 @@ function QuestsPanel({ profile, onShowQuests }: { profile: ProfileSummary; onSho
 
 /* ── Maîtrises ─────────────────────────────────────────────────────── */
 
+/** Paliers de Maîtrise en attente, tous Navires confondus. */
+export function pendingMasteryLevels(masteries: readonly MasteryView[]): number {
+  return masteries.reduce((sum, mastery) => sum + mastery.claimableLevels.length, 0);
+}
+
+/**
+ * Trois Navires en lignes, comme les quêtes : ceux qui ont un palier à
+ * réclamer d'abord, puis les plus joués. Une ligne ne déborde jamais (nom
+ * sur une ligne, bouton à droite) ; le reste vit dans « Voir tous les navires ».
+ */
 function MasteriesPanel({
   masteries,
   busy,
   onClaim,
+  onClaimAll,
   onShowAll,
 }: {
   masteries: MasteryView[];
   busy: boolean;
-  onClaim: (mastery: MasteryView, level: number) => void;
+  onClaim: (mastery: MasteryView) => void;
+  onClaimAll: () => void;
   onShowAll: () => void;
 }) {
-  const [start, setStart] = useState(0);
-  const visible = masteries.slice(start, start + 3);
+  const pending = pendingMasteryLevels(masteries);
+  const shown = [...masteries].sort((a, b) => Number(b.claimableLevels.length > 0) - Number(a.claimableLevels.length > 0)).slice(0, 3);
   return (
     <section className={`${styles.panel} ${styles.masteries}`} aria-label="Maîtrises">
       <header className={styles.panelHead}>
         <h2 className={styles.panelTitle}>
           Maîtrises
-          <span className={styles.help} title="Chaque Navire a sa Maîtrise : elle gagne l'XP des parties jouées avec lui.">
+          <span className={styles.help} title="Chaque Navire a sa Maîtrise : elle gagne l'XP des parties jouées à son bord, et rapporte une récompense à chaque niveau.">
             ?
           </span>
         </h2>
+        {pending > 1 && (
+          <button type="button" className={`${styles.claimButton} ${styles.headClaim}`} disabled={busy} onClick={onClaimAll} title={`Réclamer les ${pending} paliers de Maîtrise en attente`}>
+            Tout réclamer
+          </button>
+        )}
       </header>
-      <p className={styles.panelSub}>Chaque Navire progresse avec l&apos;XP des parties jouées à son bord.</p>
-      <div className={styles.shipRow}>
-        {visible.map((mastery) => {
-          const claimLevel = mastery.claimableLevels[0];
-          return (
-            <article key={mastery.shipId} className={styles.ship} data-claimable={claimLevel ? "" : undefined}>
-              <span
-                className={styles.shipArt}
-                style={mastery.illustration ? { backgroundImage: `url("${shipIllustrationUrl(mastery.illustration)}")` } : undefined}
-                aria-hidden
-              />
-              <h3 className={styles.shipName}>{mastery.shipName}</h3>
-              <span className={styles.shipPlayed}>
-                {mastery.matchesPlayed} partie{mastery.matchesPlayed > 1 ? "s" : ""}
-              </span>
-              <div className={styles.shipLevel}>
-                <span className={styles.shipLevelRing}>{mastery.level}</span>
-                <span className={styles.shipXp}>
-                  <span className={styles.bar}>
-                    <span className={styles.barFill} style={{ width: `${mastery.xpForNext ? (mastery.xpInto / mastery.xpForNext) * 100 : 100}%` }} />
-                  </span>
-                  <span>{mastery.xpForNext ? `${mastery.xpInto} / ${mastery.xpForNext} XP` : "Maîtrise complète"}</span>
-                </span>
-              </div>
-              <span className={styles.shipRewards} title={mastery.nextRewardLevel ? `Niveau ${mastery.nextRewardLevel} : ${mastery.nextReward.map(loginRewardLabel).join(" · ")}` : undefined}>
-                {mastery.nextReward.map((item, index) => (
-                  <RewardIcon key={index} item={item} size={30} />
-                ))}
-              </span>
-              <button
-                type="button"
-                className={claimLevel ? styles.claimButton : styles.ghostButton}
-                disabled={!claimLevel || busy}
-                onClick={() => claimLevel && onClaim(mastery, claimLevel)}
-              >
-                {claimLevel ? `Réclamer niv. ${claimLevel}` : mastery.nextRewardLevel ? `Niv. ${mastery.nextRewardLevel}` : "Complète"}
-              </button>
-            </article>
-          );
-        })}
-      </div>
-      {masteries.length > 3 && (
-        <button
-          type="button"
-          className={styles.sideArrow}
-          aria-label="Autres Navires"
-          onClick={() => {
-            playButtonClick();
-            setStart((value) => (value + 3 >= masteries.length ? 0 : value + 3));
-          }}
-        >
-          ›
-        </button>
-      )}
+      <ul className={styles.rows}>
+        {shown.map((mastery) => (
+          <MasteryRow key={mastery.shipId} mastery={mastery} busy={busy} onClaim={onClaim} />
+        ))}
+        {shown.length === 0 && <li className={styles.empty}>Mène un Navire en partie pour lancer sa Maîtrise.</li>}
+      </ul>
       <button
         type="button"
         className={styles.footButton}
@@ -648,6 +635,44 @@ function MasteriesPanel({
         Voir tous les navires ({masteries.length})
       </button>
     </section>
+  );
+}
+
+function MasteryRow({ mastery, busy, onClaim }: { mastery: MasteryView; busy: boolean; onClaim: (mastery: MasteryView) => void }) {
+  const claimable = mastery.claimableLevels.length;
+  const ratio = mastery.xpForNext ? mastery.xpInto / mastery.xpForNext : 1;
+  const nextLabel = mastery.nextRewardLevel ? `Niveau ${mastery.nextRewardLevel} : ${mastery.nextReward.map(loginRewardLabel).join(" · ")}` : "Maîtrise complète";
+  return (
+    <li className={`${styles.row} ${styles.masteryRow}`} data-claimable={claimable ? "" : undefined}>
+      <span
+        className={styles.masteryArt}
+        style={mastery.illustration ? { backgroundImage: `url("${shipIllustrationUrl(mastery.illustration)}")` } : undefined}
+        aria-hidden
+      >
+        <span className={styles.masteryLevel}>{mastery.level}</span>
+      </span>
+      <span className={styles.rowBody}>
+        <span className={styles.masteryName} title={mastery.shipName}>
+          {mastery.shipName}
+        </span>
+        <span className={styles.bar}>
+          <span className={styles.barFill} style={{ width: `${ratio * 100}%` }} />
+        </span>
+        <span className={styles.masteryMeta}>
+          {mastery.xpForNext ? `${mastery.xpInto} / ${mastery.xpForNext} XP` : "Complète"} · {mastery.matchesPlayed} partie{mastery.matchesPlayed > 1 ? "s" : ""}
+        </span>
+      </span>
+      {claimable ? (
+        <button type="button" className={`${styles.claimButton} ${styles.rowClaim}`} disabled={busy} onClick={() => onClaim(mastery)} title={`Réclamer ${claimable > 1 ? `${claimable} paliers` : `le niveau ${mastery.claimableLevels[0]}`}`}>
+          Réclamer
+          {claimable > 1 && <span className={styles.rowClaimCount}>{claimable}</span>}
+        </button>
+      ) : (
+        <span className={styles.rowReward} title={nextLabel}>
+          {mastery.nextReward[0] && <RewardIcon item={mastery.nextReward[0]} size={28} />}
+        </span>
+      )}
+    </li>
   );
 }
 

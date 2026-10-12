@@ -12,18 +12,16 @@
   animation: fade 180ms ease-out both;
 }
 
+/* Le cadre de laiton des panneaux du hub (`rewards/panel.webp`, découpé en 9). */
 .sheet {
   display: flex;
   flex-direction: column;
   width: min(1180px, 100%);
   max-height: min(92dvh, 100%);
   overflow: hidden;
-  border: 1px solid rgba(199, 154, 75, 0.55);
-  border-radius: 14px;
-  background:
-    radial-gradient(120% 80% at 50% 0%, rgba(20, 52, 70, 0.55), transparent 60%),
-    linear-gradient(180deg, #0b1c28 0%, #07131d 100%);
-  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  border: 0 solid transparent;
+  border-image: url("/assets/rewards/panel.webp") 115 fill / 40px / 0 stretch;
+  filter: drop-shadow(0 24px 48px rgba(0, 0, 0, 0.65));
   color: #e3eef3;
 }
 
@@ -32,8 +30,17 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  padding: 18px 22px 12px;
-  border-bottom: 1px solid rgba(199, 154, 75, 0.25);
+  margin: 26px 30px 0;
+  padding-bottom: 12px;
+  /* Le filet d'or des en-têtes du hub. */
+  background: linear-gradient(90deg, transparent, rgba(217, 181, 106, 0.55) 15%, rgba(217, 181, 106, 0.55) 85%, transparent) bottom / 100% 1px no-repeat;
+}
+
+.headActions {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .title {
@@ -52,7 +59,7 @@
 }
 
 .subtitle strong {
-  color: var(--tb-accent, #5fd0e6);
+  color: #f1dca8;
 }
 
 .close {
@@ -71,7 +78,8 @@
 .body {
   min-height: 0;
   overflow-y: auto;
-  padding: 18px 22px 22px;
+  margin: 0 18px 22px;
+  padding: 16px 12px 4px;
   scrollbar-width: thin;
 }
 
@@ -116,113 +124,209 @@
   font-size: calc(11.5px * var(--tb-text-scale));
 }
 
-.giftButton {
-  padding: 5px 12px;
+/* Boutons d'action : la pastille cyan de l'application. */
+.claim,
+.claimAll {
   border: 1px solid var(--tb-btn-border);
-  border-radius: 999px;
   background: var(--tb-btn-bg);
   box-shadow: var(--tb-btn-glow);
   color: var(--tb-btn-text);
-  font-size: calc(12px * var(--tb-text-scale));
-  font-weight: 600;
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   white-space: nowrap;
+  text-shadow: 0 1px 2px rgba(0, 20, 30, 0.6);
   cursor: var(--tb-cursor-pointer);
+  transition: background 150ms ease-out, box-shadow 150ms ease-out;
 }
 
-.giftButton:hover:not(:disabled) {
+.claim {
+  width: 100%;
+  margin-top: 4px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: calc(12px * var(--tb-text-scale));
+}
+
+.claimAll {
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-size: calc(12.5px * var(--tb-text-scale));
+}
+
+.claim:hover:not(:disabled),
+.claimAll:hover:not(:disabled) {
   background: var(--tb-btn-bg-hover);
   box-shadow: var(--tb-btn-glow-hover);
 }
 
-.giftButton:disabled {
-  opacity: 0.5;
+.claim:disabled,
+.claimAll:disabled {
+  filter: grayscale(0.7) brightness(0.7);
+  box-shadow: none;
   cursor: var(--tb-cursor);
 }
 
 /* ── Maîtrises ── */
 .shipGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
+/* Une carte : le panneau sombre à filet d'or des lignes du hub. */
 .ship {
   position: relative;
-  display: grid;
-  overflow: hidden;
-  border: 1px solid rgba(199, 154, 75, 0.45);
-  border-radius: 10px;
-  background: rgba(6, 18, 30, 0.75);
+  display: flex;
+  flex-direction: column;
+  border: 0 solid transparent;
+  border-image: url("/assets/ui/panneaux/panneau-sombre.webp") 26 fill / 12px / 0 stretch;
+  transition: transform 160ms ease-out, filter 160ms ease-out;
 }
 
 .ship[data-claimable] {
-  border-color: var(--tb-accent, #5fd0e6);
-  box-shadow: 0 0 16px rgba(95, 208, 230, 0.3);
+  filter: drop-shadow(0 0 10px rgba(243, 200, 107, 0.55));
+}
+
+@media (hover: hover) {
+  .ship:hover {
+    transform: translateY(-2px);
+  }
+}
+
+.ship[data-unplayed] {
+  opacity: 0.72;
 }
 
 .ship[data-unplayed] .shipArt {
-  filter: grayscale(0.7) brightness(0.55);
+  filter: grayscale(0.75) brightness(0.55);
 }
 
 .ship .notif {
   z-index: 2;
+  top: 6px;
+  right: 6px;
 }
 
 .shipArt {
   display: block;
-  aspect-ratio: 16 / 10;
-  background: #0b1824 center / cover no-repeat;
-}
-
-.shipLevel {
-  position: absolute;
-  top: 8px;
-  left: 8px;
-  display: grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  border: 1.5px solid #c79a4b;
-  border-radius: 50%;
-  background: radial-gradient(circle at 50% 35%, #173449, #07131e);
-  color: #f4ead4;
-  font-family: var(--tb-font-display, Georgia, serif);
-  font-weight: 700;
+  margin: 4px 4px 0;
+  aspect-ratio: 16 / 9;
+  border-radius: 6px 6px 0 0;
+  background: #0b1824 center 40% / cover no-repeat;
+  mask-image: linear-gradient(to bottom, #000 65%, transparent);
+  -webkit-mask-image: linear-gradient(to bottom, #000 65%, transparent);
 }
 
 .shipBody {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: -22px;
+  padding: 0 14px 14px;
+  position: relative;
+}
+
+.shipHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.shipLevel {
   display: grid;
-  gap: 5px;
-  padding: 10px 12px 12px;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 2px solid #c79a4b;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 35%, #173449, #07131e);
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.55);
+  color: #f4ead4;
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-size: calc(17px * var(--tb-text-scale));
+  font-weight: 700;
+}
+
+.shipTitle {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding-top: 12px;
 }
 
 .shipName {
+  overflow: hidden;
+  color: #f4ead4;
   font-family: var(--tb-font-display, Georgia, serif);
-  font-size: calc(16px * var(--tb-text-scale));
+  font-size: calc(15px * var(--tb-text-scale));
   font-weight: 700;
+  letter-spacing: 0.03em;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .shipPlayed,
 .shipXp {
-  color: rgba(190, 210, 228, 0.7);
+  color: rgba(190, 210, 228, 0.72);
   font-size: calc(12px * var(--tb-text-scale));
+  font-variant-numeric: tabular-nums;
 }
 
-.shipFoot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-top: 4px;
-}
-
+/* Le prochain palier (ou celui qui attend) : ses icônes et ce qu'il donne, en clair. */
 .shipReward {
   display: flex;
-  gap: 4px;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 5px 8px;
+  border: 1px solid rgba(199, 154, 75, 0.28);
+  border-radius: 8px;
+  background: rgba(2, 8, 14, 0.45);
+}
+
+.shipRewardIcons {
+  display: flex;
+  flex: none;
+  gap: 2px;
+}
+
+.shipRewardText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.shipRewardLevel {
+  color: #d9b56a;
+  font-size: calc(10.5px * var(--tb-text-scale));
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.shipRewardLabel {
+  overflow: hidden;
+  color: #e8edf0;
+  font-size: calc(12px * var(--tb-text-scale));
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ship .stageState {
+  margin-top: auto;
+  padding-top: 4px;
+  text-align: center;
 }
 
 @keyframes fade {
@@ -232,11 +336,19 @@
 
 /* Téléphone couché : l'en-tête et les marges se resserrent. */
 @media (max-height: 520px) and (min-width: 600px) {
+  .sheet {
+    border-image-width: 28px;
+  }
   .head {
-    padding: 10px 16px 8px;
+    margin: 16px 20px 0;
+    padding-bottom: 8px;
   }
   .body {
-    padding: 12px 16px 16px;
+    margin: 0 10px 14px;
+    padding: 10px 10px 4px;
+  }
+  .shipArt {
+    aspect-ratio: 21 / 8;
   }
 }
 

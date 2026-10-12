@@ -1,11 +1,13 @@
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import { claimLevelRewardFor, claimableLevelsFor, type ClaimLevelRewardResult } from "@/features/progression/levelRewardService";
+import { claimAllMasteryRewards } from "@/features/progression/hubService";
+import type { LoginRewardItem } from "@/game/progression";
 
 /**
  * CENTRE DES RÉCOMPENSES — module SERVEUR (pas de `"use server"`).
  *
  * Tout ce qui attend le joueur se réclame au même endroit, le profil :
- * paliers de niveau, quêtes terminées, exploits débloqués. Ce module sait
+ * paliers de niveau, quêtes terminées, exploits débloqués, Maîtrises. Ce module sait
  * réclamer chacun, et tout d'un coup.
  */
 
@@ -65,10 +67,13 @@ export interface ClaimEverythingResult {
   levels: ClaimLevelRewardResult[];
   quests: { count: number; tides: number; xp: number; boosterIds: string[] };
   achievements: { count: number; tides: number };
+  /** Paliers de Maîtrise versés, et ce qu'ils ont rapporté (cartes tirées comprises). */
+  masteries: { count: number; items: LoginRewardItem[] };
 }
 
 /**
- * Réclame TOUT ce qui attend : paliers, quêtes terminées, exploits. Chaque
+ * Réclame TOUT ce qui attend : paliers, quêtes terminées, exploits,
+ * paliers de Maîtrise. Chaque
  * réclamation est une transaction à part en base ; un refus n'annule pas ce
  * qui a déjà été versé, et n'empêche pas les autres familles d'être tentées.
  */
@@ -79,6 +84,7 @@ export async function claimEverythingFor(userId: string): Promise<ClaimEverythin
     levels: [],
     quests: { count: 0, tides: 0, xp: 0, boosterIds: [] },
     achievements: { count: 0, tides: 0 },
+    masteries: { count: 0, items: [] },
   };
   const fail = (message?: string) => {
     result.ok = false;
@@ -127,6 +133,12 @@ export async function claimEverythingFor(userId: string): Promise<ClaimEverythin
       result.achievements.tides += claimed.tides ?? 0;
     }
   }
+
+  // --- Maîtrises (après les paliers : le niveau de compte a pu monter) ----
+  const accountLevel = (await service.from("player_progression").select("level").eq("user_id", userId).maybeSingle()).data?.level ?? progression.data?.level ?? 1;
+  const masteries = await claimAllMasteryRewards(userId, accountLevel);
+  result.masteries = { count: masteries.count, items: masteries.items ?? [] };
+  if (!masteries.ok) fail(masteries.error);
 
   return result;
 }

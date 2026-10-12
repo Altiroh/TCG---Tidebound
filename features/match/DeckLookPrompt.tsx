@@ -178,12 +178,13 @@ export function DeckLookPrompt({ choice, onConfirm, onRefuse }: DeckLookPromptPr
       }
     >
       {camps ? (
-        <div className="flex flex-col gap-3">
+        // Marge à gauche : à droite, la barre de défilement fait déjà l'écart avec le bord.
+        <div className="flex flex-col gap-3 pl-4 pr-2">
           {camps.map(({ camp, cards }) => (
             <section
               key={camp}
               aria-label={camp === "mine" ? "Ton Cimetière" : "Cimetière adverse"}
-              className={`rounded-2xl border px-2 pb-2 pt-1.5 ${camp === "mine" ? "border-sky-300/30 bg-sky-500/10" : "border-rose-300/30 bg-rose-500/10"}`}
+              className={`rounded-2xl border px-3 pb-2 pt-2 ${camp === "mine" ? "border-sky-300/30 bg-sky-500/10" : "border-rose-300/30 bg-rose-500/10"}`}
             >
               <p className={`mb-1 px-1 text-[11px] font-semibold uppercase tracking-wider ${camp === "mine" ? "text-sky-200" : "text-rose-200"}`}>
                 {camp === "mine" ? "Ton Cimetière" : "Cimetière adverse"}

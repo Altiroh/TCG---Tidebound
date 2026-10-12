@@ -320,16 +320,25 @@
   font-size: max(var(--tb-fs-floor, 0px), calc(calc(0.78cqw * var(--z, 1)) * var(--tb-text-scale)));
   font-weight: 600;
   line-height: 1.15;
-  overflow-wrap: anywhere;
+  /* Coupe aux syllabes, pas au milieu d'un mot (« Précons-truit », pas « Précons / truit »). */
+  overflow-wrap: break-word;
+  hyphens: auto;
   overflow: hidden;
   display: -webkit-box;
-  /* Quatre lignes : le libellé entier sur la tuile ; au-delà, l'infobulle le donne. */
-  -webkit-line-clamp: 4;
+  /* Trois lignes, toujours DANS le parchemin ; le libellé entier est dans l'infobulle. */
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
+  flex: 0 1 auto;
+  min-height: 0;
 }
 
+/* Posé sur le bord bas du parchemin, comme la coche d'un palier obtenu : jamais sur le libellé. */
 .palier .claimButton {
-  margin-top: auto;
+  position: absolute;
+  left: 50%;
+  bottom: -3%;
+  z-index: 2;
+  transform: translateX(-50%);
 }
 
 .palierCheck {
@@ -778,6 +787,7 @@
 }
 
 .panelTitle {
+  min-width: 0;
   margin: 0;
   white-space: nowrap;
   font-family: var(--tb-font-display);
@@ -999,123 +1009,108 @@
   cursor: var(--tb-cursor);
 }
 
-/* Maîtrises : trois Navires côte à côte. */
-.shipRow {
-  flex: 1;
-  min-height: 0;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+/*
+ * Maîtrises : trois lignes, comme les quêtes. La vignette du Navire porte
+ * son niveau ; le nom tient sur UNE ligne ; le bouton reste à droite, dans
+ * la ligne — rien ne passe plus sous le pied du panneau.
+ */
+.masteryRow {
   gap: calc(0.6cqw * var(--z, 1));
 }
-
-.ship {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: calc(0.35cqw * var(--z, 1));
-  min-height: 0;
-  padding: calc(0.25cqw * var(--z, 1)) calc(0.25cqw * var(--z, 1)) calc(0.5cqw * var(--z, 1));
-  border: 0 solid transparent;
-  border-image: url("/assets/ui/panneaux/panneau-sombre.webp") 26 fill / calc(0.75cqw * var(--z, 1)) / 0 stretch;
-  overflow: hidden;
-}
-.ship[data-claimable] {
-  filter: drop-shadow(0 0 calc(0.5cqw * var(--z, 1)) rgba(243, 200, 107, 0.6));
+.masteryRow[data-claimable] {
+  filter: drop-shadow(0 0 calc(0.4cqw * var(--z, 1)) rgba(243, 200, 107, 0.55));
 }
 
-.shipArt {
-  flex: 1;
-  min-height: calc(3cqw * var(--z, 1));
-  background-size: cover;
-  background-position: center 40%;
-  background-color: #0a1520;
-  mask-image: linear-gradient(to bottom, #000 60%, transparent);
-  -webkit-mask-image: linear-gradient(to bottom, #000 60%, transparent);
-}
-
-.shipName {
-  margin: calc(-1.2cqw * var(--z, 1)) 0 0;
+.masteryArt {
   position: relative;
-  text-align: center;
-  font-family: var(--tb-font-display);
-  font-size: max(var(--tb-fs-floor, 0px), calc(calc(0.82cqw * var(--z, 1)) * var(--tb-text-scale)));
-  font-weight: 700;
-  text-transform: uppercase;
-  color: #f4ead4;
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
+  flex: none;
+  width: calc(3.6cqw * var(--z, 1));
+  height: calc(2.5cqw * var(--z, 1));
+  border: calc(0.08cqw * var(--z, 1)) solid rgba(199, 154, 75, 0.7);
+  border-radius: calc(0.3cqw * var(--z, 1));
+  background: #0a1520 center 40% / cover no-repeat;
 }
 
-.shipPlayed {
-  margin-top: calc(-0.3cqw * var(--z, 1));
-  text-align: center;
-  font-size: max(var(--tb-fs-floor, 0px), calc(calc(0.56cqw * var(--z, 1)) * var(--tb-text-scale)));
-  color: #aebdc7;
-}
-
-.shipLevel {
-  display: flex;
-  align-items: center;
-  gap: calc(0.4cqw * var(--z, 1));
-  padding: 0 calc(0.5cqw * var(--z, 1));
-}
-.shipLevelRing {
+.masteryLevel {
+  position: absolute;
+  left: calc(-0.5cqw * var(--z, 1));
+  bottom: calc(-0.45cqw * var(--z, 1));
   display: grid;
   place-items: center;
-  flex: none;
-  width: calc(1.7cqw * var(--z, 1));
-  height: calc(1.7cqw * var(--z, 1));
-  border: calc(0.12cqw * var(--z, 1)) solid #c79a4b;
+  width: calc(1.45cqw * var(--z, 1));
+  height: calc(1.45cqw * var(--z, 1));
+  border: calc(0.1cqw * var(--z, 1)) solid #c79a4b;
   border-radius: 50%;
-  background: #0b1824;
+  background: radial-gradient(circle at 50% 35%, #173449, #07131e);
   font-family: var(--tb-font-display);
-  font-size: max(var(--tb-fs-floor, 0px), calc(calc(0.8cqw * var(--z, 1)) * var(--tb-text-scale)));
+  font-size: max(var(--tb-fs-floor, 0px), calc(calc(0.68cqw * var(--z, 1)) * var(--tb-text-scale)));
   font-weight: 700;
+  line-height: 1;
   color: #f4ead4;
 }
-.shipXp {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: calc(0.2cqw * var(--z, 1));
-  font-size: max(var(--tb-fs-floor, 0px), calc(calc(0.56cqw * var(--z, 1)) * var(--tb-text-scale)));
-  color: #cfd8df;
+
+.masteryName {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-family: var(--tb-font-display);
+  font-size: max(var(--tb-fs-floor, 0px), calc(calc(0.74cqw * var(--z, 1)) * var(--tb-text-scale)));
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #f4ead4;
 }
 
-.shipRewards {
-  display: flex;
-  justify-content: center;
-  gap: calc(0.3cqw * var(--z, 1));
-}
-.shipRewards > * {
-  width: calc(1.8cqw * var(--z, 1)) !important;
-  height: calc(1.8cqw * var(--z, 1)) !important;
-}
-
-/* « Réclamer niv. 12 » tient dans la carte : moins d'interlettrage, et un retour à la ligne plutôt qu'une coupe. */
-.ship .claimButton,
-.ship .ghostButton {
-  margin: 0 calc(0.35cqw * var(--z, 1));
-  padding: calc(0.3cqw * var(--z, 1)) calc(0.2cqw * var(--z, 1));
+.masteryMeta {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
   font-size: max(var(--tb-fs-floor, 0px), calc(calc(0.58cqw * var(--z, 1)) * var(--tb-text-scale)));
-  letter-spacing: 0.01em;
-  white-space: normal;
-  line-height: 1.1;
+  color: #aebdc7;
+  font-variant-numeric: tabular-nums;
 }
 
-.sideArrow {
+/* Bouton dans une ligne : compact, jamais sur deux lignes ; le nombre de paliers en pastille. */
+.rowClaim {
+  position: relative;
+  flex: none;
+  padding: calc(0.3cqw * var(--z, 1)) calc(0.6cqw * var(--z, 1));
+  font-size: max(var(--tb-fs-floor, 0px), calc(calc(0.6cqw * var(--z, 1)) * var(--tb-text-scale)));
+  letter-spacing: 0.03em;
+}
+
+.rowClaimCount {
   position: absolute;
-  right: calc(-0.9cqw * var(--z, 1));
-  top: 50%;
-  width: calc(1.8cqw * var(--z, 1));
-  height: calc(1.8cqw * var(--z, 1));
-  border: 1px solid rgba(199, 154, 75, 0.6);
-  border-radius: 50%;
-  background: #0b1824;
-  color: #e6c889;
-  font-size: max(var(--tb-fs-floor, 0px), calc(calc(1.1cqw * var(--z, 1)) * var(--tb-text-scale)));
+  top: calc(-0.55cqw * var(--z, 1));
+  right: calc(-0.55cqw * var(--z, 1));
+  display: grid;
+  place-items: center;
+  min-width: calc(1.1cqw * var(--z, 1));
+  height: calc(1.1cqw * var(--z, 1));
+  padding: 0 calc(0.2cqw * var(--z, 1));
+  border-radius: 999px;
+  background: #f3c86b;
+  color: #2a1a05;
+  font-family: var(--tb-font-display);
+  font-size: max(9px, calc(0.55cqw * var(--z, 1)));
+  font-weight: 800;
+  letter-spacing: 0;
   line-height: 1;
-  cursor: var(--tb-cursor-pointer);
+  text-shadow: none;
+}
+
+/* « Tout réclamer » dans l'en-tête d'un panneau : à droite du titre, sans pousser le reste. */
+.headClaim {
+  flex: none;
+  padding: calc(0.22cqw * var(--z, 1)) calc(0.6cqw * var(--z, 1));
+  font-size: max(var(--tb-fs-floor, 0px), calc(calc(0.58cqw * var(--z, 1)) * var(--tb-text-scale)));
+  letter-spacing: 0.03em;
+}
+
+/* « Tout réclamer » de la route : entre le titre et la jauge d'XP. */
+.claimAll {
+  flex: none;
+  margin-left: auto;
 }
 
 /* Commanditaires. */
@@ -1318,4 +1313,9 @@
   .masteries { left: 51%; top: 34.7%; width: 47%; --z: 1.82; }
   .sponsors { left: 2%; top: 67.3%; width: 47%; }
   .goals { left: 51%; top: 67.3%; width: 47%; }
+}
+
+/* Palier à réclamer : le bouton prend la place d'une ligne de libellé — jamais l'un sur l'autre. */
+.palier[data-state="claimable"] .palierLabel {
+  -webkit-line-clamp: 2;
 }

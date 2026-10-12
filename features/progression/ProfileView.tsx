@@ -63,7 +63,9 @@ const TABS: Array<{ id: ProfileTab; label: string }> = [
 
 /** Ce qui attend le joueur, famille par famille — les pastilles et le « tout réclamer ». */
 export function waitingCounts(profile: ProfileSummary) {
-  const levels = profile.claimableLevels.length + profile.pendingCardChoices.length;
+  // Les paliers de Maîtrise attendent sur le même onglet que ceux du compte.
+  const masteries = (profile.hub?.masteries ?? []).reduce((sum, mastery) => sum + mastery.claimableLevels.length, 0);
+  const levels = profile.claimableLevels.length + profile.pendingCardChoices.length + masteries;
   const quests = profile.quests.filter((quest) => quest.completed && !quest.claimed).length;
   const achievements = profile.achievements.filter((achievement) => achievement.claimable).length;
   const login = profile.login.claimable ? 1 : 0;
@@ -238,9 +240,10 @@ export function ProfileView({
       if (result.quests.xp > 0) extra.push({ kind: "xp", amount: result.quests.xp });
       for (const boosterId of result.quests.boosterIds) extra.push({ kind: "booster", boosterId, count: 1 });
       if (result.achievements.tides > 0) extra.push({ kind: "tides", amount: result.achievements.tides });
+      extra.push(...result.masteries.items);
       if (!result.ok) setClaimError(result.error ?? "Une partie des récompenses n'a pas pu être réclamée.");
       if (levels.length > 0 || choices.length > 0 || extra.length > 0) {
-        const parts = result.levels.length + result.quests.count + result.achievements.count + (extra.length > 0 && profile.login.claimable ? 1 : 0);
+        const parts = result.levels.length + result.quests.count + result.achievements.count + result.masteries.count + (extra.length > 0 && profile.login.claimable ? 1 : 0);
         setReveal({ levels, choices, extraItems: extra, title: parts > 1 ? "Tout est réclamé !" : undefined });
       }
       notifyProgressionChanged();

@@ -16,8 +16,10 @@ import { maskAchievement } from "@/features/progression/achievementMask";
 import { DEFAULT_CARD_BACK_ID, STANDARD_BOOSTER_ID } from "@/game";
 import { claimLoginReward, readLoginRewards, type LoginRewardView } from "@/features/progression/loginService";
 import {
+  claimAllMasteryRewards,
   claimAudienceMilestone,
   claimMasteryReward,
+  type ClaimAllMasteriesResult,
   claimSponsorGift,
   claimWeeklyChest,
   readProgressionHub,
@@ -360,6 +362,19 @@ export async function claimMasteryLevel(shipId: string, level: number): Promise<
   return result;
 }
 
+/** Réclame d'un coup les paliers de Maîtrise en attente : tous Navires confondus, ou ceux d'un seul (`shipId`). */
+export async function claimAllMasteryLevels(shipId?: string): Promise<ClaimAllMasteriesResult> {
+  const user = await getSessionUser();
+  if (!user) return { ok: false, error: "Connecte-toi pour réclamer.", items: [], count: 0 };
+  if (shipId !== undefined && typeof shipId !== "string") return { ok: false, error: "Navire inconnu.", items: [], count: 0 };
+  const result = await claimAllMasteryRewards(user.id, await accountLevelOf(user.id), shipId);
+  if (result.count > 0) {
+    revalidatePath("/profil");
+    revalidatePath("/boosters");
+  }
+  return result;
+}
+
 /** Ouvre le colis d'un Commanditaire. */
 export async function openSponsorGift(sponsorId: SponsorId, stage: SponsorStage): Promise<HubClaimResult> {
   const user = await getSessionUser();
@@ -572,7 +587,7 @@ export async function claimAchievement(code: string): Promise<ClaimAchievementRe
 export async function claimEverything(): Promise<ClaimEverythingResult> {
   const user = await getSessionUser();
   if (!user) {
-    return { ok: false, error: "Connecte-toi pour réclamer tes récompenses.", levels: [], quests: { count: 0, tides: 0, xp: 0, boosterIds: [] }, achievements: { count: 0, tides: 0 } };
+    return { ok: false, error: "Connecte-toi pour réclamer tes récompenses.", levels: [], quests: { count: 0, tides: 0, xp: 0, boosterIds: [] }, achievements: { count: 0, tides: 0 }, masteries: { count: 0, items: [] } };
   }
   const result = await claimEverythingFor(user.id);
   revalidatePath("/profil");

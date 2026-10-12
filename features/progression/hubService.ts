@@ -490,6 +490,37 @@ export async function claimMasteryReward(userId: string, accountLevel: number, s
   }
 }
 
+export interface ClaimAllMasteriesResult extends HubClaimResult {
+  /** Paliers effectivement versés. */
+  count: number;
+}
+
+/**
+ * Réclame TOUS les paliers de Maîtrise en attente, Navire après Navire, du
+ * plus bas au plus haut — ou ceux d'un seul Navire (`shipId`). Chaque palier est sa propre transaction : un refus
+ * arrête la suite, sans reprendre ce qui a déjà été versé.
+ */
+export async function claimAllMasteryRewards(userId: string, accountLevel: number, shipId?: string): Promise<ClaimAllMasteriesResult> {
+  const items: LoginRewardItem[] = [];
+  let count = 0;
+  try {
+    const hub = await readProgressionHub(userId, accountLevel);
+    for (const mastery of hub.masteries) {
+      if (shipId && mastery.shipId !== shipId) continue;
+      for (const level of [...mastery.claimableLevels].sort((a, b) => a - b)) {
+        const result = await grant(userId, "mastery", `${mastery.shipId}:${level}`, masteryRewardForLevel(level));
+        if (!result.ok) return { ok: false, error: result.error, items, count };
+        items.push(...(result.items ?? []));
+        count += 1;
+      }
+    }
+    return { ok: true, items, count };
+  } catch (error) {
+    console.error("[claimAllMasteryRewards] Échec :", error);
+    return { ok: false, error: "Réclamation impossible pour le moment.", items, count };
+  }
+}
+
 export async function claimSponsorGift(userId: string, accountLevel: number, sponsorId: SponsorId, stage: SponsorStage): Promise<HubClaimResult> {
   try {
     if (accountLevel < SPONSORS_UNLOCK_LEVEL) return { ok: false, error: `Les Commanditaires vous remarqueront au niveau ${SPONSORS_UNLOCK_LEVEL}.` };
