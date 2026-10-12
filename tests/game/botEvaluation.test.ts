@@ -174,3 +174,61 @@ describe("évaluation du bot — la peur", () => {
     expect(ecart).toBeGreaterThan(15);
   });
 });
+
+describe("évaluation du bot — dette de Déraison mortelle", () => {
+  function withReason(state: GameState, playerId: string, reason: number, anchor: number): GameState {
+    return {
+      ...state,
+      players: state.players.map((p) => (p.id === playerId ? { ...p, reason, anchor } : p)) as GameState["players"],
+    };
+  }
+
+  it("une dette qui emporte tout l'Ancrage restant vaut presque une défaite pour le joueur actif", () => {
+    const base = newGame();
+    expect(base.activePlayerId).toBe("a");
+    const lethal = evaluateState(withReason(base, "a", -3, 2), "a");
+    const survivable = evaluateState(withReason(base, "a", -1, 2), "a");
+    expect(lethal).toBeLessThan(-80000);
+    expect(survivable).toBeGreaterThan(-80000);
+    // Vue de l'adversaire : c'est une victoire annoncée.
+    expect(evaluateState(withReason(base, "a", -3, 2), "b")).toBeGreaterThan(80000);
+  });
+
+  it("la dette de celui qui ne joue pas n'est pas réglée ce tour-ci", () => {
+    const base = newGame();
+    expect(evaluateState(withReason(base, "b", -3, 2), "a")).toBeLessThan(80000);
+  });
+
+  it("le bot facile ne finit pas son tour sur une dette mortelle quand il peut l'éviter", () => {
+    // Un sort à 3 en main, 1 de Raison, 2 d'Ancrage : le jouer à crédit le tuerait en fin de tour.
+    const base = newGame();
+    const state = withReason(base, "a", 1, 2);
+    const scoredPlay = evaluateState(withReason(base, "a", -2, 2), "a");
+    const scoredWait = evaluateState(state, "a");
+    expect(scoredWait).toBeGreaterThan(scoredPlay);
+  });
+});
+
+describe("évaluation du bot — unité vidée (0 de Puissance durable)", () => {
+  const vide = (cardId: string, owner: string) =>
+    instance(cardId, owner, { modifiers: [{ id: "vole", source: "test", attack: -9, health: 0, duration: "permanent" }] });
+
+  it("une unité vidée vaut bien moins que la même intacte, et moins que le plancher d'un permanent", () => {
+    const base = newGame();
+    const intacte = instance("ptit-bout", "a");
+    const videe = vide("ptit-bout", "a");
+    const avec = (unit: ReturnType<typeof instance>) => evaluateState({ ...base, players: base.players.map((p) => (p.id === "a" ? { ...p, board: [unit] } : p)) as GameState["players"] }, "a");
+    const sans = evaluateState(base, "a");
+    expect(avec(intacte) - sans).toBeGreaterThan(4);
+    expect(avec(videe) - sans).toBeLessThan(2.5);
+    expect(avec(videe) - sans).toBeGreaterThan(0);
+  });
+
+  it("un malus jusqu'à la fin du tour ne vide pas l'unité", () => {
+    const base = newGame();
+    const passager = instance("ptit-bout", "a", { modifiers: [{ id: "tmp", source: "test", attack: -9, health: 0, duration: "endOfTurn" }] });
+    const durable = vide("ptit-bout", "a");
+    const avec = (unit: ReturnType<typeof instance>) => evaluateState({ ...base, players: base.players.map((p) => (p.id === "a" ? { ...p, board: [unit] } : p)) as GameState["players"] }, "a");
+    expect(avec(passager)).toBeGreaterThan(avec(durable));
+  });
+});

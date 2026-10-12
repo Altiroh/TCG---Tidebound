@@ -285,12 +285,14 @@ export function NewMatchScreen({
         // Depuis le 09/10/2026, seuls les préconstruits DÉBLOQUÉS se jouent
         // (le deck offert à l'arrivée, ou un Jeton de Préconstruit) ; le
         // serveur refuse les autres (`resolveMatchDeck`, refus « locked »).
-        // Les autres restent visibles, pour qu'on sache ce qu'un Jeton ouvre.
+        // Depuis le 12/10/2026, l'écran de partie ne montre QUE ceux-là : on
+        // choisit un deck à jouer, pas une vitrine — ce qu'un Jeton ouvre se
+        // découvre sur l'écran Decks.
         id: "precon",
         label: "Préconstruits",
-        hint: "Douze plans, un par grande mécanique. Chacun se débloque avec un Jeton de Préconstruit, depuis l'écran Decks.",
-        decks: PRECON_DECKS,
-        issueFor: (deck) => (unlocked.has(deck.id) ? null : "À débloquer avec un Jeton de Préconstruit (écran Decks)."),
+        hint: "Tes préconstruits débloqués. Les autres s'ouvrent avec un Jeton de Préconstruit, depuis l'écran Decks.",
+        decks: PRECON_DECKS.filter((deck) => unlocked.has(deck.id)),
+        issueFor: () => null,
       },
     ],
     [personalDecks, personalValidity, unlocked]
@@ -701,7 +703,15 @@ export function NewMatchScreen({
 
                 {activeTab.decks.length === 0 ? (
                   <div className={`${game.panel} ${game.empty}`}>
-                    {isSignedIn ? (
+                    {activeTab.id === "precon" ? (
+                      <>
+                        <p className={game.emptyTitle}>Aucun préconstruit débloqué</p>
+                        <p className={game.muted}>Un Jeton de Préconstruit en ouvre un, depuis l&apos;écran Decks.</p>
+                        <Link href="/decks" className={game.secondary} onClick={() => playButtonClick()}>
+                          Voir les decks
+                        </Link>
+                      </>
+                    ) : isSignedIn ? (
                       <>
                         <p className={game.emptyTitle}>Tu n&apos;as pas encore monté de deck</p>
                         <p className={game.muted}>En attendant, les préconstruits sont prêts à jouer.</p>

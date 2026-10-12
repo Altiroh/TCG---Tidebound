@@ -38,6 +38,8 @@ export function resolveEffectSequence(
   // vient d'apporter, par joueur — la défausse qui suit ne peut pas les
   // désigner.
   const piochees = new Map<string, string[]>();
+  // Puissance retirée par le dernier malus de la suite (`EffectAmount.attackRemoved`).
+  let attackRemoved: number | undefined = context.attackRemoved;
 
   for (let i = 0; i < effects.length; i += 1) {
     const effect = effects[i]!;
@@ -57,9 +59,12 @@ export function resolveEffectSequence(
     }
 
     const questionAvant = nextState.pendingChoice;
-    const result = resolveEffect(nextState, effect, context);
+    const result = resolveEffect(nextState, effect, attackRemoved === undefined ? context : { ...context, attackRemoved });
     nextState = result.state;
     events.push(...result.events);
+    // « Volez » : ce que le malus vient de retirer, pour le bonus qui suit (`attackRemoved`).
+    const malus = result.events.filter((event) => event.type === "DEBUFF_APPLIED");
+    if (malus.length > 0) attackRemoved = malus.reduce((sum, event) => sum + Math.max(0, -(event.type === "DEBUFF_APPLIED" ? event.attack : 0)), 0);
     for (const event of result.events) if (event.type === "DRAW_CARD") ontPioche.add(event.playerId);
     if (piocheur && mainAvant) {
       const avant = new Set(mainAvant);

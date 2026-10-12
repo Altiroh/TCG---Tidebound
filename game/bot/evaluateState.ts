@@ -78,6 +78,29 @@ function startingAnchorOf(player: PlayerState): number {
  * s'en débarrasser serait toujours gratuit.
  */
 const PERMANENT_FLOOR = 2.5;
+
+/**
+ * UNITÉ VIDÉE. Une unité à 0 de Puissance DURABLE (vidée par un vol, un
+ * malus permanent, ou née ainsi) ne frappe pas et ne riposte pas : elle
+ * n'est plus qu'un corps qui encaisse un coup, et ce que portent sa Garde et
+ * ses capacités. Elle valait pourtant « Résistance × 1,2 », jamais moins que
+ * le plancher d'un permanent — le bot la gardait comme une vraie carte et
+ * gaspillait ses attaques à la tuer chez l'adversaire (retour du 12/10/2026).
+ *
+ * Elle vaut maintenant ce qu'elle FAIT : un peu de corps, sa Garde, ses
+ * capacités. Le Sabordage qui la libère devient intéressant dès qu'il
+ * rapporte quelque chose (effet de Sabordage, Slot dont la main a besoin) ;
+ * sinon elle reste, puisqu'elle ne coûte rien.
+ *
+ * Seule la Puissance DURABLE compte : un malus « jusqu'à la fin du tour » ne
+ * vide pas une unité, il la met entre parenthèses.
+ */
+const HOLLOW_BODY_VALUE = 0.4;
+const HOLLOW_UNIT_FLOOR = 0.5;
+
+function durableAttack(unit: CardInstance, attack: number): number {
+  return attack - unit.modifiers.reduce((sum, modifier) => sum + (modifier.duration === "permanent" ? 0 : modifier.attack), 0);
+}
 /** Ce qu'ajoute Garde : l'unité protège le Navire, c'est sa vraie fonction. */
 const GARDE_BONUS = 2;
 /** Une unité qui ne peut pas encore attaquer vaut un peu moins — mais elle sera là au prochain tour. */
@@ -104,6 +127,13 @@ function permanentValue(state: GameState, unit: CardInstance, controller: Player
   // comme strictement inutile. C'est précisément ce que fait le Canon de
   // proue, mais ça valait déjà pour chaque attaque non létale.
   const remaining = Math.max(0, stats.health - unit.damageMarked);
+
+  if (isUnit && durableAttack(unit, stats.attack) <= 0) {
+    let hollow = remaining * HOLLOW_BODY_VALUE + abilityValue(state, unit, controller);
+    if (hasEffectiveKeyword(state, controller, unit, KEYWORD_GARDE)) hollow += GARDE_BONUS;
+    if (stats.inactive) hollow *= 0.55;
+    return Math.max(HOLLOW_UNIT_FLOOR, hollow);
+  }
 
   let value = stats.attack * 1.5 + remaining * 1.2;
   if (hasEffectiveKeyword(state, controller, unit, KEYWORD_GARDE)) value += GARDE_BONUS;
@@ -390,6 +420,24 @@ function landeOutlook(state: GameState, me: PlayerState, opponent: PlayerState):
  * meilleure est la position. Comparable d'un état à l'autre, jamais lu
  * comme une valeur absolue.
  */
+/**
+ * DETTE MORTELLE. La Déraison se règle en Ancrage à la FIN du tour du joueur
+ * actif : une dette qui coûte au moins tout l'Ancrage qui reste, c'est une
+ * partie perdue à la fin de ce tour. L'évaluation ne la voyait que comme de
+ * l'Ancrage en moins (×1,2) : le bot facile, qui ne regarde pas jusqu'à sa
+ * fin de tour, payait un dernier sort à crédit et se sabordait (retour du
+ * 12/10/2026). Un joueur peut choisir d'abréger ainsi — un bot, jamais.
+ *
+ * Comptée presque comme une défaite, au-dessus de la défaite réelle pour
+ * qu'entre deux mauvaises lignes le bot garde celle qui laisse une chance,
+ * et avec la valeur matérielle en départage.
+ */
+const LETHAL_DEBT_SCORE = 90000;
+
+function hasLethalDebt(player: PlayerState): boolean {
+  return player.anchor > 0 && deraisonAnchorDamage(player, player.reason) >= player.anchor;
+}
+
 export function evaluateState(state: GameState, forPlayerId: PlayerId): number {
   if (state.status === "finished") {
     if (state.winnerId === forPlayerId) return 100000;
@@ -402,6 +450,10 @@ export function evaluateState(state: GameState, forPlayerId: PlayerId): number {
   if (!me || !opponent) return 0;
 
   const material = playerValue(state, me) - playerValue(state, opponent);
+
+  // Seul le joueur ACTIF règle sa dette à la fin de ce tour.
+  const active = state.activePlayerId === me.id ? me : opponent;
+  if (hasLethalDebt(active)) return (active === me ? -LETHAL_DEBT_SCORE : LETHAL_DEBT_SCORE) + material;
 
   // Pression : la menace que je fais peser, moins — bien plus lourdement —
   // celle que je subis (cf. `THREAT_TAKEN`). Fait préférer un plateau qui

@@ -219,6 +219,11 @@ export interface EffectContext {
    * `discardedCount` (« pour chaque carte défaussée », Lot 18).
    */
   discardedCount?: number;
+  /**
+   * Puissance réellement retirée par le dernier malus de la suite en cours
+   * (posé par `resolveEffectSequence`) : lu par le montant `attackRemoved`.
+   */
+  attackRemoved?: number;
   turnNumber: number;
 }
 
@@ -286,7 +291,7 @@ function amountValue(
   amount: EffectAmount | undefined,
   state: GameState,
   controllerId: PlayerId,
-  context?: Pick<EffectContext, "dieResult" | "discardedCount" | "triggerDamageAmount">
+  context?: Pick<EffectContext, "dieResult" | "discardedCount" | "triggerDamageAmount" | "attackRemoved">
 ): number {
   if (amount === undefined) return 0;
   if (amount.kind === "discardedCount") return (context?.discardedCount ?? 0) * (amount.per ?? 1);
@@ -300,6 +305,7 @@ function amountValue(
     return Math.max(0, amount.max === undefined ? avec : Math.min(amount.max, avec));
   }
   if (amount.kind === "incomingAttackDamage") return state.pendingAttack?.attackerPower ?? 0;
+  if (amount.kind === "attackRemoved") return context?.attackRemoved ?? 0;
   if (amount.kind === "unitCount") {
     const plateau = amount.of === "opponent" ? getOpponent(state, controllerId) : getPlayer(state, controllerId);
     const unites = plateau.board.filter((u) => UNIT_CARD_TYPES.includes(getCardDefinition(u.cardId).type)).length;
@@ -881,6 +887,7 @@ export function effectConditionsMet(
     if ((min !== undefined && compte < min) || (max !== undefined && compte > max)) return false;
   }
   if (effect.conditionTriggerSourceDoomed && !isDoomed(state, context.triggerSourceInstanceId)) return false;
+  if (effect.conditionAttackRemovedAtLeast !== undefined && (context.attackRemoved ?? 0) < effect.conditionAttackRemovedAtLeast) return false;
   if (effect.conditionTriggerSourcePowerAtMost !== undefined) {
     const lue = boardUnit(state, context.triggerSourceInstanceId);
     if (!lue) return false;
@@ -1386,6 +1393,10 @@ export function resolveEffect(
       const debuffTargets = resolveUnitTargets(state, effect, context);
       let nextState = { ...state, rngState: debuffTargets.rngState };
       for (const { unit, ownerId } of debuffTargets.targets) {
+        // Jamais sous 0 de Puissance : le malus ne retire que ce que l'unité
+        // a (et, temporaire, ne rend en expirant que ce qu'il a pris).
+        const current = computeEffectiveStats(unit, nextState.environment.tideState, auraContextOf(nextState, ownerId)).attack;
+        const retire = attackDelta > 0 ? Math.min(attackDelta, Math.max(0, current)) : attackDelta;
         nextState = replaceUnit(nextState, ownerId, unit.instanceId, (u) => ({
           ...u,
           modifiers: [
@@ -1393,7 +1404,7 @@ export function resolveEffect(
             {
               id: `mod_${Math.random().toString(36).slice(2, 8)}`,
               source: effect.cardId ?? "unknown",
-              attack: -attackDelta,
+              attack: -retire,
               health: -healthDelta,
               duration,
               ...(effect.expiresOnControllersTurn ? { appliedBy: context.controllerId } : {}),
@@ -1409,7 +1420,7 @@ export function resolveEffect(
           ...base,
           type: "DEBUFF_APPLIED",
           targetInstanceId: unit.instanceId,
-          attack: -attackDelta,
+          attack: -retire,
           health: -healthDelta,
           origin: originOf(context),
         });

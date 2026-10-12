@@ -98,9 +98,9 @@ export function finishingBlow(state: GameState): FinishingBlow | null {
     const cardId = dealer ? cards.get(dealer) : undefined;
     if (event.cause === "tide" || event.fx === "tide") return { kind: "maree" };
     if (event.cause === "combat" || event.combat) return { kind: "attaque", cardId };
-    // Le règlement de la Déraison suit son `DAMAGE` dans le journal.
-    const next = log[i + 1];
-    if (next?.type === "DERAISON_SETTLED" && next.playerId === loser) return { kind: "deraison" };
+    // Le règlement de la Déraison accompagne son `DAMAGE` (juste avant, ou juste après).
+    const near = [log[i - 1], log[i + 1]];
+    if (near.some((other) => other?.type === "DERAISON_SETTLED" && other.playerId === loser)) return { kind: "deraison" };
     if (event.cause === "effect" || event.origin) {
       if (dealer) return { kind: "effet", cardId };
       // Sans carte en jeu : sort joué de la main, ou capacité de Navire dans la même action.

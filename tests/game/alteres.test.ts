@@ -183,6 +183,22 @@ describe("chaque désignation est une question, refusable", () => {
     expect(puissance(vol.state, buveur.instanceId)).toBe(4);
     expect(main(vol.state)).toBe(1);
   });
+
+  it("Le Buveur ne vole pas ce qui n'existe pas : une unité à 0 reste à 0, il ne gagne rien et ne pioche pas", () => {
+    const buveur = instance("le-buveur", "p1");
+    // Le Péon déjà vidé par un premier vol.
+    const vide = instance("peon-cra-poiscail", "p2", {
+      modifiers: [{ id: "deja-vole", source: "le-buveur", attack: -1, health: 0, duration: "permanent" }],
+    });
+    expect(puissance(table({}, { board: [vide] }), vide.instanceId)).toBe(0);
+    const r = jouer(table({ hand: [buveur] }, { board: [vide] }), buveur);
+    ok(r);
+    const vol = designer(r.state, vide.instanceId);
+    ok(vol);
+    expect(puissance(vol.state, vide.instanceId)).toBe(0);
+    expect(puissance(vol.state, buveur.instanceId)).toBe(3);
+    expect(main(vol.state)).toBe(0);
+  });
 });
 
 describe("répéter, propager", () => {

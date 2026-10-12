@@ -124,13 +124,21 @@ export function chooseBotAction(
     // où il ne reste souvent que « fin de tour » et des Sabordages —
     // transformait chaque erreur en Amiral sacrifié (relevé du 29/09/2026 :
     // Sabordages multipliés par trois dès que le bot y est entré).
-    const plausible = scored.filter((s, i) => i === 0 || s.action.type !== "saborder");
+    //
+    // Un coup CATASTROPHIQUE non plus (une dette de Déraison qui emporte tout
+    // l'Ancrage : `LETHAL_DEBT_SCORE`) : se tromper de cible, oui ; se tuer
+    // par distraction, non (retour du 12/10/2026 : un bot facile sur cinq
+    // finissait ainsi).
+    const plausible = scored.filter((s, i) => i === 0 || (s.action.type !== "saborder" && s.score > CATASTROPHE_SCORE));
     const window = Math.max(2, Math.ceil(plausible.length * mistakeDepth));
     return pickRandom(plausible.slice(0, Math.min(window, plausible.length)), random).action;
   }
 
   return scored[0]!.action;
 }
+
+/** Sous cette note, un coup mène à une défaite (réelle ou annoncée) : jamais tiré comme erreur. */
+const CATASTROPHE_SCORE = -50000;
 
 /** Fréquence d'erreur, et largeur de la fourchette où le bot pioche quand il se trompe. */
 interface MistakeProfile {

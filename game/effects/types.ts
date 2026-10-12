@@ -437,6 +437,14 @@ export type EffectAmount =
    */
   | { kind: "incomingAttackDamage" }
   /**
+   * « Volez X Puissance » : la Puissance que le malus PRÉCÉDENT de la même
+   * suite d'effets a RÉELLEMENT retirée (`EffectContext.attackRemoved`, tenu
+   * par `resolveEffectSequence`). Un malus ne descend jamais une unité sous
+   * 0 de Puissance : voler 1 à une unité qui n'a rien ne rapporte rien.
+   * 0 si aucun malus ne précède.
+   */
+  | { kind: "attackRemoved" }
+  /**
    * « autant que d'unités » : montant COMPTÉ sur un plateau au moment de la
    * résolution, et non gravé dans la carte.
    *
@@ -1282,6 +1290,12 @@ export interface EffectDefinition {
    * `triggerSource` : la mort elle-même n'est réglée qu'à la passe suivante.
    */
   conditionTriggerSourceDoomed?: boolean;
+  /**
+   * « Si sa Puissance tombe à 0 AINSI » : le malus précédent de la suite a
+   * retiré AU MOINS cette Puissance (`EffectContext.attackRemoved`). Une
+   * unité déjà à 0 ne « tombe » pas — un malus sur elle ne retire rien.
+   */
+  conditionAttackRemovedAtLeast?: number;
 
   /**
    * « Si sa Puissance tombe à 0 ainsi » (Le Buveur, Lot 16) : Puissance

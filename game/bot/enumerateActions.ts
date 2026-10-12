@@ -68,7 +68,12 @@ export function enumerateCandidateActions(state: GameState, playerId: PlayerId):
   // (`game/engine.ts`) — `evaluateState` départagera naturellement les deux
   // branches (perte d'Ancrage pondérée bien plus lourdement que la Raison),
   // aucune heuristique dédiée n'est nécessaire ici.
-  if (state.pendingChoice && state.pendingChoice.playerId === playerId) {
+  //
+  // Une fenêtre de réaction ouverte PAR-DESSUS passe avant (`dispatch` refuse
+  // tout le reste tant qu'elle est là, `botHasSomethingToDo` aussi) : sans
+  // cette garde, le bot ne proposait que des réponses au choix, toutes
+  // refusées, et la partie restait figée.
+  if (state.pendingChoice && state.pendingChoice.playerId === playerId && !state.pendingReaction) {
     if (state.pendingChoice.kind === "abilityOption") {
       return [
         ...state.pendingChoice.abilityIndexes.map((abilityIndex) => ({ type: "resolveChoice" as const, playerId, choice: { abilityIndex } })),

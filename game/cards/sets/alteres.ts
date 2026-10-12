@@ -223,7 +223,8 @@ const MARINS_ALTERES: CardDefinition[] = [
     attack: 3,
     health: 2,
     text: "Éveil — Volez 1 Puissance à une unité adverse. Si sa Puissance tombe à 0 ainsi, piochez 1 carte.",
-    // « Volez » sans durée : le transfert est conservé.
+    // « Volez » sans durée : le transfert est conservé. Le Buveur ne gagne que
+    // ce qu'il a réellement pris (`attackRemoved`) : rien sur une unité à 0.
     abilities: [
       eveil("Vole 1 Puissance ; une unité vidée fait piocher.", [
         uneUniteAdverse([
@@ -231,11 +232,18 @@ const MARINS_ALTERES: CardDefinition[] = [
           {
             type: "buff",
             target: { kind: "self" },
-            attackAmount: { kind: "flat", value: 1 },
+            attackAmount: { kind: "attackRemoved" },
             healthAmount: { kind: "flat", value: 0 },
             duration: "permanent",
           },
-          { type: "draw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 }, conditionTriggerSourcePowerAtMost: 0 },
+          // « tombe à 0 ainsi » : à 0 maintenant, ET le vol lui a pris quelque chose.
+          {
+            type: "draw",
+            target: { kind: "controllerPlayer" },
+            amount: { kind: "flat", value: 1 },
+            conditionTriggerSourcePowerAtMost: 0,
+            conditionAttackRemovedAtLeast: 1,
+          },
         ]),
       ]),
     ],
