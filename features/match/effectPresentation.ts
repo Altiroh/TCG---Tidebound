@@ -30,7 +30,8 @@ import { getCardDefinition, type CardInstance, type GameEvent, type GameState, t
 export const SHOT_FLIGHT_MS = 400;
 /** Réveil d'une carte qui déclenche sa capacité : elle se soulève pendant `AWAKE_LIFT_MS`, pulse, puis retombe. */
 export const AWAKE_LIFT_MS = 180;
-export const AWAKE_MS = 720;
+/** Le réveil tient la carte levée jusqu'au départ des comètes (`AWAKE_LIFT_MS + ORB_CHARGE_MS`), puis elle retombe. */
+export const AWAKE_MS = 800;
 /** L'orbe se forme devant le lanceur et grossit avant de partir vers ses cibles. */
 export const ORB_CHARGE_MS = 420;
 /** Garde : le bouclier quitte son badge, vient au centre, pulse, puis regagne sa carte (`revealGuard`) ; l'attaque attend. */

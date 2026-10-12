@@ -21,6 +21,7 @@ import {
   type SpellSource,
 } from "@/features/match/effectPresentation";
 import { playSpellCast } from "@/lib/sound";
+import { arcControl, arcPoint, COMET_LINGER_MS, cometBounds, createCometPainter, drawOrb, seedFrom, type SpellKind } from "@/features/match/spellFx";
 
 /**
  * Mise en scène des EFFETS (`effectPresentation.ts`) — tout en coordonnées
@@ -60,25 +61,10 @@ function boxOf(el: HTMLElement): Box {
   return { left: r.left, top: r.top, width: r.width, height: r.height };
 }
 
-/** Points d'un arc (Bézier quadratique) de `from` à `to`, bombé vers le haut. */
+/** Points d'un arc (Bézier quadratique) de `from` à `to`, bombé vers le haut — le même que celui des comètes. */
 function arc(from: Point, to: Point, steps = 12): Point[] {
-  const dx = to.x - from.x;
-  const dy = to.y - from.y;
-  const distance = Math.hypot(dx, dy) || 1;
-  // Bombé perpendiculairement au trajet, toujours du côté du haut de l'écran.
-  let nx = -dy / distance;
-  let ny = dx / distance;
-  if (ny > 0) {
-    nx = -nx;
-    ny = -ny;
-  }
-  const bulge = Math.min(140, distance * 0.28);
-  const control = { x: (from.x + to.x) / 2 + nx * bulge, y: (from.y + to.y) / 2 + ny * bulge };
-  return Array.from({ length: steps + 1 }, (_, i) => {
-    const t = i / steps;
-    const u = 1 - t;
-    return { x: u * u * from.x + 2 * u * t * control.x + t * t * to.x, y: u * u * from.y + 2 * u * t * control.y + t * t * to.y };
-  });
+  const control = arcControl(from, to);
+  return Array.from({ length: steps + 1 }, (_, i) => arcPoint(from, control, to, i / steps));
 }
 
 // ── Sorts : l'orbe, puis les comètes ─────────────────────────────────────
@@ -91,39 +77,12 @@ interface ShotGeometry {
   size: number;
 }
 
-/** Famille d'un sort, d'après ce qu'il fait : chacune a sa comète et sa couleur d'orbe. */
-export type SpellKind = "attack" | "heal" | "malus";
-
 /**
- * Les comètes peintes (lot du 10/10/2026) : la TÊTE est à droite de l'image
- * (`head`, en fractions), la traînée part vers la gauche, le vol est
- * horizontal à quelques degrés près (`nativeDeg`). Elles sont tournées, à
- * chaque point de l'arc, selon la tangente du vol — la tête mène.
+ * Orbe et comète sont DESSINÉES image par image (`spellFx.ts`) : la traînée
+ * suit la vraie trajectoire au lieu d'une illustration rigide qu'on faisait
+ * glisser, et l'orbe aspire sa lumière au lieu d'être un simple dégradé.
  */
-const COMETS: Record<SpellKind, { src: string; head: { x: number; y: number }; nativeDeg: number; orb: string; glow: string }> = {
-  attack: {
-    src: "/assets/fx/sorts/sort-attaque.webp",
-    head: { x: 0.85, y: 0.39 },
-    nativeDeg: -4,
-    orb: "radial-gradient(circle at 45% 42%, #ffffff 0%, #dbeafe 24%, #60a5fa 52%, rgba(37,99,235,0) 74%)",
-    glow: "rgba(96,165,250,0.85)",
-  },
-  heal: {
-    src: "/assets/fx/sorts/sort-soin.webp",
-    head: { x: 0.85, y: 0.36 },
-    nativeDeg: -6,
-    orb: "radial-gradient(circle at 45% 42%, #ffffff 0%, #fef3c7 24%, #fbbf24 52%, rgba(217,119,6,0) 74%)",
-    glow: "rgba(251,191,36,0.85)",
-  },
-  malus: {
-    src: "/assets/fx/sorts/sort-malus.webp",
-    head: { x: 0.87, y: 0.5 },
-    nativeDeg: 0,
-    orb: "radial-gradient(circle at 45% 42%, #ffffff 0%, #f5d0fe 22%, #a21caf 52%, rgba(88,28,135,0) 74%)",
-    glow: "rgba(192,38,211,0.85)",
-  },
-};
-const COMET_RATIO = 640 / 480;
+export type { SpellKind };
 
 /** Une comète de sort, du point de départ (l'orbe) à sa cible, le long d'un arc. */
 export interface CometFlight {
@@ -131,100 +90,111 @@ export interface CometFlight {
   from: Point;
   to: Point;
   size: number;
+  /** Sens « devant » du lanceur (`forwardOf`) : une cible qui n'y est pas reçoit le tir en boomerang. */
+  forward: number;
 }
 
-export function Comet({ flight }: { flight: CometFlight }) {
-  const host = useRef<HTMLImageElement>(null);
-  const { kind, from, to, size } = flight;
-  const comet = COMETS[kind];
-  const width = Math.max(120, Math.min(260, size * 1.5));
-  const height = width / COMET_RATIO;
+/** Mouvement réduit : les sorts se posent sans voler. */
+function reducedMotion(): boolean {
+  return typeof window !== "undefined" && Boolean(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches);
+}
 
+/**
+ * Un canvas posé sur `bounds` (coordonnées viewport), net sur écran dense,
+ * qui appelle `paint` à chaque image pendant `durationMs` — en coordonnées
+ * VIEWPORT, le canvas s'en charge — puis se vide.
+ */
+function FxCanvas({
+  bounds,
+  durationMs,
+  paint,
+}: {
+  bounds: { left: number; top: number; width: number; height: number };
+  durationMs: number;
+  paint: (ctx: CanvasRenderingContext2D, elapsed: number) => void;
+}) {
+  const ref = useRef<HTMLCanvasElement>(null);
   useLayoutEffect(() => {
-    const el = host.current;
-    if (!el) return undefined;
-    const points = arc(from, to, 16);
-    const keyframes = points.map((point, i) => {
-      const a = points[Math.max(0, i - 1)]!;
-      const b = points[Math.min(points.length - 1, i + 1)]!;
-      const heading = (Math.atan2(b.y - a.y, b.x - a.x) * 180) / Math.PI;
-      return {
-        transform: `translate(${point.x - from.x}px, ${point.y - from.y}px) rotate(${heading - comet.nativeDeg}deg) scale(${i === 0 ? 0.5 : 1})`,
-        opacity: i === 0 ? 0 : i === points.length - 1 ? 0.6 : 1,
-      };
-    });
-    const animation = el.animate(keyframes, { duration: SHOT_FLIGHT_MS, easing: "cubic-bezier(.45,.05,.75,.95)", fill: "forwards" });
-    return () => animation.cancel();
-  }, [from, to, comet.nativeDeg]);
-
+    const canvas = ref.current;
+    const ctx = canvas?.getContext("2d");
+    if (!canvas || !ctx || reducedMotion()) return undefined;
+    // Plafonné à 2 : au-delà, le coût monte sans que l'œil y gagne.
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    canvas.width = Math.ceil(bounds.width * dpr);
+    canvas.height = Math.ceil(bounds.height * dpr);
+    const startedAt = performance.now();
+    let frame = 0;
+    const tick = (now: number) => {
+      const elapsed = now - startedAt;
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (elapsed >= durationMs) return;
+      ctx.setTransform(dpr, 0, 0, dpr, -bounds.left * dpr, -bounds.top * dpr);
+      paint(ctx, elapsed);
+      frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- un effet ne se joue qu'une fois.
+  }, []);
   return (
-    // eslint-disable-next-line @next/next/no-img-element -- comète peinte, animée à la main
-    <img
-      ref={host}
-      src={comet.src}
-      alt=""
+    <canvas
+      ref={ref}
       aria-hidden
-      draggable={false}
-      className="pointer-events-none absolute z-30 select-none"
-      style={{
-        // La TÊTE est posée sur le point de départ, et c'est autour d'elle que la comète pivote.
-        left: from.x - comet.head.x * width,
-        top: from.y - comet.head.y * height,
-        width,
-        height,
-        opacity: 0,
-        transformOrigin: `${comet.head.x * 100}% ${comet.head.y * 100}%`,
-        mixBlendMode: "screen",
-      }}
+      className="pointer-events-none absolute z-30"
+      style={{ left: bounds.left, top: bounds.top, width: bounds.width, height: bounds.height }}
     />
   );
 }
 
-/** L'orbe qui se forme devant le lanceur : elle naît petite, grossit en pulsant, puis éclate en comètes. */
+export function Comet({ flight }: { flight: CometFlight }) {
+  const [plan] = useState(() => ({ ...flight, flightMs: SHOT_FLIGHT_MS }));
+  const [paint] = useState(() => createCometPainter(plan));
+  // Le ruban se résorbe dans la cible et les particules finissent leur vie après l'arrivée.
+  return <FxCanvas bounds={cometBounds(plan)} durationMs={SHOT_FLIGHT_MS + COMET_LINGER_MS} paint={paint} />;
+}
+
+/** L'orbe qui se forme devant le lanceur : elle aspire sa lumière, scintille, s'embrase, puis éclate en comètes. */
 export function SpellOrb({ kind, point, size }: { kind: SpellKind; point: Point; size: number }) {
-  const ref = useRef<HTMLSpanElement>(null);
-  const comet = COMETS[kind];
-  const diameter = Math.max(34, Math.min(80, size * 0.42));
-
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return undefined;
-    const animation = el.animate(
-      [
-        { transform: "translate(-50%, -50%) scale(0.15)", opacity: 0, filter: `drop-shadow(0 0 4px ${comet.glow})` },
-        { offset: 0.35, transform: "translate(-50%, -50%) scale(0.85)", opacity: 1, filter: `drop-shadow(0 0 16px ${comet.glow})` },
-        { offset: 0.6, transform: "translate(-50%, -50%) scale(0.75)", opacity: 1, filter: `drop-shadow(0 0 8px ${comet.glow})` },
-        { offset: 0.88, transform: "translate(-50%, -50%) scale(1.1)", opacity: 1, filter: `drop-shadow(0 0 22px ${comet.glow})` },
-        { transform: "translate(-50%, -50%) scale(1.25)", opacity: 0.2, filter: `drop-shadow(0 0 26px ${comet.glow})` },
-      ],
-      { duration: ORB_CHARGE_MS, easing: "ease-out", fill: "forwards" }
-    );
-    return () => animation.cancel();
-  }, [comet.glow]);
-
+  const diameter = Math.max(40, Math.min(96, size * 0.5));
+  const reach = diameter * 1.6;
+  const [seed] = useState(() => seedFrom(point.x, point.y, size));
   return (
-    <span
-      ref={ref}
-      aria-hidden
-      className="pointer-events-none absolute z-30"
-      style={{ left: point.x, top: point.y, width: diameter, height: diameter, borderRadius: "9999px", background: comet.orb, opacity: 0, mixBlendMode: "screen" }}
+    <FxCanvas
+      bounds={{ left: point.x - reach, top: point.y - reach, width: reach * 2, height: reach * 2 }}
+      durationMs={ORB_CHARGE_MS}
+      paint={(ctx, elapsed) => drawOrb(ctx, point, diameter, elapsed / ORB_CHARGE_MS, kind, seed)}
     />
   );
 }
 
 /**
- * Où se forme l'orbe : DEVANT le lanceur, c'est-à-dire décalée de sa
- * position vers le centre de l'écran (le milieu du plateau, entre les deux
- * camps), d'un peu plus d'une demi-hauteur de carte.
+ * Sens « devant » d'un lanceur, à la verticale : vers l'autre camp, c'est-à-
+ * dire vers le milieu de la table (+1 : vers le bas de l'écran, −1 : vers le
+ * haut).
+ */
+export function forwardOf(caster: DOMRect): number {
+  return caster.top + caster.height / 2 < window.innerHeight / 2 ? 1 : -1;
+}
+
+/**
+ * Où se forme l'orbe : au BORD de la carte tourné vers la table, en son
+ * centre — le bas d'une carte d'en face, le haut d'une carte de son propre
+ * camp : le tir part devant, jamais à travers la carte. Visé là où le bord
+ * sera une fois la carte SOULEVÉE par son réveil (`awakenCard` :
+ * `translateY(-9%) scale(1.07)` autour de son centre) — la mesure se fait
+ * avant le soulèvement, et l'orbe doit naître accrochée à la carte levée.
  */
 export function orbPointFor(caster: DOMRect): Point {
-  const center = centerOf(caster);
-  const dx = window.innerWidth / 2 - center.x;
-  const dy = window.innerHeight / 2 - center.y;
-  const distance = Math.hypot(dx, dy) || 1;
-  const reach = Math.min(distance * 0.6, caster.height * 0.65);
-  return { x: center.x + (dx / distance) * reach, y: center.y + (dy / distance) * reach };
+  const x = caster.left + caster.width / 2;
+  return forwardOf(caster) > 0
+    ? { x, y: caster.bottom - caster.height * (AWAKE_LIFT_Y - AWAKE_LIFT_GROW / 2) }
+    : { x, y: caster.top - caster.height * (AWAKE_LIFT_Y + AWAKE_LIFT_GROW / 2) };
 }
+
+/** Réveil d'une carte (cf. `awakenCard`) : montée et grossissement, en fraction de sa hauteur. */
+const AWAKE_LIFT_Y = 0.09;
+const AWAKE_LIFT_GROW = 0.07;
 
 /** Le boulet du canon : fonte sombre, liseré de feu. */
 const CANNON_LOOK = {
@@ -644,12 +614,14 @@ interface Orb {
   kind: SpellKind;
   point: Point;
   size: number;
+  /** Sens « devant » du lanceur : ses comètes vers un allié partent en boomerang. */
+  forward: number;
 }
 
 interface Launched {
   orbs: Orb[];
   /** Comètes d'attaque (avec leur impact) et boulets de canon. */
-  shots: Array<ShotGeometry & { kind: SpellKind; start: Point }>;
+  shots: Array<ShotGeometry & { kind: SpellKind; start: Point; forward: number }>;
   /** Comètes sans impact de dégâts : soin, renfort, malus — l'effet se pose à leur arrivée. */
   comets: Array<CometFlight & { key: string }>;
   heals: Array<{ key: string; box: Box; amount: number; sourced: boolean }>;
@@ -679,16 +651,16 @@ function Volley({ volley }: { volley: EffectVolley }) {
         /** Élément d'un lanceur : sa carte, ou — introuvable (Structure cachée, carte partie) — le Navire de son contrôleur. */
         const casterEl = (source: SpellSource) => elementOf(source.from) ?? findElement("ship", source.originPlayerId);
         const orbs = new Map<string, Orb>();
-        const orbFor = (source: SpellSource, kind: SpellKind): Point | null => {
+        const orbFor = (source: SpellSource, kind: SpellKind): Orb | null => {
           const key = sourceKey(source);
           const known = orbs.get(key);
-          if (known) return known.point;
+          if (known) return known;
           const el = casterEl(source);
           if (!el) return null;
           const rect = el.getBoundingClientRect();
-          const orb = { key, kind, point: orbPointFor(rect), size: Math.min(rect.height, 220) };
+          const orb = { key, kind, point: orbPointFor(rect), size: Math.min(rect.height, 220), forward: forwardOf(rect) };
           orbs.set(key, orb);
-          return orb.point;
+          return orb;
         };
 
         const shots: Launched["shots"] = [];
@@ -698,13 +670,13 @@ function Volley({ volley }: { volley: EffectVolley }) {
           const toRect = toEl.getBoundingClientRect();
           const size = Math.min(toRect.height, 220);
           if (shot.look === "magic") {
-            const start = orbFor(shot, "attack");
-            if (start) shots.push({ shot, kind: "attack", from: start, start, to: centerOf(toRect), size });
+            const orb = orbFor(shot, "attack");
+            if (orb) shots.push({ shot, kind: "attack", from: orb.point, start: orb.point, to: centerOf(toRect), size, forward: orb.forward });
           } else {
             const fromEl = casterEl(shot);
             if (fromEl) {
               const from = centerOf(fromEl.getBoundingClientRect());
-              shots.push({ shot, kind: "attack", from, start: from, to: centerOf(toRect), size });
+              shots.push({ shot, kind: "attack", from, start: from, to: centerOf(toRect), size, forward: 0 });
             }
           }
         }
@@ -715,7 +687,9 @@ function Volley({ volley }: { volley: EffectVolley }) {
           if (!el) return [];
           const box = boxOf(el);
           const start = heal.source ? orbFor(heal.source, "heal") : null;
-          if (start) comets.push({ key: `h${index}`, kind: "heal", from: start, to: centerOf(el.getBoundingClientRect()), size: Math.min(box.height, 220) });
+          if (start) {
+            comets.push({ key: `h${index}`, kind: "heal", from: start.point, to: centerOf(el.getBoundingClientRect()), size: Math.min(box.height, 220), forward: start.forward });
+          }
           return [{ key: `${heal.to.kind}-${heal.to.id}-${index}`, box, amount: heal.amount, sourced: Boolean(start) }];
         });
         const chips = volley.buffs.flatMap((buff, index) => {
@@ -724,7 +698,7 @@ function Volley({ volley }: { volley: EffectVolley }) {
           const target = findElement("unit", buff.targetInstanceId);
           if (start && target) {
             const rect = target.getBoundingClientRect();
-            comets.push({ key: `b${index}`, kind, from: start, to: centerOf(rect), size: Math.min(rect.height, 220) });
+            comets.push({ key: `b${index}`, kind, from: start.point, to: centerOf(rect), size: Math.min(rect.height, 220), forward: start.forward });
           }
           return chipsFor(buff).map((chip) => ({ ...chip, key: `${index}-${chip.key}`, sourced: Boolean(start) }));
         });
@@ -772,9 +746,9 @@ function Volley({ volley }: { volley: EffectVolley }) {
         // Le boulet vole dès le départ ; une comète d'attaque après la charge de son orbe.
         geometry.shot.look === "cannon"
           ? !landed && <CannonBall key={`p${index}`} geometry={geometry} />
-          : phase === "flight" && <Comet key={`p${index}`} flight={geometry} />
+          : phase !== "charge" && <Comet key={`p${index}`} flight={geometry} />
       )}
-      {phase === "flight" && launched.comets.map((comet) => <Comet key={comet.key} flight={comet} />)}
+      {phase !== "charge" && launched.comets.map((comet) => <Comet key={comet.key} flight={comet} />)}
       {landed && launched.shots.map((geometry, index) => <ShotImpact key={`i${index}`} geometry={geometry} />)}
       {launched.heals.map((heal) =>
         !heal.sourced || landed ? <HealVeil key={heal.key} box={heal.box} amount={heal.amount} /> : null

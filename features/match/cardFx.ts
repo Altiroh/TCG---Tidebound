@@ -1,7 +1,7 @@
 "use client";
 
 import { playCardAwake, playCardFlip, playGuardIntercept, playTokenDrop } from "@/lib/sound";
-import { AWAKE_LIFT_MS, AWAKE_MS, GUARD_REVEAL_MS } from "@/features/match/effectPresentation";
+import { AWAKE_LIFT_MS, AWAKE_MS, GUARD_REVEAL_MS, ORB_CHARGE_MS } from "@/features/match/effectPresentation";
 
 /**
  * Animations ponctuelles d'UNE carte du plateau (demande du 10/10/2026),
@@ -57,7 +57,8 @@ const AWAKE_GLOW = "rgba(253, 224, 71, 0.95)";
 /**
  * La carte se soulève (\`AWAKE_LIFT_MS\`), sa lueur pulse deux fois, puis elle
  * retombe à sa place — \`AWAKE_MS\` en tout. C'est pendant qu'elle est
- * soulevée que l'orbe de son sort se forme (\`EffectFxLayer\`).
+ * soulevée que l'orbe de son sort se forme, accrochée à son bord bas
+ * (\`EffectFxLayer\`) : elle reste levée jusqu'au départ des comètes.
  */
 export function awakenCard(el: HTMLElement, delayMs = 0): void {
   soundAt(delayMs, playCardAwake);
@@ -69,7 +70,7 @@ export function awakenCard(el: HTMLElement, delayMs = 0): void {
       { offset: AWAKE_LIFT_MS / AWAKE_MS, transform: lifted, filter: `brightness(1.12) drop-shadow(0 0 4px ${AWAKE_GLOW})` },
       { offset: 0.42, transform: lifted, filter: `brightness(1.25) drop-shadow(0 0 18px ${AWAKE_GLOW})` },
       { offset: 0.58, transform: lifted, filter: `brightness(1.1) drop-shadow(0 0 6px ${AWAKE_GLOW})` },
-      { offset: 0.74, transform: lifted, filter: `brightness(1.22) drop-shadow(0 0 16px ${AWAKE_GLOW})`, easing: "cubic-bezier(.5,0,.7,1)" },
+      { offset: (AWAKE_LIFT_MS + ORB_CHARGE_MS) / AWAKE_MS, transform: lifted, filter: `brightness(1.22) drop-shadow(0 0 16px ${AWAKE_GLOW})`, easing: "cubic-bezier(.5,0,.7,1)" },
       { transform: "none", filter: "none" },
     ],
     { duration: AWAKE_MS, delay: delayMs, easing: "cubic-bezier(.2,.8,.3,1)" }
