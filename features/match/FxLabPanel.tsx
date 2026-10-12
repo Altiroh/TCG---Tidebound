@@ -8,7 +8,16 @@ import { EffectFxLayer } from "@/features/match/EffectFxLayer";
 import { applyLabEffect, applyLabPatch, LAB_EFFECTS, type LabEffect } from "@/features/match/labEffects";
 import { PhaseBanner } from "@/features/match/PhaseBanner";
 import { ATTACK_TOTAL_MS, type AttackAnimation } from "@/features/match/useAttackPresentation";
-import { QUALIFICATION_FX, QUALIFICATION_SHOW_MS, type QualificationFx } from "@/features/match/qualificationFx";
+import {
+  activateQualifications,
+  declareCues,
+  declareLeadMs,
+  qualificationMoment,
+  qualificationSteps,
+  qualificationVolleyFor,
+  scheduleSteps,
+  type QualificationFx,
+} from "@/features/match/qualificationFx";
 import { QUALIFICATION_ORDER, QUALIFICATIONS, type QualificationId } from "@/game";
 import { playCombatPhase, playMagicImpact, playSpellImpact, playTurnStart } from "@/lib/sound";
 
@@ -226,8 +235,10 @@ export function FxLabPanel({ cardEffects = false }: { cardEffects?: boolean } = 
 
   /**
    * Une attaque de la source sur la 1re cible, avec les QUALIFICATIONS
-   * demandées : leurs glyphes jouent comme en partie (déclaration, choc,
-   * retour). Éclaboussure et Salve touchent les autres cibles (à défaut, la 1re) ;
+   * demandées, mise en scène comme en partie : les spé. de déclaration
+   * s'activent sur l'attaquant avant qu'il ne parte ; les autres, une fois
+   * l'attaque jouée, s'activent (comme la Garde) puis lancent leur sort.
+   * Éclaboussure et Salve visent les autres cibles (à défaut, la 1re) ;
    * Brèche et Ponction le Navire adverse ; Sangsue le Navire du joueur.
    */
   function qualifiedAttack(ids: QualificationId[]) {
@@ -245,11 +256,10 @@ export function FxLabPanel({ cardEffects = false }: { cardEffects?: boolean } = 
           return (autres.length > 0 ? autres : [target]).map((t) => ({ ...base, targetInstanceId: t.id, amount: qualification === "salve" ? 1 : 2 }));
         }
         case "breche":
-          return [{ ...base, targetPlayerId: defenderShip, amount: 2 }];
         case "ponction":
-          return [{ ...base, targetPlayerId: defenderShip, amount: 2 }];
+          return defenderShip ? [{ ...base, targetPlayerId: defenderShip, amount: 2 }] : [];
         case "sangsue":
-          return [{ ...base, targetPlayerId: ownShip, amount: 3 }];
+          return ownShip ? [{ ...base, targetPlayerId: ownShip, amount: 3 }] : [];
         case "coup-de-grace":
         case "entaille":
         case "carnage":
@@ -258,6 +268,11 @@ export function FxLabPanel({ cardEffects = false }: { cardEffects?: boolean } = 
           return [base];
       }
     });
+    const leadMs = declareLeadMs(fx);
+    // Comme en partie : une spé. à la fois, son sort, puis la suivante.
+    const steps = scheduleSteps(qualificationSteps(fx, "after"), leadMs + ATTACK_TOTAL_MS, (step, spellAtMs) =>
+      qualificationVolleyFor(step.fx, { ownerOf: () => ownShip ?? "p1", stillOnBoard: () => true }, nextId.current++, spellAtMs)
+    );
     const animation: AttackAnimation = {
       id: nextId.current++,
       attackerInstanceId: from.id,
@@ -266,9 +281,27 @@ export function FxLabPanel({ cardEffects = false }: { cardEffects?: boolean } = 
       defenderDies: false,
       attackerDies: false,
       qualifications: fx,
+      leadMs,
+      qualificationCues: [...declareCues(fx), ...steps.map((step) => ({ sourceInstanceId: step.sourceInstanceId, qualification: step.qualification, atMs: step.atMs }))],
     };
     setAttacks((current) => [...current, animation]);
-    window.setTimeout(() => setAttacks((current) => current.filter((it) => it.id !== animation.id)), ATTACK_TOTAL_MS + QUALIFICATION_SHOW_MS + 900);
+    const spells = steps.flatMap((step) => (step.volley ? [step.volley] : []));
+    setVolleys((current) => [...current, ...spells]);
+    const endMs = steps.length > 0 ? steps[steps.length - 1]!.doneMs : leadMs + ATTACK_TOTAL_MS;
+    window.setTimeout(() => {
+      const ids = new Set(spells.map((v) => v.id));
+      setVolleys((current) => current.filter((it) => !ids.has(it.id)));
+      setAttacks((current) => current.filter((it) => it.id !== animation.id));
+    }, endMs + 1500);
+  }
+
+  /** La spé. qui s'active sur chaque cible, seule — comme « Garde qui s'interpose ». */
+  function activateOnTargets(id: QualificationId) {
+    const { to } = resolve();
+    to.forEach((t) => {
+      const el = elementOf(t);
+      if (el) activateQualifications(el, [id]);
+    });
   }
 
   /** Un effet de carte sur les cibles (à défaut, la dernière carte du plateau) — sur l'état réel de la partie du labo. */
@@ -375,14 +408,22 @@ export function FxLabPanel({ cardEffects = false }: { cardEffects?: boolean } = 
             </button>
 
             {cardEffects && <div style={section}>États et effets (cibles)</div>}
-            <div style={section}>Qualifications (source → cibles)</div>
+            <div style={section}>Spé. qui s&apos;active (cibles)</div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+              {QUALIFICATION_ORDER.map((id) => (
+                <button key={id} type="button" style={{ ...button, flex: "1 1 auto" }} title={`${QUALIFICATIONS[id].name} s'active sur les cibles, comme la Garde`} onClick={() => activateOnTargets(id)}>
+                  {QUALIFICATIONS[id].name}
+                </button>
+              ))}
+            </div>
+            <div style={section}>Attaque avec une spé. (source → cibles)</div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
               {QUALIFICATION_ORDER.map((id) => (
                 <button
                   key={id}
                   type="button"
                   style={{ ...button, flex: "1 1 auto" }}
-                  title={`Attaque avec ${QUALIFICATIONS[id].name} — glyphe ${QUALIFICATION_FX[id].moment === "declare" ? "à la déclaration" : QUALIFICATION_FX[id].moment === "impact" ? "au choc" : "après le retour"}`}
+                  title={`Attaque avec ${QUALIFICATIONS[id].name} — la spé. s'active ${qualificationMoment(id) === "declare" ? "avant que l'attaquant ne parte" : "après l'attaque, puis son sort part"}`}
                   onClick={() => qualifiedAttack([id])}
                 >
                   {QUALIFICATIONS[id].name}

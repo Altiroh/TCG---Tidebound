@@ -167,7 +167,6 @@ export function flipCard(el: HTMLElement, delayMs = 0): void {
 // ── Garde ───────────────────────────────────────────────────────────────
 
 const GUARD_ICON_SRC = "/assets/status/garde.webp";
-const GUARD_GOLD = "rgba(253,224,71,0.95)";
 
 /**
  * La Garde SE MONTRE sur la carte \`guard\` : elle se lève, son badge de
@@ -182,11 +181,31 @@ const GUARD_GOLD = "rgba(253,224,71,0.95)";
  */
 export function showGuard(guard: HTMLElement): void {
   window.setTimeout(playGuardIntercept, GUARD_SHOW_MS * 0.18);
-  if (reducedMotion()) return;
+  showBadges(guard, [{ iconSrc: GUARD_ICON_SRC, badgeSelector: `img[src*="/status/garde"]`, color: "253,224,71" }]);
+}
 
+/** Un médaillon qui s'active sur sa carte : son icône, où le trouver sur la carte, et sa couleur (« r,g,b »). */
+export interface BadgeActivation {
+  iconSrc: string;
+  /** Sélecteur du médaillon affiché sur la carte ; introuvable ou caché, l'icône apparaît le temps de se montrer. */
+  badgeSelector: string;
+  color: string;
+}
+
+/**
+ * La carte se LÈVE, ses médaillons (`badges`) scintillent — halo, deux
+ * anneaux, éclats —, puis elle se repose : `GUARD_SHOW_MS` en tout. C'est
+ * la Garde qui s'interpose (`showGuard`), et une QUALIFICATION qui s'active
+ * (`activateQualifications`, `qualificationFx.ts`). Un médaillon qui n'est
+ * pas affiché sur la carte apparaît en haut, le temps de se montrer.
+ */
+export function showBadges(card: HTMLElement, badges: readonly BadgeActivation[]): void {
+  if (reducedMotion() || badges.length === 0) return;
+
+  const glowColor = `rgba(${badges[0]!.color},0.95)`;
   const lifted = "translateY(-9%) scale(1.07)";
-  const glow = (px: number) => `brightness(1.18) drop-shadow(0 0 ${px}px ${GUARD_GOLD})`;
-  guard.animate(
+  const glow = (px: number) => `brightness(1.18) drop-shadow(0 0 ${px}px ${glowColor})`;
+  card.animate(
     [
       { transform: "none", filter: "none", easing: "cubic-bezier(.2,.8,.3,1)" },
       { offset: 0.16, transform: lifted, filter: glow(6) },
@@ -199,22 +218,43 @@ export function showGuard(guard: HTMLElement): void {
     { duration: GUARD_SHOW_MS }
   );
 
-  // Le scintillement se pose au badge s'il est affiché, sinon en haut au centre de la carte. Il vit dans le
-  // calque plein écran — dans la carte, son halo était rogné au RECTANGLE de la tuile, ce qui dessinait un
-  // cadre de carte autour d'un jeton ovale — et suit la carte qui se lève.
-  const badge = guard.querySelector<HTMLImageElement>(`img[src*="/status/garde"]`);
-  const cardBox = guard.getBoundingClientRect();
-  const badgeBox = badge?.getBoundingClientRect();
-  const visibleBadge = badgeBox && badgeBox.width > 0;
-  const size = visibleBadge ? badgeBox.width : cardBox.width * 0.3;
-  const center = visibleBadge
-    ? { x: badgeBox.left + badgeBox.width / 2, y: badgeBox.top + badgeBox.height / 2 }
-    : { x: cardBox.left + cardBox.width / 2, y: cardBox.top + cardBox.height * 0.2 };
-  // Où ce point se trouve une fois la carte levée (`lifted`, autour de son centre).
+  // Le scintillement vit dans le calque plein écran — dans la carte, son halo était rogné au RECTANGLE de la
+  // tuile, ce qui dessinait un cadre de carte autour d'un jeton ovale — et suit la carte qui se lève.
+  const cardBox = card.getBoundingClientRect();
   const cardCenter = { x: cardBox.left + cardBox.width / 2, y: cardBox.top + cardBox.height / 2 };
+  const hidden = badges.filter((b) => {
+    const box = card.querySelector<HTMLElement>(b.badgeSelector)?.getBoundingClientRect();
+    return !box || box.width <= 0;
+  });
+  badges.forEach((activation) => {
+    const badge = card.querySelector<HTMLElement>(activation.badgeSelector);
+    const badgeBox = badge?.getBoundingClientRect();
+    const visibleBadge = Boolean(badgeBox && badgeBox.width > 0);
+    // Les icônes sans médaillon affiché se rangent côte à côte en haut de la carte.
+    const slot = hidden.indexOf(activation);
+    const size = visibleBadge ? badgeBox!.width : cardBox.width * (hidden.length > 1 ? 0.26 : 0.3);
+    const center = visibleBadge
+      ? { x: badgeBox!.left + badgeBox!.width / 2, y: badgeBox!.top + badgeBox!.height / 2 }
+      : { x: cardBox.left + cardBox.width / 2 + (slot - (hidden.length - 1) / 2) * size * 1.1, y: cardBox.top + cardBox.height * 0.2 };
+    showBadgeShimmer({ center, size, cardCenter, cardHeight: cardBox.height, color: activation.color, icon: visibleBadge ? badge! : null, iconSrc: activation.iconSrc });
+  });
+}
+
+function showBadgeShimmer(o: {
+  center: { x: number; y: number };
+  size: number;
+  cardCenter: { x: number; y: number };
+  cardHeight: number;
+  color: string;
+  icon: HTMLElement | null;
+  iconSrc: string;
+}): void {
+  const { center, size, color } = o;
+  const rgba = (a: number) => `rgba(${color},${a})`;
+  // Où ce point se trouve une fois la carte levée (`lifted`, autour de son centre).
   const rise = {
-    x: (center.x - cardCenter.x) * 0.07,
-    y: (center.y - cardCenter.y) * 0.07 - cardBox.height * 0.09,
+    x: (center.x - o.cardCenter.x) * 0.07,
+    y: (center.y - o.cardCenter.y) * 0.07 - o.cardHeight * 0.09,
   };
 
   const host = document.createElement("span");
@@ -243,7 +283,7 @@ export function showGuard(guard: HTMLElement): void {
     position: "absolute",
     inset: "-90%",
     borderRadius: "50%",
-    background: "radial-gradient(circle, rgba(255,251,235,0.95) 0%, rgba(253,224,71,0.6) 22%, rgba(251,191,36,0.22) 48%, rgba(251,191,36,0) 70%)",
+    background: `radial-gradient(circle, rgba(255,251,235,0.95) 0%, ${rgba(0.6)} 22%, ${rgba(0.22)} 48%, ${rgba(0)} 70%)`,
     mixBlendMode: "screen",
     opacity: "0",
   });
@@ -268,8 +308,8 @@ export function showGuard(guard: HTMLElement): void {
       position: "absolute",
       inset: "0",
       borderRadius: "50%",
-      border: `${Math.max(1.5, size * 0.06)}px solid rgba(253,230,138,0.95)`,
-      boxShadow: "0 0 10px rgba(253,224,71,0.8)",
+      border: `${Math.max(1.5, size * 0.06)}px solid ${rgba(0.95)}`,
+      boxShadow: `0 0 10px ${rgba(0.8)}`,
       opacity: "0",
     });
     host.appendChild(ring);
@@ -285,7 +325,7 @@ export function showGuard(guard: HTMLElement): void {
     );
   }
 
-  // Éclats : de petites étoiles qui s'allument tour à tour autour du badge.
+  // Éclats : de petites étoiles qui s'allument tour à tour autour du médaillon.
   const STARS = 6;
   for (let i = 0; i < STARS; i += 1) {
     const angle = (i / STARS) * Math.PI * 2 + 0.4;
@@ -301,7 +341,7 @@ export function showGuard(guard: HTMLElement): void {
       background:
         "linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,251,235,1) 50%, rgba(255,255,255,0) 100%) center / 100% 14% no-repeat, " +
         "linear-gradient(0deg, rgba(255,255,255,0) 0%, rgba(255,251,235,1) 50%, rgba(255,255,255,0) 100%) center / 14% 100% no-repeat",
-      filter: "drop-shadow(0 0 3px rgba(253,224,71,0.95))",
+      filter: `drop-shadow(0 0 3px ${rgba(0.95)})`,
       opacity: "0",
     });
     host.appendChild(star);
@@ -318,25 +358,33 @@ export function showGuard(guard: HTMLElement): void {
     );
   }
 
-  // Le badge lui-même s'illumine et gonfle à chaque pulsation ; sans badge affiché, le bouclier apparaît le temps de se montrer.
-  const icon = visibleBadge && badge ? badge : document.createElement("img");
-  if (icon !== badge) {
-    icon.src = GUARD_ICON_SRC;
-    icon.alt = "";
-    icon.draggable = false;
-    Object.assign(icon.style, { position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "contain" });
-    host.appendChild(icon);
+  // Le médaillon lui-même s'illumine et gonfle à chaque pulsation ; sans médaillon affiché, l'icône apparaît le temps de se montrer.
+  const visible = o.icon !== null;
+  let icon: HTMLElement;
+  if (o.icon) icon = o.icon;
+  else {
+    const img = document.createElement("img");
+    img.src = o.iconSrc;
+    img.alt = "";
+    img.draggable = false;
+    // Glyphe pas encore livré : le halo et les éclats se montrent seuls, jamais une image cassée.
+    img.onerror = () => {
+      img.style.visibility = "hidden";
+    };
+    Object.assign(img.style, { position: "absolute", inset: "0", width: "100%", height: "100%", objectFit: "contain" });
+    host.appendChild(img);
+    icon = img;
   }
   icon.animate(
     [
-      { transform: "scale(1)", filter: "none", opacity: visibleBadge ? 1 : 0 },
-      { transform: "scale(1.35)", filter: `brightness(1.5) drop-shadow(0 0 8px ${GUARD_GOLD})`, opacity: 1, offset: 0.3 },
-      { transform: "scale(1.1)", filter: `brightness(1.15) drop-shadow(0 0 4px ${GUARD_GOLD})`, opacity: 1, offset: 0.48 },
-      { transform: "scale(1.38)", filter: `brightness(1.55) drop-shadow(0 0 10px ${GUARD_GOLD})`, opacity: 1, offset: 0.64 },
-      { transform: "scale(1)", filter: "none", opacity: visibleBadge ? 1 : 0, offset: 0.84 },
-      { transform: "scale(1)", filter: "none", opacity: visibleBadge ? 1 : 0 },
+      { transform: "scale(1)", filter: "none", opacity: visible ? 1 : 0 },
+      { transform: "scale(1.35)", filter: `brightness(1.5) drop-shadow(0 0 8px ${rgba(0.95)})`, opacity: 1, offset: 0.3 },
+      { transform: "scale(1.1)", filter: `brightness(1.15) drop-shadow(0 0 4px ${rgba(0.95)})`, opacity: 1, offset: 0.48 },
+      { transform: "scale(1.38)", filter: `brightness(1.55) drop-shadow(0 0 10px ${rgba(0.95)})`, opacity: 1, offset: 0.64 },
+      { transform: "scale(1)", filter: "none", opacity: visible ? 1 : 0, offset: 0.84 },
+      { transform: "scale(1)", filter: "none", opacity: visible ? 1 : 0 },
     ],
-    { duration: GUARD_SHOW_MS, fill: visibleBadge ? "none" : "both" }
+    { duration: GUARD_SHOW_MS, fill: visible ? "none" : "both" }
   );
 
   fxLayer().appendChild(host);

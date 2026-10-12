@@ -67,9 +67,11 @@ export interface EffectShot {
    * Boulet du canon de Navire, projectile d'effet — ou dégât
    * d'environnement (`DamageEvent.fx`) : `"tide"`, une orbe pourpre se
    * forme sur la piste de Marée et ses comètes frappent ; `"sickness"`, des
-   * bulles vertes éclatent sur l'unité MALADE (`from` vaut alors `to`).
+   * bulles vertes éclatent sur l'unité MALADE (`from` vaut alors `to`) ;
+   * `"drain"`, un sort de MALUS (comète pourpre) qui ne fait pas de dégât —
+   * Ponction, qui fait perdre de la Raison à un Navire.
    */
-  look: "magic" | "cannon" | "tide" | "sickness" | "glow";
+  look: "magic" | "cannon" | "tide" | "sickness" | "glow" | "drain";
 }
 
 /**
@@ -311,7 +313,7 @@ export function deriveEffectVolley(events: GameEvent[], before: GameState, after
   if (shots.length === 0 && heals.length === 0 && buffs.length === 0 && reason.length === 0 && awakens.size === 0 && breaks.length === 0) return null;
   // Seuls les sorts LANCÉS chargent une orbe ; un effet activé s'illumine sur sa carte.
   const casts =
-    shots.some((shot) => shot.look === "magic" || shot.look === "tide") ||
+    shots.some((shot) => shot.look === "magic" || shot.look === "tide" || shot.look === "drain") ||
     heals.some((heal) => heal.source && !heal.source.glow) ||
     buffs.some((buff) => buff.source && !buff.source.glow);
   // Avant la charge de l'orbe : le réveil du lanceur, ou l'Objet brisé qui gagne son Cimetière.

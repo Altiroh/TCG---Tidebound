@@ -71,7 +71,7 @@ function leech(ctx: Ctx, holder: CardInstance, holderOwnerId: PlayerId, dealt: n
     ...ctx.state,
     players: ctx.state.players.map((p) => (p.id === holderOwnerId ? { ...p, anchor: p.anchor + healed } : p)) as [PlayerState, PlayerState],
   };
-  ctx.events.push({ ...ctx.base, type: "HEAL", targetPlayerId: holderOwnerId, amount: healed });
+  ctx.events.push({ ...ctx.base, type: "HEAL", targetPlayerId: holderOwnerId, amount: healed, byQualification: "sangsue" });
   triggered(ctx, "sangsue", holder, { targetPlayerId: holderOwnerId, amount: healed });
 }
 
@@ -90,7 +90,7 @@ function gash(ctx: Ctx, holder: CardInstance, target: CardInstance, targetOwnerI
       { id: `entaille_${holder.instanceId}_${ctx.base.turnNumber}_${u.modifiers.length}`, source: holder.cardId, attack: -amount, health: 0, duration: "permanent" },
     ],
   }));
-  ctx.events.push({ ...ctx.base, type: "DEBUFF_APPLIED", targetInstanceId: target.instanceId, attack: -amount, health: 0 });
+  ctx.events.push({ ...ctx.base, type: "DEBUFF_APPLIED", targetInstanceId: target.instanceId, attack: -amount, health: 0, byQualification: "entaille" });
   triggered(ctx, "entaille", holder, { targetInstanceId: target.instanceId, amount });
 }
 
@@ -101,7 +101,7 @@ function drain(ctx: Ctx, holder: CardInstance, victimId: PlayerId, shipDamage: n
   const perte = loseReason(ctx.state, victimId, amount, ctx.base.turnNumber);
   ctx.state = perte.state;
   if (perte.lost > 0) {
-    ctx.events.push({ ...ctx.base, type: "REASON_CHANGED", playerId: victimId, delta: -perte.lost });
+    ctx.events.push({ ...ctx.base, type: "REASON_CHANGED", playerId: victimId, delta: -perte.lost, byQualification: "ponction" });
     triggered(ctx, "ponction", holder, { targetPlayerId: victimId, amount: perte.lost });
   }
 }
@@ -116,7 +116,7 @@ function hitUnit(ctx: Ctx, holder: CardInstance, ownerId: PlayerId, target: Card
     lastDamageBy: undefined,
     lastDamageTurn: ctx.base.turnNumber,
   }));
-  ctx.events.push({ ...ctx.base, type: "DAMAGE", targetInstanceId: target.instanceId, amount, cause: "combat", dealerInstanceId: holder.instanceId });
+  ctx.events.push({ ...ctx.base, type: "DAMAGE", targetInstanceId: target.instanceId, amount, cause: "combat", dealerInstanceId: holder.instanceId, byQualification: "eclaboussure" });
   return amount;
 }
 
@@ -128,7 +128,7 @@ function hitShip(ctx: Ctx, holder: CardInstance, victimId: PlayerId, amount: num
     players: ctx.state.players.map((p) => {
       if (p.id !== victimId) return p;
       const coup = damageShip(p, amount, ctx.base.turnNumber);
-      ctx.events.push(...coup.events);
+      ctx.events.push(...coup.events.map((event) => ({ ...event, byQualification: "breche" as const })));
       return coup.player;
     }) as [PlayerState, PlayerState],
   };
@@ -140,6 +140,7 @@ function hitShip(ctx: Ctx, holder: CardInstance, victimId: PlayerId, amount: num
     targetAnchorAfter: getPlayer(ctx.state, victimId).anchor,
     cause: "combat",
     dealerInstanceId: holder.instanceId,
+    byQualification: "breche",
   });
   return amount;
 }

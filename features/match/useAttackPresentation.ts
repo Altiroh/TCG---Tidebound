@@ -3,7 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 import { type GameEvent, type GameState, type PlayerId } from "@/game";
 import { deriveEffectVolley, patchedDisplay, volleyLandingMs, type EffectVolley } from "@/features/match/effectPresentation";
-import { qualificationFxFrom, type QualificationFx } from "@/features/match/qualificationFxData";
+import {
+  declareCues,
+  declareLeadMs,
+  qualificationFxFrom,
+  qualificationTimeline,
+  type QualificationCue,
+  type QualificationFx,
+} from "@/features/match/qualificationFxData";
 import { beforeDieDisplay, dieHoldMs, freshDieRoll, type DieHold } from "@/features/match/dicePresentation";
 
 export interface AttackAnimation {
@@ -21,8 +28,12 @@ export interface AttackAnimation {
   defenderDies: boolean;
   /** L'attaquant a quitté le plateau (riposte mortelle). */
   attackerDies: boolean;
-  /** Qualifications qui ont joué pendant cette attaque (`QUALIFICATION_TRIGGERED`) : leur glyphe se montre au bon moment. */
+  /** Qualifications qui ont joué pendant cette attaque (`QUALIFICATION_TRIGGERED`) : elles s'activent au bon moment. */
   qualifications?: QualificationFx[];
+  /** Attente avant que l'attaquant ne parte : ses spé. de déclaration s'activent d'abord. */
+  leadMs?: number;
+  /** Quand chaque spé. s'active (déclaration, puis après l'attaque) — une à la fois, jamais ensemble. */
+  qualificationCues?: QualificationCue[];
 }
 
 /**
@@ -76,7 +87,7 @@ export function deriveAttack(events: GameEvent[], after: GameState, id: number):
     retaliation,
     defenderDies: Boolean(event.defenderInstanceId) && !onAnyBoard(after, event.defenderInstanceId!),
     attackerDies: !onAnyBoard(after, event.attackerInstanceId),
-    ...(qualifications.length > 0 ? { qualifications } : {}),
+    ...(qualifications.length > 0 ? { qualifications, leadMs: declareLeadMs(qualifications), qualificationCues: declareCues(qualifications) } : {}),
   };
 }
 
@@ -102,6 +113,12 @@ interface Presentation {
    * lise sa face ; la suite du lot (`after`) se met en scène ensuite.
    */
   dice: { hold: DieHold; shown: GameState; after: GameEvent[] } | null;
+  /**
+   * Après l'attaque classique, les spé. s'activent et lancent leurs sorts
+   * (`qualificationFxData.ts`) : le plateau affiche `interim` — l'attaque
+   * jouée, pas encore ses effets de qualification — jusqu'à `endMs`.
+   */
+  post?: { volleys: EffectVolley[]; displays: Array<{ atMs: number; held: GameState }>; endMs: number } | null;
 }
 
 /** Mise en scène d'un lot d'événements : l'attaque, sinon les effets, et l'état à afficher en attendant. */
@@ -110,15 +127,39 @@ function stage(previous: GameState, live: GameState, events: GameEvent[], nextId
   // Attaquer une Garde ne la montre pas : le coup part. Elle se montre quand on attaque À CÔTÉ d'elle (`showGuard`).
   const attack = derived;
   if (attack) nextId.current += 1;
-  const volley = deriveEffectVolley(events, previous, live, nextId.current);
+  // Les effets des qualifications se jouent APRÈS l'attaque, en sorts de leur porteur : pas avec le coup.
+  const volley = deriveEffectVolley(
+    events.filter((event) => !event.byQualification),
+    previous,
+    live,
+    nextId.current
+  );
   if (volley) nextId.current += 1;
-  const staged = attack !== null || volley !== null;
+  let post: Presentation["post"] = null;
+  let staging = attack;
+  const fx = attack?.qualifications ?? [];
+  if (attack && fx.length > 0) {
+    // Après l'attaque classique, retour compris : les spé. s'enchaînent, une à la fois.
+    const timeline = qualificationTimeline(previous, live, fx, attack.amount, (attack.leadMs ?? 0) + ATTACK_TOTAL_MS, () => nextId.current++);
+    if (timeline.steps.length > 0) {
+      post = { volleys: timeline.steps.flatMap((step) => (step.volley ? [step.volley] : [])), displays: timeline.displays, endMs: timeline.endMs };
+      staging = {
+        ...attack,
+        qualificationCues: [
+          ...(attack.qualificationCues ?? []),
+          ...timeline.steps.map((step) => ({ sourceInstanceId: step.sourceInstanceId, qualification: step.qualification, atMs: step.atMs })),
+        ],
+      };
+    }
+  }
+  const staged = staging !== null || volley !== null;
   return {
     live,
-    held: attack ? previous : volley ? patchedDisplay(previous, live, volley) : null,
-    attack,
+    held: staging ? previous : volley ? patchedDisplay(previous, live, volley) : null,
+    attack: staging,
     volley,
     finalBlow: staged && live.status === "finished" && previous.status !== "finished",
+    post,
   };
 }
 
@@ -202,29 +243,38 @@ export function useAttackPresentation(live: GameState): {
   const staged = presentation.attack;
   const volley = presentation.volley;
   const finalBlow = presentation.finalBlow;
+  const post = presentation.post ?? null;
   useEffect(() => {
     if (!staged && !volley) return;
+    const lead = staged?.leadMs ?? 0;
     if (staged) setAttacks((current) => (current.some((it) => it.id === staged.id) ? current : [...current, staged]));
-    if (volley) setVolleys((current) => (current.some((it) => it.id === volley.id) ? current : [...current, volley]));
+    const spells = post?.volleys ?? [];
+    for (const v of [volley, ...spells]) {
+      if (v) setVolleys((current) => (current.some((it) => it.id === v.id) ? current : [...current, v]));
+    }
 
     // L'attaque retient l'état si elle est là ; sinon, la volée jusqu'à son dernier impact.
     const baseHold = staged
-      ? (staged.defenderDies || staged.attackerDies ? ATTACK_TOTAL_MS : ATTACK_IMPACT_AT_MS)
+      ? lead + (staged.defenderDies || staged.attackerDies ? ATTACK_TOTAL_MS : ATTACK_IMPACT_AT_MS)
       : volleyLandingMs(volley!);
+    // Les spé. d'après l'attaque : l'état intermédiaire jusqu'à l'arrivée de leurs sorts.
+    const endHold = post ? Math.max(baseHold, post.endMs) : baseHold;
     // Le coup de grâce : l'écran de fin n'arrive qu'une fois le coup joué
     // jusqu'au bout, retour compris, et le temps d'un souffle.
-    const holdMs = finalBlow ? Math.max(baseHold, staged ? ATTACK_TOTAL_MS : 0) + FINAL_BLOW_LINGER_MS : baseHold;
-    const release = setTimeout(
-      () =>
-        setPresentation((current) =>
-          current.attack === staged && current.volley === volley ? { ...current, held: null } : current
-        ),
-      holdMs
-    );
-    if (staged) setTimeout(() => setAttacks((current) => current.filter((it) => it.id !== staged.id)), ATTACK_TOTAL_MS + 900);
-    if (volley) setTimeout(() => setVolleys((current) => current.filter((it) => it.id !== volley.id)), volleyLandingMs(volley) + 1400);
-    return () => clearTimeout(release);
-  }, [staged, volley, finalBlow]);
+    const holdMs = finalBlow ? Math.max(endHold, staged ? lead + ATTACK_TOTAL_MS : 0) + FINAL_BLOW_LINGER_MS : endHold;
+    const mine = (current: Presentation) => current.attack === staged && current.volley === volley;
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    // Le plateau suit les spé. : au début aucune n'a agi, puis chacune a agi quand son étape est finie.
+    for (const display of post?.displays ?? []) {
+      timers.push(setTimeout(() => setPresentation((current) => (mine(current) ? { ...current, held: display.held } : current)), Math.max(baseHold, display.atMs)));
+    }
+    timers.push(setTimeout(() => setPresentation((current) => (mine(current) ? { ...current, held: null } : current)), holdMs));
+    if (staged) setTimeout(() => setAttacks((current) => current.filter((it) => it.id !== staged.id)), Math.max(lead + ATTACK_TOTAL_MS, post?.endMs ?? 0) + 900);
+    for (const v of [volley, ...spells]) {
+      if (v) setTimeout(() => setVolleys((current) => current.filter((it) => it.id !== v.id)), volleyLandingMs(v) + 1400);
+    }
+    return () => timers.forEach((timer) => clearTimeout(timer));
+  }, [staged, volley, finalBlow, post]);
 
   return {
     displayState: presentation.held ?? presentation.live,

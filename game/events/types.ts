@@ -58,6 +58,12 @@ export interface BaseGameEvent {
   timestamp: number;
   playerId?: PlayerId;
   /**
+   * L'événement est l'EFFET d'une qualification (Brèche, Sangsue, Ponction,
+   * Entaille, Éclaboussure, Salve…) : la mise en scène le joue après
+   * l'attaque, en sort lancé par le porteur, et non avec le coup.
+   */
+  byQualification?: QualificationId;
+  /**
    * Rang de l'ACTION de joueur (un appel à `dispatch`) qui a produit cet
    * événement, et joueur qui l'a soumise. Posés par `dispatch` sur tout ce
    * qu'il verse au journal, et nulle part ailleurs.

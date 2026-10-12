@@ -211,9 +211,10 @@ function CannonBall({ geometry }: { geometry: ShotGeometry }) {
 function ShotImpact({ geometry }: { geometry: ShotGeometry }) {
   return (
     <>
-      <ImpactFlash point={geometry.to} tint={geometry.shot.look === "glow" ? "magic" : geometry.shot.look} />
+      <ImpactFlash point={geometry.to} tint={geometry.shot.look === "glow" ? "magic" : geometry.shot.look === "drain" ? "tide" : geometry.shot.look} />
       {geometry.shot.look === "cannon" && geometry.rect && <ImpactDust plan={{ rect: geometry.rect, from: geometry.from, shape: geometry.shape }} />}
-      <FloatingDamage point={geometry.to} amount={geometry.shot.amount} />
+      {/* Un malus ne blesse pas : pas de plaque de dégâts (la Raison perdue tombe sur sa jauge). */}
+      {geometry.shot.look !== "drain" && <FloatingDamage point={geometry.to} amount={geometry.shot.amount} />}
     </>
   );
 }
@@ -658,9 +659,10 @@ function Volley({ volley }: { volley: EffectVolley }) {
           if (!toEl) continue;
           const toRect = toEl.getBoundingClientRect();
           const size = Math.min(toRect.height, 220);
-          if (shot.look === "magic") {
-            const orb = orbFor(shot, "attack");
-            if (orb) shots.push({ shot, kind: "attack", from: orb.point, start: orb.point, to: centerOf(toRect), size, forward: orb.forward });
+          if (shot.look === "magic" || shot.look === "drain") {
+            const kind: SpellKind = shot.look === "drain" ? "malus" : "attack";
+            const orb = orbFor(shot, kind);
+            if (orb) shots.push({ shot, kind, from: orb.point, start: orb.point, to: centerOf(toRect), size, forward: orb.forward });
           } else if (shot.look === "tide") {
             // La Marée frappe : une orbe pourpre se forme sur sa piste, et ses comètes partent vers chaque cible.
             const track = document.querySelector<HTMLElement>("[data-tide-track]");

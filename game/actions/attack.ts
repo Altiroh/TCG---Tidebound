@@ -817,7 +817,7 @@ function resolveAttack(state: GameState, action: AttackAction): ActionResult {
       nextState = coup.state;
       if (coup.amountApplied > 0) {
         // Pas de `combat` : la plaque du coup principal ne compte que la cible déclarée ; la Salve a sa propre mise en scène.
-        events.push({ ...base, type: "DAMAGE", targetInstanceId: cible.instanceId, amount: coup.amountApplied, cause: "combat", dealerInstanceId: attackerUnit.instanceId });
+        events.push({ ...base, type: "DAMAGE", targetInstanceId: cible.instanceId, amount: coup.amountApplied, cause: "combat", dealerInstanceId: attackerUnit.instanceId, byQualification: "salve" });
         const rendu = restoreStructureResistanceAfterLoss(nextState, opponent.id, cible.instanceId, coup.amountApplied, etat.turnNumber);
         nextState = rendu.state;
         events.push(...rendu.events);

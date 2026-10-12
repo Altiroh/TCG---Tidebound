@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { ATTACK_IMPACT_AT_MS, ATTACK_TIMINGS, ATTACK_TOTAL_MS, type AttackAnimation } from "@/features/match/useAttackPresentation";
-import { playQualificationFx } from "@/features/match/qualificationFx";
+import { activateQualifications } from "@/features/match/qualificationFx";
 import { playAttackImpact, playCardAwake, playShipHit } from "@/lib/sound";
 import { FxCanvas, reducedMotion } from "@/features/match/FxCanvas";
 import { silhouetteOf, type Silhouette } from "@/features/match/silhouette";
@@ -316,7 +316,8 @@ function SingleAttack({ attack }: { attack: AttackAnimation }) {
     const targetRect = targetEl.getBoundingClientRect();
     setGeometry({ from: centerOf(attackerEl.getBoundingClientRect()), to: centerOf(targetRect), size: Math.min(targetRect.height, 220), rect: targetRect, shape: silhouetteOf(targetEl) });
     // Le coup part tout de suite, Garde ou non : une Garde se montre quand on attaque À CÔTÉ d'elle (`showGuard`).
-    const lead = 0;
+    // Une spé. de déclaration (Rafale, Déluge, Contournement) s'active d'abord : l'attaquant part ensuite.
+    const lead = attack.leadMs ?? 0;
     let attackerAnimation: Animation | null = null;
     const startTimer = setTimeout(() => {
       // La carte se soulève pour frapper : elle se réveille, à l'oreille aussi.
@@ -324,9 +325,16 @@ function SingleAttack({ attack }: { attack: AttackAnimation }) {
       attackerAnimation = animateAttacker(attackerEl, targetRect);
     }, lead);
     // Les qualifications de cette attaque : leur glyphe à la déclaration, au choc ou après le retour (`qualificationFx.ts`).
-    const cancelQualifications = (attack.qualifications ?? []).map((fx, index) =>
-      playQualificationFx(fx, { impactAtMs: lead + ATTACK_IMPACT_AT_MS, afterMs: lead + ATTACK_TOTAL_MS }, index)
-    );
+    // Les spé. : à la déclaration sur l'attaquant ; les autres une fois l'attaque classique jouée, retour compris,
+    // sur la carte qui les porte (l'attaquant, ou le défenseur pour sa riposte). Leurs sorts suivent (`EffectFxLayer`).
+    // Une spé. à la fois (`qualificationCues`), jamais toutes ensemble.
+    const cancelQualifications = (attack.qualificationCues ?? []).map((cue) => {
+      const timer = setTimeout(() => {
+        const el = findElement("unit", cue.sourceInstanceId);
+        if (el) activateQualifications(el, [cue.qualification]);
+      }, cue.atMs);
+      return () => clearTimeout(timer);
+    });
 
     const impactTimer = setTimeout(() => {
       setImpacted(true);
