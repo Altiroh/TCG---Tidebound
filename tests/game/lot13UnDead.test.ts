@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { CARD_DATABASE, CORE_SET, UN_DEAD, VEILLEE_DES_DISPARUS, getCardDefinition } from "@/game/cards/sets/core";
 import type { CardDefinition } from "@/game/cards/types";
-import { dispatch } from "@/game/engine";
+// Effets d'arrivée facultatifs (12/10/2026) : jouer une carte accepte son effet d'arrivée, comme « Appliquer ».
+import { dispatch } from "@/tests/game/arrivalDispatch";
 import { hasGraveyardArrival } from "@/game/effects/resolveEffect";
 import { countArchetypeUnits } from "@/game/cards/archetypes";
 import { answerHandDiscard, instance, testEnvironment, testGameState, testPlayer, enFinDeTour } from "./testHelpers";
@@ -387,19 +388,21 @@ describe("Lot 13 — choisir une carte du Cimetière ailleurs que sur un Bris", 
       ],
     });
 
-    // Sans désignation, la pose est refusée : il y avait une carte éligible,
-    // et le moteur ne choisit pas à la place du joueur.
+    // Sans désignation, la carte se pose (effets d'arrivée facultatifs, 12/10/2026) : son effet
+    // attend dans la fenêtre, où le joueur désigne la carte du Cimetière — ou passe.
     const sansChoix = dispatch(state, { type: "playCard", playerId: "p1", instanceId: tuViensJouer.instanceId });
-    expect(sansChoix.ok).toBe(false);
+    expect(sansChoix.ok).toBe(true);
+    if (sansChoix.ok) expect(sansChoix.state.pendingReaction?.awaitingPlayerId).toBe("p1");
 
-    // Une carte hors filtre est refusée elle aussi.
+    // Une carte hors filtre est refusée elle aussi : la fenêtre ne l'accepte pas, elle reste au Cimetière.
     const horsFiltre = dispatch(state, {
       type: "playCard",
       playerId: "p1",
       instanceId: tuViensJouer.instanceId,
       chosenGraveyardInstanceId: trop.instanceId,
     });
-    expect(horsFiltre.ok).toBe(false);
+    ok(horsFiltre);
+    expect(horsFiltre.state.players[0].graveyard.map((c) => c.instanceId)).toContain(trop.instanceId);
 
     const joue = dispatch(state, {
       type: "playCard",

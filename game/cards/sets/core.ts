@@ -1,6 +1,7 @@
 import { unitHasSubtype } from "@/game/cards/markers";
 import { HIDDEN_CARD_DEFINITION, HIDDEN_CARD_ID } from "@/game/cards/hiddenCard";
 import { TOKEN_SET } from "@/game/cards/sets/tokens";
+import { withOptionalArrival } from "@/game/cards/arrivalRule";
 import { ECLATS_EN_SELLE_SET } from "@/game/cards/sets/eclatsEnSelle";
 import { ALTERES_SET } from "@/game/cards/sets/alteres";
 import { LANDES_SET } from "@/game/cards/sets/landes";
@@ -122,7 +123,12 @@ export const VEILLEE_DES_DISPARUS = "veillee-des-disparus";
  */
 export const UN_DEAD = "un-dead";
 
-export const CORE_SET: CardDefinition[] = [
+/**
+ * Le catalogue tel que le moteur le lit : les définitions écrites, sur
+ * lesquelles s'applique la règle des effets d'arrivée facultatifs
+ * (`game/cards/arrivalRule.ts`, 12/10/2026).
+ */
+const WRITTEN_SET: CardDefinition[] = [
   // ======================================================================
   // LOT 01 — Premières cartes
   // ======================================================================
@@ -5467,6 +5473,8 @@ export const CORE_SET: CardDefinition[] = [
   // Lot 18 — cartes de plateau génériques (emplacements condamnés / ajoutés).
   ...LOT18_PLATEAU_SET,
 ];
+
+export const CORE_SET: CardDefinition[] = WRITTEN_SET.map(withOptionalArrival);
 
 /**
  * Index de résolution : le catalogue collectionnable PLUS les jetons

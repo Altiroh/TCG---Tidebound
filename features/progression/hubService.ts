@@ -171,6 +171,47 @@ async function readClaims(service: Service, userId: string): Promise<Set<string>
   return new Set((data ?? []).map((row) => `${row.kind}|${row.claim_key}`));
 }
 
+type MatchShipRow = {
+  id: string;
+  player1_id: string;
+  player1_deck_id: string | null;
+  player2_deck_id: string | null;
+  player1_ship_id: string | null;
+  player2_ship_id: string | null;
+  /** Navire ACTUEL du deck personnel joué — seulement quand la base n'a pas encore les navires figés. */
+  deckShip?: string;
+};
+
+/**
+ * Les parties d'un lot, avec leur Navire figé (`matches.playerN_ship_id`,
+ * migration `20261016120000_audit_securite.sql`). Migration pas encore
+ * appliquée (les migrations passent À LA MAIN) : la lecture de ces colonnes
+ * échouait en silence et AUCUNE partie ne comptait — la Maîtrise restait
+ * à zéro (retour du 12/10/2026). On relit alors sans elles, et le Navire
+ * d'un deck personnel vient du deck lui-même, faute de mieux.
+ */
+/** Un deck personnel a un identifiant UUID ; un préconstruit, un nom (« la-veillee ») que la colonne refuserait. */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+async function readMatchShips(service: Service, userId: string, chunk: string[]): Promise<MatchShipRow[]> {
+  const frozen = await service
+    .from("matches")
+    .select("id, player1_id, player1_deck_id, player2_deck_id, player1_ship_id, player2_ship_id")
+    .in("id", chunk);
+  if (!frozen.error) return (frozen.data ?? []) as MatchShipRow[];
+  console.error("[readMatchHistory] Navires figés illisibles, repli sur les decks :", frozen.error.message);
+  const { data } = await service.from("matches").select("id, player1_id, player1_deck_id, player2_deck_id").in("id", chunk);
+  const rows = (data ?? []).map((m) => ({ ...m, player1_ship_id: null, player2_ship_id: null })) as MatchShipRow[];
+  const deckIds = [...new Set(rows.map((m) => (m.player1_id === userId ? m.player1_deck_id : m.player2_deck_id)).filter((id): id is string => Boolean(id) && UUID.test(id!)))];
+  if (deckIds.length === 0) return rows;
+  const { data: decks } = await service.from("player_decks").select("id, ship_id").in("id", deckIds);
+  const shipOfDeck = new Map((decks ?? []).map((d) => [d.id, d.ship_id] as const));
+  return rows.map((m) => {
+    const deckId = m.player1_id === userId ? m.player1_deck_id : m.player2_deck_id;
+    return { ...m, deckShip: deckId ? shipOfDeck.get(deckId) : undefined };
+  });
+}
+
 /** XP de compte par Navire, et parties de la semaine en cours. */
 async function readMatchHistory(service: Service, userId: string, weekStart: string) {
   const { data: rewards } = await service
@@ -190,18 +231,15 @@ async function readMatchHistory(service: Service, userId: string, weekStart: str
   const matchIds = rows.map((row) => row.match_id);
   for (let start = 0; start < matchIds.length; start += 200) {
     const chunk = matchIds.slice(start, start + 200);
-    const { data: matches } = await service
-      .from("matches")
-      .select("id, player1_id, player1_deck_id, player2_deck_id, player1_ship_id, player2_ship_id")
-      .in("id", chunk);
+    const matches = await readMatchShips(service, userId, chunk);
     const shipOf = new Map<string, string>();
-    for (const match of matches ?? []) {
+    for (const match of matches) {
       const isPlayer1 = match.player1_id === userId;
       const frozen = isPlayer1 ? match.player1_ship_id : match.player2_ship_id;
       const deckId = isPlayer1 ? match.player1_deck_id : match.player2_deck_id;
-      // Navire figé au démarrage ; à défaut (partie antérieure à la
-      // migration sans état conservé), seul un préconstruit fait foi.
-      const shipId = frozen ?? (deckId ? preconShip(deckId) : undefined);
+      // Navire figé au démarrage ; à défaut, un préconstruit fait foi, puis
+      // — colonnes figées absentes de la base — le Navire du deck personnel.
+      const shipId = frozen ?? (deckId ? (preconShip(deckId) ?? match.deckShip) : undefined);
       if (shipId) shipOf.set(match.id, shipId);
     }
     for (const row of rows.slice(start, start + 200)) {

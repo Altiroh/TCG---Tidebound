@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { dispatch } from "@/game/engine";
+// Effets d'arrivée facultatifs (12/10/2026) : jouer une carte accepte son effet d'arrivée, comme « Appliquer ».
+import { dispatch } from "@/tests/game/arrivalDispatch";
 import { auraContextOf, computeEffectiveStats } from "@/game/cards/stats";
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { hasEffectiveKeyword } from "@/game/rules/validation";
@@ -187,7 +188,12 @@ describe("la lignée LV et l'Île-Tortue Opaline", () => {
     const lv1 = instance("eidolon-opalin-lv1", "p1", { levelMarkers: 1 });
     const lv5 = instance("eidolon-opalin-lv5", "p1");
     const state = table({ board: [lv1], deck: [lv5, ...Array.from({ length: 5 }, () => instance("marin-des-jetees", "p1"))] });
-    const r = dispatch(enFinDeTour(state), { type: "endTurn", playerId: "p1" });
+    const fin = dispatch(enFinDeTour(state), { type: "endTurn", playerId: "p1" });
+    ok(fin);
+    // Son effet d'arrivée se propose (12/10/2026) : le joueur l'accepte.
+    const arrivee = fin.state.players[0].board.find((u) => u.cardId === "eidolon-opalin-lv5")!;
+    const index = getCardDefinition("eidolon-opalin-lv5").abilities!.findIndex((a) => a.arrivalEffect);
+    const r = dispatch(fin.state, { type: "activateReaction", playerId: "p1", sourceInstanceId: arrivee.instanceId, abilityIndex: index });
     ok(r);
     const p1 = joueur(r.state);
     expect(p1.board.some((u) => u.instanceId === lv1.instanceId)).toBe(false);

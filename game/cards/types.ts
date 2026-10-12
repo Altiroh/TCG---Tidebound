@@ -182,6 +182,12 @@ export interface TriggerSourceFilter {
 export interface TriggeredAbility {
   trigger: TriggerType;
   effects: EffectDefinition[];
+  /**
+   * Effet d'ARRIVÉE rendu facultatif par la règle générale du 12/10/2026
+   * (`game/cards/arrivalRule.ts`) : il se propose (Appliquer / Passer) au
+   * lieu de s'imposer. Posé par le catalogue, jamais à la main.
+   */
+  arrivalEffect?: true;
   /** Texte optionnel affiché dans l'UI ; pas de logique attachée. */
   description?: string;
 

@@ -8,7 +8,7 @@ import { computeEffectiveStats } from "@/game/cards/stats";
 import { isVisibleDuringTide, UNIT_CARD_TYPES, type CardInstance, type TriggeredAbility, type TriggerSourceFilter } from "@/game/cards/types";
 import type { EffectDefinition } from "@/game/effects/types";
 import type { EffectContext } from "@/game/effects/resolveEffect";
-import { hasGraveyardArrival, resolveEffect, setEveilRunner } from "@/game/effects/resolveEffect";
+import { effectConditionsMet, hasGraveyardArrival, resolveEffect, setEveilRunner } from "@/game/effects/resolveEffect";
 import { resolveEffectSequence } from "@/game/effects/resolveSequence";
 import type { GameEvent } from "@/game/events/types";
 import { chosenTargetRequirement, eligibleChosenUnits } from "@/game/effects/chosenTargets";
@@ -483,6 +483,21 @@ const PLAYER_FACT_TRIGGERS = new Set<string>([
 ]);
 
 function collectTriggeredWork(
+  state: GameState,
+  event: TriggerEvent,
+  turnNumber: number,
+  mode: "auto" | "optional"
+): TriggeredWork[] {
+  // Un effet d'ARRIVÉE facultatif (`arrivalRule.ts`) ne se propose que s'il ferait quelque chose :
+  // toutes ses conditions manquées (« si la Marée est Tempête »…), la fenêtre n'a pas lieu d'être.
+  return collectTriggeredWorkRaw(state, event, turnNumber, mode).filter((item) => {
+    const ability = getCardDefinition(item.cardId).abilities?.[item.abilityIndex];
+    if (!ability?.arrivalEffect) return true;
+    return item.effects.some((effect) => effectConditionsMet(state, effect, item.context, { ignoreChosenTarget: true }));
+  });
+}
+
+function collectTriggeredWorkRaw(
   state: GameState,
   event: TriggerEvent,
   turnNumber: number,

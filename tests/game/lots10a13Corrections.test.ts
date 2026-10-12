@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { dispatch } from "@/game/engine";
+// Effets d'arrivée facultatifs (12/10/2026) : jouer une carte accepte son effet d'arrivée, comme « Appliquer ».
+import { dispatch } from "@/tests/game/arrivalDispatch";
 import { CARD_DATABASE } from "@/game/cards/sets/core";
 import type { CardDefinition, CardInstance } from "@/game/cards/types";
 import { computeEffectiveStats } from "@/game/cards/stats";

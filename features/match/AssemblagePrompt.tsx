@@ -14,6 +14,7 @@ import { CardCarousel } from "@/features/match/CardCarousel";
 import { CarouselPromptFrame } from "@/features/match/CarouselPromptFrame";
 import { CardTile } from "@/features/match/CardTile";
 import { playButtonClick } from "@/lib/sound";
+import glass from "@/features/match/LiquidGlass.module.css";
 
 /** Le joueur a ce temps pour répondre ; passé ce délai, l'invite se referme comme un « Non ». */
 const CONFIRM_TIMEOUT_MS = 30_000;
@@ -89,11 +90,7 @@ function AssemblageConfirm({
       <div
         role="dialog"
         aria-label={`Assemblage de ${def.name}`}
-        className="pointer-events-auto relative flex max-h-full w-full max-w-md flex-col overflow-hidden rounded-3xl bg-white/6 p-6 text-center backdrop-blur-[32px] backdrop-brightness-110 backdrop-saturate-150 [@media(max-height:520px)]:p-4"
-        style={{
-          boxShadow:
-            "inset 0 1px 1px rgba(255,255,255,0.5), inset 0 0 0 1px rgba(255,255,255,0.08), inset 0 -12px 24px -12px rgba(255,255,255,0.06), 0 24px 60px rgba(0,0,0,0.6)",
-        }}
+        className={`pointer-events-auto relative flex max-h-full w-full max-w-md flex-col overflow-hidden rounded-3xl p-6 text-center [@media(max-height:520px)]:p-4 ${glass.glass}`}
       >
         <div className="relative flex min-h-0 flex-col items-center gap-3 overflow-y-auto overscroll-contain [@media(max-height:520px)]:gap-2">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-white/60">Assemblage Chromatique</p>

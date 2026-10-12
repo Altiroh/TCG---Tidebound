@@ -2,6 +2,8 @@
 
 import type { ReactNode } from "react";
 import { playButtonClick } from "@/lib/sound";
+// La lame de verre liquide de l'application, comme la fiche de Navire.
+import glass from "@/features/match/LiquidGlass.module.css";
 
 /**
  * Coquille commune des invites de partie — le « verre liquide » recentré à
@@ -30,9 +32,6 @@ interface PromptShellProps {
   dim?: boolean;
 }
 
-const GLASS_SHADOW =
-  "inset 0 1px 1px rgba(255,255,255,0.5), inset 0 0 0 1px rgba(255,255,255,0.08), inset 0 -12px 24px -12px rgba(255,255,255,0.06), 0 24px 60px rgba(0,0,0,0.6)";
-
 export function PromptShell({ ariaLabel, children, onClose, closeLabel = "Fermer", width = "narrow", dim = false }: PromptShellProps) {
   return (
     <div
@@ -51,12 +50,8 @@ export function PromptShell({ ariaLabel, children, onClose, closeLabel = "Fermer
         onClick={(event) => event.stopPropagation()}
         className={`pointer-events-auto relative flex max-h-full w-full flex-col ${
           width === "wide" ? "max-w-xl" : "max-w-sm"
-        } overflow-hidden rounded-3xl bg-white/6 p-6 text-center backdrop-blur-[32px] backdrop-brightness-110 backdrop-saturate-150 [@media(max-height:520px)]:p-4`}
-        style={{ boxShadow: GLASS_SHADOW }}
+        } overflow-hidden rounded-3xl p-6 text-center [@media(max-height:520px)]:p-4 ${glass.glass}`}
       >
-        {/* Léger reflet en haut à gauche — le grain "verre liquide" (courbure
-            qui capte la lumière), pas un aplat qui masquerait le flou du fond. */}
-        <div className="pointer-events-none absolute -left-6 -top-10 h-32 w-32 rounded-full bg-white/25 blur-2xl" aria-hidden />
 
         {/* Croix de 28 px à l'écran, 44 px sous le doigt : un `::before` invisible déborde de 8 px. */}
         {onClose && (

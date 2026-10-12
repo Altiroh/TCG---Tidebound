@@ -751,36 +751,40 @@ function originOf(context: EffectContext): EffectOrigin {
     : { playerId: context.controllerId };
 }
 
-/** Résout un effet unique et retourne le nouvel état + les événements produits. */
-export function resolveEffect(
+/**
+ * Les CONDITIONS propres à un effet (« si la Marée est Tempête », « si
+ * l'adversaire contrôle plus d'unités »…) sont-elles remplies ? Un effet
+ * dont une condition manque ne fait rien. `ignoreChosenTarget` : avant que
+ * la cible ne soit désignée (fenêtre d'un effet d'arrivée facultatif), les
+ * conditions qui la lisent ne sont pas encore jugées.
+ */
+export function effectConditionsMet(
   state: GameState,
   effect: EffectDefinition,
-  context: EffectContext
-): EffectResolution {
-  const events: GameEvent[] = [];
-  const base = { turnNumber: context.turnNumber, timestamp: Date.now() };
-
+  context: EffectContext,
+  options: { ignoreChosenTarget?: boolean } = {}
+): boolean {
   if (effect.conditionTideStateIn && !effect.conditionTideStateIn.includes(state.environment.tideState)) {
-    return { state, events };
+    return false;
   }
   if (effect.conditionOrientationIs && state.environment.tideOrientation !== effect.conditionOrientationIs) {
-    return { state, events };
+    return false;
   }
   if (effect.conditionControllerReasonBelowOpponent) {
     const controller = getPlayer(state, context.controllerId);
     const opponent = getOpponent(state, context.controllerId);
-    if (!(controller.reason < opponent.reason)) return { state, events };
+    if (!(controller.reason < opponent.reason)) return false;
   }
   if (effect.conditionControllerReasonAtMost !== undefined) {
     const controller = getPlayer(state, context.controllerId);
-    if (controller.reason > effect.conditionControllerReasonAtMost) return { state, events };
+    if (controller.reason > effect.conditionControllerReasonAtMost) return false;
   }
   if (effect.conditionOpponentReasonAtMost !== undefined) {
     const opponent = getOpponent(state, context.controllerId);
-    if (opponent.reason > effect.conditionOpponentReasonAtMost) return { state, events };
+    if (opponent.reason > effect.conditionOpponentReasonAtMost) return false;
   }
   if (effect.conditionBrokenFromHand !== undefined && effect.conditionBrokenFromHand !== Boolean(context.brokenFromHand)) {
-    return { state, events };
+    return false;
   }
   if (effect.conditionControlsAllCardIds) {
     const controller = getPlayer(state, context.controllerId);
@@ -791,11 +795,11 @@ export function resolveEffect(
     const satisfied = effect.conditionControlsAllCardIds.every((entry) =>
       Array.isArray(entry) ? entry.some((cardId) => owned.has(cardId)) : owned.has(entry)
     );
-    if (!satisfied) return { state, events };
+    if (!satisfied) return false;
   }
   if (effect.conditionControlsAnyCardIds) {
     const controller = getPlayer(state, context.controllerId);
-    if (!controller.board.some((u) => effect.conditionControlsAnyCardIds!.includes(u.cardId))) return { state, events };
+    if (!controller.board.some((u) => effect.conditionControlsAnyCardIds!.includes(u.cardId))) return false;
   }
   if (effect.conditionControlledArchetypeAtLeast) {
     const { archetype, count, excludeSelf } = effect.conditionControlledArchetypeAtLeast;
@@ -803,13 +807,13 @@ export function resolveEffect(
     const owned = countArchetypeUnits(controller.board, archetype, {
       excludeInstanceId: excludeSelf ? context.sourceInstanceId : undefined,
     });
-    if (owned < count) return { state, events };
+    if (owned < count) return false;
   }
   if (effect.conditionSelfVisible) {
     const owner = context.sourceInstanceId ? findUnitOwner(state, context.sourceInstanceId) : undefined;
     const source = owner?.board.find((u) => u.instanceId === context.sourceInstanceId);
     if (!source || !isVisibleDuringTide(getCardDefinition(source.cardId), state.environment.tideState)) {
-      return { state, events };
+      return false;
     }
   }
   if (effect.conditionEquippedUnitVisible || effect.conditionEquippedUnitAttackedThisTurn) {
@@ -818,17 +822,17 @@ export function resolveEffect(
     const owner = context.sourceInstanceId ? findUnitOwner(state, context.sourceInstanceId) : undefined;
     const source = owner?.board.find((u) => u.instanceId === context.sourceInstanceId);
     const holder = source?.attachedToInstanceId ? owner?.board.find((u) => u.instanceId === source.attachedToInstanceId) : undefined;
-    if (!holder) return { state, events };
+    if (!holder) return false;
     if (effect.conditionEquippedUnitVisible && !isVisibleDuringTide(getCardDefinition(holder.cardId), state.environment.tideState)) {
-      return { state, events };
+      return false;
     }
-    if (effect.conditionEquippedUnitAttackedThisTurn && !holder.hasAttackedThisTurn) return { state, events };
+    if (effect.conditionEquippedUnitAttackedThisTurn && !holder.hasAttackedThisTurn) return false;
   }
   if (effect.conditionGraveyardArrival) {
-    if (!hasGraveyardArrival(state, context.controllerId, effect.conditionGraveyardArrival, context.sourceInstanceId)) return { state, events };
+    if (!hasGraveyardArrival(state, context.controllerId, effect.conditionGraveyardArrival, context.sourceInstanceId)) return false;
   }
   if (effect.conditionControllerHandAtMost !== undefined) {
-    if (getPlayer(state, context.controllerId).hand.length > effect.conditionControllerHandAtMost) return { state, events };
+    if (getPlayer(state, context.controllerId).hand.length > effect.conditionControllerHandAtMost) return false;
   }
   if (effect.conditionOpponentUnitsMoreThanController || effect.conditionOpponentUnitsAtLeast !== undefined) {
     // La carte qui porte l'effet n'entre PAS dans votre compte : « à son
@@ -840,17 +844,17 @@ export function resolveEffect(
       board.filter((u) => u.instanceId !== context.sourceInstanceId && UNIT_CARD_TYPES.includes(getCardDefinition(u.cardId).type)).length;
     const miens = corps(getPlayer(state, context.controllerId).board);
     const siens = corps(getOpponent(state, context.controllerId).board);
-    if (effect.conditionOpponentUnitsMoreThanController && siens <= miens) return { state, events };
+    if (effect.conditionOpponentUnitsMoreThanController && siens <= miens) return false;
     if (effect.conditionOpponentUnitsAtLeast !== undefined && siens < effect.conditionOpponentUnitsAtLeast) {
-      return { state, events };
+      return false;
     }
   }
   // « Si une Lande est active » (Lot 17).
-  if (effect.conditionLandeActive && !state.environment.lande) return { state, events };
+  if (effect.conditionLandeActive && !state.environment.lande) return false;
   // « Si elle est LV » (Lot 17) : la cible désignée porte l'étiquette.
-  if (effect.conditionChosenTargetTag) {
+  if (effect.conditionChosenTargetTag && !options.ignoreChosenTarget) {
     const cible = context.chosenTargetInstanceId ? findUnitOwner(state, context.chosenTargetInstanceId)?.board.find((u) => u.instanceId === context.chosenTargetInstanceId) : undefined;
-    if (!cible || !getCardDefinition(cible.cardId).tags?.includes(effect.conditionChosenTargetTag)) return { state, events };
+    if (!cible || !getCardDefinition(cible.cardId).tags?.includes(effect.conditionChosenTargetTag)) return false;
   }
   // « Si vous avez joué ou Brisé un Objet ce tour » (Aventurière en retard, Lot 17).
   if (effect.conditionObjectPlayedOrBrokenThisTurn) {
@@ -859,40 +863,53 @@ export function resolveEffect(
     const joue = state.eventLog.some(
       (e) => e.type === "PLAY_CARD" && e.playerId === context.controllerId && e.turnNumber === context.turnNumber && getCardDefinition(e.cardId).type === "objet"
     );
-    if (!brise && !joue) return { state, events };
+    if (!brise && !joue) return false;
   }
   if (effect.conditionControllerHandAtLeast !== undefined) {
-    if (getPlayer(state, context.controllerId).hand.length < effect.conditionControllerHandAtLeast) return { state, events };
+    if (getPlayer(state, context.controllerId).hand.length < effect.conditionControllerHandAtLeast) return false;
   }
   if (effect.conditionControllerHasCondemnedSlot !== undefined) {
     const condamne = condemnedSlots(state, getPlayer(state, context.controllerId)) > 0;
-    if (condamne !== effect.conditionControllerHasCondemnedSlot) return { state, events };
+    if (condamne !== effect.conditionControllerHasCondemnedSlot) return false;
   }
-  if (effect.conditionChosenTargetSurvives && !chosenTargetSurvives(state, context)) return { state, events };
+  if (effect.conditionChosenTargetSurvives && !options.ignoreChosenTarget && !chosenTargetSurvives(state, context)) return false;
   if (effect.conditionEveils) {
     const { of, min, max } = effect.conditionEveils;
     const lue = boardUnit(state, of === "source" ? context.sourceInstanceId : context.triggerSourceInstanceId);
-    if (!lue) return { state, events };
+    if (!lue) return false;
     const compte = eveilsThisTurn(lue.unit, context.turnNumber);
-    if ((min !== undefined && compte < min) || (max !== undefined && compte > max)) return { state, events };
+    if ((min !== undefined && compte < min) || (max !== undefined && compte > max)) return false;
   }
-  if (effect.conditionTriggerSourceDoomed && !isDoomed(state, context.triggerSourceInstanceId)) return { state, events };
+  if (effect.conditionTriggerSourceDoomed && !isDoomed(state, context.triggerSourceInstanceId)) return false;
   if (effect.conditionTriggerSourcePowerAtMost !== undefined) {
     const lue = boardUnit(state, context.triggerSourceInstanceId);
-    if (!lue) return { state, events };
+    if (!lue) return false;
     const stats = computeEffectiveStats(lue.unit, state.environment.tideState, auraContextOf(state, lue.owner.id));
-    if (stats.attack > effect.conditionTriggerSourcePowerAtMost) return { state, events };
+    if (stats.attack > effect.conditionTriggerSourcePowerAtMost) return false;
   }
   if (effect.conditionTriggerSourceIsOpponents) {
     const lue = boardUnit(state, context.triggerSourceInstanceId);
-    if (!lue || lue.owner.id === context.controllerId) return { state, events };
+    if (!lue || lue.owner.id === context.controllerId) return false;
   }
   if (effect.conditionSourceRemainingResistanceAtMost !== undefined) {
     const lue = boardUnit(state, context.sourceInstanceId);
-    if (!lue) return { state, events };
+    if (!lue) return false;
     const stats = computeEffectiveStats(lue.unit, state.environment.tideState, auraContextOf(state, lue.owner.id));
-    if (stats.health - lue.unit.damageMarked > effect.conditionSourceRemainingResistanceAtMost) return { state, events };
+    if (stats.health - lue.unit.damageMarked > effect.conditionSourceRemainingResistanceAtMost) return false;
   }
+  return true;
+}
+
+/** Résout un effet unique et retourne le nouvel état + les événements produits. */
+export function resolveEffect(
+  state: GameState,
+  effect: EffectDefinition,
+  context: EffectContext
+): EffectResolution {
+  const events: GameEvent[] = [];
+  const base = { turnNumber: context.turnNumber, timestamp: Date.now() };
+
+  if (!effectConditionsMet(state, effect, context)) return { state, events };
 
   // « est ciblée par un effet adverse » (Signal Violet, Lot 15) : le fait est
   // consigné ici, au seul endroit où une cible désignée est LUE par un effet,

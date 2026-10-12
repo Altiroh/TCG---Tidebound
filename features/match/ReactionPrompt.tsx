@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { getCardDefinition, isAbyssalVariant, type PendingReactionCandidate } from "@/game";
 import { useImageOk } from "@/features/match/useImageOk";
 import { playButtonClick, playReactionWindow } from "@/lib/sound";
+import glass from "@/features/match/LiquidGlass.module.css";
 
 /** Le joueur a ce temps pour répondre avant que la fenêtre se referme d'elle-même (équivaut à "Non"). */
 const TIMEOUT_MS = 60_000;
@@ -112,17 +113,9 @@ export function ReactionPrompt({ candidates, onActivateMany, onPass }: ReactionP
         </button>
       ) : (
         <div
-          // Au doigt, le verre flouté redevient un fond opaque : un flou de
-          // 32 px recalculé par-dessus un plateau animé coûte cher au téléphone.
-          className="pointer-events-auto relative flex max-h-full w-full max-w-sm flex-col overflow-hidden rounded-3xl bg-white/6 p-6 text-center backdrop-blur-[32px] backdrop-brightness-110 backdrop-saturate-150 [@media(max-height:520px)]:max-w-[15rem] [@media(max-height:520px)]:p-4 [@media(pointer:coarse)]:bg-slate-950/90 [@media(pointer:coarse)]:backdrop-blur-none"
-          style={{
-            boxShadow:
-              "inset 0 1px 1px rgba(255,255,255,0.5), inset 0 0 0 1px rgba(255,255,255,0.08), inset 0 -12px 24px -12px rgba(255,255,255,0.06), 0 24px 60px rgba(0,0,0,0.6)",
-          }}
+          // La lame de verre liquide de l'application (`LiquidGlass.module.css`), comme la fiche de Navire.
+          className={`pointer-events-auto relative flex max-h-full w-full max-w-sm flex-col overflow-hidden rounded-3xl p-6 text-center [@media(max-height:520px)]:max-w-[15rem] [@media(max-height:520px)]:p-4 ${glass.glass}`}
         >
-          {/* Léger reflet en haut à gauche — le grain "verre liquide" (courbure qui capte la lumière), pas un
-              aplat de couleur qui recouvrirait toute la carte et masquerait le flou du fond derrière. */}
-          <div className="pointer-events-none absolute -left-6 -top-10 h-32 w-32 rounded-full bg-white/25 blur-2xl" aria-hidden />
 
           <button
             type="button"

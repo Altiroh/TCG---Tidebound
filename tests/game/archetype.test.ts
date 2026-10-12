@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { dispatch } from "@/game/engine";
+// Effets d'arrivée facultatifs (12/10/2026) : jouer une carte accepte son effet d'arrivée, comme « Appliquer ».
+import { dispatch } from "@/tests/game/arrivalDispatch";
 import { computeEffectiveStats } from "@/game/cards/stats";
 import { canBeEquipTarget, getCardDefinition } from "@/game/cards/sets/core";
 import { resolveEffect } from "@/game/effects/resolveEffect";
@@ -280,11 +281,13 @@ describe("archétype Cra-Poiscail — capacités d'observateur (Booster 2)", () 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
-    // Le Péon invoqué par le Sauteur arrive lui aussi en jeu : c'est LUI
-    // (première arrivée résolue du tour) que le Bavard renforce, 1/1 → 2/1.
+    // Le Péon invoqué par le Sauteur arrive lui aussi en jeu. Depuis les
+    // effets d'arrivée facultatifs (12/10/2026), l'invocation passe par la
+    // fenêtre : le Sauteur est donc la PREMIÈRE arrivée du tour, c'est lui
+    // que le Bavard renforce ; le Péon arrive bien, après lui.
     expect(peons(result.state.players[0]!.board)).toBe(1);
-    const peon = result.state.players[0]!.board.find((u) => u.cardId === PEON)!;
-    expect(computeEffectiveStats(peon, "calme").attack).toBe(2);
+    const saut = result.state.players[0]!.board.find((u) => u.instanceId === sauteur.instanceId)!;
+    expect(computeEffectiveStats(saut, "calme").attack).toBe(getCardDefinition("cra-poiscail-sauteur").attack! + 1);
   });
 
   it("le Ramasseur profite du Bris d'un Objet, y compris depuis la main", () => {

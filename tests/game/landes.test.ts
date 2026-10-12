@@ -7,7 +7,8 @@
  * deux camps.
  */
 import { describe, expect, it } from "vitest";
-import { dispatch } from "@/game/engine";
+// Effets d'arrivée facultatifs (12/10/2026) : jouer une carte accepte son effet d'arrivée, comme « Appliquer ».
+import { dispatch } from "@/tests/game/arrivalDispatch";
 import { hasEffectiveKeyword, assertValidDefender } from "@/game/rules/validation";
 import { landeRemainingTableTurns } from "@/game/rules/lande";
 import { activateReactionFor, instance, testEnvironment, testGameState, testPlayer, enFinDeTour } from "./testHelpers";

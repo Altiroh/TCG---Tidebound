@@ -1,0 +1,42 @@
+/*
+ * LAME DE VERRE LIQUIDE de l'application — celle de la fiche de Navire
+ * (`table/ShipInfoSheet.module.css`) et de l'encart de règles d'une carte
+ * survolée : translucide, floutée et saturée, reflet en haut, liseré clair.
+ * Les fenêtres de réaction la prennent aussi (retour du 12/10/2026).
+ *
+ * Au doigt, un flou de 18 px recalculé par-dessus un plateau animé coûte
+ * cher : le flou s'allège et le fond se fonce, la lame reste une lame.
+ */
+.glass {
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.06) 38%, rgba(255, 255, 255, 0.02) 62%, rgba(255, 255, 255, 0.09) 100%),
+    rgba(12, 24, 36, 0.42);
+  backdrop-filter: blur(18px) saturate(1.7) brightness(1.05);
+  -webkit-backdrop-filter: blur(18px) saturate(1.7) brightness(1.05);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.12),
+    0 18px 40px rgba(0, 0, 0, 0.45);
+  color: #f4f8fb;
+}
+
+/* Le reflet : une courbe de lumière sur la lame. */
+.glass::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(120% 50% at 70% -10%, rgba(255, 255, 255, 0.26), transparent 60%);
+  pointer-events: none;
+}
+
+@media (pointer: coarse) {
+  .glass {
+    background:
+      linear-gradient(160deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.05) 38%, rgba(255, 255, 255, 0.02) 62%, rgba(255, 255, 255, 0.07) 100%),
+      rgba(12, 24, 36, 0.72);
+    backdrop-filter: blur(8px) saturate(1.4);
+    -webkit-backdrop-filter: blur(8px) saturate(1.4);
+  }
+}
