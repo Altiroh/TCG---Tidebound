@@ -28,6 +28,8 @@ import {
 import { getOpponent, getPlayer, type GameState, type PlayerState } from "@/game/state/types";
 import { recordGraveyardArrival } from "@/game/state/discard";
 import type { ActionResult, AttackAction } from "@/game/actions/types";
+import { attacksMade } from "@/game/rules/qualificationCombat";
+import { applyDirectHitQualifications, applyRetaliationQualifications, applyStrikeQualifications, remainingResistance } from "@/game/rules/qualificationStrike";
 
 function effectiveAttack(unit: CardInstance, state: GameState): number {
   // Contexte complet, joueur actif compris : le Signal Rouge ne prête sa
@@ -325,6 +327,7 @@ function suspendrePourInterception(
       attackerInstanceId: action.attackerInstanceId,
       defenderInstanceId: action.defenderInstanceId,
       attackerPower: declaredAttackPower(attaquant, action.defenderInstanceId, state),
+      priorAttacks: attacksMade(attaquant),
     },
   };
 
@@ -374,7 +377,24 @@ function suspendrePourInterception(
   };
 }
 
+/**
+ * Une attaque RÉSOLUE efface son `pendingAttack` : sans quoi `dispatch`, qui
+ * reprend toute attaque suspendue encore posée (`engine.ts`), la rejouait —
+ * une seconde fois refusée tant qu'une unité n'attaquait qu'une fois, mais
+ * acceptée depuis que Rafale, Déluge ou Carnage en permettent plusieurs : une
+ * attaque aurait compté pour deux. Une attaque SUSPENDUE (fenêtre de
+ * réaction ouverte) garde le sien : c'est lui que la reprise relira.
+ */
 export function attack(state: GameState, action: AttackAction): ActionResult {
+  const result = resolveAttack(state, action);
+  if (!result.ok || !result.state.pendingAttack) return result;
+  const before = getPlayer(state, action.playerId).board.find((u) => u.instanceId === action.attackerInstanceId);
+  const after = getPlayer(result.state, action.playerId).board.find((u) => u.instanceId === action.attackerInstanceId);
+  const resolved = !after || (before !== undefined && attacksMade(after) > attacksMade(before));
+  return resolved ? { ...result, state: { ...result.state, pendingAttack: undefined } } : result;
+}
+
+function resolveAttack(state: GameState, action: AttackAction): ActionResult {
   const validation = validate(state, action);
   if (!validation.ok) return { ok: false, error: validation.error };
 
@@ -418,8 +438,9 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
     defenderInstanceId: action.defenderInstanceId,
   });
 
+  // Une attaque résolue de plus : Rafale, Déluge et Carnage en permettent plusieurs (`attacksRemaining`).
   const markAttacked = (unit: CardInstance): CardInstance =>
-    unit.instanceId === action.attackerInstanceId ? { ...unit, hasAttackedThisTurn: true } : unit;
+    unit.instanceId === action.attackerInstanceId ? { ...unit, hasAttackedThisTurn: true, attacksThisTurn: attacksMade(unit) + 1 } : unit;
 
   let nextState: GameState = {
     ...etat,
@@ -579,6 +600,13 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
       });
     }
 
+    // Qualifications du coup direct : Sangsue (Ancrage rendu), Ponction (Raison perdue).
+    if (!contrecoup && !intercepte && directDamage > 0) {
+      const qualifie = applyDirectHitQualifications(nextState, { attackerOwnerId: attackerPlayer.id, attacker: attackerUnit, victimId: opponent.id, damage: directDamage }, base);
+      nextState = qualifie.state;
+      events.push(...qualifie.events);
+    }
+
     // « Lorsqu'elle INFLIGE des dégâts directs » (Anguille des Profondeurs,
     // Bat-Marin Abyssal) : seulement si la coque a vraiment été touchée. Une
     // interception, un Contrecoup, un bouclier ou un plafond qui ramène le
@@ -651,6 +679,7 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
 
     // Dégâts au défenseur, réduits, si c'est une Structure, par la
     // restauration de Résistance de Wood Vy.
+    const resteAvantLeCoup = remainingResistance(nextState, opponent.id, defenderUnit);
     const defenderDamageResult = applyCombatDamageToUnit(nextState, opponent.id, defenderUnit, totalAttackerDamage, etat.turnNumber);
     nextState = defenderDamageResult.state;
     if (defenderDamageResult.amountApplied > 0) {
@@ -675,6 +704,23 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
       nextState = damagedTrigger.state;
       events.push(...damagedTrigger.events);
     }
+
+    // Qualifications du coup (`qualificationStrike.ts`) : Coup de grâce, Entaille, Brèche, Carnage,
+    // Éclaboussure, Sangsue, Ponction — sur l'état d'après le coup, avant la riposte.
+    const qualifie = applyStrikeQualifications(
+      nextState,
+      {
+        attackerOwnerId: attackerPlayer.id,
+        attacker: attackerUnit,
+        defenderOwnerId: opponent.id,
+        defender: defenderUnit,
+        strikeApplied: defenderDamageResult.amountApplied,
+        remainingBefore: resteAvantLeCoup,
+      },
+      base
+    );
+    nextState = qualifie.state;
+    events.push(...qualifie.events);
 
     // Riposte : la Puissance effective du défenseur (0 pour un permanent
     // sans Puissance) blesse l'attaquant en retour, symétriquement — soumise
@@ -712,6 +758,15 @@ export function attack(state: GameState, action: AttackAction): ActionResult {
         );
         nextState = attackerDamagedTrigger.state;
         events.push(...attackerDamagedTrigger.events);
+
+        // Qualifications du DÉFENSEUR qui riposte : Entaille, Sangsue.
+        const riposteQualifiee = applyRetaliationQualifications(
+          nextState,
+          { defenderOwnerId: opponent.id, defender: defenderUnit, attackerOwnerId: attackerPlayer.id, attacker: attackerUnit, applied: attackerDamageResult.amountApplied },
+          base
+        );
+        nextState = riposteQualifiee.state;
+        events.push(...riposteQualifiee.events);
       }
     }
   }

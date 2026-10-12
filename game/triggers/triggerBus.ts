@@ -231,7 +231,10 @@ function attaquesAdversesDuTour(state: GameState, controllerId: PlayerId): numbe
     return dejaComptees;
   }
   const attaquant = adversaire.board.find((u) => u.instanceId === enCours.attackerInstanceId);
-  return attaquant && !attaquant.hasAttackedThisTurn ? dejaComptees + 1 : dejaComptees;
+  // L'attaque en cours n'est comptée qu'une fois résolue : tant que l'attaquant
+  // n'a pas dépassé le nombre d'attaques qu'il avait à la déclaration, elle s'ajoute.
+  const resolues = attaquant?.attacksThisTurn ?? (attaquant?.hasAttackedThisTurn ? 1 : 0);
+  return attaquant && resolues <= (enCours.priorAttacks ?? 0) ? dejaComptees + 1 : dejaComptees;
 }
 
 /**

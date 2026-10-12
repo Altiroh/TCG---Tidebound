@@ -114,7 +114,7 @@ function toursPlusTard(state: GameState, attaquant: string, nbTours: number): Ga
     phase: "combatPhase",
     players: state.players.map((p) =>
       p.id === "p1"
-        ? { ...p, board: p.board.map((u) => (u.instanceId === attaquant ? { ...u, hasAttackedThisTurn: false } : u)) }
+        ? { ...p, board: p.board.map((u) => (u.instanceId === attaquant ? { ...u, hasAttackedThisTurn: false, attacksThisTurn: undefined } : u)) }
         : p
     ) as GameState["players"],
   };

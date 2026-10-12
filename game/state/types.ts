@@ -612,6 +612,12 @@ export interface PendingAttack {
   damageReduction?: number;
   /** Un piège a annulé les dégâts directs de cette attaque. */
   intercepted?: boolean;
+  /**
+   * Attaques déjà résolues par l'attaquant quand celle-ci a été déclarée
+   * (Rafale, Déluge, Carnage) : tant qu'il n'en a pas résolu davantage,
+   * celle-ci est encore « en cours » (`attaquesAdversesDuTour`).
+   */
+  priorAttacks?: number;
 }
 
 /** Choix binaire forcé d'une Anomalie (ex: Le Fond Vous Regarde) : perdre de la Raison, ou subir des dégâts d'Ancrage. */

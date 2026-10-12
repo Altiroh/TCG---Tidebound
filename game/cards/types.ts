@@ -854,6 +854,15 @@ export interface CardDefinition {
   keywords?: string[];
 
   /**
+   * QUALIFICATIONS (12/10/2026) : capacités reconnues nativement par le
+   * moteur — Rafale, Déluge, Brèche, Sangsue, Contournement, Coup de grâce,
+   * Éclaboussure X, Entaille X, Carnage, Salve, Ponction X. Une carte les
+   * reçoit en les listant ici, sans logique propre (registre et règles :
+   * `game/cards/qualifications.ts`).
+   */
+  qualifications?: import("@/game/cards/qualifications").CardQualification[];
+
+  /**
    * Mots-clés obtenus seulement tant qu'une condition dynamique reste
    * vraie (ex: Chose des Hauts-Fonds, "Tant que vous avez 5 Raison ou
    * moins, elle gagne Garde") — jamais gravés dans `keywords`, réévalués à
@@ -1639,6 +1648,16 @@ export interface CardInstance {
   hasAttackedThisTurn: boolean;
 
   /**
+   * Attaques RÉSOLUES ce tour (qualifications Rafale, Déluge, Carnage : plus
+   * d'une attaque par phase). Absent = 0, ou 1 si `hasAttackedThisTurn`
+   * (états d'avant le 12/10/2026). Remis à zéro avec `hasAttackedThisTurn`.
+   */
+  attacksThisTurn?: number;
+
+  /** Attaques SUPPLÉMENTAIRES gagnées ce tour (Carnage : une par cible détruite). Remis à zéro au début du tour. */
+  bonusAttacksThisTurn?: number;
+
+  /**
    * Ce permanent DOIT quitter le plateau à la prochaine passe de
    * `game/state/processDeaths.ts`, qui est la voie UNIQUE de sortie : elle
    * seule envoie au cimetière, émet les événements et réveille `onDeath`
@@ -1822,6 +1841,8 @@ export interface StatModifier {
   whileSourceInPlay?: string;
   /** Mots-clés accordés tant que le modificateur est en place (ex: "Pied marin jusqu'à la fin du tour" — P'tite Fesse, Grand Rêve abyssale). */
   keywords?: string[];
+  /** Qualifications accordées tant que le modificateur est en place (`game/cards/qualifications.ts`). */
+  qualifications?: import("@/game/cards/qualifications").CardQualification[];
   /**
    * « elle ne peut ni attaquer ni activer ses effets » (Chaîne de Travers,
    * Lot 14) : tant que ce modificateur tient, la carte est INACTIVE — au

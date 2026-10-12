@@ -8,6 +8,7 @@ import type { TideStateName } from "@/game/environment/types";
 import { PHASE_LABELS, phaseRefusal } from "@/game/rules/phaseLabels";
 import { chromaticColorsOf, controlledChromaticColors, isOtherColorSentinel } from "@/game/rules/chromatic";
 import { landeRemovedKeywords } from "@/game/rules/lande";
+import { attacksMade, attacksRemaining, bypassesGardeByQualification, canAttackShipDirectly, hasQualification } from "@/game/rules/qualificationCombat";
 import { isMainPhase, type GamePhase, type GameState, type PlayerId, type PlayerState } from "@/game/state/types";
 
 /**
@@ -101,6 +102,8 @@ function attackerBypassesGardeNow(state: GameState, attackerOwnerId: PlayerId, a
   const attackerPlayer = state.players.find((p) => p.id === attackerOwnerId);
   const attacker = attackerPlayer?.board.find((u) => u.instanceId === attackerInstanceId);
   if (!attacker) return false;
+  // Contournement (qualification) : elle atteint le Navire malgré la Garde.
+  if (bypassesGardeByQualification(attacker)) return true;
   const def = getCardDefinition(attacker.cardId);
   return (def.bypassesGardeTideStateIn ?? []).includes(state.environment.tideState);
 }
@@ -282,7 +285,13 @@ export function assertUnitCanAttack(state: GameState, playerId: PlayerId, instan
   if (unit.summoningSick && !hasEffectiveKeyword(state, player!, unit, KEYWORD_PIED_MARIN)) {
     return fail("Cette unité ne peut pas encore attaquer.");
   }
-  if (unit.hasAttackedThisTurn) return fail("Cette unité a déjà attaqué ce tour-ci.");
+  // Le nombre d'attaques de la phase : 1, ou ce que ses qualifications lui accordent (Rafale, Déluge, Carnage).
+  if (attacksRemaining(state, playerId, unit) <= 0) {
+    if (attacksMade(unit) === 0 && hasQualification(unit, "deluge")) {
+      return fail("Déluge : aucune Créature ni aucun Marin adverse à attaquer.");
+    }
+    return fail(attacksMade(unit) > 1 ? "Cette unité a fait toutes ses attaques ce tour-ci." : "Cette unité a déjà attaqué ce tour-ci.");
+  }
 
   if (computeEffectiveStats(unit, state.environment.tideState).inactive) {
     return fail("Cette unité est rendue inactive par la Marée actuelle.");
@@ -326,6 +335,12 @@ export function assertValidDefender(
 
   const guards = opponent.board.filter((u) => hasEffectiveKeyword(state, opponent, u, "garde"));
   const attackerBypassesGarde = attackerBypassesGardeNow(state, attackerOwnerId, attackerInstanceId);
+
+  // Déluge (qualification) : ses attaques ne ciblent jamais directement le Navire.
+  const attackerUnit = state.players.find((p) => p.id === attackerOwnerId)?.board.find((u) => u.instanceId === attackerInstanceId);
+  if (!defenderInstanceId && attackerUnit && !canAttackShipDirectly(attackerUnit)) {
+    return fail("Déluge : ses attaques ne peuvent pas viser directement le Navire adverse.");
+  }
 
   if (!defenderInstanceId) {
     if (guards.length > 0 && !attackerBypassesGarde) {

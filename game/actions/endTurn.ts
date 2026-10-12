@@ -439,6 +439,8 @@ export function entameDeTour(state: GameState, eventsAvant: GameEvent[] = []): A
     ...u,
     summoningSick: false,
     hasAttackedThisTurn: false,
+    attacksThisTurn: undefined,
+    bonusAttacksThisTurn: undefined,
     // Début du tour de ce joueur : ses bonus "jusqu'à votre prochain tour"
     // ont fait leur office (ils l'ont couvert pendant le tour adverse).
     // Sauf ceux qu'un ADVERSAIRE a posés « jusqu'à SON prochain tour »
