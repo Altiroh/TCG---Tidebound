@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import styles from "@/features/match/CarouselPromptFrame.module.css";
+import glass from "@/features/match/LiquidGlass.module.css";
 
 interface CarouselPromptFrameProps {
   ariaLabel: string;
@@ -50,9 +51,10 @@ export function CarouselPromptFrame({
         role="dialog"
         aria-label={ariaLabel}
         onClick={onBackdropClick ? (event) => event.stopPropagation() : undefined}
-        className={`relative flex w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-white/15 bg-white/[0.06] shadow-[0_8px_40px_rgba(0,0,0,0.6)] backdrop-blur-2xl ${styles.panel}`}
+        // La lame de verre liquide de l'application, comme la fiche de Navire (retour du 12/10/2026).
+        className={`relative flex w-full max-w-6xl flex-col overflow-hidden rounded-2xl ${glass.glass} ${styles.panel}`}
       >
-        {gloss && <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-white/20 to-transparent" />}
+        {gloss && <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-white/10 to-transparent" />}
         <div className={styles.head}>
           {eyebrow && <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">{eyebrow}</p>}
           <h2 className={`font-semibold text-white [font-family:var(--font-card-title)] ${styles.title}`}>{title}</h2>

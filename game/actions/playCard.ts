@@ -7,7 +7,7 @@ import { boardSlotLayout, chooseBoardSlot } from "@/game/rules/boardSlots";
 import { canBeEquipTarget, getCardDefinition, hasAnyValidEquipTarget } from "@/game/cards/sets/core";
 import { isLandeCard, isPermanentCard, isVisibleDuringTide, UNIT_CARD_TYPES, type CardDefinition } from "@/game/cards/types";
 import { placeLande, recordUnitArrivals, unitArrivalRefusal } from "@/game/rules/lande";
-import { validateGraveyardChoice } from "@/game/effects/graveyardChoices";
+import { validateGraveyardChoice, withSingleGraveyardChoice } from "@/game/effects/graveyardChoices";
 import { isEligibleChosenUnit } from "@/game/effects/chosenTargets";
 import type { EffectContext } from "@/game/effects/resolveEffect";
 import { discountApplies, resolveEffect } from "@/game/effects/resolveEffect";
@@ -308,7 +308,10 @@ function validate(state: GameState, action: PlayCardAction) {
  * cartes qu'il peut en payer pendant sa Phase principale — seule la
  * Raison disponible (et l'espace sur le plateau) le limite.
  */
-export function playCard(state: GameState, action: PlayCardAction): ActionResult {
+export function playCard(state: GameState, requested: PlayCardAction): ActionResult {
+  // Une seule carte du Cimetière éligible : elle est désignée d'office.
+  const posee = getPlayer(state, requested.playerId).hand.find((c) => c.instanceId === requested.instanceId);
+  const action = posee ? withSingleGraveyardChoice(state, getCardDefinition(posee.cardId).onPlayEffects, requested) : requested;
   const validation = validate(state, action);
   if (!validation.ok) return { ok: false, error: validation.error };
 

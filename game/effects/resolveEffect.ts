@@ -900,6 +900,26 @@ export function effectConditionsMet(
   return true;
 }
 
+/**
+ * Les cartes qu'un `pickFromGraveyard` pourrait reprendre en ce moment :
+ * celles du (ou des) Cimetière(s) que son filtre accepte. Vide : l'effet
+ * ne reprendra rien — l'interface le dit avant que le joueur ne l'applique.
+ */
+export function pickableFromGraveyard(state: GameState, effect: EffectDefinition, context: EffectContext): CardInstance[] {
+  if (effect.type !== "pickFromGraveyard") return [];
+  const player = getPlayer(state, context.controllerId);
+  const sources = effect.graveyards === "both" ? state.players : [player];
+  return sources.flatMap((p) => p.graveyard).filter((card) => {
+    const def = getCardDefinition(card.cardId);
+    if (!matchesCardTypeFilter(effect.filter, def.type)) return false;
+    if (effect.filter?.subtype && !hasSubtype(def, effect.filter.subtype)) return false;
+    if (effect.filter?.archetype && def.archetype !== effect.filter.archetype) return false;
+    // « coût ≤ moitié du résultat » (Norbert, Lot 17) : un plafond lu sur le jet en cours.
+    const plafond = effect.amount?.kind === "dieResult" ? amountValue(effect.amount, state, context.controllerId, context) : effect.filter?.maxCost;
+    return plafond === undefined || def.cost <= plafond;
+  });
+}
+
 /** Résout un effet unique et retourne le nouvel état + les événements produits. */
 export function resolveEffect(
   state: GameState,
@@ -2380,15 +2400,7 @@ export function resolveEffect(
       // « d'UN Cimetière » (Lot 18) : les deux Cimetières sont ouverts.
       const sources = effect.graveyards === "both" ? state.players : [player];
       const vers = effect.takeTo ?? "hand";
-      const prenables = sources.flatMap((p) => p.graveyard).filter((card) => {
-        const def = getCardDefinition(card.cardId);
-        if (!matchesCardTypeFilter(effect.filter, def.type)) return false;
-        if (effect.filter?.subtype && !hasSubtype(def, effect.filter.subtype)) return false;
-        if (effect.filter?.archetype && def.archetype !== effect.filter.archetype) return false;
-        // « coût ≤ moitié du résultat » (Norbert, Lot 17) : un plafond lu sur le jet en cours.
-        const plafond = effect.amount?.kind === "dieResult" ? amountValue(effect.amount, state, context.controllerId, context) : effect.filter?.maxCost;
-        return plafond === undefined || def.cost <= plafond;
-      });
+      const prenables = pickableFromGraveyard(state, effect, context);
       // Rien à reprendre : le texte est sans objet, pas de question sans réponse possible.
       if (prenables.length === 0) return { state, events };
       // Sur le plateau (Lot 18) : pas plus qu'il n'y a de place — sans place, pas de question.

@@ -17,7 +17,7 @@ import {
 } from "@/game/triggers/triggerBus";
 import { eligibleBreakTargets } from "@/game/effects/chosenTargets";
 import { ouvrirFenetrePour } from "@/game/reactions/reactionWindow";
-import { validateGraveyardChoice } from "@/game/effects/graveyardChoices";
+import { validateGraveyardChoice, withSingleGraveyardChoice } from "@/game/effects/graveyardChoices";
 import type { EffectDefinition } from "@/game/effects/types";
 import type { GameEvent } from "@/game/events/types";
 import {
@@ -407,7 +407,10 @@ function validate(state: GameState, action: BreakObjectAction) {
  * `onObjectBroken` (déclenchements automatiques) et par l'événement
  * `OBJECT_BROKEN` (fenêtres de réaction facultatives).
  */
-export function breakObject(state: GameState, action: BreakObjectAction): ActionResult {
+export function breakObject(state: GameState, requested: BreakObjectAction): ActionResult {
+  // Une seule carte du Cimetière éligible : elle est désignée d'office.
+  const objet = getPlayer(state, requested.playerId)[requested.fromHand ? "hand" : "board"].find((u) => u.instanceId === requested.instanceId);
+  const action = objet ? withSingleGraveyardChoice(state, getCardDefinition(objet.cardId).onBreakEffects, requested) : requested;
   const validation = validate(state, action);
   if (!validation.ok) return { ok: false, error: validation.error };
 

@@ -1,7 +1,7 @@
 import { afterReactiveObjectBrokenFromHand, breakReactiveObjectFromHand } from "@/game/actions/breakObject";
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { isEligibleChosenUnit } from "@/game/effects/chosenTargets";
-import { validateGraveyardChoice } from "@/game/effects/graveyardChoices";
+import { validateGraveyardChoice, withSingleGraveyardChoice } from "@/game/effects/graveyardChoices";
 import { candidateKey, deriveReactionTriggerEvents, eligibleCandidatesFor, recomputePendingReaction } from "@/game/reactions/reactionWindow";
 import {
   processGraveyardEntryTriggers,
@@ -112,7 +112,12 @@ function playReactiveCardFromHand(
  * personne n'a rien à offrir. La capacité activée ne peut pas l'être une
  * seconde fois pendant cette même fenêtre (`usedCandidateKeys`).
  */
-export function activateReaction(state: GameState, action: ActivateReactionAction): ActionResult {
+export function activateReaction(state: GameState, requested: ActivateReactionAction): ActionResult {
+  // Une seule carte du Cimetière éligible : elle est désignée d'office.
+  const source = state.players.flatMap((p) => [...p.board, ...p.hand, ...p.graveyard]).find((c) => c.instanceId === requested.sourceInstanceId);
+  const action = source
+    ? withSingleGraveyardChoice(state, getCardDefinition(source.cardId).abilities?.[requested.abilityIndex]?.effects, requested)
+    : requested;
   const validation = validate(state, action);
   if (!validation.ok) return { ok: false, error: validation.error };
 

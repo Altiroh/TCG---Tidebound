@@ -3,6 +3,7 @@ import { getCardDefinition } from "@/game/cards/sets/core";
 import type { CardDefinition, CardInstance } from "@/game/cards/types";
 import type { EffectDefinition } from "@/game/effects/types";
 import { getPlayer, type GameState, type PlayerId } from "@/game/state/types";
+import { pickableFromGraveyard } from "@/game/effects/resolveEffect";
 
 /**
  * « Choisissez une carte dans votre Cimetière » — qui est éligible, et pour
@@ -102,4 +103,48 @@ export function validateGraveyardChoice(
     return eligible.some((c) => c.instanceId === chosenInstanceId) ? { ok: true } : { ok: false, reason: "illegal" };
   }
   return eligible.length > 0 ? { ok: false, reason: "missing" } : { ok: true };
+}
+
+/**
+ * UNE SEULE carte éligible (retour du 12/10/2026) : elle est prise d'office,
+ * sans poser une question à une seule réponse. Le joueur a déjà décidé
+ * d'appliquer l'effet — c'est la carte qui ne laisse pas de choix.
+ * `undefined` : rien à désigner d'office (zéro ou plusieurs cartes).
+ */
+export function singleGraveyardChoice(state: GameState, playerId: PlayerId, effects: readonly EffectDefinition[] | undefined): string | undefined {
+  const choices = graveyardChoicesFor(state, playerId, effects);
+  return choices.length === 1 ? choices[0]!.instanceId : undefined;
+}
+
+/** L'action, avec sa carte du Cimetière désignée d'office quand il n'y en a qu'une. */
+export function withSingleGraveyardChoice<A extends { playerId: PlayerId; chosenGraveyardInstanceId?: string }>(
+  state: GameState,
+  effects: readonly EffectDefinition[] | undefined,
+  action: A
+): A {
+  if (action.chosenGraveyardInstanceId) return action;
+  const only = singleGraveyardChoice(state, action.playerId, effects);
+  return only ? { ...action, chosenGraveyardInstanceId: only } : action;
+}
+
+/**
+ * Combien de cartes du Cimetière cet effet pourrait reprendre EN CE MOMENT —
+ * `null` s'il n'en reprend pas, ou si on ne peut pas le savoir d'avance (un
+ * plafond lu sur un jet de dé pas encore lancé). `0` : l'effet se résoudra
+ * à vide, et le joueur doit le savoir avant de l'appliquer (retour du
+ * 12/10/2026).
+ */
+export function graveyardPickAvailable(
+  state: GameState,
+  playerId: PlayerId,
+  effects: readonly EffectDefinition[] | undefined,
+  sourceInstanceId?: string
+): number | null {
+  const list = effects ?? [];
+  const chosen = graveyardEffectIn(list);
+  if (chosen) return eligibleGraveyardCards(state, playerId, chosen).length;
+  const pick = list.find((e) => e.type === "pickFromGraveyard");
+  if (!pick) return null;
+  if (pick.amount?.kind === "dieResult") return null;
+  return pickableFromGraveyard(state, pick, { controllerId: playerId, sourceInstanceId, turnNumber: state.turnNumber }).length;
 }

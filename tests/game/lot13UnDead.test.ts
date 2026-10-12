@@ -388,11 +388,11 @@ describe("Lot 13 — choisir une carte du Cimetière ailleurs que sur un Bris", 
       ],
     });
 
-    // Sans désignation, la carte se pose (effets d'arrivée facultatifs, 12/10/2026) : son effet
-    // attend dans la fenêtre, où le joueur désigne la carte du Cimetière — ou passe.
+    // Sans désignation : une SEULE carte éligible (P'tit Bout — l'autre est hors filtre), elle est
+    // prise d'office une fois l'effet appliqué (12/10/2026) — pas de question à une seule réponse.
     const sansChoix = dispatch(state, { type: "playCard", playerId: "p1", instanceId: tuViensJouer.instanceId });
-    expect(sansChoix.ok).toBe(true);
-    if (sansChoix.ok) expect(sansChoix.state.pendingReaction?.awaitingPlayerId).toBe("p1");
+    ok(sansChoix);
+    expect(sansChoix.state.players[0].hand.map((c) => c.instanceId)).toContain(ptitBout.instanceId);
 
     // Une carte hors filtre est refusée elle aussi : la fenêtre ne l'accepte pas, elle reste au Cimetière.
     const horsFiltre = dispatch(state, {

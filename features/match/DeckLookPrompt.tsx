@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { MARKER_RULES, deckLookRefusal, deckLookSelectionFits, deckLookTakeLimit, getCardDefinition, isDeckLookTakeable, type CardInstance, type DeckLookChoice } from "@/game";
 import { CARD_TYPE_LABELS } from "@/features/match/cardDisplay";
 import { CardCarousel } from "@/features/match/CardCarousel";
@@ -104,6 +104,30 @@ export function DeckLookPrompt({ choice, onConfirm, onRefuse }: DeckLookPromptPr
   }
 
   const aucunePrenable = choice.revealed.every((c) => !prenable(c.instanceId));
+
+  // UNE SEULE carte prenable (retour du 12/10/2026) : elle est prise d'office — pas de question à
+  // une seule réponse. Sauf si le joueur peut refuser, ou s'il doit encore ordonner les autres.
+  const prenables = choice.revealed.filter((c) => prenable(c.instanceId));
+  const seule = !choice.refusable && !ordonnable && limite >= 1 && prenables.length === 1 ? prenables[0]!.instanceId : null;
+  const auto = useRef(false);
+  useEffect(() => {
+    if (!seule || auto.current) return;
+    auto.current = true;
+    confirmer([seule]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- une seule fois, à l'ouverture.
+  }, [seule]);
+
+  /**
+   * « D'UN Cimetière » (les deux camps) : tes cartes et celles de
+   * l'adversaire, séparées, sur un fond bleu pour toi et rouge pour lui —
+   * on voit d'un coup d'œil à qui l'on prend.
+   */
+  const camps = deuxCimetieres
+    ? (["mine", "theirs"] as const).map((camp) => ({
+        camp,
+        cards: choice.revealed.filter((c) => (choice.graveyardOrigins![c.instanceId] === choice.playerId) === (camp === "mine")),
+      }))
+    : null;
   const complete = selected.length === limite || (choice.refusable && selected.length > 0);
 
   return (
@@ -153,13 +177,36 @@ export function DeckLookPrompt({ choice, onConfirm, onRefuse }: DeckLookPromptPr
         </>
       }
     >
-      <CardCarousel
-        cards={choice.revealed}
-        selectedInstanceIds={selected}
-        onSelect={toggle}
-        unavailableReason={raison}
-        emptyLabel={depuisCimetiere ? "Ton Cimetière est vide." : "Ta pioche est vide."}
-      />
+      {camps ? (
+        <div className="flex flex-col gap-3">
+          {camps.map(({ camp, cards }) => (
+            <section
+              key={camp}
+              aria-label={camp === "mine" ? "Ton Cimetière" : "Cimetière adverse"}
+              className={`rounded-2xl border px-2 pb-2 pt-1.5 ${camp === "mine" ? "border-sky-300/30 bg-sky-500/10" : "border-rose-300/30 bg-rose-500/10"}`}
+            >
+              <p className={`mb-1 px-1 text-[11px] font-semibold uppercase tracking-wider ${camp === "mine" ? "text-sky-200" : "text-rose-200"}`}>
+                {camp === "mine" ? "Ton Cimetière" : "Cimetière adverse"}
+              </p>
+              <CardCarousel
+                cards={cards}
+                selectedInstanceIds={selected}
+                onSelect={toggle}
+                unavailableReason={raison}
+                emptyLabel={camp === "mine" ? "Rien à prendre dans ton Cimetière." : "Rien à prendre dans le Cimetière adverse."}
+              />
+            </section>
+          ))}
+        </div>
+      ) : (
+        <CardCarousel
+          cards={choice.revealed}
+          selectedInstanceIds={selected}
+          onSelect={toggle}
+          unavailableReason={raison}
+          emptyLabel={depuisCimetiere ? "Ton Cimetière est vide." : "Ta pioche est vide."}
+        />
+      )}
       {ordonnable && rendues.length > 1 && (
         <ol aria-label={sousLaPioche ? "Ordre des cartes remises sous ta pioche" : "Ordre des cartes remises sur ta pioche"} className="mx-auto mt-3 flex max-w-md flex-col gap-1 text-sm text-slate-200">
           {rendues.map((id, index) => {

@@ -2324,7 +2324,19 @@ describe("engine.dispatch - breakObject : Grappin de Récupération (recherche e
     expect(result.ok).toBe(false);
   });
 
-  it("refuse de briser sans choisir de cible quand au moins une carte éligible existe", () => {
+  it("refuse de briser sans choisir de cible quand PLUSIEURS cartes éligibles existent", () => {
+    const grappin = instance("grappin-de-recuperation", "p1");
+    const caisses = instance("caisses-arrimees", "p1");
+    const autres = instance("caisses-arrimees", "p1");
+    const state = testGameState({
+      players: [testPlayer("p1", { board: [grappin], graveyard: [caisses, autres] }), testPlayer("p2")],
+    });
+
+    const result = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: grappin.instanceId });
+    expect(result.ok).toBe(false);
+  });
+
+  it("une SEULE carte éligible : elle est reprise d'office (12/10/2026)", () => {
     const grappin = instance("grappin-de-recuperation", "p1");
     const caisses = instance("caisses-arrimees", "p1");
     const state = testGameState({
@@ -2332,7 +2344,8 @@ describe("engine.dispatch - breakObject : Grappin de Récupération (recherche e
     });
 
     const result = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: grappin.instanceId });
-    expect(result.ok).toBe(false);
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.state.players[0].hand.map((c) => c.instanceId)).toContain(caisses.instanceId);
   });
 });
 

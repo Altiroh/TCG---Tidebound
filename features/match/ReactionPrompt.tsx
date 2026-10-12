@@ -32,6 +32,12 @@ interface ReactionPromptProps {
   /** Reçoit les candidats cochés (au moins un) — MatchBoard/OnlineBoard les appliquent en une seule fois, sans rouvrir la fenêtre entre chacun. */
   onActivateMany: (candidates: PendingReactionCandidate[]) => void;
   onPass: () => void;
+  /**
+   * Avertissement à montrer avant d'appliquer (retour du 12/10/2026) :
+   * « aucune carte de ton Cimetière ne correspond — l'effet ne reprendra
+   * rien ». Le joueur peut appliquer quand même, il le fait en le sachant.
+   */
+  warningFor?: (candidate: PendingReactionCandidate) => string | null;
 }
 
 /**
@@ -59,7 +65,7 @@ interface ReactionPromptProps {
  * fenêtre automatiquement — jamais bloquer la partie indéfiniment en
  * attente d'une décision facultative.
  */
-export function ReactionPrompt({ candidates, onActivateMany, onPass }: ReactionPromptProps) {
+export function ReactionPrompt({ candidates, onActivateMany, onPass, warningFor }: ReactionPromptProps) {
   /**
    * Panneau replié en pastille, le temps de REGARDER le plateau : sur un
    * téléphone couché, sa bande couvre l'emplacement de droite des deux
@@ -129,9 +135,9 @@ export function ReactionPrompt({ candidates, onActivateMany, onPass }: ReactionP
           </button>
 
           {candidates.length === 1 ? (
-            <SingleCandidate candidate={candidates[0]!} onActivate={() => onActivateMany([candidates[0]!])} onPass={handlePass} />
+            <SingleCandidate candidate={candidates[0]!} warning={warningFor?.(candidates[0]!) ?? null} onActivate={() => onActivateMany([candidates[0]!])} onPass={handlePass} />
           ) : (
-            <MultipleCandidates candidates={candidates} onActivateMany={onActivateMany} onPass={handlePass} />
+            <MultipleCandidates candidates={candidates} onActivateMany={onActivateMany} onPass={handlePass} warningFor={warningFor} />
           )}
 
           <button
@@ -189,10 +195,12 @@ function CountdownBar() {
 
 function SingleCandidate({
   candidate,
+  warning,
   onActivate,
   onPass,
 }: {
   candidate: PendingReactionCandidate;
+  warning?: string | null;
   onActivate: () => void;
   onPass: () => void;
 }) {
@@ -214,6 +222,12 @@ function SingleCandidate({
         <p className="text-sm font-semibold leading-snug text-white">{ability?.description ?? def.text}</p>
 
         <p className="text-xs leading-snug text-white/60">{`Voulez-vous appliquer l'effet de ${def.name} ?`}</p>
+
+        {warning && (
+          <p role="note" className="rounded-xl border border-amber-300/40 bg-amber-400/15 px-3 py-2 text-xs font-medium leading-snug text-amber-100">
+            {warning}
+          </p>
+        )}
 
         {candidate.reasonCost > 0 && (
           <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-[11px] font-medium text-white/70">
@@ -248,8 +262,10 @@ function MultipleCandidates({
   candidates,
   onActivateMany,
   onPass,
+  warningFor,
 }: {
   candidates: PendingReactionCandidate[];
+  warningFor?: (candidate: PendingReactionCandidate) => string | null;
   onActivateMany: (candidates: PendingReactionCandidate[]) => void;
   onPass: () => void;
 }) {
@@ -312,6 +328,7 @@ function MultipleCandidates({
               <span className="min-w-0 flex-1">
                 <span className="block text-xs leading-snug text-white">{ability?.description ?? def.text}</span>
                 {candidate.reasonCost > 0 && <span className="mt-0.5 block text-[11px] font-medium text-white/50">{candidate.reasonCost} Raison</span>}
+                {warningFor?.(candidate) && <span className="mt-0.5 block text-[11px] font-medium text-amber-200">{warningFor(candidate)}</span>}
               </span>
             </button>
           );

@@ -44,6 +44,7 @@ import { ChoiceBanner } from "@/features/match/ChoiceBanner";
 import { useHandLimitDiscard } from "@/features/match/useHandLimitDiscard";
 import { useHealAllocation } from "@/features/match/useHealAllocation";
 import { useSalveAllocation } from "@/features/match/useSalveAllocation";
+import { reactionWarning } from "@/features/match/reactionWarnings";
 import { useBoardPick } from "@/features/match/useBoardPick";
 import { useHeldTarget } from "@/features/match/useHeldTarget";
 import { PhaseBanner } from "@/features/match/PhaseBanner";
@@ -561,6 +562,7 @@ export function MatchBoard({
             candidates={myReactionCandidates}
             onActivateMany={activateSelectedReactions}
             onPass={() => runReactionAction({ type: "passReaction", playerId: viewerPlayerId })}
+            warningFor={(candidate) => reactionWarning(liveState, viewerPlayerId, candidate)}
           />
         )}
       {/* Le NAVIRE seul à pouvoir répondre : son panneau s'allume, et ce
