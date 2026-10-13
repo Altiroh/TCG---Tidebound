@@ -8,7 +8,8 @@ import { instance, testGameState, testPlayer } from "./testHelpers";
  *     sauf quand rien ne peut se battre (tout premier tour, unités qui
  *     arrivent, Navire qui ne tire pas) ;
  *   - au tout premier tour de la partie, le joueur qui commence n'attaque
- *     pas — sauf avec Pied marin (décision du 13/10/2026) ;
+ *     pas — sauf avec Pied marin (décision du 13/10/2026) ; son Navire tire,
+ *     le tir étant un effet et non une attaque (13/10/2026) ;
  *   - le joueur qui commence ne pioche pas à son premier tour.
  */
 
@@ -88,6 +89,26 @@ describe("premier tour de la partie", () => {
     const result = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: unite.instanceId });
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error).toMatch(/premier tour/);
+  });
+
+  it("le Navire tire dès le premier tour : son tir est un effet, pas une attaque (13/10/2026)", () => {
+    const state = testGameState({
+      turnNumber: 1,
+      phase: "mainPhase",
+      players: [testPlayer("p1", { shipId: "le-goliath", reason: 4, reasonMax: 10 }), testPlayer("p2", { shipId: "le-brise-lames" })],
+    });
+    const arme = dispatch(state, { type: "activateShipAbility", playerId: "p1" });
+    expect(arme.ok).toBe(true);
+    if (!arme.ok) return;
+    // Canon armé : le combat sert à quelque chose, pas de fin de tour en Phase principale 1.
+    expect(dispatch(arme.state, { type: "endTurn", playerId: "p1" }).ok).toBe(false);
+    const combat = dispatch(arme.state, { type: "advancePhase", playerId: "p1" });
+    expect(combat.ok && combat.state.phase).toBe("combatPhase");
+    if (!combat.ok) return;
+    const avant = combat.state.players[1].anchor;
+    const tir = dispatch(combat.state, { type: "fireShipAbility", playerId: "p1" });
+    expect(tir.ok).toBe(true);
+    if (tir.ok) expect(tir.state.players[1].anchor).toBe(avant - 2);
   });
 
   it("avec une unité Pied marin, le combat du premier tour s'ouvre (pas de fin de tour en Phase principale 1)", () => {
