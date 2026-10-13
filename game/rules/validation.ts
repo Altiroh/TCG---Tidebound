@@ -278,11 +278,13 @@ export function assertUnitCanAttack(state: GameState, playerId: PlayerId, instan
   if (!(UNIT_CARD_TYPES as readonly string[]).includes(getCardDefinition(unit.cardId).type)) {
     return fail("Seuls les Marins et Créatures peuvent attaquer.");
   }
-  // Premier tour de la partie : le joueur qui commence n'attaque pas, Pied
-  // marin compris (règle du 08/10/2026) — il a déjà l'avantage de jouer le premier.
-  if (state.turnNumber === 1) return fail("Le premier joueur ne peut pas attaquer à son premier tour.");
   // Pied marin : l'unité a le pied assez sûr pour agir dès son arrivée.
-  if (unit.summoningSick && !hasEffectiveKeyword(state, player!, unit, KEYWORD_PIED_MARIN)) {
+  const piedMarin = hasEffectiveKeyword(state, player!, unit, KEYWORD_PIED_MARIN);
+  // Premier tour de la partie : le joueur qui commence n'attaque pas (règle
+  // du 08/10/2026) — SAUF avec Pied marin, qui attaque dès le premier tour
+  // (décision du 13/10/2026).
+  if (state.turnNumber === 1 && !piedMarin) return fail("Au premier tour de la partie, seule une unité avec Pied marin peut attaquer.");
+  if (unit.summoningSick && !piedMarin) {
     return fail("Cette unité ne peut pas encore attaquer.");
   }
   // Le nombre d'attaques de la phase : 1, ou ce que ses qualifications lui accordent (Rafale, Déluge, Carnage).

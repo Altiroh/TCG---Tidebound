@@ -26,7 +26,8 @@ function validate(state: GameState, action: EndTurnAction) {
     assertIsActivePlayer(state, action.playerId),
     // Pas de fin de tour en Phase principale 1 — sauf quand le combat ne
     // servirait à rien : aucune unité ne peut attaquer et le Navire ne tire
-    // pas (tout premier tour compris ; règles du 08/10/2026).
+    // pas (tout premier tour sans Pied marin compris ; règles du 08/10/2026
+    // et du 13/10/2026).
     state.phase === "mainPhase" && hasCombatToPlay(state, action.playerId)
       ? fail("Pas de fin de tour en Phase principale 1 : passez d'abord en Phase de combat.")
       : ok()

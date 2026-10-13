@@ -441,7 +441,7 @@ export function MatchBoard({
   }
 
   // Pas de fin de tour en Phase principale 1 (règle du 08/10/2026) : le bouton mène au combat d'abord —
-  // sauf au tout premier tour, où l'on ne peut pas attaquer : il propose directement la fin du tour.
+  // sauf quand rien ne peut se battre (tout premier tour sans Pied marin…) : il propose directement la fin du tour.
   const phase = phaseButtonFor({ isMyTurn: isViewerTurn, phase: state.phase === "mainPhase" && !hasCombatToPlay(state, state.activePlayerId) ? "mainPhase2" : state.phase });
   const hint = targetingHint(pending?.kind === "reaction" ? null : pending?.kind ?? null);
 

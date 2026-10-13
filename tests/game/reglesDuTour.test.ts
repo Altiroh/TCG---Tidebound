@@ -8,7 +8,7 @@ import { instance, testGameState, testPlayer } from "./testHelpers";
  *     sauf quand rien ne peut se battre (tout premier tour, unités qui
  *     arrivent, Navire qui ne tire pas) ;
  *   - au tout premier tour de la partie, le joueur qui commence n'attaque
- *     pas, Pied marin compris ;
+ *     pas — sauf avec Pied marin (décision du 13/10/2026) ;
  *   - le joueur qui commence ne pioche pas à son premier tour.
  */
 
@@ -76,12 +76,25 @@ describe("premier tour de la partie", () => {
   // La Sterne des Embruns a Pied marin : elle attaque dès son arrivée.
   const sterne = () => instance("sterne-des-embruns", "p1", { summoningSick: true });
 
-  it("le joueur qui commence n'attaque pas, même avec Pied marin", () => {
+  it("le joueur qui commence attaque avec Pied marin dès le premier tour (13/10/2026)", () => {
     const unite = sterne();
+    const state = testGameState({ turnNumber: 1, phase: "combatPhase", players: [testPlayer("p1", { board: [unite] }), testPlayer("p2", { shipId: "le-goliath" })] });
+    expect(dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: unite.instanceId }).ok).toBe(true);
+  });
+
+  it("sans Pied marin, il n'attaque pas au premier tour", () => {
+    const unite = instance("marin-des-jetees", "p1");
     const state = testGameState({ turnNumber: 1, phase: "combatPhase", players: [testPlayer("p1", { board: [unite] }), testPlayer("p2", { shipId: "le-goliath" })] });
     const result = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: unite.instanceId });
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error).toMatch(/premier tour/);
+  });
+
+  it("avec une unité Pied marin, le combat du premier tour s'ouvre (pas de fin de tour en Phase principale 1)", () => {
+    const state = testGameState({ turnNumber: 1, phase: "mainPhase", players: [testPlayer("p1", { board: [sterne()] }), testPlayer("p2", { shipId: "le-goliath" })] });
+    expect(dispatch(state, { type: "endTurn", playerId: "p1" }).ok).toBe(false);
+    const sansPied = testGameState({ turnNumber: 1, phase: "mainPhase", players: [testPlayer("p1", { board: [instance("marin-des-jetees", "p1")] }), testPlayer("p2", { shipId: "le-goliath" })] });
+    expect(dispatch(sansPied, { type: "endTurn", playerId: "p1" }).ok).toBe(true);
   });
 
   it("dès son tour suivant, Pied marin attaque le tour de son arrivée", () => {

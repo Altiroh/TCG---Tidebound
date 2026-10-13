@@ -323,7 +323,7 @@ export function enumerateCandidateActions(state: GameState, playerId: PlayerId):
     }
 
     if (state.phase === "mainPhase" && !hasCombatToPlay(state, playerId)) {
-      // Rien ne peut se battre (tout premier tour, unités qui arrivent,
+      // Rien ne peut se battre (tout premier tour sans Pied marin, unités qui arrivent,
       // Marée qui les rend inactives) : le tour se termine ici.
       actions.push({ type: "endTurn", playerId });
     } else if (state.phase === "mainPhase") {
