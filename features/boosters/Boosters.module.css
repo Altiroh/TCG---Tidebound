@@ -935,32 +935,30 @@
 }
 
 /*
- * TÉLÉPHONE COUCHÉ — la table se lit en défilant.
+ * TÉLÉPHONE COUCHÉ — TOUT TIENT À L'ÉCRAN (13/10/2026).
  *
- * Posée d'un bloc à la hauteur de l'écran, la table laissait des rouleaux
- * étiquetés à 6 px et une fiche si étroite que ses textes, au plancher de
- * 11 px, se chevauchaient. Sous 560 px de haut, elle devient une page qui
- * défile à peine : l'étagère, agrandie, à gauche ; la fiche du sachet
- * choisi au milieu ; le sachet d'ouverture, plus petit, à droite. Chaque zone grandit de
- * `--z` (1 sur ordinateur), qui multiplie ses tailles en `cqw` ; les
- * rouleaux, eux, suivent la hauteur de l'étagère. Positions en % de la
- * scène : largeur W, hauteur 0,74 W.
+ * La table se lisait en défilant : la fiche passait sous l'écran et
+ * « Ouvrir » n'apparaissait qu'après avoir fait défiler, les étiquettes des
+ * rouleaux tombaient à 6 px. Sous 560 px de haut, la scène prend toute la
+ * place sous le bandeau, en trois colonnes pleine hauteur :
+ *   - l'étagère, collée à gauche, à la hauteur de l'écran ;
+ *   - le sachet, au centre ;
+ *   - la fiche, à droite : un parchemin en COLONNE — titre, chiffres, texte
+ *     qui défile seul s'il est long, et les boutons TOUJOURS en bas.
+ * Le parchemin peint (format portrait) ne se laisse pas étirer sur un
+ * écran couché : la fiche y prend un parchemin dessiné en CSS, aux mêmes
+ * encres et au même laiton.
  */
 @media (max-height: 560px) {
-  .page {
-    place-items: start center;
-    overflow-x: hidden;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-  }
-
   .stage {
-    width: 100%;
-    aspect-ratio: 100 / 74;
-    /* L'étagère n'est plus collée au bord de l'écran : elle ouvre la page. */
+    width: 100cqw;
+    height: 100cqh;
+    aspect-ratio: auto;
+    font-size: 12px;
+    /* L'étagère : collée à gauche, toute la hauteur de la scène. */
     --tb-shelf-left: 0px;
     --tb-shelf-top: 0px;
-    --tb-shelf-height: 72cqw;
+    --tb-shelf-height: 100cqh;
   }
 
   .decor {
@@ -971,19 +969,138 @@
     --z: 1.37;
   }
 
-  .panel {
-    --z: 1.45;
-    left: 43.5%;
-    top: 0.5%;
-    width: 38.6%;
+  /* Le sachet, entre l'étagère et la fiche. */
+  .plan {
+    --z: 1.5;
+    left: calc(100cqh * 815 / 1400 + 1%);
+    right: 41%;
+    top: 3%;
+    height: 94%;
   }
 
-  .plan {
+  /* La fiche : un parchemin en colonne, pleine hauteur. */
+  .panel {
     --z: 1;
-    left: 82.5%;
-    right: 0;
-    top: 4%;
-    height: 60%;
+    left: auto;
+    right: 0.5%;
+    top: 2%;
+    bottom: 2%;
+    width: 40%;
+    aspect-ratio: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    padding: 10px 14px 10px;
+    border: 2px solid #8a6634;
+    border-radius: 10px;
+    background:
+      radial-gradient(ellipse at 50% 0%, rgba(255, 248, 228, 0.55), transparent 60%),
+      linear-gradient(180deg, #ecdcb6, #dcc394 70%, #cfb27f);
+    box-shadow: inset 0 0 0 1px rgba(255, 244, 214, 0.6), inset 0 0 18px rgba(120, 82, 30, 0.35), 0 6px 18px rgba(0, 0, 0, 0.55);
+    filter: none;
+  }
+
+  /* Rien ne se tasse dans la colonne, sauf le texte, qui défile. */
+  .panel > * {
+    position: static;
+    flex: none;
+  }
+
+  .panelTitle {
+    font-size: 19px;
+    line-height: 1.15;
+    white-space: normal;
+    overflow: visible;
+  }
+
+  /* « N au total » ne tient pas dans la plaque de l'étagère : le nombre de chaque rouleau suffit. */
+  .shelfCount {
+    display: none;
+  }
+
+  .panelKind {
+    font-size: 10px;
+  }
+
+  .ornament {
+    height: 8px;
+    margin: 0 12%;
+    flex: none;
+  }
+
+  .ornament svg {
+    width: 8px;
+    height: 8px;
+  }
+
+  .stats {
+    flex: none;
+    height: auto;
+  }
+
+  .statDiamond {
+    width: 46px;
+  }
+
+  .statValue {
+    font-size: 13px;
+  }
+
+  .statLabel {
+    font-size: 11px;
+  }
+
+  .statLabel small {
+    font-size: 9px;
+  }
+
+  /* Le texte défile seul s'il est long ; les boutons restent en bas. */
+  .panel > .panelLore {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: auto;
+    font-size: 12px;
+    line-height: 1.35;
+  }
+
+  /* Les deux renvois côte à côte, l'ouverture sur toute la largeur dessous : le texte garde sa place. */
+  .panel > .panelActions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .panelActions > .openRow,
+  .panelActions > .openAll,
+  .panelActions > .panelLocked {
+    grid-column: 1 / -1;
+  }
+
+  .plank {
+    height: 32px;
+    padding: 0 6px;
+    font-size: 12px;
+  }
+
+  .openRow .plank {
+    height: 34px;
+  }
+
+  .batchStep {
+    width: 26px;
+    height: 26px;
+    font-size: 15px;
+  }
+
+  .openAll,
+  .panelLocked {
+    font-size: 12px;
+  }
+
+  .planState,
+  .planPity {
+    font-size: 11px;
   }
 
   /* Étiquette du rouleau : jamais sous 11 px. */
