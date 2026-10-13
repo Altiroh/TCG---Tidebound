@@ -646,8 +646,21 @@
 
 /* ── Les boutons peints ────────────────────────────────────── */
 
+/*
+ * Les plaques vivent hors de la scène (`MatchResultScreen.tsx`) mais dans
+ * une boîte de MÊME géométrie : leurs positions en % et leurs textes en
+ * `cqw` restent ceux de la référence. Sur téléphone, elles deviennent une
+ * barre fixe (plus bas).
+ */
 .actions {
-  inset: 0;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: min(100vw - var(--tb-safe-left, 0px) - var(--tb-safe-right, 0px), (100dvh - var(--tb-safe-top, 0px) - var(--tb-safe-bottom, 0px)) * 1672 / 941);
+  aspect-ratio: 1672 / 941;
+  margin: 0;
+  container-type: size;
+  translate: -50% -50%;
   pointer-events: none;
   animation: rise-in 500ms ease-out 1900ms both;
 }
@@ -723,73 +736,88 @@
 }
 
 /*
- * TÉLÉPHONE COUCHÉ — la fin de partie se lit en défilant.
+ * TÉLÉPHONE COUCHÉ — TOUT TIENT À L'ÉCRAN (13/10/2026).
  *
- * Posée d'un bloc à la hauteur de l'écran (1 cqw ≈ 6,9 px), la scène
- * donnait des textes de 7 à 9 px ; les planchers de 11 px les ont rendus
- * lisibles mais trop grands pour leurs boîtes : l'humeur sur « Moments
- * forts », le dernier moment sur « Quêtes », les récompenses sur la
- * quatrième quête. Sous 560 px de haut, la scène prend toute la largeur et
- * devient une page qui défile : titre, public et photo ; les moments forts
- * à gauche, le gain sous la photo ; les quatre quêtes sur toute la largeur ;
- * les deux plaques. Chaque zone grandit de `--z` (1 sur ordinateur).
- * Positions en % de la scène : largeur W, hauteur 0,72 W.
+ * La fin de partie se lisait en défilant : les boutons « Retour » et
+ * « Nouvelle partie » n'apparaissaient qu'en bas de page, et posés en barre
+ * fixe ils masquaient le gain et le texte. Sous 560 px de haut, la scène
+ * prend désormais l'écran entier (zone sûre déduite) et se recompose sans
+ * défilement, en trois colonnes puis deux bandes :
+ *   - titre et public | moments forts | photo, puis le gain dessous ;
+ *   - la ligne des quêtes sur toute la largeur ;
+ *   - une bande RÉSERVÉE aux deux plaques, où rien d'autre ne se pose.
+ * Positions en % de l'écran ; `--z` règle chaque zone (1 cqw = 1 % de la
+ * largeur de l'écran).
  */
 @media (max-height: 560px) {
-  .screen {
-    overflow-x: hidden;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-  }
-
-  /* Le fond peint reste à la fenêtre : posé sur l'écran qui défile, il
-     s'arrêtait au premier écran et la suite passait sur un aplat crème. */
-  .backdrop {
-    position: fixed;
-  }
-
-  .stage {
-    position: relative;
-    left: auto;
-    top: auto;
-    width: calc(100vw - var(--tb-safe-left, 0px) - var(--tb-safe-right, 0px));
-    aspect-ratio: 100 / 72;
-    margin: 0 auto;
+  .stage,
+  .actions {
+    left: var(--tb-safe-left, 0px);
+    right: var(--tb-safe-right, 0px);
+    top: var(--tb-safe-top, 0px);
+    bottom: var(--tb-safe-bottom, 0px);
+    width: auto;
+    aspect-ratio: auto;
     transform: none;
+    translate: none;
   }
 
-  /* Le lavis crème suit la colonne de gauche et la ligne des quêtes. */
+  /* Le lavis crème suit les trois zones d'encre : public, moments forts, quêtes. */
   .stage::before {
     background:
-      radial-gradient(ellipse 30% 30% at 20% 52%, rgba(238, 229, 210, 0.62), rgba(238, 229, 210, 0.3) 60%, transparent 100%),
-      radial-gradient(ellipse 72% 13% at 50% 78%, rgba(236, 227, 207, 0.88), rgba(236, 227, 207, 0.62) 70%, transparent 100%);
+      radial-gradient(ellipse 18% 30% at 15% 38%, rgba(238, 229, 210, 0.66), rgba(238, 229, 210, 0.3) 60%, transparent 100%),
+      radial-gradient(ellipse 22% 30% at 46% 34%, rgba(238, 229, 210, 0.7), rgba(238, 229, 210, 0.32) 60%, transparent 100%),
+      radial-gradient(ellipse 56% 13% at 50% 74%, rgba(236, 227, 207, 0.88), rgba(236, 227, 207, 0.6) 70%, transparent 100%);
   }
 
-  .title {
-    top: 8.5%;
+  .logo {
+    display: none;
+  }
+
+  .title,
+  .titlePrinted {
+    left: 2.5%;
+    top: 3%;
+    width: 25%;
   }
 
   .spectators {
-    --z: 1.2;
-    top: 23%;
-    width: 26%;
-  }
-
-  .photo {
-    top: 5%;
+    --z: 0.85;
+    left: 3%;
+    top: 26%;
+    width: 24%;
   }
 
   .recap {
-    --z: 1.35;
-    top: 41%;
-    width: 44%;
+    --z: 1.05;
+    left: 30%;
+    top: 6%;
+    width: 33%;
+  }
+
+  .signals li {
+    font-size: max(10px, calc(1.2cqw * var(--z, 1)));
+  }
+
+  .epilogue {
+    --z: 1.1;
+    left: 30%;
+    top: 6%;
+    width: 33%;
+  }
+
+  .photo {
+    --z: 1;
+    left: 64%;
+    top: 1%;
+    width: 34%;
   }
 
   .rewards {
-    --z: 1.2;
-    left: 52%;
-    top: 55%;
-    max-width: 44%;
+    --z: 0.95;
+    left: 66%;
+    top: 49%;
+    max-width: 32%;
   }
 
   .rewardNote {
@@ -797,27 +825,31 @@
   }
 
   .rule {
-    top: 65.5%;
-    width: 92%;
+    left: 3%;
+    top: 61%;
+    width: 94%;
   }
 
   .questsHead {
-    --z: 1.3;
-    top: 66.5%;
+    --z: 0.9;
+    left: 3%;
+    top: 62.5%;
   }
 
   .questRow {
-    --z: 1.4;
+    --z: 1.05;
     left: 3%;
-    top: 73%;
+    top: 69.5%;
     width: 94%;
-    height: 9%;
+    height: 12%;
   }
 
+  /* La bande des plaques : rien d'autre n'y est posé. */
   .buttonBack,
   .buttonNew {
-    top: 86%;
+    top: 83.5%;
     width: 21%;
+    font-size: max(12px, calc(1.2cqw * var(--z, 1)));
   }
 
   .buttonBack { left: 27.5%; }

@@ -386,35 +386,36 @@ export function MatchResultScreen({ outcome, player, matchId, preview, audience,
           </figcaption>
         </figure>
 
-        {/* ── Les deux boutons peints ── */}
-        <nav className={styles.actions} aria-label="Suite">
-          {epilogue ? (
-            <>
-              <button type="button" onClick={epilogue.back.onClick} className={styles.buttonBack}>
-                <span>{epilogue.back.label}</span>
-              </button>
-              <button type="button" onClick={epilogue.next.onClick} className={styles.buttonNew}>
-                <span>{epilogue.next.label}</span>
-              </button>
-            </>
-          ) : (
-            <>
-          <Link href="/" className={styles.buttonBack}>
-            <span>Retour au menu</span>
-          </Link>
-          {exitHref ? (
-            <Link href={exitHref} className={styles.buttonNew}>
-              <span>Nouvelle partie</span>
-            </Link>
-          ) : (
-            <button type="button" onClick={onExit} className={styles.buttonNew}>
-              <span>Nouvelle partie</span>
-            </button>
-          )}
-            </>
-          )}
-        </nav>
       </div>
+
+      {/* ── Les deux boutons peints ── posés HORS de la scène : sur téléphone, la scène défile et eux restent à l'écran. */}
+      <nav className={styles.actions} aria-label="Suite">
+        {epilogue ? (
+          <>
+            <button type="button" onClick={epilogue.back.onClick} className={styles.buttonBack}>
+              <span>{epilogue.back.label}</span>
+            </button>
+            <button type="button" onClick={epilogue.next.onClick} className={styles.buttonNew}>
+              <span>{epilogue.next.label}</span>
+            </button>
+          </>
+        ) : (
+          <>
+        <Link href="/" className={styles.buttonBack}>
+          <span>Retour au menu</span>
+        </Link>
+        {exitHref ? (
+          <Link href={exitHref} className={styles.buttonNew}>
+            <span>Nouvelle partie</span>
+          </Link>
+        ) : (
+          <button type="button" onClick={onExit} className={styles.buttonNew}>
+            <span>Nouvelle partie</span>
+          </button>
+        )}
+          </>
+        )}
+      </nav>
 
       {/* La victoire : une pluie de confettis, quelques secondes, par-dessus tout. */}
       {isVictory && <VictoryConfetti />}
