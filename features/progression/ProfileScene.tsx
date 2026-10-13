@@ -1,25 +1,15 @@
 "use client";
 
-import { useEffect, useState, useTransition, type ReactNode } from "react";
+import { useState, useTransition, type ReactNode } from "react";
 import { getCardDefinition } from "@/game";
-import {
-  LOGIN_CYCLE_LENGTH,
-  LOGIN_STREAK_MILESTONE,
-  MAX_REWARDED_LEVEL,
-  levelRewardItems,
-  loginBoosterName,
-  loginRewardForStep,
-  loginRewardLabel,
-  type LoginRewardItem,
-} from "@/game/progression";
+import { LOGIN_STREAK_MILESTONE, MAX_REWARDED_LEVEL, levelRewardItems } from "@/game/progression";
 import { cardIllustrationThumbUrl } from "@/features/decks/cardArtUrl";
-import { claimDailyLogin, updateProfileIdentity, type ProfileSummary } from "@/features/progression/profileActions";
-import { loginGainsText } from "@/features/progression/dailyLogin";
+import { updateProfileIdentity, type ProfileSummary } from "@/features/progression/profileActions";
 import { notifyProgressionChanged } from "@/features/progression/progressionSync";
 import { RewardIcon } from "@/features/progression/RewardIcon";
 import { PreconToken, TideCoin } from "@/features/shell/GameIcons";
 import styles from "@/features/progression/ProfileScene.module.css";
-import { playButtonClick, playStreakClaimed } from "@/lib/sound";
+import { playButtonClick } from "@/lib/sound";
 
 interface ProfileSceneProps {
   profile: ProfileSummary;
@@ -47,34 +37,6 @@ function cardName(cardId: string): string {
   }
 }
 
-/** Rareté en toutes lettres, pour les libellés courts des escales. */
-const RARITY_SHORT: Record<string, string> = {
-  common: "commune",
-  uncommon: "peu commune",
-  rare: "rare",
-  epic: "épique",
-  legendary: "légendaire",
-  abyssal: "Abyssale",
-};
-
-/**
- * Libellé COURT d'une récompense d'escale : il tient sur la tuile sans
- * troncature (« Carte commune », « Booster », « 20 Tides ») ; le libellé
- * complet (pool, nom du booster) reste dans l'infobulle de la tuile.
- */
-function loginRewardShort(item: LoginRewardItem): string {
-  switch (item.kind) {
-    case "tides":
-      return `${item.amount} Tides`;
-    case "xp":
-      return `${item.amount} XP`;
-    case "booster":
-      return item.count > 1 ? `${item.count} boosters` : "Booster";
-    case "card":
-      return `Carte ${RARITY_SHORT[item.rarity] ?? item.rarity}`;
-  }
-}
-
 /** Arc de progression du niveau : rayon et périmètre dans le repère 100 × 100 de l'anneau. */
 const RING_RADIUS = 32.5;
 const RING_PERIMETER = 2 * Math.PI * RING_RADIUS;
@@ -83,7 +45,8 @@ const RING_PERIMETER = 2 * Math.PI * RING_RADIUS;
  * L'onglet PROFIL de la page `/profil` : une scène montée en calques sur la
  * cabine du navire (`public/assets/profile/`), à la place des panneaux du
  * carnet de bord — photo du joueur, anneau de niveau, quatre losanges de
- * ressources, route des prochains paliers et escales de connexion.
+ * ressources, route des prochains paliers. Les escales de connexion vivent
+ * dans Récompenses (13/10/2026) : seul « Tout réclamer » reste ici.
  *
  * Tout est posé en pourcentages d'une SCÈNE au format de la maquette
  * (1855 × 778, bandeau exclu), et les textes en `cqw` de cette scène : la
@@ -199,7 +162,15 @@ export function ProfileScene({
           </button>
         </section>
 
-        <LoginPanel profile={profile} waitingTotal={waitingTotal} claimingAll={claimingAll} onClaimAll={onClaimAll} onRefresh={onRefresh} />
+        {/* Les escales de connexion vivent dans Récompenses (13/10/2026 : elles étaient en double ici). Reste, au même
+            endroit, le geste qui réclame tout ce qui attend. */}
+        {waitingTotal > 0 && (
+          <div className={styles.claimAllDock}>
+            <button type="button" className={styles.claimAll} onClick={onClaimAll} disabled={claimingAll}>
+              {claimingAll ? "…" : `Tout réclamer (${waitingTotal})`}
+            </button>
+          </div>
+        )}
 
         {/* La sortie : une plaque sombre à liseré de laiton, posée sur le pont près du canon. */}
         <button type="button" className={styles.signOut} onClick={onSignOut} disabled={signingOut} aria-busy={signingOut || undefined}>
@@ -343,112 +314,3 @@ function Diamond({ slot, value, label, icon, title }: { slot: 1 | 2 | 3 | 4; val
 
 /* ── Les escales de connexion ─────────────────────────────────────── */
 
-function LoginPanel({
-  profile,
-  waitingTotal,
-  claimingAll,
-  onClaimAll,
-  onRefresh,
-}: Pick<ProfileSceneProps, "profile" | "waitingTotal" | "claimingAll" | "onClaimAll" | "onRefresh">) {
-  const { login } = profile;
-  const [message, setMessage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  // `startTransition(async …)` ne suit pas l'appel sous React 18 : l'escale
-  // réclamée réapparaissait « à réclamer » jusqu'au profil relu. Marquée
-  // jusqu'à son arrivée.
-  const [pending, setPending] = useState(false);
-  useEffect(() => setPending(false), [profile]);
-
-  function claim() {
-    if (!login.claimable || pending) return;
-    playButtonClick();
-    setError(null);
-    setMessage(null);
-    setPending(true);
-    void (async () => {
-      const result = await claimDailyLogin();
-      if (!result.ok) {
-        setError(result.error ?? "Réclamation impossible.");
-        setPending(false);
-        return;
-      }
-      const gains = loginGainsText(result);
-      playStreakClaimed();
-      setMessage(gains ? `Escale franchie — ${gains}.` : "Escale franchie.");
-      notifyProgressionChanged();
-      onRefresh();
-      // Relâché à l'arrivée du profil relu ; filet si la relecture n'aboutit pas.
-      window.setTimeout(() => setPending(false), 10_000);
-    })().catch(() => setPending(false));
-  }
-
-  return (
-    <section className={styles.login} aria-label="Escales de connexion" data-claimable={login.claimable ? "" : undefined}>
-      <header className={styles.loginHead}>
-        <div>
-          <h2 className={styles.loginTitle}>Escales de connexion</h2>
-          <p className={styles.loginSub}>
-            {message ?? error ?? (
-              <>
-                Sept escales, une par jour de retour. Cette semaine : booster {loginBoosterName(login.weekBoosterId)}.
-              </>
-            )}
-          </p>
-        </div>
-        {waitingTotal > 0 && (
-          <button type="button" className={styles.claimAll} onClick={onClaimAll} disabled={claimingAll}>
-            {claimingAll ? "…" : `Tout réclamer (${waitingTotal})`}
-          </button>
-        )}
-      </header>
-
-      <ol className={styles.loginCells}>
-        {Array.from({ length: LOGIN_CYCLE_LENGTH }, (_, index) => index + 1).map((step) => {
-          const items = login.cycle[step - 1] ?? loginRewardForStep(step);
-          const label = items.map(loginRewardLabel).join(" · ");
-          // Sur la tuile, le libellé court de la première récompense (+ n s'il y en a d'autres) ; le détail est dans l'infobulle.
-          const first = items[0];
-          const short = first ? `${loginRewardShort(first)}${items.length > 1 ? ` +${items.length - 1}` : ""}` : "";
-          const current = step === login.step;
-          const passed = step < login.step;
-          const claimable = current && login.claimable;
-          return (
-            <li key={step} className={styles.loginCell} data-state={current ? "current" : passed ? "passed" : "next"} data-claimable={claimable ? "" : undefined}>
-              <button
-                type="button"
-                className={styles.loginCellButton}
-                onClick={claim}
-                disabled={!claimable || pending}
-                title={claimable ? `Réclamer : ${label}` : passed ? `Franchie : ${label}` : label}
-                aria-label={`Escale ${step} — ${claimable ? `réclamer : ${label}` : passed ? `franchie : ${label}` : label}`}
-              >
-                <span className={styles.loginIndex}>{step}</span>
-                <span className={styles.loginIcon}>
-                  {items.slice(0, 1).map((item, itemIndex) => (
-                    <RewardIcon key={itemIndex} item={item} size={40} />
-                  ))}
-                </span>
-                <span className={styles.loginLabel}>{claimable ? (pending ? "…" : "Réclamer") : short}</span>
-                {passed && (
-                  <span className={styles.loginCheck} aria-hidden>
-                    <svg viewBox="0 0 24 24" fill="none">
-                      <path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  </span>
-                )}
-              </button>
-            </li>
-          );
-        })}
-      </ol>
-
-      {/* Le fil des escales, comme celui de la route des paliers : il s'allume jusqu'à l'escale du jour, une perle losange sous chaque tuile. */}
-      <div className={styles.loginTrack} aria-hidden>
-        <span className={styles.loginTrackFill} style={{ width: `${(Math.max(0, Math.min(LOGIN_CYCLE_LENGTH, login.step) - 0.5) / LOGIN_CYCLE_LENGTH) * 100}%` }} />
-        {Array.from({ length: LOGIN_CYCLE_LENGTH }, (_, index) => index + 1).map((step) => (
-          <span key={step} className={styles.loginDot} data-state={step === login.step ? "current" : step < login.step ? "passed" : "next"} />
-        ))}
-      </div>
-    </section>
-  );
-}

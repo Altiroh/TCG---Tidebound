@@ -471,44 +471,15 @@
   outline-offset: 2px;
 }
 
-/* ── Escales de connexion (panneau sombre) ─────────────────────────── */
-
-.login {
+/*
+ * « Tout réclamer » : seul vestige du panneau des escales, qui vivent dans
+ * Récompenses (13/10/2026). Posé où était le panneau, en bas à droite.
+ */
+.claimAllDock {
   position: absolute;
-  left: 46.9%;
-  top: 59.1%;
-  width: 49.4%;
-  height: 34.7%;
-  padding: 1.4% 2% 1.2%;
-  background: url("/assets/ui/panneaux/panneau-sombre.webp") center / 100% 100% no-repeat;
-  filter: drop-shadow(0 calc(0.8cqw * var(--z, 1)) calc(1.2cqw * var(--z, 1)) rgba(0, 0, 0, 0.55));
-  display: flex;
-  flex-direction: column;
-  gap: calc(0.35cqw * var(--z, 1));
-}
-
-.loginHead {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: calc(1cqw * var(--z, 1));
-}
-
-.loginTitle {
-  margin: 0;
-  font-family: var(--tb-font-display);
-  font-size: max(var(--tb-fs-floor, 0px), calc(calc(1.15cqw * var(--z, 1)) * var(--tb-text-scale)));
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: #efe6d2;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
-}
-
-.loginSub {
-  margin: calc(0.15cqw * var(--z, 1)) 0 0;
-  font-size: max(var(--tb-fs-floor, 0px), calc(calc(0.72cqw * var(--z, 1)) * var(--tb-text-scale)));
-  color: #b9c6cf;
+  right: 4%;
+  bottom: 9%;
+  --z: 1.7;
 }
 
 /* « Tout réclamer » : de l'or, comme toute récompense qui attend. */
@@ -542,204 +513,12 @@
   cursor: not-allowed;
 }
 
-.loginCells {
-  flex: 1;
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  /* Une seule rangée, à la hauteur du panneau : la tuile ne déborde jamais par le bas. */
-  grid-template-rows: minmax(0, 1fr);
-  gap: calc(0.7cqw * var(--z, 1));
-  margin: 0;
-  padding: 0 calc(0.3cqw * var(--z, 1));
-  list-style: none;
-  min-height: 0;
-}
-
-.loginCell {
-  position: relative;
-  min-height: 0;
-  transition: transform 160ms ease-out;
-}
-
-/*
- * Une escale : un PALIER en miniature (`rewards/palier.webp`, 520 × 795),
- * même tuile que la route de l'onglet Récompenses. Découpe en 9 à l'échelle
- * de la tuile (--k : 1 px de l'asset) — l'hexagone du haut et la pointe du
- * bas gardent leur dessin, seul le parchemin s'étire en hauteur.
- */
-.loginCellButton {
-  --k: calc(0.0115cqw * var(--z, 1));
-  position: relative;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-start;
-  gap: calc(0.15cqw * var(--z, 1));
-  padding: calc(150 * var(--k)) calc(40 * var(--k)) calc(150 * var(--k));
-  border: 0 solid transparent;
-  border-image: url("/assets/rewards/palier.webp") 190 55 175 55 fill / calc(190 * var(--k)) calc(55 * var(--k)) calc(175 * var(--k)) / 0 stretch;
-  background: none;
-  color: #3a2a18;
-  font: inherit;
-  text-align: center;
-  cursor: var(--tb-cursor);
-  filter: drop-shadow(0 calc(0.4cqw * var(--z, 1)) calc(0.6cqw * var(--z, 1)) rgba(0, 0, 0, 0.6));
-  transition: filter 160ms ease-out;
-}
-
-/* À venir : dans l'ombre, comme les paliers pas encore atteints. */
-.loginCell[data-state="next"] .loginCellButton {
-  filter: drop-shadow(0 calc(0.4cqw * var(--z, 1)) calc(0.6cqw * var(--z, 1)) rgba(0, 0, 0, 0.6)) brightness(0.72) saturate(0.7);
-}
-
-/* Franchie : le parchemin reste clair, un peu passé, et coché. */
-.loginCell[data-state="passed"] .loginCellButton {
-  filter: drop-shadow(0 calc(0.4cqw * var(--z, 1)) calc(0.6cqw * var(--z, 1)) rgba(0, 0, 0, 0.6)) saturate(0.75);
-}
-
-/* L'escale du jour, déjà réclamée : le cyan de « là où vous en êtes ». */
-.loginCell[data-state="current"] {
-  transform: translateY(-4%);
-  z-index: 1;
-}
-.loginCell[data-state="current"] .loginCellButton {
-  filter: drop-shadow(0 0 calc(0.7cqw * var(--z, 1)) rgba(95, 208, 230, 0.7)) drop-shadow(0 calc(0.4cqw * var(--z, 1)) calc(0.6cqw * var(--z, 1)) rgba(0, 0, 0, 0.6));
-}
-
-/* L'escale du jour, À RÉCLAMER : l'or de la récompense, qui respire. */
-.loginCell[data-claimable] {
-  transform: translateY(-4%) scale(1.05);
-}
-.loginCell[data-claimable] .loginCellButton {
-  cursor: var(--tb-cursor-pointer);
-  filter: drop-shadow(0 0 calc(0.9cqw * var(--z, 1)) rgba(243, 200, 107, 0.75)) drop-shadow(0 calc(0.4cqw * var(--z, 1)) calc(0.6cqw * var(--z, 1)) rgba(0, 0, 0, 0.6));
-  animation: escaleCall 1.8s ease-in-out infinite;
-}
-.loginCell[data-claimable] .loginCellButton:hover:not(:disabled) {
-  animation: none;
-  filter: brightness(1.08) drop-shadow(0 0 calc(1.3cqw * var(--z, 1)) rgba(243, 200, 107, 0.95)) drop-shadow(0 calc(0.4cqw * var(--z, 1)) calc(0.6cqw * var(--z, 1)) rgba(0, 0, 0, 0.6));
-}
-.loginCellButton:focus-visible {
-  outline: 2px solid var(--tb-accent);
-  outline-offset: 2px;
-}
 @keyframes escaleCall {
   0%, 100% { filter: drop-shadow(0 0 calc(0.6cqw * var(--z, 1)) rgba(243, 200, 107, 0.55)) drop-shadow(0 calc(0.4cqw * var(--z, 1)) calc(0.6cqw * var(--z, 1)) rgba(0, 0, 0, 0.6)); }
   50% { filter: drop-shadow(0 0 calc(1.3cqw * var(--z, 1)) rgba(243, 200, 107, 0.95)) drop-shadow(0 calc(0.4cqw * var(--z, 1)) calc(0.6cqw * var(--z, 1)) rgba(0, 0, 0, 0.6)); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .loginCell[data-claimable] .loginCellButton {
-    animation: none;
-  }
-}
 
-/* Le numéro, dans l'hexagone du haut (centre à 85 px de l'asset). */
-.loginIndex {
-  position: absolute;
-  left: 50%;
-  top: calc(88 * var(--k));
-  transform: translate(-50%, -50%);
-  font-family: var(--tb-font-display);
-  font-size: max(var(--tb-fs-floor, 0px), calc(calc(0.9cqw * var(--z, 1)) * var(--tb-text-scale)));
-  font-weight: 700;
-  line-height: 1;
-  color: #f4ead4;
-}
-.loginCell[data-state="current"] .loginIndex {
-  color: var(--tb-accent);
-}
-.loginCell[data-claimable] .loginIndex {
-  color: #f3c86b;
-}
-
-.loginIcon {
-  display: grid;
-  place-items: center;
-  flex: none;
-}
-.loginIcon > * {
-  width: calc(2.1cqw * var(--z, 1)) !important;
-  height: calc(2.1cqw * var(--z, 1)) !important;
-}
-
-.loginLabel {
-  font-family: var(--tb-font-display);
-  font-size: max(var(--tb-fs-floor, 0px), calc(calc(0.6cqw * var(--z, 1)) * var(--tb-text-scale)));
-  font-weight: 700;
-  line-height: 1.1;
-  max-width: 100%;
-  overflow-wrap: anywhere;
-}
-
-.loginCell[data-claimable] .loginLabel {
-  color: #7a4f0e;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-/* La coche d'une escale franchie : le médaillon cyan des paliers obtenus, posé sur la pointe. */
-.loginCheck {
-  position: absolute;
-  left: 50%;
-  bottom: calc(40 * var(--k));
-  transform: translateX(-50%);
-  display: grid;
-  place-items: center;
-  width: calc(1.25cqw * var(--z, 1));
-  height: calc(1.25cqw * var(--z, 1));
-  border: calc(0.1cqw * var(--z, 1)) solid rgba(95, 208, 230, 0.8);
-  border-radius: 50%;
-  background: rgba(5, 25, 35, 0.9);
-  color: var(--tb-accent);
-}
-.loginCheck svg {
-  width: 70%;
-  height: 70%;
-}
-
-/* Le fil des escales sous les tuiles : même fil que la route des paliers. */
-.loginTrack {
-  position: relative;
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  column-gap: calc(0.7cqw * var(--z, 1));
-  margin: 0 calc(0.3cqw * var(--z, 1));
-  height: calc(0.28cqw * var(--z, 1));
-  min-height: 2px;
-  flex: none;
-  align-items: center;
-  justify-items: center;
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.55);
-}
-.loginTrackFill {
-  position: absolute;
-  inset: 0 auto 0 0;
-  border-radius: inherit;
-  background: linear-gradient(90deg, #2c8fb0, var(--tb-accent));
-  box-shadow: 0 0 calc(0.5cqw * var(--z, 1)) rgba(95, 208, 230, 0.6);
-}
-
-/* Une perle losange de laiton par escale, dorée une fois franchie. */
-.loginDot {
-  position: relative;
-  width: calc(0.7cqw * var(--z, 1));
-  height: calc(0.7cqw * var(--z, 1));
-  transform: rotate(45deg);
-  border: calc(0.11cqw * var(--z, 1)) solid #c79a4b;
-  background: #0b1824;
-}
-.loginDot[data-state="passed"] {
-  background: #f3c86b;
-}
-.loginDot[data-state="current"] {
-  width: calc(0.9cqw * var(--z, 1));
-  height: calc(0.9cqw * var(--z, 1));
-  border-color: var(--tb-accent);
-  background: #0d3445;
-  box-shadow: 0 0 calc(0.6cqw * var(--z, 1)) rgba(95, 208, 230, 0.85);
 }
 
 /* ── Déconnexion ───────────────────────────────────────────────────── */
@@ -861,13 +640,13 @@
  *
  * Posée d'un bloc à l'échelle de l'écran, la scène donnait des textes de
  * 5 à 8 px (un `cqw` vaut ~7,5 px sur un téléphone). Sous 560 px de haut,
- * elle devient une page qui défile, en trois temps : photo, niveau et
- * losanges ; les escales de connexion sur toute la largeur ; la route.
+ * elle devient une page qui défile, en deux temps : photo, niveau et
+ * losanges ; puis « Tout réclamer » et la route.
  *
  * Chaque zone grandit d'un facteur `--z` (1 sur ordinateur), qui multiplie
  * TOUTES ses tailles internes en `cqw` : le panneau garde son dessin, il
  * est seulement plus grand. Les derniers libellés trop fins ont un plancher
- * de 11 px. Positions en % de la scène : largeur W, hauteur 1,16 W.
+ * de 11 px. Positions en % de la scène : largeur W, hauteur 0,87 W.
  */
 @media (max-height: 560px) {
   .page {
@@ -879,7 +658,7 @@
 
   .stage {
     width: 100%;
-    aspect-ratio: 100 / 116;
+    aspect-ratio: 100 / 87;
   }
 
   .cannon {
@@ -890,14 +669,14 @@
   .photo {
     --z: 1.34;
     left: 2%;
-    top: 2.6%;
+    top: 3.5%;
     width: 30%;
   }
 
   .ring {
     --z: 1.34;
     left: 32.6%;
-    top: 3.4%;
+    top: 4.5%;
     width: 28%;
   }
 
@@ -917,10 +696,10 @@
     --z: 1.476;
     width: 15.5%;
   }
-  .diamond[data-slot="1"] { left: 62%; top: 3.4%; }
-  .diamond[data-slot="2"] { left: 78%; top: 3.4%; }
-  .diamond[data-slot="3"] { left: 68.2%; top: 13.4%; }
-  .diamond[data-slot="4"] { left: 84.2%; top: 13.4%; }
+  .diamond[data-slot="1"] { left: 62%; top: 4.5%; }
+  .diamond[data-slot="2"] { left: 78%; top: 4.5%; }
+  .diamond[data-slot="3"] { left: 68.2%; top: 17.9%; }
+  .diamond[data-slot="4"] { left: 84.2%; top: 17.9%; }
 
   /* Libellé en bas de casse : « Préconstruit » en capitales ne tenait pas. */
   .diamondLabel {
@@ -930,33 +709,25 @@
     text-transform: none;
   }
 
-  /* ── Deuxième écran : les escales de connexion, pleine largeur ── */
-  .login {
+  .claimAllDock {
     --z: 1.94;
-    left: 2%;
-    top: 38.8%;
-    width: 96%;
-    height: 24.4%;
-    padding: 2.7% 3.9% 2.3%;
-  }
-
-  .loginSub,
-  .claimAll,
-  .loginLabel {
-    font-size: max(11px, calc(0.6cqw * var(--z) * var(--tb-text-scale)));
+    top: 50%;
+    right: 3%;
+    bottom: auto;
   }
 
   .claimAll {
     min-height: 36px;
+    font-size: max(11px, calc(0.6cqw * var(--z) * var(--tb-text-scale)));
   }
 
-  /* ── Troisième écran : la route des paliers ── */
+  /* ── Deuxième écran : la route des paliers (les escales vivent dans Récompenses) ── */
   .route {
     --z: 2.14;
     left: 19%;
-    top: 66.4%;
+    top: 58.5%;
     width: 62%;
-    height: 25.9%;
+    height: 34.5%;
     padding: 4.7% 5.6% 3.2%;
   }
 
