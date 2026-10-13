@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition, type ReactNode } from "react";
+import { useMemo, useRef, useState, useTransition, type CSSProperties, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { GameScreen } from "@/features/shell/GameScreen";
@@ -61,8 +61,15 @@ const SANDBOX_ACTIONS = {
   purchaseCollectable: async (..._args: Parameters<typeof purchaseCollectable>) => ({ ok: true as const, error: undefined as string | undefined }),
 };
 
-/** Trois socles par ponton (`market/pedestals.webp`) : au-delà, un ponton de plus, à droite, qu'on atteint par les flèches. */
+/** Trois socles par ponton (`market/pedestals.webp`) : au-delà, les articles attendent dehors et la vitrine défile en boucle. */
 const PACKS_PER_PLATE = 3;
+
+/**
+ * Les emplacements HORS socles, dans l'ordre où ils se remplissent : à
+ * droite d'abord (le suivant), puis à gauche (le précédent), puis plus
+ * loin. Avec quatre articles, un seul attend dehors, à droite.
+ */
+const OUTSIDE_SLOTS = [3, -1, 4, -2] as const;
 
 /** Les rayons qui se tiennent dans cet écran. */
 /** Rang d'un booster sur le rayon ; un booster inconnu du rayon passe en dernier. */
@@ -74,81 +81,19 @@ function shelfRank(boosterId: string): number {
 type SectionId = "boosters" | "decks" | "cosmetics";
 
 /*
- * Rayons de la boutique.
+ * Rayons de la boutique, en onglets du bandeau.
  *
- * Les trois premiers se tiennent ICI : changer de rayon change ce qui est
- * posé sur les socles — sachets, decks à Jeton, cosmétiques à Tides — et le
- * panier reste le même. Les écrans Decks et Collectables restent les
- * vitrines complètes (fiches, équipement, possession) : un lien discret
- * sous le ponton y mène.
- *
- * Un rayon sans `section` est annoncé mais pas ouvert : il reste visible
- * et désactivé, parce qu'une boutique dont on ne devine pas le programme
- * n'appelle pas à revenir.
+ * Changer de rayon change ce qui est posé sur les socles — sachets, decks
+ * à Jeton, cosmétiques à Tides — et le panier reste le même. Les écrans
+ * Decks et Collectables restent les vitrines complètes (fiches,
+ * équipement, possession) : un lien discret sous le ponton y mène.
+ * Monnaie et Offres spéciales viendront ici quand elles ouvriront.
  */
-const SECTIONS: Array<{ id: string; label: string; icon: ReactNode; section?: SectionId }> = [
-  {
-    id: "boosters",
-    label: "Boosters",
-    section: "boosters",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" aria-hidden>
-        <path d="M6 3.5h12l-.8 2 .8 2v11l-.8 2 .8 2H6l.8-2-.8-2v-11l.8-2z" stroke="currentColor" strokeWidth={1.5} strokeLinejoin="round" />
-        <path d="M9 12.5l3-3 3 3-3 3z" stroke="currentColor" strokeWidth={1.4} strokeLinejoin="round" />
-      </svg>
-    ),
-  },
-  {
-    id: "decks",
-    label: "Decks",
-    section: "decks",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" aria-hidden>
-        <rect x="4" y="6" width="11" height="15" rx="1.6" stroke="currentColor" strokeWidth={1.5} transform="rotate(-10 9.5 13.5)" />
-        <rect x="9" y="4" width="11" height="15" rx="1.6" stroke="currentColor" strokeWidth={1.5} />
-      </svg>
-    ),
-  },
-  {
-    id: "cosmetics",
-    label: "Cosmétiques",
-    section: "cosmetics",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" aria-hidden>
-        <path d="M7 19c-3-2.5-4-6.5-2.5-10.5M17 19c3-2.5 4-6.5 2.5-10.5M4.5 8.5L3 6.5M19.5 8.5L21 6.5M5.5 13L3.5 12.5M18.5 13l2-.5M8 17.5l-1.8 1M16 17.5l1.8 1" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" />
-        <circle cx="12" cy="11" r="3" stroke="currentColor" strokeWidth={1.4} />
-      </svg>
-    ),
-  },
-  {
-    id: "currency",
-    label: "Monnaie",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" aria-hidden>
-        <ellipse cx="9" cy="16.5" rx="5.5" ry="2.5" stroke="currentColor" strokeWidth={1.5} />
-        <path d="M3.5 16.5v-3c0-1.4 2.5-2.5 5.5-2.5s5.5 1.1 5.5 2.5v3" stroke="currentColor" strokeWidth={1.5} />
-        <ellipse cx="15" cy="8" rx="5.5" ry="2.5" stroke="currentColor" strokeWidth={1.5} />
-        <path d="M9.5 8v3M20.5 8v3c0 1.1-1.5 2-3.6 2.4" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" />
-      </svg>
-    ),
-  },
-  {
-    id: "offers",
-    label: "Offres spéciales",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" aria-hidden>
-        <rect x="4" y="9" width="16" height="11" rx="1.4" stroke="currentColor" strokeWidth={1.5} />
-        <path d="M3 9h18M12 9v11M12 9c-1.5-3.5-5.5-4-5.5-1.5S10 9 12 9zM12 9c1.5-3.5 5.5-4 5.5-1.5S14 9 12 9z" stroke="currentColor" strokeWidth={1.4} strokeLinejoin="round" />
-      </svg>
-    ),
-  },
+const SECTIONS: ReadonlyArray<{ id: SectionId; label: string }> = [
+  { id: "boosters", label: "Boosters" },
+  { id: "decks", label: "Decks" },
+  { id: "cosmetics", label: "Cosmétiques" },
 ];
-
-function chunk<T>(items: readonly T[], size: number): T[][] {
-  const chunks: T[][] = [];
-  for (let index = 0; index < items.length; index += size) chunks.push(items.slice(index, index + size));
-  return chunks;
-}
 
 const cosmeticKey = (family: string, id: string) => `${family}:${id}`;
 
@@ -158,13 +103,14 @@ function plural(count: number, singular: string, pluralForm = `${singular}s`): s
 
 /**
  * MARKET — la boutique. Trois rayons sur un même quai de nuit
- * (`market/background.webp`), dans la matière de la cabine (cadres rivetés,
- * plaques à filet d'or — comme Profil et Récompenses) :
- *   - à gauche, le COMPTOIR : les rayons ; en changer change ce qui est
- *     posé sur les socles, sans quitter l'écran ni vider le panier ;
+ * (`market/background.webp`), dans la matière de la cabine (plaques à
+ * filet d'or — comme Profil et Récompenses) :
+ *   - en haut à gauche, dans le BANDEAU : les rayons en onglets ; en
+ *     changer change ce qui est posé sur les socles, sans quitter l'écran
+ *     ni vider le panier ;
  *   - au centre, le PONTON : trois socles, chaque offre avec sa plaque de
- *     prix ; au-delà de trois articles, un ponton de plus glisse depuis la
- *     droite (flèches) ;
+ *     prix ; au-delà de trois articles, les autres attendent autour et la
+ *     vitrine défile en boucle (flèches, doigt, pavé tactile) ;
  *   - en bas, le PANIER dans son cadre de laiton, commun aux trois rayons :
  *     boosters par quantité, decks à Jeton et cosmétiques à l'unité, deux
  *     sous-totaux (Tides, Jetons), un seul bouton Acheter.
@@ -380,65 +326,33 @@ export function MarketScreen({ inventory, catalog, collectables, sandbox = false
   const shortage = [shortTokens > 0 ? plural(shortTokens, "Jeton") : "", shortTides > 0 ? `${shortTides} Tides` : ""].filter(Boolean).join(" et ");
 
   return (
-    <GameScreen active="market" nav="minimal" className={section === "decks" ? styles.screenDecks : undefined}>
+    <GameScreen
+      active="market"
+      nav="minimal"
+      className={section === "decks" ? styles.screenDecks : undefined}
+      // Les rayons sont des onglets du BANDEAU, en haut à gauche, comme ceux
+      // de la collection et du Profil (retour du 13/10/2026).
+      tabs={SECTIONS.map((entry) => ({
+        id: entry.id,
+        active: entry.id === section,
+        onSelect: () => {
+          playTabClick();
+          setSection(entry.id);
+        },
+        label: entry.label,
+      }))}
+      actions={
+        inventory.isSignedIn ? (
+          <Link href="/boosters" className={styles.reserveLink} data-waiting={ownedCount > 0 ? "true" : "false"} onClick={() => playButtonClick()}>
+            <span className={styles.reserveIcon} style={closedPackVariables(getBoosterPackVisual("standard"))} aria-hidden />
+            <span className={styles.reserveTitle}>Mes boosters</span>
+            <span className={styles.reserveCount}>{ownedCount > 0 ? ownedCount : "0"}</span>
+          </Link>
+        ) : undefined
+      }
+    >
       <div className={styles.market}>
-        {/* ── Le comptoir : les rayons ────────────────────────── */}
-        <aside className={styles.side} aria-label="Rayons du Market">
-          <div className={`${game.cabinFrame} ${styles.sideInner}`}>
-            <header className={styles.sideHead}>
-              <span className={game.cabinEyebrow}>Comptoir du port</span>
-              <h1 className={`${game.cabinTitle} ${styles.sideTitle}`}>Market</h1>
-            </header>
-            <hr className={`${game.cabinRule} ${styles.sideRule}`} />
-            <nav className={styles.sections}>
-              {SECTIONS.map((entry) => {
-                const inner = (
-                  <>
-                    <span className={styles.sectionIcon}>{entry.icon}</span>
-                    <span className={styles.sectionLabel}>{entry.label}</span>
-                    {!entry.section && <span className="sr-only">(bientôt disponible)</span>}
-                  </>
-                );
-                if (!entry.section) {
-                  return (
-                    <button key={entry.id} type="button" className={styles.section} disabled title="Bientôt disponible">
-                      {inner}
-                    </button>
-                  );
-                }
-                const active = entry.section === section;
-                return (
-                  <button
-                    key={entry.id}
-                    type="button"
-                    className={styles.section}
-                    data-active={active ? "true" : undefined}
-                    aria-pressed={active}
-                    onClick={() => {
-                      if (active) return;
-                      playTabClick();
-                      setSection(entry.section!);
-                    }}
-                  >
-                    {inner}
-                  </button>
-                );
-              })}
-            </nav>
-
-            {inventory.isSignedIn && (
-              <Link href="/boosters" className={`${game.cabinPanel} ${styles.reserveLink}`} data-waiting={ownedCount > 0 ? "true" : "false"} onClick={() => playButtonClick()}>
-                <span className={styles.reserveIcon} style={closedPackVariables(getBoosterPackVisual("standard"))} aria-hidden />
-                <span className={styles.reserveText}>
-                  <span className={styles.reserveTitle}>Mes boosters</span>
-                  <span className={styles.reserveCount}>{ownedCount > 0 ? `${ownedCount} à ouvrir` : "Réserve vide"}</span>
-                </span>
-                <span aria-hidden>→</span>
-              </Link>
-            )}
-          </div>
-        </aside>
-
+        <h1 className="sr-only">Market</h1>
         {/* ── Le ponton : les articles du rayon sur leurs socles ─── */}
         <section className={styles.stage} aria-label={stageLabel}>
           {!inventory.isSignedIn ? (
@@ -460,7 +374,11 @@ export function MarketScreen({ inventory, catalog, collectables, sandbox = false
             ) : (
               <Showcase
                 key="boosters"
-                items={onSale.map((booster) => (
+                label="boosters"
+                count={onSale.length}
+                render={(index) => {
+                  const booster = onSale[index]!;
+                  return (
                   <PedestalItem
                     key={booster.boosterId}
                     booster={booster}
@@ -474,7 +392,8 @@ export function MarketScreen({ inventory, catalog, collectables, sandbox = false
                       setContentsOf(booster);
                     }}
                   />
-                ))}
+                  );
+                }}
               />
             )
           ) : section === "decks" ? (
@@ -484,16 +403,20 @@ export function MarketScreen({ inventory, catalog, collectables, sandbox = false
             <Showcase
               key="decks"
               dock="decks"
-              items={catalog.decks.map((entry, position) => (
-                <DeckGoods
-                  key={entry.deck.id}
-                  entry={entry}
-                  facing={position % PACKS_PER_PLATE === 2 ? "left" : "right"}
-                  inCart={cart.decks.includes(entry.deck.id)}
-                  disabled={isBuying}
-                  onToggle={() => toggleDeck(entry.deck.id)}
-                />
-              ))}
+              label="decks"
+              count={catalog.decks.length}
+              render={(index, slot) => {
+                const entry = catalog.decks[index]!;
+                return (
+                  <DeckGoods
+                    entry={entry}
+                    facing={slot >= 2 ? "left" : "right"}
+                    inCart={cart.decks.includes(entry.deck.id)}
+                    disabled={isBuying}
+                    onToggle={() => toggleDeck(entry.deck.id)}
+                  />
+                );
+              }}
               footer={
                 <Link href="/decks" className={game.link} onClick={() => playButtonClick()}>
                   Fiches complètes et préconstruits dans Decks →
@@ -503,9 +426,12 @@ export function MarketScreen({ inventory, catalog, collectables, sandbox = false
           ) : (
             <Showcase
               key="cosmetics"
-              items={cosmeticsOnSale.map(({ key, familyLabel, option, family }) => (
+              label="cosmétiques"
+              count={cosmeticsOnSale.length}
+              render={(index) => {
+                const { key, familyLabel, option, family } = cosmeticsOnSale[index]!;
+                return (
                 <GoodsItem
-                  key={key}
                   name={option.label}
                   subtitle={familyLabel}
                   art={option.src}
@@ -517,7 +443,8 @@ export function MarketScreen({ inventory, catalog, collectables, sandbox = false
                   disabled={isBuying}
                   onToggle={() => toggleCosmetic(key)}
                 />
-              ))}
+                );
+              }}
               emptyText="Aucun cosmétique en vente pour l'instant."
               footer={
                 <Link href="/collectables" className={game.link} onClick={() => playButtonClick()}>
@@ -723,20 +650,63 @@ function RemoveButton({ label, disabled, onClick }: { label: string; disabled: b
 }
 
 /**
- * La vitrine : des pontons de trois socles, un seul visible, les autres à
- * sa droite. Les flèches font glisser le suivant depuis la droite ; sans
- * quatrième article, il n'y a pas de flèches du tout. Le rayon change → on
- * repart du premier ponton (la clé sur `Showcase` s'en charge).
+ * LA VITRINE EN BOUCLE (retour du 13/10/2026). Trois socles au milieu ; les
+ * articles qui n'y ont pas leur place attendent DEHORS, de part et d'autre
+ * du ponton, plus petits et dans la pénombre — ils prennent la place au
+ * défilement. La rangée ne s'arrête jamais : après le dernier article
+ * revient le premier, dans les deux sens.
+ *
+ * Mécanique : chaque emplacement porte un indice VIRTUEL (`start + slot`),
+ * clé React comprise. Avancer d'un cran décale tous les éléments d'un
+ * emplacement — la transition CSS les fait glisser — et un nouvel indice
+ * entre par un emplacement caché du bord, l'ancien sort par l'autre. Les
+ * articles sont donc rendus « en boucle » sans piste à recaler.
+ *
+ * Gestes : flèches (un article par cran), glisser au doigt ou à la souris
+ * (la vitrine suit le doigt, puis se cale sur l'emplacement le plus
+ * proche), défilement horizontal du pavé tactile, flèches du clavier.
+ * Toucher un article du dehors l'amène sur le socle le plus proche.
  */
-function Showcase({ items, footer, emptyText, dock }: { items: ReactNode[]; footer?: ReactNode; emptyText?: string; dock?: "decks" }) {
-  const plates = chunk(items, PACKS_PER_PLATE);
-  const [index, setIndex] = useState(0);
-  // Le rayon a rétréci (achat, rafraîchissement) : on ne reste pas sur un ponton qui n'existe plus.
-  useEffect(() => {
-    if (index > Math.max(0, plates.length - 1)) setIndex(Math.max(0, plates.length - 1));
-  }, [index, plates.length]);
+function Showcase({
+  count,
+  render,
+  label,
+  footer,
+  emptyText,
+  dock,
+}: {
+  count: number;
+  /** L'article d'indice `index`, posé à l'emplacement `slot` (0 à 2 : les socles). */
+  render: (index: number, slot: number) => ReactNode;
+  /** Ce que la vitrine présente, pour les flèches (« boosters suivants »). */
+  label: string;
+  footer?: ReactNode;
+  emptyText?: string;
+  dock?: "decks";
+}) {
+  const [start, setStart] = useState(0);
+  const [drag, setDrag] = useState<number | null>(null);
+  const plateRef = useRef<HTMLDivElement>(null);
+  const gesture = useRef<{ x: number; y: number; id: number; moved: boolean } | null>(null);
+  const suppressClick = useRef(false);
+  const wheel = useRef(0);
 
-  if (items.length === 0) {
+  const loops = count > PACKS_PER_PLATE;
+  const visible = Math.min(count, PACKS_PER_PLATE + OUTSIDE_SLOTS.length);
+  const visibleSlots = loops ? [0, 1, 2, ...OUTSIDE_SLOTS.slice(0, visible - PACKS_PER_PLATE)] : [];
+  const low = loops ? Math.min(...visibleSlots) : 0;
+  const high = loops ? Math.max(...visibleSlots) : count - 1;
+
+  const shift = (steps: number) => {
+    if (!loops || steps === 0) return;
+    playButtonClick();
+    setStart((current) => current + steps);
+  };
+
+  /** Largeur d'un cran : l'écart entre deux socles. */
+  const stepWidth = () => (plateRef.current?.clientWidth ?? 900) * 0.259;
+
+  if (count === 0) {
     return (
       <div className={`${game.cabinFrame} ${game.empty} ${styles.notice}`}>
         <p className={game.emptyTitle}>{emptyText ?? "Rien en vente pour l'instant"}</p>
@@ -745,58 +715,149 @@ function Showcase({ items, footer, emptyText, dock }: { items: ReactNode[]; foot
     );
   }
 
-  const go = (delta: number) => {
-    playButtonClick();
-    setIndex((current) => Math.min(plates.length - 1, Math.max(0, current + delta)));
-  };
+  // Sans débordement, les socles se partagent les articles comme avant :
+  // un seul au centre, deux sur les socles extrêmes.
+  if (!loops) {
+    return (
+      <div className={styles.showcase}>
+        <div className={styles.plate} data-dock={dock}>
+          {Array.from({ length: count }, (_, index) => {
+            const slot = count === 1 ? 1 : count === 2 ? index * 2 : index;
+            return (
+              <div key={index} className={styles.pedestal} data-slot={slot}>
+                {render(index, slot)}
+              </div>
+            );
+          })}
+        </div>
+        {footer && (
+          <div className={styles.showcaseFoot}>
+            <span className={styles.stageLink}>{footer}</span>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  const slots: number[] = [];
+  for (let slot = low - 1; slot <= high + 1; slot += 1) slots.push(slot);
+
+  function onPointerDown(event: React.PointerEvent<HTMLDivElement>) {
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    gesture.current = { x: event.clientX, y: event.clientY, id: event.pointerId, moved: false };
+    suppressClick.current = false;
+  }
+
+  function onPointerMove(event: React.PointerEvent<HTMLDivElement>) {
+    const current = gesture.current;
+    if (!current || current.id !== event.pointerId) return;
+    const dx = event.clientX - current.x;
+    const dy = event.clientY - current.y;
+    if (!current.moved) {
+      // Un geste vertical reste au défilement de la page.
+      if (Math.abs(dx) < 8 || Math.abs(dx) < Math.abs(dy)) return;
+      current.moved = true;
+      event.currentTarget.setPointerCapture(event.pointerId);
+    }
+    setDrag(dx);
+  }
+
+  function endGesture(event: React.PointerEvent<HTMLDivElement>) {
+    const current = gesture.current;
+    if (!current || current.id !== event.pointerId) return;
+    gesture.current = null;
+    if (!current.moved) return;
+    suppressClick.current = true;
+    const dx = event.clientX - current.x;
+    const steps = -Math.round(dx / stepWidth());
+    setDrag(null);
+    shift(steps === 0 && Math.abs(dx) > 40 ? -Math.sign(dx) : steps);
+  }
+
+  function onWheel(event: React.WheelEvent<HTMLDivElement>) {
+    if (Math.abs(event.deltaX) <= Math.abs(event.deltaY)) return;
+    wheel.current += event.deltaX;
+    if (Math.abs(wheel.current) < 60) return;
+    shift(Math.sign(wheel.current));
+    wheel.current = 0;
+  }
 
   return (
     <div className={styles.showcase}>
-      <div className={styles.showcaseWindow}>
-        <div className={styles.showcaseTrack} style={{ transform: `translateX(-${index * 100}%)` }}>
-          {plates.map((plateItems, plateIndex) => (
-            <div key={plateIndex} className={styles.plate} data-dock={dock} data-count={plateItems.length} aria-hidden={plateIndex !== index}>
-              {plateItems.map((item, slotIndex) => (
-                <div key={slotIndex} className={styles.pedestal} data-slot={plateItems.length === 1 ? 1 : plateItems.length === 2 ? slotIndex * 2 : slotIndex}>
-                  {item}
-                </div>
-              ))}
-            </div>
-          ))}
-        </div>
-        {plates.length > 1 && (
-          <>
-            <button type="button" className={`${styles.showcaseArrow} ${styles.showcaseArrowLeft}`} onClick={() => go(-1)} disabled={index === 0} aria-label="Ponton précédent">
-              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" aria-hidden>
-                <path d="M14.5 5.5L8 12l6.5 6.5" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
-            <button
-              type="button"
-              className={`${styles.showcaseArrow} ${styles.showcaseArrowRight}`}
-              onClick={() => go(1)}
-              disabled={index >= plates.length - 1}
-              aria-label="Ponton suivant"
+      <div
+        ref={plateRef}
+        className={styles.plate}
+        data-dock={dock}
+        data-loop="true"
+        data-dragging={drag !== null ? "true" : undefined}
+        style={{ "--drag": `${drag ?? 0}px` } as CSSProperties}
+        role="region"
+        aria-roledescription="carrousel"
+        aria-label={`Vitrine des ${label}`}
+        tabIndex={0}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={endGesture}
+        onPointerCancel={endGesture}
+        onWheel={onWheel}
+        onKeyDown={(event) => {
+          if (event.key === "ArrowRight") shift(1);
+          else if (event.key === "ArrowLeft") shift(-1);
+        }}
+        onClickCapture={(event) => {
+          // Un glisser n'est pas un clic : rien ne part au panier.
+          if (suppressClick.current) {
+            suppressClick.current = false;
+            event.preventDefault();
+            event.stopPropagation();
+          }
+        }}
+      >
+        {slots.map((slot) => {
+          const virtual = start + slot;
+          const index = ((virtual % count) + count) % count;
+          const shown = slot >= low && slot <= high;
+          const outside = slot < 0 || slot >= PACKS_PER_PLATE;
+          return (
+            <div
+              key={virtual}
+              className={styles.pedestal}
+              data-pos={slot}
+              data-outside={outside ? "true" : undefined}
+              data-hidden={shown ? undefined : "true"}
+              aria-hidden={outside ? true : undefined}
+              onClickCapture={
+                outside
+                  ? (event) => {
+                      // Un article du dehors : on l'amène d'abord sur un socle.
+                      event.preventDefault();
+                      event.stopPropagation();
+                      if (shown) shift(slot < 0 ? slot : slot - (PACKS_PER_PLATE - 1));
+                    }
+                  : undefined
+              }
             >
-              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" aria-hidden>
-                <path d="M9.5 5.5L16 12l-6.5 6.5" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
-          </>
-        )}
+              {render(index, slot)}
+            </div>
+          );
+        })}
+        <button type="button" className={`${styles.showcaseArrow} ${styles.showcaseArrowLeft}`} onClick={() => shift(-1)} aria-label={`${label} précédents`}>
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" aria-hidden>
+            <path d="M14.5 5.5L8 12l6.5 6.5" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+        <button type="button" className={`${styles.showcaseArrow} ${styles.showcaseArrowRight}`} onClick={() => shift(1)} aria-label={`${label} suivants`}>
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" aria-hidden>
+            <path d="M9.5 5.5L16 12l-6.5 6.5" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
       </div>
-      {(plates.length > 1 || footer) && (
-        <div className={styles.showcaseFoot}>
-          {plates.length > 1 && (
-            <span className={styles.showcaseDots} aria-label={`Ponton ${index + 1} sur ${plates.length}`}>
-              {plates.map((_, dot) => (
-                <span key={dot} className={dot === index ? styles.showcaseDotActive : styles.showcaseDot} />
-              ))}
-            </span>
-          )}
-          {footer && <span className={styles.stageLink}>{footer}</span>}
-        </div>
-      )}
+      <div className={styles.showcaseFoot}>
+        <span className={styles.showcaseCount} aria-live="polite">
+          {(((start % count) + count) % count) + 1}–{((((start + 2) % count) + count) % count) + 1} sur {count}
+        </span>
+        {footer && <span className={styles.stageLink}>{footer}</span>}
+      </div>
     </div>
   );
 }

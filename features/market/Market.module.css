@@ -1,11 +1,12 @@
 /*
  * MARKET — un quai de nuit, sur la coquille `GameScreen`.
  *
- *   comptoir (rayons)   │   ponton (offres sur leurs présentoirs)
+ *   rayons en onglets du bandeau (en haut à gauche)
+ *   ponton (offres sur leurs présentoirs, les autres en attente autour)
  *   ─────────────── panier dans son cadre de laiton ───────────────
  *
  * Matière : celle de la cabine (Profil, Récompenses — `GameScreen` §9) :
- * cadre riveté pour les rayons, plaques sombres à filet d'or pour les prix
+ * plaques sombres à filet d'or pour les prix
  * et les lignes du panier, titres Cinzel ivoire, or pour l'économie, cyan
  * pour la sélection. Plus de verre bleuté.
  *
@@ -14,7 +15,7 @@
  * socles sont MESURÉES sur l'image (profil d'opacité) : centres à 23,5 %,
  * 50 % et 75,4 % de sa largeur, dessus des socles à ~30 % de sa hauteur.
  * `side-panel` / `panel-left-selection` (enseigne de bois) et les variantes
- * `bottom-*` ne sont plus posés : voir « Comptoir » plus bas.
+ * `bottom-*` ne sont plus posés : voir « Rayons » plus bas.
  */
 
 /* Sélecteur triplé : l'emporte sur `.screen.screen` de la coquille, quel
@@ -27,7 +28,7 @@
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: clamp(220px, 17vw, 290px) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr) auto;
   gap: clamp(8px, 1.4vh, 18px) clamp(10px, 1.6vw, 28px);
   min-height: 0;
@@ -45,176 +46,39 @@
     calc(clamp(12px, 2vw, 40px) + var(--tb-safe-left));
 }
 
-/* ── Comptoir : les rayons ──────────────────────────────────
- * Le grand cadre riveté de la cabine (`game.cabinFrame`), comme le Profil
- * et les Récompenses. Il remplace l'enseigne de bois peinte
- * (`market/side-panel.webp`) : objet PORTRAIT d'une autre famille
- * (planches, corde, lanterne), il bornait les rayons à 51 % de sa largeur
- * et, avec les polices à +20 %, « Mes boosters · 16 à ouvrir » y tenait
- * sur quatre lignes. Le cadre, lui, prend la colonne entière. */
-.side {
-  grid-row: 1;
-  grid-column: 1;
-  display: flex;
-  min-height: 0;
-}
-
-.sideInner.sideInner {
-  display: flex;
-  flex-direction: column;
-  gap: clamp(8px, 1.2vh, 14px);
-  width: 100%;
-  max-height: 100%;
-  overflow-y: auto;
-  scrollbar-width: none;
-}
-
-.sideHead {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  text-align: center;
-}
-
-.sideTitle.sideTitle {
-  font-size: calc(clamp(22px, 1.9vw, 32px) * var(--tb-text-scale));
-  letter-spacing: 0.08em;
-}
-
-.sideRule {
-  flex: 0 0 auto;
-}
-
-.sections {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-/*
- * Un rayon : une ligne gravée dans le cadre, ivoire au repos. Le rayon
- * OUVERT prend la plaque sombre à filet d'or (`panneau-sombre`) et le
- * repère cyan de la sélection — cyan parce que c'est l'interaction ;
- * l'or reste aux prix.
+/* ── Rayons ─────────────────────────────────────────────────
+ * Les rayons sont des onglets du BANDEAU (`ScreenHeader`, prop `tabs`),
+ * en haut à gauche comme Cartes / Collectables / Decks et les onglets du
+ * Profil (retour du 13/10/2026). Le comptoir latéral a disparu : le ponton
+ * récupère toute la largeur, et les articles qui n'ont pas de socle y
+ * attendent de part et d'autre.
  */
-.section {
-  position: relative;
-  display: flex;
+
+/* La réserve : une pastille sombre à filet d'or, dans les actions du
+   bandeau, avec le nombre de boosters à ouvrir. */
+.reserveLink {
+  display: inline-flex;
+  flex: none;
   align-items: center;
-  gap: 10px;
-  width: 100%;
-  min-height: 44px;
-  padding: 8px 12px;
-  border: 0 solid transparent;
-  border-radius: 4px;
-  background: none;
+  gap: 8px;
+  padding: 5px 12px;
+  border: 1px solid rgba(217, 181, 106, 0.55);
+  border-radius: 999px;
+  background: rgba(6, 14, 20, 0.82);
   color: #efe6d2;
-  font: inherit;
   font-family: var(--tb-font-display);
-  font-size: calc(clamp(13px, 1vw, 16px) * var(--tb-text-scale));
+  font-size: calc(clamp(max(11px, var(--tb-fs-floor, 0px)), 0.95vw, 14px) * var(--tb-text-scale));
   font-weight: 700;
-  line-height: 1.1;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  text-align: left;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
-  cursor: var(--tb-cursor-pointer);
-  transition: color 160ms ease-out, background-color 160ms ease-out;
-}
-
-.section:hover:not(:disabled):not([data-active="true"]) {
-  background-color: rgba(88, 200, 216, 0.08);
-  color: #fff8e8;
-}
-
-.section:focus-visible {
-  outline: 2px solid var(--cb-cyan);
-  outline-offset: 2px;
-}
-
-/* Pas encore ouvert : lisible, éteint, et dit en toutes lettres, sous le
-   libellé — à côté, « Bientôt » chevauchait « Monnaie » dans une colonne
-   de 220 px. */
-.section:disabled {
-  cursor: var(--tb-cursor);
-  color: rgba(239, 230, 210, 0.42);
-}
-
-.section:disabled .sectionIcon {
-  opacity: 0.45;
-}
-
-.section:disabled .sectionLabel::after {
-  content: "Bientôt";
-  content: "Bientôt" / "";
-  display: block;
-  margin-top: 2px;
-  font-family: var(--tb-font-ui);
-  font-size: calc(max(10px, var(--tb-fs-floor, 0px)) * var(--tb-text-scale));
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  color: rgba(217, 181, 106, 0.6);
-}
-
-.section[data-active="true"] {
-  border-image: url("/assets/ui/panneaux/panneau-sombre.webp") 26 fill / 12px / 0 stretch;
-  color: #fff8e8;
-  cursor: var(--tb-cursor);
-}
-
-/* Le repère de sélection, sur le bord gauche de la plaque. */
-.section[data-active="true"]::before {
-  content: "";
-  position: absolute;
-  left: 5px;
-  top: 22%;
-  bottom: 22%;
-  width: 3px;
-  border-radius: 2px;
-  background: var(--cb-cyan);
-  box-shadow: var(--tb-glow-sm);
-}
-
-.sectionIcon {
-  display: grid;
-  place-items: center;
-  flex: 0 0 auto;
-  width: 22px;
-  height: 22px;
-  color: #d9b56a;
-}
-
-.sectionIcon svg {
-  width: 100%;
-  height: 100%;
-}
-
-.section[data-active="true"] .sectionIcon {
-  color: var(--cb-cyan);
-}
-
-/* Le libellé entier, sur deux lignes s'il le faut : jamais « Offres spécial… ». */
-.sectionLabel {
-  flex: 1 1 auto;
-  min-width: 0;
-  text-wrap: balance;
-}
-
-/* Accès à la réserve, en pied de colonne : une plaque sombre à filet d'or. */
-.reserveLink.reserveLink {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: auto;
-  padding: 10px 12px;
-  color: #efe6d2;
+  letter-spacing: 0.04em;
   text-decoration: none;
-  transition: filter 160ms ease-out;
+  white-space: nowrap;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.45);
+  transition: border-color 140ms ease-out, box-shadow 140ms ease-out;
 }
 
 .reserveLink:hover {
-  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.45)) drop-shadow(0 0 6px rgba(88, 200, 216, 0.35));
+  border-color: var(--cb-cyan);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.45), var(--tb-glow-sm);
 }
 
 .reserveLink:focus-visible {
@@ -222,53 +86,36 @@
   outline-offset: 2px;
 }
 
-.reserveLink[data-waiting="true"] .reserveCount {
-  color: #d9b56a;
-}
-
 .reserveIcon {
-  flex: 0 0 auto;
-  width: 26px;
-  aspect-ratio: 0.7;
-  background-image: var(--pack-art);
-  background-size: contain;
-  background-repeat: no-repeat;
-  background-position: center;
+  width: 18px;
+  aspect-ratio: 5 / 7;
+  background: var(--pack-art) center / contain no-repeat;
 }
 
-.reserveText {
-  display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-  min-width: 0;
-  line-height: 1.15;
-}
-
-/* En casse normale : en capitales, « MES BOOSTERS » débordait sur la
-   flèche dans une colonne de 220 px. */
 .reserveTitle {
-  font-family: var(--tb-font-display);
-  font-size: calc(clamp(12px, 0.95vw, 15px) * var(--tb-text-scale));
-  font-weight: 700;
-  letter-spacing: 0.02em;
+  text-transform: uppercase;
 }
 
 .reserveCount {
-  font-size: calc(11px * var(--tb-text-scale));
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
   color: rgba(239, 230, 210, 0.6);
-  white-space: nowrap;
+  font-family: var(--tb-font-body, Georgia, serif);
+  font-weight: 600;
+}
+
+.reserveLink[data-waiting="true"] .reserveCount {
+  color: var(--tb-gold-bright);
 }
 
 /* ── Ponton : les offres sur leurs présentoirs ───────────────── */
 .stage {
   grid-row: 1;
-  grid-column: 2;
+  grid-column: 1;
   display: flex;
   align-items: flex-end;
   justify-content: center;
   min-height: 0;
+  /* Les articles du dehors débordent du ponton : la scène les borde. */
+  overflow-x: hidden;
   overflow-y: auto;
   scrollbar-width: none;
   container-type: size;
@@ -281,57 +128,124 @@
 }
 
 /* ── Vitrine à pontons ───────────────────────────────────────
- * Un ponton visible, les suivants rangés à sa droite ; les flèches font
- * glisser la piste. La fenêtre a la largeur d'un ponton, la piste celle
- * de tous. */
+ * Un seul ponton, au milieu de la scène, et de part et d'autre la place
+ * des articles qui attendent leur tour (vitrine en boucle). */
 .showcase {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 1.2cqh;
   /* Même largeur que le ponton (`.plate`) : sa hauteur (≈ 0,545 × la
-     largeur) plus le pied (pastilles, lien) tiennent dans la scène. */
-  width: min(98cqw, 172cqh);
+     largeur) plus le pied tiennent dans la scène, et il reste de chaque
+     côté de quoi poser les articles du dehors. */
+  width: min(76cqw, 172cqh);
   margin-top: auto;
 }
 
-.showcaseWindow {
-  position: relative;
-  width: 100%;
-  overflow: hidden;
+/*
+ * VITRINE EN BOUCLE. Chaque article se place par TRANSFORMATION seule
+ * (pas de `left` animé : pas de mise en page à chaque image) : `--x` est
+ * le centre de son emplacement en % du ponton — `cqw`, puisque le ponton
+ * est un conteneur —, `--s` son échelle, `--y` son affaissement (les
+ * articles du dehors sont posés au sol, pas sur un socle). `--drag` : le
+ * doigt qui tire la vitrine, suivi sans transition.
+ */
+.plate[data-loop="true"] {
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+  outline: none;
 }
 
-.showcaseTrack {
-  display: flex;
-  width: 100%;
-  transition: transform 460ms cubic-bezier(0.2, 0.8, 0.2, 1);
+.plate[data-loop="true"] .pedestal {
+  left: 0;
+  --s: 1;
+  --y: 0cqw;
+  transform-origin: 50% 100%;
+  transform: translate(calc(var(--x) * 1cqw - 50% + var(--drag, 0px)), var(--y)) scale(var(--s));
+  transition: transform 460ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 320ms ease-out, filter 320ms ease-out;
 }
 
-.showcaseTrack > .plate {
-  flex: 0 0 100%;
-  width: 100%;
+.plate[data-loop="true"][data-dragging="true"] .pedestal {
+  transition: none;
 }
 
-/* Flèches : un bouton de laiton, comme les rivets des cadres. */
+.plate[data-loop="true"] .pedestal[data-pos="-3"] { --x: -42; }
+.plate[data-loop="true"] .pedestal[data-pos="-2"] { --x: -21; }
+.plate[data-loop="true"] .pedestal[data-pos="-1"] { --x: -1.5; }
+.plate[data-loop="true"] .pedestal[data-pos="0"] { --x: 23.2; }
+.plate[data-loop="true"] .pedestal[data-pos="1"] { --x: 50; }
+.plate[data-loop="true"] .pedestal[data-pos="2"] { --x: 75; }
+.plate[data-loop="true"] .pedestal[data-pos="3"] { --x: 100.5; }
+.plate[data-loop="true"] .pedestal[data-pos="4"] { --x: 121; }
+.plate[data-loop="true"] .pedestal[data-pos="5"] { --x: 142; }
+
+.plate[data-loop="true"][data-dock="decks"] .pedestal[data-pos="0"] { --x: 25.7; }
+.plate[data-loop="true"][data-dock="decks"] .pedestal[data-pos="1"] { --x: 49.9; --y: -1.6cqw; --label-drop: 5.8cqw; }
+.plate[data-loop="true"][data-dock="decks"] .pedestal[data-pos="2"] { --x: 74; }
+
+/* Dehors : plus petit, posé plus bas, dans la pénombre du quai. */
+.plate[data-loop="true"] .pedestal[data-outside="true"] {
+  --s: 0.72;
+  --y: 9cqw;
+  z-index: 0;
+  filter: brightness(0.55) saturate(0.8);
+  cursor: var(--tb-cursor-pointer);
+}
+
+.plate[data-loop="true"] .pedestal[data-pos="-2"],
+.plate[data-loop="true"] .pedestal[data-pos="4"] {
+  --s: 0.58;
+  --y: 11cqw;
+  filter: brightness(0.4) saturate(0.7);
+}
+
+.plate[data-loop="true"] .pedestal[data-outside="true"]:hover {
+  filter: brightness(0.8) saturate(0.95);
+}
+
+/* Les emplacements cachés des bords : l'article y entre et en sort. */
+.plate[data-loop="true"] .pedestal[data-hidden="true"] {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* La plaque de prix n'existe que sur un socle. */
+.plate[data-loop="true"] .pedestal .label {
+  transition: opacity 260ms ease-out;
+}
+
+.plate[data-loop="true"] .pedestal[data-outside="true"] .label {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.plate[data-loop="true"] .pedestal[data-outside="true"] .cartBadge {
+  display: none;
+}
+
+/* Flèches : un bouton de laiton, comme les rivets des cadres — entre le
+   premier socle et l'article qui attend dehors. */
 .showcaseArrow {
   position: absolute;
-  top: 38%;
+  top: 34%;
   z-index: 3;
   display: grid;
   place-items: center;
-  width: clamp(36px, 4.2cqw, 52px);
-  height: clamp(36px, 4.2cqw, 52px);
+  width: clamp(34px, 4.2cqw, 52px);
+  height: clamp(34px, 4.2cqw, 52px);
   border: 1px solid rgba(217, 181, 106, 0.7);
   border-radius: 50%;
   background: radial-gradient(circle at 50% 30%, #1d2a33, #081018 75%);
   color: #efe6d2;
   box-shadow: 0 6px 14px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 230, 170, 0.22), inset 0 0 0 3px rgba(217, 181, 106, 0.12);
   cursor: var(--tb-cursor-pointer);
+  translate: -50% 0;
   transition: transform 140ms ease-out, border-color 140ms ease-out, box-shadow 140ms ease-out, opacity 140ms ease-out;
 }
 
-.showcaseArrowLeft { left: 0.6cqw; }
-.showcaseArrowRight { right: 0.6cqw; }
+.showcaseArrowLeft { left: 10.5cqw; }
+.showcaseArrowRight { left: 88.5cqw; }
 
 .showcaseArrow:hover:not(:disabled) {
   border-color: var(--cb-cyan);
@@ -344,34 +258,23 @@
   outline-offset: 2px;
 }
 
-.showcaseArrow:disabled {
-  opacity: 0.3;
-  cursor: var(--tb-cursor);
-}
-
+/* Le pied tient sur UNE ligne (le compte, puis le lien) : une seconde
+   ligne passait sous le panier. */
 .showcaseFoot {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: baseline;
+  gap: 4px 18px;
 }
 
-.showcaseDots {
-  display: flex;
-  gap: 7px;
-}
-
-.showcaseDot,
-.showcaseDotActive {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: rgba(239, 230, 210, 0.3);
-}
-
-.showcaseDotActive {
-  background: var(--cb-cyan);
-  box-shadow: var(--tb-glow-sm);
+/* Où l'on en est dans la boucle : « 4–6 sur 7 ». */
+.showcaseCount {
+  color: rgba(239, 230, 210, 0.7);
+  font-size: calc(max(11px, var(--tb-fs-floor, 0px)) * var(--tb-text-scale));
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.06em;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
 }
 
 /* Lien discret vers la vitrine complète (Decks, Collectables). */
@@ -446,7 +349,7 @@
 .plate {
   position: relative;
   flex: 0 0 auto;
-  width: min(98cqw, 172cqh);
+  width: 100%;
   aspect-ratio: 100 / 53.6;
   container-type: inline-size;
 }
@@ -1029,76 +932,29 @@
   }
 }
 
-/* ── Étroit : les rayons passent en bande au-dessus du ponton ── */
+/* ── Étroit : la page défile, les rayons fermés se taisent ── */
 @media (max-width: 820px) {
   .market {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto minmax(220px, 1fr) auto;
+    grid-template-rows: minmax(220px, 1fr) auto;
     overflow-y: auto;
   }
 
-  .side {
-    grid-row: 1;
-  }
-
-  .sideInner.sideInner {
-    flex-direction: row;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 14px;
-    border-image-width: 16px;
-    overflow-x: auto;
-    overflow-y: hidden;
-  }
-
-  .sideHead > span,
-  .sideRule {
+  .reserveTitle {
     display: none;
   }
 
-  .sideTitle.sideTitle {
-    font-size: calc(18px * var(--tb-text-scale));
+  .showcase {
+    width: min(84cqw, 172cqh);
   }
-
-  .sections {
-    flex-direction: row;
-    gap: 4px;
-  }
-
-  .section {
-    width: auto;
-    min-height: 38px;
-    padding: 6px 10px;
-    gap: 8px;
-    font-size: calc(12px * var(--tb-text-scale));
-    white-space: nowrap;
-  }
-
-  /* En bande, un rayon fermé n'a pas la place de s'annoncer : on le tait. */
-  .section:disabled {
-    display: none;
-  }
-
-  .sectionIcon {
-    width: 18px;
-    height: 18px;
-  }
-
-  .reserveLink.reserveLink {
-    margin: 0 0 0 auto;
-    padding: 6px 10px;
-    gap: 8px;
-  }
-
-  .reserveIcon { width: 18px; }
 
   .stage {
-    grid-row: 2;
+    grid-row: 1;
     grid-column: 1;
   }
 
   .cart {
-    grid-row: 3;
+    grid-row: 2;
     border-width: 20px;
     border-image-width: 20px;
     margin: 0 -8px -8px;
@@ -1229,9 +1085,8 @@
   }
 
   /* Le ponton tient entier, plaques comprises, avec le pied en dessous. */
-  .showcase,
-  .plate {
-    width: min(98cqw, 158cqh);
+  .showcase {
+    width: min(80cqw, 158cqh);
   }
 
   .showcase {
@@ -1240,16 +1095,6 @@
 
   .showcaseFoot {
     gap: 2px;
-  }
-
-  .showcaseDot,
-  .showcaseDotActive {
-    width: 6px;
-    height: 6px;
-  }
-
-  .showcaseDots {
-    gap: 5px;
   }
 
   .stageLink {
@@ -1309,66 +1154,10 @@
   }
 }
 
-/* ── Paysage COURT et LARGE : la colonne des rayons se resserre ──
- * `min-width: 821px` : sous cette largeur, la règle des fenêtres étroites
- * couche déjà les rayons en bande au-dessus du ponton. Le cadre riveté
- * garde sa matière, avec des coins plus fins, et les rayons gardent une
- * cible tactile (34 px).
- */
-@media (max-height: 620px) and (min-width: 821px) {
-  .market {
-    grid-template-columns: clamp(170px, 20vw, 240px) minmax(0, 1fr);
-  }
-
-  .sideInner.sideInner {
-    gap: 4px;
-    padding: 12px 12px;
-    border-image-width: 16px;
-  }
-
-  .sideHead > span {
-    display: none;
-  }
-
-  .sideTitle.sideTitle {
-    font-size: calc(17px * var(--tb-text-scale));
-  }
-
-  /* Dans 250 px de haut, « Mes boosters » passait sous le cadre : les deux
-     rayons fermés cèdent leur place à la réserve, qui sert. */
-  .section:disabled {
-    display: none;
-  }
-
-  .section {
-    min-height: 32px;
-    padding: 4px 10px;
-    gap: 8px;
-    font-size: calc(11.5px * var(--tb-text-scale));
-  }
-
-  .section[data-active="true"] {
-    border-image-width: 9px;
-  }
-
-  .sectionIcon {
-    width: 17px;
-    height: 17px;
-  }
-
-  .reserveLink.reserveLink {
-    padding: 6px 10px;
-    gap: 8px;
-    border-image-width: 9px;
-  }
-
-  .reserveIcon { width: 18px; }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .packArt,
   .goodsArt,
-  .showcaseTrack { transition: none; }
+  .plate[data-loop="true"] .pedestal { transition: none; }
   .pack:hover:not(:disabled) .packArt,
   .pack:active:not(:disabled) .packArt { transform: none; }
   .cartBadge { animation: none; }
