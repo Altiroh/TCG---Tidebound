@@ -257,37 +257,48 @@
   top: calc(50% + var(--row-y) + var(--row-step) / 2 + var(--card-h) / 2 + var(--u) * 6);
 }
 
-/* Flèches de page : le laiton des rivets, de part et d'autre de la grille. */
+/*
+ * Flèches de page : la flèche peinte des écrans hors partie
+ * (`ui/fleches/fleche.webp`, comme Collectables), retournée pour aller à
+ * droite. AU-DESSUS des cartes : leur z-index monte avec leur rang (jusqu'à
+ * 50 pour un lot de quarante), et celles de la page suivante couvraient la
+ * flèche de droite. Grisée quand on ne peut pas aller plus loin.
+ */
 .pageArrow {
   position: absolute;
   top: calc(50% + var(--row-y));
-  z-index: 40;
-  display: grid;
-  place-items: center;
-  width: clamp(36px, calc(var(--u) * 5), 54px);
-  height: clamp(36px, calc(var(--u) * 5), 54px);
-  border: 1px solid rgba(217, 181, 106, 0.7);
-  border-radius: 50%;
-  background: radial-gradient(circle at 50% 30%, #1d2a33, #081018 75%);
-  color: var(--ivory);
-  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 230, 170, 0.22);
+  z-index: 90;
+  width: clamp(26px, calc(var(--u) * 3.6), 46px);
+  aspect-ratio: 300 / 471;
+  padding: 0;
+  border: 0;
+  background: url("/assets/ui/fleches/fleche.webp") center / contain no-repeat;
   cursor: var(--tb-cursor-pointer);
+  /* La scène ne capte rien (`pointer-events: none`) : chaque commande le
+     rétablit pour elle-même, comme le bouton de sortie. Sans ça, le clic
+     passait au fond. */
+  pointer-events: auto;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.6));
   translate: 0 -50%;
-  transition: opacity 160ms ease-out, border-color 140ms ease-out, scale 140ms ease-out;
+  transition: transform 140ms ease, opacity 160ms ease, filter 160ms ease;
   animation: sceneIn 300ms ease-out both;
 }
 
 .pageArrow[data-side="prev"] {
-  left: max(var(--scene-gutter), calc(50% - var(--slot-step) * var(--grid-cols, 6) / 2 - var(--u) * 7));
+  left: max(var(--scene-gutter), calc(50% - var(--slot-step) * var(--grid-cols, 6) / 2 - var(--u) * 6));
 }
 
 .pageArrow[data-side="next"] {
-  right: max(var(--scene-gutter), calc(50% - var(--slot-step) * var(--grid-cols, 6) / 2 - var(--u) * 7));
+  right: max(var(--scene-gutter), calc(50% - var(--slot-step) * var(--grid-cols, 6) / 2 - var(--u) * 6));
+  transform: scaleX(-1);
 }
 
-.pageArrow:hover:not(:disabled) {
-  border-color: var(--teal);
-  scale: 1.06;
+.pageArrow[data-side="prev"]:hover:not(:disabled) {
+  transform: translateX(-8%);
+}
+
+.pageArrow[data-side="next"]:hover:not(:disabled) {
+  transform: scaleX(-1) translateX(-8%);
 }
 
 .pageArrow:focus-visible {
@@ -296,7 +307,8 @@
 }
 
 .pageArrow:disabled {
-  opacity: 0.25;
+  opacity: 0.45;
+  filter: grayscale(1) brightness(0.7) drop-shadow(0 4px 6px rgba(0, 0, 0, 0.6));
   cursor: var(--tb-cursor);
 }
 

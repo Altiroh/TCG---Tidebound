@@ -41,7 +41,6 @@ const SCREENS = [
   "features/quests/VoyagePanel.module.css",
   "features/decks/DeckTable.module.css",
   "features/audience/MatchAudienceTicker.module.css",
-  "features/boosters/opening/BoosterBatch.module.css",
   "features/boosters/opening/BoosterOpening.module.css",
   "features/collection/CollectionBook.module.css",
   "features/decks/DeckEditorBook.module.css",

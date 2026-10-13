@@ -546,11 +546,7 @@ export function BoosterOpeningScene({ cards: tirage, visual, origin = null, clos
         {/* Pages d'un lot : flèches de part et d'autre, compte en dessous. */}
         {grid && pageCount > 1 && showCards && phase !== "cardsSpawning" && !showcaseActive && (
           <>
-            <button type="button" className={styles.pageArrow} data-side="prev" onClick={() => turnPage(-1)} disabled={page === 0} aria-label="Cartes précédentes">
-              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" aria-hidden>
-                <path d="M14.5 5.5L8 12l6.5 6.5" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
+            <button type="button" className={styles.pageArrow} data-side="prev" onClick={() => turnPage(-1)} disabled={page === 0} aria-label="Cartes précédentes" />
             <button
               type="button"
               className={styles.pageArrow}
@@ -558,11 +554,7 @@ export function BoosterOpeningScene({ cards: tirage, visual, origin = null, clos
               onClick={() => turnPage(1)}
               disabled={page >= pageCount - 1}
               aria-label="Cartes suivantes"
-            >
-              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" aria-hidden>
-                <path d="M9.5 5.5L16 12l-6.5 6.5" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
+            />
             <span className={styles.pageDots} aria-label={`Page ${page + 1} sur ${pageCount}`}>
               {Array.from({ length: pageCount }, (_, dot) => (
                 <span key={dot} data-active={dot === page || undefined} />
