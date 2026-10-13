@@ -295,3 +295,22 @@ export function sponsorPointsForMatch(context: SponsorMatchContext): Record<Spon
   }
   return points;
 }
+
+/**
+ * MÉCÈNES AU JOUR LE JOUR (13/10/2026) — « les mécènes doivent avoir un
+ * reset des récompenses tous les jours ». Leur intérêt ne compte que les
+ * parties DU JOUR (UTC) : un intérêt laissé un jour précédent vaut zéro, et
+ * chaque palier atteint dans la journée offre son colis UNE fois ce jour-là.
+ * Sans la remise à zéro de l'intérêt, des paliers atteints une fois
+ * rapporteraient un colis chaque jour sans jouer.
+ */
+export function sponsorPointsToday(points: number, updatedAt: string | null | undefined, today: string): number {
+  if (!updatedAt) return 0;
+  const day = new Date(updatedAt).toISOString().slice(0, 10);
+  return day === today ? Math.max(0, points) : 0;
+}
+
+/** Clé de réclamation d'un colis de mécène : un par palier ET par jour. */
+export function sponsorGiftClaimKey(sponsorId: string, stage: SponsorStage, today: string): string {
+  return `${sponsorId}:${stage}:${today}`;
+}

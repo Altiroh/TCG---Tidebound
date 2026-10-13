@@ -15,10 +15,12 @@ import {
   masteryRewardForLevel,
   shiftDayKey,
   sponsorGift,
+  sponsorGiftClaimKey,
   sponsorGiftStagesReached,
   sponsorHeldPoints,
   sponsorInterestPercent,
   sponsorPointsForMatch,
+  sponsorPointsToday,
   sponsorRevealed,
   sponsorStage,
   sponsorStageLabel,
@@ -304,14 +306,14 @@ export async function countClaimableMasteryLevels(userId: string): Promise<{ tot
 export async function readProgressionHub(userId: string, accountLevel: number, now: Date = new Date()): Promise<ProgressionHubView> {
   const today = utcDayKey(now);
   const weekIndex = loginWeekIndex(today);
-  const empty = hubViewFrom({ weekIndex, accountLevel, playedThisWeek: 0, xpByShip: new Map(), pointsBySponsor: new Map(), claims: new Set() });
+  const empty = hubViewFrom({ weekIndex, accountLevel, playedThisWeek: 0, xpByShip: new Map(), pointsBySponsor: new Map(), claims: new Set(), today });
 
   try {
     const service = createSupabaseServiceRoleClient();
     const [claims, history, interest, audience] = await Promise.all([
       readClaims(service, userId),
       readMatchHistory(service, userId, weekStartDay(today)),
-      service.from("player_sponsor_interest").select("sponsor_id, points").eq("user_id", userId),
+      service.from("player_sponsor_interest").select("sponsor_id, points, updated_at").eq("user_id", userId),
       readAudience(service, userId),
     ]);
     return hubViewFrom({
@@ -320,9 +322,11 @@ export async function readProgressionHub(userId: string, accountLevel: number, n
       playedThisWeek: history.playedThisWeek,
       xpByShip: history.xpByShip,
       matchesByShip: history.matchesByShip,
-      pointsBySponsor: new Map((interest.error ? [] : (interest.data ?? [])).map((row) => [row.sponsor_id, row.points])),
+      // L'intérêt du JOUR seulement : celui d'un jour précédent vaut zéro (`sponsorPointsToday`).
+      pointsBySponsor: new Map((interest.error ? [] : (interest.data ?? [])).map((row) => [row.sponsor_id, sponsorPointsToday(row.points, row.updated_at, today)])),
       claims,
       audience,
+      today,
     });
   } catch (error) {
     console.error("[readProgressionHub] Lecture impossible :", error);
@@ -343,6 +347,7 @@ export function hubViewFrom({
   pointsBySponsor,
   claims,
   audience = NO_AUDIENCE,
+  today = utcDayKey(),
 }: {
   weekIndex: number;
   accountLevel: number;
@@ -353,6 +358,8 @@ export function hubViewFrom({
   pointsBySponsor: ReadonlyMap<string, number>;
   claims: Set<string>;
   audience?: AudienceView;
+  /** Jour UTC des mécènes : leur intérêt et leurs colis repartent de zéro chaque jour. */
+  today?: string;
 }): ProgressionHubView {
   const claimed = claims.has(`weekly_chest|${weekIndex}`);
   return {
@@ -377,13 +384,13 @@ export function hubViewFrom({
       return { ...milestone, reached, claimed, claimable: reached && !claimed };
     }),
     // Ceux qui regardent d'abord, puis du plus accessible au plus exigeant.
-    sponsors: SPONSORS.map((sponsor) => sponsorView(sponsor.id, pointsBySponsor.get(sponsor.id) ?? 0, claims, accountLevel, audience)).sort(
+    sponsors: SPONSORS.map((sponsor) => sponsorView(sponsor.id, pointsBySponsor.get(sponsor.id) ?? 0, claims, accountLevel, audience, today)).sort(
       (a, b) => b.points - a.points || a.audienceRequired - b.audienceRequired
     ),
   };
 }
 
-function sponsorView(id: SponsorId, storedPoints: number, claims: Set<string>, accountLevel: number, audience: AudienceView): SponsorView {
+function sponsorView(id: SponsorId, storedPoints: number, claims: Set<string>, accountLevel: number, audience: AudienceView, today: string): SponsorView {
   const definition = SPONSORS.find((sponsor) => sponsor.id === id)!;
   // Sous son seuil, il a détourné les yeux : plus d'intérêt, plus de palier, plus de colis à venir.
   const points = sponsorHeldPoints(definition.audienceRequired, audience.audience, storedPoints);
@@ -405,8 +412,11 @@ function sponsorView(id: SponsorId, storedPoints: number, claims: Set<string>, a
     stageLabel: sponsorStageLabel(stage),
     percent: sponsorInterestPercent(points),
     giftStages:
-      accountLevel >= SPONSORS_UNLOCK_LEVEL ? sponsorGiftStagesReached(points).filter((reached) => !claims.has(`sponsor_gift|${id}:${reached}`)) : [],
-    openedStages: SPONSOR_STAGES.filter((stage) => claims.has(`sponsor_gift|${id}:${stage.id}`)).map((stage) => stage.id),
+      accountLevel >= SPONSORS_UNLOCK_LEVEL
+        ? sponsorGiftStagesReached(points).filter((reached) => !claims.has(`sponsor_gift|${sponsorGiftClaimKey(id, reached, today)}`))
+        : [],
+    // Les colis ouverts AUJOURD'HUI : demain, tout repart de zéro.
+    openedStages: SPONSOR_STAGES.filter((stage) => claims.has(`sponsor_gift|${sponsorGiftClaimKey(id, stage.id, today)}`)).map((stage) => stage.id),
   };
 }
 
@@ -527,7 +537,7 @@ export async function claimSponsorGift(userId: string, accountLevel: number, spo
     const hub = await readProgressionHub(userId, accountLevel);
     const sponsor = hub.sponsors.find((entry) => entry.id === sponsorId);
     if (!sponsor || !sponsor.giftStages.includes(stage)) return { ok: false, error: "Aucun colis de ce Commanditaire n'attend." };
-    return await grant(userId, "sponsor_gift", `${sponsorId}:${stage}`, sponsorGift(stage));
+    return await grant(userId, "sponsor_gift", sponsorGiftClaimKey(sponsorId, stage, utcDayKey()), sponsorGift(stage));
   } catch (error) {
     console.error("[claimSponsorGift] Échec :", error);
     return { ok: false, error: "Réclamation impossible pour le moment." };
@@ -642,6 +652,14 @@ export async function recordMatchAudience(
 
     const points = sponsorPointsForMatch({ audience: data.audience ?? 0, analysis, playStreak: context.playStreak });
     if (!Object.values(points).some((value) => value > 0)) return;
+    // Cycle du jour : l'intérêt laissé un jour précédent s'efface avant que celui d'aujourd'hui ne s'ajoute.
+    const today = utcDayKey();
+    const stored = await service.from("player_sponsor_interest").select("sponsor_id, updated_at").eq("user_id", userId);
+    const stale = (stored.data ?? []).filter((row) => sponsorPointsToday(1, row.updated_at, today) === 0).map((row) => row.sponsor_id);
+    if (stale.length > 0) {
+      const reset = await service.rpc("forget_sponsor_interest", { p_user_id: userId, p_sponsor_ids: stale });
+      if (reset.error) console.error("[recordMatchAudience] Remise à zéro du jour refusée :", reset.error.message);
+    }
     const interest = await service.rpc("record_sponsor_interest", { p_user_id: userId, p_match_id: matchId, p_points: points });
     if (interest.error) console.error("[recordMatchAudience] Intérêt refusé :", interest.error.message);
   } catch (error) {

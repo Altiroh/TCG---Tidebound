@@ -8,7 +8,9 @@ import {
   loginWeekIndex,
   progressionView,
   sponsorGiftStagesReached,
+  sponsorGiftClaimKey,
   sponsorHeldPoints,
+  sponsorPointsToday,
   sponsorRevealed,
   utcDayKey,
   type ProgressionView,
@@ -148,7 +150,7 @@ export async function fetchProgression(): Promise<ProgressionSummary> {
       supabase.from("player_achievements").select("code", { count: "exact", head: true }).eq("user_id", user.id).is("claimed_at", null),
       // Tables récentes : absentes (migration pas encore passée), elles valent zéro.
       supabase.from("player_audience").select("audience, last_spectacle").eq("user_id", user.id).maybeSingle(),
-      supabase.from("player_sponsor_interest").select("sponsor_id, points").eq("user_id", user.id),
+      supabase.from("player_sponsor_interest").select("sponsor_id, points, updated_at").eq("user_id", user.id),
       supabase.from("player_progression_claims").select("claim_key").eq("user_id", user.id).eq("kind", "sponsor_gift"),
       // Coffre de la semaine : parties de la semaine (compte seul) et déjà ouvert ?
       supabase.from("match_rewards").select("match_id", { count: "exact", head: true }).eq("user_id", user.id).gte("granted_at", weekStart),
@@ -176,14 +178,16 @@ export async function fetchProgression(): Promise<ProgressionSummary> {
       ? []
       : (sponsors.data ?? []).flatMap((row) => {
           const threshold = SPONSOR_THRESHOLDS.get(row.sponsor_id);
-          return threshold === undefined ? [] : [{ id: row.sponsor_id, points: sponsorHeldPoints(threshold, currentAudience, row.points) }];
+          // L'intérêt du JOUR seulement : les mécènes repartent de zéro chaque jour (`sponsorPointsToday`).
+          const pointsToday = sponsorPointsToday(row.points, row.updated_at, today);
+          return threshold === undefined ? [] : [{ id: row.sponsor_id, points: sponsorHeldPoints(threshold, currentAudience, pointsToday) }];
         });
     const giftsBySponsor =
       reached >= SPONSORS_UNLOCK_LEVEL
         ? heldInterest
             .map((row) => ({
               id: row.id,
-              count: sponsorGiftStagesReached(row.points).filter((stage) => !openedGifts.has(`${row.id}:${stage}`)).length,
+              count: sponsorGiftStagesReached(row.points).filter((stage) => !openedGifts.has(sponsorGiftClaimKey(row.id, stage, today))).length,
             }))
             .filter((entry) => entry.count > 0)
         : [];

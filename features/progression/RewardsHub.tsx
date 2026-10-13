@@ -725,7 +725,7 @@ function SponsorsPanel({
           👁 {audience.audience.toLocaleString("fr-FR")}
         </span>
       </header>
-      <p className={styles.panelSub}>Le public vous regarde. Certains, derrière lui, vous observent.</p>
+      <p className={styles.panelSub}>Le public vous regarde. Certains, derrière lui, vous observent — leur intérêt et leurs colis repartent de zéro chaque jour.</p>
       {milestone && (
         <button
           type="button"

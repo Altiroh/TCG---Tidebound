@@ -315,15 +315,16 @@ describe("hub de progression", () => {
 
   it("aucun colis de mécène sous le niveau 10", async () => {
     rows.player_audience = audienceOf(400);
-    rows.player_sponsor_interest = [{ sponsor_id: "beladone", points: 80 }];
+    rows.player_sponsor_interest = [{ sponsor_id: "beladone", points: 80, updated_at: new Date().toISOString() }];
     expect((await readProgressionHub(USER, 9)).sponsors.every((sponsor) => sponsor.giftStages.length === 0)).toBe(true);
     expect((await claimSponsorGift(USER, 9, "beladone", "intrigue")).ok).toBe(false);
     expect((await readProgressionHub(USER, 10)).sponsors.find((sponsor) => sponsor.id === "beladone")!.giftStages).toEqual(["intrigue", "interesse"]);
   });
 
   it("sous le seuil d'un mécène, l'audience courante lui fait perdre son intérêt — pas les colis déjà ouverts", async () => {
-    rows.player_sponsor_interest = [{ sponsor_id: "beladone", points: 80 }];
-    rows.player_progression_claims = [{ kind: "sponsor_gift", claim_key: "beladone:intrigue" }];
+    rows.player_sponsor_interest = [{ sponsor_id: "beladone", points: 80, updated_at: new Date().toISOString() }];
+    // Colis du jour (`sponsorGiftClaimKey`) : les mécènes repartent de zéro chaque jour.
+    rows.player_progression_claims = [{ kind: "sponsor_gift", claim_key: `beladone:intrigue:${new Date().toISOString().slice(0, 10)}` }];
 
     // Au-dessus du seuil : Intéressée, le colis « Intéressé » attend.
     rows.player_audience = audienceOf(320);
@@ -337,6 +338,20 @@ describe("hub de progression", () => {
     expect(beladone.name).toBeNull();
     expect(beladone.openedStages).toEqual(["intrigue"]);
     expect((await claimSponsorGift(USER, 12, "beladone", "interesse")).ok).toBe(false);
+  });
+
+  it("chaque jour, les mécènes repartent de zéro : l'intérêt d'hier ne compte plus, les colis d'hier se rouvrent", async () => {
+    rows.player_audience = audienceOf(400);
+    const hier = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+    rows.player_sponsor_interest = [{ sponsor_id: "beladone", points: 80, updated_at: hier }];
+    rows.player_progression_claims = [{ kind: "sponsor_gift", claim_key: `beladone:intrigue:${hier.slice(0, 10)}` }];
+    let beladone = (await readProgressionHub(USER, 12)).sponsors.find((sponsor) => sponsor.id === "beladone")!;
+    expect(beladone).toMatchObject({ points: 0, giftStages: [], openedStages: [] });
+
+    // Le même intérêt, gagné aujourd'hui : les deux colis attendent, celui d'hier compris.
+    rows.player_sponsor_interest = [{ sponsor_id: "beladone", points: 80, updated_at: new Date().toISOString() }];
+    beladone = (await readProgressionHub(USER, 12)).sponsors.find((sponsor) => sponsor.id === "beladone")!;
+    expect(beladone.giftStages).toEqual(["intrigue", "interesse"]);
   });
 
   it("une partie qui fait retomber l'audience efface l'intérêt des mécènes passés au-dessus", async () => {
