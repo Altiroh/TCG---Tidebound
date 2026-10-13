@@ -1816,13 +1816,25 @@
     background 180ms ease,
     box-shadow 180ms ease;
 }
-/* « Tout retourner » : le bouton de sortie, à sa place, tant qu'il reste des cartes de dos. */
-.revealAllButton {
-  box-shadow:
-    inset 0 0 0 1px rgba(255, 214, 140, 0.7),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    0 0 18px -4px rgba(255, 200, 110, 0.55),
-    0 10px 24px -8px rgba(0, 0, 0, 0.7);
+/* « Tout retourner » : la plaque bleue du bouton « Ouvrir » de Mes Boosters
+   (`ui/boutons/bouton-bleu.webp`), à la place du bouton de sortie tant
+   qu'il reste des cartes de dos. */
+.revealAllButton.revealAllButton {
+  border-radius: 0;
+  background: url("/assets/ui/boutons/bouton-bleu.webp") center / 100% 100% no-repeat;
+  box-shadow: none;
+  color: #f1e3c4;
+  font-family: var(--tb-font-body, Georgia, serif);
+  font-weight: 700;
+  filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.5));
+  transition: filter 140ms ease-out;
+}
+
+.revealAllButton.revealAllButton:hover,
+.revealAllButton.revealAllButton:focus-visible {
+  background: url("/assets/ui/boutons/bouton-bleu.webp") center / 100% 100% no-repeat;
+  box-shadow: none;
+  filter: brightness(1.2) drop-shadow(0 3px 5px rgba(0, 0, 0, 0.5));
 }
 
 .closeButton:hover,

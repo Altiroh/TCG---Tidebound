@@ -13,8 +13,20 @@ interface DialogProps {
   /** Boutons, dans l'ordre de lecture : annuler d'abord, action engageante en dernier. */
   actions?: ReactNode;
   onClose: () => void;
-  /** Largeur maximale (défaut 440px) — les sélecteurs visuels en demandent plus. */
+  /**
+   * Largeur maximale d'une FENÊTRE — les sélecteurs visuels (illustrations,
+   * navires, options…) en demandent une. Sans largeur, le dialogue est un
+   * avertissement et prend la forme d'un BANDEAU (cf. `variant`).
+   */
   width?: number;
+  /**
+   * `banner` (défaut sans `width`) : un grand bandeau noir d'un bord à
+   * l'autre de l'écran, l'avertissement au milieu — le titre sur la
+   * première ligne, la description sur la deuxième, les boutons sur la
+   * troisième (retour du 13/10/2026). `panel` (défaut avec `width`) : la
+   * fenêtre, pour ce qui se parcourt ou se choisit.
+   */
+  variant?: "banner" | "panel";
   /**
    * `danger` : suppression ou perte — le filet de tête et le halo passent au
    * rouge désaturé. Le bouton engageant reste `game.danger`.
@@ -35,7 +47,8 @@ interface DialogProps {
  * Échap, clic sur le voile et la croix en tête ferment — trois sorties pour
  * la même porte, aucune à deviner.
  */
-export function Dialog({ title, description, children, actions, onClose, width, tone = "default", hideCloseButton = false }: DialogProps) {
+export function Dialog({ title, description, children, actions, onClose, width, variant, tone = "default", hideCloseButton = false }: DialogProps) {
+  const shape = variant ?? (width ? "panel" : "banner");
   useEffect(() => {
     function handleKey(event: KeyboardEvent) {
       if (event.key === "Escape") onClose();
@@ -45,9 +58,10 @@ export function Dialog({ title, description, children, actions, onClose, width, 
   }, [onClose]);
 
   return (
-    <div className={styles.overlay} onClick={onClose} role="presentation">
+    <div className={styles.overlay} data-variant={shape} onClick={onClose} role="presentation">
       <div
         className={styles.dialog}
+        data-variant={shape}
         data-tone={tone}
         style={width ? ({ "--dialog-width": `${width}px` } as React.CSSProperties) : undefined}
         role="dialog"

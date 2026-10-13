@@ -173,6 +173,97 @@
   padding-top: 4px;
 }
 
+/*
+ * BANDEAU D'AVERTISSEMENT (`variant="banner"`, retour du 13/10/2026) : un
+ * grand bandeau noir d'un bord à l'autre de l'écran, l'avertissement au
+ * milieu — titre (ligne 1), description (ligne 2), boutons (ligne 3), tout
+ * centré. Deux filets du ton (cyan, rouge en `danger`) le bordent en haut
+ * et en bas. Le voile derrière assombrit sans flouter : l'écran reste lu.
+ */
+.overlay[data-variant="banner"] {
+  padding: 0;
+  background: rgba(2, 6, 12, 0.6);
+  backdrop-filter: none;
+}
+
+.dialog[data-variant="banner"] {
+  --banner-inline: max(calc(16px + var(--tb-safe-left, 0px)), calc((100vw - 760px) / 2));
+  width: 100%;
+  max-height: 92dvh;
+  align-items: center;
+  gap: clamp(8px, 1.4vh, 14px);
+  padding: clamp(22px, 4vh, 40px) var(--banner-inline);
+  border: 0;
+  border-radius: 0;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.9), rgba(4, 8, 14, 0.96) 50%, rgba(0, 0, 0, 0.9));
+  box-shadow: 0 0 60px rgba(0, 0, 0, 0.75);
+  text-align: center;
+  animation: bannerIn 240ms var(--tb-ease) both;
+}
+
+.dialog[data-variant="banner"]::before,
+.dialog[data-variant="banner"]::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  width: auto;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--dialog-tone) 30%, var(--dialog-tone) 70%, transparent);
+  opacity: 0.75;
+}
+
+.dialog[data-variant="banner"]::after {
+  top: auto;
+  bottom: 0;
+}
+
+/* Tête sans position propre : la croix se cale sur le BANDEAU, pas sur le titre. */
+.dialog[data-variant="banner"] .head {
+  position: static;
+  justify-content: center;
+  width: 100%;
+}
+
+.dialog[data-variant="banner"] .headText {
+  align-items: center;
+  gap: clamp(6px, 1vh, 10px);
+}
+
+.dialog[data-variant="banner"] .title {
+  font-size: calc(clamp(20px, 2vw, 30px) * var(--tb-text-scale));
+  letter-spacing: 0.04em;
+}
+
+.dialog[data-variant="banner"] .description {
+  max-width: 60ch;
+}
+
+/* La croix, sur le bord droit du bandeau. */
+.dialog[data-variant="banner"] .close {
+  position: absolute;
+  top: 50%;
+  right: max(calc(16px + var(--tb-safe-right, 0px)), 3vw);
+  margin: 0;
+  translate: 0 -50%;
+}
+
+.dialog[data-variant="banner"] .body {
+  width: min(100%, 520px);
+  text-align: left;
+}
+
+.dialog[data-variant="banner"] .actions {
+  justify-content: center;
+  padding-top: clamp(4px, 1vh, 10px);
+}
+
+@keyframes bannerIn {
+  from { opacity: 0; transform: scaleY(0.6); }
+  to { opacity: 1; transform: none; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .overlay, .dialog { animation: none; }
 }
@@ -196,6 +287,14 @@
     max-height: 100%;
     gap: 8px;
     padding: 14px 18px;
+  }
+
+  .overlay[data-variant="banner"] {
+    padding: 0;
+  }
+
+  .dialog[data-variant="banner"] {
+    padding: 16px var(--banner-inline);
   }
 }
 
