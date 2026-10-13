@@ -4699,36 +4699,48 @@
 }
 
 /* Répartition de soins : les points versés sur une unité, en pastille verte. */
+/*
+ * Part versée sur une carte pendant une répartition (soin, Salve) : le
+ * CHIFFRE seul, dans la couleur des caractéristiques (gain vert, perte
+ * rouge), posé sur la Résistance qu'il va changer — plus de grosse pastille
+ * au milieu de l'illustration (retour du 13/10/2026).
+ */
 .allocationBadge {
   position: absolute;
-  top: 38%;
-  left: 50%;
+  right: 6%;
+  bottom: 20%;
   z-index: 24;
-  padding: 0.15em 0.55em;
-  border: 1.5px solid rgba(190, 255, 214, 0.9);
-  border-radius: 999px;
-  background: linear-gradient(180deg, #2fb36b, #16733f);
-  box-shadow: 0 0 12px rgba(80, 230, 140, 0.65), 0 3px 8px rgba(0, 0, 0, 0.55);
-  color: #f2fff7;
+  color: #6ee7b7;
   font-family: var(--font-card-title), Georgia, serif;
-  font-size: clamp(12px, calc(var(--card-w, 90px) * 0.2), 22px);
+  font-size: clamp(13px, calc(var(--card-w, 90px) * 0.17), 20px);
   font-weight: 800;
-  transform: translate(-50%, -50%);
+  line-height: 1;
+  text-shadow:
+    -1.5px -1.5px 0 #052e1c, 1.5px -1.5px 0 #052e1c, -1.5px 1.5px 0 #052e1c, 1.5px 1.5px 0 #052e1c,
+    0 0 8px rgba(110, 231, 183, 0.7);
   pointer-events: none;
-  animation: allocationPop 260ms cubic-bezier(0.2, 1.4, 0.4, 1) both;
+  animation: allocationPop 240ms cubic-bezier(0.2, 1.4, 0.4, 1) both;
 }
 
 /* Salve : la part de Puissance envoyée sur une unité adverse — le rouge de l'attaque. */
 .allocationBadge[data-tone="attack"] {
-  border-color: rgba(255, 210, 200, 0.9);
-  background: linear-gradient(180deg, #e0523f, #9b2418);
-  box-shadow: 0 0 12px rgba(255, 110, 80, 0.7), 0 3px 8px rgba(0, 0, 0, 0.55);
-  color: #fff5f2;
+  color: #fb7185;
+  text-shadow:
+    -1.5px -1.5px 0 #3b0a0a, 1.5px -1.5px 0 #3b0a0a, -1.5px 1.5px 0 #3b0a0a, 1.5px 1.5px 0 #3b0a0a,
+    0 0 8px rgba(251, 113, 133, 0.7);
+}
+
+/* Sur le Navire : au-dessus de sa jauge d'Ancrage. */
+.allocationBadge[data-on="ship"] {
+  right: auto;
+  left: 30%;
+  bottom: 24%;
+  font-size: clamp(14px, 1.6cqw, 22px);
 }
 
 @keyframes allocationPop {
-  from { transform: translate(-50%, -50%) scale(0.4); opacity: 0; }
-  to { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  from { transform: translateY(6px) scale(0.5); opacity: 0; }
+  to { transform: none; opacity: 1; }
 }
 
 /*

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getCardDefinition, getShipDefinition, UNIT_CARD_TYPES, type GameState, type PlayerId } from "@/game";
 import type { ChoiceBannerAction } from "@/features/match/ChoiceBanner";
 
@@ -12,21 +12,33 @@ export interface BoardAllocationMode {
   amounts: ReadonlyMap<string, number>;
   onAdd: (instanceId: string) => void;
   onRemove: (instanceId: string) => void;
+  /**
+   * Le Navire du joueur, quand il peut recevoir sa part (« … entre vos
+   * unités et votre Navire ») : il s'éclaire comme une unité, un toucher y
+   * verse un point. Absent : il n'entre pas dans la répartition.
+   */
+  ship?: { eligible: boolean; amount: number; onAdd: () => void; onRemove: () => void };
 }
 
 type Allocation = Array<{ instanceId: string; amount: number }>;
 
 /** Part versée au Navire (`HealAllocationChoice.includeShip`) — l'identifiant que le moteur attend. */
 const SHIP = "ship";
+/** Après le dernier point versé, le temps de le voir se poser avant que la réparation ne parte. */
+const AUTO_SEND_MS = 450;
 
 /**
  * « Restaurez jusqu'à N Résistance répartie entre les unités que vous
  * contrôlez » (Trousse du Bord, Chirurgien du Bord) — SUR LE PLATEAU :
- * toucher une unité blessée y verse un point (pastille « +N » sur la
- * carte), clic droit le reprend. Le bandeau en haut dit ce qu'il reste
- * à répartir ; « Réparer » valide (répartir moins est permis). Sans
- * réponse au bout d'une minute, la répartition en cours s'applique telle
- * quelle — rien de versé, rien de réparé.
+ * toucher une unité blessée (ou le Navire, quand le texte l'inclut) y verse
+ * un point, clic droit le reprend. Le bandeau en haut dit ce qu'il reste à
+ * répartir.
+ *
+ * VALIDATION D'ELLE-MÊME (13/10/2026) : dès que tout est réparti — ou que
+ * plus rien ne peut recevoir de point —, la répartition part, sans bouton.
+ * Répartir MOINS reste permis : « Terminer » apparaît alors dans le bandeau.
+ * Sans réponse au bout d'une minute, la répartition en cours s'applique
+ * telle quelle.
  */
 export function useHealAllocation(state: GameState, viewerId: PlayerId, submit: (allocation: Allocation) => void) {
   const choice = state.pendingChoice;
@@ -35,11 +47,28 @@ export function useHealAllocation(state: GameState, viewerId: PlayerId, submit: 
   const key = active ? `${active.turnNumber}:${active.sourceInstanceId ?? ""}:${active.budget}` : null;
   useEffect(() => setParts({}), [key]);
 
-  if (!active || !key) return { mode: null as BoardAllocationMode | null, banner: null };
+  // Tout est réparti (ou plus rien ne peut recevoir) : la répartition part d'elle-même, le temps de voir le dernier point.
+  const complete = useRef<(() => void) | null>(null);
+  const done = useRef<string | null>(null);
+  const spentNow = Object.values(parts).reduce((sum, n) => sum + n, 0);
+  useEffect(() => {
+    if (!key || !complete.current || done.current === key) return undefined;
+    const send = complete.current;
+    const timer = window.setTimeout(() => {
+      done.current = key;
+      send();
+    }, AUTO_SEND_MS);
+    return () => window.clearTimeout(timer);
+  }, [key, spentNow]);
+
+  if (!active || !key) {
+    complete.current = null;
+    return { mode: null as BoardAllocationMode | null, banner: null };
+  }
 
   const viewer = state.players.find((p) => p.id === viewerId);
   const board = viewer?.board ?? [];
-  // « … entre vos unités et votre Navire » (Frère Michel) : le Navire reçoit sa part par un bouton du bandeau.
+  // « … entre vos unités et votre Navire » (Frère Michel) : le Navire s'éclaire et reçoit sa part au toucher.
   // L'Ancrage n'a plus de plafond (12/10/2026) : le Navire peut recevoir tout le budget.
   const shipRoom = active.includeShip && viewer ? active.budget : 0;
   const shipPart = parts[SHIP] ?? 0;
@@ -73,18 +102,35 @@ export function useHealAllocation(state: GameState, viewerId: PlayerId, submit: 
         return { ...current, [instanceId]: now - 1 };
       });
     },
+    ...(shipRoom > 0
+      ? {
+          ship: {
+            eligible: left > 0 && shipPart < shipRoom,
+            amount: shipPart,
+            onAdd: () => {
+              if (left <= 0 || shipPart >= shipRoom) return;
+              setParts((current) => ({ ...current, [SHIP]: (current[SHIP] ?? 0) + 1 }));
+            },
+            onRemove: () =>
+              setParts((current) => ((current[SHIP] ?? 0) > 0 ? { ...current, [SHIP]: (current[SHIP] ?? 0) - 1 } : current)),
+          },
+        }
+      : {}),
   };
+
+  // Plus rien à verser : tout le budget est parti, ou aucune cible ne peut plus recevoir.
+  const nothingLeft = left <= 0 || (eligible.size === 0 && !(shipRoom > 0 && shipPart < shipRoom));
+  complete.current = nothingLeft ? send : null;
 
   const source = active.sourceInstanceId
     ? state.players.flatMap((p) => [...p.board, ...p.hand, ...p.graveyard]).find((c) => c.instanceId === active.sourceInstanceId)
     : undefined;
   const actions: ChoiceBannerAction[] = [];
   if (spent > 0) actions.push({ label: "Reprendre", onClick: () => setParts({}) });
-  if (shipRoom > 0 && left > 0 && shipPart < shipRoom) {
-    actions.push({ label: `Navire +1${shipPart > 0 ? ` (${shipPart})` : ""}`, onClick: () => setParts((current) => ({ ...current, [SHIP]: (current[SHIP] ?? 0) + 1 })) });
-  }
   const rienAReparer = wounded.length === 0 && shipRoom === 0;
-  actions.push({ label: rienAReparer ? "Continuer" : "Réparer", primary: true, onClick: send });
+  // Verser MOINS que le budget, si on le veut : le seul bouton qui reste, et seulement quand il sert.
+  if (!nothingLeft && spent > 0) actions.push({ label: "Terminer", primary: true, onClick: send });
+  if (!nothingLeft && spent === 0) actions.push({ label: "Passer", onClick: send });
 
   const banner = {
     choiceKey: key,
@@ -93,9 +139,9 @@ export function useHealAllocation(state: GameState, viewerId: PlayerId, submit: 
       rienAReparer
         ? "Aucune de tes unités n'est blessée."
         : left > 0
-          ? `Touche tes unités blessées : ${left} Résistance à répartir.`
-          : "Tout est réparti — valide, ou reprends un point (clic droit).",
-    detail: "Un toucher verse un point, un clic droit le reprend. Tu peux en verser moins.",
+          ? `Touche ${shipRoom > 0 ? "tes unités blessées ou ton Navire" : "tes unités blessées"} : ${left} Résistance à répartir.`
+          : "Tout est réparti.",
+    detail: "Un toucher verse un point, un clic droit le reprend. La réparation part dès que tout est réparti.",
     actions,
     onExpire: send,
   };

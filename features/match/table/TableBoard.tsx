@@ -274,6 +274,8 @@ function ReasonCostPreview({ playerId, cost, debtDamage }: { playerId: PlayerId;
  */
 export function TableBoard(props: TableBoardProps) {
   const { state, viewerId, canPlayCards, canAttack, targeting } = props;
+  /** Répartition de soins qui inclut le Navire : il s'éclaire et reçoit sa part au toucher. */
+  const shipAllocation = props.boardAllocation?.ship ?? null;
   const stageRef = useRef<HTMLDivElement>(null);
   const metrics = useTableMetrics(stageRef);
   const badgeSize = BADGE_SIZE[metrics.breakpoint];
@@ -1313,22 +1315,33 @@ export function TableBoard(props: TableBoardProps) {
             wrapShip={(ship) => (
               <div
                 data-ship-target={viewer.id}
-                className={`${styles.shipTarget} ${anyTargeting ? `${styles.targetable} ${styles.effectTone}` : styles.shipInspectable}`}
+                className={`${styles.shipTarget} ${anyTargeting || shipAllocation?.eligible ? `${styles.targetable} ${styles.effectTone}` : styles.shipInspectable}`}
                 {...(() => {
-                  const info = shipInfoHandlers(viewer.id, () => anyTargeting);
+                  const info = shipInfoHandlers(viewer.id, () => anyTargeting || Boolean(shipAllocation));
                   return { onPointerEnter: info.onPointerEnter, onPointerLeave: info.onPointerLeave, onPointerDown: info.onPointerDown, onClick: () => {
+                    // Répartition de soins qui inclut le Navire : un toucher lui verse un point.
+                    if (shipAllocation) shipAllocation.onAdd();
                     // Seule une capacité ciblée vise son propre Navire ; sinon, au doigt, on consulte sa fiche.
-                    if (anyTargeting) props.onShipClick(viewer.id);
+                    else if (anyTargeting) props.onShipClick(viewer.id);
                     else info.openOnTap();
                   } };
                 })()}
                 onContextMenu={(event) => {
                   event.preventDefault();
+                  if (shipAllocation && shipAllocation.amount > 0) {
+                    shipAllocation.onRemove();
+                    return;
+                  }
                   setShipInfoHover(false);
                   setShipInfoFor(viewer.id);
                 }}
               >
                 {ship}
+                {shipAllocation && shipAllocation.amount > 0 && (
+                  <span className={styles.allocationBadge} data-on="ship" aria-label={`${shipAllocation.amount} point${shipAllocation.amount > 1 ? "s" : ""} d'Ancrage versé${shipAllocation.amount > 1 ? "s" : ""}`}>
+                    +{shipAllocation.amount}
+                  </span>
+                )}
               </div>
             )}
             graveyardDropState={
