@@ -10,6 +10,7 @@ import { notifyProgressionChanged } from "@/features/progression/progressionSync
 import { RewardIcon } from "@/features/progression/RewardIcon";
 import styles from "@/features/progression/DailyStreakPopup.module.css";
 import { playButtonClick, playStreakClaimed } from "@/lib/sound";
+import { MicroLoader } from "@/features/shell/MicroLoader";
 
 interface DailyStreakPopupProps {
   onClose: () => void;
@@ -146,7 +147,7 @@ export function DailyStreakPopup({ onClose, initialLogin }: DailyStreakPopupProp
           </>
         ) : (
           <button type="button" className={styles.primary} onClick={claim} disabled={pending}>
-            {pending ? "…" : "Réclamer l'escale"}
+            {pending ? <MicroLoader active label="Réclamation…" placement="inline" delayMs={0} /> : "Réclamer l'escale"}
           </button>
         )}
         {error && <p className={styles.error}>{error}</p>}

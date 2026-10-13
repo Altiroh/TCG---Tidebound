@@ -28,6 +28,7 @@ import game from "@/features/shell/GameScreen.module.css";
 import { playButtonClick } from "@/lib/sound";
 import { oneOf } from "@/lib/persistCodecs";
 import { usePersistedState } from "@/lib/persistedState";
+import { MicroLoader } from "@/features/shell/MicroLoader";
 
 interface DecksScreenProps {
   isSignedIn: boolean;
@@ -423,7 +424,7 @@ function CopyDeckDialog({ deck, busy, onConfirm, onCancel }: { deck: BrowserDeck
             Annuler
           </button>
           <button type="button" className={game.primary} onClick={onConfirm} disabled={busy}>
-            Copier quand même
+            {busy ? <MicroLoader active label="Copie…" placement="inline" delayMs={0} /> : "Copier quand même"}
           </button>
         </>
       }

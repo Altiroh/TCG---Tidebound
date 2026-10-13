@@ -12,6 +12,7 @@ import { unpackFrames } from "@/features/matches/matchFrames";
 import { predictView } from "@/features/online/predictView";
 import { BASE_FRAME_MS, framePaceMs } from "@/features/match/framePacing";
 import { WaitingRoom } from "@/features/online/WaitingRoom";
+import { MicroLoader } from "@/features/shell/MicroLoader";
 import { createChannelRecoveryTracker, useResyncOnReturn } from "@/features/online/resync";
 import { isOffline, presentUserIds, useOffline, useOpponentPresence, waitUntilOnline } from "@/features/online/connection";
 
@@ -67,6 +68,21 @@ export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: On
   const [view, setView] = useState<GameState | null>(initialView);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  /**
+   * Ce que l'écran attend du serveur SANS rien pouvoir montrer d'avance :
+   * la réponse à un coup non anticipé, ou la réflexion du bot quand plus rien
+   * n'est à rejouer. Un micro-chargement le dit (`MicroLoader`).
+   */
+  const [waiting, setWaiting] = useState<"coup" | "bot" | null>(null);
+  /** États du bot encore à rejouer à l'écran : tant qu'il y en a, le bot ne « réfléchit » pas aux yeux du joueur. */
+  const framesToShow = useRef(0);
+  /** Appel au bot du serveur, avec le micro-chargement s'il n'y a rien d'autre à regarder. */
+  function askBot() {
+    if (framesToShow.current === 0) setWaiting("bot");
+    return advanceBotMatch(matchId)
+      .catch(() => ({ ok: false as const, error: "Le bot n'a pas pu jouer, réessaie.", data: undefined }))
+      .finally(() => setWaiting(null));
+  }
 
   const shownVersion = useRef(initialMatch.state_version);
   const latestRemoteVersion = useRef(initialMatch.state_version);
@@ -360,7 +376,10 @@ export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: On
       // n'est jamais renvoyé — le serveur l'a peut-être déjà enregistré.
       await waitUntilOnline();
 
-      const result = await submitMatchAction(matchId, item.action).catch(() => ({ ok: false as const, error: "Coup non enregistré, réessaie.", data: undefined }));
+      if (!item.predicted) setWaiting("coup");
+      const result = await submitMatchAction(matchId, item.action)
+        .catch(() => ({ ok: false as const, error: "Coup non enregistré, réessaie.", data: undefined }))
+        .finally(() => setWaiting(null));
 
       if (!result.ok || !result.data) {
         // Les coups suivants avaient été prédits sur un état qui n'a pas eu
@@ -396,7 +415,7 @@ export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: On
       replay.enqueue(botFrames);
       let botStillToMove = botToMove;
       while (botStillToMove) {
-        const slice = await advanceBotMatch(matchId).catch(() => ({ ok: false as const, error: "Le bot n'a pas pu jouer, réessaie.", data: undefined }));
+        const slice = await askBot();
         if (!slice.ok || !slice.data) {
           // La lecture de la table termine le tour du bot côté serveur
           // (`settleExpiredDeadlines`) : on montre ce qui est arrivé, puis l'état final.
@@ -437,7 +456,7 @@ export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: On
     const replay = paceFrames(viewRef.current, viewRef.current);
     let more = true;
     while (more) {
-      const slice = await advanceBotMatch(matchId).catch(() => ({ ok: false as const, error: "Le bot n'a pas pu jouer, réessaie.", data: undefined }));
+      const slice = await askBot();
       if (!slice.ok || !slice.data) {
         await replay.finished();
         await refresh();
@@ -485,12 +504,14 @@ export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: On
       enqueue(frames: GameState[]) {
         for (const frame of frames) {
           const at = Math.max(lastShownAt + holdAfterLast, performance.now());
+          framesToShow.current += 1;
           lastShownAt = at;
           holdAfterLast = lastFrame ? framePaceMs(lastFrame, frame) : BASE_FRAME_MS;
           lastFrame = frame;
           shown.push(
             new Promise<void>((resolve) => {
               const timer = setTimeout(() => {
+                framesToShow.current = Math.max(0, framesToShow.current - 1);
                 showView(frame);
                 resolve();
               }, at - performance.now());
@@ -528,6 +549,8 @@ export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: On
 
   return (
     <MatchCosmeticsProvider viewerId={myUserId} byPlayer={cosmetics}>
+      {/* Le bot réfléchit souvent un court instant : le micro-chargement ne vient qu'au-delà. */}
+      <MicroLoader active={waiting !== null} label={waiting === "bot" ? `${isBotMatch ? "Le bot" : "L'adversaire"} réfléchit…` : "Coup en route…"} delayMs={waiting === "bot" ? 450 : 220} />
       <OnlineBoard
         state={view}
         myUserId={myUserId}

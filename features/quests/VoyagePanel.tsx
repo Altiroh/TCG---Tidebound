@@ -8,6 +8,7 @@ import { notifyProgressionChanged } from "@/features/progression/progressionSync
 import { playButtonClick, playRewardClaimed } from "@/lib/sound";
 import { TideCoin } from "@/features/shell/GameIcons";
 import { getBoosterPackVisual } from "@/features/boosters/opening/boosterPackVisuals";
+import { MicroLoader } from "@/features/shell/MicroLoader";
 
 /**
  * Les cinq bouées PEINTES sur la carte (`carte-traversee.webp`), en % de
@@ -265,7 +266,7 @@ function RewardPlaque({ step, claimable, busy, locked, onClaim }: { step: Voyage
       )}
       {step.claimed && <span className={styles.plaqueState}>Palier réclamé</span>}
       {locked && <span className={styles.plaqueState}>Boucle la Traversée précédente pour lever l&apos;ancre.</span>}
-      {claimable && <span className={styles.plaqueClaim}>{busy ? "…" : "Réclamer"}</span>}
+      {claimable && <span className={styles.plaqueClaim}>{busy ? <MicroLoader active label="Réclamation…" placement="inline" delayMs={0} /> : "Réclamer"}</span>}
     </>
   );
 

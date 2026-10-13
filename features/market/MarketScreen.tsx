@@ -21,6 +21,7 @@ import { nameplateArtUrl } from "@/features/decks/nameplateArt";
 import { notifyProgressionChanged } from "@/features/progression/progressionSync";
 import { playAddToCart, playButtonClick, playMarketBuy, playTabClick } from "@/lib/sound";
 import { BoosterContentsDialog } from "@/features/market/BoosterContentsDialog";
+import { MicroLoader } from "@/features/shell/MicroLoader";
 
 interface MarketScreenProps {
   inventory: BoosterInventory;
@@ -653,7 +654,7 @@ export function MarketScreen({ inventory, catalog, collectables, sandbox = false
                   onClick={() => void handleCheckout()}
                   disabled={isBuying || itemCount === 0 || shortTides > 0 || shortTokens > 0}
                 >
-                  {isBuying ? "Achat…" : "Acheter"}
+                  {isBuying ? <MicroLoader active label="Achat…" placement="inline" delayMs={0} /> : "Acheter"}
                 </button>
               </div>
             </div>

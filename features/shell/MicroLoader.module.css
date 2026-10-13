@@ -1,0 +1,81 @@
+/* Micro-chargement (`MicroLoader`) : une pastille de verre sombre, un anneau cyan, trois mots. */
+.loader {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px 5px 8px;
+  border: 1px solid rgba(148, 190, 226, 0.3);
+  border-radius: 999px;
+  background: rgba(5, 9, 15, 0.8);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+  color: #cfe0f0;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  line-height: 16px;
+  white-space: nowrap;
+  pointer-events: none;
+  /* N'apparaît qu'au-delà d'un instant : une attente brève ne clignote pas. */
+  animation: microIn 200ms ease-out var(--micro-delay, 220ms) both;
+}
+
+.loader[data-placement="floating"] {
+  position: fixed;
+  top: calc(var(--tb-safe-top, 0px) + 10px);
+  left: 50%;
+  z-index: 70;
+  translate: -50% 0;
+}
+
+.ring {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(88, 200, 216, 0.18);
+  border-top-color: #58c8d8;
+  border-radius: 50%;
+  animation: microSpin 800ms linear infinite;
+}
+
+@keyframes microIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes microSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ring {
+    animation-duration: 2400ms;
+  }
+}
+
+/* Dans un bouton : l'anneau et le mot, sans pastille, à la couleur du bouton. */
+.loader[data-placement="inline"] {
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  color: inherit;
+  font-size: inherit;
+  letter-spacing: inherit;
+  line-height: inherit;
+}
+
+.loader[data-placement="inline"] .ring {
+  width: 1em;
+  height: 1em;
+  border-color: currentColor;
+  border-top-color: transparent;
+  opacity: 0.85;
+}

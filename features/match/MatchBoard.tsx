@@ -47,6 +47,7 @@ import { reactionWarning } from "@/features/match/reactionWarnings";
 import { useBoardPick } from "@/features/match/useBoardPick";
 import { useHeldTarget } from "@/features/match/useHeldTarget";
 import { PhaseBanner } from "@/features/match/PhaseBanner";
+import { MicroLoader } from "@/features/shell/MicroLoader";
 import { ReactionPrompt } from "@/features/match/ReactionPrompt";
 import { ShipWindowHint } from "@/features/match/ShipWindowHint";
 import { reactionTargetHint } from "@/features/match/reactionTargetHint";
@@ -273,6 +274,8 @@ export function MatchBoard({
   // Un dé qui roule encore retient l'issue de son jet (`dicePresentation.ts`),
   // une attaque ou un sort retient l'état d'avant le choc : le bot attend
   // qu'ils aient touché avant de rejouer, sinon son coup suivant les coupe.
+  /** Le bot réfléchit (worker) : au-delà d'un instant, un micro-chargement le dit (`MicroLoader`). */
+  const [botThinking, setBotThinking] = useState(false);
   const botToAct = Boolean(botPlayerId) && !holding && liveState.status === "active" && botHasSomethingToDo(liveState, botPlayerId!);
   useEffect(() => {
     if (!botToAct || !botDifficulty || !botPlayerId) return;
@@ -287,7 +290,8 @@ export function MatchBoard({
       if (cancelled || current.status !== "active" || !botHasSomethingToDo(current, botPlayerId!)) return;
 
       const startedAt = performance.now();
-      const action = await thinkBotAction(current, botPlayerId!, botDifficulty!);
+      setBotThinking(true);
+      const action = await thinkBotAction(current, botPlayerId!, botDifficulty!).finally(() => setBotThinking(false));
       if (cancelled) return;
       const pace = BOT_QUICK_ACTIONS.has(action.type) ? BOT_QUICK_DELAY_MS : BOT_ACTION_DELAY_MS;
       timer = setTimeout(() => {
@@ -678,6 +682,8 @@ export function MatchBoard({
         <GlassAlert message={deraison.warning} severity="warning" onDismiss={deraison.dismiss} onExpire={deraison.hide} />
       )}
       <PhaseBanner text={bannerText} bannerKey={bannerEvent?.id ?? null} />
+      {/* La réflexion du bot se fond d'ordinaire dans son rythme : l'indicateur ne vient que si elle traîne. */}
+      <MicroLoader active={botThinking} label="Le bot réfléchit…" delayMs={600} />
       {shipAbility.prompt && (
         <ShipAbilityPrompt {...shipAbility.prompt} onConfirm={shipAbility.confirm} onCancel={shipAbility.cancel} />
       )}
