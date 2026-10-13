@@ -28,7 +28,8 @@ export const metadata: Metadata = {
  * Actions depuis une page publique — un visiteur connecté y dépenserait
  * ses propres Tides sur un écran dont tous les chiffres sont inventés.
  * `?rayon=decks|cosmetics` ouvre directement un autre rayon ;
- * `?panier=1` remplit le panier.
+ * `?panier=1` remplit le panier ; `?possede=1` marque tous les cosmétiques
+ * comme possédés.
  */
 export default async function MarketPreviewRoute({ searchParams = {} }: { searchParams?: Record<string, string | string[] | undefined> }) {
   const [catalog, collectables] = await Promise.all([readDeckCatalog(null), loadCollectables(null)]);
@@ -43,7 +44,15 @@ export default async function MarketPreviewRoute({ searchParams = {} }: { search
         preconTokens: 2,
         decks: catalog.decks.map((entry, index) => ({ ...entry, unlocked: index === 1 })),
       }}
-      collectables={{ ...collectables, isSignedIn: true, balance: 74266 }}
+      collectables={{
+        ...collectables,
+        isSignedIn: true,
+        balance: 74266,
+        // `?possede=1` : tout est déjà possédé, pour régler le tag « Possédé ».
+        families: searchParams.possede
+          ? collectables.families.map((family) => ({ ...family, options: family.options.map((option) => ({ ...option, owned: true })) }))
+          : collectables.families,
+      }}
       sandbox
       initialSection={rayon}
       initialCartFilled={Boolean(searchParams.panier)}

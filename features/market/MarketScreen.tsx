@@ -23,6 +23,7 @@ import { playAddToCart, playButtonClick, playMarketBuy, playTabClick } from "@/l
 import { BoosterContentsDialog } from "@/features/market/BoosterContentsDialog";
 import { MicroLoader } from "@/features/shell/MicroLoader";
 import { StatusTag } from "@/features/shell/StatusTag";
+import { useOpaqueBox } from "@/features/shell/useOpaqueBox";
 
 interface MarketScreenProps {
   inventory: BoosterInventory;
@@ -1022,6 +1023,9 @@ function GoodsItem({
   disabled: boolean;
   onToggle: () => void;
 }) {
+  // Le halo « Possédé » épouse l'objet peint, pas son fichier : un cadre de
+  // Navire n'occupe qu'une partie de son image transparente.
+  const silhouette = useOpaqueBox(owned ? art : null);
   return (
     <>
       <button
@@ -1035,9 +1039,21 @@ function GoodsItem({
         aria-label={owned ? `${name} — possédé` : inCart ? `Retirer ${name} du panier` : `Mettre ${name} au panier`}
       >
         <span className={styles.goodsArt} data-fit={fit} style={art ? { backgroundImage: `url("${art}")` } : undefined} aria-hidden />
-        {owned && (
-          <span className={styles.goodsStatus} data-fit={fit}>
-            <StatusTag tone="owned">{ownedLabel}</StatusTag>
+        {owned && silhouette && (
+          <span className={styles.goodsFit} data-fit={fit} aria-hidden>
+            <span className={styles.goodsImage} style={{ "--ratio": silhouette.ratio } as CSSProperties}>
+              <span
+                className={styles.goodsStatus}
+                style={{
+                  left: `${silhouette.left * 100}%`,
+                  top: `${silhouette.top * 100}%`,
+                  right: `${silhouette.right * 100}%`,
+                  bottom: `${silhouette.bottom * 100}%`,
+                }}
+              >
+                <StatusTag tone="owned">{ownedLabel}</StatusTag>
+              </span>
+            </span>
           </span>
         )}
         {inCart && (

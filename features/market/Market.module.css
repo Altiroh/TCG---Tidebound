@@ -317,24 +317,48 @@
   filter: saturate(0.7) brightness(0.85);
 }
 
-/* Possédé : le tag commun (`StatusTag`) et son halo vert, sur la silhouette
-   de l'objet — un dos de carte (5/7, posé au pied du socle) ou la boîte
-   de l'image pour un cadre. */
-.goodsStatus {
+/*
+ * Possédé : le tag commun (`StatusTag`) et son halo vert, calés sur la
+ * SILHOUETTE de l'objet (`useOpaqueBox`). `.goodsFit` reprend la boîte de
+ * `.goodsArt` ; `.goodsImage` y retrouve le rectangle où l'image est
+ * réellement peinte (`contain`, posée en bas) d'après ses proportions ;
+ * `.goodsStatus` s'y réduit à ses pixels opaques. Il suit l'objet au survol.
+ */
+.goodsFit {
   position: absolute;
-  left: 4%;
-  right: 4%;
-  bottom: 0;
-  aspect-ratio: 5 / 7;
-  border-radius: 4%;
+  inset: 0 4% 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  container-type: size;
   pointer-events: none;
+  transform-origin: 50% 100%;
+  transition: transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
-.goodsStatus[data-fit="contain"] {
-  top: 0;
-  left: 6%;
-  right: 6%;
-  aspect-ratio: auto;
+.goodsFit[data-fit="contain"] {
+  inset: 0 6% 0;
+}
+
+.goods:hover .goodsFit {
+  transform: translateY(-0.8cqw);
+}
+
+.goodsImage {
+  position: relative;
+  flex: none;
+  width: min(100cqw, 100cqh * var(--ratio, 0.714));
+  height: min(100cqh, 100cqw / var(--ratio, 0.714));
+}
+
+.goodsStatus {
+  position: absolute;
+  border-radius: 6% / 4.5%;
+}
+
+/* Un cadre ajouré : des coins plus ronds, le halo en suit mieux le contour. */
+.goodsFit[data-fit="contain"] .goodsStatus {
+  border-radius: 14% / 10%;
 }
 
 /*
