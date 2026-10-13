@@ -152,6 +152,45 @@
   color: #e8edf0;
 }
 
+/* Une carte gagnée : la carte elle-même, à la place de l'icône. */
+.item[data-card] {
+  width: clamp(120px, 16vw, 170px);
+}
+
+.wonCard {
+  display: block;
+  width: 100%;
+  border-radius: 12px;
+  box-shadow: 0 0 0 1px rgba(0, 183, 255, 0.5), 0 0 28px rgba(0, 183, 255, 0.35), 0 0 60px rgba(255, 200, 90, 0.2);
+  pointer-events: none;
+}
+
+/* Pas de bouton : un toucher n'importe où ferme les gains. */
+.scene[data-tap] {
+  cursor: var(--tb-cursor-pointer);
+}
+
+.tapHint {
+  margin: 0;
+  font-size: calc(13px * var(--tb-text-scale));
+  letter-spacing: 0.06em;
+  color: #9eb3c2;
+  opacity: 0;
+  animation: fadeIn 300ms ease-out 900ms both, hintBreath 2.4s ease-in-out 1200ms infinite;
+}
+
+.tapHint[data-static] {
+  animation: fadeIn 300ms ease-out 500ms both;
+}
+
+@keyframes hintBreath {
+  50% { opacity: 0.55; }
+}
+
+.choice:disabled {
+  cursor: var(--tb-cursor);
+}
+
 .choices {
   display: flex;
   flex-wrap: wrap;

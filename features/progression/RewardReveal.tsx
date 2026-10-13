@@ -37,6 +37,21 @@ function itemLabel(item: RewardItem): string {
   return levelRewardLabel(item as LevelRewardItem);
 }
 
+/** Une carte que le jeu sait encore dessiner (une carte retirée ferait tomber tout l'écran). */
+function knownCard(cardId: string): boolean {
+  try {
+    getCardDefinition(cardId);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** La carte précise d'un gain « carte », quand le serveur l'a tirée et qu'elle existe encore. */
+function wonCardId(item: RewardItem): string | null {
+  return item.kind === "card" && "cardId" in item && item.cardId && knownCard(item.cardId) ? item.cardId : null;
+}
+
 function choiceInstance(choiceId: string, cardId: string): CardInstance {
   return {
     instanceId: `choice_${choiceId}_${cardId}`,
@@ -58,6 +73,11 @@ function choiceInstance(choiceId: string, cardId: string): CardInstance {
  * se présentent face visible : on en garde une, et elle rejoint la
  * collection (`resolve_card_choice`, vérifiée côté serveur).
  */
+/** Les gains surgissent avant qu'un toucher puisse les fermer. */
+const ITEMS_MIN_MS = 900;
+/** La carte gardée reste levée ce temps-là avant la suite. */
+const KEPT_HOLD_MS = 650;
+
 export function RewardReveal({ levels, choices, extraItems = [], title: forcedTitle, sound = "reward", onDone }: RewardRevealProps) {
   const [mounted, setMounted] = useState(false);
   const [choiceIndex, setChoiceIndex] = useState(0);
@@ -99,27 +119,40 @@ export function RewardReveal({ levels, choices, extraItems = [], title: forcedTi
 
   const choice = choices[choiceIndex];
 
+  /**
+   * Pas de bouton à valider (13/10/2026) : un toucher n'importe où ferme les
+   * gains — une fois qu'ils ont eu le temps de surgir, pour qu'un toucher
+   * réflexe n'escamote pas le moment.
+   */
+  const [readyAt] = useState(() => Date.now() + ITEMS_MIN_MS);
   function finishItems() {
+    if (Date.now() < readyAt) return;
     playButtonClick();
     if (choices.length > 0) setPhase("choice");
     else onDone();
   }
 
-  async function keepCard() {
-    if (!choice || !picked || busy) return;
+  /** Toucher une carte la GARDE, tout de suite : pas de second geste « Garder ». */
+  async function keepCard(cardId: string) {
+    if (!choice || busy) return;
     playButtonClick();
+    setPicked(cardId);
     setBusy(true);
     setError(null);
-    const result = await chooseRewardCard(choice.id, picked).catch(() => ({ ok: false, error: "Serveur injoignable — réessaie." }));
+    const result = await chooseRewardCard(choice.id, cardId).catch(() => ({ ok: false, error: "Serveur injoignable — réessaie." }));
     setBusy(false);
     if (!result.ok) {
+      setPicked(null);
       setError(result.error ?? "Choix impossible.");
       return;
     }
-    setKept((current) => [...current, picked]);
-    setPicked(null);
-    if (choiceIndex + 1 < choices.length) setChoiceIndex(choiceIndex + 1);
-    else onDone();
+    setKept((current) => [...current, cardId]);
+    // Le temps de voir la carte gardée s'élever avant la suite.
+    window.setTimeout(() => {
+      setPicked(null);
+      if (choiceIndex + 1 < choices.length) setChoiceIndex(choiceIndex + 1);
+      else onDone();
+    }, KEPT_HOLD_MS);
   }
 
   useEffect(() => {
@@ -139,7 +172,7 @@ export function RewardReveal({ levels, choices, extraItems = [], title: forcedTi
     (levels.length === 1 ? `Palier ${levels[0]!.level} réclamé !` : levels.length > 1 ? `${levels.length} paliers réclamés !` : "Choisis ta carte");
 
   return createPortal(
-    <div className={styles.scene} role="dialog" aria-modal aria-label={title}>
+    <div className={styles.scene} role="dialog" aria-modal aria-label={title} onClick={phase === "items" ? finishItems : undefined} data-tap={phase === "items" ? "" : undefined}>
       <span className={styles.rays} aria-hidden />
       <span className={styles.burst} aria-hidden>
         {Array.from({ length: 18 }, (_, index) => (
@@ -153,11 +186,18 @@ export function RewardReveal({ levels, choices, extraItems = [], title: forcedTi
           <h2 className={styles.title}>{title}</h2>
           <ul className={styles.items}>
             {shown.map((item, index) => (
-              <li key={index} className={styles.item} style={{ ["--i" as string]: index }}>
-                <span className={styles.itemIcon}>
-                  <RewardIcon item={item} size={84} />
-                </span>
-                <span className={styles.itemLabel}>{itemLabel(item)}</span>
+              <li key={index} className={styles.item} style={{ ["--i" as string]: index }} data-card={wonCardId(item) ? "" : undefined}>
+                {wonCardId(item) ? (
+                  // Une carte gagnée se montre elle-même, pas une icône de carte.
+                  <span className={styles.wonCard}>
+                    <CardTile instance={choiceInstance("won", wonCardId(item)!)} tideState="calme" widthClassName="w-full" scaleOnHover={false} />
+                  </span>
+                ) : (
+                  <span className={styles.itemIcon}>
+                    <RewardIcon item={item} size={84} />
+                  </span>
+                )}
+                <span className={styles.itemLabel}>{wonCardId(item) ? getCardDefinition(wonCardId(item)!).name : itemLabel(item)}</span>
               </li>
             ))}
             {choices.length > 0 && (
@@ -171,9 +211,7 @@ export function RewardReveal({ levels, choices, extraItems = [], title: forcedTi
               </li>
             )}
           </ul>
-          <button type="button" className={styles.primary} onClick={finishItems} autoFocus>
-            {choices.length > 0 ? "Choisir ma carte →" : "Génial !"}
-          </button>
+          <p className={styles.tapHint}>{choices.length > 0 ? "Touche pour choisir ta carte" : "Touche pour continuer"}</p>
         </div>
       ) : choice ? (
         <div className={styles.panel}>
@@ -182,20 +220,21 @@ export function RewardReveal({ levels, choices, extraItems = [], title: forcedTi
             {choices.length > 1 ? ` · ${choiceIndex + 1} / ${choices.length}` : ""}
           </p>
           <h2 className={styles.title}>Garde une carte</h2>
+          {choice.offeredCardIds.length === 0 && (
+            // Filet : une proposition vidée (cartes retirées du jeu) ne doit jamais bloquer l'écran.
+            <p className={styles.error}>Cette proposition n&apos;a plus de carte disponible — elle sera refaite à ta prochaine visite.</p>
+          )}
           <div className={styles.choices}>
-            {choice.offeredCardIds.map((cardId, index) => (
+            {choice.offeredCardIds.filter(knownCard).map((cardId, index) => (
               <button
                 key={cardId}
                 type="button"
                 className={styles.choice}
                 data-picked={picked === cardId ? "true" : undefined}
                 style={{ ["--i" as string]: index }}
-                onClick={() => {
-                  playButtonClick();
-                  setPicked(cardId);
-                }}
-                aria-pressed={picked === cardId}
-                aria-label={getCardDefinition(cardId).name}
+                onClick={() => void keepCard(cardId)}
+                disabled={busy || picked !== null}
+                aria-label={`Garder ${getCardDefinition(cardId).name}`}
               >
                 <span className={styles.choiceCard}>
                   <CardTile instance={choiceInstance(choice.id, cardId)} tideState="calme" widthClassName="w-full" scaleOnHover={false} />
@@ -204,9 +243,13 @@ export function RewardReveal({ levels, choices, extraItems = [], title: forcedTi
             ))}
           </div>
           {error && <p className={styles.error}>{error}</p>}
-          <button type="button" className={styles.primary} onClick={() => void keepCard()} disabled={!picked || busy}>
-            {busy ? "…" : picked ? `Garder ${getCardDefinition(picked).name}` : "Touche une carte"}
-          </button>
+          {choice.offeredCardIds.length === 0 ? (
+            <button type="button" className={styles.primary} onClick={onDone}>
+              Fermer
+            </button>
+          ) : (
+            <p className={styles.tapHint} data-static="">{picked ? `${getCardDefinition(picked).name} rejoint ta collection` : "Touche la carte que tu gardes"}</p>
+          )}
           {kept.length > 0 && <p className={styles.kept}>Déjà gardée{kept.length > 1 ? "s" : ""} : {kept.map((id) => getCardDefinition(id).name).join(", ")}</p>}
         </div>
       ) : null}

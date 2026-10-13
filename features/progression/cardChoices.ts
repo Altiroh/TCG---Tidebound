@@ -1,5 +1,6 @@
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import type { CardRarity } from "@/game/boosters/types";
+import { getCardDefinition } from "@/game";
 
 /**
  * Paliers « carte au choix parmi 3 » — module SERVEUR (pas de `"use server"`).
@@ -72,4 +73,72 @@ export async function openLevelCardChoices(userId: string, choices: readonly Lev
   } catch (error) {
     console.error("[openLevelCardChoices] Échec :", error);
   }
+}
+
+/** Nombre de propositions d'un choix de carte (« au choix parmi 3 »). */
+const OFFER_SIZE = 3;
+
+/** Une carte que le jeu connaît encore (le catalogue du client sait la dessiner). */
+function knownCard(cardId: string): boolean {
+  try {
+    getCardDefinition(cardId);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export interface StoredCardChoice {
+  id: string;
+  rarity: string;
+  offered_card_ids: string[];
+}
+
+/**
+ * RÉPARE les choix de carte en attente avant de les montrer (13/10/2026).
+ *
+ * Un retrait de cartes (migration `retrait_corde_route_lot17`) ôte les
+ * cartes retirées des propositions non tranchées SANS les remplacer : une
+ * proposition pouvait se vider, et l'écran « Garde une carte » ne montrait
+ * plus rien à garder. Ici, une carte retirée, désactivée ou inconnue du jeu
+ * est écartée, et la proposition est COMPLÉTÉE jusqu'à trois par une carte
+ * active de la même rareté (non possédée de préférence) — puis enregistrée,
+ * pour que la proposition reste figée comme avant.
+ */
+export async function repairCardChoices<T extends StoredCardChoice>(userId: string, rows: readonly T[]): Promise<T[]> {
+  if (rows.length === 0) return [...rows];
+  const service = createSupabaseServiceRoleClient();
+  const { data: catalog } = await service.from("cards").select("id, rarity").eq("is_collectible", true).eq("is_enabled", true);
+  const active = new Map((catalog ?? []).filter((row) => knownCard(row.id)).map((row) => [row.id, row.rarity as string]));
+  let owned: Set<string> | null = null;
+
+  const repaired: T[] = [];
+  for (const row of rows) {
+    const valid = row.offered_card_ids.filter((cardId) => active.has(cardId));
+    // Intacte (rien d'écarté) et non vide : rien à réparer.
+    if (valid.length > 0 && valid.length === row.offered_card_ids.length) {
+      repaired.push(row);
+      continue;
+    }
+    if (!owned) {
+      const { data } = await service.from("player_cards").select("card_id").eq("user_id", userId).gt("quantity", 0);
+      owned = new Set((data ?? []).map((entry) => entry.card_id));
+    }
+    const pool = [...active].filter(([cardId, rarity]) => rarity === row.rarity && !valid.includes(cardId)).map(([cardId]) => cardId);
+    const missing = pool.filter((cardId) => !owned!.has(cardId));
+    const rest = pool.filter((cardId) => owned!.has(cardId));
+    const need = Math.max(0, OFFER_SIZE - valid.length);
+    const added = [...pickRandom(missing, need), ...pickRandom(rest, Math.max(0, need - missing.length))];
+    const offered = [...valid, ...added];
+    // Écriture directe (clé service_role, serveur seulement) : les types générés ferment la table aux
+    // écritures, la seule autre voie étant les RPC — et aucune ne réécrit une proposition.
+    const { error } = await service
+      .from("player_card_choices")
+      .update({ offered_card_ids: offered } as never)
+      .eq("id", row.id)
+      .is("resolved_at", null);
+    if (error) console.error("[repairCardChoices] Proposition non réparée :", error.message);
+    repaired.push({ ...row, offered_card_ids: offered });
+  }
+  return repaired;
 }

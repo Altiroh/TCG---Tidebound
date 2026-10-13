@@ -48,6 +48,7 @@ import {
   type ClaimLevelRewardResult,
   type PendingCardChoice,
 } from "@/features/progression/levelRewardService";
+import { repairCardChoices } from "@/features/progression/cardChoices";
 
 /**
  * Profil joueur — Server Actions exposées au navigateur.
@@ -263,9 +264,9 @@ export async function fetchProfile(): Promise<ProfileSummary> {
         reachedLevel(progression.data?.xp_total ?? 0, progression.data?.level ?? 1),
         (claimed.data ?? []).map((row) => row.level)
       ),
-      pendingCardChoices: (choices.data ?? []).map((row) => ({
+      pendingCardChoices: (await repairCardChoices(user.id, choices.data ?? [])).map((row) => ({
         id: row.id,
-        level: row.source === "level" && /^d+$/.test(row.source_ref) ? Number(row.source_ref) : null,
+        level: row.source === "level" && /^\d+$/.test(row.source_ref) ? Number(row.source_ref) : null,
         rarity: row.rarity,
         offeredCardIds: row.offered_card_ids,
       })),

@@ -1,7 +1,7 @@
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import { MAX_REWARDED_LEVEL, levelForTotalXp, levelRewardItems, type LevelRewardItem } from "@/game/progression";
 import type { CardRarity } from "@/game/boosters/types";
-import { openLevelCardChoices } from "@/features/progression/cardChoices";
+import { openLevelCardChoices, repairCardChoices } from "@/features/progression/cardChoices";
 
 /**
  * Récompenses de niveau À RÉCLAMER — module SERVEUR (pas de `"use server"` :
@@ -120,7 +120,7 @@ export async function readLevelRewardState(userId: string): Promise<LevelRewardS
     level,
     claimedLevels,
     claimableLevels: claimableLevelsFor(level, claimedLevels),
-    pendingCardChoices: (choices.data ?? []).map((row) => ({
+    pendingCardChoices: (await repairCardChoices(userId, choices.data ?? [])).map((row) => ({
       id: row.id,
       level: row.source === "level" && /^\d+$/.test(row.source_ref) ? Number(row.source_ref) : null,
       rarity: row.rarity,
@@ -193,7 +193,8 @@ export async function claimLevelRewardFor(userId: string, level: number): Promis
         .eq("source_ref", String(level))
         .is("resolved_at", null)
         .maybeSingle();
-      if (opened) cardChoice = { id: opened.id, level, rarity: opened.rarity, offeredCardIds: opened.offered_card_ids };
+      const [checked] = opened ? await repairCardChoices(userId, [opened]) : [];
+      if (checked) cardChoice = { id: checked.id, level, rarity: checked.rarity, offeredCardIds: checked.offered_card_ids };
     }
 
     return { ok: true, level, items, cardChoice };
