@@ -350,6 +350,71 @@ export function drawOrb(ctx: CanvasRenderingContext2D, at: Point, diameter: numb
   ctx.globalCompositeOperation = "source-over";
 }
 
+// ── Le halo d'une carte ─────────────────────────────────────────────────
+
+/**
+ * Les étincelles du HALO D'ORBE d'une carte (`orbAura`, `cardFx.ts`), à la
+ * fraction `t` de sa durée : comme celles qu'aspire l'orbe en charge, elles
+ * partent de loin et filent se fondre dans le BORD de la carte ; aux coins,
+ * un éclat d'étoile scintille. Dessinées autour de `rect` (viewport).
+ */
+export function drawAuraSparks(ctx: CanvasRenderingContext2D, rect: { left: number; top: number; width: number; height: number }, t: number, kind: SpellKind, seed: number) {
+  const palette = SPELL_PALETTES[kind];
+  const random = seededRandom(seed);
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 2;
+  const scale = rect.height / 100;
+  const life = Math.sin(Math.min(1, t) * Math.PI);
+  ctx.globalCompositeOperation = "lighter";
+
+  const STREAKS = 22;
+  for (let i = 0; i < STREAKS; i += 1) {
+    const start = random() * 0.7;
+    const travel = 0.22 + random() * 0.12;
+    const angle = random() * Math.PI * 2;
+    const local = (t - start) / travel;
+    if (local <= 0 || local >= 1) continue;
+    // Le point du bord visé, dans la direction de l'angle.
+    const dx = Math.cos(angle);
+    const dy = Math.sin(angle);
+    const toEdge = Math.min(rect.width / 2 / Math.max(0.001, Math.abs(dx)), rect.height / 2 / Math.max(0.001, Math.abs(dy)));
+    const reach = toEdge + rect.height * (0.25 + random() * 0.25);
+    const position = (e: number) => {
+      const r = reach - (reach - toEdge) * e ** 1.4;
+      const a = angle + (1 - e) * 0.5;
+      return { x: cx + Math.cos(a) * r, y: cy + Math.sin(a) * r };
+    };
+    const head = position(local);
+    const tail = position(Math.max(0, local - 0.22));
+    const alpha = Math.sin(local * Math.PI);
+    const gradient = ctx.createLinearGradient(tail.x, tail.y, head.x, head.y);
+    gradient.addColorStop(0, `rgba(${palette.main},0)`);
+    gradient.addColorStop(1, `rgba(${palette.spark},${alpha})`);
+    ctx.strokeStyle = gradient;
+    ctx.lineWidth = Math.max(1, 1.6 * scale);
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(tail.x, tail.y);
+    ctx.lineTo(head.x, head.y);
+    ctx.stroke();
+    glow(ctx, head, 3.2 * scale, palette.spark, alpha);
+  }
+
+  // Les quatre coins : un éclat d'étoile qui tourne et scintille.
+  const corners = [
+    { x: rect.left, y: rect.top },
+    { x: rect.left + rect.width, y: rect.top },
+    { x: rect.left + rect.width, y: rect.top + rect.height },
+    { x: rect.left, y: rect.top + rect.height },
+  ];
+  corners.forEach((corner, index) => {
+    const twinkle = 0.6 + 0.4 * Math.sin(t * 14 + index * 1.7);
+    glow(ctx, corner, 7 * scale, palette.main, 0.55 * life * twinkle, palette.core);
+    flare(ctx, corner, 11 * scale * twinkle, t * 3 + index, palette.spark, 0.8 * life * twinkle);
+  });
+  ctx.globalCompositeOperation = "source-over";
+}
+
 // ── La comète ───────────────────────────────────────────────────────────
 
 /** Le ruban se résorbe dans la cible pendant ce temps après l'arrivée, et les particules finissent leur vie. */

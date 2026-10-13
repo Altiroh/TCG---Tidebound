@@ -138,22 +138,35 @@ export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: On
    */
   const remoteReadyAt = useRef(0);
   const pendingRemote = useRef<ReturnType<typeof setTimeout> | null>(null);
-  function showPaced(next: GameState | null) {
-    if (pendingRemote.current) clearTimeout(pendingRemote.current);
+  /**
+   * Vues adverses EN FILE, dans l'ordre d'arrivée. Une vue arrivée pendant la
+   * scène d'un coup précédent REMPLAÇAIT la vue qui attendait déjà : le coup
+   * qu'elle portait n'était jamais joué à l'écran (une carte posée puis une
+   * attaque, et seule l'attaque se voyait). Chacune passe à son tour.
+   */
+  const remoteQueue = useRef<Array<GameState | null>>([]);
+  function drainRemote() {
     pendingRemote.current = null;
-    const reveal = () => {
-      pendingRemote.current = null;
-      const previous = viewRef.current;
-      showView(next);
-      remoteReadyAt.current = performance.now() + (previous && next ? framePaceMs(previous, next) : 0);
-    };
     const wait = remoteReadyAt.current - performance.now();
-    if (wait <= 0) reveal();
-    else pendingRemote.current = setTimeout(reveal, wait);
+    if (wait > 0) {
+      pendingRemote.current = setTimeout(drainRemote, wait);
+      return;
+    }
+    if (remoteQueue.current.length === 0) return;
+    const next = remoteQueue.current.shift()!;
+    const previous = viewRef.current;
+    showView(next);
+    remoteReadyAt.current = performance.now() + (previous && next ? framePaceMs(previous, next) : 0);
+    if (remoteQueue.current.length > 0) pendingRemote.current = setTimeout(drainRemote, remoteReadyAt.current - performance.now());
+  }
+  function showPaced(next: GameState | null) {
+    remoteQueue.current.push(next);
+    if (!pendingRemote.current) drainRemote();
   }
   function cancelPendingRemote() {
     if (pendingRemote.current) clearTimeout(pendingRemote.current);
     pendingRemote.current = null;
+    remoteQueue.current = [];
   }
   useEffect(() => cancelPendingRemote, []);
 

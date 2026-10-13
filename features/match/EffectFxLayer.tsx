@@ -4,7 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { centerOf, findElement, FloatingDamage, ImpactDust, ImpactFlash, shake, SicknessBubbles, tremble, type Point } from "@/features/match/AttackImpactLayer";
 import { FxCanvas } from "@/features/match/FxCanvas";
 import { silhouetteMask, silhouetteOf, type Silhouette } from "@/features/match/silhouette";
-import { awakenCard, breakObject } from "@/features/match/cardFx";
+import { awakenCard, breakObject, orbAura } from "@/features/match/cardFx";
 import { keywordLabel, THICK_TEXT_OUTLINE } from "@/features/match/cardDisplay";
 import {
   AWAKE_LIFT_MS,
@@ -588,6 +588,8 @@ interface Launched {
   comets: Array<CometFlight & { key: string }>;
   heals: Array<{ key: string; box: Box; amount: number; at: Landing; shape: Silhouette; mask: Record<string, string> | null }>;
   chips: Array<Chip & { at: Landing }>;
+  /** Cartes touchées sans dégâts (détruites, renvoyées, un état) : un éclair là où le sort arrive. */
+  touches: Array<{ key: string; point: Point; tint: "magic" | "tide"; at: Landing; target: FxTarget; tone: SpellKind; chip?: Chip }>;
 }
 
 /** Quand un effet se pose : tout de suite (sans lanceur), à la lueur de sa carte (effet activé), ou à l'arrivée de sa comète (sort lancé). */
@@ -720,7 +722,34 @@ function Volley({ volley }: { volley: EffectVolley }) {
           return chipsFor(buff).map((chip) => ({ ...chip, key: `${index}-${chip.key}`, at }));
         });
 
-        setLaunched({ orbs: [...orbs.values()], shots, comets, heals, chips });
+        // Destruction, état, renvoi : la comète du sort (ou le halo d'un effet activé) jusqu'à la carte touchée.
+        const touches = (volley.touches ?? []).flatMap((touch, index) => {
+          const el = elementOf(touch.to);
+          if (!el) return [];
+          const rect = el.getBoundingClientRect();
+          const start = touch.source.glow ? null : orbFor(touch.source, touch.tone);
+          if (start) comets.push({ key: `t${index}`, kind: touch.tone, from: start.point, to: centerOf(rect), size: Math.min(rect.height, 220), forward: start.forward });
+          const at: Landing = touch.source.glow ? "glow" : start ? "landed" : "now";
+          // Armure gagnée : le chiffre surgit au-dessus du Navire, puis se range sur lui.
+          const size = Math.max(22, Math.min(46, rect.height * 0.2));
+          const chip: Chip | undefined =
+            touch.kind === "armor" && touch.amount
+              ? { key: `armor${index}`, text: `+${touch.amount} Armure`, tone: "keyword", size, start: { x: rect.left + rect.width / 2, y: rect.top - size * 0.6 }, end: centerOf(rect) }
+              : undefined;
+          return [{ key: `t${index}`, point: centerOf(rect), tint: touch.tone === "malus" ? ("tide" as const) : ("magic" as const), at, target: touch.to, tone: touch.tone, chip }];
+        });
+
+        setLaunched({ orbs: [...orbs.values()], shots, comets, heals, chips, touches });
+        // La carte touchée s'embrase du halo de l'effet à l'impact.
+        const auraAt = (at: Landing) => (at === "glow" ? GLOW_LAND_MS : at === "landed" ? volley.castMs + SHOT_FLIGHT_MS : 0);
+        for (const touch of touches) {
+          timers.push(
+            window.setTimeout(() => {
+              const el = elementOf(touch.target);
+              if (el) orbAura(el, touch.tone, { durationMs: 700, burst: true });
+            }, auraAt(touch.at))
+          );
+        }
         if (orbs.size > 0) {
           // L'orbe se forme pendant que le lanceur est soulevé : le son du sort part avec elle.
           timers.push(window.setTimeout(playSpellCast, volley.awakens.length > 0 ? AWAKE_LIFT_MS : 0));
@@ -731,9 +760,20 @@ function Volley({ volley }: { volley: EffectVolley }) {
           window.setTimeout(() => {
             setGlowed(true);
             for (const shot of volley.shots) {
-              if (shot.look !== "glow" || shot.to.kind !== "ship") continue;
+              if (shot.look !== "glow") continue;
               const el = elementOf(shot.to);
-              if (el) shake(el);
+              if (!el) continue;
+              // Sans projectile, c'est le halo d'orbe qui relie l'effet à sa cible : il éclate sur elle.
+              orbAura(el, "attack", { durationMs: 750, burst: true });
+              if (shot.to.kind === "ship") shake(el);
+            }
+            for (const heal of volley.heals) {
+              const el = heal.source?.glow ? elementOf(heal.to) : null;
+              if (el) orbAura(el, "heal", { durationMs: 750, burst: true });
+            }
+            for (const buff of volley.buffs) {
+              const el = buff.source?.glow ? findElement("unit", buff.targetInstanceId) : null;
+              if (el) orbAura(el, buff.loss ? "malus" : "heal", { durationMs: 750, burst: true });
             }
           }, GLOW_LAND_MS)
         );
@@ -750,6 +790,8 @@ function Volley({ volley }: { volley: EffectVolley }) {
               if (!el) continue;
               // Un boulet est un coup physique : ce qu'il touche tremble, comme au combat.
               if (shot.look === "cannon") tremble(el);
+              // La comète d'un sort éclate en halo d'orbe sur sa cible.
+              if (shot.look === "magic" || shot.look === "drain") orbAura(el, shot.look === "drain" ? "malus" : "attack", { durationMs: 650, burst: true });
               if (shot.to.kind !== "ship") continue;
               shake(el);
             }
@@ -793,6 +835,14 @@ function Volley({ volley }: { volley: EffectVolley }) {
         heal.at === "now" || (heal.at === "glow" ? glowed : landed) ? <HealVeil key={heal.key} box={heal.box} amount={heal.amount} shape={heal.shape} mask={heal.mask} /> : null
       )}
       {launched.chips.map((chip) => (chip.at === "now" || (chip.at === "glow" ? glowed : landed) ? <BuffChip key={chip.key} chip={chip} /> : null))}
+      {launched.touches.map((touch) =>
+        touch.at === "now" || (touch.at === "glow" ? glowed : landed) ? (
+          <span key={touch.key}>
+            <ImpactFlash point={touch.point} tint={touch.tint} />
+            {touch.chip && <BuffChip chip={touch.chip} />}
+          </span>
+        ) : null
+      )}
     </>
   );
 }

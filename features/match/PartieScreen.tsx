@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { type BotDifficulty, type DeckList, type GameState, type PlayerId } from "@/game";
 import { startBotMatch } from "@/features/bot/actions";
-import { joinMatchmakingQueue } from "@/features/matchmaking/actions";
 import { MatchmakingSearch } from "@/features/matchmaking/MatchmakingSearch";
 import { createOnlineMatch, joinOnlineMatch } from "@/features/online/actions";
 import { challengeFriend, declineChallenge } from "@/features/friends/actions";
@@ -82,9 +81,8 @@ export function PartieScreen({
     };
     try {
       if (kind === "quick") {
-        const result = await joinMatchmakingQueue(deck.id);
-        if (!result.ok || !result.data) return failed(result.error);
-        if (result.data.status === "matched") return router.push(`/en-ligne/${result.data.matchId}`);
+        // L'écran de recherche s'affiche tout de suite et fait lui-même l'entrée en file :
+        // même apparié d'emblée, on passe par la recherche puis « Adversaire trouvé ! ».
         setStarting(false);
         setSearching(deck);
         return;
@@ -157,6 +155,7 @@ export function PartieScreen({
   if (searching) {
     return (
       <MatchmakingSearch
+        deckId={searching.id}
         deckName={searching.name}
         onCancel={(reason) => {
           setSearching(null);

@@ -2,6 +2,8 @@
 
 import { playCardAwake, playCardFlip, playCardShattered, playGuardIntercept, playTokenDrop } from "@/lib/sound";
 import { AWAKE_LIFT_MS, AWAKE_MS, BREAK_LEAD_MS, GUARD_SHOW_MS, ORB_CHARGE_MS } from "@/features/match/effectPresentation";
+import { silhouetteOf } from "@/features/match/silhouette";
+import { drawAuraSparks, seedFrom, SPELL_PALETTES, type SpellKind } from "@/features/match/spellFx";
 
 /**
  * Animations ponctuelles d'UNE carte du plateau (demande du 10/10/2026),
@@ -50,33 +52,157 @@ function soundAt(delayMs: number, play: () => void) {
   else play();
 }
 
-// ── Réveil ──────────────────────────────────────────────────────────────
-
-const AWAKE_GOLD = "rgba(253, 224, 71, 0.95)";
+// ── Halo d'orbe ─────────────────────────────────────────────────────────
 
 /**
- * La carte se soulève (\`AWAKE_LIFT_MS\`), sa lueur pulse deux fois, puis elle
- * retombe à sa place — \`AWAKE_MS\` en tout. C'est pendant qu'elle est
- * soulevée que l'orbe de son sort se forme, accrochée à son bord bas
- * (\`EffectFxLayer\`) : elle reste levée jusqu'au départ des comètes.
+ * HALO D'ORBE (13/10/2026) — « la même lueur qu'autour des orbes de sort, et
+ * que ce soit voyant ». Une carte qui active son effet, qui attaque, ou que
+ * l'effet touche, s'entoure de la lueur de l'orbe (`drawOrb`) : liseré presque
+ * blanc, teinte principale, teinte profonde large — en ombres portées HORS du
+ * cadre, sur un élément posé DANS la carte (il la suit quand elle bouge).
+ * Seules son opacité et son échelle s'animent : le GPU les compose.
+ *
+ * `strike` : le feu de l'attaque (le même que le halo « peut attaquer »).
+ */
+export type AuraTone = SpellKind | "strike";
+
+const STRIKE_PALETTE = { core: "255,247,237", main: "255,128,64", deep: "220,38,38", spark: "255,237,213" } as const;
+
+function auraPalette(tone: AuraTone) {
+  return tone === "strike" ? STRIKE_PALETTE : SPELL_PALETTES[tone];
+}
+
+/** Les ombres du halo, à l'échelle de la carte (`h` : sa hauteur à l'écran). */
+export function auraShadow(tone: AuraTone, h: number): string {
+  const p = auraPalette(tone);
+  const u = Math.max(80, Math.min(260, h)) / 100;
+  return [
+    `0 0 0 ${(1.6 * u).toFixed(1)}px rgba(${p.core},1)`,
+    `0 0 ${(8 * u).toFixed(1)}px ${(2.5 * u).toFixed(1)}px rgba(${p.main},1)`,
+    `0 0 ${(22 * u).toFixed(1)}px ${(7 * u).toFixed(1)}px rgba(${p.main},0.7)`,
+    `0 0 ${(48 * u).toFixed(1)}px ${(16 * u).toFixed(1)}px rgba(${p.deep},0.6)`,
+  ].join(", ");
+}
+
+export interface AuraOptions {
+  delayMs?: number;
+  durationMs: number;
+  /** Étincelles aspirées vers la carte, comme vers le cœur d'une orbe (pas pour une carte qui se déplace). */
+  sparks?: boolean;
+  /** Éclat : le halo surgit d'un coup puis s'éteint (une cible touchée), au lieu de monter puis de pulser. */
+  burst?: boolean;
+}
+
+/** Pose le halo d'orbe sur la carte `el`, le temps de `durationMs`. */
+export function orbAura(el: HTMLElement, tone: AuraTone, { delayMs = 0, durationMs, sparks = false, burst = false }: AuraOptions): void {
+  if (reducedMotion()) return;
+  const rect = el.getBoundingClientRect();
+  if (rect.width === 0) return;
+  const shape = silhouetteOf(el);
+  // Le Navire a son propre cadre (arche) : un rectangle autour le trahirait — la lueur passe par un filtre.
+  if (shape === "ship") {
+    const p = auraPalette(tone);
+    el.animate(
+      [
+        { filter: "none" },
+        { filter: `drop-shadow(0 0 3px rgba(${p.core},1)) drop-shadow(0 0 18px rgba(${p.main},0.95)) drop-shadow(0 0 40px rgba(${p.deep},0.7))`, offset: burst ? 0.15 : 0.35 },
+        { filter: "none" },
+      ],
+      { duration: durationMs, delay: delayMs, easing: "ease-out" }
+    );
+    return;
+  }
+  const halo = document.createElement("span");
+  halo.setAttribute("aria-hidden", "true");
+  Object.assign(halo.style, {
+    position: "absolute",
+    inset: "0",
+    zIndex: "3",
+    borderRadius: shape === "oval" ? "50%" : "var(--card-radius, 10px)",
+    boxShadow: auraShadow(tone, rect.height),
+    pointerEvents: "none",
+    opacity: "0",
+    willChange: "opacity, transform",
+  });
+  if (getComputedStyle(el).position === "static") el.style.position = "relative";
+  el.appendChild(halo);
+  const keyframes = burst
+    ? [
+        { opacity: 0, transform: "scale(0.96)" },
+        { opacity: 1, transform: "scale(1.06)", offset: 0.12 },
+        { opacity: 0.85, transform: "scale(1.03)", offset: 0.4 },
+        { opacity: 0, transform: "scale(1.08)" },
+      ]
+    : [
+        { opacity: 0, transform: "scale(0.97)" },
+        { opacity: 0.9, transform: "scale(1.01)", offset: 0.2 },
+        { opacity: 1, transform: "scale(1.04)", offset: 0.45 },
+        { opacity: 0.75, transform: "scale(1.02)", offset: 0.65 },
+        { opacity: 1, transform: "scale(1.05)", offset: 0.82 },
+        { opacity: 0, transform: "scale(1.08)" },
+      ];
+  const animation = halo.animate(keyframes, { duration: durationMs, delay: delayMs, easing: "ease-out", fill: "both" });
+  animation.onfinish = () => halo.remove();
+  animation.oncancel = () => halo.remove();
+  if (sparks) auraSparks(rect, tone === "strike" ? "attack" : tone, delayMs, durationMs);
+}
+
+/** Les étincelles aspirées par la carte : un canvas éphémère du calque d'effets, autour d'elle. */
+function auraSparks(rect: DOMRect, kind: SpellKind, delayMs: number, durationMs: number): void {
+  const reach = rect.height * 0.55;
+  const bounds = { left: rect.left - reach, top: rect.top - reach, width: rect.width + reach * 2, height: rect.height + reach * 2 };
+  const canvas = document.createElement("canvas");
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  canvas.width = Math.ceil(bounds.width * dpr);
+  canvas.height = Math.ceil(bounds.height * dpr);
+  Object.assign(canvas.style, { position: "absolute", left: `${bounds.left}px`, top: `${bounds.top}px`, width: `${bounds.width}px`, height: `${bounds.height}px`, pointerEvents: "none" });
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+  const seed = seedFrom(rect.left, rect.top, rect.height);
+  window.setTimeout(() => {
+    fxLayer().appendChild(canvas);
+    const startedAt = performance.now();
+    const tick = (now: number) => {
+      const elapsed = Math.max(0, now - startedAt);
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (elapsed >= durationMs) {
+        canvas.remove();
+        return;
+      }
+      ctx.setTransform(dpr, 0, 0, dpr, -bounds.left * dpr, -bounds.top * dpr);
+      drawAuraSparks(ctx, rect, elapsed / durationMs, kind, seed);
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }, delayMs);
+}
+
+// ── Réveil ──────────────────────────────────────────────────────────────
+
+/**
+ * La carte se soulève (\`AWAKE_LIFT_MS\`), le halo d'orbe de son effet
+ * l'entoure et pulse, puis elle retombe à sa place — \`AWAKE_MS\` en tout.
+ * C'est pendant qu'elle est soulevée que l'orbe de son sort se forme,
+ * accrochée à son bord bas (\`EffectFxLayer\`) : elle reste levée jusqu'au
+ * départ des comètes. Sans ton (capacité sans effet visible), l'or du réveil.
  */
 export function awakenCard(el: HTMLElement, delayMs = 0, tone?: "attack" | "heal" | "malus"): void {
   soundAt(delayMs, playCardAwake);
   if (reducedMotion()) return;
-  // La lueur dit ce que l'effet fait : dégâts (bleu), soin ou gain (or), malus (pourpre).
-  const AWAKE_GLOW = tone ? `rgba(${BREAK_TONES[tone]},0.95)` : AWAKE_GOLD;
   const lifted = "translateY(-9%) scale(1.07)";
   el.animate(
     [
       { transform: "none", filter: "none" },
-      { offset: AWAKE_LIFT_MS / AWAKE_MS, transform: lifted, filter: `brightness(1.12) drop-shadow(0 0 4px ${AWAKE_GLOW})` },
-      { offset: 0.42, transform: lifted, filter: `brightness(1.25) drop-shadow(0 0 18px ${AWAKE_GLOW})` },
-      { offset: 0.58, transform: lifted, filter: `brightness(1.1) drop-shadow(0 0 6px ${AWAKE_GLOW})` },
-      { offset: (AWAKE_LIFT_MS + ORB_CHARGE_MS) / AWAKE_MS, transform: lifted, filter: `brightness(1.22) drop-shadow(0 0 16px ${AWAKE_GLOW})`, easing: "cubic-bezier(.5,0,.7,1)" },
+      { offset: AWAKE_LIFT_MS / AWAKE_MS, transform: lifted, filter: "brightness(1.15)" },
+      { offset: 0.42, transform: lifted, filter: "brightness(1.3)" },
+      { offset: 0.58, transform: lifted, filter: "brightness(1.12)" },
+      { offset: (AWAKE_LIFT_MS + ORB_CHARGE_MS) / AWAKE_MS, transform: lifted, filter: "brightness(1.25)", easing: "cubic-bezier(.5,0,.7,1)" },
       { transform: "none", filter: "none" },
     ],
     { duration: AWAKE_MS, delay: delayMs, easing: "cubic-bezier(.2,.8,.3,1)" }
   );
+  orbAura(el, tone ?? "heal", { delayMs, durationMs: AWAKE_MS + 200, sparks: true });
 }
 
 // ── Jeton qui tombe ─────────────────────────────────────────────────────

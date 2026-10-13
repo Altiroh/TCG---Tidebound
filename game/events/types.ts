@@ -231,6 +231,8 @@ export interface DestroyEvent extends BaseGameEvent {
   type: "DESTROY";
   instanceId: string;
   reason: "combat" | "effect" | "lethal";
+  /** Lanceur d'une destruction par effet, pour l'interface (cf. `DamageEvent.origin`, posé par `resolveEffect`). */
+  origin?: EffectOrigin;
 }
 
 export interface BuffAppliedEvent extends BaseGameEvent {
@@ -293,6 +295,8 @@ export interface ArmorChangedEvent extends BaseGameEvent {
   playerId: PlayerId;
   delta: number;
   armorAfter: number;
+  /** Lanceur, quand un effet fait bouger l'Armure (cf. `DamageEvent.origin`, posé par `resolveEffect`). */
+  origin?: EffectOrigin;
 }
 
 /** Variation de Raison (LA ressource du jeu — pas une piste de mana séparée). */
@@ -348,6 +352,8 @@ export interface CardMovedEvent extends BaseGameEvent {
   toInstanceId?: string;
   /** Propriétaire de la carte déplacée. */
   ownerId?: PlayerId;
+  /** Lanceur, quand un effet déplace la carte (cf. `DamageEvent.origin`, posé par `resolveEffect`). */
+  origin?: EffectOrigin;
   /**
    * Défausse décidée par un EFFET de carte (`true`) ou par la limite de main
    * en fin de tour (`false`). Absent sur les autres déplacements.
@@ -569,6 +575,8 @@ export interface StatusChangedEvent extends BaseGameEvent {
   targetInstanceId: string;
   status: string;
   applied: boolean;
+  /** Lanceur, quand un effet pose ou retire l'état (cf. `DamageEvent.origin`, posé par `resolveEffect`). */
+  origin?: EffectOrigin;
 }
 
 /**

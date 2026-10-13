@@ -933,6 +933,46 @@ export function resolveEffect(
   effect: EffectDefinition,
   context: EffectContext
 ): EffectResolution {
+  return withOrigins(resolveEffectBody(state, effect, context), context);
+}
+
+/**
+ * LANCEUR DES FAITS SANS DÉGÂTS (13/10/2026) — une destruction, un état posé
+ * ou retiré, une carte renvoyée du plateau : l'interface doit pouvoir relier
+ * l'effet à sa cible (orbe et comète d'un sort lancé, halo d'un effet activé)
+ * — et une Armure gagnée, au Navire
+ * comme elle le fait pour les dégâts. Sans lanceur, la cible disparaissait
+ * sans que rien ne la touche — « l'effet de l'Amiral sans Pavillon n'est
+ * pas résolu ». Posé ici, une fois, pour TOUS les effets ; un fait qui porte
+ * déjà le sien (effet imbriqué) le garde.
+ */
+function withOrigins(resolution: EffectResolution, context: EffectContext): EffectResolution {
+  if (!resolution.events.some(needsOrigin)) return resolution;
+  const origin = originOf(context);
+  return { ...resolution, events: resolution.events.map((event) => (needsOrigin(event) ? { ...event, origin } : event)) };
+}
+
+function needsOrigin(event: GameEvent): boolean {
+  switch (event.type) {
+    case "DESTROY":
+      return event.reason === "effect" && !event.origin;
+    case "STATUS_CHANGED":
+      return !event.origin;
+    case "CARD_MOVED":
+      return event.fromZone === "board" && !event.origin;
+    case "ARMOR_CHANGED":
+      // Une Armure GAGNÉE : celle qu'un coup entame se voit déjà avec le coup.
+      return event.delta > 0 && !event.origin;
+    default:
+      return false;
+  }
+}
+
+function resolveEffectBody(
+  state: GameState,
+  effect: EffectDefinition,
+  context: EffectContext
+): EffectResolution {
   const events: GameEvent[] = [];
   const base = { turnNumber: context.turnNumber, timestamp: Date.now() };
 
@@ -1204,6 +1244,7 @@ export function resolveEffect(
           ...u,
           pendingRemoval: removal,
           pendingRemovalBy: context.controllerId,
+          ...(context.sourceInstanceId ? { pendingRemovalSource: context.sourceInstanceId } : {}),
         }));
       }
       return { state: nextState, events };

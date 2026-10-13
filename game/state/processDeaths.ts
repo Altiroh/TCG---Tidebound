@@ -186,7 +186,7 @@ function remplacementParBeteDeHalage(
   const apres = computeEffectiveStats(malusee, state.environment.tideState, { ...contexte, controllerBoard: proprietaire.board });
   // Le −1 la tue déjà : le remplacement ne peut pas la garder en jeu.
   if (apres.health <= malusee.damageMarked) return undefined;
-  const gardee: CardInstance = { ...malusee, pendingRemoval: undefined, pendingRemovalBy: undefined };
+  const gardee: CardInstance = { ...malusee, pendingRemoval: undefined, pendingRemovalBy: undefined, pendingRemovalSource: undefined };
   return {
     state: {
       ...remplace.state,
@@ -570,6 +570,10 @@ export function processDeaths(
         type: "DESTROY",
         instanceId: unit.instanceId,
         reason: scuttled ? "effect" : "lethal",
+        // Un départ décidé par un effet porte son lanceur : l'interface relie l'effet à sa cible.
+        ...(unit.pendingRemoval && unit.pendingRemovalBy
+          ? { origin: { playerId: unit.pendingRemovalBy, ...(unit.pendingRemovalSource ? { instanceId: unit.pendingRemovalSource } : {}) } }
+          : {}),
         turnNumber,
         timestamp: Date.now(),
       });

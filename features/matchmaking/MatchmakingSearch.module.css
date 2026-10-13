@@ -234,3 +234,29 @@
     animation: none;
   }
 }
+
+/* Adversaire trouvé : le bandeau s'embrase d'un coup, puis l'écran entre en partie. */
+.panel[data-found] .title {
+  animation: found 620ms cubic-bezier(0.2, 0.9, 0.3, 1.25) both;
+}
+
+@keyframes found {
+  0% {
+    transform: scale(0.9);
+    filter: brightness(1);
+  }
+  45% {
+    transform: scale(1.08);
+    filter: brightness(1.45);
+  }
+  100% {
+    transform: scale(1);
+    filter: brightness(1.1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel[data-found] .title {
+    animation: none;
+  }
+}

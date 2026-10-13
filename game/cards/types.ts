@@ -1694,6 +1694,13 @@ export interface CardInstance {
   pendingRemovalBy?: string;
 
   /**
+   * Carte d'où part l'effet qui a décidé `pendingRemoval`, pour l'interface :
+   * le `DESTROY` émis au ramassage la porte en `origin`, et la destruction se
+   * met en scène depuis son lanceur (L'Amiral sans Pavillon, 13/10/2026).
+   */
+  pendingRemovalSource?: string;
+
+  /**
    * Identité chromatique GAGNÉE durablement (Lot 15) : la couleur choisie
    * par l'Émissaire de Quartz, prise par le Héraut de Nacre, portée par un
    * Bracelet, ou celles d'un Assemblage. Sur l'INSTANCE et non dans un

@@ -6,6 +6,7 @@ import { activateQualifications } from "@/features/match/qualificationFx";
 import { playAttackImpact, playCardAwake, playShipHit } from "@/lib/sound";
 import { FxCanvas, reducedMotion } from "@/features/match/FxCanvas";
 import { silhouetteOf, type Silhouette } from "@/features/match/silhouette";
+import { orbAura } from "@/features/match/cardFx";
 import {
   createDustPainter,
   createSicknessPainter,
@@ -118,6 +119,8 @@ function animateAttacker(attackerEl: HTMLElement, targetRect: DOMRect): Animatio
   attackerEl.style.position = "relative";
   attackerEl.style.zIndex = "60";
 
+  // L'attaquant s'embrase du halo d'orbe, dans le feu de l'attaque : il le porte jusqu'à la frappe.
+  orbAura(attackerEl, "strike", { durationMs: t, burst: false });
   const animation = attackerEl.animate(
     [
       { transform: "translate(0px, 0px) scale(1) rotate(0deg)", filter: "drop-shadow(0 0 0 rgba(0,0,0,0))", easing: "cubic-bezier(.2,.8,.3,1)" },

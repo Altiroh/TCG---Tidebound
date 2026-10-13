@@ -6,8 +6,11 @@ import { PRECON_DECKS } from "@/game";
 import { cardIllustrationThumbUrl } from "@/features/decks/cardArtUrl";
 import {
   estimateMatchmakingWait,
+  joinMatchmakingQueue,
   leaveMatchmakingQueue,
   pollMatchmaking,
+  type ActionResult,
+  type MatchmakingStatus,
 } from "@/features/matchmaking/actions";
 import { PlayTable } from "@/features/match/ModeTable";
 import { GameScreen } from "@/features/shell/GameScreen";
@@ -21,8 +24,17 @@ const ESTIMATE_MS = 20000;
 /** Rangées de cartes qui défilent derrière, et cartes par rangée. */
 const ROWS = 3;
 const PER_ROW = 9;
+/**
+ * « Adversaire trouvé ! » reste affiché ce temps-là avant d'entrer en
+ * partie — pour LES DEUX joueurs. Celui qui arrivait en second était apparié
+ * dès son entrée en file et partait aussitôt en partie, sans avoir vu ni
+ * recherche ni rencontre (retour du 13/10/2026).
+ */
+const FOUND_HOLD_MS = 1600;
 
 interface MatchmakingSearchProps {
+  /** Deck engagé : l'écran fait lui-même l'entrée en file (`joinMatchmakingQueue`). */
+  deckId: string;
   /** Nom du deck engagé, rappelé pendant l'attente. */
   deckName: string;
   /** Retour à l'écran de choix (recherche annulée ou interrompue). */
@@ -53,7 +65,9 @@ function estimateLabel(seconds: number | null | undefined): string {
 }
 
 /**
- * Recherche d'un adversaire, une fois en file (`joinMatchmakingQueue`).
+ * Recherche d'un adversaire : l'écran s'affiche AVANT l'entrée en file
+ * (`joinMatchmakingQueue`), qu'il fait lui-même — un appariement immédiat
+ * passe donc lui aussi par la recherche, puis par « Adversaire trouvé ! ».
  *
  * Sur la table de « Jouer » (retour du 28/09/2026) : derrière, des
  * illustrations de cartes défilent, légèrement floues ; devant, « En attente
@@ -69,6 +83,7 @@ function estimateLabel(seconds: number | null | undefined): string {
  * cesse de sonder, et sa place est rendue au bout de 30 secondes.
  */
 export function MatchmakingSearch({
+  deckId,
   deckName,
   onCancel,
 }: MatchmakingSearchProps) {
@@ -79,18 +94,18 @@ export function MatchmakingSearch({
     undefined,
   );
   const [reels] = useState(pickReels);
+  /** Un adversaire est trouvé : l'écran l'annonce, puis entre en partie. */
+  const [found, setFound] = useState(false);
   /** Évite deux navigations si deux sondages concluent ensemble. */
   const leaving = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
-    let inFlight = false;
+    let inFlight = true;
+    let enter: ReturnType<typeof setTimeout> | undefined;
 
-    const poll = setInterval(async () => {
-      if (inFlight || leaving.current) return;
-      inFlight = true;
-      const result = await pollMatchmaking().catch(() => null);
-      inFlight = false;
+    /** Réponse de l'entrée en file ou d'un sondage. */
+    function settle(result: ActionResult<MatchmakingStatus> | null) {
       if (cancelled || leaving.current || !result) return;
       if (!result.ok) {
         leaving.current = true;
@@ -99,13 +114,37 @@ export function MatchmakingSearch({
       }
       if (result.data?.status === "matched") {
         leaving.current = true;
-        router.push(`/en-ligne/${result.data.matchId}`);
+        const href = `/en-ligne/${result.data.matchId}`;
+        router.prefetch(href);
+        setFound(true);
+        enter = setTimeout(() => router.push(href), FOUND_HOLD_MS);
       } else if (result.data?.status === "idle") {
         leaving.current = true;
         onCancel("Ta place en file a été rendue — relance la recherche.");
       }
+    }
+
+    // L'entrée en file d'abord ; les sondages ne partent qu'une fois en file.
+    void joinMatchmakingQueue(deckId)
+      .catch(() => ({ ok: false, error: "Le serveur est injoignable — réessaie dans un instant." }))
+      .then((result) => {
+        inFlight = false;
+        // Annulée pendant l'entrée (bouton, page quittée) : la place prise entre-temps est rendue.
+        if (cancelled || leaving.current) {
+          void leaveMatchmakingQueue().catch(() => undefined);
+          return;
+        }
+        settle(result);
+      });
+
+    const poll = setInterval(async () => {
+      if (inFlight || leaving.current) return;
+      inFlight = true;
+      const result = await pollMatchmaking().catch(() => null);
+      inFlight = false;
+      settle(result);
     }, POLL_MS);
-    const tick = setInterval(() => setWaitedSeconds((s) => s + 1), 1000);
+    const tick = setInterval(() => !leaving.current && setWaitedSeconds((s) => s + 1), 1000);
 
     const refreshEstimate = () =>
       void estimateMatchmakingWait()
@@ -126,6 +165,7 @@ export function MatchmakingSearch({
 
     return () => {
       cancelled = true;
+      if (enter) clearTimeout(enter);
       clearInterval(poll);
       clearInterval(tick);
       clearInterval(estimating);
@@ -187,14 +227,20 @@ export function MatchmakingSearch({
           <div className={styles.veil} aria-hidden />
 
           {/* Devant : l'attente, le temps passé, le temps estimé. */}
-          <section className={styles.panel} role="status" aria-live="polite">
+          <section className={styles.panel} role="status" aria-live="polite" data-found={found || undefined}>
             <h1 className={styles.title}>
-              En attente d&apos;un adversaire
-              <span className={styles.dots} aria-hidden>
-                <span>.</span>
-                <span>.</span>
-                <span>.</span>
-              </span>
+              {found ? (
+                "Adversaire trouvé !"
+              ) : (
+                <>
+                  En attente d&apos;un adversaire
+                  <span className={styles.dots} aria-hidden>
+                    <span>.</span>
+                    <span>.</span>
+                    <span>.</span>
+                  </span>
+                </>
+              )}
             </h1>
             <div className={styles.sheet}>
               <dl className={styles.times}>
@@ -217,13 +263,15 @@ export function MatchmakingSearch({
                 automatiquement.
               </p>
             </div>
-            <button
-              type="button"
-              className={styles.cancel}
-              onClick={() => void cancel()}
-            >
-              Annuler la recherche
-            </button>
+            {!found && (
+              <button
+                type="button"
+                className={styles.cancel}
+                onClick={() => void cancel()}
+              >
+                Annuler la recherche
+              </button>
+            )}
           </section>
         </div>
       </PlayTable>

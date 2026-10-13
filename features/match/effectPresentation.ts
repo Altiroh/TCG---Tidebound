@@ -48,6 +48,8 @@ export const HEAL_APPLY_MS = 420;
 export const HEAL_TOTAL_MS = 1150;
 /** Pastille de gain : surgit, se montre, puis rejoint sa place — la valeur change à l'arrivée. */
 export const BUFF_LAND_MS = 720;
+/** Une carte touchée par un effet (détruite, renvoyée, un état) : le temps de voir le coup avant qu'elle ne parte. */
+export const TOUCH_LAND_MS = 260;
 /** Carte qui vient d'être posée : on la laisse atterrir avant qu'elle ne tire (`useTableMotion`, glissé de pose). */
 export const ARRIVAL_DELAY_MS = 460;
 /** Décompte du coût imprimé jusqu'au prix payé (Assemblage : 8 → 2). */
@@ -141,6 +143,24 @@ export interface EffectBreak {
   tone: "attack" | "heal" | "malus";
 }
 
+/**
+ * Un effet qui TOUCHE une carte sans la blesser ni la renforcer — la détruire,
+ * lui poser ou lui retirer un état, la renvoyer du plateau — ou qui donne de
+ * l'Armure à un Navire (13/10/2026). Le
+ * sort part de son lanceur comme les dégâts (orbe et comète, ou halo d'un
+ * effet activé) et éclate sur la cible ; la carte détruite ou renvoyée reste
+ * à sa place jusque-là (`patchedDisplay`).
+ */
+export interface EffectTouch {
+  to: FxTarget;
+  source: SpellSource;
+  kind: "destroy" | "status" | "bounce" | "armor";
+  /** Armure gagnée : combien (le chiffre surgit au-dessus du Navire). */
+  amount?: number;
+  /** Couleur de l'effet : un coup (bleu), un malus (pourpre), un état retiré (or). */
+  tone: "attack" | "heal" | "malus";
+}
+
 export interface EffectVolley {
   id: number;
   /** Attente avant le départ (lanceur tout juste posé). */
@@ -158,6 +178,8 @@ export interface EffectVolley {
   reason: EffectReason[];
   /** Objets brisés : ils se montrent au-dessus du Cimetière avant que leur sort ne parte. Absent = aucun. */
   breaks?: EffectBreak[];
+  /** Destructions, états, renvois par effet. Absent = aucun. */
+  touches?: EffectTouch[];
   /** Couleur de la lueur des cartes qui activent leur effet (dégâts, soin ou gain, malus). Absent : l'or du réveil. */
   awakenTones?: Record<string, "attack" | "heal" | "malus">;
 }
@@ -186,6 +208,7 @@ export function deriveEffectVolley(events: GameEvent[], before: GameState, after
   const heals: EffectHeal[] = [];
   const buffs: EffectBuff[] = [];
   const reason: EffectReason[] = [];
+  const touches: EffectTouch[] = [];
   const awakens = new Set<string>();
   const onBoard = (id: string) => onBoardBefore.has(id) || onBoardAfter.has(id);
   // Les Objets brisés du lot : leur sort part d'EUX (au-dessus du Cimetière), même brisés depuis la main.
@@ -239,6 +262,24 @@ export function deriveEffectVolley(events: GameEvent[], before: GameState, after
       awakens.add(event.instanceId);
       continue;
     }
+    // Destruction, état, renvoi par un effet : le sort touche la carte, qui ne part qu'à l'impact.
+    if (event.type === "DESTROY" && event.origin && onBoardBefore.has(event.instanceId)) {
+      touches.push({ to: { kind: "unit", id: event.instanceId }, source: sourceOf(event.origin), kind: "destroy", tone: "attack" });
+      continue;
+    }
+    if (event.type === "CARD_MOVED" && event.origin && event.fromZone === "board" && onBoardBefore.has(event.instanceId)) {
+      touches.push({ to: { kind: "unit", id: event.instanceId }, source: sourceOf(event.origin), kind: "bounce", tone: "malus" });
+      continue;
+    }
+    if (event.type === "STATUS_CHANGED" && event.origin && onBoard(event.targetInstanceId)) {
+      if (!onBoardBefore.has(event.targetInstanceId)) arrived = true;
+      touches.push({ to: { kind: "unit", id: event.targetInstanceId }, source: sourceOf(event.origin), kind: "status", tone: event.applied ? "malus" : "heal" });
+      continue;
+    }
+    if (event.type === "ARMOR_CHANGED" && event.origin && event.delta > 0) {
+      touches.push({ to: { kind: "ship", id: event.playerId }, source: sourceOf(event.origin), kind: "armor", tone: "heal", amount: event.delta });
+      continue;
+    }
     // La Marée qui frappe, la maladie qui ronge : pas de lanceur, la mer elle-même.
     if (event.type === "DAMAGE" && event.fx && !event.origin && !event.combat && event.amount > 0) {
       const to: FxTarget | null = event.targetInstanceId
@@ -275,8 +316,21 @@ export function deriveEffectVolley(events: GameEvent[], before: GameState, after
       if (to) heals.push({ to, amount: event.amount, ...(event.origin ? { source: sourceOf(event.origin) } : {}) });
     } else if (event.type === "BUFF_APPLIED" || event.type === "DEBUFF_APPLIED") {
       const keywords = event.type === "BUFF_APPLIED" ? (event.keywords ?? []) : [];
-      if (event.attack === 0 && event.health === 0 && keywords.length === 0) continue;
-      // Une cible qui n'est plus en jeu (morte du même lot) n'a plus d'endroit où ranger sa pastille.
+      const loss = event.type === "DEBUFF_APPLIED";
+      const to: FxTarget = { kind: "unit", id: event.targetInstanceId };
+      // Sans chiffre à montrer (un mot-clé perdu, une qualification, un texte
+      // ignoré), ou une cible que le malus tue : l'effet la TOUCHE quand même,
+      // sans quoi rien ne se verrait (audit du 13/10/2026).
+      const silent = event.attack === 0 && event.health === 0 && keywords.length === 0;
+      const killed = !onBoardAfter.has(event.targetInstanceId) && onBoardBefore.has(event.targetInstanceId);
+      if (silent || killed) {
+        if (event.origin && (onBoardBefore.has(event.targetInstanceId) || onBoardAfter.has(event.targetInstanceId))) {
+          if (!onBoardBefore.has(event.targetInstanceId)) arrived = true;
+          touches.push({ to, source: sourceOf(event.origin), kind: killed ? "destroy" : "status", tone: loss ? "malus" : "heal" });
+        }
+        continue;
+      }
+      // Une cible qui n'est plus en jeu (partie du même lot) n'a plus d'endroit où ranger sa pastille.
       if (!onBoardAfter.has(event.targetInstanceId)) continue;
       if (!onBoardBefore.has(event.targetInstanceId)) arrived = true;
       buffs.push({
@@ -284,7 +338,7 @@ export function deriveEffectVolley(events: GameEvent[], before: GameState, after
         attack: event.attack,
         health: event.health,
         keywords,
-        loss: event.type === "DEBUFF_APPLIED",
+        loss,
         ...(event.origin ? { source: sourceOf(event.origin) } : {}),
       });
     }
@@ -296,26 +350,32 @@ export function deriveEffectVolley(events: GameEvent[], before: GameState, after
   const awakenTones: Record<string, "attack" | "heal" | "malus"> = {};
   const fromUnit = (source: SpellSource | undefined, id: string) => source?.from.kind === "unit" && source.from.id === id;
   for (const id of awakens) {
+    const touch = touches.find((t) => fromUnit(t.source, id));
     if (shots.some((shot) => fromUnit(shot, id))) awakenTones[id] = "attack";
+    else if (touch) awakenTones[id] = touch.tone;
     else if (buffs.some((buff) => buff.loss && fromUnit(buff.source, id))) awakenTones[id] = "malus";
     else if (heals.some((heal) => fromUnit(heal.source, id)) || buffs.some((buff) => fromUnit(buff.source, id))) awakenTones[id] = "heal";
   }
   const breaks: EffectBreak[] = brokenEvents.map((event) => {
     const fromThis = (source: SpellSource | undefined) => source?.from.kind === "unit" && source.from.id === event.instanceId;
+    const touched = touches.find((touch) => fromThis(touch.source));
     const tone: EffectBreak["tone"] = shots.some((shot) => fromThis(shot))
       ? "attack"
-      : buffs.some((buff) => buff.loss && fromThis(buff.source))
-        ? "malus"
-        : "heal";
+      : touched
+        ? touched.tone
+        : buffs.some((buff) => buff.loss && fromThis(buff.source))
+          ? "malus"
+          : "heal";
     return { instanceId: event.instanceId, ownerId: event.playerId, fromHand: event.fromHand, tone };
   });
 
-  if (shots.length === 0 && heals.length === 0 && buffs.length === 0 && reason.length === 0 && awakens.size === 0 && breaks.length === 0) return null;
+  if (shots.length === 0 && heals.length === 0 && buffs.length === 0 && reason.length === 0 && awakens.size === 0 && breaks.length === 0 && touches.length === 0) return null;
   // Seuls les sorts LANCÉS chargent une orbe ; un effet activé s'illumine sur sa carte.
   const casts =
     shots.some((shot) => shot.look === "magic" || shot.look === "tide" || shot.look === "drain") ||
     heals.some((heal) => heal.source && !heal.source.glow) ||
-    buffs.some((buff) => buff.source && !buff.source.glow);
+    buffs.some((buff) => buff.source && !buff.source.glow) ||
+    touches.some((touch) => !touch.source.glow);
   // Avant la charge de l'orbe : le réveil du lanceur, ou l'Objet brisé qui gagne son Cimetière.
   const lead = Math.max(awakens.size > 0 ? AWAKE_LIFT_MS : 0, breaks.length > 0 ? BREAK_LEAD_MS : 0);
   const castMs = casts ? lead + ORB_CHARGE_MS : 0;
@@ -329,6 +389,7 @@ export function deriveEffectVolley(events: GameEvent[], before: GameState, after
     buffs,
     reason,
     ...(breaks.length > 0 ? { breaks } : {}),
+    ...(touches.length > 0 ? { touches } : {}),
     ...(Object.keys(awakenTones).length > 0 ? { awakenTones } : {}),
   };
 }
@@ -356,6 +417,8 @@ export function volleyLandingMs(volley: EffectVolley): number {
     ...volley.shots.map((shot) => shotArrivalMs(volley, shot)),
     ...volley.heals.map((heal) => spellArrivalMs(volley, heal.source) + HEAL_APPLY_MS),
     ...volley.buffs.map((buff) => spellArrivalMs(volley, buff.source) + BUFF_LAND_MS),
+    // La carte touchée encaisse (halo, éclair) avant de partir ou de prendre son état.
+    ...(volley.touches ?? []).map((touch) => spellArrivalMs(volley, touch.source) + (touch.kind === "armor" ? BUFF_LAND_MS : TOUCH_LAND_MS)),
   ];
   // Un Objet brisé éclate au départ de son sort (ou, sans sort, une fois arrivé au-dessus du Cimetière).
   if (volley.breaks && volley.breaks.length > 0) landings.push(breakShatterAtMs(volley) + BREAK_SHATTER_MS);
@@ -396,8 +459,14 @@ export function patchedDisplay(before: GameState, after: GameState, volley: Effe
     ...volley.shots.map((shot) => shot.to),
     ...volley.heals.map((heal) => heal.to),
     ...volley.buffs.map((buff): FxTarget => ({ kind: "unit", id: buff.targetInstanceId })),
+    ...(volley.touches ?? []).map((touch) => touch.to),
   ];
-  const casters: FxTarget[] = [...volley.shots, ...volley.heals.map((heal) => heal.source), ...volley.buffs.map((buff) => buff.source)].flatMap(
+  const casters: FxTarget[] = [
+    ...volley.shots,
+    ...volley.heals.map((heal) => heal.source),
+    ...volley.buffs.map((buff) => buff.source),
+    ...(volley.touches ?? []).map((touch) => touch.source),
+  ].flatMap(
     (source) => (source && source.from.kind === "unit" ? [source.from] : [])
   );
   targets.forEach(note);
@@ -429,6 +498,8 @@ export function patchedDisplay(before: GameState, after: GameState, volley: Effe
       deck: strip(player.deck),
       graveyard: strip(player.graveyard),
       anchor: ships.has(player.id) && previous ? previous.anchor : player.anchor,
+      // L'Armure gagnée ne s'affiche qu'à l'arrivée du sort.
+      armor: (volley.touches ?? []).some((t) => t.kind === "armor" && t.to.id === player.id) && previous ? previous.armor : player.armor,
       // La Raison ne bouge qu'à l'impact du chiffre sur sa jauge.
       reason: volley.reason.some((r) => r.playerId === player.id) && previous ? previous.reason : player.reason,
     };
