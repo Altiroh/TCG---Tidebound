@@ -1333,12 +1333,30 @@
    « ouvre-moi », sur le canon découvert il dit « tire ». Deux moments, un
    seul signal — c'est la même invitation. Posé en `drop-shadow` et non en
    `box-shadow` : le hublot est détouré, un rectangle lumineux se verrait. */
+/*
+ * Capacité de Navire prête : un halo d'or qui RESPIRE. Elle animait deux
+ * `drop-shadow` en `filter` — refloutés à chaque image, en continu, à peu
+ * près tout le temps qu'une partie dure : à elle seule, l'essentiel du
+ * travail du navigateur sur un plateau au repos (mesuré le 13/10/2026). Le
+ * hublot est rond : un pseudo-élément rond dont seule l'opacité bouge suffit.
+ */
 .shipAbilityReady {
+  filter: drop-shadow(0 0.05em 0.15em rgba(0, 0, 0, 0.6)) drop-shadow(0 0 0.2em rgba(255, 196, 92, 0.6));
+}
+
+.shipAbilityReady::before {
+  content: "";
+  position: absolute;
+  inset: 4%;
+  border-radius: 50%;
+  box-shadow: 0 0 0.25em 0.08em rgba(255, 220, 140, 0.9), 0 0 0.6em 0.15em rgba(255, 196, 92, 0.75);
+  pointer-events: none;
+  will-change: opacity;
   animation: shipAbilityGlow 1.9s ease-in-out infinite;
 }
 
 @media (hover: hover) {
-  .shipAbilityReady:hover {
+  .shipAbilityReady:hover::before {
     animation-duration: 1s;
   }
 }
@@ -1537,10 +1555,10 @@
 @keyframes shipAbilityGlow {
   0%,
   100% {
-    filter: drop-shadow(0 0.05em 0.15em rgba(0, 0, 0, 0.6)) drop-shadow(0 0 0.15em rgba(255, 196, 92, 0.5));
+    opacity: 0.25;
   }
   50% {
-    filter: drop-shadow(0 0.05em 0.15em rgba(0, 0, 0, 0.6)) drop-shadow(0 0 0.5em rgba(255, 196, 92, 1));
+    opacity: 1;
   }
 }
 
@@ -1551,10 +1569,10 @@
 
   /* Le halo ne clignote plus, mais il reste VISIBLE : c'est lui qui dit que
      le geste est possible, ce n'est pas de la décoration. */
-  .shipAbilityReady,
-  .shipAbilityReady:hover {
+  .shipAbilityReady::before,
+  .shipAbilityReady:hover::before {
     animation: none;
-    filter: drop-shadow(0 0.05em 0.15em rgba(0, 0, 0, 0.6)) drop-shadow(0 0 0.35em rgba(255, 196, 92, 0.85));
+    opacity: 0.8;
   }
 }
 
@@ -4369,11 +4387,6 @@
   .shipAbilityCard {
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
-  }
-
-  .shipAbilityReady {
-    animation: none;
-    filter: drop-shadow(0 0.05em 0.15em rgba(0, 0, 0, 0.6)) drop-shadow(0 0 0.4em rgba(255, 196, 92, 0.9));
   }
 
   /* Chaque carte isole son empilement. Le filtre animé en créait un par

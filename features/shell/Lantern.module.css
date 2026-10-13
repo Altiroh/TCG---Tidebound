@@ -130,12 +130,17 @@
   to { transform: rotate(1.6deg); }
 }
 
+/*
+ * La flamme vit par l'OPACITÉ de la lanterne allumée, posée sur l'éteinte :
+ * un `filter` animé en boucle repeignait l'image à chaque image, tant que
+ * l'écran restait ouvert (13/10/2026). Le halo (`.glow`) porte l'éclat.
+ */
 @keyframes flame {
-  0%, 100% { filter: brightness(1) saturate(1); }
-  23% { filter: brightness(1.12) saturate(1.1); }
-  41% { filter: brightness(0.95) saturate(1); }
-  63% { filter: brightness(1.08) saturate(1.08); }
-  81% { filter: brightness(0.98) saturate(1); }
+  0%, 100% { opacity: 1; }
+  23% { opacity: 0.9; }
+  41% { opacity: 1; }
+  63% { opacity: 0.86; }
+  81% { opacity: 0.97; }
 }
 
 /* Soufflée : la flamme hésite, reprend, puis meurt. */

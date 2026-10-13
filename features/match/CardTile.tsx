@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import {
   CHROMATIC_COLOR_LABELS,
   chromaticColorsOf,
@@ -553,7 +553,35 @@ function zoneStyle(zone: Zone): React.CSSProperties {
  * un visuel. Typographie verrouillée dans Notion : Cinzel (nom, type,
  * valeurs) + Crimson Pro (texte de règles).
  */
-export function CardTile({
+/**
+ * Mêmes props, même rendu : la tuile ne se redessine pas quand le plateau se
+ * re-rend pour autre chose (un survol arme l'aperçu, une flèche de visée
+ * suit le pointeur…). Le plateau recrée son `auraContext` à chaque rendu :
+ * il est comparé champ par champ, les autres props par référence.
+ * Retour du 13/10/2026 : « l'interface n'est pas fluide » — chaque survol
+ * redessinait toutes les cartes du plateau et de la main.
+ */
+function sameAuraContext(a: AuraContext | undefined, b: AuraContext | undefined): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  const keys = new Set([...Object.keys(a), ...Object.keys(b)]) as Set<keyof AuraContext>;
+  for (const key of keys) if (a[key] !== b[key]) return false;
+  return true;
+}
+
+function sameTileProps(a: CardTileProps, b: CardTileProps): boolean {
+  const keys = new Set([...Object.keys(a), ...Object.keys(b)]) as Set<keyof CardTileProps>;
+  for (const key of keys) {
+    if (key === "auraContext") {
+      if (!sameAuraContext(a.auraContext, b.auraContext)) return false;
+    } else if (a[key] !== b[key]) return false;
+  }
+  return true;
+}
+
+export const CardTile = memo(CardTileView, sameTileProps);
+
+function CardTileView({
   instance,
   tideState,
   selected,
