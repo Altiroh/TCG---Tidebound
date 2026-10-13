@@ -3,7 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { centerOf, findElement, FloatingDamage, ImpactDust, ImpactFlash, shake, SicknessBubbles, tremble, type Point } from "@/features/match/AttackImpactLayer";
 import { FxCanvas } from "@/features/match/FxCanvas";
-import { silhouetteMask, silhouetteOf, type Silhouette } from "@/features/match/silhouette";
+import { faceOf, silhouetteMask, silhouetteOf, type Silhouette } from "@/features/match/silhouette";
 import { awakenCard, breakObject, orbAura } from "@/features/match/cardFx";
 import { keywordLabel, THICK_TEXT_OUTLINE } from "@/features/match/cardDisplay";
 import {
@@ -285,8 +285,8 @@ function HealVeil({ box, amount, shape = "card", mask = null }: { box: Box; amou
         ref={veil}
         style={{
           position: "absolute",
-          inset: mask ? 0 : -4,
-          borderRadius: shape === "oval" ? "50%" : mask ? 0 : 12,
+          inset: 0,
+          borderRadius: shape === "oval" ? "50%" : mask ? 0 : 10,
           ...(mask ?? {}),
           opacity: 0,
           background:
@@ -701,7 +701,8 @@ function Volley({ volley }: { volley: EffectVolley }) {
         const heals = volley.heals.flatMap((heal, index) => {
           const el = elementOf(heal.to);
           if (!el) return [];
-          const box = boxOf(el);
+          // Sur la face de la carte, pas sur son enveloppe de plateau : le voile la recouvre au bord près.
+          const box = boxOf(faceOf(el));
           // Un sort lancé part de son orbe ; un effet activé se pose au plus fort de la lueur de sa carte.
           const start = heal.source && !heal.source.glow ? orbFor(heal.source, "heal") : null;
           if (start) {

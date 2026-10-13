@@ -5,6 +5,7 @@ import { AttackImpactLayer, findElement } from "@/features/match/AttackImpactLay
 import { awakenCard, dropToken, flipCard, showGuard } from "@/features/match/cardFx";
 import { AWAKE_LIFT_MS, GLOW_LAND_MS, ORB_CHARGE_MS, SHOT_FLIGHT_MS, type EffectVolley, type FxTarget } from "@/features/match/effectPresentation";
 import { EffectFxLayer } from "@/features/match/EffectFxLayer";
+import { ABYSSAL_LAB_EVENT } from "@/features/match/AbyssalArrivalFx";
 import { applyLabEffect, applyLabPatch, LAB_EFFECTS, type LabEffect } from "@/features/match/labEffects";
 import { PhaseBanner } from "@/features/match/PhaseBanner";
 import { silhouetteOf } from "@/features/match/silhouette";
@@ -452,6 +453,10 @@ export function FxLabPanel({ cardEffects = false }: { cardEffects?: boolean } = 
             </button>
             <button type="button" style={button} onClick={() => to.forEach((t) => { const el = elementOf(t); if (el) flipCard(el); })}>
               Structure révélée (cibles)
+            </button>
+            {/* Tremblement de la table et voile des profondeurs, comme à la pose d'une Abyssale. */}
+            <button type="button" style={button} onClick={() => { const t = to[0]; if (t?.kind === "unit") window.dispatchEvent(new CustomEvent(ABYSSAL_LAB_EVENT, { detail: t.id })); }}>
+              Arrivée d&apos;une Abyssale (1re cible)
             </button>
 
             {cardEffects && <div style={section}>États et effets (cibles)</div>}

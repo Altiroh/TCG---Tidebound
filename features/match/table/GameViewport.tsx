@@ -18,7 +18,7 @@ interface GameViewportProps {
  */
 export function GameViewport({ children, debugZones = false }: GameViewportProps) {
   return (
-    <div className={styles.viewport} data-debug-zones={debugZones ? "true" : "false"}>
+    <div className={styles.viewport} data-game-viewport="" data-debug-zones={debugZones ? "true" : "false"}>
       {children}
     </div>
   );

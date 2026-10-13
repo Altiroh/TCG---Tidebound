@@ -2,7 +2,7 @@
 
 import { playCardAwake, playCardFlip, playCardShattered, playGuardIntercept, playTokenDrop } from "@/lib/sound";
 import { AWAKE_LIFT_MS, AWAKE_MS, BREAK_LEAD_MS, GUARD_SHOW_MS, ORB_CHARGE_MS } from "@/features/match/effectPresentation";
-import { silhouetteOf } from "@/features/match/silhouette";
+import { faceOf, silhouetteOf } from "@/features/match/silhouette";
 import { drawAuraSparks, seedFrom, SPELL_PALETTES, type SpellKind } from "@/features/match/spellFx";
 
 /**
@@ -72,15 +72,30 @@ function auraPalette(tone: AuraTone) {
   return tone === "strike" ? STRIKE_PALETTE : SPELL_PALETTES[tone];
 }
 
-/** Les ombres du halo, à l'échelle de la carte (`h` : sa hauteur à l'écran). */
+/**
+ * Échelle du halo : la hauteur de la carte dans SON repère (la scène est mise
+ * à l'échelle avec elle), ramenée à une carte de plateau (~190 px).
+ */
+function auraUnit(h: number): number {
+  return Math.max(0.6, Math.min(1.3, h / 190));
+}
+
+/**
+ * Les ombres du halo. SERRÉ contre la carte (retour du 13/10/2026) : toute la
+ * lumière tient dans l'espace entre deux cartes du plateau (~12 px), sans
+ * empiéter sur la voisine — intense au bord, comme le cœur d'une orbe, puis
+ * vite éteint.
+ */
 export function auraShadow(tone: AuraTone, h: number): string {
   const p = auraPalette(tone);
-  const u = Math.max(80, Math.min(260, h)) / 100;
+  const u = auraUnit(h);
+  const px = (value: number) => `${(value * u).toFixed(1)}px`;
   return [
-    `0 0 0 ${(1.6 * u).toFixed(1)}px rgba(${p.core},1)`,
-    `0 0 ${(8 * u).toFixed(1)}px ${(2.5 * u).toFixed(1)}px rgba(${p.main},1)`,
-    `0 0 ${(22 * u).toFixed(1)}px ${(7 * u).toFixed(1)}px rgba(${p.main},0.7)`,
-    `0 0 ${(48 * u).toFixed(1)}px ${(16 * u).toFixed(1)}px rgba(${p.deep},0.6)`,
+    `0 0 0 ${px(2)} rgba(${p.core},1)`,
+    `0 0 ${px(3)} ${px(2.5)} rgba(${p.core},0.85)`,
+    `0 0 ${px(6)} ${px(4)} rgba(${p.main},1)`,
+    `0 0 ${px(12)} ${px(5)} rgba(${p.main},0.75)`,
+    `0 0 ${px(16)} ${px(5)} rgba(${p.deep},0.6)`,
   ].join(", ");
 }
 
@@ -91,65 +106,115 @@ export interface AuraOptions {
   sparks?: boolean;
   /** Éclat : le halo surgit d'un coup puis s'éteint (une cible touchée), au lieu de monter puis de pulser. */
   burst?: boolean;
+  /** La carte se soulève pendant le halo (`awakenCard`) : ses flammes entourent la carte levée. */
+  lifted?: boolean;
 }
 
-/** Pose le halo d'orbe sur la carte `el`, le temps de `durationMs`. */
-export function orbAura(el: HTMLElement, tone: AuraTone, { delayMs = 0, durationMs, sparks = false, burst = false }: AuraOptions): void {
+/** Le halo en `drop-shadow` : il suit le contour réel de l'image (jeton ovale, arche d'un Navire). */
+function auraFilter(tone: AuraTone, h: number): string {
+  const p = auraPalette(tone);
+  const u = auraUnit(h);
+  const px = (value: number) => `${(value * u).toFixed(1)}px`;
+  return [
+    `drop-shadow(0 0 ${px(1.5)} rgba(${p.core},1))`,
+    `drop-shadow(0 0 ${px(3)} rgba(${p.core},0.9))`,
+    `drop-shadow(0 0 ${px(6)} rgba(${p.main},1))`,
+    `drop-shadow(0 0 ${px(10)} rgba(${p.deep},0.85))`,
+  ].join(" ");
+}
+
+/**
+ * Pose le halo d'orbe sur l'unité `el`, le temps de `durationMs`. Il ÉPOUSE
+ * sa forme (13/10/2026, « pas de séparation vide ») :
+ *   - une carte : le halo s'accroche à sa FACE (`faceOf`), coins arrondis
+ *     hérités — seules son opacité et son échelle s'animent ;
+ *   - un jeton (cadre ovale) et un Navire (arche) : la lueur suit le contour
+ *     de leur image (`drop-shadow`), jamais le rectangle autour.
+ */
+export function orbAura(el: HTMLElement, tone: AuraTone, { delayMs = 0, durationMs, sparks = false, burst = false, lifted = false }: AuraOptions): void {
   if (reducedMotion()) return;
   const rect = el.getBoundingClientRect();
   if (rect.width === 0) return;
   const shape = silhouetteOf(el);
-  // Le Navire a son propre cadre (arche) : un rectangle autour le trahirait — la lueur passe par un filtre.
-  if (shape === "ship") {
-    const p = auraPalette(tone);
-    el.animate(
-      [
-        { filter: "none" },
-        { filter: `drop-shadow(0 0 3px rgba(${p.core},1)) drop-shadow(0 0 18px rgba(${p.main},0.95)) drop-shadow(0 0 40px rgba(${p.deep},0.7))`, offset: burst ? 0.15 : 0.35 },
-        { filter: "none" },
-      ],
+  const face = faceOf(el);
+  const height = face.offsetHeight || rect.height;
+  if (shape !== "card") {
+    const lit = auraFilter(tone, height);
+    face.animate(
+      burst
+        ? [{ filter: "none" }, { filter: lit, offset: 0.15 }, { filter: lit, offset: 0.45 }, { filter: "none" }]
+        : [{ filter: "none" }, { filter: lit, offset: 0.25 }, { filter: lit, offset: 0.8 }, { filter: "none" }],
       { duration: durationMs, delay: delayMs, easing: "ease-out" }
     );
+    if (sparks) auraSparks(face, face.getBoundingClientRect(), auraPalette(tone), delayMs, durationMs);
     return;
   }
-  const halo = document.createElement("span");
-  halo.setAttribute("aria-hidden", "true");
-  Object.assign(halo.style, {
-    position: "absolute",
-    inset: "0",
-    zIndex: "3",
-    borderRadius: shape === "oval" ? "50%" : "var(--card-radius, 10px)",
-    boxShadow: auraShadow(tone, rect.height),
-    pointerEvents: "none",
-    opacity: "0",
-    willChange: "opacity, transform",
-  });
-  if (getComputedStyle(el).position === "static") el.style.position = "relative";
-  el.appendChild(halo);
-  const keyframes = burst
-    ? [
-        { opacity: 0, transform: "scale(0.96)" },
-        { opacity: 1, transform: "scale(1.06)", offset: 0.12 },
-        { opacity: 0.85, transform: "scale(1.03)", offset: 0.4 },
-        { opacity: 0, transform: "scale(1.08)" },
-      ]
-    : [
-        { opacity: 0, transform: "scale(0.97)" },
-        { opacity: 0.9, transform: "scale(1.01)", offset: 0.2 },
-        { opacity: 1, transform: "scale(1.04)", offset: 0.45 },
-        { opacity: 0.75, transform: "scale(1.02)", offset: 0.65 },
-        { opacity: 1, transform: "scale(1.05)", offset: 0.82 },
-        { opacity: 0, transform: "scale(1.08)" },
-      ];
-  const animation = halo.animate(keyframes, { duration: durationMs, delay: delayMs, easing: "ease-out", fill: "both" });
-  animation.onfinish = () => halo.remove();
-  animation.oncancel = () => halo.remove();
-  if (sparks) auraSparks(rect, tone === "strike" ? "attack" : tone, delayMs, durationMs);
+  // Le liseré VACILLE un peu (13/10/2026) : deux couches du même halo, à peine
+  // décalées, scintillent à des rythmes différents — la ligne tremble sans
+  // cesser d'être une ligne. Seules opacité et position bougent : composité.
+  const envelope = burst
+    ? [0, 1, 0.85, 0]
+    : [0, 0.9, 1, 0.8, 1, 0];
+  const at = burst ? [0, 0.12, 0.4, 1] : [0, 0.2, 0.45, 0.65, 0.82, 1];
+  const layers: Array<{ flicker: number[]; drift: [number, number][] }> = [
+    { flicker: [1, 0.78, 1, 0.86, 0.95, 1], drift: [[0, 0], [0.6, -0.5], [-0.3, 0.4], [0.4, 0.3], [-0.5, -0.4], [0, 0]] },
+    { flicker: [0.55, 0.85, 0.5, 0.8, 0.6, 0.55], drift: [[0, 0], [-0.5, 0.4], [0.5, -0.3], [-0.4, -0.4], [0.3, 0.5], [0, 0]] },
+  ];
+  if (getComputedStyle(face).position === "static") face.style.position = "relative";
+  for (const layer of layers) {
+    const halo = document.createElement("span");
+    halo.setAttribute("aria-hidden", "true");
+    Object.assign(halo.style, {
+      position: "absolute",
+      inset: "0",
+      zIndex: "3",
+      borderRadius: getComputedStyle(face).borderRadius || "var(--card-radius, 10px)",
+      // Dans le repère de la carte : la scène est mise à l'échelle (`BoardStage`), les ombres le sont avec elle.
+      boxShadow: auraShadow(tone, height),
+      pointerEvents: "none",
+      opacity: "0",
+      willChange: "opacity, transform",
+    });
+    face.appendChild(halo);
+    // L'enveloppe (apparition, extinction) multipliée par le scintillement propre à la couche.
+    const steps = 12;
+    const keyframes = Array.from({ length: steps + 1 }, (_, i) => {
+      const k = i / steps;
+      const level = sample(at, envelope, k) * layer.flicker[i % layer.flicker.length]!;
+      const [dx, dy] = layer.drift[i % layer.drift.length]!;
+      return { offset: k, opacity: level, transform: `translate(${(dx * auraUnit(height)).toFixed(2)}px, ${(dy * auraUnit(height)).toFixed(2)}px)` };
+    });
+    const animation = halo.animate(keyframes, { duration: durationMs, delay: delayMs, easing: "ease-in-out", fill: "both" });
+    animation.onfinish = () => halo.remove();
+    animation.oncancel = () => halo.remove();
+  }
+  if (sparks) auraSparks(face, lifted ? liftedRect(face.getBoundingClientRect()) : face.getBoundingClientRect(), auraPalette(tone), delayMs, durationMs);
+}
+
+/** Où sera la carte une fois soulevée par son réveil (`translateY(-9%) scale(1.07)` autour de son centre). */
+function liftedRect(rect: DOMRect): DOMRect {
+  const width = rect.width * 1.07;
+  const height = rect.height * 1.07;
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 2 - rect.height * 0.09;
+  return new DOMRect(cx - width / 2, cy - height / 2, width, height);
+}
+
+/** Valeur, à la fraction `k`, d'une courbe donnée par ses points (`at`, `values`), interpolée linéairement. */
+function sample(at: readonly number[], values: readonly number[], k: number): number {
+  for (let i = 1; i < at.length; i += 1) {
+    if (k <= at[i]!) {
+      const span = at[i]! - at[i - 1]!;
+      const f = span > 0 ? (k - at[i - 1]!) / span : 1;
+      return values[i - 1]! + (values[i]! - values[i - 1]!) * f;
+    }
+  }
+  return values[values.length - 1]!;
 }
 
 /** Les étincelles aspirées par la carte : un canvas éphémère du calque d'effets, autour d'elle. */
-function auraSparks(rect: DOMRect, kind: SpellKind, delayMs: number, durationMs: number): void {
-  const reach = rect.height * 0.55;
+function auraSparks(self: HTMLElement, rect: DOMRect, palette: { core: string; main: string; deep: string; spark: string }, delayMs: number, durationMs: number): void {
+  const reach = rect.height * 0.25;
   const bounds = { left: rect.left - reach, top: rect.top - reach, width: rect.width + reach * 2, height: rect.height + reach * 2 };
   const canvas = document.createElement("canvas");
   const dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -159,6 +224,14 @@ function auraSparks(rect: DOMRect, kind: SpellKind, delayMs: number, durationMs:
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
   const seed = seedFrom(rect.left, rect.top, rect.height);
+  // Les autres cartes du plateau qui touchent la zone des flammes : elles restent nettes.
+  const avoid = Array.from(document.querySelectorAll<HTMLElement>("[data-board-unit] > button"))
+    .filter((node) => node !== self)
+    .map((node) => node.getBoundingClientRect())
+    .filter(
+      (other) =>
+        other.right > bounds.left && other.left < bounds.left + bounds.width && other.bottom > bounds.top && other.top < bounds.top + bounds.height
+    );
   window.setTimeout(() => {
     fxLayer().appendChild(canvas);
     const startedAt = performance.now();
@@ -171,7 +244,7 @@ function auraSparks(rect: DOMRect, kind: SpellKind, delayMs: number, durationMs:
         return;
       }
       ctx.setTransform(dpr, 0, 0, dpr, -bounds.left * dpr, -bounds.top * dpr);
-      drawAuraSparks(ctx, rect, elapsed / durationMs, kind, seed);
+      drawAuraSparks(ctx, rect, elapsed / durationMs, palette, seed, avoid);
       requestAnimationFrame(tick);
     };
     requestAnimationFrame(tick);
@@ -202,7 +275,7 @@ export function awakenCard(el: HTMLElement, delayMs = 0, tone?: "attack" | "heal
     ],
     { duration: AWAKE_MS, delay: delayMs, easing: "cubic-bezier(.2,.8,.3,1)" }
   );
-  orbAura(el, tone ?? "heal", { delayMs, durationMs: AWAKE_MS + 200, sparks: true });
+  orbAura(el, tone ?? "heal", { delayMs, durationMs: AWAKE_MS + 200, sparks: true, lifted: true });
 }
 
 // ── Jeton qui tombe ─────────────────────────────────────────────────────
@@ -411,7 +484,6 @@ function showBadgeShimmer(o: {
     inset: "-90%",
     borderRadius: "50%",
     background: `radial-gradient(circle, rgba(255,251,235,0.95) 0%, ${rgba(0.6)} 22%, ${rgba(0.22)} 48%, ${rgba(0)} 70%)`,
-    mixBlendMode: "screen",
     opacity: "0",
   });
   host.appendChild(halo);
@@ -635,7 +707,6 @@ export function breakObject(
     inset: "0",
     borderRadius: face.dataset.token !== undefined ? "50%" : "8%",
     background: `radial-gradient(circle at ${BREAK_IMPACT[0]}% ${BREAK_IMPACT[1]}%, rgba(255,255,255,0.95) 0%, rgba(${rgb},0.75) 30%, rgba(${rgb},0.25) 70%, rgba(${rgb},0) 100%)`,
-    mixBlendMode: "screen",
     opacity: "0",
   });
   host.appendChild(cracks);

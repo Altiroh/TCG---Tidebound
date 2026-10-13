@@ -24,6 +24,17 @@ export function silhouetteOf(el: Element | null | undefined): Silhouette {
 }
 
 /**
+ * La FACE visible d'une unité du plateau : la carte elle-même (`CardTile`),
+ * et non son enveloppe de plateau, un peu plus haute et sans ses coins
+ * arrondis — un halo posé sur l'enveloppe laissait un liseré vide entre la
+ * carte et sa lumière (13/10/2026). Un Navire est déjà son cadre.
+ */
+export function faceOf(el: HTMLElement): HTMLElement {
+  if (silhouetteOf(el) === "ship") return el;
+  return el.querySelector<HTMLElement>(":scope > button") ?? el;
+}
+
+/**
  * Masque CSS qui découpe un effet à la forme exacte d'un Navire : l'image de
  * son cadre (opaque partout où il y a du cadre), unie à la fenêtre de
  * l'arche où se voit l'illustration (transparente dans l'image du cadre).

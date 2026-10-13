@@ -2,6 +2,7 @@ import type { GameState } from "@/game";
 import { ARRIVAL_DELAY_MS, deriveEffectVolley, volleyLandingMs } from "@/features/match/effectPresentation";
 import { ATTACK_TOTAL_MS, deriveAttack } from "@/features/match/useAttackPresentation";
 import { dieHoldMs, freshDieRoll } from "@/features/match/dicePresentation";
+import { abyssalArrivals } from "@/features/match/abyssalArrival";
 
 /**
  * CADENCE D'UN TOUR QU'ON REGARDE — combien de temps laisser à un coup de
@@ -28,6 +29,8 @@ export const READ_AFTER_MS = 350;
 const PLAY_CARD_MS = ARRIVAL_DELAY_MS + 420;
 /** Un nouveau tour s'annonce (bandeau « Tour de l'adversaire ») : on le laisse se lire. */
 const TURN_BANNER_MS = 1100;
+/** Une Abyssale arrive : la carte atterrit, la table tremble, le voile passe (`AbyssalArrivalFx`). */
+const ABYSSAL_ARRIVAL_MS = ARRIVAL_DELAY_MS + 1500;
 /** Garde-fou : aucun coup ne retient l'écran plus longtemps. */
 const MAX_FRAME_MS = 4500;
 
@@ -49,6 +52,7 @@ export function framePaceMs(previous: GameState, next: GameState): number {
   if (volley) holds.push(dieMs + volleyLandingMs(volley) + READ_AFTER_MS);
 
   if (events.some((event) => event.type === "PLAY_CARD")) holds.push(PLAY_CARD_MS);
+  if (abyssalArrivals(events).length > 0) holds.push(ABYSSAL_ARRIVAL_MS);
   if (events.some((event) => event.type === "TURN_STARTED")) holds.push(TURN_BANNER_MS);
 
   return Math.min(MAX_FRAME_MS, Math.max(...holds));

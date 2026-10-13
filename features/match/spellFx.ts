@@ -355,16 +355,31 @@ export function drawOrb(ctx: CanvasRenderingContext2D, at: Point, diameter: numb
 /**
  * Les étincelles du HALO D'ORBE d'une carte (`orbAura`, `cardFx.ts`), à la
  * fraction `t` de sa durée : comme celles qu'aspire l'orbe en charge, elles
- * partent de loin et filent se fondre dans le BORD de la carte ; aux coins,
- * un éclat d'étoile scintille. Dessinées autour de `rect` (viewport).
+ * partent d'un peu plus loin et filent se fondre dans le BORD de la carte ;
+ * aux coins, un éclat d'étoile scintille. Rien ne se dessine sur la carte ni
+ * sur ses voisines (`avoid`).
  */
-export function drawAuraSparks(ctx: CanvasRenderingContext2D, rect: { left: number; top: number; width: number; height: number }, t: number, kind: SpellKind, seed: number) {
-  const palette = SPELL_PALETTES[kind];
+export function drawAuraSparks(
+  ctx: CanvasRenderingContext2D,
+  rect: { left: number; top: number; width: number; height: number },
+  t: number,
+  palette: { core: string; main: string; deep: string; spark: string },
+  seed: number,
+  /** Les cartes voisines : les étincelles ne se dessinent pas dessus. */
+  avoid: ReadonlyArray<{ left: number; top: number; width: number; height: number }> = []
+) {
   const random = seededRandom(seed);
   const cx = rect.left + rect.width / 2;
   const cy = rect.top + rect.height / 2;
   const scale = rect.height / 100;
   const life = Math.sin(Math.min(1, t) * Math.PI);
+  const margin = 40 * scale;
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(rect.left - margin, rect.top - margin, rect.width + margin * 2, rect.height + margin * 2);
+  ctx.rect(rect.left, rect.top, rect.width, rect.height);
+  for (const other of avoid) ctx.rect(other.left, other.top, other.width, other.height);
+  ctx.clip("evenodd");
   ctx.globalCompositeOperation = "lighter";
 
   const STREAKS = 22;
@@ -374,11 +389,11 @@ export function drawAuraSparks(ctx: CanvasRenderingContext2D, rect: { left: numb
     const angle = random() * Math.PI * 2;
     const local = (t - start) / travel;
     if (local <= 0 || local >= 1) continue;
-    // Le point du bord visé, dans la direction de l'angle.
     const dx = Math.cos(angle);
     const dy = Math.sin(angle);
     const toEdge = Math.min(rect.width / 2 / Math.max(0.001, Math.abs(dx)), rect.height / 2 / Math.max(0.001, Math.abs(dy)));
-    const reach = toEdge + rect.height * (0.25 + random() * 0.25);
+    // Elles naissent près du bord : pas sur la carte voisine.
+    const reach = toEdge + rect.height * (0.08 + random() * 0.1);
     const position = (e: number) => {
       const r = reach - (reach - toEdge) * e ** 1.4;
       const a = angle + (1 - e) * 0.5;
@@ -409,10 +424,10 @@ export function drawAuraSparks(ctx: CanvasRenderingContext2D, rect: { left: numb
   ];
   corners.forEach((corner, index) => {
     const twinkle = 0.6 + 0.4 * Math.sin(t * 14 + index * 1.7);
-    glow(ctx, corner, 7 * scale, palette.main, 0.55 * life * twinkle, palette.core);
-    flare(ctx, corner, 11 * scale * twinkle, t * 3 + index, palette.spark, 0.8 * life * twinkle);
+    glow(ctx, corner, 5 * scale, palette.main, 0.55 * life * twinkle, palette.core);
+    flare(ctx, corner, 8 * scale * twinkle, t * 3 + index, palette.spark, 0.8 * life * twinkle);
   });
-  ctx.globalCompositeOperation = "source-over";
+  ctx.restore();
 }
 
 // ── La comète ───────────────────────────────────────────────────────────

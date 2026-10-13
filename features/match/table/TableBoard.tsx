@@ -47,6 +47,7 @@ import type { BoardAllocationMode } from "@/features/match/useHealAllocation";
 import type { BoardPickMode } from "@/features/match/useBoardPick";
 import type { HeldTarget } from "@/features/match/useHeldTarget";
 import { EffectFxLayer, reasonAnchor, reasonGaugeOf } from "@/features/match/EffectFxLayer";
+import { AbyssalArrivalFx } from "@/features/match/AbyssalArrivalFx";
 import { THICK_TEXT_OUTLINE } from "@/features/match/cardDisplay";
 import styles from "@/features/match/table/Table.module.css";
 import { BackgroundLayer, TABLE_PONT } from "@/features/match/table/BackgroundLayer";
@@ -1501,6 +1502,8 @@ export function TableBoard(props: TableBoardProps) {
       )}
       <AttackImpactLayer attacks={props.attacks} />
       <EffectFxLayer volleys={props.volleys} />
+      {/* Une Abyssale arrive : la table tremble, les profondeurs passent sur l'écran — pour les deux joueurs. */}
+      <AbyssalArrivalFx state={state} />
     </>
   );
 }
