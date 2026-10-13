@@ -20,7 +20,7 @@ import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/match/NewMatch.module.css";
 import { playButtonClick, playGameStart, playTabClick } from "@/lib/sound";
 import { usePersistedState } from "@/lib/persistedState";
-import { getPreference, setPreference, subscribePreferences } from "@/lib/preferences";
+import { flushPreferences, getPreference, setPreference, subscribePreferences } from "@/lib/preferences";
 
 /**
  * Partie en ligne : recherche rapide (matchmaking au premier arrivé), ou
@@ -134,6 +134,8 @@ function readLastPlayedDeckId(): string | null {
 
 function rememberLastPlayedDeckId(deckId: string): void {
   setPreference(LAST_DECK_KEY, deckId);
+  // Sur le compte TOUT DE SUITE, pas au prochain lot : la partie démarre, l'onglet peut se fermer.
+  void flushPreferences();
 }
 
 /**
@@ -310,21 +312,35 @@ export function NewMatchScreen({
   /*
    * DERNIER DECK JOUÉ (05/10/2026) : la partie suivante le repropose, avec
    * son onglet ouvert — toujours le plus récent, devant le deck par défaut.
-   * Relu après le montage (le rendu serveur ne connaît pas l'appareil), une
-   * seule fois : ce que le joueur choisit ensuite n'est jamais écrasé. Un
-   * deck supprimé ou devenu injouable est ignoré, le deck par défaut reste.
+   * Relu après le montage (le rendu serveur ne connaît pas l'appareil), puis
+   * à la relecture du COMPTE (appareil neuf, 13/10/2026 : il n'était relu
+   * qu'une fois, dans une copie locale encore vide) ; ce que le joueur
+   * choisit lui-même n'est jamais écrasé. Un deck supprimé ou devenu
+   * injouable est ignoré, le deck par défaut reste.
    */
-  const lastDeckRestored = useRef(false);
+  // Le deck posé d'office (défaut, puis dernier joué) : tant que le joueur n'en a pas choisi un autre,
+  // une relecture du compte arrivée après le montage peut encore le remplacer.
+  const autoDeckId = useRef<string | null>(deck1?.id ?? null);
+  const deck1Ref = useRef(deck1);
+  deck1Ref.current = deck1;
   useEffect(() => {
-    if (lastDeckRestored.current) return;
-    lastDeckRestored.current = true;
-    const lastId = readLastPlayedDeckId();
-    if (!lastId) return;
-    const tab = tabs.find((candidate) => candidate.decks.some((deck) => deck.id === lastId && candidate.issueFor(deck) === null));
-    const deck = tab?.decks.find((candidate) => candidate.id === lastId);
-    if (!tab || !deck) return;
-    setDeck1(deck);
-    setDeckTab(tab.id);
+    const restore = () => {
+      // Le joueur a déjà choisi lui-même : on n'y touche plus.
+      if ((deck1Ref.current?.id ?? null) !== autoDeckId.current) return;
+      const lastId = readLastPlayedDeckId();
+      if (!lastId) return;
+      const tab = tabs.find((candidate) => candidate.decks.some((deck) => deck.id === lastId && candidate.issueFor(deck) === null));
+      const deck = tab?.decks.find((candidate) => candidate.id === lastId);
+      if (!tab || !deck) return;
+      autoDeckId.current = deck.id;
+      setDeck1(deck);
+      setDeckTab(tab.id);
+    };
+    restore();
+    // Sur un appareil neuf, la copie locale est vide : le dernier deck arrive avec la relecture du compte.
+    return subscribePreferences((key, origin) => {
+      if (origin === "account" && key === LAST_DECK_KEY) restore();
+    });
   }, [tabs, setDeckTab]);
 
   const current = step === 3 ? deck2 : deck1;

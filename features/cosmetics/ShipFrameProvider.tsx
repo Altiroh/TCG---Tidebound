@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { fetchMyEquippedCosmetics } from "@/features/cosmetics/collectablesActions";
 import { DEFAULT_SHIP_FRAME, shipFrame, type ShipFrameGeometry } from "@/features/ships/shipFrame";
 
 /**
@@ -53,7 +54,27 @@ export function ShipFrameProvider({ children }: { children: React.ReactNode }) {
   // Premier rendu identique au serveur, puis réalignement immédiat en effet.
   const [id, setId] = useState(DEFAULT_SHIP_FRAME);
 
-  useEffect(() => setId(readStoredShipFrame()), []);
+  useEffect(() => {
+    // La copie locale d'abord (affichage immédiat), puis la BASE, qui fait foi sur tous les appareils.
+    setId(readStoredShipFrame());
+    let cancelled = false;
+    const sync = () =>
+      void fetchMyEquippedCosmetics()
+        .then((equipped) => {
+          if (cancelled || !equipped) return;
+          storeShipFrame(equipped.shipFrameId);
+          setId(equipped.shipFrameId);
+        })
+        .catch(() => undefined);
+    sync();
+    // Revenu sur l'onglet (équipé ailleurs entre-temps) : on relit.
+    const onVisible = () => document.visibilityState === "visible" && sync();
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      cancelled = true;
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, []);
 
   const apply = useCallback((next: string) => {
     storeShipFrame(next);

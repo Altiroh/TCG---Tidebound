@@ -208,3 +208,18 @@ export async function discoverSecret(secret: string): Promise<DiscoverSecretResu
     return { ok: false, granted: [] };
   }
 }
+
+/**
+ * Dos de carte et cadre de Navire ÉQUIPÉS par le joueur connecté — lus en
+ * BASE (13/10/2026 : « d'un ordinateur à un autre, je n'ai pas les mêmes
+ * cosmétiques »). Les fournisseurs (`CardBackProvider`, `ShipFrameProvider`)
+ * l'appellent au démarrage : la copie locale n'est plus qu'un affichage
+ * immédiat, la base fait foi sur tous les appareils. `null` hors session.
+ */
+export async function fetchMyEquippedCosmetics(): Promise<{ cardBackId: string; shipFrameId: string } | null> {
+  const user = await getSessionUser();
+  if (!user) return null;
+  const { loadEquippedCosmetics } = await import("@/features/cosmetics/equippedCosmeticsService");
+  const mine = (await loadEquippedCosmetics([user.id]))[user.id];
+  return mine ? { cardBackId: mine.cardBackId, shipFrameId: mine.shipFrameId } : null;
+}

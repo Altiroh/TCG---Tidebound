@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { fetchMyEquippedCosmetics } from "@/features/cosmetics/collectablesActions";
 // Import direct et non par `@/game` : ce fournisseur vit dans la mise en
 // page RACINE, et le point d'entrée du moteur tire tout le catalogue de
 // cartes (~370 Ko) dans le paquet de CHAQUE page, connexion comprise.
@@ -61,7 +62,27 @@ export function CardBackProvider({ children }: { children: React.ReactNode }) {
   // pendant l'hydratation), puis réalignement immédiat en effet.
   const [id, setId] = useState(DEFAULT_CARD_BACK_ID);
 
-  useEffect(() => setId(readStoredCardBack()), []);
+  useEffect(() => {
+    // La copie locale d'abord (affichage immédiat), puis la BASE, qui fait foi sur tous les appareils.
+    setId(readStoredCardBack());
+    let cancelled = false;
+    const sync = () =>
+      void fetchMyEquippedCosmetics()
+        .then((equipped) => {
+          if (cancelled || !equipped) return;
+          storeCardBack(equipped.cardBackId);
+          setId(equipped.cardBackId);
+        })
+        .catch(() => undefined);
+    sync();
+    // Revenu sur l'onglet (équipé ailleurs entre-temps) : on relit.
+    const onVisible = () => document.visibilityState === "visible" && sync();
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      cancelled = true;
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, []);
 
   const apply = useCallback((next: string) => {
     storeCardBack(next);
