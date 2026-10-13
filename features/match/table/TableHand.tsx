@@ -27,7 +27,7 @@ export function TableHand({ cards, renderCard, dragging = false, dimmed = false 
   const center = (cards.length - 1) / 2;
 
   return (
-    <div className={`${styles.hand} ${dragging ? styles.handDragging : ""} ${dimmed ? styles.handDim : ""}`} data-zone="PlayerHand">
+    <div className={`${styles.hand} ${dragging ? styles.handDragging : ""} ${dimmed ? styles.handDim : ""}`} data-zone="PlayerHand" data-drop-stop="">
       <div className={styles.handRow}>
         {cards.map((card, index) => (
           <div

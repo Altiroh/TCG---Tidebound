@@ -28,15 +28,15 @@ import styles from "@/features/match/table/Table.module.css";
  * reste toujours dans la zone sûre, même si le décor, lui, peut être
  * recadré derrière.
  */
-export const GameStage = forwardRef<HTMLDivElement, { children: React.ReactNode; className?: string; style?: React.CSSProperties }>(function GameStage(
-  { children, className, style },
+export const GameStage = forwardRef<HTMLDivElement, { children: React.ReactNode; className?: string; style?: React.CSSProperties; drop?: string }>(function GameStage(
+  { children, className, style, drop },
   ref
 ) {
   return (
     // `className` s'AJOUTE : la scène porte ses propres tokens de mise en
     // page, un appelant ne fait qu'y accrocher un état (un glisser en
     // cours, par exemple).
-    <div ref={ref} className={className ? `${styles.stage} ${className}` : styles.stage} style={style}>
+    <div ref={ref} className={className ? `${styles.stage} ${className}` : styles.stage} style={style} data-drop={drop}>
       {children}
     </div>
   );

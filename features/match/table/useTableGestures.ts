@@ -101,12 +101,18 @@ interface Options {
   onInvalidDrop?: (kind: GestureKind, sourceId: string, drops: string[]) => void;
 }
 
-/** Toutes les zones `data-drop` sous le point, de la plus proche à la plus englobante. */
+/**
+ * Toutes les zones `data-drop` sous le point, de la plus proche à la plus
+ * englobante. Un élément `data-drop-stop` (la main) arrête la remontée : la
+ * scène entière est une zone de repli (« table », pour les Landes), mais une
+ * carte relâchée sur la main n'est lâchée nulle part.
+ */
 function dropsAt(x: number, y: number): string[] {
   const drops: string[] = [];
   for (let el = document.elementFromPoint(x, y); el; el = el.parentElement) {
     const drop = el.getAttribute("data-drop");
     if (drop) drops.push(drop);
+    if (el.hasAttribute("data-drop-stop")) break;
   }
   return drops;
 }

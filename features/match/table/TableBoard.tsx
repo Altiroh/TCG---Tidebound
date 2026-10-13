@@ -588,9 +588,10 @@ export function TableBoard(props: TableBoardProps) {
 
       if (kind === "place") {
         if (!canPlayCards) return false;
-        // Une Lande se pose au centre, dans l'emplacement partagé — ou
-        // n'importe où sur son rang : elle ne prend pas de Slot.
-        if (getCardDefinition(instance.cardId).type === "lande") return drop === "lande" || isBoardDrop(drop);
+        // Une Lande va TOUJOURS dans l'emplacement partagé, où qu'on la lâche
+        // sur la table (13/10/2026 : « ça évite d'aller devoir la placer ») —
+        // elle ne prend pas de Slot. Seule la main l'arrête.
+        if (getCardDefinition(instance.cardId).type === "lande") return true;
         // Sur une Sentinelle d'un Assemblage possible : même plateau plein,
         // l'Assemblage libère ses places.
         if (drop.startsWith("own:") && assemblageSentinels(sourceId)?.has(dropId(drop))) return true;
@@ -623,16 +624,17 @@ export function TableBoard(props: TableBoardProps) {
           discardMode.onDiscard(sourceId);
           return;
         }
+        // Une Lande, où qu'on la lâche (Cimetière compris) : dans son emplacement.
+        if (drop === "lande" || getCardDefinition(byId.get(sourceId)?.instance.cardId ?? "").type === "lande") {
+          props.onPlayCard(sourceId);
+          return;
+        }
         if (drop === "graveyard") {
           props.onDropOnGraveyard(sourceId, "hand");
           return;
         }
         if (drop.startsWith("own:") && assemblageSentinels(sourceId)?.has(dropId(drop))) {
           props.onAssemblageDrop?.(sourceId, dropId(drop));
-          return;
-        }
-        if (drop === "lande") {
-          props.onPlayCard(sourceId);
           return;
         }
         // La carte part d'où le fantôme était lâché : centré sous la souris,
@@ -725,8 +727,8 @@ export function TableBoard(props: TableBoardProps) {
     },
     onInvalidDrop: (kind, sourceId, drops) => {
       if (kind !== "ability") return;
-      // Relâchée sur place (ou hors de toute zone) : rien, comme on repose un objet.
-      if (drops.length === 0) return;
+      // Relâchée sur place (ou hors de toute zone — la scène elle-même ne compte pas) : rien, comme on repose un objet.
+      if (drops.every((drop) => drop === "table")) return;
       if (!abilityTargetsOf(sourceId)) {
         setDropError("Cette capacité ne vise personne : touchez la pastille pour l'activer.");
         return;
@@ -1154,6 +1156,8 @@ export function TableBoard(props: TableBoardProps) {
             précisément la zone visée. */}
         <GameStage
           ref={stageRef}
+          // Zone de repli de toute la scène : une Lande lâchée N'IMPORTE OÙ va dans son emplacement.
+          drop="table"
           className={[pont ? `${styles.stageBare} ${styles.stagePont}` : "", gesture ? styles.gesturing : ""].join(" ").trim() || undefined}
           // Le plus grand des deux Navires fixe la largeur des cartes (cf. `--card-h-fit`).
           style={{
@@ -1226,7 +1230,7 @@ export function TableBoard(props: TableBoardProps) {
                     ) : undefined
                   }
                   turns={lande ? landeRemainingTableTurns(state.environment) : null}
-                  dropState={placingLande ? (hover === "lande" ? "over" : "ready") : "idle"}
+                  dropState={placingLande ? (hover !== null ? "over" : "ready") : "idle"}
                 />
               ) : undefined
             }
@@ -1267,7 +1271,7 @@ export function TableBoard(props: TableBoardProps) {
                   <LandeBadge
                     environment={state.environment}
                     tideState={tideState}
-                    dropState={placingLande ? (hover === "lande" ? "over" : "ready") : "idle"}
+                    dropState={placingLande ? (hover !== null ? "over" : "ready") : "idle"}
                   />
                   <OngoingEffects
                     effects={viewer.board.filter((card) => isOngoingEffect(getCardDefinition(card.cardId))).map((card) => ({ card, ownerId: viewer.id }))}
