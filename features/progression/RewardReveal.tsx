@@ -29,6 +29,12 @@ interface RewardRevealProps {
    * REMPLACE celui de la récompense, jouer les deux les ferait se chevaucher.
    */
   sound?: "reward" | "exploit";
+  /**
+   * Les gains EN GRAND, posés seuls sans médaillon — le colis d'un mécène
+   * (retour du 13/10/2026) : on veut voir ce qu'il contenait, pas une
+   * pastille.
+   */
+  showcase?: boolean;
   onDone: () => void;
 }
 
@@ -78,7 +84,7 @@ const ITEMS_MIN_MS = 900;
 /** La carte gardée reste levée ce temps-là avant la suite. */
 const KEPT_HOLD_MS = 650;
 
-export function RewardReveal({ levels, choices, extraItems = [], title: forcedTitle, sound = "reward", onDone }: RewardRevealProps) {
+export function RewardReveal({ levels, choices, extraItems = [], title: forcedTitle, sound = "reward", showcase = false, onDone }: RewardRevealProps) {
   const [mounted, setMounted] = useState(false);
   const [choiceIndex, setChoiceIndex] = useState(0);
   const [picked, setPicked] = useState<string | null>(null);
@@ -184,7 +190,7 @@ export function RewardReveal({ levels, choices, extraItems = [], title: forcedTi
         <div className={styles.panel}>
           <p className={styles.eyebrow}>Récompense</p>
           <h2 className={styles.title}>{title}</h2>
-          <ul className={styles.items}>
+          <ul className={styles.items} data-showcase={showcase || undefined}>
             {shown.map((item, index) => (
               <li key={index} className={styles.item} style={{ ["--i" as string]: index }} data-card={wonCardId(item) ? "" : undefined}>
                 {wonCardId(item) ? (
@@ -194,7 +200,7 @@ export function RewardReveal({ levels, choices, extraItems = [], title: forcedTi
                   </span>
                 ) : (
                   <span className={styles.itemIcon}>
-                    <RewardIcon item={item} size={84} />
+                    <RewardIcon item={item} size={showcase ? 190 : 84} />
                   </span>
                 )}
                 <span className={styles.itemLabel}>{wonCardId(item) ? getCardDefinition(wonCardId(item)!).name : itemLabel(item)}</span>

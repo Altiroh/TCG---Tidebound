@@ -119,7 +119,14 @@ export function ProfileView({
   const setTab = (next: ProfileTab) => (onTabChange ? onTabChange(next) : setOwnTab(next));
   const [signingOut, startSignOut] = useTransition();
   const { apply: applyCardBack } = useCardBack();
-  const [reveal, setReveal] = useState<{ levels: RevealedLevel[]; choices: PendingCardChoice[]; extraItems?: RewardItem[]; title?: string; sound?: "reward" | "exploit" } | null>(null);
+  const [reveal, setReveal] = useState<{
+    levels: RevealedLevel[];
+    choices: PendingCardChoice[];
+    extraItems?: RewardItem[];
+    title?: string;
+    sound?: "reward" | "exploit";
+    showcase?: boolean;
+  } | null>(null);
   const [claiming, setClaiming] = useState<number | "all" | "everything" | string | null>(null);
   /**
    * Une réclamation réussie reste marquée jusqu'à l'arrivée du profil RELU
@@ -330,6 +337,7 @@ export function ProfileView({
       extraItems={reveal.extraItems}
       title={reveal.title}
       sound={reveal.sound}
+      showcase={reveal.showcase}
       onDone={() => {
         setReveal(null);
         notifyProgressionChanged();
@@ -347,7 +355,7 @@ export function ProfileView({
             profile={profile}
             claiming={claiming}
             onClaimLevel={(level) => void claim(level)}
-            onReveal={(items, title) => setReveal({ levels: [], choices: [], extraItems: items, title })}
+            onReveal={(items, title, options) => setReveal({ levels: [], choices: [], extraItems: items, title, showcase: options?.showcase })}
             onRefresh={onRefresh}
             onShowQuests={() => setTab("quetes")}
             onShowAchievements={() => setTab("exploits")}

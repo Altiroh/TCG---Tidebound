@@ -36,7 +36,8 @@ interface RewardsHubProps {
   /** Un palier, ou `"all"` : tous ceux qui attendent. */
   onClaimLevel: (level: number | "all") => void;
   /** Ouvre la révélation (`RewardReveal`) sur ce qui vient d'être reçu. */
-  onReveal: (items: RewardItem[], title: string) => void;
+  /** `showcase` : les gains en GRAND, sans médaillon (colis d'un mécène). */
+  onReveal: (items: RewardItem[], title: string, options?: { showcase?: boolean }) => void;
   onRefresh: () => void;
   onShowQuests: () => void;
   onShowAchievements: () => void;
@@ -96,7 +97,12 @@ export function RewardsHub({ profile, claiming, onClaimLevel, onReveal, onRefres
   };
 
   /** Une réclamation du hub : erreur affichée, révélation, relecture. */
-  function run(action: () => Promise<{ ok: boolean; error?: string; items?: RewardItem[] }>, title: string, revealDelayMs = 0) {
+  function run(
+    action: () => Promise<{ ok: boolean; error?: string; items?: RewardItem[] }>,
+    title: string,
+    revealDelayMs = 0,
+    revealOptions?: { showcase?: boolean }
+  ) {
     if (pending) return;
     playButtonClick();
     setError(null);
@@ -116,7 +122,7 @@ export function RewardsHub({ profile, claiming, onClaimLevel, onReveal, onRefres
         // Compté depuis le clic : la révélation suit la scène sans trou, quelle que soit la réponse du serveur.
         const wait = revealDelayMs - (Date.now() - startedAt);
         if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
-        onReveal(items, title);
+        onReveal(items, title, revealOptions);
       }
       notifyProgressionChanged();
       onRefresh();
@@ -149,7 +155,9 @@ export function RewardsHub({ profile, claiming, onClaimLevel, onReveal, onRefres
     if (!stage || pending || gift) return;
     // Le coffret s'ouvre à l'écran pendant que le serveur répond ; la révélation attend la fin.
     setGift({ color: sponsor.color, name: sponsor.name });
-    run(() => openSponsorGift(sponsor.id, stage), `Un colis de ${sponsor.name ?? "votre admirateur"}`, GIFT_OPEN_MS);
+    // Ce que le colis contenait s'affiche EN GRAND, sorti du coffret — pas
+    // dans les médaillons de la révélation ordinaire (retour du 13/10/2026).
+    run(() => openSponsorGift(sponsor.id, stage), `Un colis de ${sponsor.name ?? "votre admirateur"}`, GIFT_OPEN_MS, { showcase: true });
   }
 
   return (

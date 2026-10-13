@@ -268,10 +268,11 @@ function SponsorFocus({ sponsor, audience, busy, onOpenGift }: { sponsor: Sponso
             const gift = sponsorGift(stage.id);
             return (
               <li key={stage.id} className={styles.stage} data-state={state}>
-                <span className={styles.stageIcon} title={gift.map(loginRewardLabel).join(" · ")}>
-                  {gift[0] && <RewardIcon item={gift[0]} size={30} />}
-                </span>
                 <span className={styles.stageName}>{stage.label}</span>
+                {/* Ce que le colis contient, EN GRAND (retour du 13/10/2026) : le
+                    visuel de la récompense et son libellé, plus une pastille. */}
+                <span className={styles.stageIcon}>{gift[0] && <RewardIcon item={gift[0]} size={64} />}</span>
+                <span className={styles.stageGain}>{gift.map(loginRewardLabel).join(" · ")}</span>
                 {state === "gift" ? (
                   <button type="button" className={styles.stageOpen} disabled={busy} onClick={() => onOpenGift(sponsor)}>
                     Ouvrir

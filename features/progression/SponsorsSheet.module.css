@@ -618,16 +618,32 @@
   border-left: 1px solid rgba(160, 200, 225, 0.16);
 }
 
+/* La récompense du palier, en grand : son visuel seul, sans pastille. */
 .stageIcon {
+  position: relative;
   display: grid;
   place-items: center;
-  width: 52px;
-  height: 52px;
-  margin-bottom: 4px;
-  border: 2px solid rgba(201, 165, 90, 0.75);
-  border-radius: 50%;
-  background: radial-gradient(circle at 40% 35%, #1c2a3a, #070c14 80%);
-  box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.8);
+  width: 72px;
+  height: 72px;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.6));
+}
+
+/* Le médaillon sombre de `RewardIcon` s'efface : la récompense se pose
+   seule, en grand, sans bulle autour. */
+.stageIcon > * {
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+
+/* Ce qu'on gagne, en toutes lettres, dans l'or de l'économie. */
+.stageGain {
+  color: var(--tb-gold-bright, #f3c86b);
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-size: calc(13px * var(--tb-text-scale));
+  font-weight: 700;
+  line-height: 1.2;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
 }
 
 .stage[data-state="locked"] {
@@ -638,15 +654,23 @@
   filter: grayscale(0.7);
 }
 
-.stage[data-state="gift"] .stageIcon {
-  border-color: var(--sponsor);
-  animation: stageGlow 2.6s infinite;
+/* Un colis qui attend : la lueur de la couleur du mécène derrière la récompense. */
+.stage[data-state="gift"] .stageIcon::before {
+  content: "";
+  position: absolute;
+  inset: -12%;
+  z-index: -1;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--sponsor) 70%, transparent), transparent);
+  animation: stageGlow 2.6s ease-in-out infinite;
 }
 
 .stageName {
   color: #f1ebdc;
   font-family: var(--tb-font-display, Georgia, serif);
-  font-size: calc(15px * var(--tb-text-scale));
+  font-size: calc(13px * var(--tb-text-scale));
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .stagePoints {
@@ -719,9 +743,8 @@
     font-size: calc(12px * var(--tb-text-scale));
   }
   .stageIcon {
-    width: 40px;
-    height: 40px;
-    margin-bottom: 2px;
+    width: 58px;
+    height: 58px;
   }
   .stageName {
     font-size: calc(13px * var(--tb-text-scale));
@@ -814,9 +837,11 @@
     height: 7px;
   }
   .stageIcon {
-    width: 32px;
-    height: 32px;
-    margin-bottom: 0;
+    width: 44px;
+    height: 44px;
+  }
+  .stageGain {
+    font-size: calc(11px * var(--tb-text-scale));
   }
   .stageName {
     font-size: calc(12px * var(--tb-text-scale));
@@ -967,9 +992,9 @@
 }
 
 @keyframes stageGlow {
-  0%, 100% { box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.8), 0 0 4px color-mix(in srgb, var(--sponsor) 40%, transparent); }
-  18% { box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.8), 0 0 18px 3px color-mix(in srgb, var(--sponsor) 85%, transparent); }
-  40% { box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.8), 0 0 10px color-mix(in srgb, var(--sponsor) 60%, transparent); }
+  0%, 100% { opacity: 0.35; }
+  18% { opacity: 1; }
+  40% { opacity: 0.7; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -986,7 +1011,7 @@
   .photoWindow[data-hidden]::after,
   .photo[data-gift] .photoGlow,
   .giftBadge,
-  .stage[data-state="gift"] .stageIcon {
+  .stage[data-state="gift"] .stageIcon::before {
     animation: none;
   }
   .photo[data-gift] .photoGlow {
