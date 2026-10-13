@@ -471,6 +471,9 @@
  * en 1920, 7 en 2560, 5 en 1366, 4 à 5 en paysage mobile).
  */
 .cardGrid {
+  /* L'effet de chaque carte se lit dans la grille, sans l'ouvrir (cf.
+     `RULES_FLOOR`, `NouveauCadreCard`). */
+  --card-rules-min: 9px;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(clamp(148px, 13vw, 200px), 1fr));
   column-gap: clamp(12px, 1.3vw, 26px);

@@ -145,6 +145,8 @@ export function BoostersScreen({ inventory, sandbox = false }: BoostersScreenPro
   const [opening, setOpening] = useState<{
     boosterId: string;
     cards: BoosterOpeningCard[];
+    /** Sachets dont viennent `cards` : plus d'un, la scène pose tout le lot en grille. */
+    packs: number;
     real: boolean;
     /** Où était le sachet sur le plan : la scène l'en fait partir. */
     origin: BoosterOpeningOrigin | null;
@@ -154,13 +156,13 @@ export function BoostersScreen({ inventory, sandbox = false }: BoostersScreenPro
   /** Sachets à ouvrir d'un seul geste (1 = le geste habituel). */
   const [batchSize, setBatchSize] = useState(1);
   /**
-   * Ouverture d'un LOT, en deux temps : le PREMIER sachet s'ouvre pour de
-   * bon (`opening`, animation complète, cartes révélées une à une), puis
-   * le récapitulatif du lot entier — liste à gauche, carte choisie en
-   * grand à droite (`BoosterBatchRecap`).
+   * Ouverture d'un LOT, en deux temps : la scène d'ouverture sort TOUTES
+   * les cartes du lot (`opening`, en grille de deux lignes qu'on fait
+   * défiler), puis le récapitulatif du lot entier — liste à gauche, carte
+   * choisie en grand à droite (`BoosterBatchRecap`).
    *
    * Posé EN MÊME TEMPS que `opening` au tirage, mais rendu seulement une
-   * fois la scène du premier sachet refermée.
+   * fois la scène refermée.
    */
   const [batch, setBatch] = useState<{
     boosterId: string;
@@ -225,7 +227,7 @@ export function BoostersScreen({ inventory, sandbox = false }: BoostersScreenPro
       if (packs.length > 1) setBatch({ boosterId, packs: packs.length, lines: batchLines(packs) });
       const box = dockPackRef.current?.getBoundingClientRect();
       const from = box && box.height > 0 ? { x: box.left, y: box.top, width: box.width, height: box.height } : null;
-      setOpening({ boosterId, real: false, cards: packs[0] ?? [], origin: from });
+      setOpening({ boosterId, real: false, cards: lotCards(packs), packs: packs.length, origin: from });
       return;
     }
 
@@ -271,14 +273,16 @@ export function BoostersScreen({ inventory, sandbox = false }: BoostersScreenPro
     const origin: BoosterOpeningOrigin | null =
       rect && rect.height > 0 ? { x: rect.left, y: rect.top, width: rect.width, height: rect.height } : null;
 
-    // Lot : le premier sachet s'ouvre pour de bon, le résumé attend derrière.
+    // Lot : TOUTES les cartes sortent dans la scène (en grille), le bilan
+    // attend derrière.
     if (opened.length > 1) {
-      setBatch({ boosterId, packs: opened.length, lines: batchLines(opened.map(openingCards)) });
-      setOpening({ boosterId, real: true, origin, cards: openingCards(first) });
+      const packs = opened.map(openingCards);
+      setBatch({ boosterId, packs: opened.length, lines: batchLines(packs) });
+      setOpening({ boosterId, real: true, origin, cards: lotCards(packs), packs: packs.length });
       return;
     }
 
-    setOpening({ boosterId, real: true, origin, cards: openingCards(first) });
+    setOpening({ boosterId, real: true, origin, cards: openingCards(first), packs: 1 });
   }
 
 
@@ -296,7 +300,7 @@ export function BoostersScreen({ inventory, sandbox = false }: BoostersScreenPro
     // côté base : on relit l'inventaire plutôt que de deviner le nouvel
     // état. Un essai d'animation n'a rien écrit — rien à relire.
     //
-    // Sauf si un LOT attend derrière : c'était le premier sachet des cinq,
+    // Sauf si un LOT attend derrière : la scène montrait le lot entier,
     // le résumé s'affiche maintenant et c'est lui qui relira en se fermant.
     if (wasReal && !batch) router.refresh();
   }
@@ -606,7 +610,7 @@ export function BoostersScreen({ inventory, sandbox = false }: BoostersScreenPro
         />
       )}
 
-      {/* Après la scène du premier sachet, jamais pendant : les deux sont
+      {/* Après la scène du lot, jamais pendant : les deux sont
           posées au même instant au tirage (cf. `handleOpen`). */}
       {batch && !opening && <BoosterBatchRecap packs={batch.packs} lines={batch.lines} onClose={handleBatchClosed} />}
 
@@ -618,6 +622,7 @@ export function BoostersScreen({ inventory, sandbox = false }: BoostersScreenPro
           /* Un lot attend derrière : le bouton dit ce qui vient après, pour
              que l'enchaînement se lise au lieu de surprendre. */
           closeLabel={batch ? `Voir le bilan des ${batch.packs} sachets` : "Fermer"}
+          packCount={opening.packs}
           onClose={handleOpeningClosed}
         />
       )}
@@ -733,6 +738,15 @@ function CardsIcon() {
 }
 
 /** Une ligne par carte du lot, doublons additionnés : ce que le récapitulatif liste. */
+/**
+ * Les cartes de tous les sachets d'un lot, pour une seule scène. Une même
+ * carte au même emplacement peut sortir de deux sachets : le rang du sachet
+ * entre dans la clé.
+ */
+function lotCards(packs: readonly (readonly BoosterOpeningCard[])[]): BoosterOpeningCard[] {
+  return packs.flatMap((pack, packIndex) => pack.map((card) => ({ ...card, id: `${packIndex}:${card.id}` })));
+}
+
 function batchLines(packs: readonly (readonly BoosterOpeningCard[])[]): BoosterBatchLine[] {
   const byCard = new Map<string, BoosterBatchLine>();
   for (const card of packs.flat()) {

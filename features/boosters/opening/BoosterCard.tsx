@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useState, type CSSProperties, type KeyboardEvent, type MouseEvent, type PointerEvent } from "react";
+import { memo, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent, type PointerEvent } from "react";
 import { getCardDefinition } from "@/game";
 import { CardTile } from "@/features/match/CardTile";
 import styles from "@/features/boosters/opening/BoosterOpening.module.css";
@@ -21,6 +21,9 @@ const ORBS: BoosterCardStyle[] = [
   { "--orbit": "5.2s", "--delay": "-0.8s", "--orb-size": 0.8 },
 ];
 
+/** Appui long (doigt) qui ouvre la fiche d'une carte retournée. */
+const LONG_PRESS_MS = 450;
+
 /** Gros plan d'une Abyssale : la carte vole au centre (`in`), puis rejoint sa place (`out`). */
 export type BoosterCardShowcase = "in" | "out" | "done";
 
@@ -39,6 +42,8 @@ interface BoosterCardProps {
   onInspect: (cardId: string) => void;
   /** Clic sur la carte en gros plan : elle rejoint la rangée. */
   onShowcaseDismiss: () => void;
+  /** Lot en grille : la carte est sur une autre page que celle affichée (estompée, intouchable). */
+  offPage?: boolean;
 }
 
 /**
@@ -70,6 +75,7 @@ export const BoosterCard = memo(function BoosterCard({
   onReveal,
   onInspect,
   onShowcaseDismiss,
+  offPage = false,
 }: BoosterCardProps) {
   // Si le PNG du dos échoue malgré le préchargement, on retombe sur le dos CSS.
   const [backFailed, setBackFailed] = useState(false);
@@ -93,7 +99,46 @@ export const BoosterCard = memo(function BoosterCard({
     if (interactive && event.pointerType === "mouse") onReveal(index);
   }
 
+  /**
+   * APPUI LONG au doigt : la fiche de la carte, comme le clic à la souris
+   * (retour du 13/10/2026). Le toucher bref garde son rôle — retourner une
+   * carte de dos, ou ouvrir la fiche d'une carte déjà retournée.
+   */
+  const longPress = useRef<{ timer: ReturnType<typeof setTimeout>; x: number; y: number } | null>(null);
+  const longPressFired = useRef(false);
+
+  function cancelLongPress() {
+    if (longPress.current) clearTimeout(longPress.current.timer);
+    longPress.current = null;
+  }
+
+  function handlePointerDown(event: PointerEvent<HTMLDivElement>) {
+    longPressFired.current = false;
+    if (event.pointerType === "mouse" || !revealed || !card.cardId) return;
+    const cardId = card.cardId;
+    cancelLongPress();
+    longPress.current = {
+      x: event.clientX,
+      y: event.clientY,
+      timer: setTimeout(() => {
+        longPress.current = null;
+        longPressFired.current = true;
+        onInspect(cardId);
+      }, LONG_PRESS_MS),
+    };
+  }
+
+  function handlePointerMove(event: PointerEvent<HTMLDivElement>) {
+    const press = longPress.current;
+    if (press && Math.hypot(event.clientX - press.x, event.clientY - press.y) > 10) cancelLongPress();
+  }
+
   function handleClick() {
+    // L'appui long a déjà ouvert la fiche : le relâcher n'est pas un clic.
+    if (longPressFired.current) {
+      longPressFired.current = false;
+      return;
+    }
     if (showcase === "in") {
       onShowcaseDismiss();
       return;
@@ -130,7 +175,13 @@ export const BoosterCard = memo(function BoosterCard({
       data-cadre={NOUVEAU_CADRE && card.cardId ? "nouveau" : undefined}
       data-interactive={interactive || undefined}
       data-showcase={showcase}
+      data-off-page={offPage || undefined}
       onPointerEnter={handlePointerEnter}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={cancelLongPress}
+      onPointerCancel={cancelLongPress}
+      onPointerLeave={cancelLongPress}
       onClick={handleClick}
       onContextMenu={handleContextMenu}
       onKeyDown={handleKeyDown}

@@ -17,6 +17,14 @@ interface BoosterCardsProps {
   onReveal: (index: number) => void;
   onInspect: (cardId: string) => void;
   onShowcaseDismiss: () => void;
+  /**
+   * Plusieurs sachets ouverts d'un coup : les cartes se posent en GRILLE de
+   * `rows` lignes et `cols` colonnes par page, pages côte à côte (la scène
+   * fait défiler la piste). Absent : l'éventail d'un seul sachet.
+   */
+  grid?: { cols: number; rows: number } | null;
+  /** Page affichée de la grille : les cartes des autres pages s'estompent au bord. */
+  page?: number;
 }
 
 /** Légère inclinaison propre à chaque carte pendant sa montée dans le sachet. */
@@ -38,24 +46,45 @@ export const BoosterCards = memo(function BoosterCards({
   onReveal,
   onInspect,
   onShowcaseDismiss,
+  grid = null,
+  page = 0,
 }: BoosterCardsProps) {
   const cardStyles = useMemo(
     () =>
       cards.map((card, index): BoosterCardStyle => {
-        const offset = index - (cards.length - 1) / 2;
-        return {
-          "--i": index,
-          "--slot-x": `calc(var(--slot-step) * ${offset})`,
-          "--slot-y": `calc(var(--row-y) + var(--u) * ${(offset * offset * 0.7).toFixed(2)})`,
-          "--slot-rot": `calc(var(--fan-deg) * ${offset} * 1deg)`,
+        const timing = {
           "--rise-rot": `${RISE_ROTATIONS[index % RISE_ROTATIONS.length]}deg`,
           "--spawn-delay": `${index * timings.cardStagger}ms`,
           "--charge-dur": `${timings.revealPause[card.rarity]}ms`,
           "--flip-dur": `${timings.flip[card.rarity]}ms`,
           "--impact-dur": `${timings.revealImpact[card.rarity]}ms`,
         };
+        if (grid) {
+          // Page après page, chaque page remplie ligne par ligne : on lit
+          // la grille comme un texte, puis on tourne la page vers la droite.
+          const perPage = grid.cols * grid.rows;
+          const page = Math.floor(index / perPage);
+          const within = index % perPage;
+          const column = page * grid.cols + (within % grid.cols) - (grid.cols - 1) / 2;
+          const row = Math.floor(within / grid.cols) - (grid.rows - 1) / 2;
+          return {
+            "--i": index,
+            "--slot-x": `calc(var(--slot-step) * ${column})`,
+            "--slot-y": `calc(var(--row-y) + var(--row-step) * ${row})`,
+            "--slot-rot": "0deg",
+            ...timing,
+          };
+        }
+        const offset = index - (cards.length - 1) / 2;
+        return {
+          "--i": index,
+          "--slot-x": `calc(var(--slot-step) * ${offset})`,
+          "--slot-y": `calc(var(--row-y) + var(--u) * ${(offset * offset * 0.7).toFixed(2)})`,
+          "--slot-rot": `calc(var(--fan-deg) * ${offset} * 1deg)`,
+          ...timing,
+        };
       }),
-    [cards, timings],
+    [cards, timings, grid],
   );
 
   return (
@@ -71,6 +100,7 @@ export const BoosterCards = memo(function BoosterCards({
           cardBackAvailable={cardBackAvailable}
           cardStyle={cardStyles[index]!}
           showcase={showcases[index]}
+          offPage={grid ? Math.floor(index / (grid.cols * grid.rows)) !== page : false}
           onReveal={onReveal}
           onInspect={onInspect}
           onShowcaseDismiss={onShowcaseDismiss}

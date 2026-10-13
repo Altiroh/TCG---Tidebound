@@ -79,7 +79,7 @@ export function NouveauCadreFace({ def, legendaire = false, attack, health, atta
   const { lead: spe, text: reste } = effectLead(def.text, qualifications ?? []);
   // Le texte mesuré inclut la spé. : c'est lui qui occupe la zone d'effet.
   const texteEffet = effectLine(def.text, qualifications ?? []);
-  useFitText(effetRef, texteEffet, rulesSizeCqw(texteEffet), 2.6, EFFET_LISIBLE_CQW);
+  useFitText(effetRef, texteEffet, rulesSizeCqw(texteEffet), 2.6, EFFET_LISIBLE_CQW, RULES_FLOOR);
 
   const cadre = frameName(def, legendaire);
   const calage = CALAGES[cadre];
@@ -234,7 +234,7 @@ export function NouveauCadreFace({ def, legendaire = false, attack, health, atta
             bottom: hasPower || hasResistance ? "14%" : "5%",
             left: "9%",
             right: "9%",
-            fontSize: `${rulesSizeCqw(texteEffet)}cqw`,
+            fontSize: `max(${rulesSizeCqw(texteEffet)}cqw, ${RULES_FLOOR})`,
             lineHeight: 1.18,
             textShadow: HALO_TEXTE,
           }}
@@ -342,6 +342,15 @@ function EffetAbyssal() {
 /** En dessous de cette taille, l'effet se lit mal même en aperçu : l'encart de lecture prend le relais. */
 const EFFET_LISIBLE_CQW = 3.4;
 
+/**
+ * PLANCHER du texte d'effet, en pixels : là où on PARCOURT des cartes
+ * (ouverture de booster, collection), l'effet doit se lire sans ouvrir la
+ * carte (retour du 13/10/2026). Ces écrans posent `--card-rules-min` ; un
+ * texte trop long pour sa zone à cette taille y défile au lieu de
+ * rapetisser. Ailleurs (plateau, main), la variable est absente : 0.
+ */
+const RULES_FLOOR = "var(--card-rules-min, 0px)";
+
 /** Hauteur de la zone du nom : deux lignes à la plus grande taille, jambages compris. */
 const NOM_HAUTEUR_CQW = 30;
 
@@ -353,13 +362,14 @@ const NOM_HAUTEUR_CQW = 30;
  * pas de la taille de la carte : on ne le recalcule qu'au changement de
  * texte et une fois les polices chargées.
  */
-function useFitText(ref: React.RefObject<HTMLElement | null>, text: string, baseCqw: number, minCqw: number, smallCqw?: number) {
+function useFitText(ref: React.RefObject<HTMLElement | null>, text: string, baseCqw: number, minCqw: number, smallCqw?: number, floor?: string) {
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el || !text) return;
+    const sized = (cqw: number) => (floor ? `max(${cqw}cqw, ${floor})` : `${cqw}cqw`);
     const fit = () => {
       let size = baseCqw;
-      el.style.fontSize = `${size}cqw`;
+      el.style.fontSize = sized(size);
       // Le nom est calé en BAS : ce qui déborde part vers le haut, où
       // `scrollHeight` ne le voit pas. On mesure donc son contenu (premier enfant).
       const contenu = (el.firstElementChild as HTMLElement | null) ?? el;
@@ -367,7 +377,7 @@ function useFitText(ref: React.RefObject<HTMLElement | null>, text: string, base
         (contenu === el ? el.scrollHeight : contenu.offsetHeight) > el.clientHeight + 1 || contenu.scrollWidth > el.clientWidth + 1;
       while (size > minCqw && deborde()) {
         size = Math.max(minCqw, size - 0.25);
-        el.style.fontSize = `${size}cqw`;
+        el.style.fontSize = sized(size);
       }
       // Texte devenu PETIT pour tenir : l'aperçu ajoute alors l'encart de
       // lecture (`CardRulesPanel`, affiché par `:has([data-fit-small])`).
@@ -379,7 +389,7 @@ function useFitText(ref: React.RefObject<HTMLElement | null>, text: string, base
     return () => {
       alive = false;
     };
-  }, [ref, text, baseCqw, minCqw, smallCqw]);
+  }, [ref, text, baseCqw, minCqw, smallCqw, floor]);
 }
 
 function nameSizeCqw(name: string): number {

@@ -67,11 +67,31 @@ interface BoosterOpeningSceneProps {
    * laisser croire que tout est fini.
    */
   closeLabel?: string;
+  /**
+   * Nombre de sachets dont viennent `cards`. Un seul : l'éventail habituel.
+   * Plusieurs (ouverture en lot) : TOUTES les cartes du lot sortent, posées
+   * en grille de deux lignes, page après page — on fait défiler vers la
+   * droite pour voir la suite (retour du 13/10/2026).
+   */
+  packCount?: number;
   onClose: () => void;
 }
 
 const PACK_VISIBLE_PHASES: readonly BoosterOpeningPhase[] = ["idle", "enter", "ready", "opening", "cardsSpawning"];
 const CARDS_VISIBLE_PHASES: readonly BoosterOpeningPhase[] = ["cardsSpawning", "cardsReady", "revealing", "completed"];
+
+/** Grille d'un lot : deux lignes, et autant de colonnes que l'écran en loge. */
+const GRID_ROWS = 2;
+
+/** Colonnes par page : six sur un écran large, cinq sinon, trois en portrait. */
+function gridColumns(): number {
+  if (typeof window === "undefined") return 6;
+  const ratio = window.innerWidth / Math.max(1, window.innerHeight);
+  return ratio >= 1.6 ? 6 : ratio >= 1.1 ? 5 : 3;
+}
+
+/** Les raretés qui se révèlent d'elles-mêmes à la sortie du sachet ; les autres attendent, de dos, dans leur halo. */
+const AUTO_REVEAL_RARITIES: readonly BoosterOpeningRarity[] = ["common", "uncommon"];
 
 /** Raretés dont la révélation secoue la scène d'un éclair. */
 const IMPACT_RARITIES: readonly BoosterOpeningRarity[] = ["legendary", "abyssal"];
@@ -148,14 +168,34 @@ function timingVariables(timings: BoosterOpeningTimings, cardCount: number): CSS
  *   - ce composant            : QUAND ça se passe (minuteries, sons, focus)
  *   - `BoosterOpening.module.css` : COMMENT ça bouge (transform/opacity)
  */
-export function BoosterOpeningScene({ cards: tirage, visual, origin = null, closeLabel = "Fermer", onClose }: BoosterOpeningSceneProps) {
-  // Les cartes sortent et se retournent par RARETÉ CROISSANTE : la plus rare
-  // (une Abyssale, au mieux) est toujours la dernière retournée. Tri stable :
-  // à rareté égale, l'ordre du tirage est gardé.
-  const cards = useMemo(() => [...tirage].sort((a, b) => RARITY_ORDER.indexOf(a.rarity) - RARITY_ORDER.indexOf(b.rarity)), [tirage]);
+export function BoosterOpeningScene({ cards: tirage, visual, origin = null, closeLabel = "Fermer", packCount = 1, onClose }: BoosterOpeningSceneProps) {
+  // Les MEILLEURES raretés d'abord (retour du 13/10/2026) : la plus rare
+  // ouvre la rangée — et, en lot, la première page —, les communes ferment
+  // la marche. Tri stable : à rareté égale, l'ordre du tirage est gardé.
+  const cards = useMemo(() => [...tirage].sort((a, b) => RARITY_ORDER.indexOf(b.rarity) - RARITY_ORDER.indexOf(a.rarity)), [tirage]);
   const [reducedMotion] = useState(prefersReducedMotion);
   const [coarsePointer] = useState(hasCoarsePointer);
-  const timings = reducedMotion ? BOOSTER_OPENING_TIMINGS_REDUCED : BOOSTER_OPENING_TIMINGS;
+  const baseTimings = reducedMotion ? BOOSTER_OPENING_TIMINGS_REDUCED : BOOSTER_OPENING_TIMINGS;
+  const isGrid = packCount > 1;
+  // Un lot sort quarante cartes : au rythme d'un sachet, la sortie durait
+  // six secondes. Le lot entier sort en deux secondes environ.
+  const timings = useMemo(
+    () => (isGrid ? { ...baseTimings, cardStagger: Math.min(baseTimings.cardStagger, Math.max(28, Math.round(2000 / Math.max(1, tirage.length)))) } : baseTimings),
+    [isGrid, baseTimings, tirage.length],
+  );
+  const [gridCols, setGridCols] = useState(gridColumns);
+  useEffect(() => {
+    if (!isGrid) return undefined;
+    const update = () => setGridCols(gridColumns());
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, [isGrid]);
+  const grid = useMemo(() => (isGrid ? { cols: gridCols, rows: GRID_ROWS } : null), [isGrid, gridCols]);
+  const pageCount = grid ? Math.max(1, Math.ceil(tirage.length / (grid.cols * grid.rows))) : 1;
+  const [page, setPage] = useState(0);
+  useEffect(() => {
+    setPage((current) => Math.min(current, pageCount - 1));
+  }, [pageCount]);
 
   const [state, dispatch] = useReducer(boosterOpeningReducer, cards.length, createBoosterOpeningState);
   const [assets, setAssets] = useState<BoosterOpeningAssetStatus | null>(null);
@@ -226,7 +266,10 @@ export function BoosterOpeningScene({ cards: tirage, visual, origin = null, clos
       schedule(playPackOpenSound, tearSnapAt(timings));
       schedule(() => dispatch({ type: "packTorn" }), tearSnapAt(timings) + timings.spawnAfterSnap);
     } else if (phase === "cardsSpawning") {
-      for (let index = 0; index < cards.length; index += 1) {
+      // Un son par carte, mais pas plus d'un toutes les 90 ms : en lot, les
+      // sorties se chevauchent et le bruit couvrait tout.
+      const soundEvery = Math.max(1, Math.ceil(90 / Math.max(1, timings.cardStagger)));
+      for (let index = 0; index < cards.length; index += soundEvery) {
         schedule(playCardSpawnSound, index * timings.cardStagger);
       }
       schedule(() => dispatch({ type: "cardsPlaced" }), cardsSettledAt(timings, cards.length));
@@ -239,6 +282,30 @@ export function BoosterOpeningScene({ cards: tirage, visual, origin = null, clos
   useEffect(() => {
     if (phase === "completed" && !showcaseActive) schedule(() => closeButtonRef.current?.focus({ preventScroll: true }), timings.uiIn);
   }, [phase, showcaseActive, schedule, timings]);
+
+  /**
+   * Les COMMUNES et PEU COMMUNES se retournent d'elles-mêmes dès qu'elles
+   * sont posées, en cascade rapide : il n'y a rien à attendre d'elles. Les
+   * raretés hautes (rare, épique, légendaire, abyssale) restent de dos dans
+   * le halo de leur rareté, et c'est au joueur de les retourner (retour du
+   * 13/10/2026).
+   */
+  const autoRevealDone = useRef(false);
+  useEffect(() => {
+    if (phase !== "cardsReady" || autoRevealDone.current) return;
+    autoRevealDone.current = true;
+    const step = isGrid ? 45 : 90;
+    let order = 0;
+    cards.forEach((card, index) => {
+      if (!AUTO_REVEAL_RARITIES.includes(card.rarity)) return;
+      const position = order;
+      order += 1;
+      // Un retournement sur trois s'entend : une cascade, pas une rafale.
+      schedule(() => handleReveal(index, position % 3 !== 0), position * step);
+    });
+    // `handleReveal` est stable pour une scène donnée.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase]);
 
   const handleOpenPack = useCallback(() => {
     if (stateRef.current.phase !== "ready") return;
@@ -258,7 +325,7 @@ export function BoosterOpeningScene({ cards: tirage, visual, origin = null, clos
 
   // --- Révélation d'une carte. ---------------------------------------------
   const handleReveal = useCallback(
-    (index: number) => {
+    (index: number, quiet = false) => {
       const card = cards[index];
       if (!card || revealRequested.current.has(index) || !isCardInteractive(stateRef.current, index)) return;
       revealRequested.current.add(index);
@@ -268,7 +335,7 @@ export function BoosterOpeningScene({ cards: tirage, visual, origin = null, clos
 
       schedule(() => {
         if (pause > 0) dispatch({ type: "flipStarted", index });
-        playCardFlipSound();
+        if (!quiet) playCardFlipSound();
       }, pause);
 
       schedule(() => {
@@ -285,6 +352,12 @@ export function BoosterOpeningScene({ cards: tirage, visual, origin = null, clos
     },
     [cards, schedule, timings, reducedMotion],
   );
+
+  /** « Tout retourner » : les cartes encore de dos se retournent en cascade. */
+  const revealAll = useCallback(() => {
+    const hidden = stateRef.current.cards.flatMap((cardState, index) => (cardState === "hidden" ? [index] : []));
+    hidden.forEach((index, position) => schedule(() => handleReveal(index, position % 2 !== 0), position * 120));
+  }, [handleReveal, schedule]);
 
   // --- Fermeture : aucune sauvegarde, on rend simplement la main. ---------
   const handleClose = useCallback(() => {
@@ -335,14 +408,74 @@ export function BoosterOpeningScene({ cards: tirage, visual, origin = null, clos
     [handleReveal],
   );
 
+  /**
+   * LOT : on tourne les pages en glissant (doigt ou souris), au pavé
+   * tactile, aux flèches du clavier ou aux boutons. Le glisser-retourner
+   * d'un sachet n'existe pas ici — il n'y reste que des raretés hautes à
+   * retourner, et elles se retournent au toucher ou au survol.
+   */
+  const drag = useRef<{ x: number; y: number; id: number; moved: boolean } | null>(null);
+  const suppressClick = useRef(false);
+  const wheel = useRef(0);
+  const turnPage = useCallback(
+    (delta: number) => {
+      setPage((current) => {
+        const next = Math.min(pageCount - 1, Math.max(0, current + delta));
+        if (next !== current) playCardSpawnSound();
+        return next;
+      });
+    },
+    [pageCount],
+  );
+
+  function handleGridPointerDown(event: ReactPointerEvent<HTMLDivElement>) {
+    drag.current = { x: event.clientX, y: event.clientY, id: event.pointerId, moved: false };
+    suppressClick.current = false;
+  }
+
+  function handleGridPointerMove(event: ReactPointerEvent<HTMLDivElement>) {
+    const current = drag.current;
+    if (!current || current.id !== event.pointerId || current.moved) return;
+    const dx = event.clientX - current.x;
+    if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(event.clientY - current.y)) {
+      current.moved = true;
+      suppressClick.current = true;
+      turnPage(dx < 0 ? 1 : -1);
+    }
+  }
+
+  function handleGridPointerUp(event: ReactPointerEvent<HTMLDivElement>) {
+    if (drag.current?.id === event.pointerId) drag.current = null;
+  }
+
+  function handleGridWheel(event: React.WheelEvent<HTMLDivElement>) {
+    const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
+    wheel.current += delta;
+    if (Math.abs(wheel.current) < 80) return;
+    turnPage(Math.sign(wheel.current));
+    wheel.current = 0;
+  }
+
+  useEffect(() => {
+    if (!isGrid) return undefined;
+    function handleArrows(event: KeyboardEvent) {
+      if (detailOpenRef.current) return;
+      if (event.key === "ArrowRight") turnPage(1);
+      else if (event.key === "ArrowLeft") turnPage(-1);
+    }
+    window.addEventListener("keydown", handleArrows);
+    return () => window.removeEventListener("keydown", handleArrows);
+  }, [isGrid, turnPage]);
+
   const sceneStyle = useMemo(
     () =>
       ({
         ...timingVariables(timings, cards.length),
+        ...(grid ? { "--grid-cols": `${grid.cols}` } : {}),
         ...packVisualVariables(visual),
         "--pack-closed-art": `url("${visual.assets.closed}")`,
       }) as CSSProperties,
-    [timings, cards.length, visual],
+    [timings, cards.length, visual, grid],
   );
 
   const revealedCount = state.cards.filter((card) => card === "revealed").length;
@@ -360,6 +493,7 @@ export function BoosterOpeningScene({ cards: tirage, visual, origin = null, clos
       data-closing={closing || undefined}
       data-reduced-motion={reducedMotion || undefined}
       data-origin={origin ? "dock" : undefined}
+      data-layout={isGrid ? "grid" : undefined}
       role="dialog"
       aria-modal="true"
       aria-label="Ouverture de booster"
@@ -372,8 +506,27 @@ export function BoosterOpeningScene({ cards: tirage, visual, origin = null, clos
       </div>
       {!reducedMotion && <BoosterParticles variant="ambient" />}
 
-      <div className={styles.stage} onPointerDown={handleScenePointer} onPointerMove={handleScenePointer}>
+      <div
+        className={styles.stage}
+        onPointerDown={isGrid ? handleGridPointerDown : handleScenePointer}
+        onPointerMove={isGrid ? handleGridPointerMove : handleScenePointer}
+        onPointerUp={isGrid ? handleGridPointerUp : undefined}
+        onPointerCancel={isGrid ? handleGridPointerUp : undefined}
+        onWheel={isGrid ? handleGridWheel : undefined}
+        onClickCapture={(event) => {
+          // Un glisser qui tourne la page n'est pas un toucher de carte.
+          if (suppressClick.current) {
+            suppressClick.current = false;
+            event.stopPropagation();
+          }
+        }}
+      >
         {showCards && (
+          <div
+            className={styles.cardsTrack}
+            data-scrolled={grid && page > 0 ? "true" : undefined}
+            style={grid ? ({ "--grid-shift": `calc(var(--slot-step) * ${page * grid.cols})` } as CSSProperties) : undefined}
+          >
           <BoosterCards
             cards={cards}
             states={state.cards}
@@ -384,7 +537,38 @@ export function BoosterOpeningScene({ cards: tirage, visual, origin = null, clos
             onReveal={handleReveal}
             onInspect={setDetailCardId}
             onShowcaseDismiss={dismissShowcase}
+            grid={grid}
+            page={page}
           />
+          </div>
+        )}
+
+        {/* Pages d'un lot : flèches de part et d'autre, compte en dessous. */}
+        {grid && pageCount > 1 && showCards && phase !== "cardsSpawning" && !showcaseActive && (
+          <>
+            <button type="button" className={styles.pageArrow} data-side="prev" onClick={() => turnPage(-1)} disabled={page === 0} aria-label="Cartes précédentes">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" aria-hidden>
+                <path d="M14.5 5.5L8 12l6.5 6.5" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              className={styles.pageArrow}
+              data-side="next"
+              onClick={() => turnPage(1)}
+              disabled={page >= pageCount - 1}
+              aria-label="Cartes suivantes"
+            >
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" aria-hidden>
+                <path d="M9.5 5.5L16 12l-6.5 6.5" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+            <span className={styles.pageDots} aria-label={`Page ${page + 1} sur ${pageCount}`}>
+              {Array.from({ length: pageCount }, (_, dot) => (
+                <span key={dot} data-active={dot === page || undefined} />
+              ))}
+            </span>
+          </>
         )}
 
         {showPack && (
@@ -425,7 +609,13 @@ export function BoosterOpeningScene({ cards: tirage, visual, origin = null, clos
             showCards &&
             phase !== "cardsSpawning" && (
               <>
-                {coarsePointer ? "Fais glisser ton doigt sur les cartes pour les retourner" : "Survole chaque carte pour la retourner"}
+                {isGrid
+                  ? coarsePointer
+                    ? "Touche les cartes rares pour les retourner · glisse pour voir la suite"
+                    : "Survole les cartes rares pour les retourner · ← → pour voir la suite"
+                  : coarsePointer
+                    ? "Fais glisser ton doigt sur les cartes rares pour les retourner"
+                    : "Survole les cartes rares pour les retourner"}
                 <span className={styles.hintCount}>
                   {revealedCount} / {cards.length}
                 </span>
@@ -434,10 +624,16 @@ export function BoosterOpeningScene({ cards: tirage, visual, origin = null, clos
           )}
         </p>
 
+        {cardsInteractive && state.cards.some((card) => card === "hidden") && (
+          <button type="button" className={`${styles.closeButton} ${styles.revealAllButton}`} onClick={revealAll}>
+            Tout retourner
+          </button>
+        )}
+
         {phase === "completed" && !showcaseActive && (
           <>
             <p className={styles.inspectHint}>
-              {coarsePointer ? "Touche une carte pour voir sa fiche" : "Clique sur une carte pour voir sa fiche"}
+              {coarsePointer ? "Touche ou reste appuyé sur une carte pour voir sa fiche" : "Clique sur une carte pour voir sa fiche"}
             </p>
             <button ref={closeButtonRef} type="button" className={styles.closeButton} onClick={handleClose}>
               {closeLabel}

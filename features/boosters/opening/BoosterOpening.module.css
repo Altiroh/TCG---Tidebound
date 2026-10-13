@@ -34,6 +34,8 @@
    * assez.
    */
   --count: 8;
+  /* L'effet des cartes se lit sans les ouvrir (cf. `RULES_FLOOR`). */
+  --card-rules-min: 9px;
   /* Marge minimale de chaque côté de la rangée, pour que l'éventail ne
      vienne pas lécher le bord de l'écran. */
   --scene-gutter: clamp(10px, 2.5vw, 48px);
@@ -184,6 +186,141 @@
     --card-w-u: 25;
     --slot-step-u: 23;
   }
+}
+
+/*
+ * LOT DE SACHETS (`data-layout="grid"`) : toutes les cartes du lot, en
+ * GRILLE de deux lignes et `--grid-cols` colonnes par page (posé par la
+ * scène : 6, 5 ou 3 selon la forme de l'écran), pages côte à côte. L'unité
+ * se règle pour que deux rangées de cartes, la consigne au-dessus et le
+ * bouton en dessous tiennent en hauteur, et une page en largeur (flèches
+ * comprises). Les cartes y sont aussi grandes qu'en éventail : le texte
+ * de leurs effets doit se lire sans les ouvrir.
+ */
+.scene[data-layout="grid"] {
+  --card-w-u: 22;
+  --slot-step-u: 24.5;
+  --row-gap-u: 3.5;
+  --row-y-u: -3;
+  --fan-deg: 0;
+  --row-step: calc(var(--card-h) + var(--u) * var(--row-gap-u));
+  --row-w-u: calc(var(--grid-cols, 6) * var(--slot-step-u) + 16);
+  --grid-h-u: calc(2 * var(--card-w-u) * 1.4 + var(--row-gap-u) + 22);
+  --u: min(calc(100dvh / var(--grid-h-u)), calc((100vw - 2 * var(--scene-gutter)) / var(--row-w-u)));
+}
+
+/* La piste : `display: contents`, elle ne fait que porter le décalage de page. */
+.cardsTrack {
+  display: contents;
+}
+
+/*
+ * Tourner la page : chaque carte glisse de la largeur d'une page. La
+ * propriété `translate` s'AJOUTE à la trajectoire animée (`transform`) sans
+ * la contredire. Le gros plan d'une Abyssale ramène la carte au centre :
+ * le décalage y est annulé.
+ */
+.scene[data-layout="grid"] .card {
+  translate: calc(var(--grid-shift, 0px) * -1) 0;
+  transition: translate 520ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* Les cartes des pages voisines dépassent au bord : estompées, elles
+   annoncent la suite sans se mêler à la page qu'on regarde. */
+.scene[data-layout="grid"] .card[data-off-page] .cardLift {
+  opacity: 0.22;
+  transition: opacity 360ms ease-out;
+}
+
+.scene[data-layout="grid"] .card[data-off-page] {
+  pointer-events: none;
+}
+
+.scene[data-layout="grid"] .card:not([data-off-page]) .cardLift {
+  transition: opacity 360ms ease-out, transform 260ms cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+
+.scene[data-layout="grid"] .card[data-showcase="in"],
+.scene[data-layout="grid"] .card[data-showcase="out"] {
+  translate: 0 0;
+}
+
+.scene[data-layout="grid"] .hint {
+  top: calc(50% + var(--row-y) - var(--row-step) / 2 - var(--card-h) / 2 - var(--u) * 6);
+}
+
+.scene[data-layout="grid"] .inspectHint {
+  top: calc(50% + var(--row-y) + var(--row-step) / 2 + var(--card-h) / 2 + var(--u) * 1.6);
+}
+
+.scene[data-layout="grid"] .closeButton {
+  top: calc(50% + var(--row-y) + var(--row-step) / 2 + var(--card-h) / 2 + var(--u) * 6);
+}
+
+/* Flèches de page : le laiton des rivets, de part et d'autre de la grille. */
+.pageArrow {
+  position: absolute;
+  top: calc(50% + var(--row-y));
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  width: clamp(36px, calc(var(--u) * 5), 54px);
+  height: clamp(36px, calc(var(--u) * 5), 54px);
+  border: 1px solid rgba(217, 181, 106, 0.7);
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 30%, #1d2a33, #081018 75%);
+  color: var(--ivory);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 230, 170, 0.22);
+  cursor: var(--tb-cursor-pointer);
+  translate: 0 -50%;
+  transition: opacity 160ms ease-out, border-color 140ms ease-out, scale 140ms ease-out;
+  animation: sceneIn 300ms ease-out both;
+}
+
+.pageArrow[data-side="prev"] {
+  left: max(var(--scene-gutter), calc(50% - var(--slot-step) * var(--grid-cols, 6) / 2 - var(--u) * 7));
+}
+
+.pageArrow[data-side="next"] {
+  right: max(var(--scene-gutter), calc(50% - var(--slot-step) * var(--grid-cols, 6) / 2 - var(--u) * 7));
+}
+
+.pageArrow:hover:not(:disabled) {
+  border-color: var(--teal);
+  scale: 1.06;
+}
+
+.pageArrow:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: 2px;
+}
+
+.pageArrow:disabled {
+  opacity: 0.25;
+  cursor: var(--tb-cursor);
+}
+
+.pageDots {
+  position: absolute;
+  left: 50%;
+  top: calc(50% + var(--row-y) + var(--row-step) / 2 + var(--card-h) / 2 + var(--u) * 4.2);
+  z-index: 30;
+  display: flex;
+  gap: 7px;
+  translate: -50% 0;
+}
+
+.pageDots > span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(233, 226, 209, 0.3);
+  transition: background-color 200ms ease-out;
+}
+
+.pageDots > span[data-active] {
+  background: var(--teal);
+  box-shadow: 0 0 6px rgba(79, 196, 206, 0.8);
 }
 
 /* ---------- Fond ---------- */
@@ -1216,6 +1353,22 @@
 }
 
 /*
+ * RARETÉ HAUTE, ENCORE DE DOS : les communes et peu communes se retournent
+ * d'elles-mêmes ; une rare, une épique, une légendaire ou une abyssale
+ * reste de dos et ATTEND le joueur, déjà entourée du halo de sa rareté —
+ * bleu, violet, or, violet abyssal — qui respire (opacité seule). Une
+ * rareté à venir (brillante…) n'a qu'à poser ses `--glow` pour l'avoir.
+ */
+.card[data-state="hidden"]:is([data-rarity="rare"], [data-rarity="epic"], [data-rarity="legendary"], [data-rarity="abyssal"]) .cardGlow {
+  animation: hiddenGlow 1500ms ease-in-out infinite alternate;
+}
+
+@keyframes hiddenGlow {
+  from { opacity: 0.55; }
+  to { opacity: 1; }
+}
+
+/*
  * NOUVEAU CADRE (`features/match/cardFrame.ts`) : la silhouette du cadre est en retrait de la boîte
  * de la carte (environ 1 % en haut et en bas, 3,6 % sur les côtés, mesurés
  * sur `frames/nouveau/cadre.webp`). La face perd sa plaque et son ombre
@@ -1663,6 +1816,15 @@
     background 180ms ease,
     box-shadow 180ms ease;
 }
+/* « Tout retourner » : le bouton de sortie, à sa place, tant qu'il reste des cartes de dos. */
+.revealAllButton {
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 214, 140, 0.7),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 0 18px -4px rgba(255, 200, 110, 0.55),
+    0 10px 24px -8px rgba(0, 0, 0, 0.7);
+}
+
 .closeButton:hover,
 .closeButton:focus-visible {
   outline: none;
