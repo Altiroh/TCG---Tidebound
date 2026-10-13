@@ -45,15 +45,14 @@ function Mosaic({ cover, others }: { cover: string | null; others: string[] }) {
 function Tile({ href, title, count, cover, others, glyph, menu }: { href: string; title: string; count: number; cover: string | null; others: string[]; glyph: ReactNode; menu?: ReactNode }) {
   return (
     <li className={styles.tile}>
-      <Link href={href} className={styles.tileLink} onClick={() => playButtonClick()}>
+      <Link href={href} className={styles.tileLink} onClick={() => playButtonClick()} aria-label={`${title} — ${count} carte${count > 1 ? "s" : ""}`}>
         <Mosaic cover={cover} others={others} />
-        <span className={styles.tileText}>
-          <span className={styles.tileName}>
-            {glyph} {title}
-          </span>
-          <span className={styles.tileCount}>
-            {count} carte{count > 1 ? "s" : ""}
-          </span>
+        <span className={styles.tileName}>
+          {glyph}
+          <span className={styles.tileNameText}>{title}</span>
+        </span>
+        <span className={styles.tileCount}>
+          {count} carte{count > 1 ? "s" : ""}
         </span>
       </Link>
       {menu}
@@ -64,8 +63,9 @@ function Tile({ href, title, count, cover, others, glyph, menu }: { href: string
 type Editing = { kind: "create" } | { kind: "rename"; notebook: CardNotebook } | { kind: "delete"; notebook: CardNotebook } | { kind: "cover"; notebook: CardNotebook } | null;
 
 /**
- * LE MUR DES CARNETS — tous les carnets du joueur en tuiles, comme les
- * tableaux d'un profil Pinterest, ses Favoris en tête. Une tuile ouvre la
+ * LE MUR DES CARNETS — tous les carnets du joueur en fiches épinglées sur
+ * la table de la Collection, ses Favoris en tête (pièces de
+ * `public/assets/ui/`, cf. `Shelf.module.css`). Une tuile ouvre la
  * Collection filtrée sur ce carnet ; son menu le renomme, change sa
  * couverture ou le supprime (jamais les cartes elles-mêmes).
  *
@@ -158,7 +158,7 @@ export function NotebookWall({ isSignedIn }: { isSignedIn: boolean }) {
               />
             );
           })}
-          <li className={styles.tile}>
+          <li className={styles.tile} data-new="">
             <button type="button" className={styles.newTile} disabled={full} onClick={() => open({ kind: "create" })}>
               <span aria-hidden>+</span>
               {full ? `${NOTEBOOK_LIMIT} carnets au plus` : "Nouveau carnet"}
@@ -177,16 +177,14 @@ export function NotebookWall({ isSignedIn }: { isSignedIn: boolean }) {
 
   return (
     <GameScreen active="collection">
-      <section className={`${game.panel} ${styles.wallPanel}`} aria-labelledby="carnets-titre">
+      <section className={styles.wallPage} aria-labelledby="carnets-titre">
         <header className={styles.wallHead}>
-          <div>
-            <Link href="/collection" className={styles.back} onClick={() => playButtonClick()}>
-              ← Collection
-            </Link>
-            <h1 id="carnets-titre" className={styles.wallTitle}>
-              Mes carnets
-            </h1>
-          </div>
+          <Link href="/collection" className={styles.back} onClick={() => playButtonClick()}>
+            ← Collection
+          </Link>
+          <h1 id="carnets-titre" className={styles.wallTitle}>
+            Mes carnets
+          </h1>
         </header>
         {body}
       </section>

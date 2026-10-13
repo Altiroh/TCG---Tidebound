@@ -427,89 +427,144 @@
 
 /* ── Le mur des carnets ────────────────────────────────────────────── */
 
-.wallPanel {
+/*
+ * LE MUR DES CARNETS (refait le 13/10/2026, avec les pièces de
+ * `public/assets/ui/` — cf. son README) : plus de panneau de verre sombre.
+ * Sur la table de la Collection, la BANDEROLE porte le titre, un ONGLET de
+ * parchemin ramène à la Collection, et chaque carnet est une FICHE
+ * ÉPINGLÉE (celle de Collectables) : la mosaïque de ses cartes dans le
+ * haut, son nom sur la PLAQUE de parchemin, son compte et ses gestes à
+ * l'encre en dessous. La page défile en hauteur, jamais en largeur.
+ */
+.wallPage {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  width: min(1180px, calc(100% - 2 * var(--tb-safe-gutter, 16px)));
+  align-items: center;
+  gap: clamp(10px, 2vh, 22px);
+  width: 100%;
   max-height: 100%;
-  margin: 0 auto;
-  padding: clamp(14px, 2vw, 24px);
+  min-height: 0;
+  padding:
+    clamp(6px, 1.4vh, 16px)
+    calc(clamp(12px, 3vw, 48px) + var(--tb-safe-right))
+    calc(clamp(12px, 2vh, 24px) + var(--tb-safe-bottom))
+    calc(clamp(12px, 3vw, 48px) + var(--tb-safe-left));
+  overflow-x: hidden;
   overflow-y: auto;
+  scrollbar-width: thin;
 }
 
 .wallHead {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 12px;
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: min(100%, 1180px);
 }
 
+/* Retour : l'onglet de parchemin des étagères, calé à gauche du titre. */
 .back {
-  color: var(--tb-text-muted);
-  font-size: calc(13px * var(--tb-text-scale));
-  text-decoration: none;
-}
-
-.back:hover {
-  color: var(--tb-accent);
-}
-
-.wallTitle {
-  margin: 4px 0 0;
-  color: var(--tb-text-strong);
+  position: absolute;
+  left: 0;
+  top: 50%;
+  display: inline-flex;
+  align-items: center;
+  height: clamp(30px, 4.4vh, 40px);
+  padding: 0 clamp(14px, 1.4vw, 22px);
+  background: url("/assets/ui/plaques/onglet.webp") center / 100% 100% no-repeat;
+  color: #4a3320;
   font-family: var(--tb-font-display, Georgia, serif);
-  font-size: calc(clamp(22px, 2.4vw, 30px) * var(--tb-text-scale));
+  font-size: calc(clamp(max(11px, var(--tb-fs-floor, 0px)), 0.95vw, 14px) * var(--tb-text-scale));
   font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+  rotate: -1deg;
+  translate: 0 -50%;
+  filter: sepia(0.2) drop-shadow(0 2px 3px rgba(0, 0, 0, 0.45));
+  transition: filter 160ms ease-out;
+}
+
+.back:hover,
+.back:focus-visible {
+  color: #1d120a;
+  filter: brightness(1.08) drop-shadow(0 0 5px rgba(255, 214, 140, 0.7)) drop-shadow(0 2px 3px rgba(0, 0, 0, 0.45));
+}
+
+/* Le titre sur la banderole à pans roulés (table des Decks). */
+.wallTitle {
+  display: grid;
+  place-items: center;
+  width: clamp(240px, 30vw, 420px);
+  aspect-ratio: 900 / 249;
+  margin: 0;
+  padding-bottom: 1.5%;
+  background: url("/assets/ui/bandeaux/banderole.webp") center / 100% 100% no-repeat;
+  color: #3a2614;
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-size: calc(clamp(18px, 1.9vw, 28px) * var(--tb-text-scale));
+  font-weight: 700;
+  font-variant: small-caps;
+  letter-spacing: 0.04em;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.5));
 }
 
 .wall {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
-  gap: clamp(12px, 1.6vw, 20px);
+  grid-template-columns: repeat(auto-fill, minmax(clamp(112px, 15vw, 210px), 1fr));
+  gap: clamp(14px, 2vw, 28px) clamp(12px, 1.6vw, 24px);
+  width: min(100%, 1180px);
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
+/* Une fiche épinglée (589 × 900 ; l'épingle tient les 6,6 % du haut). */
 .tile {
   position: relative;
-  display: grid;
-  gap: 6px;
+  aspect-ratio: 589 / 900;
+  background: url("/assets/ui/panneaux/fiche-epinglee.webp") center / 100% 100% no-repeat;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.5));
+  transition: translate 180ms ease-out, filter 180ms ease-out;
 }
 
+.tile:nth-child(3n + 1) { rotate: -0.8deg; }
+.tile:nth-child(3n + 2) { rotate: 0.6deg; }
+.tile:nth-child(3n) { rotate: -0.3deg; }
+
+.tile:hover {
+  translate: 0 -4px;
+  filter: drop-shadow(0 10px 14px rgba(0, 0, 0, 0.55));
+}
+
+/* Tout le haut de la fiche ouvre le carnet ; les gestes restent dessous. */
 .tileLink {
-  display: grid;
-  gap: 8px;
+  position: absolute;
+  inset: 0 0 18% 0;
   color: inherit;
   text-decoration: none;
 }
 
 .tileLink:focus-visible {
-  outline: 2px solid var(--tb-accent);
-  outline-offset: 4px;
-  border-radius: 14px;
+  outline: 2px solid #1c6d86;
+  outline-offset: -4px;
+  border-radius: 8px;
 }
 
-/* La mosaïque : une grande image à gauche, deux petites à droite. */
+/* La mosaïque, dans la fenêtre de la fiche : une grande carte, deux petites. */
 .mosaic {
+  position: absolute;
+  left: 9%;
+  right: 9%;
+  top: 10%;
+  height: 50%;
   display: grid;
   grid-template-columns: 2fr 1fr;
   grid-template-rows: 1fr 1fr;
-  gap: 3px;
-  aspect-ratio: 3 / 2;
+  gap: 2px;
   overflow: hidden;
-  border: 1px solid var(--tb-border);
-  border-radius: 14px;
-  background: rgba(4, 10, 18, 0.6);
-  box-shadow: var(--tb-shadow-md);
-  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
-}
-
-.tileLink:hover .mosaic {
-  transform: translateY(-2px);
-  border-color: var(--tb-border-strong);
-  box-shadow: var(--tb-shadow-lg, var(--tb-shadow-md));
+  border: 2px solid rgba(74, 51, 32, 0.75);
+  border-radius: 4px;
+  background: #2b1d10;
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.6), 0 1px 0 rgba(255, 240, 210, 0.4);
 }
 
 .mosaic > * {
@@ -524,67 +579,87 @@
 }
 
 .mosaicEmpty {
-  background: rgba(140, 190, 225, 0.05);
+  background: repeating-linear-gradient(135deg, rgba(74, 51, 32, 0.35) 0 6px, rgba(74, 51, 32, 0.2) 6px 12px);
 }
 
-.tileText {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 0 4px;
-}
-
+/* Le nom, sur la plaque de parchemin cerclée (Collectables). */
 .tileName {
-  display: inline-flex;
+  position: absolute;
+  left: 6%;
+  right: 6%;
+  top: 62%;
+  height: 10.5%;
+  display: flex;
   align-items: center;
-  gap: 6px;
+  justify-content: center;
+  gap: 0.35em;
+  padding: 0 9%;
+  background: url("/assets/ui/plaques/plaque-nom.webp") center / 100% 100% no-repeat;
+  color: #1d120a;
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-size: calc(clamp(12px, 1vw, 15px) * var(--tb-text-scale));
+  font-weight: 700;
+  font-variant: small-caps;
+  white-space: nowrap;
+}
+
+.tileNameText {
   min-width: 0;
   overflow: hidden;
-  color: var(--tb-text-strong);
-  font-size: calc(15px * var(--tb-text-scale));
-  font-weight: 700;
   text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .tileName svg {
   flex: none;
-  color: var(--tb-text-muted);
+  color: #6b4a2a;
 }
 
 .tileCount {
-  flex: none;
-  color: var(--tb-text-soft);
-  font-size: calc(12px * var(--tb-text-scale));
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 74%;
+  color: #5a3d22;
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-size: calc(clamp(11px, 0.85vw, 13px) * var(--tb-text-scale));
+  font-style: italic;
+  text-align: center;
   font-variant-numeric: tabular-nums;
 }
 
+/* Les gestes du carnet, à l'encre sur le pied de la fiche. */
 .tileMenu {
+  position: absolute;
+  left: 7%;
+  right: 7%;
+  bottom: 6%;
   display: flex;
-  gap: 4px;
-  padding: 0 2px;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 2px 4px;
 }
 
 .tileMenu button {
-  padding: 2px 8px;
-  border: 1px solid transparent;
-  border-radius: 6px;
+  padding: 2px 6px;
+  border: 0;
+  border-bottom: 1px solid transparent;
   background: none;
-  color: var(--tb-text-muted);
-  font: inherit;
-  font-size: calc(12px * var(--tb-text-scale));
+  color: #4a3320;
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-size: calc(clamp(10px, 0.78vw, 12px) * var(--tb-text-scale));
+  font-weight: 700;
   cursor: var(--tb-cursor-pointer);
 }
 
-.tileMenu button:hover:not(:disabled) {
-  border-color: var(--tb-border);
-  color: var(--tb-text);
+.tileMenu button:hover:not(:disabled),
+.tileMenu button:focus-visible {
+  border-bottom-color: currentColor;
+  color: #1d120a;
+  outline: none;
 }
 
 .tileMenu button[data-danger]:hover {
-  border-color: var(--tb-danger-line, #b85c5c);
-  color: #ff9b93;
+  color: #8c2318;
 }
 
 .tileMenu button:disabled {
@@ -592,42 +667,79 @@
   cursor: var(--tb-cursor);
 }
 
+/* Nouveau carnet : une fiche vierge, un « + » à l'encre. */
 .newTile {
+  position: absolute;
+  inset: 0;
   display: grid;
   place-content: center;
   justify-items: center;
-  gap: 6px;
-  aspect-ratio: 3 / 2;
-  border: 1px dashed var(--tb-border-strong);
-  border-radius: 14px;
-  background: rgba(140, 190, 225, 0.03);
-  color: var(--tb-text-muted);
-  font: inherit;
-  font-size: calc(14px * var(--tb-text-scale));
-  font-weight: 600;
+  gap: 8px;
+  border: 0;
+  background: none;
+  color: #4a3320;
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-size: calc(clamp(13px, 1vw, 16px) * var(--tb-text-scale));
+  font-weight: 700;
   cursor: var(--tb-cursor-pointer);
 }
 
 .newTile span {
+  display: grid;
+  place-items: center;
+  width: 2.2em;
+  height: 2.2em;
+  border: 2px dashed rgba(74, 51, 32, 0.6);
+  border-radius: 50%;
   font-size: calc(28px * var(--tb-text-scale));
   line-height: 1;
 }
 
-.newTile:hover:not(:disabled) {
-  border-color: var(--tb-accent);
-  color: var(--tb-accent);
+.newTile:hover:not(:disabled),
+.newTile:focus-visible {
+  color: #1d120a;
+  outline: none;
 }
 
 .newTile:disabled {
   cursor: var(--tb-cursor);
-  opacity: 0.6;
+  opacity: 0.55;
 }
 
+.tile[data-new] {
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.5)) sepia(0.15) brightness(0.92);
+}
+
+/* Téléphone couché : la banderole et l'onglet se resserrent. */
+@media (max-height: 560px) {
+  .wallTitle {
+    width: clamp(180px, 34vw, 280px);
+  }
+
+  .back {
+    height: 26px;
+    padding: 0 12px;
+  }
+
+  .tileMenu button {
+    padding: 1px 4px;
+  }
+
+  /* Le compte cède sa ligne aux gestes (il reste dans le nom accessible). */
+  .tileCount {
+    display: none;
+  }
+}
+
+/* Messages sur la table : l'encre claire des légendes, lisible sur le bois. */
 .wallEmpty,
 .wallHint {
+  max-width: 60ch;
   margin: 0;
-  color: var(--tb-text-muted);
+  color: #efe6d2;
   font-size: calc(14px * var(--tb-text-scale));
+  text-align: center;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
 }
 
 .coverPicker {
