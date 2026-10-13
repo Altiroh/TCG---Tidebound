@@ -266,16 +266,18 @@ function RouteOfLevels({ profile, claiming, onClaimLevel }: Pick<RewardsHubProps
         )}
         <div className={styles.routeXp}>
           <span className={styles.routeLevelBadge}>{view.level}</span>
+          {/* La jauge passe au MILIEU du médaillon ; les chiffres au-dessus, une ligne vide en dessous qui l'équilibre. */}
           <span className={styles.routeXpBody}>
-            <span className={styles.bar}>
-              <span className={styles.barFill} style={{ width: `${view.ratio * 100}%` }} />
-            </span>
             <span className={styles.routeXpLine}>
               <span>
                 {view.xpIntoLevel} / {view.xpForNextLevel} XP
               </span>
               <span>{profile.maxRewardedLevelReached ? "Dernier palier atteint" : `encore ${view.xpToNextLevel} XP`}</span>
             </span>
+            <span className={`${styles.bar} ${styles.routeXpBar}`}>
+              <span className={styles.barFill} style={{ width: `${view.ratio * 100}%` }} />
+            </span>
+            <span aria-hidden />
           </span>
         </div>
       </header>
@@ -341,16 +343,22 @@ function RouteOfLevels({ profile, claiming, onClaimLevel }: Pick<RewardsHubProps
         </button>
       </div>
 
-      {/* Le fil de la route : il s'allume jusqu'au niveau atteint. */}
+      {/* Le fil de la route, juste sous les pointes des parchemins : il s'allume jusqu'au niveau atteint,
+          puis avance vers le suivant au rythme de l'XP. `--idx` : la position atteinte, en tuiles depuis la
+          première affichée (le CSS la place au centre exact des tuiles, écarts compris). */}
       <div className={styles.routeTrack} aria-hidden>
-        {/* Le fil passe par le CENTRE de chaque tuile : il atteint le losange
-            du niveau atteint, puis avance vers le suivant au rythme de l'XP. */}
         <span
           className={styles.routeTrackFill}
-          style={{ width: `${Math.max(0, Math.min(1, (view.level - start + 0.5 + (view.level >= MAX_REWARDED_LEVEL ? 0 : view.ratio)) / ROUTE_WINDOW)) * 100}%` }}
+          style={{ ["--idx" as string]: view.level - start + (view.level >= MAX_REWARDED_LEVEL ? 0 : view.ratio) }}
         />
         {levels.map((level) => (
-          <span key={level} className={styles.routeDot} data-reached={level <= view.level ? "" : undefined} />
+          <span
+            key={level}
+            className={styles.routeDot}
+            data-reached={level <= view.level ? "" : undefined}
+            data-current={level === view.level ? "" : undefined}
+            data-claimable={claimable.has(level) ? "" : undefined}
+          />
         ))}
       </div>
     </section>
