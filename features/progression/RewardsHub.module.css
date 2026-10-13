@@ -377,45 +377,60 @@
 }
 
 /*
- * LE FIL DE LA ROUTE (refait le 13/10/2026 : « mal dessiné ») — une
- * filière de laiton tendue JUSTE SOUS les pointes des parchemins, un
- * losange sous chaque tuile, à son centre exact. Il s'allume jusqu'au
- * niveau atteint et avance vers le suivant au rythme de l'XP.
+ * LE FIL DE LA ROUTE (refait le 13/10/2026 : « ne s'intègre pas ») — un
+ * fil d'OR fin, du centre de la première tuile au centre de la dernière,
+ * tendu sous les pointes des parchemins et SOUS le bouton « Réclamer »
+ * (il le traversait). Plus de barre cyan d'un bord à l'autre : la route
+ * est dans le laiton des tuiles et des losanges. Le tronçon parcouru
+ * brille, le reste est un filet sombre ; un losange par tuile, à son
+ * centre exact.
  *
- * Même largeur que la rangée de tuiles (flèche + écart de chaque côté) et
- * mêmes colonnes. Le remplissage se calcule sur la géométrie de la grille :
- * une tuile fait (100 % − 5 écarts) / 6, et deux centres sont séparés d'une
- * tuile plus un écart — `--idx` (positions depuis la première tuile)
- * suffit à placer le bout du fil.
+ * Mêmes colonnes que la rangée de tuiles : une tuile fait
+ * (100 % − 5 écarts) / 6, et deux centres sont séparés d'une tuile plus
+ * un écart — `--idx` (positions depuis la première tuile) place le bout
+ * du tronçon parcouru.
  */
 .routeTrack {
   --gap: calc(1.1cqw * var(--z, 1));
+  --tile: calc((100% - 5 * var(--gap)) / 6);
   position: absolute;
   left: calc(2.3cqw * var(--z, 1));
   right: calc(2.3cqw * var(--z, 1));
-  /* Les tuiles finissent à 83 % (rangée : 25 % + 58 %) ; le fil passe sous leurs pointes. */
-  top: 85%;
-  height: calc(0.62cqw * var(--z, 1));
-  min-height: 5px;
+  top: 90%;
+  height: calc(1.6cqw * var(--z, 1));
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
   column-gap: var(--gap);
   align-items: center;
   justify-items: center;
-  border: 1px solid rgba(199, 154, 75, 0.75);
-  border-radius: 999px;
-  background: linear-gradient(180deg, rgba(4, 10, 16, 0.85), rgba(14, 24, 34, 0.85));
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.8), 0 calc(0.2cqw * var(--z, 1)) calc(0.6cqw * var(--z, 1)) rgba(0, 0, 0, 0.6);
   transform: translateY(-50%);
 }
 
+/* Le filet d'un centre à l'autre : laiton sombre, liseré d'ombre. */
+.routeTrack::before {
+  content: "";
+  position: absolute;
+  left: calc(var(--tile) / 2);
+  right: calc(var(--tile) / 2);
+  top: 50%;
+  height: max(2px, calc(0.22cqw * var(--z, 1)));
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(120, 88, 40, 0.9), rgba(160, 120, 58, 0.9), rgba(120, 88, 40, 0.9));
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.55), 0 calc(0.15cqw * var(--z, 1)) calc(0.4cqw * var(--z, 1)) rgba(0, 0, 0, 0.7);
+  transform: translateY(-50%);
+}
+
+/* Le tronçon parcouru : l'or des losanges atteints, qui luit. */
 .routeTrackFill {
   position: absolute;
-  inset: 0 auto 0 0;
-  width: clamp(0%, calc((100% - 5 * var(--gap)) / 12 + var(--idx, 0) * ((100% - 5 * var(--gap)) / 6 + var(--gap))), 100%);
-  border-radius: inherit;
-  background: linear-gradient(90deg, #1d6f8c, #3cc8f0 70%, #b8f1ff);
-  box-shadow: 0 0 calc(0.8cqw * var(--z, 1)) rgba(95, 208, 230, 0.7);
+  left: calc(var(--tile) / 2);
+  top: 50%;
+  height: max(3px, calc(0.3cqw * var(--z, 1)));
+  width: clamp(0%, calc(var(--idx, 0) * (var(--tile) + var(--gap))), calc(100% - var(--tile)));
+  border-radius: 999px;
+  background: linear-gradient(90deg, #a8742a, #f3c86b 60%, #fff1c2);
+  box-shadow: 0 0 calc(0.7cqw * var(--z, 1)) rgba(243, 200, 107, 0.6);
+  transform: translateY(-50%);
   transition: width 700ms cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 
@@ -423,10 +438,10 @@
 .routeDot {
   position: relative;
   z-index: 1;
-  width: calc(1.25cqw * var(--z, 1));
-  height: calc(1.25cqw * var(--z, 1));
-  min-width: 9px;
-  min-height: 9px;
+  width: calc(1.05cqw * var(--z, 1));
+  height: calc(1.05cqw * var(--z, 1));
+  min-width: 8px;
+  min-height: 8px;
   transform: rotate(45deg);
   border: calc(0.14cqw * var(--z, 1)) solid #c79a4b;
   background: radial-gradient(circle at 35% 35%, #22364a, #08131d);
@@ -439,10 +454,10 @@
 }
 
 .routeDot[data-current] {
-  width: calc(1.6cqw * var(--z, 1));
-  height: calc(1.6cqw * var(--z, 1));
-  border-color: #b8f1ff;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5), 0 0 calc(0.9cqw * var(--z, 1)) rgba(60, 200, 240, 0.85);
+  width: calc(1.5cqw * var(--z, 1));
+  height: calc(1.5cqw * var(--z, 1));
+  border-color: #fff1c2;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5), 0 0 calc(0.9cqw * var(--z, 1)) rgba(243, 200, 107, 0.9);
 }
 
 /* Un palier à réclamer : son losange pulse doucement (opacité seulement). */
