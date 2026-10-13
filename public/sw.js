@@ -15,7 +15,9 @@
 // recharger : couper l'app sous une partie en cours pour changer de version
 // serait le pire moment possible. Le client répond en postant
 // `{ type: "SKIP_WAITING" }`, et c'est seulement là que la relève a lieu.
-const CACHE_VERSION = "tidebound-shell-v3";
+// v4 (13/10/2026) : nouveau logo — les icônes gardent leur nom, seul un
+// nouveau cache les fait relire aux appareils déjà installés.
+const CACHE_VERSION = "tidebound-shell-v4";
 const APP_SHELL_URLS = ["/offline.html", "/manifest.webmanifest"];
 
 /** Préfixes servis depuis le cache (assets versionnés par leur contenu ou remplacés sous le même nom). */
