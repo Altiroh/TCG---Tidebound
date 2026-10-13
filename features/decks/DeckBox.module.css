@@ -79,24 +79,18 @@
 }
 
 /* Pastille (« Débloqué ») : en haut de la face avant. */
-.badge {
+/* Le tag d'état (`StatusTag`) et son halo épousent la FACE de la boîte. */
+.status {
   position: absolute;
-  top: 6%;
-  left: 55%;
-  transform: translateX(-50%);
-  padding: 0.35cqw 1.1cqw;
-  border: 1px solid #b8f5cc;
-  border-radius: 999px;
-  background: linear-gradient(180deg, #3fae6c, #22784a);
-  color: #fff;
-  font-size: calc(clamp(max(9px, var(--tb-fs-floor, 0px)), 1.1cqw, 13px) * var(--tb-text-scale));
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  box-shadow: 0 0 8px rgba(80, 200, 130, 0.6);
+  top: 11%;
+  left: 21.6%;
+  width: 68.1%;
+  height: 76%;
+  border-radius: 3% / 2%;
+  pointer-events: none;
 }
 
-.box[data-facing="left"] .badge {
-  left: 45%;
+.box[data-facing="left"] .status {
+  left: auto;
+  right: 21.6%;
 }

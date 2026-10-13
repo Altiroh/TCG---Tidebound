@@ -1,0 +1,98 @@
+/*
+ * Tag d'état (« Nouveau », « Possédé ») et son halo — cf. `StatusTag.tsx`.
+ *
+ * `--status-glow` : la teinte du halo et du losange. La taille suit la
+ * police du tag (`em`) : un parent la règle avec `font-size` sur la classe
+ * passée en `className`, ou en posant `--status-size`.
+ */
+.tag {
+  --status-glow: 240, 206, 140;
+  --status-ink: #eed9a8;
+  position: absolute;
+  top: 0;
+  left: 50%;
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45em;
+  padding: 0.22em 0.85em;
+  border: 1px solid rgba(var(--status-glow), 0.55);
+  border-radius: 0.4em;
+  background: rgba(6, 14, 22, 0.88);
+  color: var(--status-ink);
+  font-size: var(--status-size, calc(clamp(max(8px, var(--tb-fs-floor, 0px)), 0.8vw, 11px) * var(--tb-text-scale)));
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1.3;
+  text-transform: uppercase;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45), 0 0 0.9em rgba(var(--status-glow), 0.35);
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+}
+
+.tag[data-inline] {
+  position: static;
+  transform: none;
+  flex: none;
+}
+
+.tag::before {
+  content: "";
+  flex: none;
+  width: 0.42em;
+  height: 0.42em;
+  background: rgb(var(--status-glow));
+  transform: rotate(45deg);
+  box-shadow: 0 0 4px rgba(var(--status-glow), 0.8);
+}
+
+.tag[data-tone="owned"],
+.halo[data-tone="owned"] {
+  --status-glow: 104, 222, 150;
+  --status-ink: #c9f5da;
+}
+
+.halo[data-tone="new"] {
+  --status-glow: 240, 206, 140;
+}
+
+/*
+ * Le halo : une boîte un peu plus grande que l'objet (la lueur doit
+ * pouvoir en sortir), MASQUÉE de haut en bas — pleine le long du bord
+ * haut, elle s'éteint en descendant et a disparu au milieu. Le trait et la
+ * lueur sont sur `::before`, posé exactement sur l'objet. Seule l'opacité
+ * respire : pas de filtre animé.
+ */
+.halo {
+  --halo-pad: 14px;
+  position: absolute;
+  inset: calc(var(--halo-pad) * -1);
+  z-index: 4;
+  border-radius: inherit;
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 calc(var(--halo-pad) + 6%), rgba(0, 0, 0, 0.55) 30%, transparent 52%);
+  mask-image: linear-gradient(180deg, #000 0%, #000 calc(var(--halo-pad) + 6%), rgba(0, 0, 0, 0.55) 30%, transparent 52%);
+  animation: statusHaloBreath 2.8s ease-in-out infinite;
+}
+
+.halo::before {
+  content: "";
+  position: absolute;
+  inset: var(--halo-pad);
+  border: 1.5px solid rgba(var(--status-glow), 0.95);
+  border-radius: inherit;
+  box-shadow:
+    0 0 5px 1px rgba(var(--status-glow), 0.9),
+    0 0 14px 4px rgba(var(--status-glow), 0.5),
+    inset 0 0 10px 1px rgba(var(--status-glow), 0.4);
+}
+
+@keyframes statusHaloBreath {
+  0%, 100% { opacity: 0.8; }
+  50% { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .halo { animation: none; }
+}

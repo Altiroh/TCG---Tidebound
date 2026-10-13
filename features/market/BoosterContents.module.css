@@ -184,14 +184,16 @@
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(clamp(120px, 12vw, 150px), 1fr));
-  gap: 10px;
+  /* De quoi loger le tag à cheval sur le haut de chaque carte et le halo
+     qui en sort sur les côtés. */
+  gap: 18px 14px;
   /* C'est la LISTE qui absorbe la hauteur restante et défile — en-tête et
      filtres gardent la leur. Sans ce `flex`, elle ne réclamait rien et se
      contentait de pousser la fenêtre. */
   flex: 1 1 auto;
   min-height: 0;
   margin: 0;
-  padding: 2px 10px 4px 0;
+  padding: 14px 14px 4px 6px;
   overflow-y: auto;
   list-style: none;
   /* Ascenseur fin, aux couleurs de la fenêtre — pas la barre blanche du navigateur. */
@@ -276,48 +278,20 @@
   color: var(--rarity-color);
 }
 
-.ownedMark {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  display: grid;
-  place-items: center;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  border: 1px solid rgba(233, 226, 209, 0.35);
-  background: rgba(3, 10, 16, 0.85);
-  color: rgba(233, 226, 209, 0.7);
-}
-
 /*
- * « Nouveau » sur une carte qu'on n'a pas encore : le « + » gris qui tenait
- * ce rôle se distinguait mal de la coche verte à 11 px, et c'est pourtant
- * l'information qu'on vient chercher ici. Mêmes codes que le badge de
- * l'ouverture de booster — or sur fond de nuit.
+ * Possédée / Nouveau : le tag commun (`StatusTag`), à cheval sur le haut
+ * de la carte, et son halo — vert pour ce qu'on a, or pour ce qui
+ * manque. Posé sur la cellule, hors du bouton qui rogne son contenu.
  */
-.newMark {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  padding: 2px 7px;
-  border: 1px solid rgba(240, 206, 140, 0.55);
-  border-radius: 999px;
-  background: rgba(6, 14, 22, 0.9);
-  color: #eed9a8;
-  font-size: calc(max(9px, var(--tb-fs-floor, 0px)) * var(--tb-text-scale));
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+.cell {
+  position: relative;
 }
 
-.card[data-owned="true"] .ownedMark {
-  border-color: #b8f5cc;
-  background: linear-gradient(180deg, #3fae6c, #22784a);
-  color: #fff;
-  box-shadow: 0 0 6px rgba(80, 200, 130, 0.6);
+.status {
+  position: absolute;
+  inset: 0;
+  border-radius: 4px;
+  pointer-events: none;
 }
 
 /* Téléphone couché : un panneau plus large (~60 %), la gauche reste visible. */

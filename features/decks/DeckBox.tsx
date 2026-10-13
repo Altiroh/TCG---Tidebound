@@ -2,6 +2,7 @@
 
 import styles from "@/features/decks/DeckBox.module.css";
 import { useImagesReady } from "@/features/shell/useImagesReady";
+import { StatusTag } from "@/features/shell/StatusTag";
 
 const ASSETS = {
   box: "/assets/decks/deck-visual.webp",
@@ -17,7 +18,7 @@ interface DeckBoxProps {
    * un socle de droite, qui se tourne vers le centre de la scène.
    */
   facing: "left" | "right";
-  /** Pastille sur la boîte (« Débloqué »). */
+  /** Tag d'état sur la boîte (« Débloqué ») : le tag « possédé » commun, halo vert compris. */
   badge?: string;
   className?: string;
 }
@@ -43,7 +44,11 @@ export function DeckBox({ art, facing, badge, className }: DeckBoxProps) {
       </span>
       {/* eslint-disable-next-line @next/next/no-img-element -- cadre de la boîte, détouré */}
       <img src={ASSETS.box} alt="" draggable={false} className={styles.frame} />
-      {badge && <span className={styles.badge}>{badge}</span>}
+      {badge && (
+        <span className={styles.status}>
+          <StatusTag tone="owned">{badge}</StatusTag>
+        </span>
+      )}
     </span>
   );
 }

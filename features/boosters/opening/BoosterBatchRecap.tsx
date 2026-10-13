@@ -11,6 +11,7 @@ import { playButtonClick } from "@/lib/sound";
 import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/boosters/opening/BoosterBatch.module.css";
 import type { BoosterOpeningCard } from "@/features/boosters/opening/types";
+import { StatusTag } from "@/features/shell/StatusTag";
 
 export interface BoosterBatchLine {
   cardId: string;
@@ -189,7 +190,7 @@ export function BoosterBatchRecap({ packs, lines, onClose }: BoosterBatchRecapPr
                     />
                     <span className={styles.lineName}>
                       <span className={styles.lineNameText}>{def.name}</span>
-                      {line.isNew && <span className={styles.lineNew}>Nouveau</span>}
+                      {line.isNew && <StatusTag tone="new" inline />}
                     </span>
                     <span className={styles.lineType}>{CARD_TYPE_LABELS[def.type]}</span>
                     <span className={styles.lineRarity} data-rarity={line.rarity}>
@@ -220,7 +221,7 @@ export function BoosterBatchRecap({ packs, lines, onClose }: BoosterBatchRecapPr
                       setDetail(selected.cardId);
                     }}
                   />
-                  {selected.isNew && <span className={styles.newMark}>Nouveau</span>}
+                  {selected.isNew && <StatusTag tone="new" />}
                 </div>
                 <p className={styles.previewMeta}>
                   <span className={styles.lineRarity} data-rarity={selected.rarity}>

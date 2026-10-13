@@ -1878,43 +1878,32 @@
  * haut — verre sombre, filet doré, petites capitales espacées. Elle se lit
  * sans voler la vedette à l'illustration.
  */
-.newBadge {
+/*
+ * « Nouveau » : le tag commun (`StatusTag`) et son halo d'or, calés sur la
+ * silhouette de la carte comme `.cardGlow`. Ici, seules la taille (en
+ * unités de la scène) et l'entrée sont réglées.
+ */
+.statusFrame {
   position: absolute;
-  top: 0;
-  left: 50%;
-  z-index: 4;
-  display: inline-flex;
-  align-items: center;
-  gap: calc(var(--u) * 0.45);
-  padding: calc(var(--u) * 0.22) calc(var(--u) * 0.85);
-  border: 1px solid rgba(240, 206, 140, 0.45);
-  border-radius: calc(var(--u) * 0.4);
-  background: rgba(6, 14, 22, 0.82);
-  backdrop-filter: blur(3px);
-  color: #eed9a8;
-  font-size: calc(clamp(max(8px, var(--tb-fs-floor, 0px)), calc(var(--u) * 0.95), 11px) * var(--tb-text-scale));
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+  inset: 0;
+  z-index: 5;
+  border-radius: calc(var(--card-w) * 0.055);
   pointer-events: none;
-  transform: translate(-50%, -50%);
   animation: newBadgeIn 600ms ease-out 350ms both;
 }
 
-.newBadge::before {
-  content: "";
-  width: calc(var(--u) * 0.42);
-  height: calc(var(--u) * 0.42);
-  background: #f0ce8c;
-  transform: rotate(45deg);
-  box-shadow: 0 0 4px rgba(240, 206, 140, 0.8);
+.card[data-cadre="nouveau"] .statusFrame {
+  inset: 0.75% 3.6% 1.7% 3.7%;
+  border-radius: calc(var(--card-w) * 0.048);
+}
+
+.newBadge {
+  --status-size: calc(clamp(max(8px, var(--tb-fs-floor, 0px)), calc(var(--u) * 0.95), 11px) * var(--tb-text-scale));
 }
 
 @keyframes newBadgeIn {
-  from { opacity: 0; transform: translate(-50%, -20%); }
-  to { opacity: 1; transform: translate(-50%, -50%); }
+  from { opacity: 0; translate: 0 30%; }
+  to { opacity: 1; translate: 0 0; }
 }
 
 .scene[data-reduced-motion] .orbCarrier,

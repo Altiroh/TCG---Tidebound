@@ -12,6 +12,7 @@ import { CARD_RARITY_LABELS } from "@/features/match/cardDisplay";
 import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/market/BoosterContents.module.css";
 import { playButtonClick } from "@/lib/sound";
+import { StatusTag } from "@/features/shell/StatusTag";
 
 interface BoosterContentsDialogProps {
   booster: BoosterInventoryEntry;
@@ -123,7 +124,7 @@ export function BoosterContentsDialog({ booster, owned, onClose }: BoosterConten
         ) : (
           <ul className={styles.grid}>
             {shown.map((card) => (
-              <li key={card.cardId}>
+              <li key={card.cardId} className={styles.cell}>
                 <button
                   type="button"
                   className={styles.card}
@@ -138,16 +139,11 @@ export function BoosterContentsDialog({ booster, owned, onClose }: BoosterConten
                   <span className={styles.art} style={{ backgroundImage: `url("${cardIllustrationUrl(card.cardId)}")` }} aria-hidden />
                   <span className={styles.name}>{card.name}</span>
                   <span className={styles.rarity}>{CARD_RARITY_LABELS[card.rarity]}</span>
-                  {card.owned ? (
-                    <span className={styles.ownedMark} aria-label="Possédée">
-                      <svg viewBox="0 0 16 16" width="11" height="11" fill="none" aria-hidden>
-                        <path d="M3.5 8.5l3 3 6-7" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    </span>
-                  ) : (
-                    <span className={styles.newMark}>Nouveau</span>
-                  )}
                 </button>
+                {/* Hors du bouton (qui rogne son contenu) : le halo doit en sortir. */}
+                <span className={styles.status}>
+                  {card.owned ? <StatusTag tone="owned">Possédée</StatusTag> : <StatusTag tone="new" />}
+                </span>
               </li>
             ))}
           </ul>

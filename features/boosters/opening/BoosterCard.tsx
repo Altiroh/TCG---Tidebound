@@ -9,6 +9,7 @@ import type { BoosterCardRevealState } from "@/features/boosters/opening/booster
 import { BoosterParticles } from "@/features/boosters/opening/BoosterParticles";
 import { OPENING_RARITY_LABEL, type BoosterOpeningCard } from "@/features/boosters/opening/types";
 import { NOUVEAU_CADRE } from "@/features/match/cardFrame";
+import { StatusTag } from "@/features/shell/StatusTag";
 
 export type BoosterCardStyle = CSSProperties & Record<`--${string}`, string | number>;
 
@@ -210,7 +211,11 @@ export const BoosterCard = memo(function BoosterCard({
             ))}
           </span>
         )}
-        {revealed && card.isNew && <span className={styles.newBadge}>Nouveau</span>}
+        {revealed && card.isNew && (
+          <span className={styles.statusFrame}>
+            <StatusTag tone="new" className={styles.newBadge} />
+          </span>
+        )}
         {revealed && card.rarity === "legendary" && <BoosterParticles variant="sparks" />}
       </span>
     </div>
