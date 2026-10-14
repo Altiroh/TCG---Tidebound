@@ -67,6 +67,8 @@ pouvoir la ternir (état éteint) sans ternir le texte — cf. `.action` dans
 | --- | --- | --- | --- |
 | `tides.webp` | 256 × 256 | Pièce de Tides | `GameIcons.tsx` (`TideCoin`) |
 | `precon-token.webp` | 256 × 256 | Jeton de Préconstruit | `GameIcons.tsx` (`PreconToken`) |
+| `enveloppe-fermee.webp` | 256 × 256 | Courrier non lu (enveloppe scellée) | `HeaderPlayer.tsx`, `MailPanel.tsx` |
+| `enveloppe-ouverte.webp` | 256 × 256 | Courrier lu (enveloppe ouverte) | `HeaderPlayer.tsx`, `MailPanel.tsx` |
 | `losange.webp` | 331 × 327 | Losange sombre à filets d'or : une ressource, un raccourci | Profil, raccourcis de récompense, Mes boosters (fiche) |
 
 ## Accessoires de table — `accessoires/`
