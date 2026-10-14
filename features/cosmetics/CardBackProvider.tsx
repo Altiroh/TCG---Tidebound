@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { fetchMyEquippedCosmetics } from "@/features/cosmetics/collectablesActions";
+import { readMyEquippedCosmetics } from "@/features/cosmetics/equippedCosmeticsSync";
 // Import direct et non par `@/game` : ce fournisseur vit dans la mise en
 // page RACINE, et le point d'entrée du moteur tire tout le catalogue de
 // cartes (~370 Ko) dans le paquet de CHAQUE page, connexion comprise.
@@ -67,7 +67,7 @@ export function CardBackProvider({ children }: { children: React.ReactNode }) {
     setId(readStoredCardBack());
     let cancelled = false;
     const sync = () =>
-      void fetchMyEquippedCosmetics()
+      void readMyEquippedCosmetics()
         .then((equipped) => {
           if (cancelled || !equipped) return;
           storeCardBack(equipped.cardBackId);

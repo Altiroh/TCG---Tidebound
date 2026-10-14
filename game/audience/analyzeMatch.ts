@@ -123,11 +123,4 @@ export function matchAudienceWeight(opponent: AudienceOpponent, played: boolean)
   return played ? AUDIENCE_OPPONENT_WEIGHT[opponent] : 0;
 }
 
-/** Humeur du public, en une phrase, pour un spectacle donné. */
-export function audienceMood(spectacle: number): string {
-  if (spectacle >= 80) return "Le public est debout";
-  if (spectacle >= 60) return "Le public est captivé";
-  if (spectacle >= 40) return "Le public suit la partie";
-  if (spectacle >= 20) return "Le public s'impatiente";
-  return "Le public s'ennuie";
-}
+export { audienceMood } from "@/game/audience/mood";

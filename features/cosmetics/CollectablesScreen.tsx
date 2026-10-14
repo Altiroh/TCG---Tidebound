@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { equipCollectable, purchaseCollectable } from "@/features/cosmetics/collectablesActions";
 import { useCardBack } from "@/features/cosmetics/CardBackProvider";
 import { useShipFrame } from "@/features/cosmetics/ShipFrameProvider";
@@ -91,7 +90,6 @@ function onShelf(option: CollectableOption, shelf: Shelf): boolean {
  * `ShipFrameProvider`. Les deux portent jusqu'au plateau.
  */
 export function CollectablesScreen({ view }: { view: CollectablesView }) {
-  const router = useRouter();
   const { apply: applyCardBack } = useCardBack();
   const { apply: applyShipFrame } = useShipFrame();
   const [activeKind, setActiveKind] = useState<string>(view.families[0]?.kind ?? "cardBack");
@@ -110,7 +108,7 @@ export function CollectablesScreen({ view }: { view: CollectablesView }) {
     // Le bandeau porte le même solde, et la vitrine doit passer l'objet en
     // « obtenu » : c'est le serveur qui fait autorité sur les deux.
     notifyProgressionChanged();
-    router.refresh();
+    // Pas de router.refresh() : l'action a revalidé un chemin, et sa réponse porte déjà la page relue (audit de fluidité du 14/10/2026).
   }
 
   /**
@@ -125,7 +123,7 @@ export function CollectablesScreen({ view }: { view: CollectablesView }) {
 
   function afterEquip(kind: string, id: string) {
     mirror[kind]?.(id);
-    router.refresh();
+    // Pas de router.refresh() : l'action a revalidé un chemin, et sa réponse porte déjà la page relue (audit de fluidité du 14/10/2026).
   }
 
   // Cet écran LIT la base : les miroirs locaux sont réalignés sur elle — un

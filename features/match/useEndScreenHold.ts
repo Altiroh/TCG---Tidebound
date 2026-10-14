@@ -6,11 +6,14 @@ import { describeFinalBlow } from "@/features/match/finalBlow";
 
 /**
  * Tenue de la table après un coup fatal, puis après un abandon / délai.
- * Le coup fatal se voit en ~1,8 s (attaque 0,92 s + Navire qui encaisse
- * 0,9 s, `useAttackPresentation`) : 3,4 s laissaient une attente « un poil
- * longue » avant l'écran de fin (retour du 26/09/2026).
+ *
+ * L'état reçu est l'état AFFICHÉ : il ne passe à « terminée » qu'une fois le
+ * coup fatal joué jusqu'au bout, Navire qui encaisse compris
+ * (`useAttackPresentation`, `FINAL_BLOW_LINGER_MS`). Les 2,2 s d'avant
+ * s'ajoutaient donc à ce temps-là — près de 4 s entre le coup et l'écran de
+ * fin (audit de fluidité du 14/10/2026). Il ne reste qu'un souffle.
  */
-const HOLD_STRUCK_MS = 2200;
+const HOLD_STRUCK_MS = 600;
 const HOLD_OTHER_MS = 1000;
 
 /**

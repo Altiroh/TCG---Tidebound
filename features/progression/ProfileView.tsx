@@ -253,8 +253,8 @@ export function ProfileView({
         const parts = result.levels.length + result.quests.count + result.achievements.count + result.masteries.count + (extra.length > 0 && profile.login.claimable ? 1 : 0);
         setReveal({ levels, choices, extraItems: extra, title: parts > 1 ? "Tout est réclamé !" : undefined });
       }
+      // `claimEverything` revalide toujours `/profil` : le profil relu arrive avec la réponse.
       notifyProgressionChanged();
-      onRefresh();
       refreshed = true;
     } finally {
       releaseClaim(refreshed);
@@ -269,10 +269,12 @@ export function ProfileView({
     let refreshed = false;
     try {
       const result = await claimAchievement(code);
-      if (!result.ok) setClaimError(result.error ?? "Réclamation impossible.");
-      else setReveal({ levels: [], choices: [], extraItems: [{ kind: "tides", amount: result.tides ?? 0 }], title: "Exploit réclamé !", sound: "exploit" });
+      if (!result.ok) {
+        setClaimError(result.error ?? "Réclamation impossible.");
+        onRefresh();
+      } else setReveal({ levels: [], choices: [], extraItems: [{ kind: "tides", amount: result.tides ?? 0 }], title: "Exploit réclamé !", sound: "exploit" });
+      // Acceptée : `claimAchievement` a revalidé `/profil`, le profil relu arrive avec la réponse.
       notifyProgressionChanged();
-      onRefresh();
       refreshed = true;
     } finally {
       releaseClaim(refreshed);
@@ -305,18 +307,27 @@ export function ProfileView({
           ...profile.pendingCardChoices,
           ...result.claimed.map((entry) => entry.cardChoice).filter((entry): entry is PendingCardChoice => Boolean(entry)),
         ];
-        if (!result.ok) setClaimError(result.error ?? "Réclamation impossible.");
+        if (!result.ok) {
+          setClaimError(result.error ?? "Réclamation impossible.");
+          // Rien d'accordé : l'action n'a rien revalidé, on relit nous-mêmes.
+          if (result.claimed.length === 0) onRefresh();
+        }
         if (levels.length > 0 || choices.length > 0) setReveal({ levels, choices });
       } else {
         const result = await claimLevelReward(level);
         if (!result.ok) {
           setClaimError(result.error ?? "Réclamation impossible.");
+          // Refusée : l'action n'a rien revalidé, on relit nous-mêmes.
+          onRefresh();
         } else {
           setReveal({ levels: [{ level, items: result.items ?? [] }], choices: result.cardChoice ? [result.cardChoice] : [] });
         }
       }
+      // Pas de `onRefresh` après une réclamation acceptée : l'action
+      // revalide `/profil`, et sa réponse porte déjà le profil relu — un
+      // `router.refresh()` en plus refaisait tout le rendu une seconde fois
+      // (audit de fluidité du 14/10/2026).
       notifyProgressionChanged();
-      onRefresh();
       refreshed = true;
     } finally {
       releaseClaim(refreshed);

@@ -8,7 +8,7 @@ import { RewardShortcuts } from "@/features/shell/RewardShortcuts";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getPreference, hydratePreferences, setPreference } from "@/lib/preferences";
 import { fetchProgression, type ProgressionSummary } from "@/features/progression/actions";
-import { audienceMood } from "@/game/audience";
+import { audienceMood } from "@/game/audience/mood";
 import { onProgressionChanged, readProgression, rememberedProgression } from "@/features/progression/progressionSync";
 import { cardIllustrationThumbUrl } from "@/features/decks/cardArtUrl";
 import { profileHref, requestProfileOpen, type PROFILE_PANELS } from "@/features/progression/profileTabs";
@@ -188,9 +188,13 @@ export function HeaderPlayer() {
       // (immédiate dès la deuxième fois) avant de décider d'une annonce.
       readProgression(fetchProgression, force)
         .then(async (result) => {
+          if (cancelled || request !== latest) return;
+          // Le compte s'affiche TOUT DE SUITE : seules les annonces dépendent
+          // des marqueurs « déjà vu » du compte (audit de fluidité du
+          // 14/10/2026 — il attendait une seconde requête pour apparaître).
+          setSummary(result);
           await hydratePreferences().catch(() => false);
           if (cancelled || request !== latest) return;
-          setSummary(result);
           // Première venue du jour : le popup de série, une fois par jour et par appareil.
           const today = new Date().toISOString().slice(0, 10);
           if (result.isSignedIn && result.loginClaimable && !streakPopupSeen(today)) {

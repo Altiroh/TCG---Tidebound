@@ -77,6 +77,10 @@ const BOT_ACTION_DELAY_MS = 550;
 /** Passer une réaction, changer de phase : rien à regarder, le bot enchaîne presque aussitôt. */
 const BOT_QUICK_DELAY_MS = 120;
 const BOT_QUICK_ACTIONS: ReadonlySet<PlayerAction["type"]> = new Set(["passReaction", "advancePhase"]);
+/** Après une mise en scène (attaque, sort, dé) : le temps de lire le plateau réel avant le coup suivant du bot. */
+const BOT_AFTER_HOLD_MS = 280;
+/** Cadence à laquelle le bot regarde si la mise en scène a fini de retenir l'affichage. */
+const BOT_HOLD_POLL_MS = 50;
 
 interface MatchBoardProps {
   initialState: GameState;
@@ -274,7 +278,15 @@ export function MatchBoard({
   // qu'ils aient touché avant de rejouer, sinon son coup suivant les coupe.
   /** Le bot réfléchit (worker) : au-delà d'un instant, un micro-chargement le dit (`MicroLoader`). */
   const [botThinking, setBotThinking] = useState(false);
-  const botToAct = Boolean(botPlayerId) && !holding && liveState.status === "active" && botHasSomethingToDo(liveState, botPlayerId!);
+  // Le bot RÉFLÉCHIT pendant qu'une mise en scène retient l'affichage, et
+  // n'APPLIQUE qu'une fois qu'elle a touché (audit de fluidité du
+  // 14/10/2026) : il attendait la fin de chaque animation pour commencer à
+  // penser, puis son délai entier — deux attentes bout à bout à chaque coup.
+  const holdingRef = useRef(holding);
+  const holdReleasedAt = useRef(0);
+  if (holdingRef.current && !holding) holdReleasedAt.current = typeof performance !== "undefined" ? performance.now() : 0;
+  holdingRef.current = holding;
+  const botToAct = Boolean(botPlayerId) && liveState.status === "active" && botHasSomethingToDo(liveState, botPlayerId!);
   useEffect(() => {
     if (!botToAct || !botDifficulty || !botPlayerId) return;
 
@@ -292,8 +304,19 @@ export function MatchBoard({
       const action = await thinkBotAction(current, botPlayerId!, botDifficulty!).finally(() => setBotThinking(false));
       if (cancelled) return;
       const pace = BOT_QUICK_ACTIONS.has(action.type) ? BOT_QUICK_DELAY_MS : BOT_ACTION_DELAY_MS;
-      timer = setTimeout(() => {
+      const apply = () => {
         if (cancelled) return;
+        // Une mise en scène retient encore l'affichage : on attend qu'elle
+        // touche, puis le temps de lire le plateau réel avant de rejouer.
+        if (holdingRef.current) {
+          timer = setTimeout(apply, BOT_HOLD_POLL_MS);
+          return;
+        }
+        const settle = BOT_AFTER_HOLD_MS - (performance.now() - holdReleasedAt.current);
+        if (settle > 0 && !BOT_QUICK_ACTIONS.has(action.type)) {
+          timer = setTimeout(apply, settle);
+          return;
+        }
         // L'état a bougé pendant la réflexion (abandon, fin de délai…) :
         // l'action choisie ne vaut plus rien, on repart de l'état courant.
         if (liveRef.current !== current) {
@@ -306,7 +329,8 @@ export function MatchBoard({
         board.clearSelection();
         setError(null);
         if (!result.done) void step();
-      }, Math.max(0, pace - (performance.now() - startedAt)));
+      };
+      timer = setTimeout(apply, Math.max(0, pace - (performance.now() - startedAt)));
     }
 
     void step();

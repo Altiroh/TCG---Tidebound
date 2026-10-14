@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import type { ProgressionSummary } from "@/features/progression/actions";
 import type { PROFILE_PANELS, ProfileTab } from "@/features/progression/profileTabs";
 import { useInterfaceSettings } from "@/lib/settings";
-import { getShipDefinition } from "@/game";
+import { getShipDefinition } from "@/game/environment/shipData";
 import { shipIllustrationUrl } from "@/features/ships/shipFrame";
 import styles from "@/features/shell/RewardShortcuts.module.css";
 

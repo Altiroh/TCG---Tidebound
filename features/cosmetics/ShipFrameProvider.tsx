@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { fetchMyEquippedCosmetics } from "@/features/cosmetics/collectablesActions";
+import { readMyEquippedCosmetics } from "@/features/cosmetics/equippedCosmeticsSync";
 import { DEFAULT_SHIP_FRAME, shipFrame, type ShipFrameGeometry } from "@/features/ships/shipFrame";
 
 /**
@@ -59,7 +59,7 @@ export function ShipFrameProvider({ children }: { children: React.ReactNode }) {
     setId(readStoredShipFrame());
     let cancelled = false;
     const sync = () =>
-      void fetchMyEquippedCosmetics()
+      void readMyEquippedCosmetics()
         .then((equipped) => {
           if (cancelled || !equipped) return;
           storeShipFrame(equipped.shipFrameId);

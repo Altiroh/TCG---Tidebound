@@ -1,8 +1,7 @@
 "use client";
 
-import { useMemo, useRef, useState, useTransition, type CSSProperties, type ReactNode } from "react";
+import { useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { GameScreen } from "@/features/shell/GameScreen";
 import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/market/Market.module.css";
@@ -125,8 +124,6 @@ function plural(count: number, singular: string, pluralForm = `${singular}s`): s
  * `purchase_cosmetic`) qui revérifie prix, disponibilité et solde.
  */
 export function MarketScreen({ inventory, catalog, collectables, sandbox = false, initialSection = "boosters", initialCartFilled = false }: MarketScreenProps) {
-  const router = useRouter();
-  const [, startTransition] = useTransition();
   const [section, setSection] = useState<SectionId>(initialSection);
   const [cart, setCart] = useState<Cart>(() => (initialCartFilled ? sampleCart(inventory, catalog, collectables) : EMPTY_CART));
   const [isBuying, setIsBuying] = useState(false);
@@ -284,9 +281,8 @@ export function MarketScreen({ inventory, catalog, collectables, sandbox = false
       // Même partiel, un achat a eu lieu : il s'entend.
       playMarketBuy();
       if (!sandbox) notifyProgressionChanged();
-      // `revalidatePath` côté action a invalidé le cache : on relit la
-      // réserve, le rayon des decks et les collectables plutôt que de deviner.
-      startTransition(() => router.refresh());
+      // Pas de router.refresh() : chaque achat a revalidé, et la réponse du
+      // dernier porte déjà la page relue (audit de fluidité du 14/10/2026).
     }
 
     const recap = [

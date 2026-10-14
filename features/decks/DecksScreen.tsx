@@ -192,7 +192,7 @@ export function DecksScreen({ isSignedIn, initialDecks, catalog, recentDeckIds =
         return;
       }
       done?.();
-      router.refresh();
+      // Pas de router.refresh() : l'action a revalidé un chemin, et sa réponse porte déjà la page relue (audit de fluidité du 14/10/2026).
     });
   }
 
@@ -275,7 +275,7 @@ export function DecksScreen({ isSignedIn, initialDecks, catalog, recentDeckIds =
       }
       notifyProgressionChanged();
       setCatalogTarget(null);
-      router.refresh();
+      // Pas de router.refresh() : l'action a revalidé un chemin, et sa réponse porte déjà la page relue (audit de fluidité du 14/10/2026).
     });
   }
 

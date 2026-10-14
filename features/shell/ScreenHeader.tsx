@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { PrefetchKind } from "next/dist/client/components/router-reducer/router-reducer-types";
 import { useEffect, type ReactNode } from "react";
 import styles from "@/features/shell/ScreenShell.module.css";
 import { NavigationTab } from "@/features/shell/NavigationTab";
@@ -106,8 +107,14 @@ export function ScreenHeader({ active, actions, onNavigate, nav = "collection", 
   // précharge pas : chaque clic attendait alors le rendu serveur complet de
   // l'écran visé. Préchargés, ils affichent au moins son écran de
   // chargement (`loading.tsx`) dès le clic.
+  //
+  // Préchargement AUTO, pas FULL (audit de fluidité du 14/10/2026) : sans
+  // `kind`, Next 14 précharge en FULL — le RENDU COMPLET des six écrans à
+  // chaque montage du bandeau (~80 requêtes, six invocations, et les
+  // écritures de ces pages : quêtes attribuées, corbeille purgée…), avec un
+  // profil qui pouvait s'afficher périmé. AUTO s'arrête à `loading.tsx`.
   useEffect(() => {
-    for (const href of ["/", "/profil", ...TABS.map((tab) => tab.href)]) router.prefetch(href);
+    for (const href of ["/", "/profil", ...TABS.map((tab) => tab.href)]) router.prefetch(href, { kind: PrefetchKind.AUTO });
   }, [router]);
 
   /** Un seul chemin pour tout déplacement du bandeau : l'écran peut le décliner. */
