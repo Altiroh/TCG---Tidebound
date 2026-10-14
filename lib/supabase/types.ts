@@ -613,6 +613,49 @@ export interface Database {
         Update: Record<string, never>;
         Relationships: [];
       };
+      /** Rôles accordés (`admin`) — migration 20261102120000. Accordés à la main. */
+      player_roles: {
+        Row: { user_id: string; role: "admin"; granted_at: string };
+        Insert: { user_id: string; role: "admin"; granted_at?: string };
+        Update: Record<string, never>;
+        Relationships: [];
+      };
+      /** Courrier de bord (envoyé par un Admin) — migration 20261102120000. `recipient_id` nul : tous les joueurs. */
+      mails: {
+        Row: {
+          id: string;
+          title: string;
+          body: string;
+          thumbnail: string | null;
+          gift_tides: number;
+          gift_xp: number;
+          gift_boosters: unknown;
+          recipient_id: string | null;
+          sent_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          title: string;
+          body?: string;
+          thumbnail?: string | null;
+          gift_tides?: number;
+          gift_xp?: number;
+          gift_boosters?: unknown;
+          recipient_id?: string | null;
+          sent_by?: string | null;
+          created_at?: string;
+        };
+        Update: Record<string, never>;
+        Relationships: [];
+      };
+      /** Courrier lu / cadeaux réclamés, par joueur. Les cadeaux passent par `claim_mail_gift`. */
+      mail_receipts: {
+        Row: { mail_id: string; user_id: string; read_at: string | null; claimed_at: string | null };
+        Insert: { mail_id: string; user_id: string; read_at?: string | null; claimed_at?: string | null };
+        Update: { read_at?: string | null };
+        Relationships: [];
+      };
       /** Cartes favorites (le cœur du catalogue) — migration 20261014120000. */
       player_card_favorites: {
         Row: { user_id: string; card_id: string; created_at: string };
@@ -874,6 +917,11 @@ export interface Database {
         Returns: { ok: boolean; error?: string };
       };
       /** Fusionne des préférences dans celles du joueur ; une valeur `null` retire la clé (migration 20261101120000). */
+      /** Réclame les cadeaux d'un courrier, une seule fois (Tides, XP, boosters). */
+      claim_mail_gift: {
+        Args: { p_user_id: string; p_mail_id: string };
+        Returns: { ok: boolean; error?: string };
+      };
       set_player_preferences: {
         Args: { p_user_id: string; p_values: unknown };
         Returns: { ok: boolean; error?: string };

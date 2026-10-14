@@ -32,6 +32,9 @@ const DailyStreakPopup = dynamic(() => import("@/features/progression/DailyStrea
   ssr: false,
 });
 
+/** Courrier de bord (boîte, écriture Admin) — chargé seulement quand il s'ouvre. */
+const MailPanel = dynamic(() => import("@/features/mail/MailPanel").then((m) => m.MailPanel), { ssr: false });
+
 /**
  * Clé du jour (UTC, celui des escales) où le popup de série a déjà été montré.
  * Retenue sur le compte (`lib/preferences.ts`) : vu sur le téléphone, il ne
@@ -143,6 +146,7 @@ export function HeaderPlayer() {
   // relecture se fait quand même en arrière-plan et corrige l'affichage.
   const [summary, setSummary] = useState<ProgressionSummary | null>(rememberedProgression);
   const [optionsOpen, setOptionsOpen] = useState(false);
+  const [mailOpen, setMailOpen] = useState(false);
   /** Profil ouvert en panneau, et sur quel onglet (`null` : fermé). */
   const router = useRouter();
   /** Le profil n'est plus un panneau : on va sur la page, au bon onglet (et la bonne fenêtre). */
@@ -458,6 +462,30 @@ export function HeaderPlayer() {
         </Link>
       )}
 
+      {/* Le courrier de bord, à gauche de l'engrenage : fermée et pastillée
+          quand un courrier attend, ouverte sinon. */}
+      {signedIn && summary && (
+        <button
+          type="button"
+          className={`${styles.mailButton} ${summary.unreadMail > 0 ? styles.mailWaiting : ""}`}
+          aria-label={summary.unreadMail > 0 ? `Courrier — ${summary.unreadMail} non lu${summary.unreadMail > 1 ? "s" : ""}` : "Courrier"}
+          title="Courrier"
+          aria-haspopup="dialog"
+          onClick={() => {
+            playButtonClick();
+            setMailOpen(true);
+          }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element -- icône locale */}
+          <img src={summary.unreadMail > 0 ? "/assets/ui/icons/enveloppe-fermee.webp" : "/assets/ui/icons/enveloppe-ouverte.webp"} alt="" draggable={false} />
+          {summary.unreadMail > 0 && (
+            <span className={styles.rewardBadge} aria-hidden>
+              {summary.unreadMail}
+            </span>
+          )}
+        </button>
+      )}
+
       <button
         type="button"
         className={styles.optionsButton}
@@ -477,7 +505,8 @@ export function HeaderPlayer() {
           progression. */}
       <ScreenToast message={toast} onDismiss={() => setToast(null)} />
 
-      {optionsOpen && <SettingsDialog isSignedIn={signedIn} onClose={() => setOptionsOpen(false)} />}
+      {optionsOpen && <SettingsDialog isSignedIn={signedIn} isAdmin={summary?.isAdmin ?? false} onClose={() => setOptionsOpen(false)} />}
+      {mailOpen && <MailPanel isAdmin={summary?.isAdmin ?? false} onClose={() => setMailOpen(false)} />}
       {streakOpen && <DailyStreakPopup onClose={() => setStreakOpen(false)} />}
     </>
   );

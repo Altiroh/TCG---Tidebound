@@ -13,6 +13,8 @@ import { playButtonClick } from "@/lib/sound";
 
 interface SettingsDialogProps {
   isSignedIn: boolean;
+  /** Rôle Admin : l'Atelier et le diagnostic d'écran (labos) ne s'affichent qu'à lui. */
+  isAdmin?: boolean;
   onClose: () => void;
 }
 
@@ -29,7 +31,7 @@ interface SettingsDialogProps {
  * Sections (Audio, Interface, Tutoriel, Atelier, Compte) séparées par un filet : tout ce
  * qui se règle aujourd'hui tient sur un écran, sans onglets ni page dédiée.
  */
-export function SettingsDialog({ isSignedIn, onClose }: SettingsDialogProps) {
+export function SettingsDialog({ isSignedIn, isAdmin = false, onClose }: SettingsDialogProps) {
   return (
     <Dialog title="Options" onClose={onClose} width={460}>
       <div className={styles.settings}>
@@ -70,27 +72,31 @@ export function SettingsDialog({ isSignedIn, onClose }: SettingsDialogProps) {
           </>
         )}
 
-        {/* Temporaire, comme le diagnostic d'écran : ouvrir le plateau hors
-            partie (`/game/board-preview`, sans moteur ni base) le temps de
-            finir l'espace de jeu. Route publique : visible connecté ou non. */}
-        <section className={styles.section}>
-          <h3 className={styles.sectionTitle}>Atelier</h3>
-          <p className={styles.signedOut}>
-            Le plateau seul, sans partie ni adversaire, pour régler l&apos;espace de jeu.{" "}
-            <Link
-              href="/game/board-preview"
-              className={`${AUTH_LINK_CLASS} hover:underline`}
-              onClick={() => {
-                playButtonClick();
-                onClose();
-              }}
-            >
-              Ouvrir le plateau
-            </Link>
-          </p>
-        </section>
+        {/* Labos réservés aux Admins (14/10/2026) : ouvrir le plateau hors
+            partie (`/game/board-preview`, sans moteur ni base) pour régler
+            l'espace de jeu. */}
+        {isAdmin && (
+          <>
+            <section className={styles.section}>
+              <h3 className={styles.sectionTitle}>Atelier</h3>
+              <p className={styles.signedOut}>
+                Le plateau seul, sans partie ni adversaire, pour régler l&apos;espace de jeu.{" "}
+                <Link
+                  href="/game/board-preview"
+                  className={`${AUTH_LINK_CLASS} hover:underline`}
+                  onClick={() => {
+                    playButtonClick();
+                    onClose();
+                  }}
+                >
+                  Ouvrir le plateau
+                </Link>
+              </p>
+            </section>
 
-        <hr className={styles.divider} />
+            <hr className={styles.divider} />
+          </>
+        )}
 
         <section className={styles.section}>
           <h3 className={styles.sectionTitle}>Compte</h3>
@@ -117,9 +123,10 @@ export function SettingsDialog({ isSignedIn, onClose }: SettingsDialogProps) {
          * pied de dialogue suffit.
          */}
         <p className={styles.version}>{appVersionLabel()}</p>
-        {/* Temporaire : mesurer l'écran depuis l'app installée, qui n'a pas
-            de barre d'adresse (bande en bas sur iPhone, 01/10). À retirer
+        {/* Admins seulement : mesurer l'écran depuis l'app installée, qui n'a
+            pas de barre d'adresse (bande en bas sur iPhone, 01/10). À retirer
             avec `app/diagnostic-ecran`. */}
+        {isAdmin && (
         <p className={styles.version}>
           <Link
             href="/diagnostic-ecran"
@@ -132,6 +139,7 @@ export function SettingsDialog({ isSignedIn, onClose }: SettingsDialogProps) {
             Diagnostic d&apos;écran
           </Link>
         </p>
+        )}
       </div>
     </Dialog>
   );

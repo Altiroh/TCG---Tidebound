@@ -18,6 +18,8 @@ import {
 import { claimableLevelsFor, reachedLevel } from "@/features/progression/levelRewardService";
 import { countClaimableMasteryLevels } from "@/features/progression/hubService";
 import { getSessionUser } from "@/lib/supabase/sessionUser";
+import { isAdmin } from "@/features/admin/roles";
+import { countUnreadMail } from "@/features/mail/mailService";
 
 /**
  * Progression joueur — LECTURES uniquement.
@@ -75,6 +77,10 @@ export interface ProgressionSummary {
   /** Mécènes qui ont commencé à l'observer, et ceux qui se sont fait connaître — pour la notification. */
   sponsorsWatching: number;
   sponsorsRevealed: number;
+  /** Rôle Admin (`player_roles`) : écriture du courrier, labos dans les Options. */
+  isAdmin: boolean;
+  /** Courriers pas encore ouverts — la pastille de l'enveloppe. */
+  unreadMail: number;
 }
 
 /** Seuil d'audience de chaque mécène du catalogue actuel — une ligne d'un mécène retiré ne compte plus. */
@@ -100,6 +106,8 @@ const SIGNED_OUT: ProgressionSummary = {
   lastSpectacle: null,
   sponsorsWatching: 0,
   sponsorsRevealed: 0,
+  isAdmin: false,
+  unreadMail: 0,
 };
 
 /**
@@ -132,7 +140,7 @@ export async function fetchProgression(): Promise<ProgressionSummary> {
     const weekday = (new Date(`${today}T00:00:00Z`).getUTCDay() + 6) % 7;
     const weekStart = new Date(Date.parse(`${today}T00:00:00Z`) - weekday * 86_400_000).toISOString();
     const weekIndex = loginWeekIndex(today);
-    const [progression, currency, profile, claimable, levelRewards, cardChoices, login, achievements, audience, sponsors, giftClaims, weekMatches, chestClaim, masteries] = await Promise.all([
+    const [progression, currency, profile, claimable, levelRewards, cardChoices, login, achievements, audience, sponsors, giftClaims, weekMatches, chestClaim, masteries, admin, unreadMail] = await Promise.all([
       supabase.from("player_progression").select("*").eq("user_id", user.id).maybeSingle(),
       supabase.from("player_currency").select("balance").eq("user_id", user.id).maybeSingle(),
       readProfileHeader(supabase, user.id),
@@ -163,6 +171,8 @@ export async function fetchProgression(): Promise<ProgressionSummary> {
         .maybeSingle(),
       // Paliers de maîtrise à réclamer (hub) : ils manquaient aux losanges et à la pastille.
       countClaimableMasteryLevels(user.id),
+      isAdmin(user.id),
+      countUnreadMail(user.id),
     ]);
     // Le niveau ATTEINT, pas celui de la colonne : elle n'est rafraîchie
     // qu'en fin de partie, et la pastille doit s'allumer dès que l'XP d'une
@@ -231,6 +241,8 @@ export async function fetchProgression(): Promise<ProgressionSummary> {
       lastSpectacle: audience.error ? null : (audience.data?.last_spectacle ?? null),
       sponsorsWatching: heldInterest.filter((row) => row.points > 0).length,
       sponsorsRevealed: heldInterest.filter((row) => sponsorRevealed(row.points)).length,
+      isAdmin: admin,
+      unreadMail,
     };
   } catch (error) {
     console.error("[fetchProgression] Lecture impossible :", error);

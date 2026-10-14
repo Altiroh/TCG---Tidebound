@@ -1,0 +1,371 @@
+/*
+ * COURRIER DE BORD — le panneau latéral (boîte de réception, écriture
+ * Admin) et le courrier ouvert. Le voile est celui des panneaux du hub
+ * (`HubSheets.module.css`, `.backdrop[data-side]`).
+ */
+.panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: min(460px, 100vw);
+  height: 100dvh;
+  padding: calc(18px + var(--tb-safe-top, 0px)) calc(18px + var(--tb-safe-right, 0px)) calc(14px + var(--tb-safe-bottom, 0px)) 18px;
+  border-left: 1px solid var(--tb-border-strong);
+  background: linear-gradient(170deg, var(--tb-surface-solid-raised), var(--tb-surface-solid) 55%);
+  box-shadow: -24px 0 48px rgba(0, 0, 0, 0.55);
+  color: var(--tb-text);
+  animation: slideIn 220ms var(--tb-ease, ease-out) both;
+}
+
+@keyframes slideIn {
+  from { transform: translateX(24px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 12px;
+  background: linear-gradient(90deg, transparent, rgba(217, 181, 106, 0.55) 15%, rgba(217, 181, 106, 0.55) 85%, transparent) bottom / 100% 1px no-repeat;
+}
+
+.headIcon {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.6));
+}
+
+.title {
+  flex: 1;
+  margin: 0;
+  color: #f1ebdc;
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-size: calc(clamp(19px, 1.8vw, 24px) * var(--tb-text-scale));
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.close {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(207, 224, 240, 0.3);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.05);
+  color: #e2e8f0;
+  font-size: calc(20px * var(--tb-text-scale));
+  line-height: 1;
+  cursor: var(--tb-cursor-pointer);
+}
+
+.tabs {
+  display: flex;
+  gap: 6px;
+  margin: 12px 0 4px;
+}
+
+.tab {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid var(--tb-border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--tb-text-muted);
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-size: calc(13px * var(--tb-text-scale));
+  letter-spacing: 0.04em;
+  cursor: var(--tb-cursor-pointer);
+}
+
+.tab[aria-selected="true"] {
+  border-color: var(--tb-border-strong);
+  background: var(--tb-accent-soft);
+  color: var(--tb-text-strong);
+}
+
+.scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  margin: 8px -6px 0;
+  padding: 4px 6px;
+  scrollbar-width: thin;
+}
+
+.empty,
+.status {
+  margin: 28px 8px;
+  color: var(--tb-text-muted);
+  font-size: var(--tb-fs-body);
+  text-align: center;
+}
+
+/* ── La liste des courriers ──────────────────────────────────────── */
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  position: relative;
+  display: grid;
+  grid-template-columns: 64px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 8px 12px 8px 8px;
+  border: 1px solid var(--tb-border);
+  border-radius: var(--tb-radius-md, 10px);
+  background: rgba(255, 255, 255, 0.03);
+  color: inherit;
+  text-align: left;
+  cursor: var(--tb-cursor-pointer);
+  transition: background-color 140ms ease-out, border-color 140ms ease-out;
+}
+
+.item:hover,
+.item:focus-visible {
+  border-color: var(--tb-border-strong);
+  background: var(--tb-accent-soft);
+  outline: none;
+}
+
+.item[data-unread] {
+  border-color: rgba(226, 194, 122, 0.55);
+  background: rgba(226, 194, 122, 0.07);
+}
+
+.thumb {
+  width: 64px;
+  height: 48px;
+  border-radius: 6px;
+  object-fit: cover;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.thumbFallback {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 48px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.thumbFallback img {
+  width: 38px;
+  height: 38px;
+  object-fit: contain;
+  opacity: 0.85;
+}
+
+.itemText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.itemTitle {
+  overflow: hidden;
+  color: var(--tb-text-strong);
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-size: calc(14.5px * var(--tb-text-scale));
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.item[data-unread] .itemTitle::before {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 7px;
+  border-radius: 50%;
+  background: var(--tb-gold-bright, #e2c27a);
+  box-shadow: 0 0 6px rgba(226, 194, 122, 0.8);
+  vertical-align: middle;
+}
+
+.itemMeta {
+  color: var(--tb-text-muted);
+  font-size: calc(12px * var(--tb-text-scale));
+}
+
+.giftTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(226, 194, 122, 0.16);
+  color: #f1dca8;
+  font-size: calc(11.5px * var(--tb-text-scale));
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.giftTag[data-claimed] {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--tb-text-muted);
+  font-weight: 500;
+}
+
+/* ── Le courrier ouvert (dans le bandeau noir du `Dialog`) ─────────── */
+.letter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.letterImage {
+  max-width: 100%;
+  max-height: 34dvh;
+  border-radius: 10px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.6);
+}
+
+.letterBody {
+  width: 100%;
+  margin: 0;
+  color: var(--tb-text);
+  font-size: var(--tb-fs-body);
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.gifts {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 14px;
+  margin: 0;
+  padding: 10px 0 0;
+  list-style: none;
+}
+
+.gift {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  max-width: 120px;
+  color: #f1dca8;
+  font-size: calc(12.5px * var(--tb-text-scale));
+  text-align: center;
+}
+
+.gifts[data-claimed] .gift {
+  opacity: 0.5;
+}
+
+.error {
+  margin: 0;
+  color: var(--tb-danger, #e3806f);
+  font-size: var(--tb-fs-body);
+  text-align: center;
+}
+
+/* ── Écrire (Admin) ──────────────────────────────────────────────── */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-bottom: 8px;
+}
+
+.label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--tb-text-muted);
+  font-size: calc(12.5px * var(--tb-text-scale));
+  letter-spacing: 0.03em;
+}
+
+.counter {
+  align-self: flex-end;
+  font-size: calc(11px * var(--tb-text-scale));
+  opacity: 0.7;
+}
+
+.textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+.fieldset {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--tb-border);
+  border-radius: var(--tb-radius-md, 10px);
+}
+
+.legend {
+  padding: 0 6px;
+  color: var(--tb-text-strong);
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-size: calc(13px * var(--tb-text-scale));
+  letter-spacing: 0.04em;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.row > * {
+  min-width: 0;
+}
+
+.grow {
+  flex: 1;
+}
+
+.number {
+  width: 92px;
+}
+
+.thumbPreview {
+  max-width: 100%;
+  max-height: 160px;
+  align-self: flex-start;
+  border-radius: 8px;
+}
+
+.radio {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--tb-text);
+  font-size: var(--tb-fs-body);
+  cursor: var(--tb-cursor-pointer);
+}
+
+.success {
+  margin: 0;
+  color: var(--tb-accent, #5fd0e6);
+  font-size: var(--tb-fs-body);
+}
+
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel { animation: none; }
+}

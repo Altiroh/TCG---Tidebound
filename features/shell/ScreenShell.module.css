@@ -284,6 +284,33 @@
   .optionsButton:hover { transform: none; }
 }
 
+/* Courrier de bord : l'enveloppe peinte, au gabarit de l'engrenage. */
+.mailButton {
+  composes: optionsButton;
+}
+
+.mailButton img {
+  width: 118%;
+  height: 118%;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.6));
+  pointer-events: none;
+}
+
+.mailButton:hover {
+  transform: translateY(-1px) rotate(-6deg);
+}
+
+/* Un courrier attend : la même pulsation d'or que les quêtes. */
+.mailWaiting {
+  animation: questsWaitingPulse 2.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mailButton:hover { transform: none; }
+  .mailWaiting { animation: none; }
+}
+
 /*
  * Bloc du compte, au bout du bandeau : une information de statut, pas un
  * contrôle — donc pas de cadre plein, juste une plaque très légère qui le
