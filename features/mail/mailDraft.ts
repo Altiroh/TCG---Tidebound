@@ -1,4 +1,5 @@
 import { OFF_SHELF_BOOSTER_IDS, SHELF_BOOSTER_IDS } from "@/game/boosters/extensions";
+import { CARD_DATABASE } from "@/game/cards/sets/core";
 import type { LoginRewardItem } from "@/game/progression";
 
 /**
@@ -12,8 +13,21 @@ export const MAIL_BODY_MAX = 2000;
 /** Plafond d'un cadeau, en Tides comme en XP (même borne qu'en base). */
 export const MAIL_GIFT_MAX = 100_000;
 export const MAIL_BOOSTER_MAX = 50;
-/** Longueur maximale de la miniature encodée (data URL) — même borne qu'en base. */
-export const MAIL_THUMBNAIL_MAX = 300_000;
+/**
+ * La miniature est une ILLUSTRATION DU JEU (retour du 14/10/2026) : la
+ * colonne garde `card:<id>`, l'image vient de `public/assets`. Les
+ * courriers plus anciens peuvent porter une image encodée (data URL).
+ */
+const CARD_THUMBNAIL = /^card:([a-z0-9-]{1,80})$/;
+
+export function cardThumbnail(cardId: string): string {
+  return `card:${cardId}`;
+}
+
+/** La carte dont la miniature reprend l'illustration, ou `null` (pas de miniature, ou image encodée). */
+export function thumbnailCardId(thumbnail: string | null): string | null {
+  return thumbnail?.match(CARD_THUMBNAIL)?.[1] ?? null;
+}
 
 /** Boosters qu'un courrier peut offrir : ceux du rayon, et le booster de bienvenue. */
 export const MAIL_BOOSTER_IDS: readonly string[] = [...SHELF_BOOSTER_IDS, ...OFF_SHELF_BOOSTER_IDS];
@@ -99,8 +113,8 @@ export function normalizeMailDraft(draft: MailDraft): { ok: true; draft: MailDra
   if (body.length > MAIL_BODY_MAX) return { ok: false, error: `Texte trop long (${MAIL_BODY_MAX} caractères au plus).` };
 
   if (draft.thumbnail !== null) {
-    if (!/^data:image\/(webp|png|jpeg);base64,/.test(draft.thumbnail)) return { ok: false, error: "Miniature illisible." };
-    if (draft.thumbnail.length > MAIL_THUMBNAIL_MAX) return { ok: false, error: "Miniature trop lourde." };
+    const cardId = thumbnailCardId(draft.thumbnail);
+    if (!cardId || !CARD_DATABASE.has(cardId)) return { ok: false, error: "Illustration inconnue." };
   }
 
   const { tides, xp } = draft.gifts;

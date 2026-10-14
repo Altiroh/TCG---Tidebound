@@ -1,85 +1,102 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { CORE_SET } from "@/game/cards/sets/core";
 import { boosterExtension } from "@/game/boosters/extensions";
 import { loginBoosterName } from "@/game/progression";
+import { getBoosterPackVisual } from "@/features/boosters/opening/boosterPackVisuals";
+import { cardIllustrationThumbUrl } from "@/features/decks/cardArtUrl";
 import { sendAdminMail } from "@/features/mail/actions";
 import {
   MAIL_BODY_MAX,
   MAIL_BOOSTER_IDS,
-  MAIL_THUMBNAIL_MAX,
+  MAIL_BOOSTER_MAX,
   MAIL_TITLE_MAX,
+  cardThumbnail,
   normalizeMailDraft,
+  thumbnailCardId,
   type MailAudience,
-  type MailBoosterGift,
   type MailDraft,
 } from "@/features/mail/mailDraft";
+import { Dialog } from "@/features/shell/Dialog";
 import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/mail/Mail.module.css";
 import { playButtonClick } from "@/lib/sound";
 
-/** Côté le plus long de la miniature : assez pour le bandeau, assez léger pour la base. */
-const THUMB_MAX_SIDE = 640;
+/** Illustrations montrées à la fois dans le sélecteur : la recherche affine le reste. */
+const ILLUSTRATIONS_SHOWN = 48;
 
 function boosterName(boosterId: string): string {
   return boosterExtension(boosterId)?.name ?? loginBoosterName(boosterId);
 }
 
-/**
- * Réduit l'image choisie et la ré-encode en WebP (data URL) : la miniature
- * vit dans la ligne du courrier, sans stockage de fichiers à part.
- */
-async function toThumbnail(file: File): Promise<string> {
-  const bitmap = await createImageBitmap(file);
-  const scale = Math.min(1, THUMB_MAX_SIDE / Math.max(bitmap.width, bitmap.height));
-  const canvas = document.createElement("canvas");
-  canvas.width = Math.max(1, Math.round(bitmap.width * scale));
-  canvas.height = Math.max(1, Math.round(bitmap.height * scale));
-  canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-  bitmap.close();
-  for (const quality of [0.85, 0.7, 0.55, 0.4]) {
-    const url = canvas.toDataURL("image/webp", quality);
-    if (url.length <= MAIL_THUMBNAIL_MAX) return url;
-  }
-  throw new Error("Image trop lourde, même réduite.");
+/** Insensible aux accents et à la casse. */
+function normalize(value: string): string {
+  return value.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 }
 
 /** Un champ numérique vide vaut zéro. */
 function toCount(value: string): number {
   const parsed = Number(value);
-  return value.trim() === "" || !Number.isFinite(parsed) ? 0 : Math.trunc(parsed);
+  return value.trim() === "" || !Number.isFinite(parsed) ? 0 : Math.max(0, Math.trunc(parsed));
 }
 
+/** Les cartes à illustration, triées par nom (les jetons n'en sont pas). */
+const ILLUSTRATED_CARDS = CORE_SET.filter((card) => !card.token)
+  .map((card) => ({ id: card.id, name: card.name }))
+  .sort((a, b) => a.name.localeCompare(b.name, "fr"));
+
 /**
- * ÉCRIRE UN COURRIER (Admin) : titre, texte, miniature facultative, et des
- * cadeaux si l'on veut — Tides, XP, boosters. À tous les joueurs, ou à soi
- * seul pour essayer un courrier avant de l'envoyer à tout le monde.
+ * ÉCRIRE UN COURRIER (Admin) : titre, texte, une illustration du jeu en
+ * miniature si l'on veut, et des cadeaux — Tides, XP, boosters (choisis sur
+ * leur visuel). À soi seul pour essayer, ou à tous les joueurs, après
+ * confirmation dans le bandeau noir.
  */
 export function MailComposer({ onSent }: { onSent: () => void }) {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [thumbnail, setThumbnail] = useState<string | null>(null);
+  const [picking, setPicking] = useState(false);
+  const [query, setQuery] = useState("");
   const [tides, setTides] = useState("");
   const [xp, setXp] = useState("");
-  const [boosters, setBoosters] = useState<MailBoosterGift[]>([]);
+  const [boosters, setBoosters] = useState<Record<string, number>>({});
   const [audience, setAudience] = useState<MailAudience>("self");
+  const [confirming, setConfirming] = useState<MailDraft | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState<string | null>(null);
 
-  const draft: MailDraft = { title, body, thumbnail, gifts: { tides: toCount(tides), xp: toCount(xp), boosters }, audience };
+  const draft: MailDraft = {
+    title,
+    body,
+    thumbnail,
+    gifts: {
+      tides: toCount(tides),
+      xp: toCount(xp),
+      boosters: Object.entries(boosters).map(([boosterId, count]) => ({ boosterId, count })),
+    },
+    audience,
+  };
 
-  async function pickImage(file: File | undefined) {
-    setError(null);
-    if (!file) return;
-    try {
-      setThumbnail(await toThumbnail(file));
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Image illisible.");
-    }
+  const shownCards = useMemo(() => {
+    const needle = normalize(query.trim());
+    return (needle ? ILLUSTRATED_CARDS.filter((card) => normalize(card.name).includes(needle)) : ILLUSTRATED_CARDS).slice(0, ILLUSTRATIONS_SHOWN);
+  }, [query]);
+  const pickedCardId = thumbnailCardId(thumbnail);
+  const pickedName = pickedCardId ? ILLUSTRATED_CARDS.find((card) => card.id === pickedCardId)?.name : null;
+
+  function setBoosterCount(boosterId: string, count: number) {
+    setBoosters((current) => {
+      const next = { ...current };
+      const clamped = Math.min(MAIL_BOOSTER_MAX, Math.max(0, count));
+      if (clamped > 0) next[boosterId] = clamped;
+      else delete next[boosterId];
+      return next;
+    });
   }
 
-  async function submit(event: React.FormEvent) {
+  function submit(event: React.FormEvent) {
     event.preventDefault();
     playButtonClick();
     setSent(null);
@@ -88,22 +105,28 @@ export function MailComposer({ onSent }: { onSent: () => void }) {
       setError(checked.error);
       return;
     }
-    if (audience === "all" && !window.confirm(`Envoyer « ${checked.draft.title} » à tous les joueurs ?`)) return;
-    setBusy(true);
     setError(null);
+    // À tous : on confirme dans le bandeau noir ; à soi seul, on envoie.
+    if (checked.draft.audience === "all") setConfirming(checked.draft);
+    else void send(checked.draft);
+  }
+
+  async function send(checked: MailDraft) {
+    setConfirming(null);
+    setBusy(true);
     try {
-      const result = await sendAdminMail(checked.draft);
+      const result = await sendAdminMail(checked);
       if (!result.ok) {
         setError(result.error);
         return;
       }
-      setSent(audience === "all" ? "Courrier envoyé à tous les joueurs." : "Courrier envoyé dans votre boîte.");
+      setSent(checked.audience === "all" ? "Courrier envoyé à tous les joueurs." : "Courrier envoyé dans votre boîte.");
       setTitle("");
       setBody("");
       setThumbnail(null);
       setTides("");
       setXp("");
-      setBoosters([]);
+      setBoosters({});
       onSent();
     } catch {
       setError("Envoi impossible pour le moment.");
@@ -116,12 +139,18 @@ export function MailComposer({ onSent }: { onSent: () => void }) {
     <form className={styles.form} onSubmit={submit}>
       <label className={styles.label}>
         Titre
-        <input className={game.input} value={title} maxLength={MAIL_TITLE_MAX} onChange={(event) => setTitle(event.target.value)} required />
+        <input className={styles.input} value={title} maxLength={MAIL_TITLE_MAX} placeholder="Ex. : Bienvenue à bord !" onChange={(event) => setTitle(event.target.value)} required />
       </label>
 
       <label className={styles.label}>
         Description
-        <textarea className={`${game.input} ${styles.textarea}`} value={body} maxLength={MAIL_BODY_MAX} onChange={(event) => setBody(event.target.value)} />
+        <textarea
+          className={`${styles.input} ${styles.textarea}`}
+          value={body}
+          maxLength={MAIL_BODY_MAX}
+          placeholder="Le message que liront les joueurs."
+          onChange={(event) => setBody(event.target.value)}
+        />
         <span className={styles.counter}>
           {body.length} / {MAIL_BODY_MAX}
         </span>
@@ -129,18 +158,52 @@ export function MailComposer({ onSent }: { onSent: () => void }) {
 
       <fieldset className={styles.fieldset}>
         <legend className={styles.legend}>Miniature (facultative)</legend>
-        {thumbnail ? (
+        {pickedCardId && (
+          <div className={styles.thumbChosen}>
+            {/* eslint-disable-next-line @next/next/no-img-element -- illustration locale */}
+            <img className={styles.thumbPreview} src={cardIllustrationThumbUrl(pickedCardId)} alt="" />
+            <span className={styles.thumbName}>{pickedName}</span>
+            <button type="button" className={`${game.secondary} ${game.buttonSm}`} onClick={() => setThumbnail(null)}>
+              Retirer
+            </button>
+          </div>
+        )}
+        {picking ? (
           <>
-            {/* eslint-disable-next-line @next/next/no-img-element -- aperçu en data URL */}
-            <img className={styles.thumbPreview} src={thumbnail} alt="Aperçu de la miniature" />
+            <input className={styles.input} value={query} placeholder="Chercher une carte…" autoFocus onChange={(event) => setQuery(event.target.value)} />
+            <ul className={styles.artGrid} aria-label="Illustrations">
+              {shownCards.map((card) => (
+                <li key={card.id}>
+                  <button
+                    type="button"
+                    className={styles.artTile}
+                    aria-pressed={card.id === pickedCardId}
+                    title={card.name}
+                    onClick={() => {
+                      playButtonClick();
+                      setThumbnail(cardThumbnail(card.id));
+                      setPicking(false);
+                    }}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element -- illustration locale */}
+                    <img src={cardIllustrationThumbUrl(card.id)} alt={card.name} loading="lazy" draggable={false} />
+                  </button>
+                </li>
+              ))}
+            </ul>
+            {shownCards.length === 0 && <p className={styles.itemMeta}>Aucune carte ne porte ce nom.</p>}
             <div className={styles.row}>
-              <button type="button" className={`${game.secondary} ${game.buttonSm}`} onClick={() => setThumbnail(null)}>
-                Retirer l&apos;image
+              <button type="button" className={`${game.secondary} ${game.buttonSm}`} onClick={() => setPicking(false)}>
+                Fermer
               </button>
             </div>
           </>
         ) : (
-          <input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => pickImage(event.target.files?.[0])} />
+          <div className={styles.row}>
+            <button type="button" className={`${game.secondary} ${game.buttonSm}`} onClick={() => setPicking(true)}>
+              {pickedCardId ? "Changer d'illustration" : "Choisir une illustration"}
+            </button>
+          </div>
         )}
       </fieldset>
 
@@ -149,45 +212,38 @@ export function MailComposer({ onSent }: { onSent: () => void }) {
         <div className={styles.row}>
           <label className={`${styles.label} ${styles.grow}`}>
             Tides
-            <input className={`${game.input} ${styles.number}`} type="number" min={0} inputMode="numeric" value={tides} onChange={(event) => setTides(event.target.value)} />
+            <input className={styles.input} type="number" min={0} inputMode="numeric" placeholder="0" value={tides} onChange={(event) => setTides(event.target.value)} />
           </label>
           <label className={`${styles.label} ${styles.grow}`}>
             XP
-            <input className={`${game.input} ${styles.number}`} type="number" min={0} inputMode="numeric" value={xp} onChange={(event) => setXp(event.target.value)} />
+            <input className={styles.input} type="number" min={0} inputMode="numeric" placeholder="0" value={xp} onChange={(event) => setXp(event.target.value)} />
           </label>
         </div>
-        {boosters.map((entry, index) => (
-          <div key={index} className={styles.row}>
-            <select
-              className={`${game.input} ${styles.grow}`}
-              value={entry.boosterId}
-              aria-label="Booster offert"
-              onChange={(event) => setBoosters((list) => list.map((item, i) => (i === index ? { ...item, boosterId: event.target.value } : item)))}
-            >
-              {MAIL_BOOSTER_IDS.map((id) => (
-                <option key={id} value={id}>
-                  {boosterName(id)}
-                </option>
-              ))}
-            </select>
-            <input
-              className={`${game.input} ${styles.number}`}
-              type="number"
-              min={1}
-              aria-label="Nombre de boosters"
-              value={entry.count}
-              onChange={(event) => setBoosters((list) => list.map((item, i) => (i === index ? { ...item, count: toCount(event.target.value) } : item)))}
-            />
-            <button type="button" className={`${game.secondary} ${game.buttonSm}`} aria-label="Retirer ce booster" onClick={() => setBoosters((list) => list.filter((_, i) => i !== index))}>
-              ×
-            </button>
-          </div>
-        ))}
-        <div className={styles.row}>
-          <button type="button" className={`${game.secondary} ${game.buttonSm}`} onClick={() => setBoosters((list) => [...list, { boosterId: MAIL_BOOSTER_IDS[0]!, count: 1 }])}>
-            + Ajouter un booster
-          </button>
-        </div>
+        <span className={styles.label}>Boosters</span>
+        <ul className={styles.packGrid}>
+          {MAIL_BOOSTER_IDS.map((boosterId) => {
+            const count = boosters[boosterId] ?? 0;
+            const name = boosterName(boosterId);
+            return (
+              <li key={boosterId} className={styles.pack} data-picked={count > 0 || undefined}>
+                <button type="button" className={styles.packArt} title={name} aria-label={`Ajouter un booster ${name}`} onClick={() => setBoosterCount(boosterId, count + 1)}>
+                  {/* eslint-disable-next-line @next/next/no-img-element -- sachet local */}
+                  <img src={getBoosterPackVisual(boosterId).assets.closed} alt="" draggable={false} />
+                </button>
+                <span className={styles.packName}>{name}</span>
+                <span className={styles.stepper}>
+                  <button type="button" aria-label={`Un booster ${name} de moins`} disabled={count === 0} onClick={() => setBoosterCount(boosterId, count - 1)}>
+                    −
+                  </button>
+                  <b>{count}</b>
+                  <button type="button" aria-label={`Un booster ${name} de plus`} disabled={count >= MAIL_BOOSTER_MAX} onClick={() => setBoosterCount(boosterId, count + 1)}>
+                    +
+                  </button>
+                </span>
+              </li>
+            );
+          })}
+        </ul>
       </fieldset>
 
       <fieldset className={styles.fieldset}>
@@ -210,6 +266,28 @@ export function MailComposer({ onSent }: { onSent: () => void }) {
           {busy ? "Envoi…" : "Envoyer"}
         </button>
       </div>
+
+      {confirming && (
+        // Le bandeau se ferme seul : son voile ne doit pas fermer aussi le panneau.
+        <div data-mail-confirm onClick={(event) => event.stopPropagation()} role="presentation">
+          <Dialog
+            title="Envoyer à tous les joueurs ?"
+            description={`« ${confirming.title} » arrivera dans la boîte de chaque joueur inscrit. Un courrier envoyé ne se reprend pas.`}
+            variant="banner"
+            onClose={() => setConfirming(null)}
+            actions={
+              <>
+                <button type="button" className={game.secondary} onClick={() => setConfirming(null)}>
+                  Annuler
+                </button>
+                <button type="button" className={game.primary} onClick={() => void send(confirming)}>
+                  Envoyer à tous
+                </button>
+              </>
+            }
+          />
+        </div>
+      )}
     </form>
   );
 }

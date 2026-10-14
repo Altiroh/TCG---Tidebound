@@ -297,9 +297,195 @@
   opacity: 0.7;
 }
 
+/* Champs du panneau : il est porté hors de l'écran (portail), les champs
+   de `GameScreen` n'y trouvent pas leurs variables — d'où les siens. */
+.input {
+  width: 100%;
+  min-height: 42px;
+  padding: 0.6em 0.9em;
+  border: 1px solid rgba(207, 224, 240, 0.22);
+  border-radius: 10px;
+  background: rgba(3, 10, 19, 0.72);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.45);
+  color: var(--tb-text-strong, #f1f5f9);
+  font: inherit;
+  font-size: calc(14.5px * var(--tb-text-scale));
+  transition: border-color 140ms ease-out, box-shadow 140ms ease-out, background-color 140ms ease-out;
+}
+
+.input::placeholder {
+  color: rgba(190, 210, 228, 0.42);
+}
+
+.input:hover {
+  border-color: rgba(207, 224, 240, 0.38);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--tb-accent, #5fd0e6);
+  background: rgba(5, 14, 26, 0.9);
+  box-shadow: 0 0 0 3px rgba(95, 208, 230, 0.18), inset 0 1px 3px rgba(0, 0, 0, 0.45);
+}
+
+.input[type="number"] {
+  appearance: textfield;
+}
+
+.input[type="number"]::-webkit-inner-spin-button,
+.input[type="number"]::-webkit-outer-spin-button {
+  appearance: none;
+  margin: 0;
+}
+
 .textarea {
   min-height: 120px;
   resize: vertical;
+  line-height: 1.5;
+}
+
+/* ── Miniature : une illustration du jeu ─────────────────────────── */
+.thumbChosen {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.thumbName {
+  flex: 1;
+  min-width: 0;
+  color: var(--tb-text-strong);
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-size: calc(14px * var(--tb-text-scale));
+}
+
+.artGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+  gap: 8px;
+  max-height: 260px;
+  margin: 0;
+  padding: 2px;
+  overflow-y: auto;
+  list-style: none;
+  scrollbar-width: thin;
+}
+
+.artTile {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  padding: 0;
+  overflow: hidden;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.35);
+  cursor: var(--tb-cursor-pointer);
+  transition: border-color 120ms ease-out, transform 120ms ease-out;
+}
+
+.artTile img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.artTile:hover,
+.artTile:focus-visible {
+  border-color: rgba(226, 194, 122, 0.7);
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.artTile[aria-pressed="true"] {
+  border-color: var(--tb-gold-bright, #e2c27a);
+}
+
+/* ── Boosters offerts : les sachets, chacun avec son compteur ─────── */
+.packGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 4px 6px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  text-align: center;
+  transition: border-color 140ms ease-out, background-color 140ms ease-out;
+}
+
+.pack[data-picked] {
+  border-color: rgba(226, 194, 122, 0.55);
+  background: rgba(226, 194, 122, 0.08);
+}
+
+.packArt {
+  width: 64px;
+  height: 84px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: var(--tb-cursor-pointer);
+  transition: transform 140ms ease-out;
+}
+
+.packArt img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.55));
+}
+
+.packArt:hover {
+  transform: translateY(-2px) rotate(-2deg);
+}
+
+.pack:not([data-picked]) .packArt img {
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.55)) saturate(0.55) brightness(0.8);
+}
+
+.packName {
+  min-height: 2.4em;
+  color: var(--tb-text);
+  font-size: calc(11.5px * var(--tb-text-scale));
+  line-height: 1.2;
+}
+
+.stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stepper button {
+  width: 24px;
+  height: 24px;
+  border: 1px solid rgba(207, 224, 240, 0.3);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--tb-text-strong);
+  line-height: 1;
+  cursor: var(--tb-cursor-pointer);
+}
+
+.stepper button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.stepper b {
+  min-width: 1.4em;
+  color: #f1dca8;
+  font-variant-numeric: tabular-nums;
 }
 
 .fieldset {

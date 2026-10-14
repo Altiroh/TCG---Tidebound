@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { hasGifts, mailGiftItems, normalizeMailDraft, parseBoosterGifts, type MailDraft } from "@/features/mail/mailDraft";
+import { CORE_SET } from "@/game/cards/sets/core";
+import { cardThumbnail, hasGifts, mailGiftItems, normalizeMailDraft, parseBoosterGifts, thumbnailCardId, type MailDraft } from "@/features/mail/mailDraft";
 
 const base: MailDraft = { title: "Bienvenue", body: "", thumbnail: null, gifts: { tides: 0, xp: 0, boosters: [] }, audience: "self" };
 
@@ -36,10 +37,14 @@ describe("courrier de bord : brouillon", () => {
     expect(result.ok && result.draft.gifts.boosters).toEqual([{ boosterId: "standard", count: 3 }]);
   });
 
-  it("refuse un booster inconnu et une miniature qui n'est pas une image", () => {
+  it("refuse un booster inconnu ; la miniature est l'illustration d'une carte qui existe", () => {
     expect(normalizeMailDraft({ ...base, gifts: { tides: 0, xp: 0, boosters: [{ boosterId: "pirate", count: 1 }] } }).ok).toBe(false);
     expect(normalizeMailDraft({ ...base, thumbnail: "javascript:alert(1)" }).ok).toBe(false);
-    expect(normalizeMailDraft({ ...base, thumbnail: "data:image/webp;base64,AAAA" }).ok).toBe(true);
+    expect(normalizeMailDraft({ ...base, thumbnail: "data:image/webp;base64,AAAA" }).ok).toBe(false);
+    expect(normalizeMailDraft({ ...base, thumbnail: "card:carte-qui-n-existe-pas" }).ok).toBe(false);
+    const someCard = CORE_SET.find((card) => !card.token)!.id;
+    expect(normalizeMailDraft({ ...base, thumbnail: cardThumbnail(someCard) }).ok).toBe(true);
+    expect(thumbnailCardId(cardThumbnail(someCard))).toBe(someCard);
   });
 
   it("refuse une forme illisible venue du navigateur", () => {

@@ -4,7 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { loginRewardLabel } from "@/game/progression";
 import { claimMailGift, fetchInbox, openMail } from "@/features/mail/actions";
-import { hasGifts, mailGiftItems, type InboxMail } from "@/features/mail/mailDraft";
+import { hasGifts, mailGiftItems, thumbnailCardId, type InboxMail } from "@/features/mail/mailDraft";
+import { cardIllustrationThumbUrl, cardIllustrationUrl } from "@/features/decks/cardArtUrl";
 import { MailComposer } from "@/features/mail/MailComposer";
 import { RewardIcon } from "@/features/progression/RewardIcon";
 import { RewardReveal } from "@/features/progression/RewardReveal";
@@ -17,6 +18,13 @@ import { playButtonClick } from "@/lib/sound";
 
 const ENVELOPE_CLOSED = "/assets/ui/icons/enveloppe-fermee.webp";
 const ENVELOPE_OPEN = "/assets/ui/icons/enveloppe-ouverte.webp";
+
+/** Miniature d'un courrier : l'illustration de la carte choisie (ou l'image encodée d'un ancien courrier). */
+function thumbnailSrc(thumbnail: string, size: "mini" | "full"): string {
+  const cardId = thumbnailCardId(thumbnail);
+  if (!cardId) return thumbnail;
+  return size === "mini" ? cardIllustrationThumbUrl(cardId) : cardIllustrationUrl(cardId);
+}
 
 const dateFormat = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 
@@ -56,7 +64,7 @@ export function MailPanel({ isAdmin, onClose }: { isAdmin: boolean; onClose: () 
   // Échap ferme le courrier ouvert d'abord (le `Dialog` s'en charge), le panneau ensuite.
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !openId && !reveal) onClose();
+      if (event.key === "Escape" && !openId && !reveal && !document.querySelector("[data-mail-confirm]")) onClose();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -137,7 +145,7 @@ export function MailPanel({ isAdmin, onClose }: { isAdmin: boolean; onClose: () 
                   <button type="button" className={styles.item} data-unread={!mail.read || undefined} onClick={() => open(mail)}>
                     {mail.thumbnail ? (
                       // eslint-disable-next-line @next/next/no-img-element -- miniature en data URL
-                      <img className={styles.thumb} src={mail.thumbnail} alt="" draggable={false} />
+                      <img className={styles.thumb} src={thumbnailSrc(mail.thumbnail, "mini")} alt="" draggable={false} />
                     ) : (
                       <span className={styles.thumbFallback}>
                         {/* eslint-disable-next-line @next/next/no-img-element -- icône locale */}
@@ -215,7 +223,7 @@ function MailLetter({
       <div className={styles.letter}>
         {mail.thumbnail && (
           // eslint-disable-next-line @next/next/no-img-element -- miniature en data URL
-          <img className={styles.letterImage} src={mail.thumbnail} alt="" draggable={false} />
+          <img className={styles.letterImage} src={thumbnailSrc(mail.thumbnail, "full")} alt="" draggable={false} />
         )}
         {mail.body && <p className={styles.letterBody}>{mail.body}</p>}
         {items.length > 0 && (
