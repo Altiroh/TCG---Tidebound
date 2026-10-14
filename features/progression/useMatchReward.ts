@@ -4,8 +4,12 @@ import { useEffect, useState } from "react";
 import { fetchMatchReward, type MatchRewardSummary } from "@/features/progression/actions";
 import { notifyProgressionChanged } from "@/features/progression/progressionSync";
 
-/** Nouvelles tentatives de lecture : en PvP, l'adversaire peut voir la fin de partie avant que l'octroi soit écrit. */
-const RETRY_DELAYS_MS = [0, 1500, 4000];
+/**
+ * Nouvelles tentatives de lecture : l'octroi s'écrit APRÈS la réponse du
+ * coup final (`commitAndSettle`), et en PvP l'adversaire peut voir la fin
+ * de partie avant lui.
+ */
+const RETRY_DELAYS_MS = [0, 1000, 2500, 5000, 9000];
 
 /**
  * Le GAIN d'une partie serveur terminée (XP, Tides, niveau), relu jusqu'à ce
@@ -37,6 +41,9 @@ export function useMatchReward(matchId?: string, preview?: MatchRewardSummary): 
                 // déclenche l'alerte « quête terminée » — sans ça, le joueur
                 // ne l'apprendrait qu'en ouvrant le tiroir de lui-même.
                 notifyProgressionChanged();
+                // Les quêtes et l'audience s'écrivent juste APRÈS le gain : une
+                // seconde relecture les rattrape.
+                timers.push(setTimeout(notifyProgressionChanged, 3000));
               }
             })
             .catch((error) => console.error("[useMatchReward] Lecture impossible :", error));

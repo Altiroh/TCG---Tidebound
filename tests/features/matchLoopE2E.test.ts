@@ -35,6 +35,12 @@ vi.mock("@/lib/supabase/sessionUser", () => ({
 }));
 
 vi.mock("next/cache", () => ({ revalidatePath: () => {} }));
+// Le règlement de fin de partie part APRÈS la réponse du coup (`waitUntil`) : on le recueille pour l'attendre.
+const backgroundWork: Promise<unknown>[] = [];
+vi.mock("@vercel/functions", () => ({ waitUntil: (work: Promise<unknown>) => void backgroundWork.push(work) }));
+async function settleBackground(): Promise<void> {
+  while (backgroundWork.length > 0) await Promise.all(backgroundWork.splice(0));
+}
 // Ces parcours jouent l'humain EN PREMIER : la pièce d'ouverture (`firstPlayer: "coin"`)
 // est figée ici (`forcedFirst`, joueur 1 par défaut) ; le tirage a ses propres tests
 // (`createGameState.test.ts`).
@@ -163,7 +169,7 @@ async function playToTheEnd(matchId: string, userId: string, limit = 400, { aged
   for (let move = 0; move < limit; move += 1) {
     const stateRow = db.one("match_states", { match_id: matchId });
     const match = db.one("matches", { id: matchId });
-    if (!stateRow || match?.status !== "active") return;
+    if (!stateRow || match?.status !== "active") return settleBackground();
 
     const action = chooseBotAction(stateRow.state, userId, "moyen");
     const result = await submitMatchAction(matchId, action);
@@ -728,6 +734,7 @@ describe("délai de tour — l'autorité reste au serveur", () => {
       await fetchMatchView(matchId);
       manquees += 1;
     }
+    await settleBackground();
     expect(manquees).toBe(RULES.MAX_MISSED_DEADLINES);
 
     const match = db.one("matches", { id: matchId })!;

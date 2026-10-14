@@ -1,4 +1,5 @@
 import { botHasSomethingToDo, dispatch, runBotUntilIdle, stepBotTurn, toPlayerView, turnTimerExpired, type GameState, type PlayerAction } from "@/game";
+import { waitUntil } from "@vercel/functions";
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/types";
 import { awardMatchReward } from "@/features/progression/rewards";
@@ -315,7 +316,17 @@ async function commitAndSettle(
     // La banque d'équilibrage mesure le JEU : toutes les parties, amicales
     // comprises (que `settleFinishedMatch` laisse de côté), et en parallèle
     // du règlement — le joueur n'attend rien d'elle.
-    await Promise.all([settleFinishedMatch(updatedMatch, finalState), recordMatchBalanceReport(updatedMatch, finalState)]);
+    //
+    // APRÈS la réponse (14/10/2026) : le coup qui achève attendait tout le
+    // règlement (récompenses, audience, quêtes, statistiques) avant de
+    // s'afficher — une à deux secondes de table figée. L'écran de fin relit
+    // le gain de lui-même (`useMatchReward`) ; `waitUntil` garde la fonction
+    // Vercel en vie jusqu'au bout du règlement (sans effet hors Vercel, où
+    // le processus reste de toute façon).
+    const settlement = Promise.all([settleFinishedMatch(updatedMatch, finalState), recordMatchBalanceReport(updatedMatch, finalState)]).catch((error) =>
+      console.error("[commitAndSettle] Règlement de fin de partie en échec :", error)
+    );
+    waitUntil(settlement);
   }
 
   return {
