@@ -4891,10 +4891,41 @@
   z-index: -1;
   transform: translate(11%, 9%) rotate(3deg);
   transform-origin: 50% 50%;
-  pointer-events: auto;
+  /*
+   * La carte du porteur est un `<button>` en `pointer-events: none` : sans
+   * garde, le pointeur la traversait et tombait sur l'Équipement caché
+   * dessous — le survol montrait l'Équipement et le geste d'attaque ne
+   * partait plus. Seule la partie qui DÉPASSE (bande droite et bande basse,
+   * les deux pseudo-éléments ci-dessous) répond au pointeur.
+   */
+  pointer-events: none;
   cursor: zoom-in;
   filter: brightness(0.86) saturate(0.92) drop-shadow(0 6px 10px rgba(0, 0, 0, 0.55));
   transition: transform 160ms ease, filter 160ms ease;
+}
+
+/* Zones actives : ce qui dépasse du porteur (décalage 11 % / 9 %, moins la
+   marge de la rotation pour ne jamais mordre sur la carte du dessus). */
+.equipTuck::before,
+.equipTuck::after {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  pointer-events: auto;
+}
+
+.equipTuck::before {
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 92%;
+}
+
+.equipTuck::after {
+  left: 0;
+  right: 0;
+  bottom: 0;
+  top: 93%;
 }
 
 .equipTuck:hover,
