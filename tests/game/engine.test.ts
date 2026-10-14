@@ -2,12 +2,10 @@ import { describe, expect, it } from "vitest";
 // Effets d'arrivée facultatifs (12/10/2026) : jouer une carte accepte son effet d'arrivée, comme « Appliquer ».
 import { dispatch } from "@/tests/game/arrivalDispatch";
 import { computeEffectiveStats } from "@/game/cards/stats";
-import { getCardDefinition } from "@/game/cards/sets/core";
-import { handBreakCost } from "@/game/actions/breakObject";
 import { enumerateCandidateActions } from "@/game/bot/enumerateActions";
 import { canUnitAttack } from "@/game/rules/validation";
 import { naturalReasonRecovery, reasonCeiling } from "@/game/state/reason";
-import { instance, TEST_COQUE_LEGERE, testEnvironment, testGameState, testPlayer, withTestShip, enFinDeTour } from "./testHelpers";
+import { instance, TEST_COQUE_LEGERE, testEnvironment, testGameState, testPlayer, withTestShip, enFinDeTour, jouerObjet } from "./testHelpers";
 import type { GameState } from "@/game/state/types";
 
 describe("engine.dispatch - phases", () => {
@@ -65,15 +63,17 @@ describe("engine.dispatch - phases", () => {
     expect(wrongPlayer.ok).toBe(false);
   });
 
-  it("autorise poser / Saborder / Briser pendant la Phase principale 2", () => {
+  it("autorise poser / Saborder / jouer un Objet pendant la Phase principale 2", () => {
     const card = instance("murene-aveugle", "p1");
+    const objet = instance("thermos-du-dernier-quart", "p1");
     const unit = instance("requin-balafre", "p1");
     const state = testGameState({
       phase: "mainPhase2",
-      players: [testPlayer("p1", { hand: [card], board: [unit], reason: 10 }), testPlayer("p2")],
+      players: [testPlayer("p1", { hand: [card, objet], board: [unit], reason: 10 }), testPlayer("p2")],
     });
 
     expect(dispatch(state, { type: "playCard", playerId: "p1", instanceId: card.instanceId }).ok).toBe(true);
+    expect(dispatch(state, { type: "playCard", playerId: "p1", instanceId: objet.instanceId }).ok).toBe(true);
     expect(dispatch(state, { type: "saborder", playerId: "p1", instanceId: unit.instanceId }).ok).toBe(true);
     // Le combat, lui, reste enfermé dans sa propre phase.
     expect(dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: unit.instanceId }).ok).toBe(false);
@@ -296,52 +296,16 @@ describe("engine.dispatch - playCard", () => {
   });
 });
 
-describe("engine.dispatch - breakObject", () => {
-  it("brise un Objet contrôlé : résout onBreakEffects, l'envoie au cimetière, sans déclencher onDeath/onSaborde", () => {
-    // Raison à 5 (> 3) pour rester sur le seul gain de base ici — le bonus
-    // conditionnel "3 Raison ou moins" a son propre test dédié plus bas.
-    const thermos = instance("thermos-du-dernier-quart", "p1"); // Brisez : récupérez 2 Raison
+describe("engine.dispatch - playCard d'un Objet (refonte du 13/10/2026)", () => {
+  it("joue l'Objet au coût imprimé : résout onBreakEffects, Brisé, au Cimetière, sans Slot ni onDeath/onSaborde", () => {
+    // Raison à 6 : 6 - 2 = 4 (> 3) au moment de la résolution, le bonus
+    // conditionnel « 3 Raison ou moins » a son propre test dédié plus bas.
+    const thermos = instance("thermos-du-dernier-quart", "p1"); // coût 2, Brisez : récupérez 2 Raison
     const state = testGameState({
-      players: [testPlayer("p1", { board: [thermos], reason: 5 }), testPlayer("p2")],
+      players: [testPlayer("p1", { hand: [thermos], reason: 6 }), testPlayer("p2")],
     });
 
-    const result = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: thermos.instanceId });
-
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
-    const p1 = result.state.players[0];
-    expect(p1.board).toHaveLength(0);
-    expect(p1.graveyard).toHaveLength(1);
-    expect(p1.reason).toBe(7);
-    expect(result.events.some((e) => e.type === "SABORDED")).toBe(false);
-  });
-
-  it("refuse de briser une carte qui n'est pas un Objet", () => {
-    const structure = instance("caisses-arrimees", "p1"); // Structure, pas un Objet
-    const state = testGameState({
-      players: [testPlayer("p1", { board: [structure] }), testPlayer("p2")],
-    });
-
-    const result = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: structure.instanceId });
-    expect(result.ok).toBe(false);
-  });
-});
-
-describe("engine.dispatch - breakObject depuis la main (règle prototype)", () => {
-  it("coûte la moitié du coût imprimé arrondie au supérieur, minimum 1", () => {
-    expect(handBreakCost(getCardDefinition("thermos-du-dernier-quart"))).toBe(1); // coût 2
-    expect(handBreakCost(getCardDefinition("levier-de-lest"))).toBe(1); // coût 1
-    expect(handBreakCost({ ...getCardDefinition("thermos-du-dernier-quart"), cost: 5 })).toBe(3);
-    expect(handBreakCost({ ...getCardDefinition("thermos-du-dernier-quart"), cost: 0 })).toBe(1);
-  });
-
-  it("paie le coût, résout l'effet et envoie l'Objet en défausse sans occuper de Slot", () => {
-    const thermos = instance("thermos-du-dernier-quart", "p1"); // Brisez : récupérez 2 Raison
-    const state = testGameState({
-      players: [testPlayer("p1", { hand: [thermos], reason: 5 }), testPlayer("p2")],
-    });
-
-    const result = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: thermos.instanceId, fromHand: true });
+    const result = dispatch(state, { type: "playCard", playerId: "p1", instanceId: thermos.instanceId });
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
@@ -349,29 +313,45 @@ describe("engine.dispatch - breakObject depuis la main (règle prototype)", () =
     expect(p1.hand).toHaveLength(0);
     expect(p1.board).toHaveLength(0);
     expect(p1.graveyard.map((c) => c.instanceId)).toEqual([thermos.instanceId]);
-    expect(p1.reason).toBe(6); // 5 - 1 (Bris depuis la main) + 2
-    expect(result.events).toContainEqual(expect.objectContaining({ type: "CARD_MOVED", fromZone: "hand", toZone: "graveyard" }));
+    expect(p1.reason).toBe(6); // 6 - 2 (coût imprimé) + 2
+    expect(result.events.some((e) => e.type === "SABORDED")).toBe(false);
+    const types = result.events.map((e) => e.type);
+    for (const t of ["PLAY_CARD", "OBJECT_PLAYED", "CHAIN_LINK_ADDED", "CHAIN_LINK_RESOLVED", "OBJECT_BROKEN"]) expect(types).toContain(t);
+    // Une carte jouée n'est pas une carte défaussée : aucun mouvement main → Cimetière.
+    expect(result.events).not.toContainEqual(expect.objectContaining({ type: "CARD_MOVED", fromZone: "hand", toZone: "graveyard" }));
   });
 
-  it("refuse une carte de la main qui n'est pas un Objet, et un Objet absent de la main", () => {
-    const marin = instance("marin-des-jetees", "p1");
+  it("exige un emplacement libre, sans jamais s'y poser", () => {
+    const thermos = instance("thermos-du-dernier-quart", "p1");
+    const plein = Array.from({ length: 6 }, (_, i) => instance("marin-des-jetees", "p1", { slot: i }));
+    const state = testGameState({
+      players: [testPlayer("p1", { hand: [thermos], board: plein, reason: 6 }), testPlayer("p2")],
+    });
+
+    expect(dispatch(state, { type: "playCard", playerId: "p1", instanceId: thermos.instanceId }).ok).toBe(false);
+    const unePlace = { ...state, players: [{ ...state.players[0], board: plein.slice(0, 5) }, state.players[1]] as typeof state.players };
+    const result = dispatch(unePlace, { type: "playCard", playerId: "p1", instanceId: thermos.instanceId });
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.state.players[0].board).toHaveLength(5);
+  });
+
+  it("refuse un Objet absent de la main", () => {
     const thermos = instance("thermos-du-dernier-quart", "p1");
     const state = testGameState({
-      players: [testPlayer("p1", { hand: [marin], board: [thermos], reason: 5 }), testPlayer("p2")],
+      players: [testPlayer("p1", { reason: 5 }), testPlayer("p2")],
     });
 
-    expect(dispatch(state, { type: "breakObject", playerId: "p1", instanceId: marin.instanceId, fromHand: true }).ok).toBe(false);
-    expect(dispatch(state, { type: "breakObject", playerId: "p1", instanceId: thermos.instanceId, fromHand: true }).ok).toBe(false);
+    expect(dispatch(state, { type: "playCard", playerId: "p1", instanceId: thermos.instanceId }).ok).toBe(false);
   });
 
-  it("respecte les conditions d'activation de l'Objet (ex: Marée requise)", () => {
-    const choppe = instance("chope", "p1"); // Choppe ! : ne se brise que pendant Calme
+  it("respecte les conditions de jeu de l'Objet (ex: Marée requise)", () => {
+    const planche = instance("derniere-planche", "p1"); // Dernière Planche : jouable seulement pendant Tempête ou Abysses
     const state = testGameState({
-      players: [testPlayer("p1", { hand: [choppe], reason: 5 }), testPlayer("p2")],
-      environment: testEnvironment({ tideState: "tempete" }),
+      players: [testPlayer("p1", { hand: [planche], reason: 5 }), testPlayer("p2")],
+      environment: testEnvironment({ tideState: "calme" }),
     });
 
-    expect(dispatch(state, { type: "breakObject", playerId: "p1", instanceId: choppe.instanceId, fromHand: true }).ok).toBe(false);
+    expect(dispatch(state, { type: "playCard", playerId: "p1", instanceId: planche.instanceId }).ok).toBe(false);
   });
 });
 
@@ -1280,10 +1260,10 @@ describe("engine.dispatch - playCard : attache d'Équipement", () => {
   });
 });
 
-describe("engine.dispatch - Équipement : substitution de destruction (Plaque de Fortune)", () => {
-  it("détruit la Plaque de Fortune à la place du permanent équipé, qui survit avec -1 Résistance permanent", () => {
+describe("engine.dispatch - Équipement : Voile (Plaque de Fortune)", () => {
+  it("détruit la Plaque de Fortune à la place du porteur, qui reste en jeu avec 1 Résistance, sans malus", () => {
     const attacker = instance("requin-balafre", "p1"); // 4/2
-    const target = instance("vieux-loup-de-mer", "p2"); // 2/4
+    const target = instance("vieux-loup-de-mer", "p2", { damageMarked: 1 }); // 2/4, +1 de la Plaque = 5
     const equip = instance("plaque-de-fortune", "p2", { attachedToInstanceId: target.instanceId });
     const state = testGameState({
       phase: "combatPhase",
@@ -1303,11 +1283,12 @@ describe("engine.dispatch - Équipement : substitution de destruction (Plaque de
     // L'Équipement est détruit à la place de la cible.
     expect(p2.board.some((u) => u.instanceId === equip.instanceId)).toBe(false);
     expect(p2.graveyard.some((c) => c.instanceId === equip.instanceId)).toBe(true);
-    // La cible survit, malus permanent de Résistance appliqué.
-    const survivor = p2.board.find((u) => u.instanceId === target.instanceId);
+    expect(result.events.some((e) => e.type === "VEIL_CONSUMED")).toBe(true);
+    // La cible survit à 1 Résistance restante, bonus retiré, sans malus permanent.
+    const survivor = p2.board.find((u) => u.instanceId === target.instanceId)!;
     expect(survivor).toBeDefined();
-    expect(computeEffectiveStats(survivor!, "calme").health).toBe(3); // 4 - 1
-    expect(survivor!.damageMarked).toBeLessThan(3);
+    expect(computeEffectiveStats(survivor, "calme").health).toBe(4);
+    expect(survivor.damageMarked).toBe(3);
   });
 
   it("ne se déclenche qu'une fois : sans Plaque de Fortune en jeu, un permanent déjà affaibli meurt normalement", () => {
@@ -1524,8 +1505,8 @@ describe("engine.dispatch - playCard : restriction de Raison du contrôleur", ()
   });
 });
 
-describe("engine.dispatch - Choppe ! : coût dynamique et bris restreint à Calme", () => {
-  it("coûte son prix normal (1 Raison) en dehors de Calme", () => {
+describe("engine.dispatch - Choppe ! : coût dynamique et effet restreint à Calme", () => {
+  it("hors Calme, elle coûte 1 et son effet ne s'applique pas", () => {
     const card = instance("chope", "p1");
     const state = testGameState({
       players: [testPlayer("p1", { hand: [card], reason: 3 }), testPlayer("p2")],
@@ -1538,7 +1519,7 @@ describe("engine.dispatch - Choppe ! : coût dynamique et bris restreint à Calm
     expect(result.state.players[0].reason).toBe(2);
   });
 
-  it("coûte 0 Raison pendant Calme", () => {
+  it("pendant Calme, coûte 0 Raison, se Brise et rend 2 Raison", () => {
     const card = instance("chope", "p1");
     const state = testGameState({
       players: [testPlayer("p1", { hand: [card], reason: 3 }), testPlayer("p2")],
@@ -1548,31 +1529,8 @@ describe("engine.dispatch - Choppe ! : coût dynamique et bris restreint à Calm
     const result = dispatch(state, { type: "playCard", playerId: "p1", instanceId: card.instanceId });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.state.players[0].reason).toBe(3);
-  });
-
-  it("ne peut être brisé que pendant Calme", () => {
-    const card = instance("chope", "p1");
-    const state = testGameState({
-      players: [testPlayer("p1", { board: [card] }), testPlayer("p2")],
-      environment: testEnvironment({ tideState: "houle" }),
-    });
-
-    const result = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: card.instanceId });
-    expect(result.ok).toBe(false);
-  });
-
-  it("se brise normalement pendant Calme et rend 2 Raison", () => {
-    const card = instance("chope", "p1");
-    const state = testGameState({
-      players: [testPlayer("p1", { board: [card], reason: 2 }), testPlayer("p2")],
-      environment: testEnvironment({ tideState: "calme" }),
-    });
-
-    const result = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: card.instanceId });
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
-    expect(result.state.players[0].reason).toBe(4);
+    expect(result.state.players[0].reason).toBe(5); // 3 - 0 + 2
+    expect(result.state.players[0].graveyard.map((c) => c.instanceId)).toEqual([card.instanceId]);
   });
 });
 
@@ -1661,29 +1619,29 @@ describe("engine.dispatch - attack : perte de Raison adverse sur attaque directe
   });
 });
 
-describe("engine.dispatch - breakObject : bonus conditionnel de Raison (Thermos du Dernier Quart)", () => {
-  it("rend 3 Raison au total si la Raison du contrôleur est à 3 ou moins avant le bris", () => {
+describe("engine.dispatch - Objet joué : bonus conditionnel de Raison (Thermos du Dernier Quart)", () => {
+  it("rend 3 Raison au total si la Raison du contrôleur est à 3 ou moins à la résolution (coût payé)", () => {
     const card = instance("thermos-du-dernier-quart", "p1");
     const state = testGameState({
-      players: [testPlayer("p1", { board: [card], reason: 3 }), testPlayer("p2")],
+      players: [testPlayer("p1", { hand: [card], reason: 5 }), testPlayer("p2")],
     });
 
-    const result = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: card.instanceId });
+    const result = jouerObjet(state, { playerId: "p1", instanceId: card.instanceId }, dispatch);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.state.players[0].reason).toBe(6); // 3 + 1 (conditionnel) + 2 (base)
+    expect(result.state.players[0].reason).toBe(6); // 5 - 2 (coût) = 3, puis + 1 (conditionnel) + 2 (base)
   });
 
   it("ne rend que le gain de base (2) au-delà de 3 Raison", () => {
     const card = instance("thermos-du-dernier-quart", "p1");
     const state = testGameState({
-      players: [testPlayer("p1", { board: [card], reason: 5 }), testPlayer("p2")],
+      players: [testPlayer("p1", { hand: [card], reason: 6 }), testPlayer("p2")],
     });
 
-    const result = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: card.instanceId });
+    const result = jouerObjet(state, { playerId: "p1", instanceId: card.instanceId }, dispatch);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.state.players[0].reason).toBe(7); // 5 + 2 (base uniquement)
+    expect(result.state.players[0].reason).toBe(6); // 6 - 2 (coût) = 4, puis + 2 (base uniquement)
   });
 });
 
@@ -2257,7 +2215,7 @@ describe("engine.dispatch - activateAbility : Sondeur des Mauvaises Eaux (capaci
   });
 });
 
-describe("engine.dispatch - breakObject : Grappin de Récupération (recherche en défausse)", () => {
+describe("engine.dispatch - Objet joué : Grappin de Récupération (recherche en défausse)", () => {
   it("récupère en main une Structure ou un Équipement choisi dans la défausse, coûtant 2 ou moins", () => {
     const grappin = instance("grappin-de-recuperation", "p1");
     const caisses = instance("caisses-arrimees", "p1"); // structure, coût 1
@@ -2265,12 +2223,11 @@ describe("engine.dispatch - breakObject : Grappin de Récupération (recherche e
       players: [testPlayer("p1", { board: [grappin], graveyard: [caisses] }), testPlayer("p2")],
     });
 
-    const result = dispatch(state, {
-      type: "breakObject",
+    const result = jouerObjet(state, {
       playerId: "p1",
       instanceId: grappin.instanceId,
       chosenGraveyardInstanceId: caisses.instanceId,
-    });
+    }, dispatch);
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
@@ -2286,7 +2243,7 @@ describe("engine.dispatch - breakObject : Grappin de Récupération (recherche e
       players: [testPlayer("p1", { board: [grappin], graveyard: [] }), testPlayer("p2")],
     });
 
-    const result = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: grappin.instanceId });
+    const result = jouerObjet(state, { playerId: "p1", instanceId: grappin.instanceId }, dispatch);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.state.players[0].hand).toHaveLength(0);
@@ -2299,12 +2256,11 @@ describe("engine.dispatch - breakObject : Grappin de Récupération (recherche e
       players: [testPlayer("p1", { board: [grappin], graveyard: [cage] }), testPlayer("p2")],
     });
 
-    const result = dispatch(state, {
-      type: "breakObject",
+    const result = jouerObjet(state, {
       playerId: "p1",
       instanceId: grappin.instanceId,
       chosenGraveyardInstanceId: cage.instanceId,
-    });
+    }, dispatch);
     expect(result.ok).toBe(false);
   });
 
@@ -2315,16 +2271,15 @@ describe("engine.dispatch - breakObject : Grappin de Récupération (recherche e
       players: [testPlayer("p1", { board: [grappin], graveyard: [marin] }), testPlayer("p2")],
     });
 
-    const result = dispatch(state, {
-      type: "breakObject",
+    const result = jouerObjet(state, {
       playerId: "p1",
       instanceId: grappin.instanceId,
       chosenGraveyardInstanceId: marin.instanceId,
-    });
+    }, dispatch);
     expect(result.ok).toBe(false);
   });
 
-  it("refuse de briser sans choisir de cible quand PLUSIEURS cartes éligibles existent", () => {
+  it("refuse de jouer le Grappin sans choisir de cible quand PLUSIEURS cartes éligibles existent", () => {
     const grappin = instance("grappin-de-recuperation", "p1");
     const caisses = instance("caisses-arrimees", "p1");
     const autres = instance("caisses-arrimees", "p1");
@@ -2332,7 +2287,7 @@ describe("engine.dispatch - breakObject : Grappin de Récupération (recherche e
       players: [testPlayer("p1", { board: [grappin], graveyard: [caisses, autres] }), testPlayer("p2")],
     });
 
-    const result = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: grappin.instanceId });
+    const result = jouerObjet(state, { playerId: "p1", instanceId: grappin.instanceId }, dispatch);
     expect(result.ok).toBe(false);
   });
 
@@ -2343,7 +2298,7 @@ describe("engine.dispatch - breakObject : Grappin de Récupération (recherche e
       players: [testPlayer("p1", { board: [grappin], graveyard: [caisses] }), testPlayer("p2")],
     });
 
-    const result = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: grappin.instanceId });
+    const result = jouerObjet(state, { playerId: "p1", instanceId: grappin.instanceId }, dispatch);
     expect(result.ok).toBe(true);
     if (result.ok) expect(result.state.players[0].hand.map((c) => c.instanceId)).toContain(caisses.instanceId);
   });

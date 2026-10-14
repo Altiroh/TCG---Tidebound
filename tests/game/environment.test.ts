@@ -6,10 +6,10 @@ import { resolveEffect } from "@/game/effects/resolveEffect";
 import { grantIgnoreNextTideDamage } from "@/game/environment/resolveEnvironment";
 import { getShipDefinition } from "@/game/environment/shipData";
 import { validateDeckList } from "@/game/rules/deckValidation";
-import { instance, testEnvironment, testGameState, testPlayer, enFinDeTour } from "./testHelpers";
+import { instance, testEnvironment, testGameState, testPlayer, enFinDeTour, jouerObjet } from "./testHelpers";
 
 describe("environnement - emplacements du Navire", () => {
-  it("un Navire limite le plateau à son slotCount (6 pour Le Brise-Lames), Structures/Objets inclus (Slots universels)", () => {
+  it("un Navire limite le plateau à son slotCount (6 pour Le Brise-Lames), Structures incluses (Slots universels)", () => {
     const fullBoard = Array.from({ length: 6 }, () => instance("marin-des-jetees", "p1"));
     const card = instance("caisses-arrimees", "p1"); // Structure : occupe aussi un Slot
     const state = testGameState({
@@ -200,13 +200,13 @@ describe("environnement - orientation de Marée", () => {
     expect(result.state.environment.tideOrientation).toBe("descendante");
   });
 
-  it("Cartes des Courants (bris) inverse l'orientation de la prochaine transition", () => {
+  it("Cartes des Courants (jouée) inverse l'orientation de la prochaine transition", () => {
     const currents = instance("cartes-des-courants", "p1");
     const state = testGameState({
       players: [testPlayer("p1", { board: [currents] }), testPlayer("p2")],
       environment: testEnvironment({ tideOrientation: "montante" }),
     });
-    const result = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: currents.instanceId });
+    const result = jouerObjet(state, { playerId: "p1", instanceId: currents.instanceId });
     expect(result.ok).toBe(true);
     if (result.ok) expect(result.state.environment.tideOrientation).toBe("descendante");
   });

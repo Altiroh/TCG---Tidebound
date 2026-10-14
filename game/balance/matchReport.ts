@@ -282,7 +282,7 @@ export function computeMatchBalanceReport({ state, vsBot }: MatchBalanceReportIn
         break;
 
       case "OBJECT_BROKEN":
-        if (event.fromHand) markSeen(event.instanceId);
+        markSeen(event.instanceId);
         groupSource = lineOfInstance(event.instanceId);
         groupShip = null;
         break;

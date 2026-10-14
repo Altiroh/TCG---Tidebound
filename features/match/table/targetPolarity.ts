@@ -40,19 +40,19 @@ export function effectsPolarity(effects: readonly EffectDefinition[]): TargetPol
 }
 
 /**
- * Sens du ciblage lancé par une carte : sa pose (`playCard`), son bris
- * (`break`), sa capacité activable (`ability`) ou une capacité déclenchée
- * (`reaction`, avec son indice).
+ * Sens du ciblage lancé par une carte : sa pose (`playCard` — l'effet d'un
+ * Objet joué compris), sa capacité activable (`ability`) ou une capacité
+ * déclenchée (`reaction`, avec son indice).
  */
-export function sourcePolarity(cardId: string, kind: "playCard" | "break" | "ability" | "reaction", abilityIndex = 0): TargetPolarity {
+export function sourcePolarity(cardId: string, kind: "playCard" | "ability" | "reaction", abilityIndex = 0): TargetPolarity {
   const def = getCardDefinition(cardId);
   const effects =
     kind === "playCard"
-      ? def.onPlayEffects
-      : kind === "break"
+      ? def.type === "objet"
         ? def.onBreakEffects
-        : kind === "ability"
-          ? def.activatableOncePerTurn?.effects
-          : def.abilities?.[abilityIndex]?.effects;
+        : def.onPlayEffects
+      : kind === "ability"
+        ? def.activatableOncePerTurn?.effects
+        : def.abilities?.[abilityIndex]?.effects;
   return effectsPolarity(effects ?? []);
 }

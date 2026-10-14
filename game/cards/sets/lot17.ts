@@ -130,9 +130,8 @@ const DUNGEON: CardDefinition[] = [
     die: 6,
     maxCopies: 2,
     text:
-      "Une fois par tour, après l'un de vos jets, modifiez son résultat de +1 ou -1. Réussite critique : vous pouvez " +
-      "modifier immédiatement un autre de vos jets ce tour de +1 ou -1. Échec critique : Miss Franche-Comté 1987 perd " +
-      "-1/-1 jusqu'à votre prochain tour.",
+      "1 fois par tour, après un de vos jets : modifiez-le de +1 ou -1. Réussite critique : modifiez un autre " +
+      "jet de +1 ou -1 ce tour. Échec critique : elle perd -1/-1 jusqu'à votre prochain tour.",
     dieAdjustOncePerTurn: {
       amount: 1,
       extraUseOnCriticalSuccess: true,
@@ -152,8 +151,8 @@ const DUNGEON: CardDefinition[] = [
     die: 8,
     maxCopies: 2,
     text:
-      "À l'arrivée : infligez 2 dégâts. Lancez : sur 5+, infligez 2 dégâts supplémentaires. Réussite critique : encore " +
-      "2 dégâts répartis. Échec critique : Balthazar s'inflige 2 dégâts.",
+      "À l'arrivée : infligez 2 dégâts. Lancez : sur 5+, infligez 2 dégâts de plus. Réussite critique : " +
+      "répartissez 2 dégâts supplémentaires. Échec critique : Balthazar subit 2 dégâts.",
     // « Infligez 2 dégâts » : à l'unité désignée en le jouant. « Répartis » :
     // 1 dégât à chacune de jusqu'à deux unités, au choix du joueur.
     onPlayEffects: [
@@ -273,7 +272,7 @@ const DUNGEON: CardDefinition[] = [
     die: 4,
     maxCopies: 3,
     text:
-      "Première Réussite critique de chacun de vos tours : une unité alliée gagne +1/+1 jusqu'à votre prochain tour. " +
+      "Première Réussite critique de votre tour : une unité alliée gagne +1/+1 jusqu'à votre prochain tour. " +
       "Premier Échec critique : Barnabé perd -1/-1 jusqu'à votre prochain tour.",
     abilities: [
       {
@@ -364,7 +363,9 @@ const DUNGEON: CardDefinition[] = [
     health: 3,
     die: 4,
     maxCopies: 3,
-    text: "À l'arrivée : sur 3–4, votre prochaine carte ce tour coûte 1 de moins. Réussite critique : 2 de moins à la place.",
+    text:
+      "À l'arrivée : sur 3–4, votre prochaine carte coûte 1 de moins ce tour. Réussite critique : elle coûte 2 " +
+      "de moins à la place.",
     onPlayEffects: [
       lancez(
         [
@@ -441,7 +442,7 @@ const DUNGEON: CardDefinition[] = [
     health: 3,
     die: 4,
     maxCopies: 3,
-    text: "Après votre premier Échec critique du tour, votre prochain jet ce tour gagne +1.",
+    text: "Après votre premier Échec critique du tour : +1 à votre prochain jet ce tour.",
     abilities: [
       {
         trigger: "onDieResolved",
@@ -464,7 +465,9 @@ const DUNGEON: CardDefinition[] = [
     health: 4,
     die: 8,
     maxCopies: 2,
-    text: "À l'arrivée : une unité ennemie perd -1/-1. Sur 5+, -2/-2. Réussite critique : -3/-3.",
+    text:
+      "À l'arrivée : une unité adverse perd -1/-1. Sur 5+ : -2/-2 à la place. Réussite critique : -3/-3 à la " +
+      "place.",
     onPlayEffects: [
       lancez(
         [3, 2, 1].map((n) => ({
@@ -562,7 +565,7 @@ const DUNGEON: CardDefinition[] = [
     health: 6,
     die: 6,
     maxCopies: 1,
-    text: "Si Le Donjon de Ladalle est actif, la première relance que vous effectuez à chacun de vos tours gagne +1.",
+    text: "Si Le Donjon de Ladalle est actif, votre première relance de chaque tour gagne +1.",
     rerollBonusWhileLande: { landeCardId: "le-donjon-de-ladalle", bonus: 1 },
   },
   {
@@ -617,7 +620,7 @@ const DUNGEON: CardDefinition[] = [
     cost: 1,
     maxCopies: 3,
     chaine: true,
-    text: "Chaîne — Brisez : modifiez le jet en cours de +1 ou -1.",
+    text: "Chaîne — Modifiez le jet en cours de +1 ou −1.",
     onBreakEffects: [{ type: "modifyPendingDie", target: { kind: "controllerPlayer" }, dieDeltas: [1, -1] }],
   },
   {
@@ -629,7 +632,7 @@ const DUNGEON: CardDefinition[] = [
     cost: 2,
     maxCopies: 3,
     chaine: true,
-    text: "Chaîne — Brisez : relancez le dé en cours. Le nouveau résultat remplace l'ancien.",
+    text: "Chaîne — Relancez le dé en cours et gardez le nouveau résultat.",
     onBreakEffects: [{ type: "rerollPendingDie", target: { kind: "controllerPlayer" } }],
   },
   {
@@ -641,7 +644,7 @@ const DUNGEON: CardDefinition[] = [
     cost: 2,
     maxCopies: 3,
     chaine: true,
-    text: "Chaîne — Brisez : augmentez le jet en cours de 2 sans dépasser son maximum.",
+    text: "Chaîne — Augmentez le jet en cours de 2 sans dépasser son maximum.",
     onBreakEffects: [{ type: "modifyPendingDie", target: { kind: "controllerPlayer" }, dieDeltas: [2] }],
   },
   {
@@ -652,7 +655,9 @@ const DUNGEON: CardDefinition[] = [
     setCode: DUNGEON_ET_LADALLE,
     cost: 3,
     maxCopies: 3,
-    text: "Brisez avant votre prochain jet : lancez deux dés identiques et choisissez celui à conserver. Une Chaîne peut ensuite modifier ce résultat.",
+    text:
+      "Avant votre prochain jet : lancez deux dés identiques et choisissez le résultat. Une Chaîne peut ensuite " +
+      "le modifier.",
     onBreakEffects: [{ type: "modifyNextRoll", target: { kind: "controllerPlayer" }, nextRoll: { advantage: true } }],
   },
   {
@@ -663,7 +668,7 @@ const DUNGEON: CardDefinition[] = [
     setCode: DUNGEON_ET_LADALLE,
     cost: 3,
     maxCopies: 2,
-    text: "Brisez avant votre prochain jet : améliorez son dé d'un niveau, D4 → D6 ou D6 → D8.",
+    text: "Avant votre prochain jet : augmentez son dé d'un niveau (D4 → D6 → D8).",
     onBreakEffects: [{ type: "modifyNextRoll", target: { kind: "controllerPlayer" }, nextRoll: { upgradeSteps: 1 } }],
   },
   {
@@ -674,7 +679,9 @@ const DUNGEON: CardDefinition[] = [
     setCode: DUNGEON_ET_LADALLE,
     cost: 2,
     maxCopies: 3,
-    text: "Brisez : renvoyez une unité Dungeon et Ladalle alliée dans votre main. Réduisez son coût de 1 jusqu'à la fin de votre prochain tour.",
+    text:
+      "Renvoyez une unité Dungeon et Ladalle alliée en main. Elle coûte 1 de moins jusqu'à la fin de votre " +
+      "prochain tour.",
     onBreakEffects: [
       { type: "moveZone", target: { kind: "chosenUnit", among: { archetype: DL, unitsOnly: true } }, toZone: "hand" },
       // « Jusqu'à la fin de votre prochain tour » : ce tour-ci, celui de
@@ -690,11 +697,10 @@ const DUNGEON: CardDefinition[] = [
     setCode: DUNGEON_ET_LADALLE,
     cost: 1,
     maxCopies: 3,
-    text: "Brisez : renvoyez une unité alliée coûtant 2 ou moins dans votre main. Piochez 1 puis défaussez 1.",
+    text: "Renvoyez une unité alliée de coût 2 ou moins dans votre main. Piochez 1.",
     onBreakEffects: [
       { type: "moveZone", target: { kind: "chosenUnit", among: { unitsOnly: true, maxCost: 2 } }, toZone: "hand" },
       { type: "draw", target: { kind: "controllerPlayer" }, amount: flat(1) },
-      { type: "discard", target: { kind: "controllerPlayer" }, amount: flat(1) },
     ],
   },
   {
@@ -705,7 +711,7 @@ const DUNGEON: CardDefinition[] = [
     setCode: DUNGEON_ET_LADALLE,
     cost: 4,
     maxCopies: 3,
-    text: "Brisez : cherchez Le Donjon de Ladalle dans votre deck, révélez-le et ajoutez-le à votre main.",
+    text: "Cherchez Le Donjon de Ladalle dans votre pioche, révélez-le et ajoutez-le à votre main.",
     onBreakEffects: [{ type: "searchDeck", target: { kind: "controllerPlayer" }, cardId: "le-donjon-de-ladalle" }],
   },
   {
@@ -717,8 +723,8 @@ const DUNGEON: CardDefinition[] = [
     cost: 2,
     maxCopies: 3,
     text:
-      "Durée : 4 tours de table. La première fois que vous lancez un dé à chacun de vos tours, vous pouvez le relancer. " +
-      "Vous devez garder le nouveau résultat.",
+      "Durée : 4 tours de table. Premier jet de chacun de vos tours : vous pouvez le relancer. Gardez le nouveau " +
+      "résultat.",
     lande: { durationTableTurns: 4, firstRollRerollEachTurn: true },
   },
   {
@@ -730,7 +736,7 @@ const DUNGEON: CardDefinition[] = [
     cost: 3,
     health: 4,
     maxCopies: 3,
-    text: "La première fois qu'une unité alliée revient dans votre main à chacun de vos tours, récupérez 1 Ancrage.",
+    text: "Première unité alliée renvoyée en main pendant votre tour : récupérez 1 Ancrage.",
     abilities: [
       {
         trigger: "onReturnedToHand",
@@ -777,9 +783,9 @@ function eidolonLvx(abyssale: boolean): CardDefinition {
       (abyssale
         ? "Ne peut entrer en jeu que par l'effet d'Eidolon Opalin LV5 ou par un effet qui invoque explicitement une carte Abyssale. "
         : "Ne peut entrer en jeu que par l'effet d'Eidolon Opalin LV5. ") +
-      "À son arrivée, choisissez 2 effets différents : infligez 4 dégâts à une unité ; détruisez un Objet ; " +
+      "À l'arrivée, choisissez 2 effets différents : infligez 4 dégâts à une unité ; détruisez un Équipement ; " +
       "infligez 3 dégâts à une Structure ; récupérez 2 Raison ; gagnez 3 Armure ; ajoutez une carte de votre Cimetière à " +
-      "votre main. La première fois à chaque tour qu'un autre Opalin que vous contrôlez déclenche un effet, gagnez 1 Armure.",
+      "votre main. Une fois par tour, lorsqu'un autre Opalin que vous contrôlez déclenche un effet, gagnez 1 Armure.",
     abilities: [
       {
         trigger: "onEnterPlay",
@@ -789,8 +795,8 @@ function eidolonLvx(abyssale: boolean): CardDefinition {
       option("lvxArrivee", "Infligez 4 dégâts à une unité.", [
         { type: "pickUnits", target: { kind: "allUnits" }, filter: { cardTypes: [...UNITES] }, uses: 1, thenEffects: [{ type: "damage", target: { kind: "triggerSource" }, amount: flat(4) }] },
       ]),
-      option("lvxArrivee", "Détruisez un Objet.", [
-        { type: "pickUnits", target: { kind: "allUnits" }, filter: { cardTypes: ["objet"] }, uses: 1, thenEffects: [{ type: "destroy", target: { kind: "triggerSource" } }] },
+      option("lvxArrivee", "Détruisez un Équipement.", [
+        { type: "pickUnits", target: { kind: "allUnits" }, filter: { cardTypes: ["equipement"] }, uses: 1, thenEffects: [{ type: "destroy", target: { kind: "triggerSource" } }] },
       ]),
       option("lvxArrivee", "Infligez 3 dégâts à une Structure.", [
         { type: "pickUnits", target: { kind: "allUnits" }, filter: { cardTypes: ["structure"] }, uses: 1, thenEffects: [{ type: "damage", target: { kind: "triggerSource" }, amount: flat(3) }] },
@@ -820,9 +826,9 @@ const OPALINS: CardDefinition[] = [
     health: 6,
     maxCopies: 2,
     text:
-      "À son arrivée : déplacez immédiatement la Marée d'un état dans le sens de votre choix. La première fois à chaque " +
-      "tour que la Marée change, une unité Opaline que vous contrôlez gagne +1 Puissance et +1 Résistance jusqu'à votre " +
-      "prochain tour.",
+      "À l'arrivée : déplacez immédiatement la Marée d'un état dans le sens de votre choix. Une fois par tour, " +
+      "lorsque la Marée change, une unité Opaline que vous contrôlez gagne +1 Puissance et +1 Résistance jusqu'à " +
+      "votre prochain tour.",
     onPlayEffects: [{ type: "chooseAbilityOption", target: { kind: "controllerPlayer" }, optionGroup: "nerhalSens" }],
     abilities: [
       ...deplacerLaMaree("nerhalSens"),
@@ -844,8 +850,8 @@ const OPALINS: CardDefinition[] = [
     health: 7,
     maxCopies: 2,
     text:
-      "À son arrivée : placez jusqu'à 2 cartes de votre Cimetière sous votre pioche dans l'ordre de votre choix. La " +
-      "première fois à chaque tour qu'une carte quitte votre Cimetière, récupérez 1 Raison.",
+      "À l'arrivée : placez jusqu'à 2 cartes de votre Cimetière sous votre pioche, dans l'ordre choisi. Une fois " +
+      "par tour, lorsqu'une carte quitte votre Cimetière, récupérez 1 Raison.",
     onPlayEffects: [{ type: "pickFromGraveyard", target: { kind: "controllerPlayer" }, uses: 2, refusable: true, takeTo: "deckBottom" }],
     abilities: [
       {
@@ -866,8 +872,8 @@ const OPALINS: CardDefinition[] = [
     health: 5,
     maxCopies: 2,
     text:
-      "À son arrivée : ajoutez un Objet de votre Cimetière à votre main. La première fois à chaque tour que vous Brisez " +
-      "un Objet, Kaor gagne +1 Puissance jusqu'à votre prochain tour.",
+      "À l'arrivée : récupérez un Objet de votre Cimetière en main. Une fois par tour, lorsque vous Brisez un " +
+      "Objet, Kaor gagne +1 Puissance jusqu'à votre prochain tour.",
     onPlayEffects: [{ type: "pickFromGraveyard", target: { kind: "controllerPlayer" }, filter: { cardTypes: ["objet"] }, uses: 1 }],
     abilities: [
       {
@@ -889,8 +895,8 @@ const OPALINS: CardDefinition[] = [
     health: 6,
     maxCopies: 3,
     text:
-      "À son arrivée : gagnez 3 Armure. La première fois à chaque tour que votre Navire gagne de l'Armure, une unité " +
-      "Opaline que vous contrôlez gagne +1 Résistance jusqu'à votre prochain tour.",
+      "À l'arrivée : gagnez 3 Armure. Une fois par tour, lorsque votre Navire gagne de l'Armure, un Opalin allié " +
+      "gagne +1 Résistance jusqu'à votre prochain tour.",
     onPlayEffects: [{ type: "gainArmor", target: { kind: "controllerPlayer" }, amount: flat(3) }],
     abilities: [
       {
@@ -911,13 +917,13 @@ const OPALINS: CardDefinition[] = [
     health: 7,
     maxCopies: 2,
     text:
-      "À son arrivée : choisissez un Objet ou une Structure adverse. Son texte est ignoré jusqu'au début de votre " +
-      "prochain tour. La première activation d'Objet adverse à chaque tour coûte 1 Raison supplémentaire. Si " +
-      "l'adversaire ne peut pas payer, cet Objet ne peut pas être activé.",
+      "À l'arrivée : choisissez une Structure adverse. Son texte est ignoré jusqu'au début de votre prochain tour. " +
+      "Le premier Objet adverse joué chaque tour coûte 1 Raison supplémentaire. Si l'adversaire ne peut pas payer, " +
+      "il ne peut pas le jouer.",
     onPlayEffects: [
       {
         type: "buff",
-        target: { kind: "chosenUnit", among: { opponentOnly: true, cardTypes: ["objet", "structure"] } },
+        target: { kind: "chosenUnit", among: { opponentOnly: true, cardTypes: ["structure"] } },
         attackAmount: flat(0),
         healthAmount: flat(0),
         ignoresText: true,
@@ -925,7 +931,7 @@ const OPALINS: CardDefinition[] = [
         expiresOnControllersTurn: true,
       },
     ],
-    taxOpponentObjectBreakOncePerTurnWhileVisible: { amount: 1, blocksIfUnpayable: true },
+    taxOpponentObjectPlayOncePerTurn: { amount: 1, blocksIfUnpayable: true },
   }),
   opalin({
     id: "tharos-opalin-des-brisants",
@@ -937,7 +943,7 @@ const OPALINS: CardDefinition[] = [
     health: 6,
     maxCopies: 2,
     text:
-      "À son arrivée : infligez 3 dégâts à une unité. La première fois à chaque tour qu'une unité adverse survit à des " +
+      "À l'arrivée : infligez 3 dégâts à une unité. Une fois par tour, lorsqu'une unité adverse survit à des " +
       "dégâts, elle perd 1 Puissance jusqu'au prochain tour de son propriétaire.",
     onPlayEffects: [{ type: "damage", target: { kind: "chosenUnit", among: { sameController: false, unitsOnly: true } }, amount: flat(3) }],
     abilities: [
@@ -962,8 +968,8 @@ const OPALINS: CardDefinition[] = [
     health: 5,
     maxCopies: 3,
     text:
-      "À son arrivée : renvoyez une unité coûtant 2 ou moins dans la main de son propriétaire. La première fois à chaque " +
-      "tour qu'une carte adverse retourne dans la main de son propriétaire, gagnez 1 Armure.",
+      "À l'arrivée : renvoyez une unité de coût 2 ou moins dans la main de son propriétaire. Une fois par tour, " +
+      "lorsqu'une carte adverse revient en main, gagnez 1 Armure.",
     onPlayEffects: [{ type: "moveZone", target: { kind: "chosenUnit", among: { sameController: false, unitsOnly: true, maxCost: 2 } }, toZone: "hand" }],
     abilities: [
       {
@@ -985,8 +991,9 @@ const OPALINS: CardDefinition[] = [
     health: 6,
     maxCopies: 2,
     text:
-      "À son arrivée : regardez les 4 cartes du dessous de votre pioche. Ajoutez-en une à votre main puis mélangez les " +
-      "autres dans votre pioche. La première fois à chaque tour qu'une carte est placée sous votre pioche, récupérez 1 Raison.",
+      "À l'arrivée : regardez les 4 cartes du dessous de votre pioche. Ajoutez-en une à votre main puis mélangez " +
+      "les autres dans votre pioche. Une fois par tour, lorsqu'une carte est placée sous votre pioche, récupérez " +
+      "1 Raison.",
     onPlayEffects: [{ type: "lookAtDeckTop", target: { kind: "controllerPlayer" }, amount: flat(4), uses: 1, fromBottom: true, restTo: "shuffle" }],
     abilities: [
       {
@@ -1007,8 +1014,8 @@ const OPALINS: CardDefinition[] = [
     health: 7,
     maxCopies: 2,
     text:
-      "À son arrivée : infligez 2 dégâts à une Structure. La première fois à chaque tour qu'une Structure quitte le " +
-      "board, Avar gagne +1 Puissance et +1 Résistance jusqu'à votre prochain tour.",
+      "À l'arrivée : infligez 2 dégâts à une Structure. Une fois par tour, lorsqu'une Structure quitte le board, " +
+      "Avar gagne +1 Puissance et +1 Résistance jusqu'à votre prochain tour.",
     onPlayEffects: [{ type: "damage", target: { kind: "chosenUnit", among: { sameController: false, cardTypes: ["structure"] } }, amount: flat(2) }],
     // « Quitte le board » : détruite, Sabordée, expirée ou renvoyée en main —
     // d'un camp comme de l'autre ; une seule fois par tour en tout.
@@ -1030,8 +1037,8 @@ const OPALINS: CardDefinition[] = [
     health: 6,
     maxCopies: 3,
     text:
-      "À son arrivée : votre prochaine unité coûtant 5 ou plus coûte 1 de moins. La première unité coûtant 5 ou plus que " +
-      "vous jouez à chaque tour gagne +1 Puissance et +1 Résistance.",
+      "À l'arrivée : votre prochaine unité de coût 5+ coûte 1 de moins. Première unité de coût 5+ jouée chaque " +
+      "tour : elle gagne +1/+1.",
     onPlayEffects: [
       { type: "discountNextCards", target: { kind: "controllerPlayer" }, amount: flat(1), filter: { cardTypes: [...UNITES], minCost: 5 }, lastsExtraTurns: 999 },
     ],
@@ -1055,8 +1062,8 @@ const OPALINS: CardDefinition[] = [
     health: 8,
     maxCopies: 1,
     text:
-      "À son arrivée : choisissez : récupérez 3 Ancrage ou gagnez 3 Armure. La première fois à chaque tour que votre " +
-      "Navire devrait subir des dégâts directs, réduisez-les de 1.",
+      "À l'arrivée : récupérez 3 Ancrage ou gagnez 3 Armure. Une fois par tour, lorsque votre Navire devrait " +
+      "subir des dégâts directs, réduisez-les de 1.",
     onPlayEffects: [{ type: "chooseAbilityOption", target: { kind: "controllerPlayer" }, optionGroup: "morhalChoix" }],
     abilities: [
       option("morhalChoix", "Récupérez 3 Ancrage.", [{ type: "heal", target: { kind: "controllerPlayer" }, amount: flat(3) }]),
@@ -1074,8 +1081,9 @@ const OPALINS: CardDefinition[] = [
     health: 6,
     maxCopies: 2,
     text:
-      "À son arrivée : chaque joueur place une carte de sa main sous sa pioche. La première fois à chaque tour que " +
-      "l'adversaire pioche une carte en dehors de sa pioche normale, il place une carte de sa main sous sa pioche.",
+      "À l'arrivée : chaque joueur place une carte de sa main sous sa pioche. Une fois par tour, lorsque " +
+      "l'adversaire pioche une carte en dehors de sa pioche normale, il place une carte de sa main sous sa " +
+      "pioche.",
     // Chacun DÉSIGNE la carte qu'il place : la question se pose à chacun.
     onPlayEffects: [
       { type: "discard", target: { kind: "controllerPlayer" }, amount: flat(1), discardToDeckBottom: true },
@@ -1101,9 +1109,8 @@ const OPALINS: CardDefinition[] = [
     health: 5,
     maxCopies: 2,
     text:
-      "À son arrivée : la prochaine fois qu'une de vos unités inflige des dégâts ce tour, augmentez ces dégâts de 2. La " +
-      "première fois à chaque tour qu'une unité que vous contrôlez inflige des dégâts, elle gagne +1 Puissance jusqu'à " +
-      "votre prochain tour.",
+      "À l'arrivée : augmentez de 2 les prochains dégâts infligés par une unité alliée ce tour. Une fois par " +
+      "tour, lorsqu'une unité alliée inflige des dégâts, elle gagne +1 Puissance jusqu'à votre prochain tour.",
     onPlayEffects: [{ type: "nextUnitDamageBonus", target: { kind: "controllerPlayer" }, amount: flat(2) }],
     abilities: [
       {
@@ -1125,13 +1132,13 @@ const OPALINS: CardDefinition[] = [
     health: 9,
     maxCopies: 1,
     text:
-      "À son arrivée : choisissez un Objet, une Structure ou une Créature adverse. Son texte est ignoré jusqu'au début de " +
-      "votre prochain tour. La première carte adverse qui cible une unité Opaline que vous contrôlez à chaque tour coûte " +
-      "1 Raison supplémentaire.",
+      "À l'arrivée : choisissez un Équipement, une Structure ou une Créature adverse. Son texte est ignoré " +
+      "jusqu'au début de votre prochain tour. La première carte adverse qui cible une unité Opaline que vous " +
+      "contrôlez à chaque tour coûte 1 Raison supplémentaire.",
     onPlayEffects: [
       {
         type: "buff",
-        target: { kind: "chosenUnit", among: { opponentOnly: true, cardTypes: ["objet", "structure", "creature"] } },
+        target: { kind: "chosenUnit", among: { opponentOnly: true, cardTypes: ["equipement", "structure", "creature"] } },
         attackAmount: flat(0),
         healthAmount: flat(0),
         ignoresText: true,
@@ -1233,8 +1240,8 @@ const OPALINS: CardDefinition[] = [
     type: "objet",
     cost: 2,
     maxCopies: 2,
-    text: "Brisez : une carte Opaline LV gagne 1 marqueur Niveau. Une seule activation de Fragment d'Éveil par tour.",
-    breakOncePerTurnByName: true,
+    text: "Donnez 1 marqueur Niveau à une carte Opaline LV. Une seule utilisation de Fragment d'Éveil par tour.",
+    playOncePerTurnByName: true,
     onBreakEffects: [{ type: "addLevelMarker", target: { kind: "chosenUnit", among: { tag: "lv", unitsOnly: true } }, amount: flat(1) }],
   }),
   opalin({
@@ -1243,7 +1250,9 @@ const OPALINS: CardDefinition[] = [
     type: "objet",
     cost: 2,
     maxCopies: 3,
-    text: "Brisez : une unité Opaline gagne +0/+2 jusqu'à votre prochain tour. Si elle est LV, elle ne peut pas être renvoyée en main ce tour.",
+    text:
+      "Une unité Opaline gagne +0/+2 jusqu'à votre prochain tour. Si elle est LV, elle ne peut pas être renvoyée " +
+      "en main ce tour.",
     onBreakEffects: [
       {
         type: "buff",
@@ -1296,8 +1305,8 @@ const OPALINS: CardDefinition[] = [
     cost: 2,
     maxCopies: 3,
     text:
-      "Bris depuis la main : cherchez un Opalin dans votre pioche, révélez-le et ajoutez-le à votre main. Si vous " +
-      "contrôlez au moins 2 Opalins, réduisez son coût de 1 ce tour.",
+      "Cherchez un Opalin dans votre pioche, révélez-le et ajoutez-le à votre main. Si vous contrôlez au moins 2 " +
+      "Opalins, réduisez son coût de 1 ce tour.",
     onBreakEffects: [
       {
         type: "lookAtDeckTop",
@@ -1306,7 +1315,6 @@ const OPALINS: CardDefinition[] = [
         searchWholeDeck: true,
         filter: { cardTypes: [...UNITES], archetype: OPALIN },
         uses: 1,
-        conditionBrokenFromHand: true,
         thenEffects: [
           {
             type: "discountNextCards",
@@ -1408,7 +1416,7 @@ const GENERIQUES: CardDefinition[] = [
     setCode: LOT17_PASSERELLES,
     cost: 1,
     maxCopies: 3,
-    text: "Brisez : regardez les 2 cartes du dessus. Gardez-en une au-dessus et placez l'autre dessous.",
+    text: "Regardez les 2 cartes du dessus. Gardez-en une au-dessus et placez l'autre dessous.",
     onBreakEffects: [{ type: "lookAtDeckTop", target: { kind: "controllerPlayer" }, amount: flat(2), uses: 1, takeTo: "deckTop" }],
   },
   {
@@ -1420,7 +1428,7 @@ const GENERIQUES: CardDefinition[] = [
     cost: 2,
     maxCopies: 3,
     chaine: true,
-    text: "Chaîne — Brisez : le jet en cours ne peut pas être considéré comme un Échec critique.",
+    text: "Chaîne — Le jet en cours ne peut pas être considéré comme un Échec critique.",
     onBreakEffects: [{ type: "pendingDieNoCriticalFailure", target: { kind: "controllerPlayer" } }],
   },
   {
@@ -1430,7 +1438,7 @@ const GENERIQUES: CardDefinition[] = [
     setCode: LOT17_PASSERELLES,
     cost: 2,
     maxCopies: 3,
-    text: "Brisez : récupérez une Lande depuis votre Cimetière et placez-la sous votre deck.",
+    text: "Récupérez une Lande depuis votre Cimetière et placez-la sous votre deck.",
     onBreakEffects: [{ type: "pickFromGraveyard", target: { kind: "controllerPlayer" }, filter: { cardTypes: ["lande"] }, uses: 1, takeTo: "deckBottom" }],
   },
   {

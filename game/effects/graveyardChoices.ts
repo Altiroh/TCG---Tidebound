@@ -57,14 +57,14 @@ export function graveyardChoicesFor(
   return effect ? eligibleGraveyardCards(state, playerId, effect) : [];
 }
 
-/** Choix à poser en BRISANT cet Objet (ex: Grappin de Récupération). */
+/** Choix à poser pour l'effet de cet Objet (ex: Grappin de Récupération). */
 export function graveyardChoicesForBreak(state: GameState, playerId: PlayerId, def: CardDefinition): CardInstance[] {
   return graveyardChoicesFor(state, playerId, def.onBreakEffects);
 }
 
-/** Choix à poser en POSANT cette carte (ex: Tu viens jouer ?, Lot 13). */
+/** Choix à poser en JOUANT cette carte (ex: Tu viens jouer ?, Lot 13) — l'effet d'un Objet joué compris. */
 export function graveyardChoicesForPlay(state: GameState, playerId: PlayerId, def: CardDefinition): CardInstance[] {
-  return graveyardChoicesFor(state, playerId, def.onPlayEffects);
+  return graveyardChoicesFor(state, playerId, def.type === "objet" ? def.onBreakEffects : def.onPlayEffects);
 }
 
 /** Choix à poser en ACTIVANT cette capacité facultative (ex: Tu m'avais promis, Lot 13). */

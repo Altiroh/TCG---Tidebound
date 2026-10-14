@@ -140,6 +140,14 @@ const GARDE_ICON_INFO = {
   description: "Les attaques adverses visant votre Navire doivent cibler en priorité les permanents portant Garde.",
 };
 
+/** Voile (refonte des Équipements, 13/10/2026) : conféré par l'Équipement attaché. */
+const VOILE_ICON_INFO = {
+  icon: "/assets/status/voile.webp",
+  label: "Voile",
+  description:
+    "Conféré par son Équipement : la première fois qu'elle devrait être détruite, l'Équipement est détruit à sa place et elle reste en jeu avec 1 Résistance.",
+};
+
 /**
  * LÉGENDE des statuts d'une carte en jeu, en toutes lettres : ce que disent
  * ses badges flottants, dont la bulle ne s'ouvre qu'au survol. La carte
@@ -157,7 +165,7 @@ export function cardStatusLegend(
   const context = auraContext
     ? { tideState, controllerBoard: auraContext.controllerBoard, controllerReason: auraContext.controllerReason }
     : null;
-  const has = (keyword: "garde" | "pied-marin") => (context ? hasKeywordInContext(instance, keyword, context) : hasKeyword(def, keyword));
+  const has = (keyword: "garde" | "pied-marin" | "voile") => (context ? hasKeywordInContext(instance, keyword, context) : hasKeyword(def, keyword));
   const isUnit = (UNIT_CARD_TYPES as readonly string[]).includes(def.type);
   const legend: Array<{ label: string; description: string }> = [];
   if (computeEffectiveStats(instance, tideState, auraContext).inactive) {
@@ -166,6 +174,7 @@ export function cardStatusLegend(
   if (instance.summoningSick && isUnit && !has("pied-marin")) legend.push(ENGOURDI_ICON_INFO);
   if (piedMarinUtile(instance, isUnit, has("pied-marin"))) legend.push(PIED_MARIN_INFO);
   if (has("garde")) legend.push(GARDE_ICON_INFO);
+  if (context && has("voile")) legend.push(VOILE_ICON_INFO);
   if (hasEveil(def)) legend.push(eveilInfo(instance, turnNumber));
   for (const status of instance.statuses ?? []) {
     const info = STATUS_ICON_INFO[status];
@@ -622,6 +631,14 @@ function CardTileView({
         controllerReason: auraContext.controllerReason,
       })
     : hasKeyword(def, "garde");
+  // Voile : seulement en jeu, conféré par un Équipement attaché.
+  const hasVoile = auraContext
+    ? hasKeywordInContext(instance, "voile", {
+        tideState,
+        controllerBoard: auraContext.controllerBoard,
+        controllerReason: auraContext.controllerReason,
+      })
+    : false;
   // Garde tout juste gagnée : son badge arrive en surgissant, pas en apparaissant.
   const gardeGained = useChangeFlash(hasGarde ? 1 : 0) && hasGarde;
   // Pied marin (effectif, même logique que Garde) : l'unité agit dès son
@@ -895,16 +912,24 @@ function CardTileView({
                       <span className="text-white">
                         <ShieldGlyph />
                       </span>
-                      <span
-                        data-stat="resistance"
-                        className={
-                          resistanceFlashing
-                            ? "animate-stat-hit text-white"
-                            : `${statColorClass(resistanceDelta)} ${healthChanged ? "animate-stat-buff" : ""}`
-                        }
-                      >
-                        {resistanceRemaining}
-                      </span>
+                      {def.type === "equipement" ? (
+                        // Un Équipement n'a pas de Résistance à lui (refonte du
+                        // 13/10/2026) : il APPORTE la sienne à son porteur.
+                        <span data-stat="resistance-bonus" className="text-sky-200">
+                          +{def.health}
+                        </span>
+                      ) : (
+                        <span
+                          data-stat="resistance"
+                          className={
+                            resistanceFlashing
+                              ? "animate-stat-hit text-white"
+                              : `${statColorClass(resistanceDelta)} ${healthChanged ? "animate-stat-buff" : ""}`
+                          }
+                        >
+                          {resistanceRemaining}
+                        </span>
+                      )}
                     </span>
                   )}
                 </div>
@@ -1130,6 +1155,7 @@ function CardTileView({
         eveilVisible ||
         instance.turnsRemaining !== undefined ||
         hasGarde ||
+        hasVoile ||
         couleursChromatiques.length > 0 ||
         qualifications.length > 0 ||
         (attacksLeft !== undefined && attacksLeft > 0) ||
@@ -1162,6 +1188,7 @@ function CardTileView({
               />
             </span>
           )}
+          {hasVoile && <StatusBadge icon={VOILE_ICON_INFO.icon} label={VOILE_ICON_INFO.label} description={VOILE_ICON_INFO.description} size={badgeSize} />}
           {piedMarinVisible && (
             <StatusBadge
               icon={PIED_MARIN_INFO.icon}

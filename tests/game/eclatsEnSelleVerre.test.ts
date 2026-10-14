@@ -4,7 +4,7 @@ import { auraContextOf, computeEffectiveStats } from "@/game/cards/stats";
 import { hasEffectiveKeyword } from "@/game/rules/validation";
 import type { CardInstance } from "@/game/cards/types";
 import type { GameState } from "@/game/state/types";
-import { activateReactionFor, instance, pendingCandidates, testEnvironment, testGameState, testPlayer, enFinDeTour } from "./testHelpers";
+import { activateReactionFor, instance, pendingCandidates, testEnvironment, testGameState, testPlayer, enFinDeTour, jouerObjet } from "./testHelpers";
 
 /**
  * LOT 15 — ÉQUIPAGE DE VERRE : survivre aux dégâts fait progresser.
@@ -43,7 +43,7 @@ function table(p1: Partial<ReturnType<typeof testPlayer>> = {}, p2: Partial<Retu
 
 /** Brise un Objet posé sur le plateau de p1, sur une cible. */
 function briser(state: GameState, objet: CardInstance, targetInstanceId?: string) {
-  return dispatch(state, { type: "breakObject", playerId: "p1", instanceId: objet.instanceId, ...(targetInstanceId ? { targetInstanceId } : {}) });
+  return jouerObjet(state, { playerId: "p1", instanceId: objet.instanceId, ...(targetInstanceId ? { targetInstanceId } : {}) }, dispatch);
 }
 
 describe("survivre à des dégâts", () => {
@@ -138,10 +138,10 @@ describe("Maître Verrier et Pont de Verre : « des dégâts infligés par l'un 
     const maitre = instance("maitre-verrier", "p1");
     const matelot = instance("matelot-fele", "p1");
     const eclat = instance("eclat-de-bouteille", "p1");
-    const state = table({ board: [maitre, matelot, eclat], reason: 5 });
+    const state = table({ board: [maitre, matelot], hand: [eclat], reason: 5 });
     const r = briser(state, eclat, matelot.instanceId);
     ok(r);
-    expect(joueur(r.state, "p1").reason).toBe(6);
+    expect(joueur(r.state, "p1").reason).toBe(5); // 5 - 1 (Éclat de Bouteille) + 1 (Maître Verrier)
 
     // Au combat : aucune Raison.
     const combat = testGameState({ ...table({ board: [instance("maitre-verrier", "p1"), matelot], reason: 5 }, { board: [instance("matelot-fele", "p2")] }), phase: "combatPhase" });
@@ -269,17 +269,25 @@ describe("gestes du Verre", () => {
     expect(unite(choix.state, b.instanceId)!.damageMarked).toBe(1);
   });
 
-  it("Bouclier Fendu : +2 Résistance MAXIMALE, et Sabordé il restaure 2 à son porteur", () => {
-    const porteur = instance("matelot-fele", "p1", { damageMarked: 3 });
+  it("Bouclier Fendu : sa Résistance imprimée (2) s'ajoute ; Sabordé, il soigne 2 un porteur qui survit au retrait", () => {
+    const porteur = instance("matelot-fele", "p1", { damageMarked: 2 });
     const bouclier = instance("bouclier-fendu", "p1", { attachedToInstanceId: porteur.instanceId });
     const state = table({ board: [porteur, bouclier] });
     expect(resistance(state, porteur.instanceId)).toBe(5);
     const r = dispatch(state, { type: "saborder", playerId: "p1", instanceId: bouclier.instanceId });
     ok(r);
-    // Le Bouclier parti, la Résistance retombe à 3 — mais 2 dégâts ont été
-    // restaurés avant : le porteur tient.
-    expect(unite(r.state, porteur.instanceId)!.damageMarked).toBe(1);
+    // Retrait d'abord (maximum 3, 2 dégâts : il tient), soin ensuite, sans dépasser le maximum.
+    expect(unite(r.state, porteur.instanceId)!.damageMarked).toBe(0);
     expect(resistance(r.state, porteur.instanceId)).toBe(3);
+  });
+
+  it("Bouclier Fendu : un porteur que le retrait du bonus tue n'est pas soigné", () => {
+    const porteur = instance("matelot-fele", "p1", { damageMarked: 3 });
+    const bouclier = instance("bouclier-fendu", "p1", { attachedToInstanceId: porteur.instanceId });
+    const r = dispatch(table({ board: [porteur, bouclier] }), { type: "saborder", playerId: "p1", instanceId: bouclier.instanceId });
+    ok(r);
+    expect(unite(r.state, porteur.instanceId)).toBeUndefined();
+    expect(r.events.some((e) => e.type === "HEAL" && e.targetInstanceId === porteur.instanceId)).toBe(false);
   });
 });
 

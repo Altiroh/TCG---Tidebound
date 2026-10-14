@@ -4,12 +4,13 @@ import { dispatch } from "@/tests/game/arrivalDispatch";
 import { CARD_DATABASE } from "@/game/cards/sets/core";
 import type { CardDefinition, CardInstance } from "@/game/cards/types";
 import { computeEffectiveStats } from "@/game/cards/stats";
+import { previewPlayCardReason } from "@/game/actions/playCard";
 import { hasKeywordInContext } from "@/game/rules/validation";
 import { processSummonEnterTriggers, processTrigger } from "@/game/triggers/triggerBus";
 import { deriveReactionTriggerEvents } from "@/game/reactions/reactionWindow";
 import type { GameEvent } from "@/game/events/types";
 import type { GameState, PlayerState } from "@/game/state/types";
-import { activateReactionFor, answerHandDiscard, instance, pendingCandidates, testEnvironment, testGameState, testPlayer, enFinDeTour } from "./testHelpers";
+import { activateReactionFor, answerHandDiscard, instance, pendingCandidates, testEnvironment, testGameState, testPlayer, enFinDeTour, jouerObjet } from "./testHelpers";
 
 /**
  * Revue cartes ↔ moteur, phase 2 — Lot 10 (Cra-Poiscail), Lot 11 (Théâtre
@@ -103,12 +104,15 @@ describe("Le Régisseur Sans Visage — « renvoyer une AUTRE unité Marionnette
     expect(activateReactionFor(state, "le-regisseur-sans-visage", arlecchino.instanceId).ok).toBe(false);
   });
 
-  it("renvoie une autre Marionnette de coût 2 ou moins, et la prochaine unité Marionnette coûte 1 de moins", () => {
+  it("renvoie une autre Marionnette de coût 2 ou moins, et ELLE coûte 1 de moins à rejouer ce tour", () => {
     const { pulcinella, state } = setup();
     const after = ok(activateReactionFor(state, "le-regisseur-sans-visage", pulcinella.instanceId));
     expect(p(after, "p1").board.some((u) => u.instanceId === pulcinella.instanceId)).toBe(false);
-    expect(p(after, "p1").hand.some((c) => c.cardId === "pulcinella-gonfle")).toBe(true);
-    expect(p(after, "p1").costDiscounts?.[0]).toMatchObject({ amount: 1, subtype: "marionnette", cardTypes: ["marin", "creature"] });
+    const revenue = p(after, "p1").hand.find((c) => c.cardId === "pulcinella-gonfle");
+    expect(revenue).toBeDefined();
+    // Pulcinella coûte 2 : 1 à rejouer ce tour, et la réduction ne vise qu'elle.
+    expect(previewPlayCardReason(after, "p1", revenue!.instanceId)?.cost).toBe(1);
+    expect(p(after, "p1").costDiscounts?.[0]?.onlyInstanceIds).toContain(revenue!.instanceId);
   });
 });
 
@@ -264,8 +268,8 @@ describe("Cache-Cache — « la première fois PENDANT VOTRE TOUR »", () => {
     name: "Meuleur d'essai",
     type: "objet",
     cost: 1,
-    text: "À son arrivée, placez les 2 premières cartes de la pioche adverse dans son Cimetière.",
-    onPlayEffects: [{ type: "mill", target: { kind: "opponentPlayer" }, amount: { kind: "flat", value: 2 } }],
+    text: "Brisez cet Objet : placez les 2 premières cartes de la pioche adverse dans son Cimetière.",
+    onBreakEffects: [{ type: "mill", target: { kind: "opponentPlayer" }, amount: { kind: "flat", value: 2 } }],
   } as unknown as CardDefinition;
 
   it("ne grandit pas quand ses cartes rejoignent le Cimetière pendant le tour adverse", () => {
@@ -300,7 +304,7 @@ describe("Le Goûter — la carte source ne remplit pas sa propre condition", ()
       turnNumber: 1,
       players: [testPlayer("p1", { board: [gouter], hand: [crabe], deck: filler("p1") }), testPlayer("p2", { shipId: "le-goliath" })],
     });
-    state = ok(dispatch(state, { type: "breakObject", playerId: "p1", instanceId: gouter.instanceId }));
+    state = ok(jouerObjet(state, { playerId: "p1", instanceId: gouter.instanceId }, dispatch));
     state = ok(answerHandDiscard(state, [crabe.instanceId]));
     // Avant : Le Goûter (Un Dead) venait d'entrer au Cimetière et
     // déclenchait la pioche bonus — la main finissait à 2.
@@ -382,16 +386,17 @@ describe("Bonne nuit", () => {
     const gros = instance("on-avait-dit-tous-ensemble", "p1");
     const state = testGameState({
       turnNumber: 1,
-      players: [testPlayer("p1", { board: [bonneNuit], graveyard: [papa, gros] }), testPlayer("p2", { shipId: "le-goliath" })],
+      players: [testPlayer("p1", { hand: [bonneNuit], graveyard: [papa, gros] }), testPlayer("p2", { shipId: "le-goliath" })],
     });
     expect(
-      dispatch(state, { type: "breakObject", playerId: "p1", instanceId: bonneNuit.instanceId, chosenGraveyardInstanceId: gros.instanceId }).ok
+      jouerObjet(state, { playerId: "p1", instanceId: bonneNuit.instanceId, chosenGraveyardInstanceId: gros.instanceId }, dispatch).ok
     ).toBe(false);
     const after = ok(
-      dispatch(state, { type: "breakObject", playerId: "p1", instanceId: bonneNuit.instanceId, chosenGraveyardInstanceId: papa.instanceId })
+      jouerObjet(state, { playerId: "p1", instanceId: bonneNuit.instanceId, chosenGraveyardInstanceId: papa.instanceId }, dispatch)
     );
     expect(p(after, "p1").hand.map((c) => c.instanceId)).toEqual([papa.instanceId]);
-    expect(p(after, "p1").reason).toBe(p(state, "p1").reason - 1);
+    // Coût 3, puis 1 Raison perdue.
+    expect(p(after, "p1").reason).toBe(p(state, "p1").reason - 3 - 1);
   });
 });
 
@@ -406,7 +411,7 @@ describe("morts d'unités Un Dead : Tout le monde à table, Doudou", () => {
     };
   }
 
-  it("Tout le monde à table : deux unités détruites ne donnent qu'une pioche et une défausse", () => {
+  it("Tout le monde à table : deux unités détruites ne donnent qu'une pioche, sans défausse", () => {
     const table = instance("tout-le-monde-a-table", "p1", { turnsRemaining: 4 });
     const a = instance("ptit-bout", "p1");
     const b = instance("cache-cache", "p1");
@@ -416,10 +421,9 @@ describe("morts d'unités Un Dead : Tout le monde à table, Doudou", () => {
       players: [testPlayer("p1", { board: [table, a, b], hand: [instance("crabe-de-fer", "p1")], deck: filler("p1") }), testPlayer("p2", { shipId: "le-goliath" })],
     });
     state = ok(dispatch(detruire(state, [a.instanceId, b.instanceId]), { type: "advancePhase", playerId: "p1" }));
+    state = passAll(state);
+    expect(state.pendingChoice).toBeUndefined();
     expect(p(state, "p1").hand).toHaveLength(2);
-    expect(state.pendingChoice?.kind).toBe("handDiscard");
-    state = passAll(ok(answerHandDiscard(state)));
-    expect(p(state, "p1").hand).toHaveLength(1);
     expect(p(state, "p1").deck).toHaveLength(3);
   });
 

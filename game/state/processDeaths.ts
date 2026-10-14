@@ -1,3 +1,4 @@
+import { createLoopGuard } from "@/game/rules/loopGuard";
 import { computeEffectiveStats } from "@/game/cards/stats";
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { hasResistance, type CardInstance } from "@/game/cards/types";
@@ -65,66 +66,93 @@ function shouldDie(
   return unit.damageMarked >= stats.health || stats.destroyedByTide;
 }
 
-/** Équipement attaché à `unitInstanceId` sur CE plateau et porteur d'un `destructionSubstitute` (ex: Plaque de Fortune) — `undefined` si aucun. */
-function findDestructionSubstitute(board: CardInstance[], unitInstanceId: string): CardInstance | undefined {
+/** Mot-clé de protection conféré par un Équipement (refonte du 13/10/2026). */
+export const KEYWORD_VOILE = "voile";
+
+/**
+ * Équipement attaché à `unitInstanceId` sur CE plateau qui lui confère
+ * Voile — `undefined` si aucun. Un Équipement lui-même en partance ne
+ * protège plus rien.
+ */
+function findVoileEquipment(board: CardInstance[], unitInstanceId: string): CardInstance | undefined {
   return board.find(
-    (u) => u.attachedToInstanceId === unitInstanceId && Boolean(getCardDefinition(u.cardId).destructionSubstitute)
+    (u) =>
+      u.attachedToInstanceId === unitInstanceId &&
+      !u.pendingRemoval &&
+      (getCardDefinition(u.cardId).equipGrantsKeywords ?? []).includes(KEYWORD_VOILE)
   );
 }
 
 /**
- * Applique la substitution de destruction (Plaque de Fortune et
- * assimilées) : détruit l'Équipement au lieu de l'unité sauvée, inflige le
- * malus permanent de Résistance, et réduit les dégâts marqués juste sous
- * le nouveau seuil pour que l'unité survive concrètement à CE cycle
- * (au lieu de mourir immédiatement rehaussée par son propre malus).
+ * VOILE : le porteur devrait être détruit — par des dégâts mortels ou une
+ * destruction directe. Cette destruction-là est remplacée :
+ *   1. elle n'a pas lieu ;
+ *   2. l'Équipement qui confère Voile est détruit à la place (un vrai départ
+ *      détruit : `DESTROY`, ses déclencheurs de destruction, une seule fois) ;
+ *   3. ses bonus tombent avec lui ;
+ *   4. le porteur reste en jeu avec 1 Résistance restante.
+ * Une destruction suivante, même dans la même séquence, le traite
+ * normalement : Voile ne protège qu'une fois.
  */
-function applyDestructionSubstitute(
+function applyVoile(
   state: GameState,
   turnNumber: number,
   ownerId: string,
   unit: CardInstance,
-  substitute: CardInstance
+  equipment: CardInstance
 ): { state: GameState; events: GameEvent[] } {
   const player = state.players.find((p) => p.id === ownerId)!;
-  const penalty = getCardDefinition(substitute.cardId).destructionSubstitute?.healthPenalty ?? 1;
-  const modifiers = [
-    ...unit.modifiers,
-    { id: `mod_${Math.random().toString(36).slice(2, 8)}`, source: substitute.cardId, attack: 0, health: -penalty, duration: "permanent" as const },
-  ];
-  const newEffectiveHealth = computeEffectiveStats(
-    { ...unit, modifiers },
-    state.environment.tideState,
-    { controllerBoard: player.board, controllerReason: player.reason, tideOrientation: state.environment.tideOrientation }
-  ).health;
-  const savedUnit: CardInstance = {
+  const boardSansEquipement = player.board.filter((u) => u.instanceId !== equipment.instanceId);
+  const nouveauMaximum = computeEffectiveStats(unit, state.environment.tideState, {
+    controllerBoard: boardSansEquipement,
+    controllerReason: player.reason,
+    tideOrientation: state.environment.tideOrientation,
+  }).health;
+  const sauve: CardInstance = {
     ...unit,
-    modifiers,
-    damageMarked: Math.max(0, Math.min(unit.damageMarked, newEffectiveHealth - 1)),
-    // La destruction est esquivée : le départ n'a plus lieu.
+    damageMarked: Math.max(0, nouveauMaximum - 1),
+    // La destruction est remplacée : le départ n'a plus lieu.
     pendingRemoval: undefined,
+    pendingRemovalBy: undefined,
+    rescueWindowOffered: undefined,
   };
-
-  const board = player.board
-    .filter((u) => u.instanceId !== substitute.instanceId)
-    .map((u) => (u.instanceId === unit.instanceId ? savedUnit : u));
-  const graveyard = [
-    ...player.graveyard,
-    { ...substitute, damageMarked: 0, modifiers: [], graveyardCause: "destroyed" as const, destructionCause: "effect" as const },
+  const apres = recordGraveyardArrival(
+    {
+      ...player,
+      board: boardSansEquipement.map((u) => (u.instanceId === unit.instanceId ? sauve : u)),
+      graveyard: [
+        ...player.graveyard,
+        { ...equipment, damageMarked: 0, modifiers: [], attachedToInstanceId: undefined, graveyardCause: "destroyed" as const, destructionCause: "effect" as const },
+      ],
+    },
+    { cardId: equipment.cardId, instanceId: equipment.instanceId, turnNumber, fromZone: "board", destructionCause: "effect" }
+  );
+  let next: GameState = { ...state, players: state.players.map((p) => (p.id === ownerId ? apres : p)) as [PlayerState, PlayerState] };
+  const events: GameEvent[] = [
+    { type: "VEIL_CONSUMED", turnNumber, timestamp: Date.now(), playerId: ownerId, carrierInstanceId: unit.instanceId, equipmentInstanceId: equipment.instanceId, cardId: equipment.cardId },
+    { type: "DESTROY", instanceId: equipment.instanceId, reason: "effect", turnNumber, timestamp: Date.now() },
   ];
+  const declenche = processTrigger(
+    next,
+    { trigger: "onDeath", sourceInstanceId: equipment.instanceId, cardId: equipment.cardId, playerId: ownerId, destructionCause: "effect" },
+    turnNumber
+  );
+  next = declenche.state;
+  events.push(...declenche.events);
+  return { state: next, events };
+}
 
-  const nextState: GameState = {
-    ...state,
-    players: state.players.map((p) => (p.id === ownerId ? { ...p, board, graveyard } : p)) as [PlayerState, PlayerState],
-  };
-  const event: GameEvent = {
-    type: "DESTROY",
-    instanceId: substitute.instanceId,
-    reason: "effect",
-    turnNumber,
-    timestamp: Date.now(),
-  };
-  return { state: nextState, events: [event] };
+/** Le porteur devrait-il être détruit par des dégâts mortels ou une destruction DIRECTE (ce que Voile prévient) ? */
+function lethalOrDirectlyDestroyed(state: GameState, player: PlayerState, unit: CardInstance): boolean {
+  if (unit.pendingRemoval === "scuttled") return false;
+  if (unit.pendingRemoval === "destroyed") return true;
+  if (!hasResistance(getCardDefinition(unit.cardId))) return false;
+  const stats = computeEffectiveStats(unit, state.environment.tideState, {
+    controllerBoard: player.board,
+    controllerReason: player.reason,
+    tideOrientation: state.environment.tideOrientation,
+  });
+  return unit.damageMarked >= stats.health;
 }
 
 /**
@@ -382,9 +410,13 @@ export function processDeaths(
 ): { state: GameState; events: GameEvent[] } {
   let current = state;
   const events: GameEvent[] = [];
-  const MAX_ITERATIONS = 20;
+  // Pas de plafond arbitraire : la passe s'arrête quand plus rien ne meurt,
+  // ou quand elle retombe sur une position déjà vue sans progresser
+  // (`game/rules/loopGuard.ts`) — une mort qui en rappelle une autre à
+  // l'identique, indéfiniment.
+  const dejaVue = createLoopGuard();
 
-  for (let iteration = 0; iteration < MAX_ITERATIONS; iteration++) {
+  while (!dejaVue(current)) {
     current = dropOrphanedModifiers(current);
     // --- Substitutions de destruction (ex: Plaque de Fortune) : appliquées
     // AVANT la collecte des morts, pour qu'une unité sauvée ne soit jamais
@@ -406,9 +438,12 @@ export function processDeaths(
       if (!player || !unit || !shouldDie(unit, current.environment.tideState, player, current.environment.tideOrientation, turnNumber)) continue;
       // Un Sabordage est un coût consenti : ni substitution ni survie.
       if (unit.pendingRemoval === "scuttled") continue;
-      const substitute = findDestructionSubstitute(player.board, unit.instanceId);
-      if (substitute) {
-        const result = applyDestructionSubstitute(current, turnNumber, player.id, unit, substitute);
+      // VOILE (refonte du 13/10/2026) : dégâts mortels ou destruction
+      // directe — ni Sabordage (écarté plus haut), ni expiration (qui ne
+      // passe pas par ici), ni la seule Marée.
+      const voile = findVoileEquipment(player.board, unit.instanceId);
+      if (voile && lethalOrDirectlyDestroyed(current, player, unit)) {
+        const result = applyVoile(current, turnNumber, player.id, unit, voile);
         current = result.state;
         events.push(...result.events);
         continue;

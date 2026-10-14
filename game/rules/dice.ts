@@ -4,6 +4,7 @@ import type { EffectDefinition } from "@/game/effects/types";
 import type { GameEvent } from "@/game/events/types";
 import { nextInt } from "@/game/rng";
 import { activeLandeRules } from "@/game/rules/lande";
+import { isDieChainObject } from "@/game/rules/objectPlay";
 import type { DieOutcome } from "@/game/triggers/types";
 import type { DieRollChoice, DieSize, GameState, NextRollModifier, PlayerId, PlayerState } from "@/game/state/types";
 
@@ -134,14 +135,9 @@ export function rollDie(
   return { state: replacePlayer({ ...state, rngState: rng }, apres), choice };
 }
 
-/** Une carte « Chaîne » que ce joueur peut Briser maintenant, depuis sa main ou son plateau. */
-export function chainBreakables(state: GameState, playerId: PlayerId): Array<{ card: CardInstance; fromHand: boolean }> {
-  const player = getPlayer(state, playerId);
-  const chaine = (c: CardInstance) => getCardDefinition(c.cardId).chaine === true;
-  return [
-    ...player.hand.filter(chaine).map((card) => ({ card, fromHand: true })),
-    ...player.board.filter(chaine).map((card) => ({ card, fromHand: false })),
-  ];
+/** Les Objets « Chaîne » de dé que ce joueur a en main : il peut les jouer sur son jet en cours. */
+export function dieChainPlayables(state: GameState, playerId: PlayerId): CardInstance[] {
+  return getPlayer(state, playerId).hand.filter((c) => isDieChainObject(getCardDefinition(c.cardId)));
 }
 
 /** Cartes en jeu de ce joueur dont l'ajustement (« +1 ou -1 ») est encore disponible ce tour. */
@@ -156,13 +152,13 @@ export function dieAdjusters(state: GameState, playerId: PlayerId, turnNumber: n
 }
 
 /** Ce que le joueur peut encore faire sur ce jet — vide : il se résout tout seul. */
-export function dieRollOptions(state: GameState, choice: DieRollChoice): { pick: boolean; reroll: boolean; adjusters: CardInstance[]; chain: Array<{ card: CardInstance; fromHand: boolean }> } {
+export function dieRollOptions(state: GameState, choice: DieRollChoice): { pick: boolean; reroll: boolean; adjusters: CardInstance[]; chain: CardInstance[] } {
   const pick = choice.candidates !== undefined;
   return {
     pick,
     reroll: !choice.landeRerollUsed,
     adjusters: dieAdjusters(state, choice.playerId, choice.turnNumber),
-    chain: chainBreakables(state, choice.playerId),
+    chain: dieChainPlayables(state, choice.playerId),
   };
 }
 

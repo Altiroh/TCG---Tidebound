@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CARD_DATABASE, eligibleBreakTargets, eligibleChosenUnits, type CardDefinition } from "@/game";
+import { CARD_DATABASE, eligibleChosenUnits, type CardDefinition } from "@/game";
 import { legalTargetsFor } from "@/features/match/table/legalTargets";
 import { phaseButtonFor } from "@/features/match/table/tableLabels";
 import { instance, testGameState, testPlayer } from "../game/testHelpers";
@@ -51,16 +51,16 @@ describe("legalTargetsFor", () => {
   const chosen = (effects: CardDefinition["onBreakEffects"]) => (effects ?? []).filter((e) => e.target.kind === "chosenUnit");
   const board = () => [instance("murene-aveugle", "p1"), instance("harpon-de-pont", "p1"), instance("murene-aveugle", "p2")];
 
-  it("un Bris ciblé suit le filtre de son effet", () => {
+  it("un Objet joué ciblé suit le filtre de son effet", () => {
     const defs = [...CARD_DATABASE.values()].filter((def) => def.type === "objet" && chosen(def.onBreakEffects).length === 1);
     expect(defs.length).toBeGreaterThan(0);
     for (const def of defs) {
       const objet = instance(def.id, "p1");
       const [a, b, c] = board();
-      const state = testGameState({ players: [testPlayer("p1", { board: [a!, b!, objet] }), testPlayer("p2", { board: [c!] })] });
-      // L'Objet brisé quitte le plateau avant ses effets : jamais sa propre cible.
-      const expected = eligibleBreakTargets(state, chosen(def.onBreakEffects)[0]!.target, "p1", objet.instanceId).map((x) => x.unit.instanceId);
-      const targets = legalTargetsFor(state, "p1", { kind: "break", sourceInstanceId: objet.instanceId });
+      // Un Objet se joue depuis la main (refonte du 13/10/2026) : il n'est jamais sa propre cible.
+      const state = testGameState({ players: [testPlayer("p1", { board: [a!, b!], hand: [objet] }), testPlayer("p2", { board: [c!] })] });
+      const expected = eligibleChosenUnits(state, chosen(def.onBreakEffects)[0]!.target, "p1", objet.instanceId).map((x) => x.unit.instanceId);
+      const targets = legalTargetsFor(state, "p1", { kind: "playCard", sourceInstanceId: objet.instanceId });
       expect([...(targets ?? [])].sort(), def.id).toEqual(expected.sort());
     }
   });

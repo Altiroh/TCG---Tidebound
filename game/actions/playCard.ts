@@ -2,7 +2,7 @@ import { boardCapacity } from "@/game/rules/slotEffects";
 import { stripMarkers } from "@/game/cards/markers";
 import { activeLandeRules } from "@/game/rules/lande";
 import { markTurnDiscountsUsed, turnDiscounts } from "@/game/rules/costReductions";
-import { boardPermanents, isOngoingEffect } from "@/game/rules/ongoing";
+import { boardPermanents, isAttachedCard, isOngoingEffect } from "@/game/rules/ongoing";
 import { boardSlotLayout, chooseBoardSlot } from "@/game/rules/boardSlots";
 import { canBeEquipTarget, getCardDefinition, hasAnyValidEquipTarget } from "@/game/cards/sets/core";
 import { isLandeCard, isPermanentCard, isVisibleDuringTide, UNIT_CARD_TYPES, type CardDefinition } from "@/game/cards/types";
@@ -37,6 +37,16 @@ import { recordGraveyardArrival } from "@/game/state/discard";
 import { assemblageError, controlledChromaticColors, findAssemblage } from "@/game/rules/chromatic";
 import { getPlayer, MIN_DISCOUNTED_COST, type GameState, type PlayerId, type PlayerState } from "@/game/state/types";
 import type { ActionResult, PlayCardAction } from "@/game/actions/types";
+import { openChainResponse, pushChainLink, runChain } from "@/game/chain/chainStack";
+import { pendingDieRoll } from "@/game/rules/dice";
+import {
+  consumeObjectPlayTax,
+  isDieChainObject,
+  isReactionChainObject,
+  objectPlayTax,
+  objectsPlayedThisTurn,
+  recordObjectPlayed,
+} from "@/game/rules/objectPlay";
 
 function isUnitCard(type: string): boolean {
   return (UNIT_CARD_TYPES as readonly string[]).includes(type);
@@ -129,15 +139,13 @@ export function previewPlayCardReason(
   const player = state.players.find((p) => p.id === playerId);
   const card = player?.hand.find((c) => c.instanceId === instanceId);
   if (!player || !card) return undefined;
-  const cost = reasonCostAfterShield(
-    state,
-    playerId,
-    effectiveCost(getCardDefinition(card.cardId), state, playerId, card.instanceId),
-    state.turnNumber
-  );
-  // `allowed` reste dans la forme rendue : sans plancher de Déraison, un
-  // coût se paie toujours, l'UI n'a plus qu'à annoncer la dette.
-  return { cost, reasonAfter: player.reason - cost, allowed: true };
+  const def = getCardDefinition(card.cardId);
+  // Un Objet paie aussi la taxe adverse (Cloche d'Alerte, Seren…).
+  const tax = def.type === "objet" ? objectPlayTax(state, playerId, state.turnNumber) : undefined;
+  const cost = reasonCostAfterShield(state, playerId, effectiveCost(def, state, playerId, card.instanceId) + (tax?.amount ?? 0), state.turnNumber);
+  // Sans plancher de Déraison, un coût se paie toujours — l'UI n'a plus
+  // qu'à annoncer la dette —, sauf taxe adverse bloquante.
+  return { cost, reasonAfter: player.reason - cost, allowed: !(tax?.blocksIfUnpayable && player.reason < cost) };
 }
 
 /**
@@ -160,6 +168,31 @@ export function playCardRefusal(state: GameState, playerId: PlayerId, instanceId
   return result.error;
 }
 
+/** Effets que résout la carte quand elle est jouée : ceux d'un Objet sont ses `onBreakEffects`. */
+function playedEffects(def: CardDefinition) {
+  return (def.type === "objet" ? def.onBreakEffects : def.onPlayEffects) ?? [];
+}
+
+/**
+ * Quand un Objet se joue-t-il depuis la main ? Un Objet classique en Phase
+ * principale, hors jet de dé ; une Chaîne de dé pendant un jet de son
+ * joueur ; une Chaîne de réaction jamais par cette action — seulement dans
+ * la fenêtre que décrit son texte (`activateReaction`).
+ */
+function objectTimingRefusal(state: GameState, action: PlayCardAction, def: CardDefinition): string | null {
+  if (isReactionChainObject(def)) {
+    return "Chaîne : cet Objet se joue en réaction, depuis votre main, quand la situation de son texte se présente.";
+  }
+  const jet = pendingDieRoll(state);
+  if (isDieChainObject(def)) {
+    if (!(jet && jet.playerId === action.playerId)) return "Chaîne : cet Objet se joue pendant l'un de vos jets de dé, avant sa résolution.";
+    if (jet.candidates !== undefined) return "Choisissez d'abord le dé à garder.";
+    return null;
+  }
+  if (jet) return "Un jet de dé est en cours : seuls les Objets « Chaîne » peuvent s'y jouer.";
+  return null;
+}
+
 /**
  * Tout ce qui empêche de jouer la carte, AVANT la question de sa cible et
  * de son choix au Cimetière : tour, phase, Marée, condition de Raison,
@@ -167,11 +200,18 @@ export function playCardRefusal(state: GameState, playerId: PlayerId, instanceId
  */
 function validatePlayability(state: GameState, action: PlayCardAction) {
   const player = state.players.find((p) => p.id === action.playerId);
+  const enMain = player?.hand.find((c) => c.instanceId === action.instanceId);
+  const objet = enMain ? getCardDefinition(enMain.cardId) : undefined;
+  if (objet?.type === "objet") {
+    const refus = objectTimingRefusal(state, action, objet);
+    if (refus) return { ok: false as const, error: refus };
+  }
+  // Une Chaîne de dé se joue pendant le jet de son joueur, même hors de sa Phase principale.
+  const horsPhase = objet !== undefined && isDieChainObject(objet);
   const generalChecks = combine(
     assertGameActive(state),
     assertPlayerInGame(state, action.playerId),
-    assertIsActivePlayer(state, action.playerId),
-    assertInMainPhase(state, action.playerId),
+    ...(horsPhase ? [] : [assertIsActivePlayer(state, action.playerId), assertInMainPhase(state, action.playerId)]),
     assertCardInHand(state, action.playerId, action.instanceId)
   );
   if (!generalChecks.ok) return generalChecks;
@@ -226,11 +266,35 @@ function validatePlayability(state: GameState, action: PlayCardAction) {
   );
   if (!costCheck.ok) return costCheck;
 
+  if (def.type === "objet") {
+    // « Une seule utilisation de … par tour » (Fragment d'Éveil) : par NOM.
+    if (def.playOncePerTurnByName && objectsPlayedThisTurn(player!, state.turnNumber).includes(def.name)) {
+      return { ok: false as const, error: `Une seule utilisation de ${def.name} par tour.` };
+    }
+    // « S'il ne peut pas payer, il ne peut pas le jouer » (Cloche d'Alerte,
+    // Seren) : seule une taxe adverse bloquante refuse un Objet faute de
+    // Raison — hors ce cas, un coût se paie toujours, quitte à creuser la dette.
+    const tax = objectPlayTax(state, action.playerId, state.turnNumber);
+    const total = reasonCostAfterShield(state, action.playerId, effectiveCost(def, state, action.playerId, action.instanceId) + tax.amount, state.turnNumber);
+    if (tax.blocksIfUnpayable && player!.reason < total) {
+      return { ok: false as const, error: "Raison insuffisante pour payer la taxe adverse sur cet Objet." };
+    }
+    // Un Objet classique exige un emplacement LIBRE, sans jamais s'y poser.
+    // Un Objet Chaîne se joue même plateau plein.
+    if (!def.chaine) {
+      const boardCheck = assertBoardNotFull(state, action.playerId);
+      if (!boardCheck.ok) return { ok: false as const, error: "Il faut au moins un emplacement libre pour jouer un Objet (il n'y est pas posé)." };
+    }
+    return { ok: true as const };
+  }
+
   // Un Assemblage libère au moins une place avant de poser la carte.
-  // Un effet en cours (Anomalie) ne prend pas de Slot : plateau plein ou non, il se joue.
-  if (isPermanentCard(def) && !isOngoingEffect(def) && !action.assemblage) {
-    // Slots universels : tout permanent (unité, Structure, Objet, Équipement,
-    // Anomalie) occupe un Slot, pas seulement les unités.
+  // Un effet en cours (Anomalie) ne prend pas de Slot : plateau plein ou non,
+  // il se joue. Un Équipement non plus : il s'attache à son porteur
+  // (refonte du 13/10/2026).
+  if (isPermanentCard(def) && !isOngoingEffect(def) && !isAttachedCard(def) && !action.assemblage) {
+    // Slots universels : tout permanent (unité, Structure) occupe un Slot,
+    // pas seulement les unités.
     const boardCheck = assertBoardNotFull(state, action.playerId);
     if (!boardCheck.ok) return boardCheck;
   }
@@ -254,8 +318,9 @@ function validate(state: GameState, action: PlayCardAction) {
 
   const player = state.players.find((p) => p.id === action.playerId);
   const def = getCardDefinition(player!.hand.find((c) => c.instanceId === action.instanceId)!.cardId);
-  const attachEffect = (def.onPlayEffects ?? []).find((e) => e.type === "attachEquipment");
-  const needsTarget = (def.onPlayEffects ?? []).some((e) => e.target.kind === "chosenUnit");
+  const effets = playedEffects(def);
+  const attachEffect = effets.find((e) => e.type === "attachEquipment");
+  const needsTarget = effets.some((e) => e.target.kind === "chosenUnit");
 
   if (needsTarget) {
     if (attachEffect) {
@@ -273,7 +338,7 @@ function validate(state: GameState, action: PlayCardAction) {
       // qu'aucun effet n'accepte — hors filtre, ou inciblable par vous
       // (L'Intangible) — est refusée AVANT que la carte ne soit payée et
       // jouée pour rien.
-      const accepte = (def.onPlayEffects ?? [])
+      const accepte = effets
         .filter((e) => e.target.kind === "chosenUnit")
         .some((e) => isEligibleChosenUnit(state, e.target, action.playerId, action.targetInstanceId!, action.instanceId));
       if (!accepte) return { ok: false as const, error: "Cette carte n'est pas une cible valide pour cet effet." };
@@ -283,7 +348,7 @@ function validate(state: GameState, action: PlayCardAction) {
   // « À son arrivée, choisissez une unité dans votre Cimetière » : même
   // convention « si possible » que le ciblage d'Équipement — la carte n'est
   // réclamée que s'il en existe une éligible.
-  const graveyard = validateGraveyardChoice(state, action.playerId, def.onPlayEffects, action.chosenGraveyardInstanceId);
+  const graveyard = validateGraveyardChoice(state, action.playerId, effets, action.chosenGraveyardInstanceId);
   if (!graveyard.ok) {
     return {
       ok: false as const,
@@ -311,13 +376,14 @@ function validate(state: GameState, action: PlayCardAction) {
 export function playCard(state: GameState, requested: PlayCardAction): ActionResult {
   // Une seule carte du Cimetière éligible : elle est désignée d'office.
   const posee = getPlayer(state, requested.playerId).hand.find((c) => c.instanceId === requested.instanceId);
-  const action = posee ? withSingleGraveyardChoice(state, getCardDefinition(posee.cardId).onPlayEffects, requested) : requested;
+  const action = posee ? withSingleGraveyardChoice(state, playedEffects(getCardDefinition(posee.cardId)), requested) : requested;
   const validation = validate(state, action);
   if (!validation.ok) return { ok: false, error: validation.error };
 
   const player = getPlayer(state, action.playerId);
   const instance = player.hand.find((c) => c.instanceId === action.instanceId)!;
   const def = getCardDefinition(instance.cardId);
+  if (def.type === "objet") return playObject(state, action, instance, def);
   const events: GameEvent[] = [];
   const base = { turnNumber: state.turnNumber, timestamp: Date.now() };
 
@@ -425,9 +491,9 @@ export function playCard(state: GameState, requested: PlayCardAction): ActionRes
     };
     const owner = getPlayer(nextState, player.id);
     // Emplacement dans le rang. Le joueur le désigne en lâchant sa carte
-    // (`boardIndex`) ; sinon un Équipement se range juste après le
-    // permanent qu'il équipe — le trait qui les relie n'a alors plus à
-    // traverser tout le plateau — et le reste prend la fin du rang.
+    // (`boardIndex`) ; sinon un Équipement se range, dans l'état, juste après
+    // le porteur qu'il équipe (il ne prend aucune case) — et le reste prend
+    // la fin du rang.
     const hostIndex =
       (def.onPlayEffects ?? []).some((e) => e.type === "attachEquipment") && action.targetInstanceId
         ? owner.board.findIndex((u) => u.instanceId === action.targetInstanceId)
@@ -445,7 +511,8 @@ export function playCard(state: GameState, requested: PlayCardAction): ActionRes
     const slotOfInstance = (board: typeof owner.board, instanceId: string | undefined) =>
       instanceId ? boardSlotLayout(boardPermanents(board), capacity).findIndex((u) => u?.instanceId === instanceId) : -1;
     const nearSlot = assemblage ? slotOfInstance(player.board, assemblage[0]?.instanceId) : hostIndex >= 0 ? slotOfInstance(owner.board, action.targetInstanceId) : -1;
-    const slot = isOngoingEffect(def)
+    // Un Équipement n'a pas de case : il est attaché à son porteur.
+    const slot = isOngoingEffect(def) || isAttachedCard(def)
       ? undefined
       : chooseBoardSlot(boardPermanents(owner.board), capacity, action.boardSlot, nearSlot >= 0 ? nearSlot : undefined);
     boardUnit.slot = slot;
@@ -590,4 +657,50 @@ export function playCard(state: GameState, requested: PlayCardAction): ActionRes
   }
 
   return { ok: true, state: nextState, events };
+}
+
+/**
+ * Joue un Objet (règle du 13/10/2026) : il est payé — coût imprimé moins
+ * réductions, plus la taxe adverse —, quitte la main et monte sur la pile
+ * Chaîne sans jamais occuper d'emplacement. L'adversaire peut y répondre
+ * (Sabotage Discret) ; sinon il se résout aussitôt et, s'il aboutit, il est
+ * Brisé (`game/chain/chainStack.ts`).
+ */
+function playObject(state: GameState, action: PlayCardAction, instance: PlayerState["hand"][number], def: CardDefinition): ActionResult {
+  const turnNumber = state.turnNumber;
+  const base = { turnNumber, timestamp: Date.now() };
+  const events: GameEvent[] = [];
+
+  const tax = objectPlayTax(state, action.playerId, turnNumber);
+  const payment = payReasonCost(state, action.playerId, effectiveCost(def, state, action.playerId, instance.instanceId) + tax.amount, turnNumber);
+  let nextState = consumeCostDiscounts(payment.state, action.playerId, def, instance.instanceId);
+  nextState = markTurnDiscountsUsed(nextState, action.playerId, turnDiscounts(state, action.playerId, def, instance.instanceId).map((d) => d.key));
+  nextState = consumeObjectPlayTax(nextState, tax, turnNumber);
+  nextState = recordObjectPlayed(nextState, action.playerId, def.name);
+  events.push({ ...base, type: "PLAY_CARD", playerId: action.playerId, instanceId: instance.instanceId, cardId: def.id });
+  events.push({ ...base, type: "REASON_CHANGED", playerId: action.playerId, delta: -payment.paid });
+
+  const pushed = pushChainLink(nextState, {
+    id: instance.instanceId,
+    playerId: action.playerId,
+    card: instance,
+    ...(action.targetInstanceId ? { targetInstanceId: action.targetInstanceId } : {}),
+    ...(action.chosenGraveyardInstanceId ? { chosenGraveyardInstanceId: action.chosenGraveyardInstanceId } : {}),
+    ...(action.dieDelta !== undefined ? { dieDelta: action.dieDelta } : {}),
+    turnNumber,
+  });
+  nextState = pushed.state;
+  events.push(...pushed.events);
+
+  // « Quand vous jouez un Objet » (L'Aventurière en retard) : il vient de l'être.
+  const joue = processTrigger(nextState, { trigger: "onCardPlayed", playerId: action.playerId, cardId: def.id, sourceInstanceId: instance.instanceId }, turnNumber);
+  nextState = joue.state;
+  events.push(...joue.events);
+
+  // Quelqu'un peut répondre : la pile attend. Sinon, elle se résout.
+  const link = nextState.chainStack![nextState.chainStack!.length - 1]!;
+  const reponse = openChainResponse(nextState, link);
+  if (reponse.state.pendingReaction) return { ok: true, state: reponse.state, events: [...events, ...reponse.events] };
+  const resolue = runChain(nextState);
+  return { ok: true, state: resolue.state, events: [...events, ...resolue.events] };
 }

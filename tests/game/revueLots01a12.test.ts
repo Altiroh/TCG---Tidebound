@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import { dispatch } from "@/game/engine";
 import { computeEffectiveStats } from "@/game/cards/stats";
 import { processTrigger } from "@/game/triggers/triggerBus";
+import { CARD_DATABASE } from "@/game/cards/sets/core";
+import type { CardDefinition } from "@/game/cards/types";
 import type { GameState, PlayerState } from "@/game/state/types";
 import { activateReactionFor, answerHandDiscard, instance, pendingCandidates, testEnvironment, testGameState, testPlayer, enFinDeTour } from "./testHelpers";
 
@@ -47,9 +49,9 @@ describe("Cylindre flottant (visible) : « dégâts directs d'une attaque », pa
   });
 });
 
-describe("Cloche d'Alerte : le Bris d'un Objet réactif est taxé, et bloqué s'il est impayable", () => {
+describe("Cloche d'Alerte : un Objet Chaîne joué en réaction est taxé, et bloqué s'il est impayable", () => {
   function attaque(p2Reason: number, p2: Partial<PlayerState>) {
-    const cloche = instance("cloche-dalerte", "p1", { turnsRemaining: 3 }); // visible en Calme
+    const cloche = instance("cloche-dalerte", "p1", { turnsRemaining: 3 });
     const brute = instance("murene-aveugle", "p1");
     const state = testGameState({
       phase: "combatPhase",
@@ -58,27 +60,20 @@ describe("Cloche d'Alerte : le Bris d'un Objet réactif est taxé, et bloqué s'
     return { cloche, state: ok(dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: brute.instanceId })) };
   }
 
-  it("Harpon à Ressort posé : son Bris en réaction coûte 1 Raison de taxe, et la Cloche est consommée", () => {
-    const harpon = instance("harpon-a-ressort", "p2");
-    const { cloche, state } = attaque(5, { board: [harpon] });
+  it("Harpon à Ressort en main : coût imprimé + 1 de taxe, et la Cloche est consommée", () => {
+    const harpon = instance("harpon-a-ressort", "p2"); // coût 4
+    const { cloche, state } = attaque(6, { hand: [harpon] });
     const candidat = pendingCandidates(state).find((c) => c.cardId === "harpon-a-ressort")!;
-    // Avant : 0 — le Bris réactif échappait à la Cloche.
-    expect(candidat.reasonCost).toBe(1);
+    expect(candidat.fromHand).toBe(true);
+    expect(candidat.reasonCost).toBe(5);
     const apres = ok(activateReactionFor(state, "harpon-a-ressort"));
-    expect(p(apres, "p2").reason).toBe(4);
+    expect(p(apres, "p2").reason).toBe(1);
     expect(unit(apres, cloche.instanceId)!.oncePerTurnFlags).toBeDefined();
   });
 
-  it("depuis la main : coût du Bris depuis la main + taxe", () => {
+  it("sans Raison pour payer coût + taxe, le Harpon ne peut pas être joué", () => {
     const harpon = instance("harpon-a-ressort", "p2");
-    const { state } = attaque(5, { hand: [harpon] });
-    const candidat = pendingCandidates(state).find((c) => c.cardId === "harpon-a-ressort")!;
-    expect(candidat.reasonCost).toBe(3);
-  });
-
-  it("sans Raison pour payer la taxe, le Harpon ne peut pas être Brisé", () => {
-    const harpon = instance("harpon-a-ressort", "p2");
-    const { state } = attaque(0, { board: [harpon] });
+    const { state } = attaque(4, { hand: [harpon] });
     expect(pendingCandidates(state).some((c) => c.cardId === "harpon-a-ressort")).toBe(false);
   });
 });
@@ -146,19 +141,39 @@ describe("Épave à Fleur d'Eau : défausser D'ABORD, piocher ensuite", () => {
   });
 });
 
-describe("Treuil Rouillé : « quitte le board » couvre le renvoi en main", () => {
-  it("la Structure équipée renvoyée en main fait piocher", () => {
-    const theatre = instance("le-theatre-englouti", "p1", { turnsRemaining: 4 });
-    const treuil = instance("treuil-rouille", "p1", { attachedToInstanceId: theatre.instanceId });
-    const clochette = instance("la-clochette-du-rappel", "p1");
-    const pioche = instance("requin-balafre", "p1");
-    const state = testGameState({
-      players: [testPlayer("p1", { board: [theatre, treuil, clochette], deck: [pioche] }), testPlayer("p2", { shipId: "le-goliath" })],
-    });
-    const after = ok(dispatch(state, { type: "breakObject", playerId: "p1", instanceId: clochette.instanceId, targetInstanceId: theatre.instanceId }));
-    const main = p(after, "p1").hand.map((c) => c.cardId);
-    expect(main).toContain("le-theatre-englouti");
-    expect(main).toContain("requin-balafre");
+describe("Treuil Rouillé : un renvoi en main n'est pas une destruction (refonte du 13/10/2026)", () => {
+  // Plus aucune carte du catalogue ne renvoie une Structure en main (La
+  // Clochette du Rappel ne vise plus que des unités) : un Objet d'essai le fait.
+  const RENVOI: CardDefinition = {
+    id: "test-renvoi-structure",
+    name: "Renvoi d'essai",
+    type: "objet",
+    cost: 1,
+    text: "Renvoyez une Structure que vous contrôlez dans votre main.",
+    onBreakEffects: [{ type: "moveZone", toZone: "hand", target: { kind: "chosenUnit", among: { cardTypes: ["structure"] } } }],
+  } as unknown as CardDefinition;
+
+  it("la Structure équipée renvoyée en main ne fait pas piocher, et le Treuil rejoint le Cimetière sans être détruit", () => {
+    const table = CARD_DATABASE as Map<string, CardDefinition>;
+    table.set(RENVOI.id, RENVOI);
+    try {
+      const theatre = instance("le-theatre-englouti", "p1", { turnsRemaining: 4 });
+      const treuil = instance("treuil-rouille", "p1", { attachedToInstanceId: theatre.instanceId });
+      const renvoi = instance(RENVOI.id, "p1");
+      const pioche = instance("requin-balafre", "p1");
+      const state = testGameState({
+        players: [testPlayer("p1", { board: [theatre, treuil], hand: [renvoi], deck: [pioche] }), testPlayer("p2", { shipId: "le-goliath" })],
+      });
+      const after = ok(dispatch(state, { type: "playCard", playerId: "p1", instanceId: renvoi.instanceId, targetInstanceId: theatre.instanceId }));
+      const main = p(after, "p1").hand.map((c) => c.cardId);
+      expect(main).toContain("le-theatre-englouti");
+      expect(main).not.toContain("requin-balafre");
+      const auCimetiere = p(after, "p1").graveyard.find((c) => c.instanceId === treuil.instanceId);
+      expect(auCimetiere?.graveyardCause).toBe("detached");
+      expect(after.eventLog.some((e) => e.type === "DESTROY" && e.instanceId === treuil.instanceId)).toBe(false);
+    } finally {
+      table.delete(RENVOI.id);
+    }
   });
 });
 
@@ -209,7 +224,7 @@ describe("« +1 Puissance contre une Structure » : la Puissance déclarée, pas
     const harpon = instance("harpon-a-ressort", "p2"); // ouvre une fenêtre : on y lit la Puissance déclarée
     const state = testGameState({
       phase: "combatPhase",
-      players: [testPlayer("p1", { board: [barracuda] }), testPlayer("p2", { shipId: "le-goliath", board: [cible, harpon], reason: 0 })],
+      players: [testPlayer("p1", { board: [barracuda] }), testPlayer("p2", { shipId: "le-goliath", board: [cible], hand: [harpon] })],
     });
     const declared = ok(dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: barracuda.instanceId, defenderInstanceId: cible.instanceId }));
     // Avant : 3 — le +1 n'existait qu'au moment des dégâts.
@@ -225,7 +240,7 @@ describe("« +1 Puissance contre une Structure » : la Puissance déclarée, pas
     const harpon = instance("harpon-a-ressort", "p2");
     const state = testGameState({
       phase: "combatPhase",
-      players: [testPlayer("p1", { board: [marin, corde] }), testPlayer("p2", { shipId: "le-goliath", board: [cible, harpon], reason: 0 })],
+      players: [testPlayer("p1", { board: [marin, corde] }), testPlayer("p2", { shipId: "le-goliath", board: [cible], hand: [harpon] })],
     });
     const declared = ok(dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: marin.instanceId, defenderInstanceId: cible.instanceId }));
     expect(declared.pendingAttack?.attackerPower).toBe(4);

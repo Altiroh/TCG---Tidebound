@@ -7,7 +7,7 @@ import { toPlayerView } from "@/game/state/playerView";
 import { HIDDEN_CARD_ID } from "@/game/cards/hiddenCard";
 import type { CardInstance } from "@/game/cards/types";
 import type { GameState } from "@/game/state/types";
-import { activateReactionFor, instance, testEnvironment, testGameState, testPlayer, enFinDeTour } from "./testHelpers";
+import { activateReactionFor, instance, testEnvironment, testGameState, testPlayer, enFinDeTour, jouerObjet } from "./testHelpers";
 
 /**
  * LOT 15 — CAVALERIE : des Bêtes lourdes, peu nombreuses, et juste assez
@@ -78,7 +78,7 @@ describe("combat et Garde", () => {
     const debusquer = instance("debusquer", "p1");
     const rempart = instance("le-dernier-rempart", "p2");
     let state = table({ board: [attaquant, debusquer] }, { board: [rempart] });
-    const b = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: debusquer.instanceId, targetInstanceId: rempart.instanceId });
+    const b = jouerObjet(state, { playerId: "p1", instanceId: debusquer.instanceId, targetInstanceId: rempart.instanceId });
     ok(b);
     state = { ...b.state, phase: "combatPhase" };
     const a = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: attaquant.instanceId });
@@ -92,7 +92,7 @@ describe("combat et Garde", () => {
     const attaquant = instance("matelot-du-sans-nom", "p1");
     const objet = instance("ouvrez-la-ligne", "p1");
     const rempart = instance("le-dernier-rempart", "p2"); // Garde
-    const state = table({ board: [attaquant, instance("matelot-fele", "p1"), objet] }, { board: [rempart] }, { phase: "combatPhase" });
+    const state = table({ board: [attaquant, instance("matelot-fele", "p1")], hand: [objet] }, { board: [rempart] }, { phase: "combatPhase" });
     const a = dispatch(state, {
       type: "attack",
       playerId: "p1",
@@ -104,10 +104,12 @@ describe("combat et Garde", () => {
     expect(offeredTo(a.state)).toBe("p1");
     const r = activateReactionFor(a.state, "ouvrez-la-ligne");
     ok(r);
-    // Reprise : 3 + 2 sur le Rempart, l'Objet est parti, le bonus est dépensé.
+    // Reprise : 3 + 2 sur le Rempart, l'Objet est joué puis Brisé, le bonus est dépensé.
     expect(r.state.pendingReaction).toBeUndefined();
     expect(unite(r.state, rempart.instanceId)!.damageMarked).toBe(5);
     expect(unite(r.state, objet.instanceId)).toBeUndefined();
+    expect(joueur(r.state, "p1").hand.some((c) => c.instanceId === objet.instanceId)).toBe(false);
+    expect(joueur(r.state, "p1").graveyard.some((c) => c.instanceId === objet.instanceId)).toBe(true);
     // Le bonus est dépensé — que l'attaquant ait survécu à la riposte ou non.
     expect(unite(r.state, attaquant.instanceId)?.modifiers.some((m) => m.nextCombatBonusVsKeyword) ?? false).toBe(false);
   });
@@ -116,21 +118,22 @@ describe("combat et Garde", () => {
     const attaquant = instance("matelot-du-sans-nom", "p1"); // 3 Puissance, sans effet
     const objet = instance("ouvrez-la-ligne", "p1");
     const rempart = instance("le-dernier-rempart", "p2");
-    const state = table({ board: [attaquant, instance("matelot-fele", "p1"), objet] }, { board: [rempart] }, { phase: "combatPhase" });
+    const state = table({ board: [attaquant, instance("matelot-fele", "p1")], hand: [objet] }, { board: [rempart] }, { phase: "combatPhase" });
     const a = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: attaquant.instanceId, defenderInstanceId: rempart.instanceId });
     ok(a);
     const p = dispatch(a.state, { type: "passReaction", playerId: "p1" });
     ok(p);
     expect(unite(p.state, rempart.instanceId)!.damageMarked).toBe(3);
     expect(joueur(p.state, "p2").anchor).toBe(joueur(state, "p2").anchor);
-    expect(unite(p.state, objet.instanceId)).toBeDefined();
+    // Refusée : l'Objet reste en main.
+    expect(joueur(p.state, "p1").hand.some((c) => c.instanceId === objet.instanceId)).toBe(true);
   });
 
   it("Ouvrez la Ligne ! : une Garde attaque votre unité — +2 sur sa riposte", () => {
     const rempart = instance("le-dernier-rempart", "p2"); // Garde, 4 Puissance
     const destrier = instance("destrier-du-ressac", "p1"); // 3 Puissance
     const objet = instance("ouvrez-la-ligne", "p1");
-    const state = table({ board: [destrier, instance("matelot-fele", "p1"), objet] }, { board: [rempart] }, { phase: "combatPhase", activePlayerId: "p2" });
+    const state = table({ board: [destrier, instance("matelot-fele", "p1")], hand: [objet] }, { board: [rempart] }, { phase: "combatPhase", activePlayerId: "p2" });
     const a = dispatch(state, { type: "attack", playerId: "p2", attackerInstanceId: rempart.instanceId, defenderInstanceId: destrier.instanceId });
     ok(a);
     expect(offeredTo(a.state)).toBe("p1");
@@ -139,15 +142,15 @@ describe("combat et Garde", () => {
     expect(unite(r.state, rempart.instanceId)!.damageMarked).toBe(5);
   });
 
-  it("Ouvrez la Ligne ! : ni fenêtre sans Garde en face, ni Bris à froid", () => {
+  it("Ouvrez la Ligne ! : ni fenêtre sans Garde en face, ni jeu à froid", () => {
     const attaquant = instance("destrier-du-ressac", "p1");
     const objet = instance("ouvrez-la-ligne", "p1");
     const matelot = instance("matelot-fele", "p2");
-    const state = table({ board: [attaquant, objet] }, { board: [matelot] }, { phase: "combatPhase" });
+    const state = table({ board: [attaquant], hand: [objet] }, { board: [matelot] }, { phase: "combatPhase" });
     const a = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: attaquant.instanceId, defenderInstanceId: matelot.instanceId });
     ok(a);
     expect(a.state.pendingReaction).toBeUndefined();
-    const froid = dispatch(table({ board: [attaquant, objet] }), { type: "breakObject", playerId: "p1", instanceId: objet.instanceId });
+    const froid = dispatch(table({ board: [attaquant], hand: [objet] }), { type: "playCard", playerId: "p1", instanceId: objet.instanceId });
     expect(froid.ok).toBe(false);
   });
 
@@ -164,7 +167,7 @@ describe("combat et Garde", () => {
     const attaquant = instance("destrier-du-ressac", "p1");
     const piege = instance("pas-un-pas-de-plus", "p2");
     const defenseur = instance("matelot-fele", "p2");
-    const state = table({ board: [attaquant] }, { board: [piege, defenseur] }, { phase: "combatPhase" });
+    const state = table({ board: [attaquant] }, { hand: [piege], board: [defenseur] }, { phase: "combatPhase" });
     const r = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: attaquant.instanceId });
     ok(r);
     expect(r.state.pendingReaction?.awaitingPlayerId).toBe("p2");
@@ -348,14 +351,14 @@ describe("Bêtes et conditions", () => {
     expect(joueur(r.state, "p1").anchor).toBe(22);
   });
 
-  it("Selle de Guerre : +1 Puissance, et +1 Résistance sur un porteur de coût 4 ou plus", () => {
+  it("Selle de Guerre : +1 Puissance, et sa Résistance imprimée (2) ajoutée au porteur, quel que soit son coût", () => {
     const leger = instance("destrier-du-ressac", "p1");
     const lourd = instance("mange-fer", "p1");
     const s1 = instance("selle-de-guerre", "p1", { attachedToInstanceId: leger.instanceId });
     const s2 = instance("selle-de-guerre", "p1", { attachedToInstanceId: lourd.instanceId });
     const state = table({ board: [leger, s1, lourd, s2] });
-    expect([stats(state, leger.instanceId).attack, stats(state, leger.instanceId).health]).toEqual([4, 5]);
-    expect([stats(state, lourd.instanceId).attack, stats(state, lourd.instanceId).health]).toEqual([6, 8]);
+    expect([stats(state, leger.instanceId).attack, stats(state, leger.instanceId).health]).toEqual([4, 7]);
+    expect([stats(state, lourd.instanceId).attack, stats(state, lourd.instanceId).health]).toEqual([6, 9]);
   });
 
   it("La Mauvaise Réputation : la prochaine unité coûte 1 de moins et arrive blessée", () => {

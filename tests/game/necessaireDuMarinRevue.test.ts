@@ -1,10 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { dispatch } from "@/game/engine";
 import { auraContextOf, computeEffectiveStats } from "@/game/cards/stats";
-import { previewHandBreakReason } from "@/game/actions/breakObject";
 import type { CardInstance } from "@/game/cards/types";
 import type { GameState } from "@/game/state/types";
-import { activateReactionFor, instance, pendingCandidates, testEnvironment, testGameState, testPlayer } from "./testHelpers";
+import { activateReactionFor, instance, pendingCandidates, testEnvironment, testGameState, testPlayer, jouerObjet } from "./testHelpers";
 
 /**
  * LOT 14 — NÉCESSAIRE DU MARIN : écarts relevés par la revue cartes ↔ moteur
@@ -52,27 +51,22 @@ function table(
 }
 
 describe("Cale Inondable", () => {
-  it("Réaction cachée : proposée à la TROISIÈME attaque adverse du tour, pas à la quatrième", () => {
-    const cale = instance("cale-inondable", "p1", { turnsRemaining: 3 });
-    const attaquants = [0, 1, 2].map(() => instance("murene-aveugle", "p2"));
-    let s = table({ board: [cale] }, { board: attaquants }, { phase: "combatPhase", activePlayerId: "p2", priorityPlayerId: "p2" });
-    for (const [rang, attaquant] of attaquants.entries()) {
-      const r = dispatch(s, { type: "attack", playerId: "p2", attackerInstanceId: attaquant.instanceId });
+  it("masquée (Calme), elle agit aussi : la première attaque adverse perd 1 Puissance, sans fenêtre", () => {
+    const frappe = (avecCale: boolean) => {
+      const cale = instance("cale-inondable", "p1", { turnsRemaining: 3 });
+      const attaquants = [0, 1].map(() => instance("murene-aveugle", "p2"));
+      const s = table({ board: avecCale ? [cale] : [] }, { board: attaquants }, { phase: "combatPhase", activePlayerId: "p2", priorityPlayerId: "p2" });
+      const r = dispatch(s, { type: "attack", playerId: "p2", attackerInstanceId: attaquants[0]!.instanceId });
       ok(r);
-      if (rang < 2) {
-        expect(propose(r.state, "cale-inondable"), `attaque ${rang + 1}`).toBe(false);
-        s = passerTout(r.state);
-      } else {
-        expect(propose(r.state, "cale-inondable"), "troisième attaque").toBe(true);
-        s = r.state;
-      }
-    }
-    const inonde = activateReactionFor(s, "cale-inondable");
-    ok(inonde);
-    expect(unite(inonde.state, cale.instanceId)).toBeUndefined();
+      expect(propose(r.state, "cale-inondable")).toBe(false);
+      const apres = passerTout(r.state);
+      if (avecCale) expect(unite(apres, cale.instanceId)).toBeDefined();
+      return joueur(apres, "p1").anchor;
+    };
+    expect(frappe(true)).toBe(frappe(false) + 1);
   });
 
-  it("effet visible : seulement la PREMIÈRE attaque adverse du tour, même si la comparaison l'écartait", () => {
+  it("seulement la PREMIÈRE attaque adverse du tour, même si la comparaison l'écartait", () => {
     // Deux contre deux : la première attaque ne remplit pas « plus d'unités
     // que vous ». Elle tue un P'tit Bout, la comparaison devient vraie —
     // mais la seconde attaque n'est plus « la première ».
@@ -106,7 +100,7 @@ describe("Chaîne de Travers", () => {
       priorityPlayerId: "p2",
       environment: testEnvironment({ tideState: "tempete" }),
     });
-    const bris = dispatch(s, { type: "breakObject", playerId: "p2", instanceId: seau.instanceId });
+    const bris = jouerObjet(s, { playerId: "p2", instanceId: seau.instanceId });
     ok(bris);
     const peon = joueur(bris.state, "p2").board.find((u) => u.cardId === "peon-cra-poiscail")!;
     expect(stats(bris.state, peon.instanceId).attack).toBe(1);
@@ -116,41 +110,38 @@ describe("Chaîne de Travers", () => {
   });
 });
 
-describe("Fausse Cargaison", () => {
-  function brisAdverse() {
+describe("Fausse Cargaison (refonte du 13/10/2026 : taxe sur l'Objet joué)", () => {
+  function objetAdverse(reasonP2 = 10) {
     const cargaison = instance("fausse-cargaison", "p1", { turnsRemaining: 3 });
-    const reserves = instance("dernieres-reserves", "p2");
+    const reserves = instance("dernieres-reserves", "p2"); // coût 3
+    const second = instance("dernieres-reserves", "p2");
+    // Calme : la Structure est MASQUÉE, sa taxe porte quand même (effet unique « actif même masqué »).
     const s = table(
       { board: [cargaison] },
-      { board: [reserves], deck: [instance("murene-aveugle", "p2"), instance("murene-aveugle", "p2")] },
+      { hand: [reserves, second], reason: reasonP2, deck: [instance("murene-aveugle", "p2"), instance("murene-aveugle", "p2")] },
       { activePlayerId: "p2", priorityPlayerId: "p2" }
     );
-    const r = dispatch(s, { type: "breakObject", playerId: "p2", instanceId: reserves.instanceId });
-    ok(r);
-    return { cargaison, r };
+    return { cargaison, reserves, second, s };
   }
 
-  it("la fenêtre s'ouvre AVANT que l'effet de l'Objet ne se résolve", () => {
-    const { r } = brisAdverse();
-    expect(r.state.pendingObjectBreak).toBeDefined();
-    expect(joueur(r.state, "p2").hand).toHaveLength(0);
-    expect(propose(r.state, "fausse-cargaison")).toBe(true);
+  it("le premier Objet adverse joué du tour coûte 1 Raison de plus, même Structure masquée ; le second, non", () => {
+    const { reserves, second, s } = objetAdverse();
+    const r = dispatch(s, { type: "playCard", playerId: "p2", instanceId: reserves.instanceId });
+    ok(r);
+    expect(joueur(r.state, "p2").reason).toBe(10 - 3 - 1);
+    // Aucune fenêtre d'annulation : l'effet de l'Objet se résout (1 carte en main → pioche 2).
+    expect(r.state.pendingReaction).toBeUndefined();
+    expect(joueur(r.state, "p2").hand).toHaveLength(3);
+    const r2 = dispatch(r.state, { type: "playCard", playerId: "p2", instanceId: second.instanceId });
+    ok(r2);
+    expect(joueur(r2.state, "p2").reason).toBe(10 - 3 - 1 - 3);
   });
 
-  it("activée : l'effet de l'Objet est réellement annulé, puis la Structure part", () => {
-    const { cargaison, r } = brisAdverse();
-    const annule = activateReactionFor(r.state, "fausse-cargaison");
-    ok(annule);
-    expect(joueur(annule.state, "p2").hand).toHaveLength(0);
-    expect(annule.state.pendingObjectBreak).toBeUndefined();
-    expect(unite(annule.state, cargaison.instanceId)).toBeUndefined();
-  });
-
-  it("passée : le Bris reprend et l'Objet fait son effet", () => {
-    const { cargaison, r } = brisAdverse();
-    const passe = passerTout(r.state);
-    expect(joueur(passe, "p2").hand).toHaveLength(2);
-    expect(unite(passe, cargaison.instanceId)).toBeDefined();
+  it("ne bloque pas : sans Raison pour la taxe, l'Objet se joue quand même", () => {
+    const { reserves, s } = objetAdverse(3);
+    const r = dispatch(s, { type: "playCard", playerId: "p2", instanceId: reserves.instanceId });
+    ok(r);
+    expect(joueur(r.state, "p2").reason).toBe(3 - 3 - 1);
   });
 });
 
@@ -159,7 +150,7 @@ describe("Bouclier d'Écume", () => {
     const bouclier = instance("bouclier-decume", "p1");
     const murene = instance("murene-aveugle", "p1");
     const cible = instance("ptit-bout", "p2");
-    const s = table({ board: [bouclier, murene] }, { board: [cible] }, { phase: "combatPhase" });
+    const s = table({ hand: [bouclier], board: [murene] }, { board: [cible] }, { phase: "combatPhase" });
     const r = dispatch(s, { type: "attack", playerId: "p1", attackerInstanceId: murene.instanceId, defenderInstanceId: cible.instanceId });
     ok(r);
     expect(propose(r.state, "bouclier-decume")).toBe(false);
@@ -170,7 +161,7 @@ describe("Bouclier d'Écume", () => {
     const bouclier = instance("bouclier-decume", "p1");
     const defenseur = instance("ptit-bout", "p1");
     const murene = instance("murene-aveugle", "p2");
-    const s = table({ board: [bouclier, defenseur] }, { board: [murene] }, { phase: "combatPhase", activePlayerId: "p2", priorityPlayerId: "p2" });
+    const s = table({ hand: [bouclier], board: [defenseur] }, { board: [murene] }, { phase: "combatPhase", activePlayerId: "p2", priorityPlayerId: "p2" });
     const r = dispatch(s, { type: "attack", playerId: "p2", attackerInstanceId: murene.instanceId, defenderInstanceId: defenseur.instanceId });
     ok(r);
     const sauve = activateReactionFor(passerJusqua(r.state, "bouclier-decume"), "bouclier-decume");
@@ -195,7 +186,7 @@ describe("Trousse du Bord", () => {
     const trousse = instance("trousse-du-bord", "p1");
     const structure = instance("cloison-etanche", "p1", { turnsRemaining: 3, damageMarked: 2 });
     const blesse = instance("vieux-harponneur", "p1", { damageMarked: 3 });
-    const r = dispatch(table({ board: [trousse, structure, blesse] }), { type: "breakObject", playerId: "p1", instanceId: trousse.instanceId });
+    const r = jouerObjet(table({ board: [trousse, structure, blesse] }), { playerId: "p1", instanceId: trousse.instanceId });
     ok(r);
     expect(r.state.pendingChoice?.kind).toBe("healAllocation");
     const refus = dispatch(r.state, {
@@ -216,21 +207,20 @@ describe("Trousse du Bord", () => {
   it("seule une Structure est blessée : aucune question n'est posée", () => {
     const trousse = instance("trousse-du-bord", "p1");
     const structure = instance("cloison-etanche", "p1", { turnsRemaining: 3, damageMarked: 2 });
-    const r = dispatch(table({ board: [trousse, structure] }), { type: "breakObject", playerId: "p1", instanceId: trousse.instanceId });
+    const r = jouerObjet(table({ board: [trousse, structure] }), { playerId: "p1", instanceId: trousse.instanceId });
     ok(r);
     expect(r.state.pendingChoice).toBeUndefined();
   });
 });
 
 describe("On Flotte Encore", () => {
-  it("« Jouable uniquement si… » vaut aussi pour le Bris depuis la main", () => {
+  it("« Jouable uniquement si… » : l'Objet ne se joue pas tant que la condition manque", () => {
     const flotte = instance("on-flotte-encore", "p1");
     const intacte = table({ hand: [flotte], anchor: 30 });
-    expect(dispatch(intacte, { type: "breakObject", playerId: "p1", instanceId: flotte.instanceId, fromHand: true }).ok).toBe(false);
-    expect(previewHandBreakReason(intacte, "p1", flotte.instanceId)?.allowed).toBe(false);
+    expect(jouerObjet(intacte, { playerId: "p1", instanceId: flotte.instanceId }).ok).toBe(false);
 
     const abimee = table({ hand: [flotte], anchor: 18 });
-    const r = dispatch(abimee, { type: "breakObject", playerId: "p1", instanceId: flotte.instanceId, fromHand: true });
+    const r = jouerObjet(abimee, { playerId: "p1", instanceId: flotte.instanceId });
     ok(r);
     expect(joueur(r.state, "p1").anchor).toBe(22);
   });

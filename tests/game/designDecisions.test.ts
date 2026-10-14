@@ -21,7 +21,7 @@ import { consumeTideShipDamageShield } from "@/game/state/shields";
 import { computeEffectiveStats } from "@/game/cards/stats";
 import { CORE_SET } from "@/game/cards/sets/core";
 import { resolveEffect } from "@/game/effects/resolveEffect";
-import { previewBreakReason } from "@/game/actions/breakObject";
+import { previewPlayCardReason } from "@/game/actions/playCard";
 import type { GameState } from "@/game/state/types";
 import { answerHandDiscard, instance, pendingCandidates, testEnvironment, testGameState, testPlayer, enFinDeTour } from "./testHelpers";
 
@@ -266,42 +266,42 @@ describe("un Objet n'a pas de Résistance", () => {
   });
 });
 
-describe("Cloche d'Alerte : la taxe peut rendre le Bris impossible", () => {
+describe("Cloche d'Alerte : la taxe peut rendre l'Objet injouable", () => {
   function table(reason: number) {
-    const objet = instance("le-seau", "p1");
+    const objet = instance("le-seau", "p1"); // coût 2
     const cloche = instance("cloche-dalerte", "p2");
     return {
       objet,
       state: testGameState({
-        environment: testEnvironment({ tideState: "calme" }), // la Cloche y est visible
-        players: [testPlayer("p1", { board: [objet], reason }), testPlayer("p2", { board: [cloche] })],
+        environment: testEnvironment({ tideState: "calme" }),
+        players: [testPlayer("p1", { hand: [objet], reason }), testPlayer("p2", { board: [cloche] })],
       }),
     };
   }
 
-  it("refuse le Bris quand la Raison ne couvre pas la taxe", () => {
-    const { objet, state } = table(0);
-    const refus = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: objet.instanceId });
+  it("refuse l'Objet quand la Raison ne couvre pas coût + taxe", () => {
+    const { objet, state } = table(2);
+    const refus = dispatch(state, { type: "playCard", playerId: "p1", instanceId: objet.instanceId });
     expect(refus.ok).toBe(false);
     // L'aperçu le dit AVANT la tentative.
-    expect(previewBreakReason(state, "p1", objet.instanceId, false)!.allowed).toBe(false);
+    expect(previewPlayCardReason(state, "p1", objet.instanceId)!.allowed).toBe(false);
   });
 
   it("l'autorise dès que la Raison suffit, et prélève bien la taxe", () => {
-    const { objet, state } = table(1);
-    expect(previewBreakReason(state, "p1", objet.instanceId, false)!.allowed).toBe(true);
-    const brise = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: objet.instanceId });
-    ok(brise);
-    expect(player(brise.state, "p1").reason).toBe(0);
+    const { objet, state } = table(3);
+    expect(previewPlayCardReason(state, "p1", objet.instanceId)!.allowed).toBe(true);
+    const joue = dispatch(state, { type: "playCard", playerId: "p1", instanceId: objet.instanceId });
+    ok(joue);
+    expect(player(joue.state, "p1").reason).toBe(0);
   });
 
-  it("sans Cloche adverse, un Bris à 0 Raison reste permis : le plancher est une règle de carte", () => {
+  it("sans Cloche adverse, un Objet à 0 Raison reste permis : le plancher est une règle de carte", () => {
     const objet = instance("le-seau", "p1");
     const state = testGameState({
-      players: [testPlayer("p1", { board: [objet], reason: 0 }), testPlayer("p2")],
+      players: [testPlayer("p1", { hand: [objet], reason: 0 }), testPlayer("p2")],
     });
-    const brise = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: objet.instanceId });
-    ok(brise);
+    const joue = dispatch(state, { type: "playCard", playerId: "p1", instanceId: objet.instanceId });
+    ok(joue);
   });
 });
 

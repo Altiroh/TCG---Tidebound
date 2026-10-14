@@ -8,7 +8,7 @@
 import { describe, expect, it } from "vitest";
 import { dispatch, offeredTo } from "@/tests/game/arrivalDispatch";
 import { computeEffectiveStats } from "@/game/cards/stats";
-import { previewHandBreakReason } from "@/game/actions/breakObject";
+import { previewPlayCardReason } from "@/game/actions/playCard";
 import { graveyardChoicesForBreak } from "@/game/effects/graveyardChoices";
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { processDeaths } from "@/game/state/processDeaths";
@@ -16,7 +16,7 @@ import { processTrigger } from "@/game/triggers/triggerBus";
 import { eligibleCandidatesFor } from "@/game/reactions/reactionWindow";
 import { assertUnitCanAttack, hasEffectiveKeyword, hasKeywordInContext, KEYWORD_PIED_MARIN } from "@/game/rules/validation";
 import type { GameState } from "@/game/state/types";
-import { activateReactionFor, instance, pendingCandidates, testEnvironment, testGameState, testPlayer, enFinDeTour } from "./testHelpers";
+import { activateReactionFor, instance, pendingCandidates, testEnvironment, testGameState, testPlayer, enFinDeTour, jouerObjet } from "./testHelpers";
 
 const STRUCTURE = "le-trone-de-bouchon"; // Structure toujours visible, sans capacité
 const OBJET = "cartes-des-courants"; // Objet coût 2, sans cible ni Raison en jeu
@@ -147,36 +147,58 @@ describe("Cylindre flottant — Contrecoup", () => {
   });
 });
 
-describe("Cloche d'Alerte — taxe sur le Bris adverse", () => {
-  it("le premier Bris adverse du tour coûte 1 Raison de plus, depuis le plateau comme depuis la main", () => {
-    const cloche = instance("cloche-dalerte", "p2"); // visible en Calme
-    const onBoard = instance(OBJET, "p1");
-    const inHand = instance(OBJET, "p1");
+describe("Cloche d'Alerte — taxe sur le premier Objet adverse joué", () => {
+  it("le premier Objet adverse joué du tour coûte 1 Raison de plus ; le second, son seul coût", () => {
+    const cloche = instance("cloche-dalerte", "p2");
+    const premier = instance(OBJET, "p1");
+    const second = instance(OBJET, "p1");
     const state = testGameState({
-      players: [testPlayer("p1", { board: [onBoard], hand: [inHand], reason: 6 }), testPlayer("p2", { board: [cloche] })],
+      players: [testPlayer("p1", { hand: [premier, second], reason: 6 }), testPlayer("p2", { board: [cloche] })],
     });
 
-    // Depuis la main : demi-coût (1) + taxe (1) = 2, annoncé tel quel à l'UI.
-    expect(previewHandBreakReason(state, "p1", inHand.instanceId)?.cost).toBe(2);
+    // Coût imprimé (2) + taxe (1) = 3, annoncé tel quel à l'UI.
+    expect(previewPlayCardReason(state, "p1", premier.instanceId)?.cost).toBe(3);
 
-    const first = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: onBoard.instanceId });
+    const first = dispatch(state, { type: "playCard", playerId: "p1", instanceId: premier.instanceId });
     ok(first);
-    expect(player(first.state, "p1").reason).toBe(5); // Bris du plateau : gratuit + taxe 1
+    expect(player(first.state, "p1").reason).toBe(3);
 
-    // La Cloche est consommée pour le tour : le second Bris ne paie que son demi-coût.
-    expect(previewHandBreakReason(first.state, "p1", inHand.instanceId)?.cost).toBe(1);
-    const second = dispatch(first.state, { type: "breakObject", playerId: "p1", instanceId: inHand.instanceId, fromHand: true });
-    ok(second);
-    expect(player(second.state, "p1").reason).toBe(4);
+    // La Cloche est consommée pour le tour : le second Objet ne paie que son coût.
+    expect(previewPlayCardReason(first.state, "p1", second.instanceId)?.cost).toBe(2);
+    const deuxieme = dispatch(first.state, { type: "playCard", playerId: "p1", instanceId: second.instanceId });
+    ok(deuxieme);
+    expect(player(deuxieme.state, "p1").reason).toBe(1);
+  });
+
+  it("taxe même masquée (Tempête) : la taxe est toujours active", () => {
+    const cloche = instance("cloche-dalerte", "p2"); // visible en Calme et Houle seulement
+    const objet = instance(OBJET, "p1");
+    const state = testGameState({
+      environment: testEnvironment({ tideState: "tempete" }),
+      players: [testPlayer("p1", { hand: [objet], reason: 6 }), testPlayer("p2", { board: [cloche] })],
+    });
+    const result = dispatch(state, { type: "playCard", playerId: "p1", instanceId: objet.instanceId });
+    ok(result);
+    expect(player(result.state, "p1").reason).toBe(3);
+  });
+
+  it("s'il ne peut pas payer la taxe, il ne peut pas jouer l'Objet", () => {
+    const cloche = instance("cloche-dalerte", "p2");
+    const objet = instance(OBJET, "p1");
+    const state = testGameState({
+      players: [testPlayer("p1", { hand: [objet], reason: 2 }), testPlayer("p2", { board: [cloche] })],
+    });
+    expect(previewPlayCardReason(state, "p1", objet.instanceId)?.allowed).toBe(false);
+    expect(dispatch(state, { type: "playCard", playerId: "p1", instanceId: objet.instanceId }).ok).toBe(false);
   });
 
   it("ne taxe pas son propre contrôleur", () => {
     const cloche = instance("cloche-dalerte", "p1");
-    const onBoard = instance(OBJET, "p1");
-    const state = testGameState({ players: [testPlayer("p1", { board: [cloche, onBoard], reason: 6 }), testPlayer("p2")] });
-    const result = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: onBoard.instanceId });
+    const objet = instance(OBJET, "p1");
+    const state = testGameState({ players: [testPlayer("p1", { board: [cloche], hand: [objet], reason: 6 }), testPlayer("p2")] });
+    const result = dispatch(state, { type: "playCard", playerId: "p1", instanceId: objet.instanceId });
     ok(result);
-    expect(player(result.state, "p1").reason).toBe(6);
+    expect(player(result.state, "p1").reason).toBe(4);
   });
 });
 
@@ -260,27 +282,27 @@ describe("Régulateur de Courant — passage immédiat", () => {
 });
 
 describe("Levier de Lest — Sabordage conjoint d'une Structure", () => {
-  it("exige de Saborder une de ses Structures : sans cible légale, le Bris est refusé", () => {
+  it("exige de Saborder une de ses Structures : sans cible légale, l'Objet ne se joue pas", () => {
     const levier = instance("levier-de-lest", "p1");
     const structure = instance(STRUCTURE, "p1");
     const creature = instance("requin-balafre", "p1");
     const enemyStructure = instance(STRUCTURE, "p2");
     const state = testGameState({
       players: [
-        testPlayer("p1", { board: [levier, structure, creature], reason: 5, anchor: 20 }),
+        testPlayer("p1", { hand: [levier], board: [structure, creature], reason: 5, anchor: 20 }),
         testPlayer("p2", { board: [enemyStructure] }),
       ],
     });
 
-    expect(dispatch(state, { type: "breakObject", playerId: "p1", instanceId: levier.instanceId }).ok).toBe(false);
-    expect(dispatch(state, { type: "breakObject", playerId: "p1", instanceId: levier.instanceId, targetInstanceId: creature.instanceId }).ok).toBe(false);
-    expect(dispatch(state, { type: "breakObject", playerId: "p1", instanceId: levier.instanceId, targetInstanceId: enemyStructure.instanceId }).ok).toBe(false);
+    expect(jouerObjet(state, { playerId: "p1", instanceId: levier.instanceId }).ok).toBe(false);
+    expect(jouerObjet(state, { playerId: "p1", instanceId: levier.instanceId, targetInstanceId: creature.instanceId }).ok).toBe(false);
+    expect(jouerObjet(state, { playerId: "p1", instanceId: levier.instanceId, targetInstanceId: enemyStructure.instanceId }).ok).toBe(false);
 
-    const result = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: levier.instanceId, targetInstanceId: structure.instanceId });
+    const result = jouerObjet(state, { playerId: "p1", instanceId: levier.instanceId, targetInstanceId: structure.instanceId });
     ok(result);
     expect(board(result.state, "p1").map((u) => u.instanceId)).toEqual([creature.instanceId]);
     expect(player(result.state, "p1").graveyard.find((u) => u.instanceId === structure.instanceId)?.graveyardCause).toBe("scuttled");
-    expect(player(result.state, "p1").reason).toBe(6);
+    expect(player(result.state, "p1").reason).toBe(5); // 5 - 1 (coût) + 1
     expect(player(result.state, "p1").anchor).toBe(21);
     expect(result.events.some((e) => e.type === "SABORDED" && e.instanceId === structure.instanceId)).toBe(true);
   });
@@ -292,11 +314,11 @@ describe("Levier de Lest — Sabordage conjoint d'une Structure", () => {
     const mecanicien = instance("mecanicien-aux-mains-noires", "p1");
     const bernard = instance("bernard-lermite-dacier", "p1");
     const state = testGameState({
-      players: [testPlayer("p1", { board: [levier, structure, kept, mecanicien, bernard], reason: 5 }), testPlayer("p2")],
+      players: [testPlayer("p1", { hand: [levier], board: [structure, kept, mecanicien, bernard], reason: 5 }), testPlayer("p2")],
     });
-    const broken = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: levier.instanceId, targetInstanceId: structure.instanceId });
+    const broken = jouerObjet(state, { playerId: "p1", instanceId: levier.instanceId, targetInstanceId: structure.instanceId });
     ok(broken);
-    expect(player(broken.state, "p1").reason).toBe(6); // +1 du Levier
+    expect(player(broken.state, "p1").reason).toBe(5); // -1 (coût) +1 du Levier
     // Bernard (« détruite OU SABORDÉE ») voit le Sabordage : +1 Puissance.
     const lermite = board(broken.state, "p1").find((u) => u.instanceId === bernard.instanceId)!;
     expect(lermite.modifiers.reduce((s, m) => s + m.attack, 0)).toBe(1);
@@ -377,38 +399,30 @@ describe("P'tite Fesse, Grand Rêve abyssale — Pied marin jusqu'à la fin du t
 });
 
 describe("Théâtre Englouti et Cra-Poiscail — écarts relevés le 17/09/2026", () => {
-  it("Pantalone Sans-Sou : rembourse 1 Raison au premier Bris depuis la MAIN, une fois par tour, jamais sur un Bris du plateau", () => {
+  it("Pantalone Sans-Sou : rembourse 1 Raison au premier Objet Brisé, une fois par tour", () => {
     const setup = (withPantalone: boolean) => {
       const first = instance(OBJET, "p1");
       const second = instance(OBJET, "p1");
-      const onBoard = instance(OBJET, "p1");
-      const board = withPantalone ? [instance("pantalone-sans-sou", "p1"), onBoard] : [onBoard];
+      const board = withPantalone ? [instance("pantalone-sans-sou", "p1")] : [];
       return {
         first,
         second,
-        onBoard,
         state: testGameState({ players: [testPlayer("p1", { board, hand: [first, second], reason: 6 }), testPlayer("p2")] }),
       };
     };
 
     const withP = setup(true);
     const without = setup(false);
-    const a = dispatch(withP.state, { type: "breakObject", playerId: "p1", instanceId: withP.first.instanceId, fromHand: true });
-    const b = dispatch(without.state, { type: "breakObject", playerId: "p1", instanceId: without.first.instanceId, fromHand: true });
+    const a = dispatch(withP.state, { type: "playCard", playerId: "p1", instanceId: withP.first.instanceId });
+    const b = dispatch(without.state, { type: "playCard", playerId: "p1", instanceId: without.first.instanceId });
     ok(a);
     ok(b);
     expect(player(a.state, "p1").reason).toBe(player(b.state, "p1").reason + 1);
 
-    // Une fois par tour : le second Bris depuis la main ne rembourse plus.
-    const second = dispatch(a.state, { type: "breakObject", playerId: "p1", instanceId: withP.second.instanceId, fromHand: true });
+    // Une fois par tour : le second Bris ne rembourse plus.
+    const second = dispatch(a.state, { type: "playCard", playerId: "p1", instanceId: withP.second.instanceId });
     ok(second);
-    expect(player(second.state, "p1").reason).toBe(player(a.state, "p1").reason - 1);
-
-    // Un Bris depuis le PLATEAU ne rembourse rien (sinon les Objets posés seraient gratuits).
-    const boardCase = setup(true);
-    const fromBoard = dispatch(boardCase.state, { type: "breakObject", playerId: "p1", instanceId: boardCase.onBoard.instanceId });
-    ok(fromBoard);
-    expect(player(fromBoard.state, "p1").reason).toBe(6);
+    expect(player(second.state, "p1").reason).toBe(player(a.state, "p1").reason - 2);
   });
 
   it("Pulcinella Gonflé : mort, le joueur désigne une Créature ennemie à blesser, jamais un Marin", () => {
@@ -482,11 +496,10 @@ describe("Théâtre Englouti et Cra-Poiscail — écarts relevés le 17/09/2026"
     expect(choices.map((c) => c.instanceId)).toEqual([marionnette.instanceId]);
 
     expect(
-      dispatch(state, { type: "breakObject", playerId: "p1", instanceId: rappel.instanceId, chosenGraveyardInstanceId: autre.instanceId }).ok
+      jouerObjet(state, { playerId: "p1", instanceId: rappel.instanceId, chosenGraveyardInstanceId: autre.instanceId }).ok
     ).toBe(false);
 
-    const result = dispatch(state, {
-      type: "breakObject",
+    const result = jouerObjet(state, {
       playerId: "p1",
       instanceId: rappel.instanceId,
       chosenGraveyardInstanceId: marionnette.instanceId,
@@ -525,7 +538,9 @@ describe("Théâtre Englouti et Cra-Poiscail — écarts relevés le 17/09/2026"
 describe("écarts moteur corrigés le 17/09/2026", () => {
   it("le bonus d'un Équipement disparaît avec lui", () => {
     const porteur = instance("requin-balafre", "p1"); // 4/2
-    const harpon = instance("harpon-de-pont", "p1", { attachedToInstanceId: porteur.instanceId, damageMarked: 5 });
+    // Refonte du 13/10/2026 : un Équipement n'a plus de Résistance à lui —
+    // il part sur une destruction ciblée (ici posée d'office).
+    const harpon = instance("harpon-de-pont", "p1", { attachedToInstanceId: porteur.instanceId, pendingRemoval: "destroyed" });
     const state = testGameState({ players: [testPlayer("p1", { board: [porteur, harpon] }), testPlayer("p2")] });
     const aura = (s: GameState) => {
       const owner = player(s, "p1");
@@ -538,7 +553,7 @@ describe("écarts moteur corrigés le 17/09/2026", () => {
     };
     expect(aura(state)).toBe(5); // 4 + 1 tant que le Harpon est attaché
 
-    // Le Harpon meurt de ses propres dégâts : le porteur perd le bonus.
+    // Le Harpon est détruit : le porteur perd le bonus.
     const after = processDeaths(state, 1);
     expect(board(after.state, "p1").some((u) => u.instanceId === harpon.instanceId)).toBe(false);
     expect(aura(after.state)).toBe(4);

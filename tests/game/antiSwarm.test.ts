@@ -19,7 +19,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { dispatch } from "@/game/engine";
-import { activateReactionFor, instance, pendingCandidates, testEnvironment, testGameState, testPlayer, enFinDeTour } from "./testHelpers";
+import { instance, pendingCandidates, testEnvironment, testGameState, testPlayer, enFinDeTour } from "./testHelpers";
 import type { GameState } from "@/game/state/types";
 
 const NASSE = "la-nasse-trop-pleine"; // visible en Tempête et Abysses
@@ -118,7 +118,7 @@ describe("La Nasse Trop Pleine — le dégât de zone qui n'est pas un board wip
     // Les 1/1 tombent, le 1/2 reste : c'est la différence avec un wipe.
     const restants = board(result.state, "p2");
     expect(restants.map((u) => u.cardId)).toEqual(["marin-des-jetees"]);
-    // Elle ne se détruit PAS : seule la moitié cachée paie de sa personne.
+    // Elle ne se détruit PAS : un effet de Structure, pas une cartouche.
     expect(board(result.state, "p1").some((u) => u.instanceId === state.players[0]!.board[0]!.instanceId)).toBe(true);
   });
 
@@ -131,26 +131,12 @@ describe("La Nasse Trop Pleine — le dégât de zone qui n'est pas un board wip
     expect(board(result.state, "p2").every((u) => u.damageMarked === 0)).toBe(true);
   });
 
-  it("masquée, elle est un piège : le joueur décide, et elle se détruit en mordant", () => {
+  it("masquée, elle agit pareil (effet unique « actif même masqué »), sans fenêtre ni destruction", () => {
     const { nasse, enMain, state } = quatriemeCorps("calme");
     const result = dispatch(state, { type: "playCard", playerId: "p2", instanceId: enMain.instanceId });
     ok(result);
-    expect(pendingCandidates(result.state).map((c) => c.cardId)).toContain(NASSE);
-
-    const active = activateReactionFor(result.state, NASSE);
-    ok(active);
-    expect(board(active.state, "p2").map((u) => u.cardId)).toEqual(["marin-des-jetees"]);
-    expect(board(active.state, "p1").some((u) => u.instanceId === nasse.instanceId)).toBe(false);
-  });
-
-  it("masquée, passer la fenêtre laisse le banc intact", () => {
-    const { nasse, enMain, state } = quatriemeCorps("calme");
-    const result = dispatch(state, { type: "playCard", playerId: "p2", instanceId: enMain.instanceId });
-    ok(result);
-
-    const passe = dispatch(result.state, { type: "passReaction", playerId: "p1" });
-    ok(passe);
-    expect(board(passe.state, "p2")).toHaveLength(4);
-    expect(board(passe.state, "p1").some((u) => u.instanceId === nasse.instanceId)).toBe(true);
+    expect(pendingCandidates(result.state).map((c) => c.cardId)).not.toContain(NASSE);
+    expect(board(result.state, "p2").map((u) => u.cardId)).toEqual(["marin-des-jetees"]);
+    expect(board(result.state, "p1").some((u) => u.instanceId === nasse.instanceId)).toBe(true);
   });
 });

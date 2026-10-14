@@ -30,7 +30,16 @@ export function centerOf(rect: DOMRect): Point {
 /** Élément d'une unité de plateau ou d'un Navire ciblé — attributs `data-board-unit`/`data-ship-target` posés par `MatchBoard`/`OnlineBoard`. */
 export function findElement(kind: "unit" | "ship", id: string): HTMLElement | null {
   // Une carte posée à droite de l'écran pour être activée (`FocusedCard`) : c'est d'elle que l'effet part.
-  if (kind === "unit") return document.querySelector<HTMLElement>(`[data-focus-card="${id}"]`) ?? document.querySelector<HTMLElement>(`[data-board-unit="${id}"]`);
+  if (kind === "unit") {
+    return (
+      document.querySelector<HTMLElement>(`[data-focus-card="${id}"]`) ??
+      document.querySelector<HTMLElement>(`[data-board-unit="${id}"]`) ??
+      // Un Équipement glissé derrière son porteur : l'effet part de la carte
+      // du porteur, qui l'emporte avec elle quand elle se soulève.
+      document.querySelector<HTMLElement>(`[data-equip-tuck="${id}"]`)?.closest<HTMLElement>("[data-board-unit]") ??
+      null
+    );
+  }
   // Le Navire lui-même, son cadre (`data-ship-frame`), et non sa cellule, plus large : les effets en prennent la forme.
   const cell = document.querySelector<HTMLElement>(`[data-ship-target="${id}"]`);
   return cell?.querySelector<HTMLElement>("[data-ship-frame]") ?? cell;

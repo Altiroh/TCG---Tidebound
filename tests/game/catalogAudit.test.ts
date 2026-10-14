@@ -78,7 +78,21 @@ describe("observateurs de Structures — Mécanicien aux Mains Noires, Treuil Ro
     ).toBe(false);
   });
 
-  it("Treuil Rouillé : pioche 1 carte quand la Structure équipée quitte le board", () => {
+  it("Treuil Rouillé : sa Structure détruite fait piocher 1, et l'Équipement part avec elle", () => {
+    const structure = instance(STRUCTURE, "p2");
+    const treuil = instance("treuil-rouille", "p2", { attachedToInstanceId: structure.instanceId });
+    const inDeck = instance("marin-des-jetees", "p2");
+    const charge = instance("charge-de-demolition", "p1");
+    const state = testGameState({
+      players: [testPlayer("p1", { hand: [charge], reason: 10 }), testPlayer("p2", { board: [structure, treuil], deck: [inDeck] })],
+    });
+    const result = dispatch(state, { type: "playCard", playerId: "p1", instanceId: charge.instanceId, targetInstanceId: structure.instanceId });
+    ok(result);
+    expect(player(result.state, "p2").hand.map((c) => c.instanceId)).toEqual([inDeck.instanceId]);
+    expect(board(result.state, "p2").some((u) => u.instanceId === treuil.instanceId)).toBe(false);
+  });
+
+  it("Treuil Rouillé : une Structure Sabordée n'est pas détruite — pas de pioche", () => {
     const structure = instance(STRUCTURE, "p1");
     const treuil = instance("treuil-rouille", "p1", { attachedToInstanceId: structure.instanceId });
     const inDeck = instance("marin-des-jetees", "p1");
@@ -87,8 +101,7 @@ describe("observateurs de Structures — Mécanicien aux Mains Noires, Treuil Ro
     });
     const result = dispatch(state, { type: "saborder", playerId: "p1", instanceId: structure.instanceId });
     ok(result);
-    expect(player(result.state, "p1").hand.map((c) => c.instanceId)).toEqual([inDeck.instanceId]);
-    // Le Treuil, orphelin, a suivi sa Structure au cimetière.
+    expect(player(result.state, "p1").hand).toHaveLength(0);
     expect(board(result.state, "p1").some((u) => u.instanceId === treuil.instanceId)).toBe(false);
   });
 });
@@ -205,7 +218,7 @@ describe("Marée — Balise des Profondeurs, Lanterne aux Verres Noirs", () => {
 });
 
 describe("Équipements récurrents — Kit de Calfatage, Treuil à Chair", () => {
-  it("Kit de Calfatage : la Structure équipée récupère 1 Résistance au début du tour si elle est visible", () => {
+  it("Kit de Calfatage : la Structure équipée récupère 1 Résistance au début du tour, même masquée", () => {
     const damaged = instance(EPAVE, "p2", { damageMarked: 2 });
     const kit = instance("kit-de-calfatage", "p2", { attachedToInstanceId: damaged.instanceId });
     const visible = testGameState({
@@ -220,9 +233,9 @@ describe("Équipements récurrents — Kit de Calfatage, Treuil à Chair", () =>
       environment: testEnvironment({ tideState: "calme", tideRemainingTurns: 4 }),
       players: [testPlayer("p1"), testPlayer("p2", { board: [damaged, kit], deck: filler("p2") })],
     });
-    const untouched = dispatch(enFinDeTour(hidden), { type: "endTurn", playerId: "p1" });
-    ok(untouched);
-    expect(board(untouched.state, "p2").find((u) => u.instanceId === damaged.instanceId)!.damageMarked).toBe(2);
+    const masquee = dispatch(enFinDeTour(hidden), { type: "endTurn", playerId: "p1" });
+    ok(masquee);
+    expect(board(masquee.state, "p2").find((u) => u.instanceId === damaged.instanceId)!.damageMarked).toBe(1);
   });
 
   it("Treuil à Chair : perd 1 Raison à la fin du tour seulement si la Créature équipée a attaqué", () => {

@@ -20,7 +20,8 @@ export type TriggerType =
   | "onTideAnnounced" // une nouvelle Marée vient d'être ANNONCÉE : son état est committé, ses effets de tour ne sont PAS encore appliqués (capacités de Navire `activationWindow: "tideAnnounced"`). Fenêtre strictement antérieure à `onTideStateEntered`.
   | "onBecomeVisible" // une Structure devient visible pour l'adversaire (entrée dans un de ses `visibleDuringTide`)
   | "onExpire" // une Structure/Objet à durée limitée quitte le board par expiration (ni mort, ni Sabordage)
-  | "onObjectBroken" // le contrôleur vient de Briser un Objet (depuis le board OU depuis sa main)
+  | "onObjectBroken" // l'effet d'un Objet joué vient de se RÉSOUDRE (Bris) — jamais pour un Objet annulé ou privé de toute cible légale (règle du 13/10/2026)
+  | "onObjectPlayed" // un joueur vient de JOUER un Objet depuis sa main : il est sur la pile Chaîne, pas encore résolu — fenêtre des contre-Objets (Sabotage Discret)
   | "onPowerGained" // une carte EN JEU vient de voir sa Puissance effective augmenter, quelle qu'en soit la cause
   | "onReturnedToHand" // un permanent quitte le board pour la main de son contrôleur (Lot 11 — Théâtre Englouti)
   | "onDiscarded" // CETTE carte vient d'être défaussée de la main (Lot 13) — elle n'a jamais été sur le plateau, sa capacité est lue sur sa définition
@@ -88,13 +89,6 @@ export interface TriggerEvent {
    */
   destructionCause?: import("@/game/cards/types").DestructionCause;
   /**
-   * `onObjectBroken` : l'Objet a été Brisé DEPUIS LA MAIN. Propagé dans
-   * `EffectContext.brokenFromHand` par `processTrigger`, sans quoi une
-   * capacité déclenchée ne peut pas lire `conditionBrokenFromHand` (ex:
-   * Pantalone Sans-Sou, « que vous Brisez directement depuis votre main »).
-   */
-  fromHand?: boolean;
-  /**
    * `onSurvivedDamage` : les coups encaissés pendant l'action, avec leur
    * cause et le joueur dont l'effet les a portés — lus par
    * `triggeredBy.damageCauses` / `damageByController`.
@@ -140,9 +134,10 @@ export interface PendingReactionCandidate {
   /** Coût en Raison à payer pour activer cette capacité (0 si aucun). */
   reasonCost: number;
   /**
-   * `true` : l'Objet réactif est encore EN MAIN (règle du 29/09/2026,
-   * `isBreakReaction`). L'activer le Brise depuis la main — `reasonCost`
-   * inclut alors `handBreakCost` — sans qu'il ait jamais pris de Slot.
+   * `true` : la carte est EN MAIN et l'activer la JOUE — un Objet Chaîne
+   * (règle du 13/10/2026 : au coût imprimé, sans emplacement, posé sur la
+   * pile Chaîne) ou une carte qui se joue en réaction (Propagation, Lot 16).
+   * `reasonCost` inclut alors le coût de la carte.
    */
   fromHand?: boolean;
   /**

@@ -216,12 +216,6 @@ export function playInstrumentedGame(
         playedThisTurn[e.playerId] = (playedThisTurn[e.playerId] ?? 0) + 1;
         if (isUnitCard(getCardDefinition(e.cardId).type)) side.unitsPlayed += 1;
       }
-      if (e.type === "OBJECT_BROKEN" && e.fromHand) {
-        const side = sides[e.playerId]!;
-        line(side, e.cardId).played += 1;
-        side.cardsPlayed += 1;
-        playedThisTurn[e.playerId] = (playedThisTurn[e.playerId] ?? 0) + 1;
-      }
       if (e.type === "SUMMON" && !played.has(e.instanceId)) sides[e.playerId]!.summoned += 1;
       if (e.type === "DERAISON_SETTLED") deraison = { ...deraison, [e.playerId]: (deraison[e.playerId] ?? 0) + e.anchorDamage };
     }

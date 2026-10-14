@@ -53,9 +53,13 @@ export function eligibleChosenUnits(
 ): ChosenUnitCandidate[] {
   if (target.kind !== "chosenUnit") return [];
 
+  // Un Équipement fait corps avec son porteur (refonte du 13/10/2026) : seul
+  // un effet qui vise expressément « un Équipement » le désigne.
+  const visesEquipement = target.among?.cardTypes?.includes("equipement") ?? false;
   const all: ChosenUnitCandidate[] = state.players
     .flatMap((player) => player.board.map((unit) => ({ unit, ownerId: player.id })))
-    .filter(({ unit, ownerId }) => !isUntargetableBy(unit, ownerId, controllerId));
+    .filter(({ unit, ownerId }) => !isUntargetableBy(unit, ownerId, controllerId))
+    .filter(({ unit }) => visesEquipement || getCardDefinition(unit.cardId).type !== "equipement");
 
   const filter = target.among;
   if (!filter) return all;
@@ -63,7 +67,8 @@ export function eligibleChosenUnits(
   const excluded = new Set<string>();
   if (filter.excludeSource && sourceInstanceId) {
     excluded.add(sourceInstanceId);
-    const source = all.find((c) => c.unit.instanceId === sourceInstanceId)?.unit;
+    // Cherchée sur tout le plateau : une source Équipement n'est pas une cible, mais son porteur s'exclut.
+    const source = state.players.flatMap((p) => p.board).find((u) => u.instanceId === sourceInstanceId);
     if (source?.attachedToInstanceId) excluded.add(source.attachedToInstanceId);
   }
   if (filter.excludeTriggerSource && triggerSourceInstanceId) excluded.add(triggerSourceInstanceId);

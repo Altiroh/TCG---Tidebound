@@ -283,7 +283,7 @@ const WRITTEN_SET: CardDefinition[] = [
     name: "Thermos du Dernier Quart",
     type: "objet",
     cost: 2,
-    text: "Brisez cet Objet : récupérez 2 Raison. Si vous avez 3 Raison ou moins, récupérez-en 3 à la place.",
+    text: "Récupérez 2 Raison. Si vous avez 3 Raison ou moins, récupérez-en 3 à la place.",
     onBreakEffects: [
       // Ordre important : l'effet conditionnel lit la Raison AVANT que le
       // gain de base ne l'augmente (cf. `conditionControllerReasonAtMost`).
@@ -367,7 +367,7 @@ const WRITTEN_SET: CardDefinition[] = [
     name: "Cartes des Courants",
     type: "objet",
     cost: 2,
-    text: "Brisez cet Objet : inversez l'orientation de la prochaine transition de Marée (montante ↔ descendante).",
+    text: "Inversez l'orientation de la prochaine transition de Marée (montante ↔ descendante).",
     onBreakEffects: [{ type: "tideInvertOrientation", target: { kind: "allPlayers" } }],
   },
   {
@@ -380,13 +380,13 @@ const WRITTEN_SET: CardDefinition[] = [
     visibleDuringTide: ["calme", "houle"],
     maxCopies: 2,
     text:
-      "Durée : 3 tours de table. Visible pendant Calme et Houle. La première fois à chaque tour que l'adversaire Brise un " +
-      "Objet, il doit payer 1 Raison supplémentaire. S'il ne peut pas payer, l'Objet ne peut pas être Brisé.",
-    // La taxe s'ajoute au coût du Bris (depuis la main : demi-coût + 1 ;
-    // depuis le plateau : 1 au lieu de rien) ET le rend impossible si la
-    // Raison ne couvre pas le total — c'est la seule entorse au « pas de
-    // plancher de Déraison », portée par la carte (cf. `objectBreakTax`).
-    taxOpponentObjectBreakOncePerTurnWhileVisible: { amount: 1, blocksIfUnpayable: true },
+      "Durée : 3 tours de table. Visible pendant Calme et Houle. Le premier Objet adverse joué chaque tour coûte " +
+      "1 Raison supplémentaire. S'il ne peut pas payer, il ne peut pas le jouer.",
+    // Refonte des Objets (13/10/2026) : la taxe porte sur l'Objet JOUÉ (plus
+    // de Bris d'Objet posé). Elle s'ajoute à son coût ET le rend injouable si
+    // la Raison ne couvre pas le total — la seule entorse au « pas de
+    // plancher de Déraison », portée par la carte (cf. `objectPlayTax`).
+    taxOpponentObjectPlayOncePerTurn: { amount: 1, blocksIfUnpayable: true },
   },
   {
     // --- ANTI-SWARM, première paire (21/09/2026) ------------------------
@@ -419,38 +419,22 @@ const WRITTEN_SET: CardDefinition[] = [
     durationTurns: 3,
     maxCopies: 2,
     visibleDuringTide: ["tempete", "abysses"],
+    // Effet unique, actif même masqué (refonte du 13/10/2026, Notion) : la
+    // Marée ne fait que cacher la carte à l'adversaire.
+    activeWhileHidden: true,
     text:
-      "Durée : 3 tours de table. Visible pendant Tempête et Abysses. La première fois à chaque tour qu'une unité adverse " +
-      "arrive alors que l'adversaire contrôle au moins 4 unités, infligez 1 dégât à chaque unité adverse. " +
-      "Réaction cachée : lorsqu'une unité adverse arrive alors que l'adversaire contrôle au moins 4 unités, vous " +
-      "pouvez révéler La Nasse Trop Pleine : infligez 1 dégât à chaque unité adverse. Détruisez ensuite La Nasse " +
-      "Trop Pleine.",
+      "Durée : 3 tours de table. Visible pendant Tempête et Abysses. Une fois par tour, si une unité adverse " +
+      "arrive alors que l'adversaire en contrôle au moins 4 : infligez 1 dégât à chaque unité adverse.",
     abilities: [
       {
-        // Visible, elle est une menace CONNUE : l'adversaire voit le seuil
-        // et peut s'arrêter à trois corps. C'est là toute la différence
-        // avec un board wipe, qui ne laisse rien à décider.
+        // Le seuil laisse à l'adversaire de quoi s'arrêter à trois corps :
+        // c'est là toute la différence avec un board wipe.
         trigger: "onEnterPlay",
         triggeredBy: { cardTypes: ["marin", "creature"], opponentOnly: true },
         oncePerTurnKey: "nasseTropPleine",
-        condition: { selfVisible: true, opponentUnitsAtLeast: 4 },
+        condition: { opponentUnitsAtLeast: 4 },
         description: "Une quatrième unité adverse arrive : 1 dégât à chaque unité adverse.",
         effects: [{ type: "damage", target: { kind: "allEnemyUnits" }, amount: { kind: "flat", value: 1 } }],
-      },
-      {
-        // Masquée, elle ne prévient pas — mais elle se détruit en se
-        // déclenchant, donc elle ne mord qu'une fois et l'adversaire sait
-        // ensuite que le Slot est vide.
-        trigger: "onEnterPlay",
-        triggeredBy: { cardTypes: ["marin", "creature"], opponentOnly: true },
-        mode: "optional",
-        hiddenReaction: true,
-        condition: { selfHidden: true, opponentUnitsAtLeast: 4 },
-        description: "Révélez La Nasse Trop Pleine : 1 dégât à chaque unité adverse, puis détruisez-la.",
-        effects: [
-          { type: "damage", target: { kind: "allEnemyUnits" }, amount: { kind: "flat", value: 1 } },
-          { type: "destroy", target: { kind: "self" } },
-        ],
       },
     ],
   },
@@ -663,14 +647,12 @@ const WRITTEN_SET: CardDefinition[] = [
     permanent: true,
     cost: 2,
     health: 1,
-    text:
-      "Équipez un permanent. La première fois qu'il devrait être détruit, détruisez la Plaque de Fortune à la " +
-      "place et ce permanent perd 1 Résistance.",
-    // « Un permanent » : la seule Plaque qui se pose AUSSI sur une Structure
-    // — par défaut un Équipement ne va que sur une unité.
-    equipTargetTypes: ["marin", "creature", "structure"],
+    // Refonte des Équipements (13/10/2026, Notion) : Voile remplace l'ancienne
+    // substitution (« perd 1 Résistance ») ; une unité seulement, jamais une
+    // Structure.
+    text: "Équipez une unité. Confère Voile.",
     onPlayEffects: [{ type: "attachEquipment", target: { kind: "chosenUnit" } }],
-    destructionSubstitute: { healthPenalty: 1 },
+    equipGrantsKeywords: ["voile"],
   },
 
   // ======================================================================
@@ -728,38 +710,21 @@ const WRITTEN_SET: CardDefinition[] = [
     permanent: true,
     cost: 1,
     health: 2,
-    text:
-      "Équipez une Structure. Elle gagne +1 Résistance. Quand la Structure équipée quitte le board, piochez 1 " +
-      "carte.",
+    // Refonte des Équipements (13/10/2026, Notion) : la Résistance imprimée
+    // suffit (plus de +1 textuel), et seule la DESTRUCTION de la Structure
+    // fait piocher — ni Sabordage, ni expiration, ni renvoi.
+    text: "Équipez une Structure. Lorsqu'elle est détruite, piochez 1.",
     equipTargetTypes: ["structure"],
     onPlayEffects: [
       { type: "attachEquipment", target: { kind: "chosenUnit" } },
     ],
-    // Aura, pas un modificateur posé : le bonus disparaît avec l'Équipement.
-    equipGrantsBuff: { healthAmount: 1 },
-    // « Quitte le board », par toutes les portes : détruite, Sabordée (qui
-    // déclenche aussi `onDeath`), expirée, ou renvoyée en main. L'Équipement
-    // est encore sur le plateau à cet instant (`destroyOrphanedEquipment` ne
-    // le retire qu'ensuite), il peut donc suivre son porteur via
-    // `triggeredBy.equippedUnit` — qui suffit à l'identifier, d'où
-    // `sameController: false` (une Structure adverse équipée compte aussi).
+    // L'Équipement est encore sur le plateau quand sa Structure meurt : il la
+    // suit via `triggeredBy.equippedUnit`, qui suffit à l'identifier.
     abilities: [
       {
         trigger: "onDeath",
-        triggeredBy: { equippedUnit: true, sameController: false },
-        description: "Quand la Structure équipée quitte le board : piochez 1 carte.",
-        effects: [{ type: "draw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } }],
-      },
-      {
-        trigger: "onExpire",
-        triggeredBy: { equippedUnit: true, sameController: false },
-        description: "Quand la Structure équipée expire : piochez 1 carte.",
-        effects: [{ type: "draw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } }],
-      },
-      {
-        trigger: "onReturnedToHand",
-        triggeredBy: { equippedUnit: true, sameController: false },
-        description: "Quand la Structure équipée est renvoyée en main : piochez 1 carte.",
+        triggeredBy: { equippedUnit: true, sameController: false, destroyedBy: ["combat", "effect", "tide"] },
+        description: "La Structure équipée est détruite : piochez 1.",
         effects: [{ type: "draw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } }],
       },
     ],
@@ -771,11 +736,11 @@ const WRITTEN_SET: CardDefinition[] = [
     permanent: true,
     cost: 2,
     health: 2,
-    text: "Équipez un Marin. Tant que vous êtes en Houle ou Tempête, il gagne +1 Puissance et +1 Résistance.",
+    text: "Équipez un Marin. Tant que vous êtes en Houle ou Tempête, il gagne +1 Puissance.",
     equipTargetTypes: ["marin"],
     onPlayEffects: [{ type: "attachEquipment", target: { kind: "chosenUnit" } }],
     // Bug corrigé au passage : l'Équipement ne s'attachait même pas (onPlayEffects absent).
-    equipGrantsBuffWhileTideStateIn: { tideStateIn: ["houle", "tempete"], attackAmount: 1, healthAmount: 1 },
+    equipGrantsBuffWhileTideStateIn: { tideStateIn: ["houle", "tempete"], attackAmount: 1 },
   },
   {
     id: "filet-a-la-derive",
@@ -1190,21 +1155,14 @@ const WRITTEN_SET: CardDefinition[] = [
     permanent: true,
     cost: 2,
     health: 2,
-    text: "Équipez une Structure. À votre début de tour, si elle est visible, elle récupère 1 Résistance.",
+    text: "Équipez une Structure. À votre début de tour, elle récupère 1 Résistance, même masquée.",
     equipTargetTypes: ["structure"],
     onPlayEffects: [{ type: "attachEquipment", target: { kind: "chosenUnit" } }],
     abilities: [
       {
         trigger: "startOfTurn",
-        description: "À votre début de tour, si la Structure équipée est visible : elle récupère 1 Résistance.",
-        effects: [
-          {
-            type: "heal",
-            target: { kind: "equippedUnit" },
-            amount: { kind: "flat", value: 1 },
-            conditionEquippedUnitVisible: true,
-          },
-        ],
+        description: "À votre début de tour, la Structure équipée récupère 1 Résistance, même masquée.",
+        effects: [{ type: "heal", target: { kind: "equippedUnit" }, amount: { kind: "flat", value: 1 } }],
       },
     ],
   },
@@ -1213,9 +1171,9 @@ const WRITTEN_SET: CardDefinition[] = [
     name: "Levier de Lest",
     type: "objet",
     cost: 1,
-    text: "Brisez cet Objet et Sabordez une Structure que vous contrôlez : récupérez 1 Raison et 1 Ancrage.",
+    text: "Sabordez une Structure que vous contrôlez : récupérez 1 Raison et 1 Ancrage.",
     // Le Sabordage est un COÛT du Bris : sans Structure à Saborder, le Bris
-    // est refusé (`breakObject` exige une cible légale).
+    // est refusé (`playCard` exige une cible légale).
     onBreakEffects: [
       { type: "saborde", target: { kind: "chosenUnit", among: { cardTypes: ["structure"] } } },
       { type: "reasonGain", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
@@ -1228,8 +1186,8 @@ const WRITTEN_SET: CardDefinition[] = [
     type: "objet",
     cost: 2,
     text:
-      "Brisez cet Objet : choisissez dans votre Cimetière une Structure ou un Équipement coûtant 2 ou moins. " +
-      "Remettez cette carte dans votre main.",
+      "Choisissez dans votre Cimetière une Structure ou un Équipement coûtant 2 ou moins. Remettez cette carte " +
+      "dans votre main.",
     onBreakEffects: [
       {
         type: "moveGraveyardCardToHand",
@@ -1652,12 +1610,13 @@ const WRITTEN_SET: CardDefinition[] = [
     name: "Choppe !",
     type: "objet",
     cost: 1,
-    text:
-      "Si la Marée est Calme, coûte 0 Raison. Brisez cet Objet : récupérez 2 Raison. Cet effet ne peut être " +
-      "activé que pendant Calme.",
+    // Refonte des Objets (13/10/2026) : seul le préfixe « Brisez cet Objet »
+    // tombe. Jouée hors Calme, elle coûte 1 et son effet ne s'applique pas.
+    text: "Si la Marée est Calme, coûte 0 Raison. Récupérez 2 Raison. Cet effet ne s'applique que pendant Calme.",
     costOverrideWhenTideStateIn: { tideStateIn: ["calme"], cost: 0 },
-    requiresTideStateForBreak: ["calme"],
-    onBreakEffects: [{ type: "reasonGain", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 2 } }],
+    onBreakEffects: [
+      { type: "reasonGain", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 2 }, conditionTideStateIn: ["calme"] },
+    ],
   },
 
   // ======================================================================
@@ -1772,8 +1731,10 @@ const WRITTEN_SET: CardDefinition[] = [
     // 1, comme tous les autres Objets du set (Thermos, Choppe !, Levier de
     // Lest, Grappin, Cartes des Courants).
     text:
-      "Brisez cet Objet : invoquez 1 Péon Cra-Poiscail 1 / 1. S'il a été Brisé directement depuis votre main et que " +
-      "vous contrôlez déjà une unité Cra-Poiscail, invoquez-en 2 à la place.",
+      "Invoquez 1 Péon Cra-Poiscail 1 / 1. Si vous contrôlez déjà une unité Cra-Poiscail, invoquez-en 2 à la " +
+      "place.",
+    // Refonte des Objets (13/10/2026) : tout Objet vient de la main, le bonus
+    // « Brisé directement depuis votre main » devient universel (registre Notion).
     // ORDRE IMPORTANT : le Péon supplémentaire est évalué AVANT l'invocation
     // de base. Dans l'autre sens, le Péon que la base vient de créer
     // satisferait lui-même la condition "vous contrôlez déjà un
@@ -1783,7 +1744,6 @@ const WRITTEN_SET: CardDefinition[] = [
         type: "summon",
         target: { kind: "controllerPlayer" },
         cardId: "peon-cra-poiscail",
-        conditionBrokenFromHand: true,
         conditionControlledArchetypeAtLeast: { archetype: "cra-poiscail", count: 1 },
       },
       { type: "summon", target: { kind: "controllerPlayer" }, cardId: "peon-cra-poiscail" },
@@ -1981,13 +1941,11 @@ const WRITTEN_SET: CardDefinition[] = [
     health: 2,
     equipTargetArchetype: "cra-poiscail",
     text:
-      "Équipez une unité Cra-Poiscail. Il gagne +1 Résistance. La première fois à chaque tour qu'une autre unité " +
-      "Cra-Poiscail que vous contrôlez arrive en jeu, le porteur gagne +1 Puissance jusqu'à la fin du tour.",
+      "Équipez une unité Cra-Poiscail. La première fois à chaque tour qu'une autre unité Cra-Poiscail que vous " +
+      "contrôlez arrive en jeu, le porteur gagne +1 Puissance jusqu'à la fin du tour.",
     onPlayEffects: [
       { type: "attachEquipment", target: { kind: "chosenUnit" } },
     ],
-    // Aura, pas un modificateur posé : le bonus disparaît avec l'Équipement.
-    equipGrantsBuff: { healthAmount: 1 },
     abilities: [
       {
         trigger: "onEnterPlay",
@@ -2009,17 +1967,14 @@ const WRITTEN_SET: CardDefinition[] = [
     health: 1,
     equipTargetArchetype: "cra-poiscail",
     text:
-      "Équipez une unité Cra-Poiscail. Il gagne +1 Résistance. La première fois qu'il devrait subir des dégâts d'un " +
-      "effet, réduisez ces dégâts de 1 puis détruisez cet Équipement.",
+      "Équipez une unité Cra-Poiscail. La première fois qu'il devrait subir des dégâts d'un effet, réduisez ces " +
+      "dégâts de 1 puis détruisez cet Équipement.",
     onPlayEffects: [
       { type: "attachEquipment", target: { kind: "chosenUnit" } },
     ],
-    // Aura, pas un modificateur posé : le bonus disparaît avec l'Équipement.
-    equipGrantsBuff: { healthAmount: 1 },
     // "Dégâts d'un effet" = la Marée et le texte d'une carte, jamais le
-    // combat (arbitrage du 2026-09-14). Le +1 Résistance étant une aura
-    // (`equipGrantsBuff`), le porteur le PERD avec la destruction du Casque,
-    // comme pour tout Équipement qui quitte le plateau.
+    // combat (arbitrage du 2026-09-14). Sa Résistance imprimée (1) part avec
+    // lui : le porteur la perd, puis sa survie est recalculée.
     reduceEquippedEffectDamageThenDestroy: 1,
   },
   {
@@ -2288,13 +2243,11 @@ const WRITTEN_SET: CardDefinition[] = [
     maxCopies: 2,
     equipTargetArchetype: "cra-poiscail",
     text:
-      "Équipez une unité Cra-Poiscail. Il gagne +1 Résistance. La première fois à chaque tour que vous invoquez une " +
-      "unité Cra-Poiscail, cette unité gagne +1 Puissance jusqu'à la fin du tour.",
+      "Équipez une unité Cra-Poiscail. La première fois à chaque tour que vous invoquez une unité Cra-Poiscail, " +
+      "cette unité gagne +1 Puissance jusqu'à la fin du tour.",
     onPlayEffects: [
       { type: "attachEquipment", target: { kind: "chosenUnit" } },
     ],
-    // Aura, pas un modificateur posé : le bonus disparaît avec l'Équipement.
-    equipGrantsBuff: { healthAmount: 1 },
     abilities: [
       {
         trigger: "onEnterPlay",
@@ -2515,7 +2468,7 @@ const WRITTEN_SET: CardDefinition[] = [
     // seulement, Pulcinella n'avait rien à offrir au rappel du Théâtre —
     // le rejouer ne rapportait rien. Mesuré sur 60 parties : Δ +16, le
     // Théâtre de 39 % à 44 %. Validé par le propriétaire le 30/09/2026.
-    text: "À son arrivée et quand il est détruit, vous pouvez choisir une Créature adverse : infligez-lui 1 dégât.",
+    text: "À l'arrivée et à sa destruction : vous pouvez infliger 1 dégât à une Créature adverse.",
     abilities: [
       {
         trigger: "onEnterPlay",
@@ -2559,8 +2512,8 @@ const WRITTEN_SET: CardDefinition[] = [
     health: 2,
     maxCopies: 3,
     text:
-      "À son arrivée, vous pouvez renvoyer une autre unité Marionnette que vous contrôlez dans votre main. Si vous " +
-      "le faites, il gagne +2 Puissance jusqu'à la fin du tour.",
+      "À l'arrivée : vous pouvez renvoyer une autre Marionnette alliée en main. Dans ce cas, il gagne +2 " +
+      "Puissance ce tour.",
     abilities: [
       {
         trigger: "onEnterPlay",
@@ -2582,13 +2535,10 @@ const WRITTEN_SET: CardDefinition[] = [
     setCode: THEATRE_ENGLOUTI,
     cost: 2,
     maxCopies: 3,
-    text:
-      "Brisez cet Objet : renvoyez une unité Marionnette que vous contrôlez dans votre main, puis piochez 1 carte " +
-      "et défaussez 1 carte.",
+    text: "Renvoyez une Marionnette alliée dans votre main. Piochez 1.",
     onBreakEffects: [
       { type: "moveZone", toZone: "hand", target: { kind: "chosenUnit", among: { subtype: MARIONNETTE, unitsOnly: true } } },
       { type: "draw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
-      { type: "discard", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
     ],
   },
   {
@@ -2602,9 +2552,7 @@ const WRITTEN_SET: CardDefinition[] = [
     attack: 3,
     health: 3,
     maxCopies: 2,
-    text:
-      "À son arrivée, choisissez une autre unité Marionnette que vous contrôlez : répétez son effet d'arrivée. Une " +
-      "seule fois par tour.",
+    text: "À l'arrivée : répétez l'effet d'arrivée d'une autre Marionnette alliée. Une fois par tour.",
     // « Choisissez » : c'est le joueur qui désigne la Marionnette, via la
     // fenêtre de réaction. La répétition rallume l'arrivée de la cible
     // (`ENTER_EFFECTS_REPEATED`) : ses capacités automatiques se résolvent,
@@ -2632,22 +2580,18 @@ const WRITTEN_SET: CardDefinition[] = [
     attack: 2,
     health: 4,
     maxCopies: 3,
-    text: "La première fois à chaque tour que vous Brisez un Objet directement depuis votre main, récupérez 1 Raison.",
+    text: "Une fois par tour, lorsque vous Brisez un Objet, récupérez 1 Raison.",
     abilities: [
       {
         trigger: "onObjectBroken",
         // Observateur : l'événement vise l'Objet brisé, jamais Pantalone —
         // sans ce filtre la capacité n'est collectée par aucun circuit.
-        // `fromHand` est sur le FILTRE et pas seulement sur l'effet : un Bris
-        // depuis le PLATEAU ne doit pas réveiller la capacité, sinon il
-        // consomme le « une fois par tour » sans rien rendre, et le Bris
-        // depuis la main qui suit dans le même tour ne rembourse plus rien.
-        triggeredBy: { fromHand: true },
+        // Refonte des Objets (13/10/2026) : tout Objet vient de la main, tout
+        // Bris compte (Catalogue Notion).
+        triggeredBy: {},
         oncePerTurnKey: "pantaloneHandBreak",
-        description: "Premier Bris depuis la main du tour : récupérez 1 Raison.",
-        // Le remboursement ne vaut QUE pour un Bris depuis la main : sinon
-        // les Objets déjà posés sur le board deviendraient gratuits.
-        effects: [{ type: "reasonGain", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 }, conditionBrokenFromHand: true }],
+        description: "Vous Brisez un Objet : récupérez 1 Raison.",
+        effects: [{ type: "reasonGain", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } }],
       },
     ],
   },
@@ -2663,7 +2607,7 @@ const WRITTEN_SET: CardDefinition[] = [
     attack: 6,
     health: 6,
     maxCopies: 2,
-    text: "La première fois qu'il subit des dégâts de combat, il perd 3 Puissance et 2 Résistance.",
+    text: "La première fois qu'il subit des dégâts, il perd définitivement 3 Puissance et 2 Résistance.",
     abilities: [
       {
         trigger: "onDamaged",
@@ -2697,8 +2641,8 @@ const WRITTEN_SET: CardDefinition[] = [
     health: 5,
     maxCopies: 2,
     text:
-      "À son arrivée, choisissez : une unité que vous contrôlez gagne +2 / +2 jusqu'à votre prochain tour ; ou une " +
-      "unité adverse perd 2 Puissance et 2 Résistance jusqu'à votre prochain tour.",
+      "À l'arrivée, choisissez : +2/+2 à une Créature alliée ou -2/-2 à une Créature adverse, jusqu'à votre " +
+      "prochain tour.",
     // Les DEUX modes sont deux capacités facultatives distinctes, proposées
     // ensemble dans la fenêtre de réaction ; elles forment un groupe de
     // choix : en activer une écarte l'autre (`choiceGroup`, pas une clé
@@ -2710,11 +2654,11 @@ const WRITTEN_SET: CardDefinition[] = [
         trigger: "onEnterPlay",
         mode: "optional",
         choiceGroup: "dottoreArrival",
-        description: "Une créature alliée gagne +2 / +2 jusqu'à votre prochain tour.",
+        description: "Une Créature alliée gagne +2 / +2 jusqu'à votre prochain tour.",
         effects: [
           {
             type: "buff",
-            target: { kind: "chosenUnit", among: { unitsOnly: true } },
+            target: { kind: "chosenUnit", among: { cardTypes: ["creature"] } },
             attackAmount: { kind: "flat", value: 2 },
             healthAmount: { kind: "flat", value: 2 },
             duration: "untilYourNextTurn",
@@ -2725,11 +2669,11 @@ const WRITTEN_SET: CardDefinition[] = [
         trigger: "onEnterPlay",
         mode: "optional",
         choiceGroup: "dottoreArrival",
-        description: "Une créature ennemie perd 2 / 2 jusqu'à votre prochain tour.",
+        description: "Une Créature adverse perd 2 / 2 jusqu'à votre prochain tour.",
         effects: [
           {
             type: "debuff",
-            target: { kind: "chosenUnit", among: { unitsOnly: true, opponentOnly: true } },
+            target: { kind: "chosenUnit", among: { cardTypes: ["creature"], opponentOnly: true } },
             // Un `debuff` RETIRE ses montants : 2 et 2, pas -2 et -2.
             attackAmount: { kind: "flat", value: 2 },
             healthAmount: { kind: "flat", value: 2 },
@@ -2755,9 +2699,8 @@ const WRITTEN_SET: CardDefinition[] = [
     health: 6,
     maxCopies: 1,
     text:
-      "La première fois à chaque tour qu'une autre unité Marionnette que vous contrôlez arrive en jeu, vous pouvez " +
-      "renvoyer une autre unité Marionnette que vous contrôlez de coût 2 ou moins dans votre main. Si vous le " +
-      "faites, la prochaine unité Marionnette que vous jouez ce tour coûte 1 de moins, minimum 1.",
+      "Une fois par tour, lorsqu'une autre Marionnette alliée arrive : vous pouvez renvoyer en main une autre " +
+      "Marionnette alliée de coût 2 ou moins. Elle coûte alors 1 de moins à rejouer ce tour (minimum 1).",
     abilities: [
       {
         trigger: "onEnterPlay",
@@ -2765,7 +2708,7 @@ const WRITTEN_SET: CardDefinition[] = [
         triggeredBy: { subtype: MARIONNETTE, cardTypes: ["marin", "creature"] },
         oncePerTurnKey: "regisseurRecall",
         mode: "optional",
-        description: "Renvoyez une autre Marionnette de coût 2 ou moins en main : la prochaine coûte 1 de moins ce tour.",
+        description: "Renvoyez une autre Marionnette de coût 2 ou moins en main : elle coûte 1 de moins à rejouer ce tour.",
         // Le plafond de coût 2 empêche les boucles de valeur avec Colombina
         // ou Il Dottore (audit du 15 septembre).
         // « une AUTRE unité Marionnette » : autre que le Régisseur
@@ -2780,7 +2723,8 @@ const WRITTEN_SET: CardDefinition[] = [
               among: { subtype: MARIONNETTE, unitsOnly: true, excludeSource: true, excludeTriggerSource: true, maxCost: 2 },
             },
           },
-          { type: "discountNextCards", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 }, filter: { subtype: MARIONNETTE, cardTypes: ["marin", "creature"] } },
+          // « ELLE coûte alors 1 de moins à rejouer » : la Marionnette renvoyée, et elle seule.
+          { type: "discountNextCards", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 }, discountOnlyChosenTarget: true },
         ],
       },
     ],
@@ -2795,10 +2739,10 @@ const WRITTEN_SET: CardDefinition[] = [
     cost: 3,
     maxCopies: 3,
     text:
-      "Brisez cet Objet : renvoyez une carte Marionnette que vous contrôlez dans votre main. La prochaine carte " +
-      "Marionnette que vous jouez ce tour coûte 1 de moins, minimum 1.",
+      "Renvoyez une Marionnette alliée en main. Votre prochaine Marionnette coûte 1 de moins ce tour (minimum " +
+      "1).",
     onBreakEffects: [
-      { type: "moveZone", toZone: "hand", target: { kind: "chosenUnit", among: { subtype: MARIONNETTE } } },
+      { type: "moveZone", toZone: "hand", target: { kind: "chosenUnit", among: { subtype: MARIONNETTE, unitsOnly: true } } },
       { type: "discountNextCards", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 }, filter: { subtype: MARIONNETTE } },
     ],
   },
@@ -2814,8 +2758,8 @@ const WRITTEN_SET: CardDefinition[] = [
     durationTurns: 4,
     maxCopies: 1,
     text:
-      "Durée : 4 tours de table. La première fois à chaque tour qu'une unité Marionnette que vous contrôlez revient dans " +
-      "votre main, récupérez 1 Raison.",
+      "Durée : 4 tours de table. Une fois par tour, lorsqu'une Marionnette alliée revient en main : récupérez 1 " +
+      "Raison.",
     abilities: [
       {
         trigger: "onReturnedToHand",
@@ -2837,22 +2781,18 @@ const WRITTEN_SET: CardDefinition[] = [
     setCode: THEATRE_ENGLOUTI,
     cost: 2,
     maxCopies: 3,
-    // REFONTE (décision du propriétaire, 01/10/2026) : une substitution de
-    // scène — une Marionnette sort, une AUTRE entre, gratuitement. L'ancien
-    // texte (renvoi + remise de 1) ne faisait que rendre la monnaie. Une
-    // seule par tour, par NOM : plusieurs exemplaires ne videraient pas la
-    // main gratuitement. Coût inchangé.
+    // Refonte des Objets (10/2026, Catalogue Notion) : plus de limite par
+    // nom ni de gratuité — la Marionnette suivante coûte 1 de moins
+    // (plancher général des réductions : 1).
     text:
-      "Brisez cet Objet : renvoyez une unité Marionnette que vous contrôlez dans votre main. Vous pouvez jouer une " +
-      "autre Marionnette depuis votre main ce tour sans payer son coût de Raison. Une seule carte nommée " +
-      "Changement de rôle ! peut être Brisée par tour.",
-    breakOncePerTurnByName: true,
+      "Renvoyez une Marionnette alliée en main. Une autre Marionnette de votre main coûte 1 de moins ce tour " +
+      "(minimum 1).",
     onBreakEffects: [
       { type: "moveZone", toZone: "hand", target: { kind: "chosenUnit", among: { subtype: MARIONNETTE, unitsOnly: true } } },
       {
         type: "discountNextCards",
         target: { kind: "controllerPlayer" },
-        free: true,
+        amount: { kind: "flat", value: 1 },
         // « une AUTRE Marionnette » : celle qui vient de sortir n'en profite pas.
         filter: { subtype: MARIONNETTE, excludeChosenTarget: true },
       },
@@ -2867,7 +2807,7 @@ const WRITTEN_SET: CardDefinition[] = [
     setCode: THEATRE_ENGLOUTI,
     cost: 3,
     maxCopies: 3,
-    text: "Brisez cet Objet : choisissez une carte Marionnette dans votre Cimetière. Remettez-la dans votre main.",
+    text: "Récupérez en main une Marionnette de votre Cimetière.",
     // Décision du 2026-09-16 : pas de réduction conditionnelle, le Bris
     // récupère simplement une Marionnette du Cimetière.
     onBreakEffects: [
@@ -2884,9 +2824,7 @@ const WRITTEN_SET: CardDefinition[] = [
     cost: 5,
     durationTurns: 2,
     maxCopies: 1,
-    text:
-      "Pendant 2 tours, la première carte Marionnette que vous jouez à chacun de vos tours déclenche une seconde " +
-      "fois son effet d'arrivée.",
+    text: "Pendant 2 tours, la première Marionnette jouée à chacun de vos tours répète son effet d'arrivée.",
     // « que vous JOUEZ » : une carte posée depuis la main (`onlyPlayed`) — ni
     // un Péon invoqué, ni une arrivée rejouée par Colombina ou le Régisseur,
     // qui brûlaient sinon l'usage du tour. Le Rideau ne se compte pas
@@ -2918,9 +2856,8 @@ const WRITTEN_SET: CardDefinition[] = [
     health: 4,
     maxCopies: 1,
     text:
-      "À son arrivée, vous pouvez renvoyer une autre unité Marionnette que vous contrôlez dans votre main. Si vous " +
-      "le faites, il gagne +2 / +2 jusqu'à votre prochain tour et la prochaine carte Marionnette que vous jouez ce " +
-      "tour coûte 2 de moins, minimum 1.",
+      "À l'arrivée : vous pouvez renvoyer une autre Marionnette alliée en main. Dans ce cas, il gagne +2/+2 " +
+      "jusqu'à votre prochain tour et votre prochaine Marionnette coûte 2 de moins ce tour (minimum 1).",
     // Décision du 2026-09-16 : la clause « le laisser en jeu » du lot initial
     // est abandonnée ; le renvoi lui donne +2 / +2, sans condition.
     abilities: [
@@ -2956,9 +2893,9 @@ const WRITTEN_SET: CardDefinition[] = [
     health: 8,
     maxCopies: 1,
     text:
-      "La première fois à chaque tour qu'une autre unité Marionnette que vous contrôlez arrive en jeu, répétez son " +
-      "effet d'arrivée. La première fois à chaque tour qu'une unité Marionnette que vous contrôlez revient dans " +
-      "votre main, la prochaine unité Marionnette que vous jouez ce tour coûte 1 de moins, minimum 1.",
+      "Une fois par tour, lorsqu'une autre Marionnette alliée arrive : répétez son effet d'arrivée. Une fois par " +
+      "tour, lorsqu'une Marionnette alliée revient en main : votre prochaine Marionnette coûte 1 de moins ce " +
+      "tour (minimum 1).",
     abilities: [
       {
         trigger: "onEnterPlay",
@@ -3141,7 +3078,7 @@ const WRITTEN_SET: CardDefinition[] = [
     setCode: RAPIECER_LA_COQUE,
     cost: 2,
     maxCopies: 2,
-    text: "Brisez cet Objet : piochez 2 cartes puis défaussez 1 carte.",
+    text: "Piochez 2 cartes puis défaussez 1 carte.",
     onBreakEffects: [
       { type: "draw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 2 } },
       { type: "discard", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
@@ -3153,7 +3090,7 @@ const WRITTEN_SET: CardDefinition[] = [
     type: "objet",
     setCode: RAPIECER_LA_COQUE,
     cost: 2,
-    text: "Brisez cet Objet : récupérez 1 Ancrage. Si vous avez 0 Raison ou moins, récupérez également 2 Raison.",
+    text: "Récupérez 1 Ancrage. Si vous avez 0 Raison ou moins, récupérez également 2 Raison.",
     onBreakEffects: [
       { type: "heal", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
       {
@@ -3170,7 +3107,7 @@ const WRITTEN_SET: CardDefinition[] = [
     type: "objet",
     setCode: RAPIECER_LA_COQUE,
     cost: 3,
-    text: "Brisez cet Objet : récupérez 2 Ancrage puis perdez 1 Raison.",
+    text: "Récupérez 2 Ancrage puis perdez 1 Raison.",
     onBreakEffects: [
       { type: "heal", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 2 } },
       { type: "reasonLoss", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
@@ -3182,7 +3119,7 @@ const WRITTEN_SET: CardDefinition[] = [
     type: "objet",
     setCode: RAPIECER_LA_COQUE,
     cost: 2,
-    text: "Brisez cet Objet : piochez 1 carte puis défaussez 1 carte. Si vous avez 3 Raison ou moins, récupérez 1 Raison.",
+    text: "Piochez 1 carte puis défaussez 1 carte. Si vous avez 3 Raison ou moins, récupérez 1 Raison.",
     onBreakEffects: [
       { type: "draw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
       { type: "discard", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
@@ -3201,8 +3138,8 @@ const WRITTEN_SET: CardDefinition[] = [
     setCode: RAPIECER_LA_COQUE,
     cost: 3,
     maxCopies: 2,
-    requiresTideStateForBreak: ["tempete", "abysses"],
-    text: "Brisable seulement pendant Tempête ou Abysses. Brisez cet Objet : récupérez 3 Ancrage.",
+    requiresTideState: ["tempete", "abysses"],
+    text: "Jouable seulement pendant Tempête ou Abysses. Récupérez 3 Ancrage.",
     onBreakEffects: [{ type: "heal", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 3 } }],
   },
   {
@@ -3211,7 +3148,7 @@ const WRITTEN_SET: CardDefinition[] = [
     type: "objet",
     setCode: RAPIECER_LA_COQUE,
     cost: 1,
-    text: "Brisez cet Objet : piochez 1 carte. Pendant Abysses, piochez 1 carte supplémentaire puis défaussez 1 carte.",
+    text: "Piochez 1 carte. Pendant Abysses, piochez 1 carte supplémentaire puis défaussez 1 carte.",
     onBreakEffects: [
       { type: "draw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
       {
@@ -3521,9 +3458,8 @@ const WRITTEN_SET: CardDefinition[] = [
     setCode: RAPIECER_LA_COQUE,
     cost: 2,
     health: 2,
-    equipGrantsBuff: { healthAmount: 1 },
     equipGrantsKeywords: ["garde"],
-    text: "Équipez un Marin ou une Créature. Il gagne +1 Résistance et Garde.",
+    text: "Équipez un Marin ou une Créature. Il gagne Garde.",
     onPlayEffects: [{ type: "attachEquipment", target: { kind: "chosenUnit" } }],
   },
   {
@@ -3798,7 +3734,7 @@ const WRITTEN_SET: CardDefinition[] = [
     type: "objet",
     setCode: RAPIECER_LA_COQUE,
     cost: 3,
-    text: "Brisez cet Objet : choisissez une Structure dans votre Cimetière. Remettez-la dans votre main.",
+    text: "Choisissez une Structure dans votre Cimetière. Remettez-la dans votre main.",
     onBreakEffects: [
       {
         type: "moveGraveyardCardToHand",
@@ -3815,7 +3751,7 @@ const WRITTEN_SET: CardDefinition[] = [
     cost: 2,
     health: 3,
     equipTargetTypes: ["structure"],
-    text: "Équipez une Structure. Quand la Structure équipée est Sabordée, récupérez 1 Ancrage.",
+    text: "Équipez une Structure. Lorsqu'elle est Sabordée, récupérez 1 Ancrage.",
     onPlayEffects: [{ type: "attachEquipment", target: { kind: "chosenUnit", among: { cardTypes: ["structure"] } } }],
     abilities: [
       {
@@ -3897,7 +3833,7 @@ const WRITTEN_SET: CardDefinition[] = [
     attack: 2,
     health: 1,
     text:
-      "La première fois pendant votre tour qu'une de vos cartes rejoint le Cimetière depuis votre main ou votre pioche, " +
+      "Première fois pendant votre tour qu'une de vos cartes rejoint le Cimetière depuis la main ou la pioche : " +
       "elle gagne +1 Puissance.",
     // « ou votre pioche » (Test Verrier, 30/09/2026) : le meulage nourrit la
     // Veillée comme la défausse (`onCardPutIntoGraveyard`).
@@ -3927,7 +3863,7 @@ const WRITTEN_SET: CardDefinition[] = [
     health: 1,
     equipTargetSubtype: "mort-vivant",
     // 12/10/2026 (décision du propriétaire) : il fait seulement piocher — la défausse est retirée.
-    text: "Équipez une unité Mort-vivant. Quand l'unité équipée est détruite, piochez 1 carte.",
+    text: "Équipez un Mort-vivant. À la destruction du porteur : piochez 1.",
     onPlayEffects: [{ type: "attachEquipment", target: { kind: "chosenUnit" } }],
     abilities: [
       {
@@ -3956,8 +3892,8 @@ const WRITTEN_SET: CardDefinition[] = [
     // Standard Verrier (01/10/2026, validé par le propriétaire) : les gains de
     // la Veillée RESTENT. Coût et statistiques inchangés.
     text:
-      "La première fois à chaque tour qu'elle devrait être détruite au combat, elle reste à 1 Résistance. La première " +
-      "fois à chaque tour qu'elle survit à des dégâts, elle gagne +1 Puissance.",
+      "Une fois par tour, si elle devait être détruite au combat, elle reste à 1 Résistance. Une fois par tour, " +
+      "si elle survit à des dégâts, elle gagne +1 Puissance.",
     abilities: [
       {
         trigger: "onSurvivedDamage",
@@ -3976,8 +3912,8 @@ const WRITTEN_SET: CardDefinition[] = [
     setCode: VEILLEE_DES_DISPARUS,
     cost: 2,
     text:
-      "Brisez cet Objet : piochez 1 carte puis défaussez 1 carte. Si une carte Mort-vivant a rejoint votre Cimetière " +
-      "ce tour, piochez 1 carte supplémentaire.",
+      "Piochez 1 puis défaussez 1. Si une carte Mort-vivant a rejoint votre Cimetière ce tour, piochez 1 de " +
+      "plus.",
     // La condition est portée par l'EFFET et non par la carte : la défausse
     // qui précède peut elle-même la remplir, et c'est tout l'intérêt du
     // texte. Évaluée après la réponse du joueur, comme la séquence l'impose.
@@ -4006,8 +3942,7 @@ const WRITTEN_SET: CardDefinition[] = [
     cost: 2,
     attack: 2,
     health: 2,
-    text:
-      "Quand une autre de vos unités Mort-vivant est détruite, il gagne +1 Puissance. Une fois par tour.",
+    text: "Une fois par tour, quand un autre Mort-vivant allié est détruit : il gagne +1 Puissance.",
     // Standard Verrier (01/10/2026, validé par le propriétaire) : les gains de
     // la Veillée RESTENT. Coût et statistiques inchangés.
     abilities: [
@@ -4032,8 +3967,8 @@ const WRITTEN_SET: CardDefinition[] = [
     attack: 1,
     health: 4,
     text:
-      "À votre début de tour, elle gagne +1 Puissance de façon permanente si une carte Mort-vivant a rejoint votre " +
-      "Cimetière depuis votre dernier tour.",
+      "À votre début de tour : si un Mort-vivant a rejoint votre Cimetière depuis votre dernier tour, elle gagne " +
+      "définitivement +1 Puissance.",
     // Elle rendait 1 Raison. Elle ne rendait rien : la Raison se recharge à
     // son plafond au début de votre tour, JUSTE AVANT que ses capacités ne
     // se déclenchent, et le point était perdu — sauf en sortie de Déraison,
@@ -4072,7 +4007,7 @@ const WRITTEN_SET: CardDefinition[] = [
     setCode: VEILLEE_DES_DISPARUS,
     cost: 2,
     maxCopies: 2,
-    text: "Brisez cet Objet : choisissez une unité Mort-vivant de coût 1 dans votre Cimetière. Remettez-la dans votre main.",
+    text: "Remettez en main un Mort-vivant de coût 1 de votre Cimetière.",
     onBreakEffects: [
       {
         type: "moveGraveyardCardToHand",
@@ -4093,8 +4028,8 @@ const WRITTEN_SET: CardDefinition[] = [
     attack: 3,
     health: 3,
     text:
-      "À son arrivée, vous pouvez défausser 1 carte. Si vous le faites, piochez 1 carte et elle gagne " +
-      "+1 Résistance jusqu'à votre prochain tour.",
+      "À l'arrivée : vous pouvez défausser 1. Dans ce cas, piochez 1 et elle gagne +1 Résistance jusqu'à votre " +
+      "prochain tour.",
     // Défausse PUIS pioche, dans l'ordre du texte : la défausse est le prix,
     // payé avant de voir la carte piochée. « Si vous le faites » est tenu
     // par la condition de CAPACITÉ (au moins 1 carte en main) : la capacité
@@ -4133,8 +4068,8 @@ const WRITTEN_SET: CardDefinition[] = [
     health: 4,
     maxCopies: 2,
     text:
-      "La première fois à chaque tour que vous récupérez une carte depuis votre Cimetière, infligez 1 dégât " +
-      "au Navire adverse.",
+      "Une fois par tour, lorsque vous récupérez une carte depuis votre Cimetière, infligez 1 dégât au Navire " +
+      "adverse.",
     abilities: [
       {
         trigger: "onCardRecoveredFromGraveyard",
@@ -4156,7 +4091,7 @@ const WRITTEN_SET: CardDefinition[] = [
     cost: 3,
     attack: 3,
     health: 2,
-    text: "Quand elle est détruite, infligez 1 dégât au Navire adverse.",
+    text: "À sa destruction, infligez 1 dégât au Navire adverse.",
     abilities: [
       {
         trigger: "onDeath",
@@ -4180,8 +4115,8 @@ const WRITTEN_SET: CardDefinition[] = [
     health: 4,
     maxCopies: 2,
     text:
-      "La première fois à chaque tour qu'une autre de vos unités Mort-vivant est détruite, vous pouvez choisir une " +
-      "unité Mort-vivant de coût 1 dans votre Cimetière. Remettez-la dans votre main.",
+      "Une fois par tour, lorsqu'une autre unité alliée Mort-vivant est détruite, vous pouvez choisir une unité " +
+      "Mort-vivant de coût 1 dans votre Cimetière. Remettez-la dans votre main.",
     // « vous pouvez » → fenêtre de réaction ; le joueur y désigne ensuite la
     // carte du Cimetière (`chosenGraveyardInstanceId`). Deux décisions, deux
     // gestes : activer, puis choisir.
@@ -4214,8 +4149,8 @@ const WRITTEN_SET: CardDefinition[] = [
     durationTurns: 4,
     maxCopies: 2,
     text:
-      "Durée : 4 tours de table. La première fois à chaque tour qu'une carte rejoint votre Cimetière depuis votre main ou votre pioche, " +
-      "infligez 1 dégât au Navire adverse.",
+      "Durée : 4 tours de table. Une fois par tour, quand une carte rejoint votre Cimetière depuis votre main ou " +
+      "votre pioche : infligez 1 dégât au Navire adverse.",
     // « ou votre pioche » (Test Verrier, 30/09/2026) : vider sa pioche devient une menace.
     abilities: [
       {
@@ -4236,9 +4171,7 @@ const WRITTEN_SET: CardDefinition[] = [
     setCode: VEILLEE_DES_DISPARUS,
     cost: 3,
     maxCopies: 2,
-    text:
-      "Brisez cet Objet : choisissez une unité Mort-vivant de coût 2 ou moins dans votre Cimetière. " +
-      "Remettez-la dans votre main. Puis perdez 1 Raison.",
+    text: "Remettez en main un Mort-vivant de coût 2 ou moins de votre Cimetière, puis perdez 1 Raison.",
     onBreakEffects: [
       {
         type: "moveGraveyardCardToHand",
@@ -4259,19 +4192,14 @@ const WRITTEN_SET: CardDefinition[] = [
     health: 5,
     durationTurns: 4,
     maxCopies: 2,
-    text:
-      "Durée : 4 tours de table. La première fois à chaque tour qu'une de vos unités est détruite, piochez 1 carte " +
-      "puis défaussez 1 carte.",
+    text: "Durée : 4 tours de table. Une fois par tour, lorsqu'une unité alliée est détruite, piochez 1.",
     abilities: [
       {
         trigger: "onDeath",
         triggeredBy: { cardTypes: ["marin", "creature"], destroyedBy: ["combat", "effect", "tide"] },
         oncePerTurnKey: "tableUniteDetruite",
-        description: "Une de vos unités meurt : piochez 1 carte puis défaussez 1 carte.",
-        effects: [
-          { type: "draw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
-          { type: "discard", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
-        ],
+        description: "Une de vos unités meurt : piochez 1 carte.",
+        effects: [{ type: "draw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } }],
       },
     ],
   },
@@ -4288,9 +4216,8 @@ const WRITTEN_SET: CardDefinition[] = [
     health: 4,
     maxCopies: 2,
     text:
-      "À son arrivée, choisissez une unité Mort-vivant de coût 2 ou moins dans votre Cimetière. Remettez-la dans " +
-      "votre main. Si une unité Mort-vivant a été détruite ce tour, elle coûte 1 Raison de moins à jouer ce tour, " +
-      "minimum 1.",
+      "À l'arrivée : remettez en main un Mort-vivant de coût 2 ou moins de votre Cimetière. Si un Mort-vivant " +
+      "est mort ce tour, il coûte 1 de moins ce tour (minimum 1).",
     // La réduction porte sur la carte qu'on vient de repêcher, et sur elle
     // seule (`discountOnlyRecoveredCard`) : une autre unité Un Dead déjà en
     // main n'en profite pas, et rien n'est posé si rien n'a été repêché. Le
@@ -4335,8 +4262,8 @@ const WRITTEN_SET: CardDefinition[] = [
     health: 5,
     maxCopies: 1,
     text:
-      "La première fois à chaque tour qu'une autre de vos cartes Mort-vivant est détruite ou rejoint votre Cimetière " +
-      "depuis votre main ou votre pioche, infligez 1 dégât au Navire adverse.",
+      "Une fois par tour, lorsqu'un autre Mort-vivant allié est détruit ou qu'une carte Mort-vivant rejoint " +
+      "votre Cimetière depuis votre main ou votre pioche : infligez 1 dégât au Navire adverse.",
     // « Détruite OU défaussée / meulée » : deux déclencheurs, UNE seule clé de suivi.
     // (« ou votre pioche » : Test Verrier, 30/09/2026.)
     // `oncePerTurnFlags` est porté par la carte et non par la capacité, donc
@@ -4373,8 +4300,8 @@ const WRITTEN_SET: CardDefinition[] = [
     health: 5,
     maxCopies: 1,
     text:
-      "La première fois à chaque tour que vous récupérez une carte depuis votre Cimetière, infligez 1 dégât " +
-      "au Navire adverse et récupérez 1 Raison.",
+      "Une fois par tour, lorsque vous récupérez une carte depuis votre Cimetière, infligez 1 dégât au Navire " +
+      "adverse et récupérez 1 Raison.",
     abilities: [
       {
         trigger: "onCardRecoveredFromGraveyard",
@@ -4424,36 +4351,20 @@ const WRITTEN_SET: CardDefinition[] = [
     durationTurns: 3,
     maxCopies: 1,
     visibleDuringTide: ["tempete", "abysses"],
+    // Effet unique, actif même masqué (refonte du 13/10/2026, Notion) : la
+    // Marée ne fait que cacher la carte à l'adversaire.
+    activeWhileHidden: true,
     text:
-      "Durée : 3 tours de table. Visible pendant Tempête et Abysses. La première fois à chaque tour qu'une unité adverse " +
-      "arrive alors que l'adversaire contrôle au moins 4 unités, cette unité subit 2 dégâts. Réaction cachée : " +
-      "lorsqu'une unité adverse arrive alors que l'adversaire contrôle au moins 5 unités, vous pouvez payer " +
-      "3 Ancrage : détruisez toutes les unités adverses. Détruisez ensuite Jugement du Phare.",
+      "Durée : 3 tours de table. Visible pendant Tempête et Abysses. Une fois par tour, si une unité adverse " +
+      "arrive alors que l'adversaire en contrôle au moins 4 : elle subit 2 dégâts.",
     abilities: [
       {
         trigger: "onEnterPlay",
         triggeredBy: { cardTypes: ["marin", "creature"], opponentOnly: true },
         oncePerTurnKey: "jugementDuPhare",
-        condition: { selfVisible: true, opponentUnitsAtLeast: 4 },
+        condition: { opponentUnitsAtLeast: 4 },
         description: "Une quatrième unité adverse arrive : elle subit 2 dégâts.",
         effects: [{ type: "damage", target: { kind: "triggerSource" }, amount: { kind: "flat", value: 2 } }],
-      },
-      {
-        // Volontairement nucléaire (garde-fou de playtest Notion : « ne pas
-        // l'affaiblir avant test »). Trois garde-fous le tiennent quand
-        // même : cinq corps adverses, 3 Ancrage de sa propre coque, et la
-        // Structure part avec.
-        trigger: "onEnterPlay",
-        triggeredBy: { cardTypes: ["marin", "creature"], opponentOnly: true },
-        mode: "optional",
-        hiddenReaction: true,
-        cost: { anchor: 3 },
-        condition: { selfHidden: true, opponentUnitsAtLeast: 5 },
-        description: "Payez 3 Ancrage : détruisez toutes les unités adverses, puis Jugement du Phare.",
-        effects: [
-          { type: "destroy", target: { kind: "allEnemyUnits" }, filter: { cardTypes: ["marin", "creature"] } },
-          { type: "destroy", target: { kind: "self" } },
-        ],
       },
     ],
   },
@@ -4467,10 +4378,12 @@ const WRITTEN_SET: CardDefinition[] = [
     durationTurns: 3,
     maxCopies: 2,
     visibleDuringTide: ["tempete", "abysses"],
+    // Effet unique, actif même masqué (refonte du 13/10/2026, Notion) : la
+    // Marée ne fait que cacher la carte à l'adversaire.
+    activeWhileHidden: true,
     text:
-      "Durée : 3 tours de table. Visible pendant Tempête et Abysses. La première unité adverse jouée après la troisième " +
-      "chaque tour subit 1 dégât. Réaction cachée : lorsqu'une unité adverse arrive alors que l'adversaire en " +
-      "contrôle au moins 4, infligez 2 dégâts à toutes les unités adverses. Détruisez ensuite Barils de Poudre.",
+      "Durée : 3 tours de table. Visible pendant Tempête et Abysses. La quatrième unité adverse jouée chaque " +
+      "tour subit 1 dégât.",
     abilities: [
       {
         // Texte Notion (revue du 02/10/2026) : un compte des unités JOUÉES
@@ -4479,21 +4392,9 @@ const WRITTEN_SET: CardDefinition[] = [
         trigger: "onEnterPlay",
         triggeredBy: { cardTypes: ["marin", "creature"], opponentOnly: true, onlyPlayed: true },
         oncePerTurnKey: "barilsDePoudre",
-        condition: { selfVisible: true, opponentUnitsPlayedThisTurnAtLeast: 4 },
+        condition: { opponentUnitsPlayedThisTurnAtLeast: 4 },
         description: "La quatrième unité adverse jouée ce tour subit 1 dégât.",
         effects: [{ type: "damage", target: { kind: "triggerSource" }, amount: { kind: "flat", value: 1 } }],
-      },
-      {
-        trigger: "onEnterPlay",
-        triggeredBy: { cardTypes: ["marin", "creature"], opponentOnly: true },
-        mode: "optional",
-        hiddenReaction: true,
-        condition: { selfHidden: true, opponentUnitsAtLeast: 4 },
-        description: "2 dégâts à toutes les unités adverses, puis détruisez Barils de Poudre.",
-        effects: [
-          { type: "damage", target: { kind: "allEnemyUnits" }, filter: { cardTypes: ["marin", "creature"] }, amount: { kind: "flat", value: 2 } },
-          { type: "destroy", target: { kind: "self" } },
-        ],
       },
     ],
   },
@@ -4507,29 +4408,19 @@ const WRITTEN_SET: CardDefinition[] = [
     durationTurns: 3,
     maxCopies: 2,
     visibleDuringTide: ["tempete", "abysses"],
+    // Effet unique, actif même masqué (refonte du 13/10/2026, Notion) : la
+    // Marée ne fait que cacher la carte à l'adversaire.
+    activeWhileHidden: true,
     text:
-      "Durée : 3 tours de table. Visible pendant Tempête et Abysses. La première unité adverse de Puissance 5 ou plus qui " +
-      "attaque chaque tour perd 2 Puissance pour cette attaque. Réaction cachée : lorsqu'une unité adverse de " +
-      "Puissance 5 ou plus attaque, détruisez cette unité avant qu'elle n'inflige ses dégâts. Détruisez ensuite " +
-      "Pont Miné.",
+      "Durée : 3 tours de table. Visible pendant Tempête et Abysses. Première attaque adverse du tour avec 5 " +
+      "Puissance ou plus : cette unité perd 2 Puissance pour cette attaque.",
     abilities: [
       {
         trigger: "onUnitAttackDeclared",
         oncePerTurnKey: "pontMine",
-        condition: { selfVisible: true, attackerPowerAtLeast: 5 },
+        condition: { attackerPowerAtLeast: 5 },
         description: "Une grosse unité adverse attaque : elle perd 2 Puissance pour cette attaque.",
         effects: [{ type: "modifyAttackerPower", target: { kind: "self" }, amount: { kind: "flat", value: 2 } }],
-      },
-      {
-        trigger: "onUnitAttackDeclared",
-        mode: "optional",
-        hiddenReaction: true,
-        condition: { selfHidden: true, attackerPowerAtLeast: 5 },
-        description: "Détruisez l'attaquant avant ses dégâts, puis Pont Miné.",
-        effects: [
-          { type: "destroy", target: { kind: "pendingAttacker" } },
-          { type: "destroy", target: { kind: "self" } },
-        ],
       },
     ],
   },
@@ -4543,28 +4434,14 @@ const WRITTEN_SET: CardDefinition[] = [
     durationTurns: 3,
     maxCopies: 2,
     visibleDuringTide: ["tempete", "abysses"],
+    // Effet unique, actif même masqué (refonte du 13/10/2026, Notion) : la
+    // Marée ne fait que cacher la carte à l'adversaire.
+    activeWhileHidden: true,
     text:
-      "Durée : 3 tours de table. Visible pendant Tempête et Abysses. Vos autres Structures ont +1 Résistance. Réaction " +
-      "cachée : lorsqu'une de vos Structures devrait être détruite, elle reste en jeu avec 1 Résistance. " +
-      "Détruisez ensuite Cloison Étanche.",
-    // L'aura ne porte que tant qu'elle est visible : une Structure masquée
-    // est inactive, ses auras comprises. Elle ne s'applique jamais à
+      "Durée : 3 tours de table. Visible pendant Tempête et Abysses. Vos autres Structures ont +1 Résistance.",
+    // Aura permanente, masquée ou non. Elle ne s'applique jamais à
     // elle-même, ce qui dit « vos AUTRES Structures » sans rien déclarer.
-    auraBuffControllerCardTypes: { targetTypes: ["structure"], healthAmount: 1, whileSelfVisible: true },
-    abilities: [
-      {
-        trigger: "onPermanentWouldBeDestroyed",
-        triggeredBy: { cardTypes: ["structure"] },
-        mode: "optional",
-        hiddenReaction: true,
-        condition: { selfHidden: true },
-        description: "Votre Structure reste en jeu avec 1 Résistance, puis Cloison Étanche est détruite.",
-        effects: [
-          { type: "surviveWithHealth", target: { kind: "triggerSource" }, amount: { kind: "flat", value: 1 } },
-          { type: "destroy", target: { kind: "self" } },
-        ],
-      },
-    ],
+    auraBuffControllerCardTypes: { targetTypes: ["structure"], healthAmount: 1 },
   },
   {
     id: "cale-inondable",
@@ -4576,37 +4453,21 @@ const WRITTEN_SET: CardDefinition[] = [
     durationTurns: 3,
     maxCopies: 2,
     visibleDuringTide: ["tempete", "abysses"],
+    // Effet unique, actif même masqué (refonte du 13/10/2026, Notion) : la
+    // Marée ne fait que cacher la carte à l'adversaire.
+    activeWhileHidden: true,
     text:
-      "Durée : 3 tours de table. Visible pendant Tempête et Abysses. Si l'adversaire contrôle plus d'unités que vous, la " +
-      "première unité adverse qui attaque chaque tour perd 1 Puissance pour cette attaque. Réaction cachée : " +
-      "lorsque la troisième unité adverse attaque pendant un même tour, toutes les unités adverses perdent " +
-      "3 Puissance jusqu'à la fin du tour. Détruisez ensuite Cale Inondable.",
+      "Durée : 3 tours de table. Visible pendant Tempête et Abysses. Si l'adversaire a plus d'unités que vous, " +
+      "sa première unité attaquante du tour perd 1 Puissance pour cette attaque.",
     abilities: [
       {
         trigger: "onUnitAttackDeclared",
         oncePerTurnKey: "caleInondable",
         // « la PREMIÈRE unité adverse qui attaque chaque tour » : la première
         // attaque seulement, même si la comparaison des plateaux l'écarte.
-        condition: { selfVisible: true, opponentUnitsMoreThanController: true, opponentAttacksThisTurnAtMost: 1 },
+        condition: { opponentUnitsMoreThanController: true, opponentAttacksThisTurnAtMost: 1 },
         description: "L'adversaire a plus de corps : son attaquant perd 1 Puissance.",
         effects: [{ type: "modifyAttackerPower", target: { kind: "self" }, amount: { kind: "flat", value: 1 } }],
-      },
-      {
-        trigger: "onUnitAttackDeclared",
-        mode: "optional",
-        hiddenReaction: true,
-        condition: { selfHidden: true, opponentAttacksThisTurnAtLeast: 3 },
-        description: "Toutes les unités adverses perdent 3 Puissance, puis Cale Inondable est détruite.",
-        effects: [
-          {
-            type: "debuff",
-            target: { kind: "allEnemyUnits" },
-            filter: { cardTypes: ["marin", "creature"] },
-            attackAmount: { kind: "flat", value: 3 },
-            duration: "endOfTurn",
-          },
-          { type: "destroy", target: { kind: "self" } },
-        ],
       },
     ],
   },
@@ -4620,41 +4481,21 @@ const WRITTEN_SET: CardDefinition[] = [
     durationTurns: 3,
     maxCopies: 2,
     visibleDuringTide: ["tempete", "abysses"],
+    // Effet unique, actif même masqué (refonte du 13/10/2026, Notion) : la
+    // Marée ne fait que cacher la carte à l'adversaire.
+    activeWhileHidden: true,
     text:
-      "Durée : 3 tours de table. Visible pendant Tempête et Abysses. La première unité adverse jouée chaque tour perd " +
-      "1 Puissance jusqu'à la fin du tour. Réaction cachée : lorsqu'une unité adverse arrive, elle ne peut ni " +
-      "attaquer ni activer ses effets jusqu'au prochain tour de son propriétaire. Détruisez ensuite Chaîne de " +
-      "Travers.",
+      "Durée : 3 tours de table. Visible pendant Tempête et Abysses. La première unité adverse jouée chaque tour " +
+      "perd 1 Puissance ce tour.",
     abilities: [
       {
         trigger: "onEnterPlay",
         // « JOUÉE » : une unité invoquée par un effet n'en est pas une.
         triggeredBy: { cardTypes: ["marin", "creature"], opponentOnly: true, onlyPlayed: true },
         oncePerTurnKey: "chaineDeTravers",
-        condition: { selfVisible: true },
         description: "La première unité adverse du tour perd 1 Puissance.",
         effects: [
           { type: "debuff", target: { kind: "triggerSource" }, attackAmount: { kind: "flat", value: 1 }, duration: "endOfTurn" },
-        ],
-      },
-      {
-        trigger: "onEnterPlay",
-        triggeredBy: { cardTypes: ["marin", "creature"], opponentOnly: true },
-        mode: "optional",
-        hiddenReaction: true,
-        condition: { selfHidden: true },
-        description: "L'unité qui arrive est entravée jusqu'au tour suivant, puis Chaîne de Travers est détruite.",
-        effects: [
-          // `untilYourNextTurn` dit exactement « jusqu'au prochain tour de
-          // son propriétaire » : l'entrave se lève d'elle-même.
-          {
-            type: "debuff",
-            target: { kind: "triggerSource" },
-            attackAmount: { kind: "flat", value: 0 },
-            duration: "untilYourNextTurn",
-            silences: true,
-          },
-          { type: "destroy", target: { kind: "self" } },
         ],
       },
     ],
@@ -4669,28 +4510,18 @@ const WRITTEN_SET: CardDefinition[] = [
     durationTurns: 3,
     maxCopies: 2,
     visibleDuringTide: ["tempete", "abysses"],
+    // Effet unique, actif même masqué (refonte du 13/10/2026, Notion) : la
+    // Marée ne fait que cacher la carte à l'adversaire.
+    activeWhileHidden: true,
     text:
-      "Durée : 3 tours de table. Visible pendant Tempête et Abysses. La première fois à chaque tour que votre Navire subit " +
-      "des dégâts directs d'une attaque, réduisez-les de 1. Réaction cachée : lorsque votre Navire devrait subir " +
-      "des dégâts directs d'une attaque, annulez ces dégâts. Détruisez ensuite Dernière Barricade.",
+      "Durée : 3 tours de table. Visible pendant Tempête et Abysses. Une fois par tour, réduisez de 1 les dégâts " +
+      "directs d'une attaque subis par votre Navire.",
     abilities: [
       {
         trigger: "onIncomingDirectAttack",
         oncePerTurnKey: "derniereBarricade",
-        condition: { selfVisible: true },
         description: "Réduit de 1 les dégâts directs de l'attaque en cours.",
         effects: [{ type: "reduceIncomingDamage", target: { kind: "self" }, amount: { kind: "flat", value: 1 } }],
-      },
-      {
-        trigger: "onIncomingDirectAttack",
-        mode: "optional",
-        hiddenReaction: true,
-        condition: { selfHidden: true },
-        description: "Annulez les dégâts directs, puis détruisez Dernière Barricade.",
-        effects: [
-          { type: "cancelIncomingAttack", target: { kind: "self" } },
-          { type: "destroy", target: { kind: "self" } },
-        ],
       },
     ],
   },
@@ -4704,27 +4535,15 @@ const WRITTEN_SET: CardDefinition[] = [
     durationTurns: 3,
     maxCopies: 2,
     visibleDuringTide: ["tempete", "abysses"],
+    // Effet unique, actif même masqué (refonte du 13/10/2026, Notion) : la
+    // Marée ne fait que cacher la carte à l'adversaire.
+    activeWhileHidden: true,
+    // Refonte du 13/10/2026 (Notion, effet unique « actif même masqué ») :
+    // la taxe porte sur l'Objet JOUÉ, en permanence ; plus de réaction cachée.
     text:
-      "Durée : 3 tours de table. Visible pendant Tempête et Abysses. La première activation d'Objet adverse de chaque tour " +
-      "coûte 1 Raison supplémentaire. Réaction cachée : lorsqu'un adversaire Brise un Objet, annulez l'effet de " +
-      "cet Objet. Détruisez ensuite Fausse Cargaison.",
-    // Même champ de données que la Cloche d'Alerte : une taxe de Bris
-    // adverse, une fois par tour, tant que la carte est visible.
-    taxOpponentObjectBreakOncePerTurnWhileVisible: { amount: 1 },
-    abilities: [
-      {
-        trigger: "onObjectBroken",
-        triggeredBy: { opponentOnly: true },
-        mode: "optional",
-        hiddenReaction: true,
-        condition: { selfHidden: true },
-        description: "Annulez l'effet de l'Objet adverse, puis détruisez Fausse Cargaison.",
-        effects: [
-          { type: "cancelObjectEffect", target: { kind: "self" } },
-          { type: "destroy", target: { kind: "self" } },
-        ],
-      },
-    ],
+      "Durée : 3 tours de table. Visible pendant Tempête et Abysses. Le premier Objet adverse joué chaque tour coûte " +
+      "1 Raison supplémentaire.",
+    taxOpponentObjectPlayOncePerTurn: { amount: 1 },
   },
   {
     id: "filet-de-sauvetage",
@@ -4736,32 +4555,17 @@ const WRITTEN_SET: CardDefinition[] = [
     durationTurns: 3,
     maxCopies: 2,
     visibleDuringTide: ["tempete", "abysses"],
-    text:
-      "Durée : 3 tours de table. Visible pendant Tempête et Abysses. Les unités que vous contrôlez ont +2 Résistance tant " +
-      "que Filet de Sauvetage est visible. Réaction cachée : lorsqu'une de vos unités devrait être détruite, " +
-      "empêchez cette destruction et elle gagne +2 Résistance. Détruisez ensuite Filet de Sauvetage.",
+    // Effet unique, actif même masqué (refonte du 13/10/2026, Notion) : la
+    // Marée ne fait que cacher la carte à l'adversaire.
+    activeWhileHidden: true,
+    text: "Durée : 3 tours de table. Visible pendant Tempête et Abysses. Vos unités gagnent +2 Résistance.",
     // BUFF DE RÉSISTANCE MAXIMALE, jamais une restauration (correction
     // retenue, Notion) : les dégâts déjà subis ne sont pas soignés, et le
-    // bonus disparaît avec la visibilité de la Structure — une unité dont
-    // les dégâts dépassent alors sa Résistance retombée meurt au contrôle
-    // de morts suivant. C'est la différence exacte entre « +2 Résistance »
-    // et « restaurez 2 Résistance ».
-    auraBuffControllerCardTypes: { targetTypes: ["marin", "creature"], healthAmount: 2, whileSelfVisible: true },
-    abilities: [
-      {
-        trigger: "onPermanentWouldBeDestroyed",
-        triggeredBy: { cardTypes: ["marin", "creature"] },
-        mode: "optional",
-        hiddenReaction: true,
-        condition: { selfHidden: true },
-        description: "Votre unité survit et gagne +2 Résistance, puis Filet de Sauvetage est détruit.",
-        effects: [
-          { type: "surviveWithHealth", target: { kind: "triggerSource" }, amount: { kind: "flat", value: 1 } },
-          { type: "buff", target: { kind: "triggerSource" }, healthAmount: { kind: "flat", value: 2 }, attackAmount: { kind: "flat", value: 0 }, permanent: true },
-          { type: "destroy", target: { kind: "self" } },
-        ],
-      },
-    ],
+    // bonus disparaît avec la Structure — une unité dont les dégâts
+    // dépassent alors sa Résistance retombée meurt au contrôle de morts
+    // suivant. C'est la différence exacte entre « +2 Résistance » et
+    // « restaurez 2 Résistance ».
+    auraBuffControllerCardTypes: { targetTypes: ["marin", "creature"], healthAmount: 2 },
   },
   // --- Anti-swarm / contrôle -------------------------------------------
   // L'audit du 21/09 ne comptait que deux cartes anti-swarm au catalogue,
@@ -4832,8 +4636,7 @@ const WRITTEN_SET: CardDefinition[] = [
     cost: 3,
     maxCopies: 2,
     text:
-      "Jusqu'à votre prochain tour, après la troisième unité jouée par chaque joueur, les unités supplémentaires " +
-      "coûtent +2 Raison.",
+      "Jusqu'à votre prochain tour, chaque unité jouée après la troisième par un joueur coûte 2 Raison de plus.",
     // Une taxe SYMÉTRIQUE : elle frappe aussi celui qui la pose. C'est ce
     // qui en fait une carte de tempo et non un simple mur — on la joue
     // quand on a déjà déployé, pas pour se protéger gratuitement.
@@ -4887,8 +4690,7 @@ const WRITTEN_SET: CardDefinition[] = [
     cost: 2,
     maxCopies: 3,
     text:
-      "Brisez cet Objet : regardez les 3 premières cartes de votre pioche. Ajoutez-en une à votre main. Placez " +
-      "les autres sous votre pioche.",
+      "Regardez les 3 cartes du dessus de votre pioche. Ajoutez-en 1 à votre main, les autres sous la pioche.",
     onBreakEffects: [
       { type: "lookAtDeckTop", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 3 }, uses: 1 },
     ],
@@ -4900,7 +4702,7 @@ const WRITTEN_SET: CardDefinition[] = [
     setCode: NECESSAIRE_DU_MARIN,
     cost: 2,
     maxCopies: 3,
-    text: "Brisez cet Objet : placez jusqu'à 2 cartes de votre main sous votre pioche, puis piochez-en autant.",
+    text: "Placez jusqu'à 2 cartes de votre main sous votre pioche, puis piochez-en autant.",
     onBreakEffects: [
       { type: "handToDeckBottomThenDraw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 2 } },
     ],
@@ -4912,7 +4714,7 @@ const WRITTEN_SET: CardDefinition[] = [
     setCode: NECESSAIRE_DU_MARIN,
     cost: 3,
     maxCopies: 3,
-    text: "Brisez cet Objet : si l'adversaire contrôle plus d'unités que vous, piochez 2 cartes.",
+    text: "Si l'adversaire contrôle plus d'unités que vous, piochez 2.",
     onBreakEffects: [
       {
         type: "draw",
@@ -4929,7 +4731,7 @@ const WRITTEN_SET: CardDefinition[] = [
     setCode: NECESSAIRE_DU_MARIN,
     cost: 3,
     maxCopies: 3,
-    text: "Brisez cet Objet : si vous avez 1 carte ou moins en main, piochez 2 cartes.",
+    text: "Si vous avez 1 carte ou moins en main, piochez 2.",
     onBreakEffects: [
       {
         type: "draw",
@@ -4947,8 +4749,8 @@ const WRITTEN_SET: CardDefinition[] = [
     cost: 2,
     maxCopies: 3,
     text:
-      "Brisez cet Objet : regardez les 4 premières cartes de votre pioche. Vous pouvez ajouter un Objet parmi " +
-      "elles à votre main. Placez les autres sous votre pioche.",
+      "Regardez les 4 cartes du dessus de votre pioche. Vous pouvez prendre 1 Objet parmi elles. Placez le reste " +
+      "sous la pioche.",
     onBreakEffects: [
       {
         type: "lookAtDeckTop",
@@ -4960,14 +4762,13 @@ const WRITTEN_SET: CardDefinition[] = [
       },
     ],
   },
-  // --- Objets réactifs / défense ----------------------------------------
-  // Pendant le tour adverse, un Objet ne se Brise PAS librement : seulement
-  // quand le déclencheur écrit sur la carte survient. Chacun passe donc par
-  // une capacité `optional` accrochée à sa fenêtre, jamais par une
-  // ouverture générale.
-  //
-  // Leur coût imprimé de 4 est calibré sur le Bris DEPUIS LA MAIN, à
-  // max(1, ceil(coût / 2)) = 2 Raison (garde-fou de playtest Notion).
+  // --- Objets Chaîne / défense (refonte du 13/10/2026) -------------------
+  // « Chaîne — Lorsque … : … » : ces Objets se jouent depuis la main, au coût
+  // imprimé, sans emplacement — même plateau plein, y compris pendant le tour
+  // adverse —, dans la fenêtre que décrit leur texte. Ils montent sur la pile
+  // Chaîne ; le Bris n'a lieu qu'à la résolution réussie
+  // (`game/chain/chainStack.ts`). Coût 4 : à réévaluer (Notion, le Bris à
+  // moitié prix depuis la main n'existe plus).
   {
     id: "harpon-a-ressort",
     name: "Harpon à Ressort",
@@ -4975,17 +4776,14 @@ const WRITTEN_SET: CardDefinition[] = [
     setCode: NECESSAIRE_DU_MARIN,
     cost: 4,
     maxCopies: 2,
-    text: "Lorsqu'une unité adverse attaque, vous pouvez Briser cet Objet : infligez-lui 2 dégâts.",
-    onBreakEffects: [{ type: "damage", target: { kind: "pendingAttacker" }, amount: { kind: "flat", value: 2 } }],
+    chaine: true,
+    text: "Chaîne — Lorsqu'une unité adverse attaque : infligez-lui 2 dégâts.",
     abilities: [
       {
         trigger: "onUnitAttackDeclared",
         mode: "optional",
-        description: "Brisez Harpon à Ressort : 2 dégâts à l'attaquant.",
-        effects: [
-          { type: "damage", target: { kind: "pendingAttacker" }, amount: { kind: "flat", value: 2 } },
-          { type: "saborde", target: { kind: "self" } },
-        ],
+        description: "Harpon à Ressort : 2 dégâts à l'attaquant.",
+        effects: [{ type: "damage", target: { kind: "pendingAttacker" }, amount: { kind: "flat", value: 2 } }],
       },
     ],
   },
@@ -4996,21 +4794,16 @@ const WRITTEN_SET: CardDefinition[] = [
     setCode: NECESSAIRE_DU_MARIN,
     cost: 4,
     maxCopies: 2,
-    text:
-      "Lorsqu'une de vos unités devrait être détruite pendant le tour adverse, vous pouvez Briser cet Objet : " +
-      "elle reste en jeu avec 1 Résistance.",
-    onBreakEffects: [{ type: "surviveWithHealth", target: { kind: "triggerSource" }, amount: { kind: "flat", value: 1 } }],
+    chaine: true,
+    text: "Chaîne — Lorsqu'une unité alliée devrait être détruite pendant le tour adverse : elle reste en jeu avec 1 Résistance.",
     abilities: [
       {
         trigger: "onPermanentWouldBeDestroyed",
         triggeredBy: { cardTypes: ["marin", "creature"] },
         mode: "optional",
         condition: { duringOpponentTurn: true },
-        description: "Brisez Bouclier d'Écume : votre unité reste en jeu avec 1 Résistance.",
-        effects: [
-          { type: "surviveWithHealth", target: { kind: "triggerSource" }, amount: { kind: "flat", value: 1 } },
-          { type: "saborde", target: { kind: "self" } },
-        ],
+        description: "Bouclier d'Écume : votre unité reste en jeu avec 1 Résistance.",
+        effects: [{ type: "surviveWithHealth", target: { kind: "triggerSource" }, amount: { kind: "flat", value: 1 } }],
       },
     ],
   },
@@ -5021,19 +4814,15 @@ const WRITTEN_SET: CardDefinition[] = [
     setCode: NECESSAIRE_DU_MARIN,
     cost: 4,
     maxCopies: 2,
-    text:
-      "Lorsque votre Navire devrait subir des dégâts directs pendant le tour adverse, vous pouvez Briser cet " +
-      "Objet : réduisez-les de 3.",
-    onBreakEffects: [{ type: "reduceIncomingDamage", target: { kind: "self" }, amount: { kind: "flat", value: 3 } }],
+    chaine: true,
+    text: "Chaîne — Lorsque votre Navire devrait subir des dégâts directs pendant le tour adverse : réduisez-les de 3.",
     abilities: [
       {
         trigger: "onIncomingDirectAttack",
         mode: "optional",
-        description: "Brisez Signal de Détresse : 3 dégâts directs de moins.",
-        effects: [
-          { type: "reduceIncomingDamage", target: { kind: "self" }, amount: { kind: "flat", value: 3 } },
-          { type: "saborde", target: { kind: "self" } },
-        ],
+        condition: { duringOpponentTurn: true },
+        description: "Signal de Détresse : 3 dégâts directs de moins.",
+        effects: [{ type: "reduceIncomingDamage", target: { kind: "self" }, amount: { kind: "flat", value: 3 } }],
       },
     ],
   },
@@ -5044,21 +4833,16 @@ const WRITTEN_SET: CardDefinition[] = [
     setCode: NECESSAIRE_DU_MARIN,
     cost: 4,
     maxCopies: 2,
-    text:
-      "Lorsqu'une de vos unités est ciblée par une attaque, vous pouvez Briser cet Objet : renvoyez cette unité " +
-      "dans votre main.",
-    onBreakEffects: [{ type: "moveZone", toZone: "hand", target: { kind: "attackTarget" } }],
+    chaine: true,
+    text: "Chaîne — Lorsqu'une unité alliée est ciblée par une attaque : renvoyez-la dans votre main.",
     abilities: [
       {
         trigger: "onUnitAttackDeclared",
         mode: "optional",
-        // « une de vos UNITÉS est ciblée » : ni une attaque directe, ni une Structure attaquée.
+        // « une unité ALLIÉE est ciblée » : ni une attaque directe, ni une Structure attaquée.
         condition: { attackTargetIsOwnUnit: true },
-        description: "Brisez Corde de Rappel : l'unité visée rentre dans votre main.",
-        effects: [
-          { type: "moveZone", toZone: "hand", target: { kind: "attackTarget" } },
-          { type: "saborde", target: { kind: "self" } },
-        ],
+        description: "Corde de Rappel : l'unité visée rentre dans votre main.",
+        effects: [{ type: "moveZone", toZone: "hand", target: { kind: "attackTarget" } }],
       },
     ],
   },
@@ -5069,10 +4853,8 @@ const WRITTEN_SET: CardDefinition[] = [
     setCode: NECESSAIRE_DU_MARIN,
     cost: 4,
     maxCopies: 2,
-    text:
-      "Lorsqu'une unité adverse inflige des dégâts directs à votre Navire, vous pouvez Briser cet Objet : " +
-      "infligez-lui 2 dégâts.",
-    onBreakEffects: [{ type: "damage", target: { kind: "pendingAttacker" }, amount: { kind: "flat", value: 2 } }],
+    chaine: true,
+    text: "Chaîne — Lorsqu'une unité adverse inflige des dégâts directs à votre Navire : infligez-lui 2 dégâts.",
     abilities: [
       {
         // Le moteur n'a qu'une fenêtre pour « dégâts directs au Navire », et
@@ -5083,11 +4865,8 @@ const WRITTEN_SET: CardDefinition[] = [
         mode: "optional",
         // « une UNITÉ adverse inflige » : pas un tir de Navire.
         condition: { attackFromUnit: true },
-        description: "Brisez Contre-Harpon : 2 dégâts à l'unité qui frappe votre coque.",
-        effects: [
-          { type: "damage", target: { kind: "pendingAttacker" }, amount: { kind: "flat", value: 2 } },
-          { type: "saborde", target: { kind: "self" } },
-        ],
+        description: "Contre-Harpon : 2 dégâts à l'unité qui frappe votre coque.",
+        effects: [{ type: "damage", target: { kind: "pendingAttacker" }, amount: { kind: "flat", value: 2 } }],
       },
     ],
   },
@@ -5103,7 +4882,7 @@ const WRITTEN_SET: CardDefinition[] = [
     setCode: NECESSAIRE_DU_MARIN,
     cost: 4,
     maxCopies: 3,
-    text: "Brisez cet Objet : infligez 2 dégâts à une unité.",
+    text: "Infligez 2 dégâts à une unité.",
     onBreakEffects: [
       {
         type: "damage",
@@ -5121,7 +4900,7 @@ const WRITTEN_SET: CardDefinition[] = [
     setCode: NECESSAIRE_DU_MARIN,
     cost: 3,
     maxCopies: 3,
-    text: "Renvoyez une unité de coût 3 ou moins dans la main de son propriétaire.",
+    text: "Renvoyez une unité de coût 3 ou moins en main de son propriétaire.",
     onPlayEffects: [
       {
         type: "moveZone",
@@ -5154,9 +4933,18 @@ const WRITTEN_SET: CardDefinition[] = [
     setCode: NECESSAIRE_DU_MARIN,
     cost: 4,
     maxCopies: 2,
-    text: "Brisez cet Objet : détruisez un Objet adverse.",
-    onBreakEffects: [
-      { type: "destroy", target: { kind: "chosenUnit", among: { opponentOnly: true, cardTypes: ["objet"] } } },
+    chaine: true,
+    // Refonte du 13/10/2026 : un contre-Objet. L'Objet annulé ne se résout
+    // pas, n'est pas Brisé, part au Cimetière et son coût reste payé.
+    text: "Chaîne — Lorsqu'un adversaire joue un Objet : annulez son effet.",
+    abilities: [
+      {
+        trigger: "onObjectPlayed",
+        triggeredBy: { opponentOnly: true },
+        mode: "optional",
+        description: "Sabotage Discret : annulez l'effet de l'Objet adverse.",
+        effects: [{ type: "cancelObjectEffect", target: { kind: "triggerSource" } }],
+      },
     ],
   },
   {
@@ -5166,7 +4954,7 @@ const WRITTEN_SET: CardDefinition[] = [
     setCode: NECESSAIRE_DU_MARIN,
     cost: 6,
     maxCopies: 2,
-    text: "Brisez cet Objet : détruisez une Structure adverse.",
+    text: "Détruisez une Structure adverse.",
     onBreakEffects: [
       { type: "destroy", target: { kind: "chosenUnit", among: { opponentOnly: true, cardTypes: ["structure"] } } },
     ],
@@ -5178,7 +4966,7 @@ const WRITTEN_SET: CardDefinition[] = [
     setCode: NECESSAIRE_DU_MARIN,
     cost: 4,
     maxCopies: 2,
-    text: "Brisez cet Objet : détruisez un Équipement.",
+    text: "Détruisez un Équipement.",
     onBreakEffects: [
       // Sans restriction de camp : le texte dit « un Équipement », pas « un
       // Équipement adverse ».
@@ -5197,7 +4985,7 @@ const WRITTEN_SET: CardDefinition[] = [
     setCode: NECESSAIRE_DU_MARIN,
     cost: 2,
     maxCopies: 3,
-    text: "Brisez cet Objet : restaurez 2 Résistance à une unité.",
+    text: "Restaurez 2 Résistance à une unité.",
     onBreakEffects: [
       {
         type: "heal",
@@ -5213,7 +5001,7 @@ const WRITTEN_SET: CardDefinition[] = [
     setCode: NECESSAIRE_DU_MARIN,
     cost: 4,
     maxCopies: 2,
-    text: "Brisez cet Objet : restaurez jusqu'à 4 Résistance répartie entre les unités que vous contrôlez.",
+    text: "Restaurez jusqu'à 4 Résistance répartie entre les unités que vous contrôlez.",
     onBreakEffects: [
       { type: "healDistributed", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 4 } },
     ],
@@ -5225,7 +5013,7 @@ const WRITTEN_SET: CardDefinition[] = [
     setCode: NECESSAIRE_DU_MARIN,
     cost: 4,
     maxCopies: 2,
-    text: "Brisez cet Objet : récupérez 1 Ancrage par emplacement libre sur votre board, maximum 3.",
+    text: "Récupérez 1 Ancrage par emplacement libre (maximum 3).",
     // L'exact opposé d'une carte anti-swarm : elle rend d'autant plus que
     // le plateau est vide. C'est ce qui en fait un comeback et non une
     // carte de tempo.
@@ -5240,11 +5028,9 @@ const WRITTEN_SET: CardDefinition[] = [
     setCode: NECESSAIRE_DU_MARIN,
     cost: 5,
     maxCopies: 2,
-    text:
-      "Brisez cet Objet : récupérez 4 Ancrage. Jouable uniquement si vous avez perdu au moins la moitié de votre " +
-      "Ancrage initial.",
+    text: "Si vous avez perdu au moins la moitié de votre Ancrage initial : récupérez 4 Ancrage.",
     // La condition porte sur la POSE comme sur le Bris DEPUIS LA MAIN (autre
-    // façon de jouer la carte, `breakObject`) : une carte qu'on ne peut pas
+    // façon de jouer la carte) : une carte qu'on ne peut pas
     // jouer reste en main, et rien n'est dépensé. Une fois posée, son Bris
     // depuis le plateau n'est plus conditionné — elle a déjà été jouée.
     playableOnlyIf: { controllerAnchorAtMostRatioOfStart: 0.5 },
@@ -5267,7 +5053,7 @@ const WRITTEN_SET: CardDefinition[] = [
     attack: 4,
     health: 5,
     maxCopies: 2,
-    text: "À son arrivée, infligez 2 dégâts à une unité déjà blessée.",
+    text: "À l'arrivée : infligez 2 dégâts à une unité déjà blessée.",
     onPlayEffects: [
       {
         type: "damage",
@@ -5286,7 +5072,7 @@ const WRITTEN_SET: CardDefinition[] = [
     attack: 3,
     health: 6,
     maxCopies: 2,
-    text: "À son arrivée, restaurez jusqu'à 3 Résistance répartie entre les unités que vous contrôlez.",
+    text: "À l'arrivée : restaurez jusqu'à 3 Résistance répartie entre vos unités.",
     onPlayEffects: [
       { type: "healDistributed", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 3 } },
     ],
@@ -5304,7 +5090,7 @@ const WRITTEN_SET: CardDefinition[] = [
     attack: 5,
     health: 6,
     maxCopies: 2,
-    text: "À son arrivée, si l'adversaire contrôle au moins 4 unités, infligez 1 dégât à toutes les unités adverses.",
+    text: "À l'arrivée : si l'adversaire contrôle au moins 4 unités, infligez 1 dégât à toutes ses unités.",
     onPlayEffects: [
       {
         type: "damage",
@@ -5334,7 +5120,7 @@ const WRITTEN_SET: CardDefinition[] = [
     keywords: ["garde"],
     // Standard Verrier (30/09/2026, validé par le propriétaire) : la Forteresse
     // « encaisse, grandit, frappe ». Coût et statistiques inchangés.
-    text: "Garde. La première fois à chaque tour qu'il survit à des dégâts, infligez 2 dégâts au Navire adverse.",
+    text: "Garde. Une fois par tour, lorsqu'il survit à des dégâts, infligez 2 dégâts au Navire adverse.",
     abilities: [
       {
         trigger: "onSurvivedDamage",
@@ -5355,8 +5141,7 @@ const WRITTEN_SET: CardDefinition[] = [
     health: 7,
     maxCopies: 1,
     text:
-      "À son arrivée, si l'adversaire contrôle plus d'unités que vous, détruisez une unité de coût 3 ou moins " +
-      "qu'il contrôle.",
+      "À l'arrivée : si l'adversaire a plus d'unités que vous, détruisez une de ses unités de coût 3 ou moins.",
     onPlayEffects: [
       {
         type: "destroy",
@@ -5395,7 +5180,7 @@ const WRITTEN_SET: CardDefinition[] = [
     attack: 8,
     health: 9,
     maxCopies: 1,
-    text: "À son arrivée, infligez 2 dégâts à toutes les autres unités de coût 2 ou moins.",
+    text: "À l'arrivée, infligez 2 dégâts à toutes les autres unités de coût 2 ou moins.",
     // « toutes les AUTRES » : `excludeSelf` écarte le Léviathan lui-même,
     // qui de toute façon ne passerait pas le plafond de coût — mais le
     // texte le dit, donc la définition le dit.
@@ -5425,7 +5210,7 @@ const WRITTEN_SET: CardDefinition[] = [
     // qui jouent naturellement peu d'unités. Effet inchangé.
     cost: 2,
     maxCopies: 1,
-    text: "Chaque joueur choisit jusqu'à 2 unités qu'il contrôle. Détruisez toutes les autres.",
+    text: "Chaque joueur conserve jusqu'à 2 de ses unités. Détruisez les autres.",
     onPlayEffects: [{ type: "keepUnitsDestroyRest", target: { kind: "allPlayers" }, uses: 2 }],
   },
   {
@@ -5510,17 +5295,35 @@ export function canBeEquipTarget(
   board: CardInstance[],
   candidate: CardInstance
 ): boolean {
+  return equipTargetRefusal(equipmentDef, board, candidate) === null;
+}
+
+/**
+ * Pourquoi cette carte ne peut PAS recevoir cet Équipement (`null` : elle
+ * le peut). Refonte du 13/10/2026 : un seul Équipement par porteur, jamais
+ * de remplacement ; une Structure seulement si le texte de l'Équipement la
+ * désigne. Le motif s'affiche sur les cibles interdites.
+ */
+export function equipTargetRefusal(equipmentDef: CardDefinition, board: CardInstance[], candidate: CardInstance): string | null {
   const candidateDef = getCardDefinition(candidate.cardId);
   const allowedTypes = equipmentDef.equipTargetTypes ?? EQUIPPABLE_CARD_TYPES;
-  if (!allowedTypes.includes(candidateDef.type)) return false;
+  if (!allowedTypes.includes(candidateDef.type)) {
+    return candidateDef.type === "structure" ? "Cet Équipement ne peut pas équiper une Structure." : "Cette carte ne peut pas porter cet Équipement.";
+  }
   // "Équipez un Cra-Poiscail" : la famille restreint la cible en plus du type.
-  if (equipmentDef.equipTargetArchetype && candidateDef.archetype !== equipmentDef.equipTargetArchetype) return false;
+  if (equipmentDef.equipTargetArchetype && candidateDef.archetype !== equipmentDef.equipTargetArchetype) return "Cet Équipement vise une autre famille.";
   // "Équipez une unité Un Dead" : même restriction, exprimée en sous-type.
   // Tous ses sous-types comptent, et ceux que lui donnent ses marqueurs (Lot 18 : « un Mort-vivant »).
-  if (equipmentDef.equipTargetSubtype && !unitHasSubtype(candidateDef, candidate, equipmentDef.equipTargetSubtype)) return false;
-  return !board.some(
-    (u) => u.instanceId !== candidate.instanceId && u.attachedToInstanceId === candidate.instanceId
-  );
+  if (equipmentDef.equipTargetSubtype && !unitHasSubtype(candidateDef, candidate, equipmentDef.equipTargetSubtype)) return "Cet Équipement vise un autre type d'unité.";
+  if (board.some((u) => u.instanceId !== candidate.instanceId && u.attachedToInstanceId === candidate.instanceId)) {
+    return "Déjà équipée : un seul Équipement par porteur.";
+  }
+  return null;
+}
+
+/** L'Équipement attaché à ce porteur, s'il en a un (au plus un). */
+export function equipmentOf(board: readonly CardInstance[], carrierInstanceId: string): CardInstance | undefined {
+  return board.find((u) => u.attachedToInstanceId === carrierInstanceId && getCardDefinition(u.cardId).type === "equipement");
 }
 
 /** Au moins un permanent du plateau donné peut-il recevoir cet Équipement ? Détermine si sa pose doit exiger une cible ou peut être jouée sans lien ("si possible"). */

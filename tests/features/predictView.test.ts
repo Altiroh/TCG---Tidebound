@@ -29,6 +29,24 @@ function openedHiddenWindow(state: GameState): boolean {
   return Boolean(state.pendingReaction || state.pendingChoice || state.pendingDestruction);
 }
 
+/**
+ * Une Structure adverse masquée par la Marée peut AGIR masquée (effet unique
+ * « actif même masqué », `activeWhileHidden`, 13/10/2026 : Chaîne de Travers,
+ * Barils de Poudre…). La vue n'en connaît pas l'identité : la prédiction ne
+ * peut pas deviner son effet, et la réponse du serveur fait foi.
+ */
+function opponentHasMaskedCard(view: GameState, playerId: string): boolean {
+  return view.players.some((p) => p.id !== playerId && p.board.some((u) => u.cardId === "__hidden__"));
+}
+
+/** La prédiction colle-t-elle au serveur — ou l'écart s'explique-t-il par une carte adverse masquée ? */
+function sameOrMasked(prediction: GameState, server: GameState, view: GameState, actor: string): boolean {
+  const attendu = visible(toPlayerView(server, actor), actor);
+  if (opponentHasMaskedCard(view, actor) && JSON.stringify(visible(prediction, actor)) !== JSON.stringify(attendu)) return false;
+  expect(visible(prediction, actor)).toEqual(attendu);
+  return true;
+}
+
 const GRAINES = [1, 102_947];
 
 describe("predictView", () => {
@@ -63,7 +81,7 @@ describe("predictView", () => {
             hiddenWindows++;
             continue;
           }
-          expect(visible(prediction, actor)).toEqual(visible(toPlayerView(server.state, actor), actor));
+          if (!sameOrMasked(prediction, server.state, view, actor)) hiddenWindows++;
         }
         // Poser réellement ce qui peut l'être : sans unité sur la table, il n'y aurait rien à attaquer.
         for (let posed = 0; posed < 3; posed++) {
@@ -88,7 +106,7 @@ describe("predictView", () => {
               hiddenWindows++;
               continue;
             }
-            expect(visible(prediction, actor)).toEqual(visible(toPlayerView(server.state, actor), actor));
+            if (!sameOrMasked(prediction, server.state, toPlayerView(combat, actor), actor)) hiddenWindows++;
           }
         }
         const ended = dispatch(state, { type: "endTurn", playerId: actor });
@@ -99,8 +117,9 @@ describe("predictView", () => {
     expect(predictedCount).toBeGreaterThan(0);
     expect(phaseChangesPredicted).toBeGreaterThan(0);
     // Tout écart restant est expliqué par une fenêtre que le serveur a
-    // ouverte depuis une carte cachée (`openedHiddenWindow`) : la prédiction
-    // ne se trompe jamais EN SILENCE. Ces fenêtres-là existent (réactions
+    // ouverte depuis une carte cachée (`openedHiddenWindow`), ou par une
+    // Structure adverse masquée qui agit (`opponentHasMaskedCard`) : la
+    // prédiction ne se trompe jamais EN SILENCE. Ces fenêtres-là existent (réactions
     // depuis la main adverse), et c'est la réponse du serveur qui fait foi.
     expect(hiddenWindows).toBeLessThan(predictedCount);
   });

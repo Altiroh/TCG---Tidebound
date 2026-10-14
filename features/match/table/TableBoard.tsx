@@ -12,7 +12,6 @@ import {
   condemnedSlots,
   findAssemblage,
   playCardRefusal,
-  previewBreakReason,
   previewPlayCardReason,
   attacksAllowed,
   attacksRemaining,
@@ -21,6 +20,9 @@ import {
   deraisonAnchorDamage,
   getCardDefinition,
   getShipDefinition,
+  equipmentOf,
+  equipmentResistance,
+  equipTargetRefusal,
   hasResistance,
   isVisibleDuringTide,
   landeRemainingTableTurns,
@@ -64,7 +66,6 @@ import { OngoingEffects } from "@/features/match/table/OngoingEffects";
 import { LandeLayer } from "@/features/match/landes/LandeLayer";
 import { landeAsset, landeScene } from "@/features/match/landes/landeScenes";
 import { DragLayer, type AimTone } from "@/features/match/table/DragLayer";
-import { EquipLinks } from "@/features/match/table/EquipLinks";
 import { GameStage } from "@/features/match/table/GameStage";
 import { GameViewport } from "@/features/match/table/GameViewport";
 import { CardRulesPanel } from "@/features/match/table/CardRulesPanel";
@@ -154,9 +155,7 @@ export interface TableBoardProps {
   onPlayCard: (instanceId: string, targetInstanceId?: string, boardSlot?: number) => void;
   /** Attaque — sans défenseur : le Navire adverse. */
   onAttack: (attackerInstanceId: string, defenderInstanceId?: string) => void;
-  /** Objet posé lâché sur une cible (effet de bris ciblé). */
-  onBreakOnTarget: (objectInstanceId: string, targetInstanceId: string) => void;
-  /** Carte lâchée sur le crâne du joueur : Sabordage, ou invite de bris pour un Objet. */
+  /** Carte lâchée sur le crâne du joueur : Sabordage d'un permanent, ou un Objet de la main qui se joue. */
   onDropOnGraveyard: (instanceId: string, from: "hand" | "board") => void;
   /**
    * Limite de main en fin de tour : les cartes de la main se glissent sur
@@ -407,20 +406,6 @@ export function TableBoard(props: TableBoardProps) {
   }
   const motion = useTableMotion(state, viewerId, (instance) => renderFace(instance));
 
-  // Équipement → porteur, pour le trait qui les relie. L'attachement ne
-  // traverse jamais les plateaux (`game/cards/types.ts`), mais les deux
-  // camps en posent : on lit les deux.
-  const boardKey = state.players.map((p) => p.board.map((u) => u.instanceId).join(",")).join("|");
-  const attachments = useMemo(() => {
-    const map: Record<string, string> = {};
-    for (const player of state.players) {
-      for (const unit of player.board) {
-        if (unit.attachedToInstanceId) map[unit.instanceId] = unit.attachedToInstanceId;
-      }
-    }
-    return map;
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- indexé sur la composition des plateaux, pas sur l'objet `state` entier.
-  }, [boardKey]);
 
   /*
    * Aperçu au survol (`HoverCardPreview`) : la carte sous la souris, rendue
@@ -502,14 +487,8 @@ export function TableBoard(props: TableBoardProps) {
     return legalTargetsFor(state, viewerId, { kind: "playCard", sourceInstanceId: instance.instanceId });
   }
 
-  /** Objet posé dont l'effet de bris demande une cible : il se glisse sur elle. */
-  function breakTargets(instance: CardInstance): Set<string> | null {
-    if (getCardDefinition(instance.cardId).type !== "objet" || !canPlayCards) return null;
-    return legalTargetsFor(state, viewerId, { kind: "break", sourceInstanceId: instance.instanceId });
-  }
-
   /**
-   * Cibles légales du ciblage EN COURS côté conteneur (carte de main, bris,
+   * Cibles légales du ciblage EN COURS côté conteneur (carte de main,
    * réaction, capacité, attaque…) : elles s'éclairent, et un toucher ne
    * désigne qu'elles. `null` : le conteneur tranche seul.
    */
@@ -579,7 +558,7 @@ export function TableBoard(props: TableBoardProps) {
       if (!entry) return false;
       const { instance } = entry;
       // Un geste qui PART de la main — poser, lancer, ou glisser sur le
-      // crâne pour Briser — est soumis à la restriction du tutoriel ; les
+      // crâne pour jouer un Objet — est soumis à la restriction du tutoriel ; les
       // gestes qui partent du plateau (attaquer, Saborder) n'y sont pas.
       const fromHand = viewer.hand.some((card) => card.instanceId === sourceId);
       // Main trop pleine en fin de tour : la carte ne va qu'au Cimetière.
@@ -611,9 +590,7 @@ export function TableBoard(props: TableBoardProps) {
         if (drop === "graveyard") return canPlayCards && !gesture?.armed;
         // Déluge : ses attaques ne visent jamais le Navire.
         if (drop === "ship") return attackReady(instance) && canAttackShipDirectly(instance, state);
-        if (drop.startsWith("unit:") && attackReady(instance)) return true;
-        const targets = breakTargets(instance);
-        return Boolean(targets && (drop.startsWith("own:") || drop.startsWith("unit:")) && targets.has(dropId(drop)));
+        return drop.startsWith("unit:") && attackReady(instance);
       }
       return false;
     },
@@ -661,12 +638,11 @@ export function TableBoard(props: TableBoardProps) {
         // AU DOIGT, une unité lâchée sur le Cimetière n'est pas Sabordée
         // d'office : un glisser du pouce dérape vite, et la carte est
         // perdue. Elle s'affiche en grand, le Sabordage à confirmer d'un
-        // bouton. (Un Objet pose déjà sa question : Briser ou Saborder.)
-        if (gesture?.touch && entry && getCardDefinition(entry.instance.cardId).type !== "objet") setZoom({ id: sourceId, confirmSaborder: true });
+        // bouton.
+        if (gesture?.touch && entry) setZoom({ id: sourceId, confirmSaborder: true });
         else props.onDropOnGraveyard(sourceId, "board");
       } else if (drop === "ship") props.onAttack(sourceId);
       else if (entry && drop.startsWith("unit:") && attackReady(entry.instance)) props.onAttack(sourceId, dropId(drop));
-      else props.onBreakOnTarget(sourceId, dropId(drop));
     },
     canArm: (sourceId) => {
       const entry = byId.get(sourceId);
@@ -744,7 +720,6 @@ export function TableBoard(props: TableBoardProps) {
   const aiming = gesture?.kind === "aim" ? gesture : null;
   const aimSource = aiming ? byId.get(aiming.sourceId)?.instance : undefined;
   const aimAttacks = aimSource ? attackReady(aimSource) : false;
-  const aimBreakTargets = aimSource ? breakTargets(aimSource) : null;
   const castTargets = casting ? handTargets.get(casting.sourceId) ?? null : null;
   // Le Géant en cours de glisser : ses Sentinelles s'éclairent, c'est là qu'on le lâche pour Assembler.
   const placingAssemblage = placing ? assemblageSentinels(placing.sourceId) : null;
@@ -760,7 +735,7 @@ export function TableBoard(props: TableBoardProps) {
   }, [zoomGone]);
 
   // SENS du ciblage en cours : rouge s'il nuit à la cible, bleu s'il l'aide.
-  const polarityOf = (id: string, kind: "playCard" | "break" | "ability" | "reaction", abilityIndex?: number): TargetPolarity => {
+  const polarityOf = (id: string, kind: "playCard" | "ability" | "reaction", abilityIndex?: number): TargetPolarity => {
     const cardId = byId.get(id)?.instance.cardId;
     return cardId ? sourcePolarity(cardId, kind, abilityIndex) : "friendly";
   };
@@ -768,15 +743,13 @@ export function TableBoard(props: TableBoardProps) {
     ? polarityOf(casting.sourceId, "playCard")
     : abilityDrag
       ? polarityOf(abilityDrag.sourceId, "ability")
-      : aimSource && !aimAttacks
-        ? polarityOf(aimSource.instanceId, "break")
-        : targeting?.kind === "playCard" || targeting?.kind === "break" || targeting?.kind === "ability"
-          ? polarityOf(targeting.sourceInstanceId, targeting.kind)
-          : targeting?.kind === "reaction"
-            ? polarityOf(targeting.sourceInstanceId, "reaction", targeting.abilityIndex)
-            : targeting?.kind === "arrival"
-              ? polarityOf(targeting.sourceInstanceId, "reaction", targeting.abilityIndexes[0])
-              : "friendly";
+      : targeting?.kind === "playCard" || targeting?.kind === "ability"
+        ? polarityOf(targeting.sourceInstanceId, targeting.kind)
+        : targeting?.kind === "reaction"
+          ? polarityOf(targeting.sourceInstanceId, "reaction", targeting.abilityIndex)
+          : targeting?.kind === "arrival"
+            ? polarityOf(targeting.sourceInstanceId, "reaction", targeting.abilityIndexes[0])
+            : "friendly";
   // Effet d'arrivée à plusieurs modes : chaque cible prend la couleur de SON mode
   // (bleue pour le bonus sur une alliée, rouge pour le malus sur une ennemie).
   const arrivalTone = new Map<string, TargetPolarity>();
@@ -787,7 +760,7 @@ export function TableBoard(props: TableBoardProps) {
     }
   }
   const tone: AimTone =
-    casting || abilityDrag || (aimSource && !aimAttacks)
+    casting || abilityDrag
       ? activePolarity === "hostile"
         ? "effect"
         : "boon"
@@ -811,35 +784,42 @@ export function TableBoard(props: TableBoardProps) {
     targeting?.kind === "ability" ? abilityTargetsOf(targeting.sourceInstanceId) : abilityDrag ? abilityTargetsOf(abilityDrag.sourceId) : null;
 
   // ── Rendu d'une carte en jeu ────────────────────────────────────────
+  /**
+   * Équipement en cours de pose (glissé, ou touché puis en attente de sa
+   * cible) : sa définition, pour dire sur chaque carte pourquoi elle ne peut
+   * pas le recevoir.
+   */
+  const equipEnPose = (() => {
+    const sourceId = casting?.sourceId ?? (targeting?.kind === "playCard" ? targeting.sourceInstanceId : undefined);
+    const source = sourceId ? viewer.hand.find((c) => c.instanceId === sourceId) : undefined;
+    const sourceDef = source ? getCardDefinition(source.cardId) : undefined;
+    return sourceDef?.type === "equipement" ? sourceDef : undefined;
+  })();
+
   function renderBoardCard(card: TableCardModel, owner: PlayerState) {
     const instance = byId.get(card.id)?.instance;
     if (!instance) return null;
     const mine = owner.id === viewerId;
     const def = getCardDefinition(instance.cardId);
+    // ÉQUIPEMENT ATTACHÉ (refonte du 13/10/2026) : il ne prend pas de case,
+    // il se glisse DERRIÈRE sa carte, en quinconce en bas à droite — visible,
+    // et touchable pour l'agrandir.
+    const equipement = equipmentOf(owner.board, instance.instanceId);
+    const equipementDef = equipement ? getCardDefinition(equipement.cardId) : undefined;
+    const refusEquipement = equipEnPose && mine ? equipTargetRefusal(equipEnPose, owner.board, instance) : null;
     const visible = isVisibleDuringTide(def, tideState);
     const drop = `${mine ? "own" : "unit"}:${card.id}`;
     const ready = mine && attackReady(instance);
-    // Ciblage du conteneur (carte de main touchée, bris, réaction,
+    // Ciblage du conteneur (carte de main touchée, réaction,
     // capacité) : ses cibles légales s'éclairent comme au glisser.
     const selectionTarget =
       targeting !== null && targeting.kind !== "attack" && targeting.kind !== "shipShot" && (selectionTargets?.has(card.id) ?? false);
     const effectTarget =
       selectionTarget ||
       (castTargets?.has(card.id) ?? false) ||
-      (aimBreakTargets?.has(card.id) ?? false) ||
       (abilityTargets?.has(card.id) ?? false) ||
       (placingAssemblage?.has(card.id) ?? false) ||
       (anyTargeting && hasResistance(def));
-    // Objet posé qui peut être Brisé maintenant (son effet s'applique) : il luit, comme une capacité activable.
-    const breakable =
-      mine &&
-      canPlayCards &&
-      !gesture &&
-      !targeting &&
-      def.type === "objet" &&
-      (previewBreakReason(state, viewerId, card.id, false)?.allowed ?? false) &&
-      (!def.requiresTideStateForBreak || def.requiresTideStateForBreak.includes(tideState)) &&
-      (breakTargets(instance)?.size ?? 1) > 0;
     // « Une fois par tour, vous pouvez… » : proposé seulement quand le moteur l'accepterait.
     const activatable =
       mine &&
@@ -866,7 +846,7 @@ export function TableBoard(props: TableBoardProps) {
       (targeting !== null && selectionTargets !== null) ||
       casting !== null ||
       abilityDrag !== null ||
-      (aiming !== null && (aimAttacks || aimBreakTargets !== null));
+      (aiming !== null && aimAttacks);
     const dimmed =
       targetingActive && !targetable && !held && targeting?.sourceInstanceId !== card.id && aiming?.sourceId !== card.id && abilityDrag?.sourceId !== card.id;
 
@@ -915,11 +895,48 @@ export function TableBoard(props: TableBoardProps) {
           targetable && hover === drop ? styles.targetHover : "",
           targeting?.sourceInstanceId === card.id ? styles.aimSource : "",
           dimmed ? styles.targetDim : "",
-          props.reactionSourceIds?.includes(card.id) || activatable || breakable ? "animate-reaction-pulse" : "",
+          props.reactionSourceIds?.includes(card.id) || activatable ? "animate-reaction-pulse" : "",
           // Effet d'arrivée en réserve : la carte luit (or) tant qu'on peut l'activer ce tour.
           mine && !targeting && props.arrivalReadyIds?.includes(card.id) ? styles.arrivalReady : "",
         ].join(" ")}
       >
+        {equipement && equipementDef && (
+          <div
+            role="button"
+            tabIndex={0}
+            className={styles.equipTuck}
+            data-card-id={equipement.instanceId}
+            data-equip-tuck={equipement.instanceId}
+            aria-label={`${equipementDef.name} — Équipement de ${def.name}, +${equipmentResistance(equipementDef)} Résistance : voir en grand`}
+            title={`${equipementDef.name} : ${equipementDef.text}`}
+            {...previewHandlers(equipement.instanceId)}
+            // Le geste de la carte porteuse ne doit pas partir de son Équipement.
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={(event) => {
+              event.stopPropagation();
+              setZoom({ id: equipement.instanceId });
+            }}
+            onKeyDown={(event) => {
+              if (event.key !== "Enter" && event.key !== " ") return;
+              event.preventDefault();
+              setZoom({ id: equipement.instanceId });
+            }}
+          >
+            <CardTile
+              instance={equipement}
+              tideState={tideState}
+              widthClassName="w-full"
+              scaleOnHover={false}
+              showStatusBadges={false}
+              variant="board"
+            />
+          </div>
+        )}
+        {refusEquipement && (
+          <span className={styles.equipForbidden} role="note">
+            {refusEquipement}
+          </span>
+        )}
         {!mine && !visible ? (
           // Structure invisible pour cette Marée : l'adversaire ne voit que le dos.
           // eslint-disable-next-line @next/next/no-img-element -- dos de carte de l'adversaire
@@ -1043,22 +1060,6 @@ export function TableBoard(props: TableBoardProps) {
           },
         });
       }
-      // Un Objet se Brise aussi depuis la main — l'invite dit le prix et l'effet.
-      if (def.type === "objet") {
-        const breakPreview = previewBreakReason(state, viewerId, id, true);
-        if (breakPreview && !breakPreview.reactionOnly) {
-          actions.push({
-            label: "Briser depuis la main…",
-            tone: "neutral",
-            disabled: !breakPreview.allowed,
-            note: breakPreview.allowed ? undefined : "Le Bris est bloqué pour l'instant.",
-            onAction: () => {
-              close();
-              props.onDropOnGraveyard(id, "hand");
-            },
-          });
-        }
-      }
       return actions;
     }
 
@@ -1069,9 +1070,7 @@ export function TableBoard(props: TableBoardProps) {
       const activate = props.onActivateAbility;
       actions.push({ label: "Activer", onAction: () => { close(); activate(id); } });
     }
-    if (def.type === "objet") {
-      actions.push({ label: "Briser ou Saborder…", tone: "neutral", onAction: () => { close(); props.onDropOnGraveyard(id, "board"); } });
-    } else if (confirmSaborder) {
+    if (confirmSaborder) {
       actions.push({
         label: "Confirmer le Sabordage",
         tone: "danger",
@@ -1426,7 +1425,6 @@ export function TableBoard(props: TableBoardProps) {
           />
         </GameStage>
 
-        <EquipLinks attachments={attachments} layoutKey={boardKey} />
 
         <MotionLayer flights={motion.flights} />
         {(() => {

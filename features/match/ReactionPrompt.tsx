@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { getCardDefinition, isAbyssalVariant, type PendingReactionCandidate } from "@/game";
+import { getCardDefinition, isAbyssalVariant, type ChainLink, type PendingReactionCandidate } from "@/game";
 import { useImageOk } from "@/features/match/useImageOk";
 import { playButtonClick, playReactionWindow } from "@/lib/sound";
 import glass from "@/features/match/LiquidGlass.module.css";
@@ -38,6 +38,14 @@ interface ReactionPromptProps {
    * rien ». Le joueur peut appliquer quand même, il le fait en le sachant.
    */
   warningFor?: (candidate: PendingReactionCandidate) => string | null;
+  /**
+   * La pile Chaîne en attente (`GameState.chainStack`) : ce à quoi la
+   * fenêtre répond, dans l'ordre où cela se résoudra — le dernier joué
+   * d'abord.
+   */
+  chain?: readonly ChainLink[];
+  /** Joueur qui regarde : « vous » ou « l'adversaire » sur chaque maillon. */
+  viewerId?: string;
 }
 
 /**
@@ -65,7 +73,7 @@ interface ReactionPromptProps {
  * fenêtre automatiquement — jamais bloquer la partie indéfiniment en
  * attente d'une décision facultative.
  */
-export function ReactionPrompt({ candidates, onActivateMany, onPass, warningFor }: ReactionPromptProps) {
+export function ReactionPrompt({ candidates, onActivateMany, onPass, warningFor, chain, viewerId }: ReactionPromptProps) {
   /**
    * Panneau replié en pastille, le temps de REGARDER le plateau : sur un
    * téléphone couché, sa bande couvre l'emplacement de droite des deux
@@ -134,6 +142,8 @@ export function ReactionPrompt({ candidates, onActivateMany, onPass, warningFor 
             </svg>
           </button>
 
+          {chain && chain.length > 0 && <ChainStackStrip chain={chain} viewerId={viewerId} />}
+
           {candidates.length === 1 ? (
             <SingleCandidate candidate={candidates[0]!} warning={warningFor?.(candidates[0]!) ?? null} onActivate={() => onActivateMany([candidates[0]!])} onPass={handlePass} />
           ) : (
@@ -184,6 +194,36 @@ function CardThumb({ cardId, className = "h-16 w-16" }: { cardId: string; classN
   );
 }
 
+/**
+ * LA PILE CHAÎNE, en tête de fenêtre : chaque Objet en attente, du haut
+ * (résolu en premier) vers le bas. Répondre ajoute un maillon AU-DESSUS :
+ * il se résoudra avant tout ce qui est listé ici.
+ */
+function ChainStackStrip({ chain, viewerId }: { chain: readonly ChainLink[]; viewerId?: string }) {
+  const ordre = [...chain].reverse();
+  return (
+    <div className="mb-3 shrink-0 text-left [@media(max-height:520px)]:mb-2">
+      <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-white/55">Chaîne — ordre de résolution</p>
+      <ol className="flex flex-col gap-1">
+        {ordre.map((link, index) => {
+          const def = getCardDefinition(link.card.cardId);
+          return (
+            <li key={link.id} className="flex items-center gap-2 rounded-xl bg-white/[0.07] px-2 py-1">
+              <span className="w-4 shrink-0 text-center text-xs font-bold text-white/60">{index + 1}</span>
+              <CardThumb cardId={link.card.cardId} className="h-8 w-8" />
+              <span className="min-w-0 flex-1 truncate text-xs text-white">
+                {def.name}
+                <span className="text-white/50">{viewerId ? (link.playerId === viewerId ? " · vous" : " · adversaire") : ""}</span>
+              </span>
+              {link.cancelled && <span className="shrink-0 text-[10px] font-semibold uppercase text-amber-200">annulé</span>}
+            </li>
+          );
+        })}
+      </ol>
+    </div>
+  );
+}
+
 /** Barre qui s'épuise sous le bouton de refus, cf. `@keyframes reaction-countdown` (app/globals.css). */
 function CountdownBar() {
   return (
@@ -221,7 +261,11 @@ function SingleCandidate({
         {/* Ce que ça fait d'abord — se lit en un coup d'œil, avant la question. */}
         <p className="text-sm font-semibold leading-snug text-white">{ability?.description ?? def.text}</p>
 
-        <p className="text-xs leading-snug text-white/60">{`Voulez-vous appliquer l'effet de ${def.name} ?`}</p>
+        <p className="text-xs leading-snug text-white/60">
+          {candidate.fromHand && def.type === "objet"
+            ? `Jouer ${def.name} depuis votre main (Chaîne) ?`
+            : `Voulez-vous appliquer l'effet de ${def.name} ?`}
+        </p>
 
         {warning && (
           <p role="note" className="rounded-xl border border-amber-300/40 bg-amber-400/15 px-3 py-2 text-xs font-medium leading-snug text-amber-100">

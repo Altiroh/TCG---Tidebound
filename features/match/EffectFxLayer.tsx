@@ -627,8 +627,8 @@ function Volley({ volley }: { volley: EffectVolley }) {
             ? piles.sort((a, b) => Math.abs(centerOf(a.getBoundingClientRect()).y - (ship.top + ship.height / 2)) - Math.abs(centerOf(b.getBoundingClientRect()).y - (ship.top + ship.height / 2)))[0]
             : piles[0];
           if (!pile) continue;
-          const onBoardFace = broken.fromHand ? null : findElement("unit", broken.instanceId);
-          const face = onBoardFace ?? pile.querySelector<HTMLElement>("[data-graveyard-top] > *");
+          // Un Objet joué n'est jamais posé : il est déjà sur la pile du Cimetière.
+          const face = pile.querySelector<HTMLElement>("[data-graveyard-top] > *");
           const to = pile.getBoundingClientRect();
           const from = face?.getBoundingClientRect();
           if (!face || !from || from.width === 0) continue;

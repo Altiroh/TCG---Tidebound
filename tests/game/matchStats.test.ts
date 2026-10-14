@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { dispatch, type GameEvent } from "@/game";
 import { computeMatchQuestContribution, computeMatchStats, LIFETIME_SUM_KEYS, MATCH_STAT_KEYS, MATCH_STATS, MAX_MATCH_SECONDS } from "@/game/quests";
+import { CARD_DATABASE } from "@/game/cards/sets/core";
+import type { CardDefinition } from "@/game/cards/types";
 import type { GameState } from "@/game/state/types";
 import { instance, testEnvironment, testGameState, testPlayer } from "./testHelpers";
 
@@ -154,38 +156,69 @@ describe("« en même temps » : une action et ses conséquences immédiates", (
   });
 
   it("un piège qui rase le plateau adverse en réaction est crédité à SON propriétaire", () => {
-    // Jugement du Phare : la cinquième unité adverse arrive, la Réaction
-    // cachée détruit tout. Les effets d'une réaction précèdent son
-    // `REACTION_ACTIVATED` : sans la signature de l'action, ces cinq
+    // Structure-piège d'essai (l'ancien Jugement du Phare, dont la Réaction
+    // cachée a disparu le 13/10/2026) : la cinquième unité adverse arrive,
+    // la Réaction cachée détruit tout. Les effets d'une réaction précèdent
+    // son `REACTION_ACTIVATED` : sans la signature de l'action, ces cinq
     // destructions reviendraient à celui qui a posé la carte.
-    const piege = instance("jugement-du-phare", "p1", { turnsRemaining: 3 });
-    const cibles = Array.from({ length: 4 }, () => instance("ptit-bout", "p2"));
-    const arrivant = instance("ptit-bout", "p2");
-    const state = testGameState({
-      environment: testEnvironment({ tideState: "calme" }),
-      players: [
-        testPlayer("p1", { shipId: "le-brise-lames", anchor: 30, board: [piege] }),
-        testPlayer("p2", { shipId: "le-goliath", board: cibles, hand: [arrivant], reason: 10, reasonMax: 10 }),
+    const PIEGE = {
+      id: "test-piege-du-phare",
+      name: "Piège d'essai",
+      type: "structure",
+      cost: 4,
+      health: 4,
+      durationTurns: 3,
+      visibleDuringTide: ["tempete", "abysses"],
+      text: "Réaction cachée : lorsqu'une unité adverse arrive alors que l'adversaire contrôle au moins 5 unités, détruisez toutes les unités adverses.",
+      abilities: [
+        {
+          trigger: "onEnterPlay",
+          triggeredBy: { cardTypes: ["marin", "creature"], opponentOnly: true },
+          mode: "optional",
+          hiddenReaction: true,
+          condition: { selfHidden: true, opponentUnitsAtLeast: 5 },
+          description: "Détruisez toutes les unités adverses, puis le piège.",
+          effects: [
+            { type: "destroy", target: { kind: "allEnemyUnits" }, filter: { cardTypes: ["marin", "creature"] } },
+            { type: "destroy", target: { kind: "self" } },
+          ],
+        },
       ],
-      activePlayerId: "p2",
-    });
-    const pose = dispatch(state, { type: "playCard", playerId: "p2", instanceId: arrivant.instanceId });
-    ok(pose);
-    const pending = pose.state.pendingReaction;
-    expect(pending?.awaitingPlayerId).toBe("p1");
-    const tire = dispatch(pose.state, { type: "activateReaction", playerId: "p1", sourceInstanceId: piege.instanceId, abilityIndex: 1 });
-    ok(tire);
+    } as unknown as CardDefinition;
+    const table = CARD_DATABASE as Map<string, CardDefinition>;
+    table.set(PIEGE.id, PIEGE);
+    try {
+      const piege = instance(PIEGE.id, "p1", { turnsRemaining: 3 });
+      const cibles = Array.from({ length: 4 }, () => instance("ptit-bout", "p2"));
+      const arrivant = instance("ptit-bout", "p2");
+      const state = testGameState({
+        environment: testEnvironment({ tideState: "calme" }),
+        players: [
+          testPlayer("p1", { shipId: "le-brise-lames", anchor: 30, board: [piege] }),
+          testPlayer("p2", { shipId: "le-goliath", board: cibles, hand: [arrivant], reason: 10, reasonMax: 10 }),
+        ],
+        activePlayerId: "p2",
+      });
+      const pose = dispatch(state, { type: "playCard", playerId: "p2", instanceId: arrivant.instanceId });
+      ok(pose);
+      const pending = pose.state.pendingReaction;
+      expect(pending?.awaitingPlayerId).toBe("p1");
+      const tire = dispatch(pose.state, { type: "activateReaction", playerId: "p1", sourceInstanceId: piege.instanceId, abilityIndex: 0 });
+      ok(tire);
 
-    const mine = stats({ ...tire.state, status: "finished" });
-    expect(mine.max_destroyed_at_once).toBe(5);
-    expect(mine.destroy_enemy_units).toBe(5);
-    expect(mine.spring_traps).toBe(1);
-    expect(mine.react_to_play).toBe(1);
-    expect(mine.activate_reactions).toBe(1);
+      const mine = stats({ ...tire.state, status: "finished" });
+      expect(mine.max_destroyed_at_once).toBe(5);
+      expect(mine.destroy_enemy_units).toBe(5);
+      expect(mine.spring_traps).toBe(1);
+      expect(mine.react_to_play).toBe(1);
+      expect(mine.activate_reactions).toBe(1);
 
-    const theirs = stats({ ...tire.state, status: "finished" }, false, "p2");
-    expect(theirs.destroy_enemy_units).toBeUndefined();
-    expect(theirs.lose_units).toBe(5);
+      const theirs = stats({ ...tire.state, status: "finished" }, false, "p2");
+      expect(theirs.destroy_enemy_units).toBeUndefined();
+      expect(theirs.lose_units).toBe(5);
+    } finally {
+      table.delete(PIEGE.id);
+    }
   });
 });
 
@@ -277,9 +310,9 @@ describe("attaques, réactions, issues de partie", () => {
     const harpon = instance("harpon-a-ressort", "p1");
     const state = finished(
       [
-        { ...base, type: "OBJECT_BROKEN", playerId: "p2", instanceId: "o", cardId: "le-seau", fromHand: true },
+        { ...base, type: "OBJECT_BROKEN", playerId: "p2", instanceId: "o", cardId: "le-seau" },
         { ...base, type: "REACTION_ACTIVATED", playerId: "p1", sourceInstanceId: harpon.instanceId },
-        { ...base, type: "OBJECT_BROKEN", playerId: "p1", instanceId: "o2", cardId: "le-seau", fromHand: true },
+        { ...base, type: "OBJECT_BROKEN", playerId: "p1", instanceId: "o2", cardId: "le-seau" },
       ] as GameEvent[],
       { p1: { graveyard: [harpon] } }
     );

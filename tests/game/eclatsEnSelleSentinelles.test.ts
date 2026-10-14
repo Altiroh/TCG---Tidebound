@@ -6,7 +6,7 @@ import { chromaticColorsOf, emittedSignalsOf, findAssemblage } from "@/game/rule
 import { hasEffectiveKeyword } from "@/game/rules/validation";
 import type { CardInstance, ChromaticColor } from "@/game/cards/types";
 import type { GameState } from "@/game/state/types";
-import { activateReactionFor, instance, pendingCandidates, testEnvironment, testGameState, testPlayer, enFinDeTour } from "./testHelpers";
+import { activateReactionFor, instance, pendingCandidates, testEnvironment, testGameState, testPlayer, enFinDeTour, jouerObjet } from "./testHelpers";
 
 /**
  * LOT 15 — SENTINELLES CHROMATIQUES : chaque Sentinelle émet le Signal de sa
@@ -161,7 +161,7 @@ describe("Signaux Bleu, Vert et Violet : une fois par tour", () => {
     const eclat = instance("eclat-de-bouteille", "p1");
     const pioche = instance("matelot-fele", "p2");
     const state = table({ board: [eclat] }, { board: [veilleuse, heros], deck: [pioche], hand: [instance("matelot-fele", "p2")] });
-    const r = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: eclat.instanceId, targetInstanceId: heros.instanceId });
+    const r = jouerObjet(state, { playerId: "p1", instanceId: eclat.instanceId, targetInstanceId: heros.instanceId }, dispatch);
     ok(r);
     expect(joueur(r.state, "p2").hand.some((c) => c.instanceId === pioche.instanceId)).toBe(true);
     expect(r.state.pendingChoice?.kind).toBe("handDiscard");
@@ -182,15 +182,13 @@ describe("pierres et Éclats", () => {
     expect(emittedSignalsOf(unite(choix.state, emissaire.instanceId)!)).toEqual([]);
 
     const coup = instance("coup-de-harpon", "p2");
-    const detruit = dispatch(
-      { ...choix.state, activePlayerId: "p2", priorityPlayerId: "p2", players: choix.state.players.map((p) => (p.id === "p2" ? { ...p, board: [coup] } : p)) as GameState["players"] },
-      { type: "breakObject", playerId: "p2", instanceId: coup.instanceId, targetInstanceId: emissaire.instanceId }
-    );
+    const detruit = jouerObjet(
+      { ...choix.state, activePlayerId: "p2", priorityPlayerId: "p2", players: choix.state.players.map((p) => (p.id === "p2" ? { ...p, board: [coup] } : p)) as GameState["players"] }, { playerId: "p2", instanceId: coup.instanceId, targetInstanceId: emissaire.instanceId }, dispatch);
     ok(detruit);
     // Coup de Harpon : 2 dégâts, l'Émissaire (3) tient — on l'achève.
     const coup2 = instance("coup-de-harpon", "p2");
     const s2 = { ...detruit.state, players: detruit.state.players.map((p) => (p.id === "p2" ? { ...p, board: [coup2] } : p)) as GameState["players"] };
-    const fin = dispatch(passerTout(s2), { type: "breakObject", playerId: "p2", instanceId: coup2.instanceId, targetInstanceId: emissaire.instanceId });
+    const fin = jouerObjet(passerTout(s2), { playerId: "p2", instanceId: coup2.instanceId, targetInstanceId: emissaire.instanceId }, dispatch);
     ok(fin);
     expect(unite(fin.state, emissaire.instanceId)).toBeUndefined();
     expect(joueur(fin.state, "p1").board.map((u) => u.cardId)).toContain("eclat-chromatique-vert");
@@ -301,12 +299,11 @@ describe("pierres et Éclats", () => {
   it("Pierre Retrouvée recrée en jeu un Éclat du Cimetière", () => {
     const pierre = instance("pierre-retrouvee", "p1");
     const ancien = instance("eclat-chromatique-violet", "p1");
-    const r = dispatch(table({ board: [pierre], graveyard: [ancien] }), {
-      type: "breakObject",
+    const r = jouerObjet(table({ board: [pierre], graveyard: [ancien] }), {
       playerId: "p1",
       instanceId: pierre.instanceId,
       chosenGraveyardInstanceId: ancien.instanceId,
-    });
+    }, dispatch);
     ok(r);
     expect(joueur(r.state, "p1").board.map((u) => u.cardId)).toContain("eclat-chromatique-violet");
   });
@@ -315,12 +312,11 @@ describe("pierres et Éclats", () => {
     const transfert = instance("transfert-de-pierre", "p1");
     const eclat = instance("eclat-chromatique-vert", "p1");
     const sentinelle = instance("heros-de-la-flamme", "p1");
-    const r = dispatch(table({ board: [transfert, eclat, sentinelle] }), {
-      type: "breakObject",
+    const r = jouerObjet(table({ board: [transfert, eclat, sentinelle] }), {
       playerId: "p1",
       instanceId: transfert.instanceId,
       targetInstanceId: eclat.instanceId,
-    });
+    }, dispatch);
     ok(r);
     expect(unite(r.state, eclat.instanceId)).toBeUndefined();
     const choix = dispatch(r.state, { type: "resolveChoice", playerId: "p1", choice: { pickInstanceIds: [sentinelle.instanceId] } });
@@ -332,7 +328,7 @@ describe("pierres et Éclats", () => {
     const appel = instance("appel-des-sentinelles", "p1");
     const sentinelle = instance("porteur-de-jade", "p1");
     const autre = instance("mange-fer", "p1");
-    const r = dispatch(table({ board: [appel], deck: [autre, sentinelle] }), { type: "breakObject", playerId: "p1", instanceId: appel.instanceId });
+    const r = jouerObjet(table({ board: [appel], deck: [autre, sentinelle] }), { playerId: "p1", instanceId: appel.instanceId }, dispatch);
     ok(r);
     expect(dispatch(r.state, { type: "resolveChoice", playerId: "p1", choice: { takeInstanceIds: [autre.instanceId] } }).ok).toBe(false);
     ok(dispatch(r.state, { type: "resolveChoice", playerId: "p1", choice: { takeInstanceIds: [sentinelle.instanceId] } }));
@@ -343,7 +339,7 @@ describe("jouer les couleurs ensemble", () => {
   it("Synchronisation ! : la Sentinelle bénéficie aussi de son propre Signal jusqu'à la fin du tour", () => {
     const heros = instance("heros-de-la-flamme", "p1");
     const sync = instance("synchronisation", "p1");
-    const r = dispatch(table({ board: [heros, sync] }), { type: "breakObject", playerId: "p1", instanceId: sync.instanceId, targetInstanceId: heros.instanceId });
+    const r = jouerObjet(table({ board: [heros, sync] }), { playerId: "p1", instanceId: sync.instanceId, targetInstanceId: heros.instanceId }, dispatch);
     ok(r);
     expect(stats(r.state, heros.instanceId).attack).toBe(4);
   });
@@ -356,7 +352,7 @@ describe("jouer les couleurs ensemble", () => {
     const state = table({ hand: [formation], board: [heros, gardienne, pierre] });
     expect(dispatch(state, { type: "playCard", playerId: "p1", instanceId: formation.instanceId }).ok).toBe(false);
 
-    const bris = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: pierre.instanceId });
+    const bris = jouerObjet(state, { playerId: "p1", instanceId: pierre.instanceId }, dispatch);
     ok(bris);
     const couleur = dispatch(bris.state, { type: "resolveChoice", playerId: "p1", choice: { color: "violet" } });
     ok(couleur);
@@ -429,12 +425,11 @@ describe("jouer les couleurs ensemble", () => {
     const vigie = instance("vigie-aux-fissures", "p1");
     const matelot = instance("matelot-fele", "p1");
     const eclat = instance("eclat-de-bouteille", "p1");
-    const r = dispatch(table({ board: [oracle, vigie, matelot, eclat], deck: [instance("matelot-fele", "p1")], hand: [instance("mange-fer", "p1")] }), {
-      type: "breakObject",
+    const r = jouerObjet(table({ board: [oracle, vigie, matelot, eclat], deck: [instance("matelot-fele", "p1")], hand: [instance("mange-fer", "p1")] }), {
       playerId: "p1",
       instanceId: eclat.instanceId,
       targetInstanceId: matelot.instanceId,
-    });
+    }, dispatch);
     ok(r);
     const defausse = dispatch(r.state, {
       type: "resolveChoice",

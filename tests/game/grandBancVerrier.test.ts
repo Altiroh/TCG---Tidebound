@@ -62,7 +62,7 @@ describe("Grand Banc — le banc grossit", () => {
   it("Cra-Poiscail Ramasseur : vous Brisez un Objet → +1 / +1, conservé", () => {
     const ramasseur = instance("cra-poiscail-ramasseur", "p1");
     const seau = instance("le-seau", "p1");
-    const state = joue(partie([ramasseur, seau]), { type: "breakObject", playerId: "p1", instanceId: seau.instanceId });
+    const state = joue(partie([ramasseur], [seau]), { type: "playCard", playerId: "p1", instanceId: seau.instanceId });
     expect(bonus(finDuTour(state), ramasseur.instanceId)).toEqual({ puissance: 1, resistance: 1 });
   });
 

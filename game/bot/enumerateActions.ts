@@ -21,18 +21,12 @@ import { shipAbilityView } from "@/game/state/shipAbility";
 import { isMainPhase, type GameState, type PlayerId } from "@/game/state/types";
 
 /**
- * Variantes de Bris d'un Objet (posé ou depuis la main) : une par cible possible
- * si l'effet vise `chosenUnit`, une par carte de défausse éligible s'il faut en
+ * Variantes de jeu d'un Objet de la main : une par cible possible si son
+ * effet vise `chosenUnit`, une par carte du Cimetière éligible s'il faut en
  * récupérer une (ex: Grappin de Récupération) — sinon une seule action.
  */
-function breakVariants(
-  state: GameState,
-  playerId: PlayerId,
-  instanceId: string,
-  def: CardDefinition,
-  fromHand: boolean
-): PlayerAction[] {
-  const base = { type: "breakObject" as const, playerId, instanceId, ...(fromHand ? { fromHand: true } : {}) };
+function objectPlayVariants(state: GameState, playerId: PlayerId, instanceId: string, def: CardDefinition): PlayerAction[] {
+  const base = { type: "playCard" as const, playerId, instanceId };
   const targeted = (def.onBreakEffects ?? []).find((e) => e.target.kind === "chosenUnit");
   if (targeted) {
     // Seules les cibles LÉGALES au regard du filtre de l'effet (ex: Levier
@@ -53,7 +47,7 @@ function breakVariants(
  * jamais avoir à réimplémenter `game/rules/validation.ts`.
  *
  * Consciente des Phases (`game/actions/advancePhase.ts`) : jouer une
- * carte/Saborder/Briser n'est proposé qu'en Phase principale (la 1re comme
+ * carte/Saborder n'est proposé qu'en Phase principale (la 1re comme
  * la 2de, après le combat), attaquer qu'en Phase de combat — cohérent avec ce que `dispatch` accepterait de
  * toute façon, mais évite de gonfler inutilement la liste de candidats.
  */
@@ -263,6 +257,11 @@ export function enumerateCandidateActions(state: GameState, playerId: PlayerId):
     // plateau ne permettent plus.
     for (const card of player.hand) {
       const def = getCardDefinition(card.cardId);
+      // Un Objet se joue et se résout aussitôt : mêmes variantes de cible/défausse que son effet.
+      if (def.type === "objet") {
+        actions.push(...objectPlayVariants(state, playerId, card.instanceId, def));
+        continue;
+      }
       const needsTarget = (def.onPlayEffects ?? []).some((e) => e.target.kind === "chosenUnit");
       if (needsTarget) {
         for (const target of allBoardUnits) {
@@ -297,13 +296,10 @@ export function enumerateCandidateActions(state: GameState, playerId: PlayerId):
         const assemblage = findAssemblage(player.board, def.chromaticAssemblage.sentinels);
         if (assemblage) actions.push({ type: "playCard", playerId, instanceId: card.instanceId, assemblage });
       }
-      // Bris depuis la main (coût réduit, sans Slot) : même variantes de cible/défausse qu'un Objet posé.
-      if (def.type === "objet") actions.push(...breakVariants(state, playerId, card.instanceId, def, true));
     }
 
     for (const unit of player.board) {
       const def = getCardDefinition(unit.cardId);
-      if (def.type === "objet") actions.push(...breakVariants(state, playerId, unit.instanceId, def, false));
       actions.push({ type: "saborder", playerId, instanceId: unit.instanceId });
 
       // Capacité activable de la carte elle-même (`activatableOncePerTurn`,

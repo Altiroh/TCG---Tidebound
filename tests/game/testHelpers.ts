@@ -7,6 +7,7 @@ import { RULES } from "@/game/rules/constants";
 import { discardableHand } from "@/game/state/discard";
 import type { EnvironmentState, ShipDefinition } from "@/game/environment/types";
 import type { GameState, PlayerState } from "@/game/state/types";
+import type { PlayerAction } from "@/game/actions/types";
 
 let counter = 0;
 
@@ -176,4 +177,31 @@ export function answerHandDiscard(state: GameState, instanceIds?: string[]) {
  */
 export function enFinDeTour(state: GameState): GameState {
   return state.phase === "mainPhase" ? { ...state, phase: "mainPhase2" } : state;
+}
+
+/**
+ * Joue un Objet (refonte du 13/10/2026 : un Objet n'est plus posé, il se
+ * joue depuis la main et se résout aussitôt). Pour les tests écrits du temps
+ * où l'Objet attendait sur le plateau avant d'être Brisé : s'il y est
+ * encore, il est d'abord remis en main — le geste testé reste « Briser cet
+ * Objet », qui est désormais « jouer cet Objet ».
+ */
+export function jouerObjet(
+  state: GameState,
+  action: { playerId: string; instanceId: string; targetInstanceId?: string; chosenGraveyardInstanceId?: string; dieDelta?: number },
+  run: (state: GameState, action: PlayerAction) => ReturnType<typeof dispatch> = dispatch
+): ReturnType<typeof dispatch> {
+  const player = state.players.find((p) => p.id === action.playerId);
+  const posee = player?.board.find((c) => c.instanceId === action.instanceId);
+  const depart: GameState = posee
+    ? {
+        ...state,
+        players: state.players.map((p) =>
+          p.id === action.playerId
+            ? { ...p, board: p.board.filter((c) => c.instanceId !== action.instanceId), hand: [...p.hand, { ...posee, modifiers: [], damageMarked: 0 }] }
+            : p
+        ) as GameState["players"],
+      }
+    : state;
+  return run(depart, { type: "playCard", ...action });
 }

@@ -510,11 +510,12 @@ function analyserPartie({
         hastenedThisAction = false;
         awaitingDirectDamage = false;
         currentAttacker = null;
-        // `OBJECT_BROKEN` porte le fait de jeu « Briser », main comprise —
-        // bien plus fiable que de deviner un Bris depuis un CARD_MOVED.
+        // `OBJECT_BROKEN` porte le fait de jeu « Briser ». Depuis la refonte
+        // des Objets (13/10/2026), tout Objet est joué depuis la main : chaque
+        // Bris compte aussi pour « Briser depuis la main ».
         if (event.playerId === playerId) {
           progress.break_objects += 1;
-          if (event.fromHand) extra.break_objects_from_hand += 1;
+          extra.break_objects_from_hand += 1;
         }
         break;
 

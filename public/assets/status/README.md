@@ -2,7 +2,7 @@
 
 Petits médaillons posés **sur une carte en jeu** pour signaler un état ou un
 mot-clé actif : Garde, Pied marin, Éveil, Malade (mal d'invocation), Silence,
-Immobilisé, Engourdi, plus le compteur de tours restants d'une Structure.
+Immobilisé, Engourdi, Voile, plus le compteur de tours restants d'une Structure.
 
 Posées par `features/match/StatusBadge.tsx`, superposées au cadre par
 `features/match/CardTile.tsx`.
@@ -17,6 +17,7 @@ Posées par `features/match/StatusBadge.tsx`, superposées au cadre par
 | `pied-marin.webp` | Pied marin — peut attaquer dès son arrivée |
 | `eveil.webp` | Éveil (Lot 16) — la carte a un effet « Éveil — » ; le nombre d'Éveils du tour s'y inscrit |
 | `tour.webp` | Médaillon du compteur de tours restants (Structures à durée) |
+| `voile.webp` | Voile — conféré par un Équipement : la première destruction du porteur est évitée, l'Équipement est détruit à sa place |
 
 `tour.webp` porte un médaillon CLAIR : le texte superposé y est sombre, là
 où il est clair sur les autres. C'est `StatusBadge` qui en décide, pas

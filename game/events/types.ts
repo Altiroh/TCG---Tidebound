@@ -36,6 +36,11 @@ export type GameEventType =
   | "SABORDED"
   | "STRUCTURE_REVEALED"
   | "OBJECT_BROKEN"
+  | "OBJECT_PLAYED"
+  | "VEIL_CONSUMED"
+  | "OBJECT_FIZZLED"
+  | "CHAIN_LINK_ADDED"
+  | "CHAIN_LINK_RESOLVED"
   | "OCEAN_JUDGMENT"
   | "GAME_ENDED"
   | "PHASE_CHANGED"
@@ -530,19 +535,82 @@ export interface StructureRevealedEvent extends BaseGameEvent {
 }
 
 /**
- * Un joueur vient de Briser un de ses Objets — depuis le plateau ou
- * depuis sa main (`fromHand`). Émis EN PLUS du `CARD_MOVED` vers le
- * cimetière, parce que "Briser" est un fait de jeu distinct auquel des
- * cartes réagissent ("la première fois à chaque tour que vous Brisez un
- * Objet") : le seul déplacement de zone ne le distingue pas d'un
- * Sabordage ou d'une destruction.
+ * L'effet d'un Objet vient de se RÉSOUDRE : c'est le Bris (règle du
+ * 13/10/2026). Émis EN PLUS du `CARD_MOVED` vers le cimetière, parce que
+ * "Briser" est un fait de jeu distinct auquel des cartes réagissent (« une
+ * fois par tour, lorsque vous Brisez un Objet ») : le seul déplacement de
+ * zone ne le distingue pas d'un Sabordage ou d'un Objet annulé.
  */
 export interface ObjectBrokenEvent extends BaseGameEvent {
   type: "OBJECT_BROKEN";
   playerId: PlayerId;
   instanceId: string;
   cardId: string;
-  fromHand: boolean;
+}
+
+/**
+ * Un Objet vient d'être JOUÉ depuis la main : son coût est payé et il
+ * entre sur la pile Chaîne, où il attend sa résolution (et les réponses —
+ * Sabotage Discret). Émis après `PLAY_CARD`.
+ */
+export interface ObjectPlayedEvent extends BaseGameEvent {
+  type: "OBJECT_PLAYED";
+  playerId: PlayerId;
+  instanceId: string;
+  cardId: string;
+  /** Objet Chaîne (joué en réponse, sans emplacement). */
+  chaine: boolean;
+}
+
+/**
+ * VOILE consommé (refonte des Équipements, 13/10/2026) : le porteur devait
+ * être détruit ; son Équipement l'a été à sa place et il reste en jeu avec
+ * 1 Résistance. Suivi du `DESTROY` de l'Équipement.
+ */
+export interface VeilConsumedEvent extends BaseGameEvent {
+  type: "VEIL_CONSUMED";
+  playerId: PlayerId;
+  carrierInstanceId: string;
+  equipmentInstanceId: string;
+  /** L'Équipement sacrifié. */
+  cardId: string;
+}
+
+/**
+ * Un Objet a quitté la pile SANS se résoudre : son effet a été annulé
+ * (`cancelled`, Sabotage Discret) ou plus aucune de ses cibles n'était
+ * légale (`noLegalTarget`). Aucun Bris, aucune synergie de Bris : la carte
+ * part au Cimetière et son coût reste payé.
+ */
+export interface ObjectFizzledEvent extends BaseGameEvent {
+  type: "OBJECT_FIZZLED";
+  playerId: PlayerId;
+  instanceId: string;
+  cardId: string;
+  reason: "cancelled" | "noLegalTarget";
+}
+
+/**
+ * La pile Chaîne vient de recevoir un maillon (un Objet joué) : l'interface
+ * l'affiche dans l'ordre de résolution à venir.
+ */
+export interface ChainLinkAddedEvent extends BaseGameEvent {
+  type: "CHAIN_LINK_ADDED";
+  playerId: PlayerId;
+  linkId: string;
+  cardId: string;
+  instanceId: string;
+  /** Hauteur de la pile après ajout (1 = seul maillon). */
+  depth: number;
+}
+
+/** Un maillon vient de se résoudre (ou d'être écarté) et quitte la pile. */
+export interface ChainLinkResolvedEvent extends BaseGameEvent {
+  type: "CHAIN_LINK_RESOLVED";
+  playerId: PlayerId;
+  linkId: string;
+  cardId: string;
+  instanceId: string;
 }
 
 /**
@@ -688,6 +756,11 @@ export type GameEvent =
   | SabordedEvent
   | StructureRevealedEvent
   | ObjectBrokenEvent
+  | ObjectPlayedEvent
+  | VeilConsumedEvent
+  | ObjectFizzledEvent
+  | ChainLinkAddedEvent
+  | ChainLinkResolvedEvent
   | OceanJudgmentEvent
   | PhaseChangedEvent
   | StatusChangedEvent

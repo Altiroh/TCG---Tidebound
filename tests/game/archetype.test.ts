@@ -6,7 +6,7 @@ import { canBeEquipTarget, getCardDefinition } from "@/game/cards/sets/core";
 import { resolveEffect } from "@/game/effects/resolveEffect";
 import { hasEffectiveKeyword } from "@/game/rules/validation";
 import { STATUS_MALADE } from "@/game/cards/types";
-import { activateReactionFor, instance, testEnvironment, testGameState, testPlayer, enFinDeTour } from "./testHelpers";
+import { activateReactionFor, instance, testEnvironment, testGameState, testPlayer, enFinDeTour, jouerObjet } from "./testHelpers";
 
 const PEON = "peon-cra-poiscail";
 
@@ -121,59 +121,40 @@ describe("archétype Cra-Poiscail — invocation de Péons", () => {
 });
 
 describe("archétype Cra-Poiscail — Le Seau", () => {
-  it("reste sur le plateau une fois posé, pour pouvoir être Brisé plus tard", () => {
+  it("joué, il n'est jamais posé : Brisé aussitôt, il part au Cimetière", () => {
     const seau = instance("le-seau", "p1");
     const state = testGameState({ players: [testPlayer("p1", { hand: [seau], reason: 10 }), testPlayer("p2")] });
 
     const result = dispatch(state, { type: "playCard", playerId: "p1", instanceId: seau.instanceId });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    // Un permanent sans Résistance meurt au premier `processDeaths` : tout
-    // Objet doit en porter une, sinon il ne survit pas à sa propre pose.
-    expect(result.state.players[0]!.board.some((u) => u.cardId === "le-seau")).toBe(true);
+    expect(result.state.players[0]!.board.some((u) => u.cardId === "le-seau")).toBe(false);
+    expect(result.state.players[0]!.graveyard.some((u) => u.instanceId === seau.instanceId)).toBe(true);
+    expect(result.state.players[0]!.reason).toBe(8);
   });
 
-  it("invoque 1 Péon depuis le board, 2 en Bris depuis la main auprès d'un Cra-Poiscail", () => {
-    const seauBoard = instance("le-seau", "p1");
-    const fromBoard = testGameState({
+  it("invoque 2 Péons quand vous contrôlez déjà un Cra-Poiscail", () => {
+    const seau = instance("le-seau", "p1");
+    const state = testGameState({
       players: [
-        testPlayer("p1", { board: [seauBoard, instance("tetard-fesse", "p1")], reason: 10 }),
+        testPlayer("p1", { hand: [seau], board: [instance("tetard-fesse", "p1")], reason: 10 }),
         testPlayer("p2"),
       ],
     });
 
-    const broken = dispatch(fromBoard, { type: "breakObject", playerId: "p1", instanceId: seauBoard.instanceId });
+    const broken = dispatch(state, { type: "playCard", playerId: "p1", instanceId: seau.instanceId });
     expect(broken.ok).toBe(true);
     if (!broken.ok) return;
-    // Depuis le board : la clause "depuis la main" ne s'applique pas.
-    expect(peons(broken.state.players[0]!.board)).toBe(1);
-
-    const seauHand = instance("le-seau", "p1");
-    const fromHand = testGameState({
-      players: [
-        testPlayer("p1", { hand: [seauHand], board: [instance("tetard-fesse", "p1")], reason: 10 }),
-        testPlayer("p2"),
-      ],
-    });
-
-    const brokenFromHand = dispatch(fromHand, {
-      type: "breakObject",
-      playerId: "p1",
-      instanceId: seauHand.instanceId,
-      fromHand: true,
-    });
-    expect(brokenFromHand.ok).toBe(true);
-    if (!brokenFromHand.ok) return;
-    expect(peons(brokenFromHand.state.players[0]!.board)).toBe(2);
+    expect(peons(broken.state.players[0]!.board)).toBe(2);
   });
 
-  it("n'invoque qu'un Péon en Bris depuis la main sans aucun Cra-Poiscail en jeu — le Péon créé ne satisfait pas sa propre condition", () => {
+  it("n'invoque qu'un Péon sans aucun Cra-Poiscail en jeu — le Péon créé ne satisfait pas sa propre condition", () => {
     const seau = instance("le-seau", "p1");
     const state = testGameState({
       players: [testPlayer("p1", { hand: [seau], reason: 10 }), testPlayer("p2")],
     });
 
-    const result = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: seau.instanceId, fromHand: true });
+    const result = jouerObjet(state, { playerId: "p1", instanceId: seau.instanceId }, dispatch);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(peons(result.state.players[0]!.board)).toBe(1);
@@ -288,14 +269,14 @@ describe("archétype Cra-Poiscail — capacités d'observateur (Booster 2)", () 
     expect(computeEffectiveStats(peon, "calme").attack).toBe(2);
   });
 
-  it("le Ramasseur profite du Bris d'un Objet, y compris depuis la main", () => {
+  it("le Ramasseur profite du Bris d'un Objet joué", () => {
     const ramasseur = instance("cra-poiscail-ramasseur", "p1");
     const seau = instance("le-seau", "p1");
     const state = testGameState({
       players: [testPlayer("p1", { hand: [seau], board: [ramasseur], reason: 10 }), testPlayer("p2")],
     });
 
-    const result = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: seau.instanceId, fromHand: true });
+    const result = jouerObjet(state, { playerId: "p1", instanceId: seau.instanceId }, dispatch);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
@@ -485,7 +466,7 @@ describe("archétype Cra-Poiscail — branche Chevalier (Booster 3)", () => {
         testPlayer("p2"),
       ],
     });
-    const broken = dispatch(invoquee, { type: "breakObject", playerId: "p1", instanceId: seau.instanceId, fromHand: true });
+    const broken = jouerObjet(invoquee, { playerId: "p1", instanceId: seau.instanceId }, dispatch);
     expect(broken.ok).toBe(true);
     if (!broken.ok) return;
     const peon = broken.state.players[0]!.board.find((u) => u.cardId === PEON)!;
@@ -496,14 +477,16 @@ describe("archétype Cra-Poiscail — branche Chevalier (Booster 3)", () => {
     const roi = instance("roi-cra-poiscail-abyssal", "p1");
     const seau = instance("le-seau", "p1");
     const state = testGameState({
-      players: [testPlayer("p1", { board: [roi, seau], reason: 10 }), testPlayer("p2")],
+      players: [testPlayer("p1", { board: [roi], hand: [seau], reason: 10 }), testPlayer("p2")],
     });
 
-    const result = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: seau.instanceId });
+    const result = dispatch(state, { type: "playCard", playerId: "p1", instanceId: seau.instanceId });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    // Coût du Bris depuis le board (0) + 1 Raison perdue pour le Péon arrivé.
-    expect(result.state.players[0]!.reason).toBe(9);
+    // Le Roi est un Cra-Poiscail : deux Péons arrivent, mais un seul paie.
+    expect(peons(result.state.players[0]!.board)).toBe(2);
+    // Coût du Seau (2) + 1 Raison perdue pour le premier Péon arrivé.
+    expect(result.state.players[0]!.reason).toBe(7);
   });
 });
 
@@ -607,7 +590,7 @@ describe("P'tite Fesse, Grand Rêve — réagit à tout gain de Puissance", () =
 
     // Le Bris invoque un Péon, que la Bannière renforce : ce Péon gagne
     // de la Puissance, donc P'tite Fesse aussi.
-    const result = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: seau.instanceId });
+    const result = jouerObjet(state, { playerId: "p1", instanceId: seau.instanceId }, dispatch);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     const after = result.state.players[0]!.board.find((u) => u.instanceId === reve.instanceId)!;
@@ -660,7 +643,7 @@ describe("archétype Cra-Poiscail — cibles désignées par le joueur", () => {
       players: [testPlayer("p1", { board: [tas, objet, cible, autre], reason: 10 }), testPlayer("p2")],
     });
 
-    const broken = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: objet.instanceId });
+    const broken = jouerObjet(state, { playerId: "p1", instanceId: objet.instanceId }, dispatch);
     expect(broken.ok).toBe(true);
     if (!broken.ok) return;
 
@@ -695,7 +678,7 @@ describe("archétype Cra-Poiscail — cibles désignées par le joueur", () => {
       ],
     });
 
-    const broken = dispatch(withTarget, { type: "breakObject", playerId: "p1", instanceId: objet.instanceId });
+    const broken = jouerObjet(withTarget, { playerId: "p1", instanceId: objet.instanceId }, dispatch);
     expect(broken.ok).toBe(true);
     if (!broken.ok) return;
 
@@ -717,7 +700,7 @@ describe("archétype Cra-Poiscail — cibles désignées par le joueur", () => {
         testPlayer("p2"),
       ],
     });
-    const brokenAlone = dispatch(withoutTarget, { type: "breakObject", playerId: "p1", instanceId: objetSeul.instanceId });
+    const brokenAlone = jouerObjet(withoutTarget, { playerId: "p1", instanceId: objetSeul.instanceId }, dispatch);
     expect(brokenAlone.ok).toBe(true);
     if (!brokenAlone.ok) return;
     expect(brokenAlone.state.pendingReaction).toBeUndefined();
@@ -732,7 +715,7 @@ describe("archétype Cra-Poiscail — cibles désignées par le joueur", () => {
       players: [testPlayer("p1", { board: [tas, premier, second, cible], reason: 10 }), testPlayer("p2")],
     });
 
-    const first = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: premier.instanceId });
+    const first = jouerObjet(state, { playerId: "p1", instanceId: premier.instanceId }, dispatch);
     expect(first.ok).toBe(true);
     if (!first.ok) return;
     const used = dispatch(first.state, {
@@ -745,7 +728,7 @@ describe("archétype Cra-Poiscail — cibles désignées par le joueur", () => {
     expect(used.ok).toBe(true);
     if (!used.ok) return;
 
-    const secondBreak = dispatch(used.state, { type: "breakObject", playerId: "p1", instanceId: second.instanceId });
+    const secondBreak = jouerObjet(used.state, { playerId: "p1", instanceId: second.instanceId }, dispatch);
     expect(secondBreak.ok).toBe(true);
     if (!secondBreak.ok) return;
     expect(secondBreak.state.pendingReaction).toBeUndefined();

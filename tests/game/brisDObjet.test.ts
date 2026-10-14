@@ -16,42 +16,18 @@ function ok<T extends { ok: boolean }>(result: T): asserts result is T & { ok: t
   if (!result.ok) throw new Error(`action refusée : ${(result as { error?: string }).error}`);
 }
 
-describe("Pantalone Sans-Sou — premier Bris DEPUIS LA MAIN du tour", () => {
-  it("rembourse 1 Raison au Bris depuis la main", () => {
+describe("Pantalone Sans-Sou — une fois par tour, lorsque vous Brisez un Objet", () => {
+  it("rembourse 1 Raison quand un Objet joué est Brisé", () => {
     const pantalone = instance("pantalone-sans-sou", "p1");
-    const enMain = instance("pansements-de-coque", "p1");
+    const enMain = instance("pansements-de-coque", "p1"); // coût 2
     const state = testGameState({
       players: [testPlayer("p1", { board: [pantalone], hand: [enMain], reason: 5 }), testPlayer("p2")],
     });
 
-    const result = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: enMain.instanceId, fromHand: true });
+    const result = dispatch(state, { type: "playCard", playerId: "p1", instanceId: enMain.instanceId });
     ok(result);
-    // Le Bris depuis la main coûte 1 Raison, que Pantalone rembourse.
-    expect(result.state.players[0].reason).toBe(5);
-  });
-
-  it("un Bris depuis le PLATEAU ne consomme pas son usage du tour", () => {
-    const pantalone = instance("pantalone-sans-sou", "p1");
-    const surLePlateau = instance("pansements-de-coque", "p1");
-    const enMain = instance("pansements-de-coque", "p1");
-    const state = testGameState({
-      players: [testPlayer("p1", { board: [pantalone, surLePlateau], hand: [enMain], reason: 5 }), testPlayer("p2")],
-    });
-
-    const depuisLePlateau = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: surLePlateau.instanceId });
-    ok(depuisLePlateau);
-    expect(depuisLePlateau.state.players[0].reason).toBe(5);
-
-    const depuisLaMain = dispatch(depuisLePlateau.state, {
-      type: "breakObject",
-      playerId: "p1",
-      instanceId: enMain.instanceId,
-      fromHand: true,
-    });
-    ok(depuisLaMain);
-    // Sans le filtre `fromHand` sur la capacité, le Bris depuis le plateau
-    // brûlait le « une fois par tour » et celui-ci retombait à 4.
-    expect(depuisLaMain.state.players[0].reason).toBe(5);
+    // 5 - 2 (coût) + 1 (Pantalone).
+    expect(result.state.players[0].reason).toBe(4);
   });
 
   it("ne rembourse qu'une seule fois par tour", () => {
@@ -62,11 +38,35 @@ describe("Pantalone Sans-Sou — premier Bris DEPUIS LA MAIN du tour", () => {
       players: [testPlayer("p1", { board: [pantalone], hand: [premier, second], reason: 5 }), testPlayer("p2")],
     });
 
-    const un = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: premier.instanceId, fromHand: true });
+    const un = dispatch(state, { type: "playCard", playerId: "p1", instanceId: premier.instanceId });
     ok(un);
-    const deux = dispatch(un.state, { type: "breakObject", playerId: "p1", instanceId: second.instanceId, fromHand: true });
+    const deux = dispatch(un.state, { type: "playCard", playerId: "p1", instanceId: second.instanceId });
     ok(deux);
-    expect(deux.state.players[0].reason).toBe(4);
+    // 5 - 2 + 1 - 2 = 2 : le second Bris ne rembourse plus.
+    expect(deux.state.players[0].reason).toBe(2);
+  });
+
+  it("un Objet annulé (Sabotage Discret) n'est pas Brisé : rien à rembourser", () => {
+    const pantalone = instance("pantalone-sans-sou", "p1");
+    const enMain = instance("pansements-de-coque", "p1");
+    const sabotage = instance("sabotage-discret", "p2");
+    const state = testGameState({
+      players: [testPlayer("p1", { board: [pantalone], hand: [enMain], reason: 5 }), testPlayer("p2", { hand: [sabotage], reason: 10 })],
+    });
+
+    const joue = dispatch(state, { type: "playCard", playerId: "p1", instanceId: enMain.instanceId });
+    ok(joue);
+    let s = joue.state;
+    // Le joueur actif passe d'abord, puis l'adversaire répond.
+    while (s.pendingReaction && s.pendingReaction.awaitingPlayerId === "p1") {
+      const passe = dispatch(s, { type: "passReaction", playerId: "p1" });
+      ok(passe);
+      s = passe.state;
+    }
+    const annule = dispatch(s, { type: "activateReaction", playerId: "p2", sourceInstanceId: sabotage.instanceId, abilityIndex: 0 });
+    ok(annule);
+    expect(annule.state.players[0].reason).toBe(3);
+    expect(annule.events.some((e) => e.type === "OBJECT_BROKEN" && e.instanceId === enMain.instanceId)).toBe(false);
   });
 });
 
@@ -77,12 +77,12 @@ describe("Cra-Poiscail Médecin — 1 Ancrage au premier Bris du tour", () => {
       const objet = instance("pansements-de-coque", "p1");
       const state = testGameState({
         players: [
-          testPlayer("p1", { board: [medecin, objet], anchor: 10, deck: [instance("chope", "p1")] }),
+          testPlayer("p1", { board: [medecin], hand: [objet], anchor: 10, deck: [instance("chope", "p1")] }),
           testPlayer("p2"),
         ],
       });
 
-      const result = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: objet.instanceId });
+      const result = dispatch(state, { type: "playCard", playerId: "p1", instanceId: objet.instanceId });
       ok(result);
       // +1 par le Médecin, +1 par les Pansements de Coque brisés.
       expect(result.state.players[0].anchor).toBe(12);

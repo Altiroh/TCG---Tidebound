@@ -68,7 +68,7 @@ export const LANDES_SET: CardDefinition[] = [
     setCode: "necessaire-du-marin",
     cost: 3,
     maxCopies: 2,
-    text: "Brisez cet Objet : détruisez la Lande active.",
+    text: "Détruisez la Lande active.",
     onBreakEffects: [{ type: "destroyLande", target: { kind: "allPlayers" } }],
   },
   {
@@ -85,7 +85,7 @@ export const LANDES_SET: CardDefinition[] = [
     cost: 3,
     attack: 2,
     health: 4,
-    text: "À son arrivée, si une Lande est active, réduisez de 1 sa durée restante.",
+    text: "À l'arrivée : si une Lande est active, réduisez sa durée restante de 1.",
     onPlayEffects: [{ type: "shortenLande", target: { kind: "allPlayers" }, amount: { kind: "flat", value: 1 } }],
   },
   {

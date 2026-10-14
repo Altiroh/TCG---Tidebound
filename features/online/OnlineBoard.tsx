@@ -9,7 +9,6 @@ import {
   eligibleCandidatesFor,
   getCardDefinition,
   getShipDefinition,
-  graveyardChoicesForBreak,
   isMainPhase,
   type CardInstance,
   type GameState,
@@ -321,7 +320,6 @@ export function OnlineBoard({
           else board.handleHandCardClick(instanceId, { dropped: true, boardSlot });
         }}
         onAttack={(attackerInstanceId, defenderInstanceId) => act({ type: "attack", playerId: myUserId, attackerInstanceId, defenderInstanceId })}
-        onBreakOnTarget={(instanceId, targetInstanceId) => act({ type: "breakObject", playerId: myUserId, instanceId, targetInstanceId })}
         onDropOnGraveyard={board.handleDropOnGraveyard}
         arrivalReadyIds={board.arrivalReadyIds}
         onArrivalTap={board.openArrivalFocus}
@@ -367,6 +365,8 @@ export function OnlineBoard({
             onActivateMany={activateSelectedReactions}
             onPass={() => act({ type: "passReaction", playerId: myUserId })}
             warningFor={(candidate) => reactionWarning(liveState, myUserId, candidate)}
+            chain={liveState.chainStack}
+            viewerId={myUserId}
           />
         )}
       {/* Cf. `MatchBoard` : le Navire seul à répondre s'annonce par son
@@ -375,7 +375,7 @@ export function OnlineBoard({
         <ShipWindowHint name={shipAbility.windowEntry.name} onPass={() => act({ type: "passReaction", playerId: myUserId })} />
       )}
       {selection?.kind === "reaction" && selection.needsTarget && (() => {
-        // Un Objet réactif peut répondre depuis la MAIN (règle du 29/09/2026).
+        // Un Objet Chaîne répond depuis la MAIN (règle du 13/10/2026).
         const sourceCardId = [...me.board, ...me.hand, ...opponent.board].find((u) => u.instanceId === selection.sourceInstanceId)?.cardId;
         const decline = () => {
           board.clearSelection();
@@ -471,7 +471,7 @@ export function OnlineBoard({
         <ShipAbilityPrompt {...shipAbility.prompt} onConfirm={shipAbility.confirm} onCancel={shipAbility.cancel} />
       )}
       {/* La carte posée à droite : effet d'arrivée en réserve, Bris d'un Objet lâché sur le Cimetière. */}
-      <FocusedCardHost board={board} liveState={liveState} actorId={myUserId} tideState={state.environment.tideState} />
+      <FocusedCardHost board={board} tideState={state.environment.tideState} />
       {graveyardPick && (() => {
         const view = graveyardPickView(state, myUserId, graveyardPick);
         return (

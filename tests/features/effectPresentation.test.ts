@@ -266,11 +266,11 @@ describe("Bris d'un Objet : il se montre au-dessus de son Cimetière, s'illumine
 
   it("son sort part de lui, après son vol jusqu'au Cimetière — et il ne se réveille pas à sa place", () => {
     const events: GameEvent[] = [
-      { ...base, type: "OBJECT_BROKEN", playerId: "p1", instanceId: objet.instanceId, cardId: objet.cardId, fromHand: false },
+      { ...base, type: "OBJECT_BROKEN", playerId: "p1", instanceId: objet.instanceId, cardId: objet.cardId },
       { ...base, type: "DAMAGE", targetInstanceId: cible.instanceId, amount: 1, cause: "effect", origin: { playerId: "p1", instanceId: objet.instanceId } },
     ];
     const volley = deriveEffectVolley(events, before, after, 1)!;
-    expect(volley.breaks).toEqual([{ instanceId: objet.instanceId, ownerId: "p1", fromHand: false, tone: "attack" }]);
+    expect(volley.breaks).toEqual([{ instanceId: objet.instanceId, ownerId: "p1", tone: "attack" }]);
     expect(volley.awakens).toEqual([]);
     expect(volley.shots[0]!.from).toEqual({ kind: "unit", id: objet.instanceId });
     expect(volley.castMs).toBe(BREAK_LEAD_MS + ORB_CHARGE_MS);
@@ -279,7 +279,7 @@ describe("Bris d'un Objet : il se montre au-dessus de son Cimetière, s'illumine
   it("couleur de l'effet : or pour un gain, et l'état réel attend que les éclats soient tombés", () => {
     const thermos = instance("thermos-du-dernier-quart", "p1");
     const avant = state([thermos], []);
-    const events: GameEvent[] = [{ ...base, type: "OBJECT_BROKEN", playerId: "p1", instanceId: thermos.instanceId, cardId: thermos.cardId, fromHand: false }];
+    const events: GameEvent[] = [{ ...base, type: "OBJECT_BROKEN", playerId: "p1", instanceId: thermos.instanceId, cardId: thermos.cardId }];
     const volley = deriveEffectVolley(events, avant, state([], []), 1)!;
     expect(volley.breaks?.[0]?.tone).toBe("heal");
     expect(volleyLandingMs(volley)).toBe(breakShatterAtMs(volley) + BREAK_SHATTER_MS);

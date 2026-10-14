@@ -8,7 +8,7 @@ export interface PlayCardAction {
   instanceId: string;
   /** Requis si la carte a un effet ciblant `chosenUnit`. */
   targetInstanceId?: string;
-  /** Requis si un `onPlayEffects` repêche au Cimetière et qu'une carte y est éligible (ex: Tu viens jouer ?). */
+  /** Requis si un effet de la carte (`onPlayEffects`, `onBreakEffects` d'un Objet) repêche au Cimetière et qu'une carte y est éligible (ex: Tu viens jouer ?). */
   chosenGraveyardInstanceId?: string;
   /**
    * Emplacement voulu dans le rang, 0 = tout à gauche. La carte s'INSÈRE
@@ -37,6 +37,8 @@ export interface PlayCardAction {
    * la carte se paie à son coût normal.
    */
   assemblage?: Array<{ instanceId: string; color: ChromaticColor }>;
+  /** Objet « Chaîne » de dé (Lot 17) : la modification choisie pour le jet en cours, parmi celles de son texte (« +1 ou -1 »). */
+  dieDelta?: number;
 }
 
 export interface AttackAction {
@@ -81,29 +83,6 @@ export interface SaborderAction {
   type: "saborder";
   playerId: PlayerId;
   instanceId: string;
-}
-
-/**
- * Brise un Objet que le joueur contrôle : résout `onBreakEffects` puis
- * l'envoie au cimetière. Consomme l'action principale du tour. Distinct du
- * Sabordage — ne déclenche ni `onDeath` ni `onSaborde` (cadrage : "Briser
- * ≠ Saborder sauf texte contraire").
- */
-export interface BreakObjectAction {
-  type: "breakObject";
-  playerId: PlayerId;
-  instanceId: string;
-  /**
-   * Brise l'Objet directement depuis la MAIN (Notion, règle prototype) : coût = moitié du coût imprimé arrondie
-   * au supérieur, minimum 1 Raison (`handBreakCost`) ; ne prend aucun Slot, va directement en défausse.
-   */
-  fromHand?: boolean;
-  /** Requis si l'effet de bris de cet Objet cible `chosenUnit`. */
-  targetInstanceId?: string;
-  /** Requis si l'effet de bris de cet Objet est `moveGraveyardCardToHand` ET qu'au moins une carte éligible existe dans la défausse (ex: Grappin de Récupération). */
-  chosenGraveyardInstanceId?: string;
-  /** Objet « Chaîne » (Lot 17) : la modification choisie pour le jet en cours, parmi celles de son texte (« +1 ou -1 »). */
-  dieDelta?: number;
 }
 
 /**
@@ -278,7 +257,6 @@ export type PlayerAction =
   | AttackAction
   | EndTurnAction
   | SaborderAction
-  | BreakObjectAction
   | AdvancePhaseAction
   | ActivateReactionAction
   | ActivateArrivalAction

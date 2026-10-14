@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { dispatch } from "@/tests/game/arrivalDispatch";
 import type { GameState, PlayerState } from "@/game/state/types";
-import { activateReactionFor, instance, pendingCandidates, testGameState, testPlayer } from "./testHelpers";
+import { activateReactionFor, instance, pendingCandidates, testGameState, testPlayer, jouerObjet } from "./testHelpers";
 
 /**
  * Causes communes relevées par la revue cartes ↔ moteur (B1 à B7, phase 1).
@@ -60,14 +60,17 @@ describe("« unité <famille> » : Marin ou Créature, jamais une Structure, un 
     expect(unit(state, bois.instanceId)!.modifiers.reduce((s, m) => s + m.health, 0)).toBe(1);
   });
 
-  it("Le Régisseur Sans Visage ne se propose pas à la pose d'un Objet Marionnette", () => {
+  it("Le Régisseur Sans Visage ne se propose pas quand on joue un Objet Marionnette", () => {
     const regisseur = instance("le-regisseur-sans-visage", "p1");
     const autre = instance("pulcinella-gonfle", "p1");
     const masque = instance("le-masque-fendu", "p1");
     const state = testGameState({
-      players: [testPlayer("p1", { board: [regisseur, autre], hand: [masque] }), testPlayer("p2", { shipId: "le-goliath" })],
+      players: [
+        testPlayer("p1", { board: [regisseur, autre], hand: [masque], deck: [instance("murene-aveugle", "p1")] }),
+        testPlayer("p2", { shipId: "le-goliath" }),
+      ],
     });
-    const posed = ok(dispatch(state, { type: "playCard", playerId: "p1", instanceId: masque.instanceId }));
+    const posed = ok(dispatch(state, { type: "playCard", playerId: "p1", instanceId: masque.instanceId, targetInstanceId: autre.instanceId }));
     expect(pendingCandidates(posed).some((c) => c.cardId === "le-regisseur-sans-visage")).toBe(false);
   });
 
@@ -94,7 +97,7 @@ describe("« unité <famille> » : Marin ou Créature, jamais une Structure, un 
     });
     // Le Masque renvoie Pulcinella : le Régisseur pose « la prochaine UNITÉ
     // Marionnette coûte 1 de moins ».
-    state = ok(dispatch(state, { type: "breakObject", playerId: "p1", instanceId: masque.instanceId, targetInstanceId: pulcinella.instanceId }));
+    state = ok(jouerObjet(state, { playerId: "p1", instanceId: masque.instanceId, targetInstanceId: pulcinella.instanceId }, dispatch));
     if (state.pendingChoice?.kind === "handDiscard") {
       const hand = p(state, "p1").hand;
       const murene = hand.find((c) => c.cardId === "murene-aveugle")!;
@@ -129,7 +132,7 @@ describe("Bris : l'Objet brisé n'est jamais sa propre cible", () => {
     const state = testGameState({
       players: [testPlayer("p1", { board: [masque], deck: [instance("murene-aveugle", "p1")] }), testPlayer("p2", { shipId: "le-goliath" })],
     });
-    const result = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: masque.instanceId, targetInstanceId: masque.instanceId });
+    const result = jouerObjet(state, { playerId: "p1", instanceId: masque.instanceId, targetInstanceId: masque.instanceId }, dispatch);
     expect(result.ok).toBe(false);
   });
 
@@ -138,32 +141,35 @@ describe("Bris : l'Objet brisé n'est jamais sa propre cible", () => {
     const state = testGameState({
       players: [testPlayer("p1", { board: [role] }), testPlayer("p2", { shipId: "le-goliath" })],
     });
-    const result = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: role.instanceId, targetInstanceId: role.instanceId });
+    const result = jouerObjet(state, { playerId: "p1", instanceId: role.instanceId, targetInstanceId: role.instanceId }, dispatch);
     expect(result.ok).toBe(false);
   });
 });
 
-describe("un attaquant détruit pendant la fenêtre d'interception ne frappe pas", () => {
-  it("Pont Miné (Réaction cachée) : la coque ne bouge pas", () => {
+describe("Pont Miné (effet unique, actif même masqué)", () => {
+  it("la première attaque adverse à 5 Puissance ou plus perd 2 Puissance : la coque n'encaisse que 3", () => {
     const pont = instance("pont-mine", "p2", { turnsRemaining: 3 });
-    const brute = instance("la-chose-qui-remonte", "p1");
+    const brute = instance("la-chose-qui-remonte", "p1"); // 5 Puissance
     let state = testGameState({
       phase: "combatPhase",
       players: [testPlayer("p1", { board: [brute] }), testPlayer("p2", { shipId: "le-goliath", board: [pont] })],
     });
     const anchor = p(state, "p2").anchor;
     state = ok(dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: brute.instanceId }));
-    state = ok(activateReactionFor(state, "pont-mine"));
-    expect(p(state, "p2").anchor).toBe(anchor);
-    expect(p(state, "p1").board.some((u) => u.instanceId === brute.instanceId)).toBe(false);
+    // Aucune fenêtre : l'effet s'applique de lui-même, la Structure reste.
+    expect(pendingCandidates(state).some((c) => c.cardId === "pont-mine")).toBe(false);
+    expect(p(state, "p2").anchor).toBe(anchor - 3);
+    expect(p(state, "p2").board.some((u) => u.instanceId === pont.instanceId)).toBe(true);
   });
+});
 
+describe("un attaquant détruit pendant la fenêtre d'interception ne frappe pas", () => {
   it("Harpon à Ressort qui tue l'attaquant : la coque ne bouge pas non plus", () => {
     const harpon = instance("harpon-a-ressort", "p2");
     const murene = instance("murene-aveugle", "p1");
     let state = testGameState({
       phase: "combatPhase",
-      players: [testPlayer("p1", { board: [murene] }), testPlayer("p2", { shipId: "le-goliath", board: [harpon] })],
+      players: [testPlayer("p1", { board: [murene] }), testPlayer("p2", { shipId: "le-goliath", hand: [harpon] })],
     });
     const anchor = p(state, "p2").anchor;
     state = ok(dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: murene.instanceId }));
@@ -173,9 +179,9 @@ describe("un attaquant détruit pendant la fenêtre d'interception ne frappe pas
 });
 
 describe("tir de Navire : « une UNITÉ adverse attaque » ne s'ouvre pas", () => {
-  function armedGoliath(defenderBoard: ReturnType<typeof instance>[]): GameState {
+  function armedGoliath(defenderBoard: ReturnType<typeof instance>[], defenderHand: ReturnType<typeof instance>[] = []): GameState {
     const state = testGameState({
-      players: [testPlayer("p1", { shipId: "le-goliath", reason: 10 }), testPlayer("p2", { board: defenderBoard })],
+      players: [testPlayer("p1", { shipId: "le-goliath", reason: 10 }), testPlayer("p2", { board: defenderBoard, hand: defenderHand })],
     });
     const armed = ok(dispatch(state, { type: "activateShipAbility", playerId: "p1" }));
     return { ...armed, phase: "combatPhase" };
@@ -185,7 +191,7 @@ describe("tir de Navire : « une UNITÉ adverse attaque » ne s'ouvre pas", () =
     const contre = instance("contre-harpon", "p2");
     const pas = instance("pas-un-pas-de-plus", "p2");
     const garde = instance("murene-aveugle", "p2");
-    const state = ok(dispatch(armedGoliath([contre, pas, garde]), { type: "fireShipAbility", playerId: "p1" }));
+    const state = ok(dispatch(armedGoliath([garde], [contre, pas]), { type: "fireShipAbility", playerId: "p1" }));
     expect(pendingCandidates(state).map((c) => c.cardId)).toEqual([]);
   });
 
@@ -194,7 +200,7 @@ describe("tir de Navire : « une UNITÉ adverse attaque » ne s'ouvre pas", () =
     const brute = instance("la-chose-qui-remonte", "p1");
     const state = testGameState({
       phase: "combatPhase",
-      players: [testPlayer("p1", { board: [brute] }), testPlayer("p2", { shipId: "le-goliath", board: [contre] })],
+      players: [testPlayer("p1", { board: [brute] }), testPlayer("p2", { shipId: "le-goliath", hand: [contre] })],
     });
     const declared = ok(dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: brute.instanceId }));
     expect(pendingCandidates(declared).map((c) => c.cardId)).toContain("contre-harpon");
@@ -206,7 +212,7 @@ describe("tir de Navire : « une UNITÉ adverse attaque » ne s'ouvre pas", () =
     const brute = instance("la-chose-qui-remonte", "p1");
     const state = testGameState({
       phase: "combatPhase",
-      players: [testPlayer("p1", { board: [brute] }), testPlayer("p2", { shipId: "le-goliath", board: [corde, cible] })],
+      players: [testPlayer("p1", { board: [brute] }), testPlayer("p2", { shipId: "le-goliath", hand: [corde], board: [cible] })],
     });
     const direct = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: brute.instanceId });
     expect(direct.ok && pendingCandidates(direct.state).some((c) => c.cardId === "corde-de-rappel")).toBe(false);

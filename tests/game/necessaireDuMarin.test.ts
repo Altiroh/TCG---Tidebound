@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 // Effets d'arrivée facultatifs (12/10/2026) : jouer une carte accepte son effet d'arrivée, comme « Appliquer ».
 import { dispatch } from "@/tests/game/arrivalDispatch";
 import { getCardDefinition } from "@/game/cards/sets/core";
-import { handBreakCost } from "@/game/actions/breakObject";
 import { computeEffectiveStats } from "@/game/cards/stats";
 import { eligibleCandidatesFor } from "@/game/reactions/reactionWindow";
 import type { GameState } from "@/game/state/types";
@@ -19,7 +18,7 @@ import { instance, testEnvironment, testGameState, testPlayer } from "./testHelp
  *  - une Structure-piège se détruit après avoir tiré (c'est une cartouche) ;
  *  - Jugement du Phare nettoie vraiment le plateau, et se paie en coque ;
  *  - Filet de Sauvetage est un BUFF de Résistance, pas un soin déguisé ;
- *  - un Objet réactif ne se Brise pas hors de sa fenêtre.
+ *  - un Objet Chaîne réactif ne se joue pas hors de sa fenêtre.
  */
 
 function ok<T extends { ok: boolean }>(r: T): asserts r is T & { ok: true } {
@@ -53,14 +52,15 @@ function table(overrides: Partial<GameState> = {}): GameState {
   });
 }
 
-describe("Structures-pièges : une cartouche, pas un moteur", () => {
+describe("Structures du lot : un effet unique, actif même masqué (13/10/2026)", () => {
   /**
-   * Chaque Réaction cachée du lot se termine par une destruction de la
-   * porteuse. C'est la règle de design qui autorise des effets aussi durs :
-   * vérifié sur la DÉFINITION de toutes, puis en jeu sur l'une d'elles.
+   * Les Structures du lot ont perdu leur Réaction cachée : il leur reste un
+   * seul effet, qui agit aussi quand la Marée les masque (`activeWhileHidden`).
+   * Vérifié sur la DÉFINITION de toutes, puis en jeu sur deux d'entre elles.
    */
-  it("toutes les Réactions cachées du lot se détruisent après résolution", () => {
-    const pieges = [
+  it("aucune ne garde de Réaction cachée, toutes agissent masquées", () => {
+    const structures = [
+      "la-nasse-trop-pleine",
       "jugement-du-phare",
       "barils-de-poudre",
       "pont-mine",
@@ -71,68 +71,56 @@ describe("Structures-pièges : une cartouche, pas un moteur", () => {
       "fausse-cargaison",
       "filet-de-sauvetage",
     ];
-    for (const id of pieges) {
-      const cachee = getCardDefinition(id).abilities?.find((a) => a.hiddenReaction);
-      expect(cachee, id).toBeDefined();
-      const seDetruit = cachee!.effects.some(
-        (e) => (e.type === "destroy" || e.type === "saborde") && e.target.kind === "self"
-      );
-      expect(seDetruit, `${id} : la Réaction cachée doit détruire la Structure`).toBe(true);
-      // Et elle ne se remasque PAS : une cartouche ne se recharge pas.
-      expect(cachee!.afterHiddenReaction, id).not.toBe("remasquable");
+    for (const id of structures) {
+      const def = getCardDefinition(id);
+      expect(def.abilities?.some((a) => a.hiddenReaction) ?? false, id).toBe(false);
+      expect(def.activeWhileHidden, id).toBe(true);
     }
   });
 
-  it("Barils de Poudre part avec son coup : le Slot est libéré", () => {
+  it("Barils de Poudre, masqué : la quatrième unité adverse jouée du tour subit 1 dégât, et la Structure reste", () => {
     const piege = instance("barils-de-poudre", "p1", { turnsRemaining: 3 });
-    // Trois corps en place : c'est le QUATRIÈME, celui qui arrive, qui
-    // arme le piège. Au-delà, le plateau du Goliath (5 emplacements) ne
-    // laisserait plus la place de le poser.
+    // Trois corps JOUÉS ce tour : c'est le QUATRIÈME, celui qui arrive, qui
+    // déclenche l'effet.
     const cibles = [0, 1, 2].map(() => instance("ptit-bout", "p2"));
     const arrivant = instance("ptit-bout", "p2");
-    const state = table({
+    let state = table({
       environment: testEnvironment({ tideState: "calme" }),
       players: [
         testPlayer("p1", { shipId: "le-brise-lames", board: [piege] }),
-        testPlayer("p2", { shipId: "le-goliath", board: cibles, hand: [arrivant], reason: 10, reasonMax: 10 }),
+        testPlayer("p2", { shipId: "le-goliath", hand: [...cibles, arrivant], reason: 10, reasonMax: 10 }),
       ],
       activePlayerId: "p2",
     });
+    for (const carte of cibles) {
+      const r = dispatch(state, { type: "playCard", playerId: "p2", instanceId: carte.instanceId });
+      ok(r);
+      state = r.state;
+    }
+    expect(board(state, "p2").every((u) => u.damageMarked === 0)).toBe(true);
 
-    // Calme : la Structure est masquée (visible en Tempête/Abysses), donc
-    // c'est bien la Réaction CACHÉE qui se propose.
     const pose = dispatch(state, { type: "playCard", playerId: "p2", instanceId: arrivant.instanceId });
     ok(pose);
-    const candidats = propositions(pose.state, "p1");
-    const candidat = candidats.find((c) => c.cardId === "barils-de-poudre");
-    expect(candidat, "la Réaction cachée doit être proposée").toBeDefined();
-
-    const tire = dispatch(pose.state, {
-      type: "activateReaction",
-      playerId: "p1",
-      sourceInstanceId: candidat!.sourceInstanceId,
-      abilityIndex: candidat!.abilityIndex,
-    });
-    ok(tire);
-
-    // Les Péons 1/1 sont emportés par les 2 dégâts, et la Structure aussi.
-    expect(board(tire.state, "p2").filter((u) => u.cardId === "ptit-bout")).toHaveLength(0);
-    expect(enJeu(tire.state, "p1", piege.instanceId)).toBe(false);
+    expect(propositions(pose.state, "p1").some((c) => c.cardId === "barils-de-poudre")).toBe(false);
+    // Le quatrième encaisse 1 dégât ; les trois premiers sont intacts.
+    expect(board(pose.state, "p2").find((u) => u.instanceId === arrivant.instanceId)?.damageMarked).toBe(1);
+    expect(board(pose.state, "p2").filter((u) => u.damageMarked === 0)).toHaveLength(3);
+    expect(enJeu(pose.state, "p1", piege.instanceId)).toBe(true);
   });
 });
 
 describe("Jugement du Phare", () => {
-  function phare(ancrage: number, unitesAdverses: number) {
+  function phare(unitesAdverses: number) {
     const piege = instance("jugement-du-phare", "p1", { turnsRemaining: 3 });
-    const cibles = Array.from({ length: unitesAdverses }, () => instance("ptit-bout", "p2"));
-    const arrivant = instance("ptit-bout", "p2");
+    const cibles = Array.from({ length: unitesAdverses }, () => instance("vieux-harponneur", "p2"));
+    const arrivant = instance("vieux-harponneur", "p2");
     return {
       piege,
       arrivant,
       state: testGameState({
-        environment: testEnvironment({ tideState: "calme" }),
+        environment: testEnvironment({ tideState: "calme" }), // masqué : il agit quand même
         players: [
-          testPlayer("p1", { shipId: "le-brise-lames", anchor: ancrage, board: [piege] }),
+          testPlayer("p1", { shipId: "le-brise-lames", board: [piege] }),
           testPlayer("p2", { shipId: "le-goliath", board: cibles, hand: [arrivant], reason: 10, reasonMax: 10 }),
         ],
         activePlayerId: "p2",
@@ -140,46 +128,20 @@ describe("Jugement du Phare", () => {
     };
   }
 
-  it("à cinq unités adverses, détruit tout le plateau d'en face et coûte 3 Ancrage", () => {
-    // Quatre en place, la cinquième arrive : le Goliath a exactement
-    // 5 emplacements, c'est le plateau plein qui déclenche le Jugement.
-    const { piege, arrivant, state } = phare(30, 4);
+  it("une unité adverse arrive alors que l'adversaire en contrôle au moins 4 : elle subit 2 dégâts", () => {
+    const { piege, arrivant, state } = phare(3);
     const pose = dispatch(state, { type: "playCard", playerId: "p2", instanceId: arrivant.instanceId });
     ok(pose);
-
-    const candidat = propositions(pose.state, "p1").find((c) => c.cardId === "jugement-du-phare");
-    expect(candidat, "la Réaction cachée doit être proposée à 5 unités adverses").toBeDefined();
-
-    const tire = dispatch(pose.state, {
-      type: "activateReaction",
-      playerId: "p1",
-      sourceInstanceId: candidat!.sourceInstanceId,
-      abilityIndex: candidat!.abilityIndex,
-    });
-    ok(tire);
-
-    expect(board(tire.state, "p2").filter((u) => u.cardId === "ptit-bout")).toHaveLength(0);
-    expect(tire.state.players.find((p) => p.id === "p1")!.anchor).toBe(27);
-    expect(enJeu(tire.state, "p1", piege.instanceId)).toBe(false);
+    expect(board(pose.state, "p2").find((u) => u.instanceId === arrivant.instanceId)?.damageMarked).toBe(2);
+    expect(board(pose.state, "p2").filter((u) => u.instanceId !== arrivant.instanceId).every((u) => u.damageMarked === 0)).toBe(true);
+    expect(enJeu(pose.state, "p1", piege.instanceId)).toBe(true);
   });
 
-  it("ne se propose pas à quatre unités adverses : le seuil de la Réaction cachée est cinq", () => {
-    const { arrivant, state } = phare(30, 3);
+  it("sous le seuil (3 unités adverses), rien", () => {
+    const { arrivant, state } = phare(2);
     const pose = dispatch(state, { type: "playCard", playerId: "p2", instanceId: arrivant.instanceId });
     ok(pose);
-    // 3 + celle qui arrive = 4 : le seuil visible est atteint, pas le caché.
-    const cachee = propositions(pose.state, "p1").find(
-      (c) => c.cardId === "jugement-du-phare" && getCardDefinition(c.cardId).abilities?.[c.abilityIndex]?.hiddenReaction
-    );
-    expect(cachee).toBeUndefined();
-  });
-
-  it("ne se propose pas si la coque ne survivrait pas au paiement", () => {
-    // 3 Ancrage à payer, 3 en réserve : payer reviendrait à perdre.
-    const { arrivant, state } = phare(3, 4);
-    const pose = dispatch(state, { type: "playCard", playerId: "p2", instanceId: arrivant.instanceId });
-    ok(pose);
-    expect(propositions(pose.state, "p1").find((c) => c.cardId === "jugement-du-phare")).toBeUndefined();
+    expect(board(pose.state, "p2").every((u) => u.damageMarked === 0)).toBe(true);
   });
 });
 
@@ -211,7 +173,7 @@ describe("Filet de Sauvetage : un buff de Résistance, jamais un soin", () => {
     expect(board(state, "p1").find((u) => u.instanceId === unite.instanceId)!.damageMarked).toBe(2);
   });
 
-  it("le bonus disparaît avec la visibilité : ce n'est pas un gain acquis", () => {
+  it("le bonus tient même masqué : effet unique, actif même masqué", () => {
     const filet = instance("filet-de-sauvetage", "p1", { turnsRemaining: 3 });
     const unite = instance("murene-aveugle", "p1");
     const base = getCardDefinition("murene-aveugle").health!;
@@ -233,7 +195,7 @@ describe("Filet de Sauvetage : un buff de Résistance, jamais un soin", () => {
     };
 
     expect(lire("tempete")).toBe(base + 2); // visible
-    expect(lire("calme")).toBe(base); // masquée : l'aura ne porte plus
+    expect(lire("calme")).toBe(base + 2); // masquée : l'aura porte encore (actif même masqué)
   });
 
   it("l'aura ne touche que les unités, pas les Structures du même plateau", () => {
@@ -256,12 +218,12 @@ describe("Filet de Sauvetage : un buff de Résistance, jamais un soin", () => {
   });
 });
 
-describe("Objets réactifs : seulement dans leur fenêtre", () => {
+describe("Objets Chaîne réactifs : seulement dans leur fenêtre", () => {
   it("Harpon à Ressort ne se propose pas hors d'une attaque adverse", () => {
     const harpon = instance("harpon-a-ressort", "p1");
     const state = testGameState({
       players: [
-        testPlayer("p1", { shipId: "le-brise-lames", board: [harpon] }),
+        testPlayer("p1", { shipId: "le-brise-lames", hand: [harpon] }),
         testPlayer("p2", { shipId: "le-goliath" }),
       ],
     });
@@ -275,7 +237,7 @@ describe("Objets réactifs : seulement dans leur fenêtre", () => {
     const state = testGameState({
       phase: "combatPhase",
       players: [
-        testPlayer("p1", { shipId: "le-brise-lames", board: [harpon] }),
+        testPlayer("p1", { shipId: "le-brise-lames", hand: [harpon] }),
         testPlayer("p2", { shipId: "le-goliath", board: [attaquant] }),
       ],
       activePlayerId: "p2",
@@ -300,10 +262,11 @@ describe("Objets réactifs : seulement dans leur fenêtre", () => {
     const survivant = board(riposte.state, "p2").find((u) => u.instanceId === attaquant.instanceId);
     if (survivant) expect(survivant.damageMarked).toBeGreaterThanOrEqual(2);
     expect(enJeu(riposte.state, "p1", harpon.instanceId)).toBe(false);
+    expect(riposte.state.players.find((p) => p.id === "p1")!.hand.some((c) => c.instanceId === harpon.instanceId)).toBe(false);
   });
 });
 
-describe("Objets réactifs : proposés depuis la main aussi (règle du 29/09/2026)", () => {
+describe("Objets Chaîne réactifs : joués depuis la main (refonte du 13/10/2026)", () => {
   function attaqueContreHarponEnMain(extraBoardP1: ReturnType<typeof instance>[] = []) {
     const harpon = instance("harpon-a-ressort", "p1");
     const attaquant = instance("murene-aveugle", "p2", { summoningSick: false });
@@ -320,15 +283,15 @@ describe("Objets réactifs : proposés depuis la main aussi (règle du 29/09/202
     return { harpon, attaquant, attaque };
   }
 
-  it("Harpon à Ressort EN MAIN se propose à l'attaque, au coût d'un Bris depuis la main", () => {
+  it("Harpon à Ressort EN MAIN se propose à l'attaque, à son coût imprimé", () => {
     const { attaque } = attaqueContreHarponEnMain();
     const candidat = propositions(attaque.state, "p1").find((c) => c.cardId === "harpon-a-ressort");
     expect(candidat, "le Harpon en main doit être proposé").toBeDefined();
     expect(candidat!.fromHand).toBe(true);
-    expect(candidat!.reasonCost).toBe(handBreakCost(getCardDefinition("harpon-a-ressort")));
+    expect(candidat!.reasonCost).toBe(getCardDefinition("harpon-a-ressort").cost);
   });
 
-  it("l'activer le Brise depuis la main : l'attaquant est frappé, l'Objet part au Cimetière sans prendre de Slot", () => {
+  it("le jouer frappe l'attaquant ; l'Objet est Brisé et part au Cimetière sans prendre de Slot", () => {
     const { harpon, attaquant, attaque } = attaqueContreHarponEnMain();
     const candidat = propositions(attaque.state, "p1").find((c) => c.cardId === "harpon-a-ressort")!;
     const riposte = dispatch(attaque.state, {
@@ -343,13 +306,29 @@ describe("Objets réactifs : proposés depuis la main aussi (règle du 29/09/202
     expect(p1.hand.some((c) => c.instanceId === harpon.instanceId)).toBe(false);
     expect(p1.graveyard.some((c) => c.instanceId === harpon.instanceId)).toBe(true);
     expect(p1.board).toHaveLength(0);
-    expect(p1.reason).toBe(6 - handBreakCost(getCardDefinition("harpon-a-ressort")));
+    expect(p1.reason).toBe(6 - getCardDefinition("harpon-a-ressort").cost);
     const survivant = board(riposte.state, "p2").find((u) => u.instanceId === attaquant.instanceId);
     if (survivant) expect(survivant.damageMarked).toBeGreaterThanOrEqual(2);
-    expect(riposte.events.some((e) => e.type === "OBJECT_BROKEN" && e.fromHand)).toBe(true);
+    expect(riposte.events.some((e) => e.type === "OBJECT_PLAYED" && e.instanceId === harpon.instanceId)).toBe(true);
+    expect(riposte.events.some((e) => e.type === "OBJECT_BROKEN" && e.instanceId === harpon.instanceId)).toBe(true);
   });
 
-  it("c'est un Bris depuis la main : Pantalone Sans-Sou rend sa Raison", () => {
+  it("se joue même plateau plein : un Objet Chaîne ne demande pas d'emplacement", () => {
+    const plein = Array.from({ length: 6 }, (_, i) => instance("marin-des-jetees", "p1", { slot: i }));
+    const { harpon, attaque } = attaqueContreHarponEnMain(plein);
+    const candidat = propositions(attaque.state, "p1").find((c) => c.cardId === "harpon-a-ressort");
+    expect(candidat, "plateau plein, le Harpon se propose quand même").toBeDefined();
+    const riposte = dispatch(attaque.state, {
+      type: "activateReaction",
+      playerId: "p1",
+      sourceInstanceId: candidat!.sourceInstanceId,
+      abilityIndex: candidat!.abilityIndex,
+    });
+    ok(riposte);
+    expect(riposte.state.players.find((p) => p.id === "p1")!.graveyard.some((c) => c.instanceId === harpon.instanceId)).toBe(true);
+  });
+
+  it("c'est un Bris : Pantalone Sans-Sou rend sa Raison", () => {
     const pantalone = instance("pantalone-sans-sou", "p1");
     const { attaque } = attaqueContreHarponEnMain([pantalone]);
     const candidat = propositions(attaque.state, "p1").find((c) => c.cardId === "harpon-a-ressort")!;
@@ -360,20 +339,20 @@ describe("Objets réactifs : proposés depuis la main aussi (règle du 29/09/202
       abilityIndex: candidat.abilityIndex,
     });
     ok(riposte);
-    expect(riposte.state.players.find((p) => p.id === "p1")!.reason).toBe(6 - handBreakCost(getCardDefinition("harpon-a-ressort")) + 1);
+    expect(riposte.state.players.find((p) => p.id === "p1")!.reason).toBe(6 - getCardDefinition("harpon-a-ressort").cost + 1);
   });
 
-  it("hors de sa fenêtre, il ne se Brise toujours pas depuis la main", () => {
+  it("hors de sa fenêtre, il ne se joue pas : playCard le refuse", () => {
     const enMain = instance("harpon-a-ressort", "p1");
     const state = testGameState({
       players: [testPlayer("p1", { hand: [enMain], reason: 5 }), testPlayer("p2", { shipId: "le-goliath" })],
     });
-    expect(dispatch(state, { type: "breakObject", playerId: "p1", instanceId: enMain.instanceId, fromHand: true }).ok).toBe(false);
+    expect(dispatch(state, { type: "playCard", playerId: "p1", instanceId: enMain.instanceId }).ok).toBe(false);
   });
 });
 
-describe("Bris depuis la main : l'Objet rejoint le Cimetière DEPUIS LA MAIN (règle du 29/09/2026)", () => {
-  it("La Marelle voit un Objet Brisé depuis la main", () => {
+describe("Objet joué : une carte jouée n'est pas une carte défaussée (refonte du 13/10/2026)", () => {
+  it("La Marelle ne voit pas un Objet joué depuis la main", () => {
     const marelle = instance("la-marelle", "p1");
     const seau = instance("le-seau", "p1");
     const state = testGameState({
@@ -383,62 +362,16 @@ describe("Bris depuis la main : l'Objet rejoint le Cimetière DEPUIS LA MAIN (r�
       ],
     });
     const anchorBefore = state.players[1]!.anchor;
-    const broken = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: seau.instanceId, fromHand: true });
-    ok(broken);
-    expect(broken.state.players[1]!.anchor).toBe(anchorBefore - 1);
-  });
-
-  it("un Bris depuis le PLATEAU ne compte pas : l'Objet ne vient pas de la main", () => {
-    const marelle = instance("la-marelle", "p1");
-    const seau = instance("le-seau", "p1");
-    const state = testGameState({
-      players: [
-        testPlayer("p1", { board: [marelle, seau], reason: 6 }),
-        testPlayer("p2", { shipId: "le-goliath" }),
-      ],
-    });
-    const anchorBefore = state.players[1]!.anchor;
-    const broken = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: seau.instanceId });
-    ok(broken);
-    expect(broken.state.players[1]!.anchor).toBe(anchorBefore);
+    const joue = dispatch(state, { type: "playCard", playerId: "p1", instanceId: seau.instanceId });
+    ok(joue);
+    expect(joue.state.players[0]!.graveyard.some((c) => c.instanceId === seau.instanceId)).toBe(true);
+    expect(joue.state.players[1]!.anchor).toBe(anchorBefore);
   });
 });
 
-describe("Objets réactifs : pas de Bris à la main", () => {
-  it("Harpon à Ressort refuse un Bris manuel — sans attaque, il partait au Cimetière pour rien", () => {
-    const harpon = instance("harpon-a-ressort", "p1");
-    const state = testGameState({
-      players: [testPlayer("p1", { board: [harpon] }), testPlayer("p2", { shipId: "le-goliath" })],
-    });
-    const result = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: harpon.instanceId });
-    expect(result.ok).toBe(false);
-    // Depuis la main non plus : l'effet n'aurait pas davantage de cible.
-    const enMain = instance("harpon-a-ressort", "p1");
-    const depuisLaMain = testGameState({
-      players: [testPlayer("p1", { hand: [enMain], reason: 5 }), testPlayer("p2", { shipId: "le-goliath" })],
-    });
-    expect(dispatch(depuisLaMain, { type: "breakObject", playerId: "p1", instanceId: enMain.instanceId, fromHand: true }).ok).toBe(false);
-  });
-});
-
-describe("Bris depuis la main : la formule ne bouge pas", () => {
-  it("reste max(1, ceil(coût imprimé / 2))", () => {
-    // La règle citée par le cadrage, vérifiée sur ses propres exemples.
-    for (const [imprime, attendu] of [
-      [1, 1],
-      [2, 1],
-      [3, 2],
-      [4, 2],
-      [5, 3],
-      [6, 3],
-    ] as const) {
-      expect(handBreakCost({ cost: imprime } as never), `coût ${imprime}`).toBe(attendu);
-    }
-  });
-
-  it("les Objets réactifs du lot coûtent bien 2 Raison depuis la main", () => {
-    // Leur coût imprimé de 4 a été choisi POUR ça (garde-fou Notion) :
-    // le baisser romprait l'équilibrage du lot.
+describe("Objets Chaîne du lot : coût imprimé inchangé", () => {
+  it("les Objets réactifs du lot coûtent 4 Raison, joués en réaction", () => {
+    // Coût imprimé (garde-fou Notion) : le changer romprait l'équilibrage du lot.
     for (const id of [
       "harpon-a-ressort",
       "bouclier-decume",
@@ -448,7 +381,7 @@ describe("Bris depuis la main : la formule ne bouge pas", () => {
     ]) {
       const def = getCardDefinition(id);
       expect(def.cost, id).toBe(4);
-      expect(handBreakCost(def), id).toBe(2);
+      expect(def.chaine, id).toBe(true);
     }
   });
 });

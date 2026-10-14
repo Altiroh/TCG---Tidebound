@@ -1,7 +1,6 @@
 import {
   getCardDefinition,
   graveyardChoicesForAbility,
-  graveyardChoicesForBreak,
   graveyardChoicesForPlay,
   type CardInstance,
   type GameState,
@@ -15,9 +14,8 @@ import type { GraveyardPickRequest } from "@/features/match/useBoardInteraction"
  * pour l'écran : quelle carte pose la question, quelles cartes sont
  * proposées, et quelle action part une fois la réponse donnée.
  *
- * Écrit une fois pour les deux plateaux (local et en ligne) : le Bris était
- * le seul cas jusqu'au Lot 13, et il était recopié de part et d'autre —
- * trois gestes recopiés deux fois auraient fini par diverger.
+ * Écrit une fois pour les deux plateaux (local et en ligne) : des gestes
+ * recopiés de part et d'autre auraient fini par diverger.
  *
  * Les listes viennent du MOTEUR (`graveyardChoicesFor*`) : l'écran propose
  * donc exactement ce que la validation acceptera, jamais plus.
@@ -27,21 +25,6 @@ export function graveyardPickView(
   playerId: PlayerId,
   request: GraveyardPickRequest
 ): { sourceCardId: string; choices: CardInstance[]; actionFor: (chosen: CardInstance) => PlayerAction } {
-  if (request.kind === "break") {
-    const def = getCardDefinition(request.card.cardId);
-    return {
-      sourceCardId: request.card.cardId,
-      choices: graveyardChoicesForBreak(state, playerId, def),
-      actionFor: (chosen) => ({
-        type: "breakObject",
-        playerId,
-        instanceId: request.card.instanceId,
-        fromHand: request.fromHand,
-        chosenGraveyardInstanceId: chosen.instanceId,
-      }),
-    };
-  }
-
   if (request.kind === "play") {
     const def = getCardDefinition(request.card.cardId);
     return {

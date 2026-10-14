@@ -6,7 +6,7 @@ import { emittedSignalsOf, findAssemblage } from "@/game/rules/chromatic";
 import { processChromaticSignals } from "@/game/rules/chromaticSignals";
 import type { CardInstance } from "@/game/cards/types";
 import type { GameState } from "@/game/state/types";
-import { activateReactionFor, instance, testEnvironment, testGameState, testPlayer, enFinDeTour } from "./testHelpers";
+import { activateReactionFor, instance, testEnvironment, testGameState, testPlayer, enFinDeTour, jouerObjet } from "./testHelpers";
 
 /**
  * LOT 15 — ÉCLATS EN SELLE : écarts relevés par la revue cartes ↔ moteur du
@@ -57,12 +57,11 @@ describe("Bête de Halage : « détruite par un effet adverse »", () => {
   it("des DÉGÂTS mortels d'un effet adverse : le coup est annulé, elle perd 1 Résistance (permanent)", () => {
     const halage = instance("bete-de-halage", "p2", { damageMarked: 2 }); // 4 de Résistance : 2 + 2 est mortel
     const eclat = instance("coup-de-harpon", "p1");
-    const r = dispatch(table({ board: [eclat] }, { board: [halage] }), {
-      type: "breakObject",
+    const r = jouerObjet(table({ board: [eclat] }, { board: [halage] }), {
       playerId: "p1",
       instanceId: eclat.instanceId,
       targetInstanceId: halage.instanceId,
-    });
+    }, dispatch);
     ok(r);
     expect(unite(r.state, halage.instanceId)).toBeDefined();
     expect(stats(r.state, halage.instanceId).health).toBe(3);
@@ -73,12 +72,11 @@ describe("Bête de Halage : « détruite par un effet adverse »", () => {
   it("si −1 Résistance suffit à la tuer, le remplacement ne la sauve pas", () => {
     const halage = instance("bete-de-halage", "p2", { damageMarked: 3 }); // 4 de Résistance : 3/3 après le −1
     const eclat = instance("eclat-de-bouteille", "p1");
-    const r = dispatch(table({ board: [eclat] }, { board: [halage] }), {
-      type: "breakObject",
+    const r = jouerObjet(table({ board: [eclat] }, { board: [halage] }), {
       playerId: "p1",
       instanceId: eclat.instanceId,
       targetInstanceId: halage.instanceId,
-    });
+    }, dispatch);
     ok(r);
     expect(unite(r.state, halage.instanceId)).toBeUndefined();
   });
@@ -99,12 +97,11 @@ describe("Bête de Halage : « détruite par un effet adverse »", () => {
   it("ses PROPRES effets ne déclenchent rien : elle part", () => {
     const halage = instance("bete-de-halage", "p1", { damageMarked: 3 });
     const eclat = instance("eclat-de-bouteille", "p1");
-    const r = dispatch(table({ board: [eclat, halage] }), {
-      type: "breakObject",
+    const r = jouerObjet(table({ board: [eclat, halage] }), {
       playerId: "p1",
       instanceId: eclat.instanceId,
       targetInstanceId: halage.instanceId,
-    });
+    }, dispatch);
     ok(r);
     expect(unite(r.state, halage.instanceId)).toBeUndefined();
   });
@@ -124,12 +121,11 @@ describe("cibles : « une Sentinelle » sans « que vous contrôlez » vise les 
   it("Synchronisation ! peut viser une Sentinelle adverse", () => {
     const sync = instance("synchronisation", "p1");
     const heros = instance("heros-de-la-flamme", "p2");
-    const r = dispatch(table({ board: [sync] }, { board: [heros] }), {
-      type: "breakObject",
+    const r = jouerObjet(table({ board: [sync] }, { board: [heros] }), {
       playerId: "p1",
       instanceId: sync.instanceId,
       targetInstanceId: heros.instanceId,
-    });
+    }, dispatch);
     ok(r);
     // Son propre Rouge ne joue que pendant le tour de son contrôleur : la
     // Sentinelle adverse le reçoit, sans effet sur la Puissance lue maintenant.
@@ -208,7 +204,7 @@ describe("Veilleuse de l'Ombre : Signal Violet", () => {
     const trinquer = instance("trinquer-trop-fort", "p1");
     const carte = instance("murene-aveugle", "p2");
     const s = table({ board: [trinquer] }, { board: [veilleuse, heros], deck: [carte], hand: [instance("murene-aveugle", "p2")] });
-    const r = dispatch(s, { type: "breakObject", playerId: "p1", instanceId: trinquer.instanceId });
+    const r = jouerObjet(s, { playerId: "p1", instanceId: trinquer.instanceId }, dispatch);
     ok(r);
     const choix = dispatch(r.state, { type: "resolveChoice", playerId: "p1", choice: { pickInstanceIds: [heros.instanceId] } });
     ok(choix);
@@ -261,11 +257,10 @@ describe("Oracle d'Améthyste : « piochez PUIS défaussez »", () => {
   it("piocher puis défausser par un même effet lui donne +2 Puissance", () => {
     const oracle = instance("oracle-damethyste", "p1");
     const journal = instance("journal-de-bord-detrempe", "p1");
-    const r = dispatch(table({ board: [oracle, journal], hand: [instance("murene-aveugle", "p1")], deck: pioche("p1") }), {
-      type: "breakObject",
+    const r = jouerObjet(table({ board: [oracle, journal], hand: [instance("murene-aveugle", "p1")], deck: pioche("p1") }), {
       playerId: "p1",
       instanceId: journal.instanceId,
-    });
+    }, dispatch);
     ok(r);
     const defausse = dispatch(r.state, {
       type: "resolveChoice",

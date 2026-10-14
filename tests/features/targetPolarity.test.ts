@@ -24,7 +24,7 @@ describe("sens d'un ciblage", () => {
 
   it("lit les effets de la bonne capacité d'une carte", () => {
     // Le Masque Fendu : renvoie une Marionnette QUE VOUS CONTRÔLEZ — un repli.
-    expect(sourcePolarity("le-masque-fendu", "break")).toBe("friendly");
+    expect(sourcePolarity("le-masque-fendu", "playCard")).toBe("friendly");
     // Jusqu'à ce que ça casse : un dégât de plus à l'unité qui a survécu.
     expect(sourcePolarity("jusqua-ce-que-ca-casse", "reaction", 0)).toBe("hostile");
   });

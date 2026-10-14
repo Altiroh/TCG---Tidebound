@@ -55,6 +55,7 @@ export const GRAVEYARD_CAUSE_LABELS: Record<GraveyardCause, string> = {
   expired: "Expirée",
   assembled: "Assemblée",
   replaced: "Remplacée",
+  detached: "Détachée",
 };
 
 export const GRAVEYARD_CAUSE_COLORS: Record<GraveyardCause, string> = {
@@ -64,6 +65,7 @@ export const GRAVEYARD_CAUSE_COLORS: Record<GraveyardCause, string> = {
   expired: "text-cyan-300",
   assembled: "text-violet-300",
   replaced: "text-emerald-300",
+  detached: "text-sky-300",
 };
 
 /**
@@ -91,11 +93,14 @@ export const CARD_RARITY_LABELS: Record<CardRarity, string> = {
  */
 export const KEYWORD_LABELS: Record<string, string> = {
   garde: "Garde",
+  voile: "Voile",
 };
 
 export const KEYWORD_DESCRIPTIONS: Record<string, string> = {
   garde:
     "Tant que vous contrôlez un permanent portant Garde, une attaque adverse visant votre Navire doit d'abord viser ce permanent.",
+  voile:
+    "Conféré par un Équipement. La première fois que le porteur devrait être détruit (dégâts mortels ou destruction directe), l'Équipement est détruit à sa place et le porteur reste en jeu avec 1 Résistance. Ne protège ni du Sabordage, ni de l'expiration, ni de la destruction de l'Équipement lui-même.",
 };
 
 /** Libellé d'un mot-clé, avec repli sur l'identifiant capitalisé pour un mot-clé pas encore documenté. */

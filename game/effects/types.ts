@@ -108,6 +108,13 @@ export type EffectType =
   /** Attache la source (un Équipement) au permanent choisi (`target: { kind: "chosenUnit" }`) — cf. `EQUIPPABLE_CARD_TYPES`, un seul Équipement par permanent. */
   | "attachEquipment"
   /**
+   * Transfert d'Équipement PAR EFFET (refonte du 13/10/2026) : la source, un
+   * Équipement déjà attaché, passe sur l'unité choisie (`chosenUnit`), du
+   * même camp, non équipée et légale pour lui. Aucune carte ne l'utilise
+   * encore : c'est la seule porte de transfert que la règle autorise.
+   */
+  | "transferEquipment"
+  /**
    * Retire `amount` tours de durée restante aux permanents ciblés
    * (`CardInstance.turnsRemaining`), sans jamais descendre sous 0.
    *
@@ -315,17 +322,14 @@ export type EffectType =
    */
   | "keepUnitsDestroyRest"
   /**
-   * « Lorsqu'un adversaire Brise un Objet : annulez l'effet de cet Objet »
-   * (Fausse Cargaison, Lot 14).
+   * « Lorsqu'un adversaire joue un Objet : annulez son effet » (Sabotage
+   * Discret, Lot 14) : marque annulé le maillon de la pile Chaîne qu'est cet
+   * Objet (`context.triggerSourceInstanceId`).
    *
-   * L'Objet est bien BRISÉ — il est parti au Cimetière, son coût a été payé,
-   * et les déclencheurs « lorsque vous Brisez un Objet » se déclencheront
-   * comme d'habitude. Ce qui est annulé, c'est ce que son texte allait
-   * faire, et rien d'autre.
-   *
-   * N'a de sens que dans la fenêtre ouverte par un Bris suspendu
-   * (`pendingObjectBreak`) : hors d'elle, il n'y a aucun effet en attente
-   * et il ne fait rien.
+   * L'Objet annulé ne se résout pas et n'est PAS Brisé : il part au
+   * Cimetière, son coût reste payé, et rien de ce qui guette un Bris ne se
+   * déclenche. Une capacité qui porte cet effet ne se propose que s'il reste
+   * sur la pile un tel maillon non annulé.
    */
   | "cancelObjectEffect"
   /**
@@ -769,13 +773,6 @@ export interface EffectDefinition {
     excludeSelf?: boolean;
   };
 
-  /**
-   * Ne résout cet effet que si l'Objet source a été Brisé DEPUIS LA MAIN
-   * (`breakObject` avec `fromHand`), ou seulement s'il l'a été depuis le
-   * board (`false`) — ex: Le Seau, qui invoque un Péon de plus quand on le
-   * brise directement de la main. `undefined` = indifférent.
-   */
-  conditionBrokenFromHand?: boolean;
 
   /**
    * Ne résout cet effet que si le contrôleur a TOUTES ces cartes nommées
@@ -1151,6 +1148,13 @@ export interface EffectDefinition {
    * visible"). Sans porteur, l'effet ne se résout pas.
    */
   conditionEquippedUnitVisible?: boolean;
+  /**
+   * Pour `heal` sur une unité : la survie de la cible se vérifie AVANT le
+   * soin — une cible que ses dégâts détruisent déjà (Résistance restante à 0
+   * ou moins, ou départ décidé) n'est pas soignée et part normalement
+   * (Bouclier Fendu, refonte des Équipements du 13/10/2026).
+   */
+  conditionTargetSurvives?: boolean;
 
   /**
    * Pour un Équipement : ne résout CET effet que si le permanent qu'il

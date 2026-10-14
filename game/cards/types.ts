@@ -36,14 +36,16 @@ export interface ChromaticIdentity {
  * mécaniques verrouillées", verrouillage du 2026-09-08) : Marin et
  * Créature sont des permanents "unité" (attaquent, défendent) ; Équipement
  * est permanent par défaut mais peut être consommable (`permanent: false`) ;
- * Structure, Objet et Anomalie sont des permanents non-unité.
+ * Structure et Anomalie sont des permanents non-unité.
  *
- * **Action et Réaction n'existent PAS comme types de carte** — changement
- * de cadrage : les effets ponctuels sont désormais portés par des
- * **Objets**, des permanents autonomes toujours visibles qui occupent un
- * Slot et se **brisent** (`game/actions/breakObject.ts`) pour résoudre
- * leur effet. Briser ≠ Saborder : ça ne déclenche ni `onDeath` ni
- * `onSaborde` sauf texte contraire.
+ * **Action et Réaction n'existent PAS comme types de carte** : les effets
+ * ponctuels sont portés par des **Objets**. Règle du 13/10/2026 : un Objet
+ * se JOUE depuis la main à son coût imprimé et ne se pose JAMAIS — il entre
+ * sur la pile Chaîne, son effet se résout, et il part au Cimetière
+ * (`game/chain/`). Un Objet ordinaire exige un emplacement libre sans
+ * l'occuper ; un Objet Chaîne (`chaine`) n'en exige pas. Son effet résolu
+ * EST le Bris (`OBJECT_BROKEN`) ; annulé ou privé de cible, il n'y a pas de
+ * Bris. Briser ≠ Saborder : ni `onDeath` ni `onSaborde`.
  */
 export type CardType = "marin" | "creature" | "equipement" | "structure" | "objet" | "anomalie" | "lande";
 
@@ -65,7 +67,6 @@ export const PERMANENT_CARD_TYPES: readonly CardType[] = [
   "creature",
   "equipement",
   "structure",
-  "objet",
   "anomalie",
 ];
 
@@ -139,17 +140,6 @@ export interface TriggerSourceFilter {
    * déclare `["combat", "effect", "tide"]` (vérifié par la conformité).
    */
   destroyedBy?: DestructionCause[];
-  /**
-   * `onObjectBroken` seulement : ne réagit qu'à un Bris DEPUIS LA MAIN
-   * (`true`), ou au contraire qu'à un Bris depuis le plateau (`false`) —
-   * ex: Pantalone Sans-Sou, « que vous Brisez directement depuis votre
-   * main ». Porté par le FILTRE et non par une condition d'effet
-   * (`conditionBrokenFromHand`) : le filtre est évalué AVANT que
-   * `oncePerTurnKey` ne soit consommé, là où une condition d'effet
-   * laisserait un Bris depuis le plateau brûler l'unique usage du tour
-   * pour ne rien résoudre.
-   */
-  fromHand?: boolean;
   /**
    * `onSurvivedDamage` seulement : la carte n'a survécu qu'à des dégâts de
    * ces CAUSES (« des dégâts infligés par l'un de vos effets » → `["effect"]`,
@@ -888,16 +878,6 @@ export interface CardDefinition {
    */
   bypassesGardeTideStateIn?: TideStateName[];
 
-  /**
-   * Pour un Équipement uniquement : la PREMIÈRE fois que le permanent
-   * équipé (`CardInstance.attachedToInstanceId`) devrait être détruit,
-   * détruit CET Équipement à la place et inflige un malus permanent de
-   * Résistance au permanent sauvé (ex: Plaque de Fortune, -1). Consommé
-   * naturellement : l'Équipement quitte le plateau, ne peut donc pas se
-   * redéclencher. Traité dans `game/state/processDeaths.ts`, AVANT la
-   * collecte normale des morts.
-   */
-  destructionSubstitute?: { healthPenalty: number };
 
   /**
    * "La première fois à chaque tour qu'il devrait être détruit, il reste à
@@ -935,20 +915,22 @@ export interface CardDefinition {
   contrecoupOnDirectShipDamageWhileVisible?: { reflectedFraction: number };
 
   /**
-   * Taxe de Bris (Cloche d'Alerte) : tant que la carte est visible, le
-   * premier Bris d'Objet de l'ADVERSAIRE à chaque tour lui coûte `amount`
-   * de Raison en plus — depuis la main (ajouté au demi-coût) comme depuis le
-   * plateau (où le Bris est sinon gratuit). Résolu dans `breakObject.ts`.
+   * Taxe sur les Objets adverses (Fausse Cargaison, Cloche d'Alerte, Seren) :
+   * le premier Objet que l'ADVERSAIRE JOUE à chaque tour lui coûte `amount`
+   * de Raison en plus (règle du 13/10/2026 : plus de Bris d'Objet posé, la
+   * taxe porte sur l'Objet joué). Valable tant que la carte est en jeu —
+   * une Structure masquée par la Marée agit quand même. Résolu dans
+   * `game/rules/objectPlay.ts`.
    *
-   * `blocksIfUnpayable` réalise « s'il ne peut pas payer, l'Objet ne peut
-   * pas être Brisé » : le Bris taxé exige alors que la Raison courante
+   * `blocksIfUnpayable` réalise « s'il ne peut pas payer, il ne peut pas le
+   * jouer » : l'Objet taxé exige alors que la Raison courante
    * couvre le coût TOTAL, et il est refusé sinon. C'est la seule entorse au
    * « pas de plancher de Déraison » (design du 16/09/2026), et elle est
    * volontairement portée par la CARTE, pas par le moteur : hors taxe, un
    * coût se paie toujours, quitte à creuser la dette. Sans ce drapeau, la
    * taxe s'ajoute au coût et n'empêche jamais rien.
    */
-  taxOpponentObjectBreakOncePerTurnWhileVisible?: { amount: number; blocksIfUnpayable?: boolean };
+  taxOpponentObjectPlayOncePerTurn?: { amount: number; blocksIfUnpayable?: boolean };
 
   /**
    * Pour un Équipement uniquement : CONTRE-INDICATION à la règle générale
@@ -992,7 +974,7 @@ export interface CardDefinition {
   /**
    * Pour un Équipement uniquement : types de permanent qu'il peut cibler
    * pour s'y attacher (`attachEquipment`). `undefined` = `EQUIPPABLE_CARD_TYPES`
-   * (Marin/Créature/Structure). Certains Équipements restreignent
+   * (Marin/Créature). Certains Équipements restreignent
    * davantage leur texte imprimé (ex: "Équipez une Structure" → `["structure"]`)
    * — jamais un autre Équipement/Objet/Anomalie, quel que soit ce champ.
    */
@@ -1040,6 +1022,14 @@ export interface CardDefinition {
    * Slot et continue d'exister même invisible.
    */
   visibleDuringTide?: TideStateName[];
+  /**
+   * « Effet unique — actif même masqué » (Structures du Lot 14, refonte du
+   * 13/10/2026) : la Marée cache la carte à l'adversaire (`visibleDuringTide`
+   * reste un état de PRÉSENTATION), mais ne la rend pas inactive — ses
+   * capacités se déclenchent masquée comme visible. Sans ce drapeau, une
+   * carte masquée est inactive (`blocqueParMasquage`, triggerBus).
+   */
+  activeWhileHidden?: boolean;
 
   /**
    * Restreint les états de Marée pendant lesquels cette carte peut être
@@ -1073,20 +1063,12 @@ export interface CardDefinition {
   costOverrideWhenTideStateIn?: { tideStateIn: TideStateName[]; cost: number };
 
   /**
-   * Pour un Objet uniquement : restreint l'activation de `onBreakEffects`
-   * (`game/actions/breakObject.ts`) à ces états de Marée (ex: Choppe !,
-   * activable seulement pendant Calme). `undefined` = brisable en toute
-   * circonstance.
+   * Pour un Objet uniquement : « une seule utilisation de … par tour »
+   * (Fragment d'Éveil). Compté par NOM et par joueur sur le tour
+   * (`PlayerState.objectsPlayedThisTurn`) : plusieurs exemplaires ne
+   * s'enchaînent pas.
    */
-  requiresTideStateForBreak?: TideStateName[];
-  /**
-   * Pour un Objet uniquement : « une seule carte NOMMÉE ainsi peut être
-   * Brisée par tour » (Changement de rôle !). Compté par NOM et par joueur
-   * sur le tour de table (`PlayerState.objectsBrokenThisTurn`), depuis la
-   * main comme depuis le plateau : plusieurs exemplaires ne s'enchaînent
-   * pas.
-   */
-  breakOncePerTurnByName?: boolean;
+  playOncePerTurnByName?: boolean;
 
   /**
    * Pour une unité ATTAQUANTE (ou l'Équipement qui l'équipe, via
@@ -1398,9 +1380,14 @@ export interface CardDefinition {
   /** Le dé de la carte (« · D6 ») : celui que lancent ses effets `rollDie`. */
   die?: 4 | 6 | 8;
   /**
-   * « Chaîne — Brisez : … » : cet Objet ne se Brise que PENDANT un jet de dé
-   * de son contrôleur (`DieRollChoice`), avant sa résolution — même hors de
-   * sa Phase principale. Ses effets de Bris agissent sur le jet en cours.
+   * « Chaîne — … » : Objet de réaction (`game/chain/chainStack.ts`). Il se
+   * joue depuis la main au coût imprimé SANS Slot libre, même plateau plein,
+   * y compris pendant le tour adverse :
+   * - avec une capacité (`abilities[0]`, déclencheur + effets), dans une
+   *   fenêtre de réaction correspondant à son texte ;
+   * - sans capacité (Chaîne de dé, `onBreakEffects` avec `dieDelta`…),
+   *   pendant un jet de dé de son contrôleur, avant sa résolution.
+   * Il rejoint la pile de Chaîne (LIFO) : un autre Chaîne peut y répondre.
    */
   chaine?: boolean;
   /**
@@ -1533,7 +1520,13 @@ export type GraveyardCause =
   /** Placée au Cimetière pour un Assemblage Chromatique : ni détruite, ni Sabordée (Lot 15). */
   | "assembled"
   /** Lande chassée par une autre Lande : ni détruite, ni expirée. */
-  | "replaced";
+  | "replaced"
+  /**
+   * Équipement dont le porteur est retourné en main (refonte du 13/10/2026) :
+   * il rejoint le Cimetière sans être détruit — rien de ce qui guette une
+   * destruction ne le voit.
+   */
+  | "detached";
 
 /**
  * COMMENT une carte a quitté le plateau — plus fin que `GraveyardCause`, qui
@@ -1606,7 +1599,15 @@ export function isVisibleDuringTide(def: CardDefinition, tideState: TideStateNam
  * Résistance serait traitée pareil si le design en créait une.
  */
 export function hasResistance(def: CardDefinition): boolean {
-  return def.health !== undefined;
+  // Un Équipement n'a pas de Résistance À LUI (refonte du 13/10/2026) : sa
+  // valeur imprimée s'ajoute à celle de son porteur (`equipmentResistance`).
+  // Il ne se blesse, ne s'attaque ni ne meurt de dégâts.
+  return def.health !== undefined && def.type !== "equipement";
+}
+
+/** Résistance imprimée d'un Équipement : ce qu'il ajoute au maximum de son porteur. */
+export function equipmentResistance(def: CardDefinition): number {
+  return def.type === "equipement" ? (def.health ?? 0) : 0;
 }
 
 export function hasKeyword(def: CardDefinition, keyword: string): boolean {

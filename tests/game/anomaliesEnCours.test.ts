@@ -5,7 +5,7 @@ import { eligibleChosenUnits } from "@/game/effects/chosenTargets";
 import { resolveEffect } from "@/game/effects/resolveEffect";
 import type { CardInstance } from "@/game/cards/types";
 import type { GameState } from "@/game/state/types";
-import { instance, pendingCandidates, testEnvironment, testGameState, testPlayer } from "./testHelpers";
+import { instance, pendingCandidates, testEnvironment, testGameState, testPlayer, jouerObjet } from "./testHelpers";
 
 /**
  * EFFETS EN COURS (décision du 05/10/2026) : une Anomalie se joue comme un
@@ -86,7 +86,7 @@ describe("Jusqu'à ce que ça casse : à la pose, puis à chaque survie", () => 
     let state = table({ board: [matelot, eclat, eclat2], hand: [anomalie] });
 
     // Le Matelot survit à un premier dégât ce tour-ci : +1 Puissance.
-    const coup = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: eclat.instanceId, targetInstanceId: matelot.instanceId });
+    const coup = jouerObjet(state, { playerId: "p1", instanceId: eclat.instanceId, targetInstanceId: matelot.instanceId });
     ok(coup);
     state = passerFenetres(coup.state);
     expect(puissance(state, matelot.instanceId)).toBe(2);
@@ -110,7 +110,7 @@ describe("Jusqu'à ce que ça casse : à la pose, puis à chaque survie", () => 
 
     // Et plus tard dans le tour non plus.
     state = passerFenetres(state);
-    const encore = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: eclat2.instanceId, targetInstanceId: matelot.instanceId });
+    const encore = jouerObjet(state, { playerId: "p1", instanceId: eclat2.instanceId, targetInstanceId: matelot.instanceId });
     ok(encore);
     expect(pendingCandidates(encore.state).map((c) => c.cardId)).not.toContain("jusqua-ce-que-ca-casse");
   });
@@ -129,7 +129,7 @@ describe("Jusqu'à ce que ça casse : à la pose, puis à chaque survie", () => 
     ok(pose);
     expect(pose.state.pendingChoice).toBeUndefined();
 
-    const coup = dispatch(passerFenetres(pose.state), { type: "breakObject", playerId: "p1", instanceId: eclat.instanceId, targetInstanceId: autre.instanceId });
+    const coup = jouerObjet(passerFenetres(pose.state), { playerId: "p1", instanceId: eclat.instanceId, targetInstanceId: autre.instanceId });
     ok(coup);
     expect(pendingCandidates(coup.state).map((c) => c.cardId)).toContain("jusqua-ce-que-ca-casse");
   });

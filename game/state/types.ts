@@ -132,14 +132,17 @@ export interface PlayerState {
    */
   reasonLostThisTurn?: { turnNumber: number; amount: number };
   /**
-   * NOMS des Objets Brisés par ce joueur pendant le tour de table
-   * `turnNumber` (`game/actions/breakObject.ts`). Daté plutôt que remis à
-   * zéro, comme `reasonLostThisTurn`. Lu par
-   * `CardDefinition.breakOncePerTurnByName` — « une seule carte nommée
-   * Changement de rôle ! peut être Brisée par tour » : par NOM, pour que
-   * plusieurs exemplaires ne s'enchaînent pas.
+   * NOMS des Objets Brisés par ce joueur (effet résolu avec succès) pendant
+   * le tour `turnNumber` (`game/chain/chainStack.ts`). Daté plutôt que remis
+   * à zéro, comme `reasonLostThisTurn`.
    */
   objectsBrokenThisTurn?: { turnNumber: number; names: string[] };
+  /**
+   * Noms des Objets JOUÉS ce tour par ce joueur — résolus, annulés ou
+   * encore sur la pile. Lu par « une seule utilisation de … par tour »
+   * (`CardDefinition.playOncePerTurnByName`).
+   */
+  objectsPlayedThisTurn?: { turnNumber: number; names: string[] };
   /**
    * Protections de destruction en cours (« vos Structures ne peuvent pas
    * être détruites par des effets environnementaux jusqu'à la fin de ce
@@ -526,27 +529,20 @@ export interface GameState {
   };
 
   /**
-   * Bris d'Objet suspendu le temps de laisser quelqu'un en ANNULER l'effet
-   * (Fausse Cargaison, Lot 14).
-   *
-   * L'Objet est déjà parti au Cimetière et son coût est payé : ce qui
-   * attend, ce sont ses `onBreakEffects`. `dispatch` les résout dès que la
-   * fenêtre se referme — ou les jette si `cancelled` a été levé.
-   *
-   * Posé UNIQUEMENT quand un adversaire a de quoi répondre : sans cette
-   * garde, tous les Bris du jeu changeraient de rythme pour une carte.
+   * LA PILE CHAÎNE (règle du 13/10/2026, `game/chain/chainStack.ts`) : les
+   * Objets joués et les réactions activées qui attendent de se résoudre, le
+   * DERNIER en haut. Elle se résout du haut vers le bas (LIFO) quand plus
+   * personne ne répond ; une fenêtre peut s'ouvrir entre deux résolutions,
+   * jamais au milieu de l'une d'elles. Absente ou vide : rien n'attend.
    */
-  pendingObjectBreak?: {
-    playerId: PlayerId;
-    instanceId: string;
-    cardId: string;
-    brokenFromHand: boolean;
-    chosenTargetInstanceId?: string;
-    chosenGraveyardInstanceId?: string;
-    turnNumber: number;
-    /** Un adversaire a annulé l'effet : il ne se résoudra pas. */
-    cancelled?: boolean;
-  };
+  chainStack?: ChainLink[];
+  /**
+   * Fenêtre de réaction dans laquelle le PREMIER maillon de la pile a été
+   * joué : elle reprend, enrichie de ce que la pile a produit, une fois la
+   * pile vide. Absente : la pile est partie d'une action (Objet joué en
+   * Phase principale, Chaîne de dé), pas d'une fenêtre.
+   */
+  chainBase?: PendingReactionState;
 
   /**
    * DÉLAI DE TOUR : jusqu'à quand le joueur attendu a pour agir
@@ -738,7 +734,6 @@ export interface HandDiscardChoice {
       sourceInstanceId?: string;
       chosenTargetInstanceId?: string;
       chosenGraveyardInstanceId?: string;
-      brokenFromHand?: boolean;
       triggerSourceInstanceId?: string;
       turnNumber: number;
     };
@@ -1053,7 +1048,6 @@ export interface DieRollChoice {
     chosenTargetInstanceId?: string;
     chosenGraveyardInstanceId?: string;
     triggerSourceInstanceId?: string;
-    brokenFromHand?: boolean;
     turnNumber: number;
   };
   /** Effets de la séquence qui suivent le jet. */
@@ -1072,6 +1066,42 @@ export type PendingChoice =
   | HandDiscardChoice
   | DeckLookChoice
   | HealAllocationChoice;
+
+/**
+ * Un maillon de la pile Chaîne : un Objet JOUÉ depuis la main (classique en
+ * Phase principale, Chaîne dans une fenêtre ou pendant un jet de dé). La
+ * carte n'est dans aucune zone tant qu'elle est sur la pile : son coût est
+ * payé, son effet attend. À la résolution, elle part au Cimetière — Brisée
+ * si son effet s'est résolu, simplement défaussée s'il a été annulé ou
+ * n'avait plus de cible légale.
+ *
+ * Une capacité activée dans une fenêtre se résout aussitôt : rien ne peut
+ * lui répondre (seul un Objet joué ouvre une fenêtre `onObjectPlayed`), elle
+ * n'a donc jamais à attendre sur la pile.
+ */
+export interface ChainLink {
+  /** Identifiant du maillon dans la partie (pour l'interface et le journal). */
+  id: string;
+  /** Joueur qui a joué l'Objet. */
+  playerId: PlayerId;
+  /** L'Objet lui-même, hors de toute zone le temps de sa résolution. */
+  card: CardInstance;
+  targetInstanceId?: string;
+  chosenGraveyardInstanceId?: string;
+  /** Carte à l'origine du déclencheur auquel ce maillon répond (cible `triggerSource`). */
+  triggerSourceInstanceId?: string;
+  /**
+   * D'où viennent ses effets : `undefined` = `onBreakEffects` (l'effet de
+   * l'Objet) ; un index = la capacité Chaîne qui l'a fait jouer dans une
+   * fenêtre (Harpon à Ressort : « lorsqu'une unité adverse attaque »).
+   */
+  abilityIndex?: number;
+  /** Objet Chaîne de dé : la modification choisie pour le jet en cours (« +1 ou -1 »). */
+  dieDelta?: number;
+  /** Un contre-Objet (Sabotage Discret) l'a annulé : il ne se résoudra pas. */
+  cancelled?: boolean;
+  turnNumber: number;
+}
 
 export interface PendingReactionState {
   /** Événements déclencheurs ayant ouvert cette fenêtre (contexte pour l'UI/le recalcul d'éligibilité). */

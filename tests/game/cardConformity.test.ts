@@ -64,9 +64,6 @@ const EXCEPTIONS: Record<string, string> = {
   "le-pont-sans-fin:duration":
     "« pendant 3 tours de table » est la durée de l'EMPLACEMENT AJOUTÉ (`tableTurns` de l'effet `addSlot`), pas " +
     "celle de l'Objet : il se brise pour produire l'effet, il n'a pas à expirer.",
-  "miss-franche-comte-1987-roublarde-aux-des-pipes:optional":
-    "« Vous pouvez ajouter ou retirer 1 » est une OPTION offerte pendant le jet (`dieAdjustOncePerTurn`) : le " +
-    "jet reste ouvert, le joueur choisit +1, -1 ou de valider sans rien changer. Rien ne s'applique d'office.",
   "le-donjon-de-ladalle:optional":
     "« Vous pouvez relancer » est une option du jet ouvert (`firstRollRerollEachTurn` de la Lande) : le joueur " +
     "relance ou garde son résultat ; rien ne se relance d'office.",
@@ -78,10 +75,6 @@ const EXCEPTIONS: Record<string, string> = {
     "« La première fois que chacune de vos unités » vaut pour la durée de l'Anomalie, qui ne vit que jusqu'à la " +
     "fin du tour (`expiresAtEndOfTurn`) : le « une fois par tour » suivi PAR UNITÉ (`oncePerTurnPerTriggerSource`) " +
     "en est la lecture exacte, sans `onceEver`.",
-  "changement-de-role:optional":
-    "« Vous pouvez jouer une autre Marionnette […] sans payer son coût » ne résout rien d'office : le Bris pose " +
-    "une gratuité (`discountNextCards` + `free`) que le joueur utilise en jouant lui-même la carte de son choix, " +
-    "ou laisse perdre à la fin du tour. Le choix reste entièrement le sien.",
 };
 
 /**
@@ -137,7 +130,8 @@ function hasOncePerTurnField(def: CardDefinition): boolean {
 
 /** La carte quitte le board (ou détruit son Équipement) après son unique usage : « la première fois » est alors inhérent. */
 function selfConsuming(def: CardDefinition): boolean {
-  return Boolean(def.destructionSubstitute) || Object.keys(def).some((key) => /ThenDestroy|contrecoup/i.test(key));
+  // Voile (Plaque de Fortune) : l'Équipement est détruit à sa place, une seule fois.
+  return (def.equipGrantsKeywords ?? []).includes("voile") || Object.keys(def).some((key) => /ThenDestroy|contrecoup/i.test(key));
 }
 
 /** Tous les nombres portés par la définition, à toute profondeur (tideAffinity, champs composés…). */
@@ -283,9 +277,10 @@ function check(def: CardDefinition): Violation[] {
   // --- « détruite » n'est pas « Sabordée » -----------------------------------
   // `DestructionCause` : un Sabordage est un coût consenti, jamais une
   // destruction subie. Les textes qui veulent les deux le disent (« détruite
-  // ou Sabordée », Bernard l'Ermite, Charpentière de Veille) ; les autres
-  // déclarent les causes retenues (`destroyedBy`, sans "scuttle").
-  if (/d[ée]trui|destruction/i.test(text) && !/ou Sabord[ée]/i.test(text)) {
+  // ou Sabordée », Bernard l'Ermite, Charpentière de Veille ; « détruite,
+  // Sabordée ou défaussée », Coucou c'est moi) ; les autres déclarent les
+  // causes retenues (`destroyedBy`, sans "scuttle").
+  if (/d[ée]trui|destruction/i.test(text) && !/(ou|,) Sabord[ée]/i.test(text)) {
     for (const [index, ability] of abilities.entries()) {
       if (ability.trigger !== "onDeath") continue;
       const causes = ability.triggeredBy ? ability.triggeredBy.destroyedBy : ability.condition?.destroyedBy;

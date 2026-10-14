@@ -164,7 +164,7 @@ describe("progression d'une partie terminée", () => {
     const state = finishedState(
       [
         { ...base, type: "PLAY_CARD", playerId: "p1", instanceId: "o1", cardId: "thermos-du-dernier-quart" },
-        { ...base, type: "OBJECT_BROKEN", playerId: "p1", instanceId: broken.instanceId, cardId: "thermos-du-dernier-quart", fromHand: false },
+        { ...base, type: "OBJECT_BROKEN", playerId: "p1", instanceId: broken.instanceId, cardId: "thermos-du-dernier-quart" },
         // Expiration : un simple départ de zone n'est pas un Bris.
         { ...base, type: "CARD_MOVED", instanceId: expired.instanceId, fromZone: "board", toZone: "graveyard" },
       ],

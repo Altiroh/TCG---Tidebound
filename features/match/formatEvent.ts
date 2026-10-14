@@ -83,7 +83,11 @@ export function formatEvent(state: GameState, event: GameEvent, playerLabel: (pl
     case "STRUCTURE_REVEALED":
       return `${cardName(state, event.cardId)} devient visible (${playerLabel(event.playerId)}).`;
     case "OBJECT_BROKEN":
-      return `${playerLabel(event.playerId)} brise ${cardName(state, event.cardId)}${event.fromHand ? " depuis sa main" : ""}.`;
+      return `${playerLabel(event.playerId)} brise ${cardName(state, event.cardId)}.`;
+    case "OBJECT_FIZZLED":
+      return event.reason === "cancelled"
+        ? `L'effet de ${cardName(state, event.cardId)} est annulé : l'Objet part au Cimetière sans être Brisé.`
+        : `${cardName(state, event.cardId)} n'a plus de cible : l'Objet part au Cimetière sans être Brisé.`;
     case "SHIP_ABILITY_ACTIVATED":
       return event.armed
         ? `${playerLabel(event.playerId)} arme ${event.abilityName}.`

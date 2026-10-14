@@ -6,7 +6,7 @@ import {
   dieOutcomeOf,
   dieRollOptions,
   getCardDefinition,
-  handBreakCost,
+  previewPlayCardReason,
   type DieOutcome,
   type DieSize,
   type GameState,
@@ -61,7 +61,7 @@ function prefersReducedMotion(): boolean {
  *
  * Tant que le jet est OUVERT (la Chaîne), le dé reste posé et les gestes
  * encore possibles s'alignent en pastilles sous lui — relancer, +1/−1,
- * Briser un Objet « Chaîne », valider. Rien ne recouvre la partie : le
+ * jouer un Objet « Chaîne », valider. Rien ne recouvre la partie : le
  * plateau reste visible et jouable du regard.
  */
 export function TableDice({ state, viewerId, onAction }: TableDiceProps) {
@@ -156,7 +156,6 @@ function DiceOnTable({ throwInfo, state, viewerId, onAction }: { throwInfo: Dice
 function DieControls({ state, throwInfo, viewerId, onAction }: { throwInfo: DiceThrow } & TableDiceProps) {
   const choice = throwInfo.choice!;
   const options = dieRollOptions(state, choice);
-  const raison = state.players.find((p) => p.id === viewerId)?.reason ?? 0;
   const repondre = (reponse: Extract<PlayerAction, { type: "resolveChoice" }>["choice"]) => {
     playButtonClick();
     onAction({ type: "resolveChoice", playerId: viewerId, choice: reponse });
@@ -198,19 +197,15 @@ function DieControls({ state, throwInfo, viewerId, onAction }: { throwInfo: Dice
           </button>
         ));
       })}
-      {options.chain.flatMap(({ card, fromHand }) => {
+      {options.chain.flatMap((card) => {
         const def = getCardDefinition(card.cardId);
-        const cout = fromHand ? handBreakCost(def) : 0;
+        // Jouer un Objet « Chaîne » de dé : son coût imprimé (taxe adverse comprise).
+        const prix = previewPlayCardReason(state, viewerId, card.instanceId);
+        const cout = prix?.cost ?? def.cost;
         const deltas = def.onBreakEffects?.find((e) => e.dieDeltas)?.dieDeltas;
-        const briser = (dieDelta?: number) => {
+        const jouer = (dieDelta?: number) => {
           playButtonClick();
-          onAction({
-            type: "breakObject",
-            playerId: viewerId,
-            instanceId: card.instanceId,
-            ...(fromHand ? { fromHand: true } : {}),
-            ...(dieDelta !== undefined ? { dieDelta } : {}),
-          });
+          onAction({ type: "playCard", playerId: viewerId, instanceId: card.instanceId, ...(dieDelta !== undefined ? { dieDelta } : {}) });
         };
         const note = `${def.name}${cout > 0 ? ` · ${cout} R` : ""}`;
         return (deltas?.length ? deltas : [undefined]).map((delta) => (
@@ -219,10 +214,10 @@ function DieControls({ state, throwInfo, viewerId, onAction }: { throwInfo: Dice
             type="button"
             className={styles.chip}
             data-chain=""
-            disabled={cout > raison}
-            onClick={() => briser(delta)}
+            disabled={prix !== undefined && !prix.allowed}
+            onClick={() => jouer(delta)}
           >
-            {delta !== undefined ? `${signe(delta)} ` : "Briser "}
+            {delta !== undefined ? `${signe(delta)} ` : "Jouer "}
             <span className={styles.chipNote}>{note}</span>
           </button>
         ));

@@ -7,7 +7,7 @@ import { hasEffectiveKeyword } from "@/game/rules/validation";
 import { nextInt } from "@/game/rng";
 import type { CardInstance } from "@/game/cards/types";
 import type { DieSize, GameState } from "@/game/state/types";
-import { instance, testEnvironment, testGameState, testPlayer, enFinDeTour } from "./testHelpers";
+import { instance, testEnvironment, testGameState, testPlayer, enFinDeTour, jouerObjet } from "./testHelpers";
 
 /**
  * LOT 17 — Dungeon et Ladalle / Opalins.
@@ -79,7 +79,7 @@ describe("jets de dé : la face lue par la carte, les critiques à la fermeture"
     expect(piedMarin(r.state, gaston.instanceId)).toBe(false);
   });
 
-  it("Dé pipé en main : le jet reste ouvert, le Bris le porte de 5 à 6 et la Réussite critique se lit à la fermeture", () => {
+  it("Dé pipé en main : le jet reste ouvert, le jouer le porte de 5 à 6 et la Réussite critique se lit à la fermeture", () => {
     const gaston = instance("gaston-aventurier-de-ladalle", "p1");
     const de = instance("de-pipe", "p1");
     const r = jouer(table({ hand: [gaston, de] }, {}, { rngState: graine(6, 5) }), gaston);
@@ -88,7 +88,7 @@ describe("jets de dé : la face lue par la carte, les critiques à la fermeture"
     // Rien n'est encore appliqué : la Chaîne est ouverte.
     expect(stats(r.state, gaston.instanceId).attack).toBe(3);
 
-    const brise = dispatch(r.state, { type: "breakObject", playerId: "p1", instanceId: de.instanceId, fromHand: true, dieDelta: 1 });
+    const brise = jouerObjet(r.state, { playerId: "p1", instanceId: de.instanceId, dieDelta: 1 }, dispatch);
     ok(brise);
     expect(joueur(brise.state).graveyard.some((c) => c.instanceId === de.instanceId)).toBe(true);
     // Plus aucune option : la Chaîne se ferme d'elle-même sur 6.
@@ -97,7 +97,7 @@ describe("jets de dé : la face lue par la carte, les critiques à la fermeture"
     expect(piedMarin(brise.state, gaston.instanceId)).toBe(true);
   });
 
-  it("le joueur peut fermer la Chaîne sans rien briser : le résultat reste le sien", () => {
+  it("le joueur peut fermer la Chaîne sans rien jouer : le résultat reste le sien", () => {
     const gaston = instance("gaston-aventurier-de-ladalle", "p1");
     const de = instance("de-pipe", "p1");
     const r = jouer(table({ hand: [gaston, de] }, {}, { rngState: graine(6, 5) }), gaston);
@@ -109,9 +109,9 @@ describe("jets de dé : la face lue par la carte, les critiques à la fermeture"
     expect(joueur(ferme.state).hand.some((c) => c.instanceId === de.instanceId)).toBe(true);
   });
 
-  it("un Objet Chaîne ne se brise pas hors d'un jet", () => {
+  it("un Objet Chaîne de dé ne se joue pas hors d'un jet", () => {
     const de = instance("de-pipe", "p1");
-    const r = dispatch(table({ hand: [de] }), { type: "breakObject", playerId: "p1", instanceId: de.instanceId, fromHand: true, dieDelta: 1 });
+    const r = jouerObjet(table({ hand: [de] }), { playerId: "p1", instanceId: de.instanceId, dieDelta: 1 }, dispatch);
     expect(r.ok).toBe(false);
   });
 
@@ -282,12 +282,12 @@ describe("outils de régularité Opalins (nettoyage du 06/10/2026)", () => {
     expect(choix?.kind === "deckLook" && choix.takeGroups).toHaveLength(1);
   });
 
-  it("Corne du Rassemblement, Brisée depuis la main : cherche un Opalin dans TOUTE la pioche, et il coûte 1 de moins ce tour", () => {
+  it("Corne du Rassemblement, jouée auprès de 2 Opalins : cherche un Opalin dans TOUTE la pioche, et il coûte 1 de moins ce tour", () => {
     const corne = instance("corne-du-rassemblement", "p1");
     const kaor = instance("kaor-opalin-des-reliques", "p1");
     const pioche = [...Array.from({ length: 6 }, () => instance("marin-des-jetees", "p1")), kaor];
     const state = table({ hand: [corne], board: opalinsEnJeu(), deck: pioche, reason: 10, reasonMax: 10 });
-    const brise = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: corne.instanceId, fromHand: true });
+    const brise = jouerObjet(state, { playerId: "p1", instanceId: corne.instanceId }, dispatch);
     ok(brise);
     const choix = brise.state.pendingChoice;
     expect(choix?.kind === "deckLook" && choix.revealed.map((c) => c.instanceId)).toEqual([kaor.instanceId]);
@@ -299,11 +299,17 @@ describe("outils de régularité Opalins (nettoyage du 06/10/2026)", () => {
     expect(raison - joueur(joue.state).reason).toBe(getCardDefinition("kaor-opalin-des-reliques").cost - 1);
   });
 
-  it("Corne du Rassemblement Brisée depuis le plateau : rien", () => {
+  it("Corne du Rassemblement sans 2 Opalins en jeu : elle trouve l'Opalin, mais sans réduction", () => {
     const corne = instance("corne-du-rassemblement", "p1");
-    const state = table({ board: [corne], deck: [instance("kaor-opalin-des-reliques", "p1")] });
-    const brise = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: corne.instanceId });
+    const kaor = instance("kaor-opalin-des-reliques", "p1");
+    const state = table({ hand: [corne], deck: [instance("marin-des-jetees", "p1"), kaor], reason: 10, reasonMax: 10 });
+    const brise = jouerObjet(state, { playerId: "p1", instanceId: corne.instanceId }, dispatch);
     ok(brise);
-    expect(brise.state.pendingChoice).toBeUndefined();
+    const pris = dispatch(brise.state, { type: "resolveChoice", playerId: "p1", choice: { takeInstanceIds: [kaor.instanceId] } });
+    ok(pris);
+    const raison = joueur(pris.state).reason;
+    const joue = jouer(pris.state, kaor);
+    ok(joue);
+    expect(raison - joueur(joue.state).reason).toBe(getCardDefinition("kaor-opalin-des-reliques").cost);
   });
 });

@@ -3,7 +3,7 @@ import { dispatch } from "@/game/engine";
 import { auraContextOf, computeEffectiveStats } from "@/game/cards/stats";
 import type { CardInstance } from "@/game/cards/types";
 import type { GameState } from "@/game/state/types";
-import { activateReactionFor, answerHandDiscard, instance, pendingCandidates, testEnvironment, testGameState, testPlayer, enFinDeTour } from "./testHelpers";
+import { activateReactionFor, answerHandDiscard, instance, pendingCandidates, testEnvironment, testGameState, testPlayer, enFinDeTour, jouerObjet } from "./testHelpers";
 
 /**
  * PONT DE VERRE — « La première fois pendant chacun de vos tours qu'une unité
@@ -98,8 +98,7 @@ describe("Pont de Verre : la survie est bien repérée", () => {
     const blesse = instance("duelliste-de-verre", "p1", { damageMarked: 2 });
     const e1 = instance("eclat-de-bouteille", "p1");
     const e2 = instance("eclat-de-bouteille", "p1");
-    const r1 = dispatch(table({ board: [pont, matelot, blesse, e1, e2] }), {
-      type: "breakObject",
+    const r1 = jouerObjet(table({ board: [pont, matelot, blesse, e1, e2] }), {
       playerId: "p1",
       instanceId: e1.instanceId,
       targetInstanceId: matelot.instanceId,
@@ -108,7 +107,7 @@ describe("Pont de Verre : la survie est bien repérée", () => {
     const soin = activateReactionFor(r1.state, "pont-de-verre", blesse.instanceId);
     ok(soin);
     const etat = toutPasser(soin.state);
-    const r2 = dispatch(etat, { type: "breakObject", playerId: "p1", instanceId: e2.instanceId, targetInstanceId: matelot.instanceId });
+    const r2 = jouerObjet(etat, { playerId: "p1", instanceId: e2.instanceId, targetInstanceId: matelot.instanceId });
     ok(r2);
     expect(proposees(r2.state)).not.toContain("pont-de-verre");
   });
@@ -121,10 +120,8 @@ describe("Pont de Verre face à un autre déclenchement simultané", () => {
     const matelot = instance("matelot-fele", "p1");
     const blesse = instance("duelliste-de-verre", "p1", { damageMarked: 2 });
     const eclat = instance("eclat-de-bouteille", "p1");
-    const r = dispatch(
-      table({ board: [pont, vigie, matelot, blesse, eclat], deck: [instance("matelot-fele", "p1")], hand: [instance("matelot-fele", "p1")] }),
-      { type: "breakObject", playerId: "p1", instanceId: eclat.instanceId, targetInstanceId: matelot.instanceId }
-    );
+    const r = jouerObjet(
+      table({ board: [pont, vigie, matelot, blesse, eclat], deck: [instance("matelot-fele", "p1")], hand: [instance("matelot-fele", "p1")] }), { playerId: "p1", instanceId: eclat.instanceId, targetInstanceId: matelot.instanceId });
     ok(r);
     // La Vigie (automatique) a pioché : elle attend sa défausse.
     expect(r.state.pendingChoice?.kind).toBe("handDiscard");
@@ -147,8 +144,7 @@ describe("Pont de Verre face à un autre déclenchement simultané", () => {
     const survivant = instance("matelot-fele", "p1");
     const blesse = instance("duelliste-de-verre", "p1", { damageMarked: 1 });
     const objet = instance("trinquer-trop-fort", "p1");
-    const r = dispatch(table({ board: [pont, porte, condamne, survivant, blesse, objet] }), {
-      type: "breakObject",
+    const r = jouerObjet(table({ board: [pont, porte, condamne, survivant, blesse, objet] }), {
       playerId: "p1",
       instanceId: objet.instanceId,
     });
@@ -174,8 +170,7 @@ describe("Pont de Verre face à un autre déclenchement simultané", () => {
     const condamne = instance("matelot-fele", "p1", { damageMarked: 2 });
     const blesse = instance("duelliste-de-verre", "p1", { damageMarked: 1 });
     const eclat = instance("eclat-de-bouteille", "p1");
-    const r = dispatch(table({ board: [pont, porte, condamne, blesse, eclat] }), {
-      type: "breakObject",
+    const r = jouerObjet(table({ board: [pont, porte, condamne, blesse, eclat] }), {
       playerId: "p1",
       instanceId: eclat.instanceId,
       targetInstanceId: condamne.instanceId,

@@ -224,7 +224,7 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
     id: "effects",
     chapter: "Ton premier tour",
     title: "Lire une carte",
-    instruction: "Le texte d'une carte dit QUAND elle agit : « À son arrivée », « Brisez cet Objet », « Sabordage », « Lorsqu'il attaque »…",
+    instruction: "Le texte d'une carte dit QUAND elle agit : « À son arrivée », « Chaîne — Lorsque… », « Sabordage », « Lorsqu'il attaque »…",
     detail: "Puissance (épée) et Résistance (bouclier) en bas ; à 0 Résistance, la carte est détruite.",
     anchor: ZONE.board,
   },
@@ -233,14 +233,12 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
   {
     id: "break",
     chapter: "Les gestes",
-    title: "Briser un Objet",
-    instruction: "Un Objet sert en se BRISANT : son effet s'applique, puis il part au Cimetière. Brise le Thermos du Dernier Quart depuis ta main : glisse-le sur le crâne.",
-    detail: "Depuis la main, le Bris coûte la moitié du prix. Posé sur le plateau, un Objet attend : tu le Brises quand tu veux.",
-    anchor: ZONE.graveyard,
+    title: "Jouer un Objet",
+    instruction: "Un Objet se JOUE depuis la main : son effet s'applique aussitôt, puis il est Brisé et part au Cimetière. Joue le Thermos du Dernier Quart : glisse-le sur le plateau.",
+    detail: "Il faut un emplacement libre, mais l'Objet ne s'y pose pas. Un Objet « Chaîne » se joue en réponse, même plateau plein.",
+    anchor: ZONE.board,
     eligibleHandCards: (state, playerId) => inHand(state, playerId, TUTORIAL_CARDS.object),
-    // N'importe quel Bris compte — depuis la main OU le plateau : l'ancien
-    // tutoriel n'acceptait que la main, et un Objet Brisé sur le plateau
-    // laissait l'étape bloquée sans explication.
+    // L'Objet joué se résout et se Brise : c'est ce fait que l'étape attend.
     isDone: (state, playerId) => state.eventLog.some((e) => e.type === "OBJECT_BROKEN" && e.playerId === playerId),
     waitingFor: (state, playerId) => (state.activePlayerId === playerId ? null : "Attends ton tour."),
   },

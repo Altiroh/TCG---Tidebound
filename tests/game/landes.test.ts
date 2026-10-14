@@ -11,7 +11,7 @@ import { describe, expect, it } from "vitest";
 import { dispatch } from "@/tests/game/arrivalDispatch";
 import { hasEffectiveKeyword, assertValidDefender } from "@/game/rules/validation";
 import { landeRemainingTableTurns } from "@/game/rules/lande";
-import { activateReactionFor, instance, testEnvironment, testGameState, testPlayer, enFinDeTour } from "./testHelpers";
+import { activateReactionFor, instance, testEnvironment, testGameState, testPlayer, enFinDeTour, jouerObjet } from "./testHelpers";
 import type { GameState } from "@/game/state/types";
 
 const PLUIE = "pluie-corrosive";
@@ -224,7 +224,7 @@ describe("Réponses aux Landes", () => {
   it("Lever l'Ancre : briser l'Objet détruit la Lande active, au Cimetière de son propriétaire", () => {
     const ancre = instance("lever-lancre", "p1");
     const state = partie([], { environment: enJeu(PLUIE, "p2", 5) }, { p1: [ancre] });
-    const result = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: ancre.instanceId });
+    const result = jouerObjet(state, { playerId: "p1", instanceId: ancre.instanceId }, dispatch);
     ok(result);
     expect(result.state.environment.lande).toBeUndefined();
     const cimetiere = player(result.state, "p2").graveyard.find((c) => c.cardId === PLUIE);

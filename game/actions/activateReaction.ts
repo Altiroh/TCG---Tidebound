@@ -1,4 +1,5 @@
-import { afterReactiveObjectBrokenFromHand, breakReactiveObjectFromHand } from "@/game/actions/breakObject";
+import { openChainResponse, pushChainLink, runChain, withChainBase } from "@/game/chain/chainStack";
+import { consumeObjectPlayTax, objectPlayTax, recordObjectPlayed } from "@/game/rules/objectPlay";
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { isEligibleChosenUnit } from "@/game/effects/chosenTargets";
 import { validateGraveyardChoice, withSingleGraveyardChoice } from "@/game/effects/graveyardChoices";
@@ -8,11 +9,12 @@ import {
   processGraveyardRecoveryTriggers,
   processReturnedToHandTriggers,
   processSummonEnterTriggers,
+  payReactionCost,
   processTrigger,
   resolveReaction,
 } from "@/game/triggers/triggerBus";
 import { recordGraveyardArrival } from "@/game/state/discard";
-import type { PendingReactionCandidate } from "@/game/triggers/types";
+import type { PendingReactionCandidate, TriggerEvent } from "@/game/triggers/types";
 import type { GameEvent } from "@/game/events/types";
 import { assertGameActive, assertPlayerInGame, combine } from "@/game/rules/validation";
 import type { GameState, PlayerState } from "@/game/state/types";
@@ -161,15 +163,16 @@ export function activateReaction(state: GameState, requested: ActivateReactionAc
     }
   }
 
-  // Objet réactif EN MAIN (règle du 29/09/2026) : il se Brise depuis la
-  // main — Cimetière d'abord, effet ensuite, comme un Bris ordinaire.
+  // Objet CHAÎNE en main (règle du 13/10/2026) : il est JOUÉ et monte sur
+  // la pile — son effet attend que chacun ait pu lui répondre.
   const fromHand = validation.candidate.fromHand === true;
+  if (fromHand && getCardDefinition(validation.candidate.cardId).type === "objet") {
+    return playChainObject(revealedState, action, validation.candidate, revealEvents);
+  }
   // Hors Objet, une réaction depuis la main est une carte JOUÉE (Lot 16).
-  const joueeDepuisLaMain = fromHand && getCardDefinition(validation.candidate.cardId).type !== "objet";
+  const joueeDepuisLaMain = fromHand;
   if (fromHand) {
-    const quitte = joueeDepuisLaMain
-      ? playReactiveCardFromHand(revealedState, action.playerId, action.sourceInstanceId, pending.turnNumber)
-      : breakReactiveObjectFromHand(revealedState, action.playerId, action.sourceInstanceId, pending.turnNumber);
+    const quitte = playReactiveCardFromHand(revealedState, action.playerId, action.sourceInstanceId, pending.turnNumber);
     revealedState = quitte.state;
     revealEvents.push(...quitte.events);
   }
@@ -218,10 +221,6 @@ export function activateReaction(state: GameState, requested: ActivateReactionAc
     );
     nextState = played.state;
     events.push(...played.events);
-  } else if (fromHand) {
-    const after = afterReactiveObjectBrokenFromHand(nextState, action.playerId, action.sourceInstanceId, validation.candidate.cardId, pending.turnNumber);
-    nextState = after.state;
-    events.push(...after.events);
   }
 
   // --- REFERMETURE (grammaire des Structures-pièges, 22/09/2026) --------
@@ -257,14 +256,7 @@ export function activateReaction(state: GameState, requested: ActivateReactionAc
     }
   }
 
-  // « Choisissez : A ou B » : activer l'une des capacités d'un groupe écarte
-  // ses sœurs pour le reste de la fenêtre.
-  const def = getCardDefinition(validation.candidate.cardId);
-  const activated = def.abilities?.[action.abilityIndex];
-  const siblings = activated?.choiceGroup
-    ? (def.abilities ?? []).flatMap((ability, index) => (ability.choiceGroup === activated.choiceGroup ? [candidateKey(action.sourceInstanceId, index)] : []))
-    : [];
-  const usedCandidateKeys = Array.from(new Set([...pending.usedCandidateKeys, candidateKey(action.sourceInstanceId, action.abilityIndex), ...siblings]));
+  const usedCandidateKeys = keysAfterActivation(pending.usedCandidateKeys, validation.candidate.cardId, action.sourceInstanceId, action.abilityIndex);
 
   // « Une réaction activée peut elle-même déclencher de nouvelles
   // réactions » : ce qu'elle a produit s'ajoute aux déclencheurs de la
@@ -280,5 +272,94 @@ export function activateReaction(state: GameState, requested: ActivateReactionAc
     });
   }
 
+  // La fenêtre se ferme sur une pile Chaîne qui attendait : elle se résout.
+  if (!nextPending && nextState.chainStack?.length) {
+    const suite = runChain({ ...nextState, pendingReaction: undefined });
+    return { ok: true, state: withLeftovers(suite.state, suite.leftoverTriggers), events: [...events, ...suite.events] };
+  }
+
   return { ok: true, state: { ...nextState, pendingReaction: nextPending }, events };
+}
+
+/**
+ * « Choisissez : A ou B » : activer l'une des capacités d'un groupe écarte
+ * ses sœurs pour le reste de la fenêtre — et la capacité activée ne se
+ * repropose pas dans cette même fenêtre.
+ */
+function keysAfterActivation(used: readonly string[], cardId: string, sourceInstanceId: string, abilityIndex: number): string[] {
+  const def = getCardDefinition(cardId);
+  const activated = def.abilities?.[abilityIndex];
+  const siblings = activated?.choiceGroup
+    ? (def.abilities ?? []).flatMap((ability, index) => (ability.choiceGroup === activated.choiceGroup ? [candidateKey(sourceInstanceId, index)] : []))
+    : [];
+  return Array.from(new Set([...used, candidateKey(sourceInstanceId, abilityIndex), ...siblings]));
+}
+
+/**
+ * Déclencheurs produits par une pile que personne n'a encore pu voir : une
+ * action de fenêtre ne voit pas ses événements redérivés par `dispatch`, ils
+ * attendent donc la prochaine table libre (`reactionsEnAttente`).
+ */
+export function withLeftovers(state: GameState, leftovers: readonly TriggerEvent[]): GameState {
+  if (leftovers.length === 0) return state;
+  return { ...state, reactionsEnAttente: [...(state.reactionsEnAttente ?? []), ...leftovers] };
+}
+
+/**
+ * Joue un Objet CHAÎNE depuis la main dans la fenêtre que décrit son texte
+ * (Harpon à Ressort, Sabotage Discret…) : coût de la carte et taxe adverse
+ * payés, la carte monte sur la pile avec la cible désignée, puis chacun peut
+ * lui répondre. La fenêtre où il a été joué reprendra une fois la pile vide
+ * (`chainBase`).
+ */
+function playChainObject(
+  state: GameState,
+  action: ActivateReactionAction,
+  candidate: PendingReactionCandidate,
+  revealEvents: GameEvent[]
+): ActionResult {
+  const pending = state.pendingReaction!;
+  const turnNumber = pending.turnNumber;
+  const base = { turnNumber, timestamp: Date.now() };
+  const card = state.players.find((p) => p.id === action.playerId)!.hand.find((c) => c.instanceId === action.sourceInstanceId)!;
+  const def = getCardDefinition(card.cardId);
+
+  // La taxe adverse est comptée dans `reasonCost` au recensement : elle est consommée ici.
+  const tax = objectPlayTax(state, action.playerId, turnNumber);
+  const paid = payReactionCost(state, candidate, turnNumber);
+  let nextState = consumeObjectPlayTax(paid.state, tax, turnNumber);
+  nextState = recordObjectPlayed(nextState, action.playerId, def.name);
+  const events: GameEvent[] = [
+    ...revealEvents,
+    ...paid.events,
+    { ...base, type: "PLAY_CARD", playerId: action.playerId, instanceId: card.instanceId, cardId: card.cardId },
+    { ...base, type: "REACTION_ACTIVATED", playerId: action.playerId, sourceInstanceId: card.instanceId },
+  ];
+
+  const usedCandidateKeys = keysAfterActivation(pending.usedCandidateKeys, candidate.cardId, action.sourceInstanceId, action.abilityIndex);
+  nextState = withChainBase({ ...nextState, pendingReaction: undefined }, { ...pending, usedCandidateKeys });
+
+  const pushed = pushChainLink(nextState, {
+    id: card.instanceId,
+    playerId: action.playerId,
+    card,
+    abilityIndex: action.abilityIndex,
+    ...(action.targetInstanceId ? { targetInstanceId: action.targetInstanceId } : {}),
+    ...(action.chosenGraveyardInstanceId ? { chosenGraveyardInstanceId: action.chosenGraveyardInstanceId } : {}),
+    ...(candidate.triggerSourceInstanceId ? { triggerSourceInstanceId: candidate.triggerSourceInstanceId } : {}),
+    turnNumber,
+  });
+  nextState = pushed.state;
+  events.push(...pushed.events);
+
+  // « Quand vous jouez un Objet » : il vient de l'être.
+  const joue = processTrigger(nextState, { trigger: "onCardPlayed", playerId: action.playerId, cardId: card.cardId, sourceInstanceId: card.instanceId }, turnNumber);
+  nextState = joue.state;
+  events.push(...joue.events);
+
+  const link = nextState.chainStack![nextState.chainStack!.length - 1]!;
+  const reponse = openChainResponse(nextState, link);
+  if (reponse.state.pendingReaction) return { ok: true, state: reponse.state, events: [...events, ...reponse.events] };
+  const suite = runChain(nextState);
+  return { ok: true, state: withLeftovers(suite.state, suite.leftoverTriggers), events: [...events, ...suite.events] };
 }

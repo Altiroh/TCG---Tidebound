@@ -26,9 +26,7 @@ function theatreApresCombat(): { state: GameState; dottoreId: string; masqueId: 
       testPlayer("p1", {
         reason: 10,
         board: [dottore],
-        // Une carte à défausser : « piochez puis défaussez » ne peut pas
-        // viser la carte piochée, et sans elle le Dottore rappelé serait la
-        // seule défausse possible (règle du 05/10/2026).
+        // Une seconde carte en main, pour que le Masque ne soit pas la seule option.
         hand: [masque, instance("tetard-fesse", "p1")],
         // Une vraie pioche des deux côtés : vide, elle annoncerait le Jugement
         // de l'Océan au prochain tour, et le bot le lit (`graveyardValue.ts`).
@@ -50,9 +48,10 @@ function playOut(state: GameState, limit = 12): { state: GameState; played: stri
     const action = chooseBotAction(current, actor, "moyen", noMistake);
     const result = dispatch(current, action);
     if (!result.ok) throw new Error(result.error);
-    if (action.type === "breakObject") {
-      const all = current.players.flatMap((p) => [...p.hand, ...p.board]);
-      broken.push({ cardId: all.find((c) => c.instanceId === action.instanceId)!.cardId, target: action.targetInstanceId });
+    // Un Objet se JOUE (refonte du 13/10/2026) : un `playCard` d'Objet est son Bris.
+    if (action.type === "playCard") {
+      const card = current.players.find((p) => p.id === action.playerId)!.hand.find((c) => c.instanceId === action.instanceId)!;
+      if (card.cardId === "le-masque-fendu") broken.push({ cardId: card.cardId, target: action.targetInstanceId });
     }
     for (const e of result.events) if (e?.type === "PLAY_CARD") played.push(e.cardId);
     current = result.state;
@@ -64,8 +63,7 @@ describe("bot — rappel puis rejeu", () => {
   it("rappelle une Marionnette qui a déjà attaqué, puis la rejoue pour son arrivée", () => {
     const { state, dottoreId } = theatreApresCombat();
 
-    // Le Masque peut être brisé depuis la main ou posé puis brisé : les deux
-    // chemins sont légaux, seul compte l'enchaînement.
+    // Le Masque se joue depuis la main sur le Dottore, puis le Dottore revient.
     const { state: after, played, broken } = playOut(state);
     expect(broken).toContainEqual({ cardId: "le-masque-fendu", target: dottoreId });
     expect(played).toContain("il-dottore-des-noyes");
@@ -91,11 +89,11 @@ describe("bot — rappel puis rejeu", () => {
    * (« jusqu'à VOTRE prochain tour ») tombait jusque-là dès l'entame du tour
    * adverse — il ne couvrait donc jamais la riposte. Corrigé, il la couvre :
    * l'arrivée rejouée paie désormais, et « difficile » rappelle le Dottore
-   * avec le Masque brisé depuis la main.
+   * avec le Masque joué depuis la main.
    */
   it("« difficile » rappelle le Dottore : son malus couvre maintenant la riposte adverse", () => {
     const { state, dottoreId, masqueId } = theatreApresCombat();
-    expect(searchBestAction(state, "p1")).toMatchObject({ type: "breakObject", instanceId: masqueId, targetInstanceId: dottoreId });
+    expect(searchBestAction(state, "p1")).toMatchObject({ type: "playCard", instanceId: masqueId, targetInstanceId: dottoreId });
   });
 
   it("ne rappelle pas AVANT le combat une unité qui peut encore attaquer", () => {
@@ -108,8 +106,8 @@ describe("bot — rappel puis rejeu", () => {
       ) as GameState["players"],
     };
     const action = chooseBotAction(beforeCombat, "p1", "moyen", noMistake);
-    expect(action).not.toMatchObject({ type: "breakObject", instanceId: masqueId });
-    expect(searchBestAction(beforeCombat, "p1")).not.toMatchObject({ type: "breakObject", instanceId: masqueId });
+    expect(action).not.toMatchObject({ type: "playCard", instanceId: masqueId });
+    expect(searchBestAction(beforeCombat, "p1")).not.toMatchObject({ type: "playCard", instanceId: masqueId });
   });
 
   it("ne rappelle pas quand il n'a pas la Raison de rejouer", () => {

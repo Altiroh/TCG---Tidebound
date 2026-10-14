@@ -17,7 +17,8 @@ import { markOncePerTurnUsed, oncePerTurnAvailable } from "@/game/state/oncePerT
 import { chromaticColorsOf } from "@/game/rules/chromatic";
 import { eveilsThisTurn, hasEveil } from "@/game/rules/eveil";
 import { payReasonCost, reasonCostAfterShield } from "@/game/state/shields";
-import { consumeObjectBreakTax, handBreakCost, isBreakReaction, objectBreakTax } from "@/game/rules/objectBreak";
+import { isReactionChainObject, objectPlayTax } from "@/game/rules/objectPlay";
+import { createLoopGuard, positionSettled } from "@/game/rules/loopGuard";
 import type { GameState, PendingChoice, PlayerId, PlayerState } from "@/game/state/types";
 import type { TideStateName } from "@/game/environment/types";
 import type { PendingReactionCandidate, TriggerEvent } from "@/game/triggers/types";
@@ -58,7 +59,10 @@ function blocqueParMasquage(state: GameState, unit: CardInstance, ability: Trigg
   if (isTextIgnored(unit)) return true;
   if (ability.hiddenReaction) return false;
   if (TRIGGERS_HORS_MASQUAGE.has(ability.trigger)) return false;
-  return !isVisibleDuringTide(getCardDefinition(unit.cardId), state.environment.tideState);
+  const def = getCardDefinition(unit.cardId);
+  // « Actif même masqué » : la Marée ne cache la carte qu'à l'adversaire.
+  if (def.activeWhileHidden) return false;
+  return !isVisibleDuringTide(def, state.environment.tideState);
 }
 
 /**
@@ -393,9 +397,6 @@ function matchesTriggerSource(
   // était déjà là (décision du 02/10/2026). Seul un observateur qui le
   // demande explicitement la voit.
   if (event.repeatedArrival && !filter.includeRepeatedArrival) return false;
-  // « depuis votre main » : la provenance du Bris écarte la capacité avant
-  // tout marquage « une fois par tour » (cf. `TriggerSourceFilter.fromHand`).
-  if (filter.fromHand !== undefined && filter.fromHand !== Boolean(event.fromHand)) return false;
   // « détruite au combat » : sans cause portée par l'événement, le filtre ne
   // matche pas — mieux vaut ne pas se déclencher que se déclencher à tort.
   if (filter.destroyedBy && !(event.destructionCause && filter.destroyedBy.includes(event.destructionCause))) return false;
@@ -1164,12 +1165,8 @@ export function processTrigger(
       nextState = markUnitOncePerTurn(nextState, holder.playerId, holder.unit.instanceId, key, turnNumber, item.ability.onceEver);
     }
 
-    // Le Bris depuis la main est une propriété de l'ÉVÉNEMENT : sans ce
-    // report, `conditionBrokenFromHand` serait toujours faux pour une
-    // capacité déclenchée (Pantalone Sans-Sou).
-    const withHand = event.fromHand === undefined ? item.context : { ...item.context, brokenFromHand: event.fromHand };
-    // Même principe pour les dégâts que la déclencheuse vient d'infliger (Le Cerf-volant).
-    const context = event.damageAmount === undefined ? withHand : { ...withHand, triggerDamageAmount: event.damageAmount };
+    // Les dégâts que la déclencheuse vient d'infliger voyagent avec l'événement (Le Cerf-volant).
+    const context = event.damageAmount === undefined ? item.context : { ...item.context, triggerDamageAmount: event.damageAmount };
     // Aucune désignation d'office : une capacité automatique ne vise jamais
     // une unité CHOISIE (« jamais automatique, le joueur choisit » —
     // décision du 17/09/2026). L'invariant est tenu par
@@ -1234,13 +1231,14 @@ function sweepAfterEffects(
  * Garde-fou des chaînes d'Éveils (Lot 16) : un Éveil qui en déclenche un
  * autre, qui en déclenche un autre… Les cartes du lot bornent leurs
  * chaînes (« une fois par tour », conditions), mais deux Diables en
- * Personne peuvent se relancer l'un l'autre aussi longtemps que leur
- * joueur le veut et que sa coque tient. Au-delà de cette profondeur,
- * l'Éveil demandé est sans objet plutôt que de faire tourner le moteur
- * sans fin.
+ * Personne peuvent se relancer l'un l'autre aussi longtemps que leur coque
+ * tient. Pas de profondeur maximale arbitraire (refonte du 13/10/2026) :
+ * la chaîne s'arrête quand un Éveil retombe sur une position déjà vue
+ * pendant cette même chaîne sans rien avoir fait progresser, ou quand une
+ * coque est tombée (`game/rules/loopGuard.ts`).
  */
-const PROFONDEUR_EVEIL_MAX = 40;
 let profondeurEveil = 0;
+let positionsDeLaChaine: ((state: GameState, geste?: string) => boolean) | null = null;
 
 /**
  * Résout l'ÉVEIL d'une carte en jeu (Lot 16, `game/rules/eveil.ts`) : son
@@ -1264,7 +1262,8 @@ export function runEveil(state: GameState, instanceId: string, turnNumber: numbe
   const def = getCardDefinition(found.unit.cardId);
   // Pas d'Éveil, ou une carte que la Marée rend inactive : rien ne s'Éveille.
   if (!hasEveil(def) || isInactive(state, found.unit)) return { state, events: [] };
-  if (profondeurEveil >= PROFONDEUR_EVEIL_MAX) return { state, events: [] };
+  if (profondeurEveil === 0) positionsDeLaChaine = createLoopGuard();
+  if (positionSettled(state) || positionsDeLaChaine?.(state, instanceId)) return { state, events: [] };
 
   const count = eveilsThisTurn(found.unit, turnNumber) + 1;
   let nextState: GameState = {
@@ -1291,6 +1290,7 @@ export function runEveil(state: GameState, instanceId: string, turnNumber: numbe
     events.push(...resolved.events);
   } finally {
     profondeurEveil -= 1;
+    if (profondeurEveil === 0) positionsDeLaChaine = null;
   }
   return { state: nextState, events };
 }
@@ -1359,7 +1359,7 @@ export function collectReactionCandidates(
 ): PendingReactionCandidate[] {
   return [
     ...collectReactionCandidatesOnBoard(state, triggerEvents, forPlayerId, turnNumber),
-    ...handBreakReactionCandidates(state, triggerEvents, forPlayerId, turnNumber),
+    ...chainObjectReactionCandidates(state, triggerEvents, forPlayerId, turnNumber),
     ...handPlayedReactionCandidates(state, triggerEvents, forPlayerId, turnNumber),
   ];
 }
@@ -1401,26 +1401,17 @@ function collectReactionCandidatesOnBoard(
         continue;
       }
 
-      // Bris SUSPENDU (Fausse Cargaison) : sa fenêtre n'appelle que ce qui
-      // l'annule — ce qui réagit au Bris lui-même se propose à sa reprise,
-      // pas deux fois. Et une annulation ne se propose que s'il reste un
-      // Bris à annuler : hors de cette fenêtre, elle ne ferait rien.
-      const annule = item.effects.some((effect) => effect.type === "cancelObjectEffect");
-      if (annule && !(state.pendingObjectBreak && !state.pendingObjectBreak.cancelled)) continue;
-      if (state.pendingObjectBreak && event.trigger === "onObjectBroken" && !annule) continue;
+      // « Annulez son effet » (Sabotage Discret) ne se propose que s'il reste
+      // sur la pile Chaîne l'Objet visé, pas encore annulé : hors de là, il
+      // n'y a rien à annuler.
+      if (item.effects.some((effect) => effect.type === "cancelObjectEffect")) {
+        const visee = item.context.triggerSourceInstanceId;
+        if (!state.chainStack?.some((link) => link.card.instanceId === visee && !link.cancelled)) continue;
+      }
 
       // Le coût en Raison d'une réaction ne l'écarte jamais : sans plancher
       // de Déraison, la réaction se propose et se paie en creusant la dette.
-      // Seule exception, portée par une carte : la taxe de Bris adverse
-      // (Cloche d'Alerte), qui s'ajoute au coût d'une réaction qui BRISE un
-      // Objet et la rend impossible si elle est impayable.
-      let reasonCost = item.ability.cost?.reason ?? 0;
-      const itemDef = getCardDefinition(item.cardId);
-      if (isBreakReaction(itemDef, item.ability)) {
-        const tax = objectBreakTax(state, forPlayerId, turnNumber);
-        reasonCost += tax.amount;
-        if (breakTaxBlocks(state, forPlayerId, tax.blocksIfUnpayable, reasonCost, turnNumber)) continue;
-      }
+      const reasonCost = item.ability.cost?.reason ?? 0;
 
       // Le coût en ANCRAGE, lui, écarte : la coque n'a pas de découvert,
       // et proposer « payez 3 Ancrage » à un joueur qui en a 2 reviendrait
@@ -1468,27 +1459,21 @@ function collectReactionCandidatesOnBoard(
 }
 
 /**
- * « S'il ne peut pas payer, l'Objet ne peut pas être Brisé » (Cloche
- * d'Alerte) : vrai si une taxe bloquante rend ce Bris impayable — coût total
- * après bouclier supérieur à la Raison du joueur.
- */
-function breakTaxBlocks(state: GameState, playerId: PlayerId, blocksIfUnpayable: boolean, totalCost: number, turnNumber: number): boolean {
-  if (!blocksIfUnpayable) return false;
-  const player = state.players.find((p) => p.id === playerId);
-  return !player || player.reason < reasonCostAfterShield(state, playerId, totalCost, turnNumber);
-}
-
-/**
- * Objets RÉACTIFS encore en main (règle du 29/09/2026) : « Lorsque …, vous
- * pouvez Briser cet Objet » se propose aussi depuis la main, au coût d'un
- * Bris depuis la main, sans Slot.
+ * Objets CHAÎNE en main (règle du 13/10/2026) : « Chaîne — Lorsque … : … »
+ * se joue depuis la main, au coût imprimé, sans emplacement — même plateau
+ * plein, même pendant le tour adverse —, quand la fenêtre correspond à son
+ * texte.
  *
  * Plutôt que de dupliquer, déclencheur par déclencheur, la façon dont
  * `collectTriggeredWork` trouve une capacité sur le plateau, on lui pose la
  * question sur un plateau HYPOTHÉTIQUE où l'Objet serait posé : s'il y
  * serait éligible, il l'est depuis la main. Rien de cet état n'est gardé.
+ *
+ * Le coût proposé est celui de la capacité, plus celui de la carte, plus la
+ * taxe adverse sur le premier Objet joué (Cloche d'Alerte, Seren) — qui
+ * écarte l'Objet si elle est bloquante et impayable.
  */
-function handBreakReactionCandidates(
+function chainObjectReactionCandidates(
   state: GameState,
   triggerEvents: TriggerEvent[],
   forPlayerId: PlayerId,
@@ -1500,7 +1485,8 @@ function handBreakReactionCandidates(
   const found: PendingReactionCandidate[] = [];
   for (const card of player.hand) {
     const def = getCardDefinition(card.cardId);
-    if (!(def.abilities ?? []).some((ability) => isBreakReaction(def, ability))) continue;
+    if (!isReactionChainObject(def)) continue;
+    if (def.requiresTideState && !def.requiresTideState.includes(state.environment.tideState)) continue;
 
     const hypothetical: GameState = {
       ...state,
@@ -1508,16 +1494,13 @@ function handBreakReactionCandidates(
         p.id === forPlayerId ? { ...p, hand: p.hand.filter((c) => c.instanceId !== card.instanceId), board: [...p.board, card] } : p
       ) as [PlayerState, PlayerState],
     };
-    const onBoard = collectReactionCandidatesOnBoard(hypothetical, triggerEvents, forPlayerId, turnNumber);
-    for (const candidate of onBoard) {
+    const tax = objectPlayTax(state, forPlayerId, turnNumber);
+    const override = def.costOverrideWhenTideStateIn;
+    const printed = override && override.tideStateIn.includes(state.environment.tideState) ? override.cost : def.cost;
+    for (const candidate of collectReactionCandidatesOnBoard(hypothetical, triggerEvents, forPlayerId, turnNumber)) {
       if (candidate.sourceInstanceId !== card.instanceId) continue;
-      const ability = def.abilities?.[candidate.abilityIndex];
-      if (!ability || !isBreakReaction(def, ability)) continue;
-      const reasonCost = candidate.reasonCost + handBreakCost(def);
-      // Depuis la main, la taxe bloquante se mesure au coût TOTAL (Bris
-      // depuis la main + taxe), comme pour l'action `breakObject`.
-      const tax = objectBreakTax(state, forPlayerId, turnNumber);
-      if (breakTaxBlocks(state, forPlayerId, tax.blocksIfUnpayable, reasonCost, turnNumber)) continue;
+      const reasonCost = candidate.reasonCost + printed + tax.amount;
+      if (tax.blocksIfUnpayable && player.reason < reasonCostAfterShield(state, forPlayerId, reasonCost, turnNumber)) continue;
       found.push({ ...candidate, fromHand: true, reasonCost });
     }
   }
@@ -1588,19 +1571,15 @@ export function consumeDeclinedOncePerTurnReactions(
 }
 
 /**
- * Résout UNE capacité `optional` précise (identifiée par
- * `sourceInstanceId` + `abilityIndex`), en payant son coût d'abord. Ne
- * vérifie PAS l'éligibilité (déjà fait par l'appelant via
- * `collectReactionCandidates`/`game/actions/activateReaction.ts`) —
- * seulement la résolution effective.
+ * Paie ce que coûte l'activation d'une capacité `optional` (Raison, dont la
+ * carte et la taxe d'un Objet Chaîne joué depuis la main ; Ancrage) et
+ * marque ses « une fois par tour ». Ne résout rien : un Objet Chaîne monte
+ * ensuite sur la pile (`activateReaction`).
  */
-export function resolveReaction(
+export function payReactionCost(
   state: GameState,
   candidate: PendingReactionCandidate,
-  targetInstanceId: string | undefined,
-  turnNumber: number,
-  /** Carte du Cimetière désignée par le joueur, quand la capacité en repêche une. */
-  chosenGraveyardInstanceId?: string
+  turnNumber: number
 ): { state: GameState; events: GameEvent[] } {
   const def = getCardDefinition(candidate.cardId);
   const ability = def.abilities?.[candidate.abilityIndex];
@@ -1609,12 +1588,6 @@ export function resolveReaction(
   const events: GameEvent[] = [];
   const base = { turnNumber, timestamp: Date.now() };
   let nextState = state;
-
-  // Bris en réaction : la taxe adverse (Cloche d'Alerte), déjà comptée dans
-  // `reasonCost` au recensement, est consommée pour le tour.
-  if (isBreakReaction(def, ability)) {
-    nextState = consumeObjectBreakTax(nextState, objectBreakTax(nextState, candidate.controllerId, turnNumber), turnNumber);
-  }
 
   if (candidate.reasonCost > 0) {
     const payment = payReasonCost(nextState, candidate.controllerId, candidate.reasonCost, turnNumber);
@@ -1648,6 +1621,33 @@ export function resolveReaction(
     }
   }
 
+  return { state: nextState, events };
+}
+
+/**
+ * Résout UNE capacité `optional` précise (identifiée par
+ * `sourceInstanceId` + `abilityIndex`), en payant son coût d'abord. Ne
+ * vérifie PAS l'éligibilité (déjà fait par l'appelant via
+ * `collectReactionCandidates`/`game/actions/activateReaction.ts`) —
+ * seulement la résolution effective.
+ */
+export function resolveReaction(
+  state: GameState,
+  candidate: PendingReactionCandidate,
+  targetInstanceId: string | undefined,
+  turnNumber: number,
+  /** Carte du Cimetière désignée par le joueur, quand la capacité en repêche une. */
+  chosenGraveyardInstanceId?: string
+): { state: GameState; events: GameEvent[] } {
+  const def = getCardDefinition(candidate.cardId);
+  const ability = def.abilities?.[candidate.abilityIndex];
+  if (!ability) return { state, events: [] };
+
+  const base = { turnNumber, timestamp: Date.now() };
+  const paid = payReactionCost(state, candidate, turnNumber);
+  let nextState = paid.state;
+  const events: GameEvent[] = [...paid.events];
+
   const context: EffectContext = {
     controllerId: candidate.controllerId,
     sourceInstanceId: candidate.sourceInstanceId,
@@ -1657,13 +1657,7 @@ export function resolveReaction(
     turnNumber,
   };
 
-  // Depuis la main, l'Objet est déjà au Cimetière (`activateReaction`) :
-  // le « Briser cet Objet » que porte la capacité est fait, il ne reste que
-  // son effet.
-  const effects = candidate.fromHand
-    ? ability.effects.filter((effect) => !(effect.type === "saborde" && effect.target.kind === "self"))
-    : ability.effects;
-  const reacted = resolveEffectSequence(nextState, effects, context);
+  const reacted = resolveEffectSequence(nextState, ability.effects, context);
   nextState = reacted.state;
   events.push(...reacted.events);
 

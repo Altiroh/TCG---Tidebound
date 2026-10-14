@@ -3,7 +3,6 @@ import { activateReaction } from "@/game/actions/activateReaction";
 import { activateShipAbility } from "@/game/actions/activateShipAbility";
 import { advancePhase } from "@/game/actions/advancePhase";
 import { attack } from "@/game/actions/attack";
-import { breakObject, resumeObjectBreakEffects } from "@/game/actions/breakObject";
 import { concede } from "@/game/actions/concede";
 import { endTurn, entameDeTour, finirTour } from "@/game/actions/endTurn";
 import { fireShipAbility } from "@/game/actions/fireShipAbility";
@@ -16,6 +15,9 @@ import type { ActionResult, PlayerAction } from "@/game/actions/types";
 import { deriveReactionTriggerEvents, ouvrirFenetrePour } from "@/game/reactions/reactionWindow";
 import { deferArrivals, pruneDeferredArrivals } from "@/game/reactions/deferredArrivals";
 import { activateArrival } from "@/game/actions/activateArrival";
+import { runChain } from "@/game/chain/chainStack";
+import { getCardDefinition } from "@/game/cards/sets/core";
+import { isDieChainObject } from "@/game/rules/objectPlay";
 import { resolveOceanJudgment } from "@/game/rules/oceanJudgment";
 import { refreshTurnTimer } from "@/game/rules/turnTimer";
 import { assertValidDefender, hasEffectiveKeyword } from "@/game/rules/validation";
@@ -88,9 +90,9 @@ export function dispatch(state: GameState, action: PlayerAction): ActionResult {
     state.pendingChoice &&
     !state.pendingReaction &&
     action.type !== "resolveChoice" &&
-    // CHAÎNE (Lot 17) : pendant un jet de dé, son joueur peut Briser ses
-    // Objets « Chaîne » — `breakObject` vérifie le reste.
-    !(action.type === "breakObject" && state.pendingChoice.kind === "dieRoll" && state.pendingChoice.playerId === action.playerId) &&
+    // CHAÎNE (Lot 17) : pendant un jet de dé, son joueur peut jouer ses
+    // Objets « Chaîne » de dé — `playCard` vérifie le reste.
+    !(action.type === "playCard" && state.pendingChoice.kind === "dieRoll" && state.pendingChoice.playerId === action.playerId && joueUneChaineDeDe(state, action.playerId, action.instanceId)) &&
     action.type !== "concede" &&
     action.type !== "timeout"
   ) {
@@ -105,6 +107,19 @@ export function dispatch(state: GameState, action: PlayerAction): ActionResult {
 
   let result = applyAction(state, action);
   if (!result.ok) return result;
+
+  // --- PILE CHAÎNE EN ATTENTE ---------------------------------------------
+  //
+  // Un choix posé par un maillon (« regardez les 3 cartes du dessus… ») vient
+  // d'être tranché : la pile reprend là où elle s'était arrêtée. Les actions
+  // de fenêtre et `playCard` la font avancer elles-mêmes ; ceci couvre le
+  // reste, et ne fait rien tant qu'une fenêtre ou un choix la tient.
+  if (result.state.chainStack?.length && !result.state.pendingReaction) {
+    const suite = runChain(result.state);
+    if (suite.events.length > 0 || suite.state !== result.state) {
+      result = { ok: true, state: suite.state, events: [...result.events, ...suite.events] };
+    }
+  }
 
   // Ce que l'action a produit ELLE-MÊME. Pour une réaction, ses déclencheurs
   // ont déjà été versés à la fenêtre en cours (`activateReaction`) : seuls
@@ -190,23 +205,6 @@ export function dispatch(state: GameState, action: PlayerAction): ActionResult {
   if (result.state.status === "active" && !result.state.pendingReaction && result.state.pendingLandeStrike) {
     const repris = finirTour(result.state, result.state.pendingLandeStrike.endingPlayerId);
     if (repris.ok) result = { ok: true, state: repris.state, events: [...result.events, ...repris.events] };
-  }
-
-  // --- REPRISE D'UN BRIS SUSPENDU ---------------------------------------
-  //
-  // Le Bris s'était arrêté avant ses effets pour laisser un adversaire les
-  // annuler (Fausse Cargaison, Lot 14). La fenêtre vient de se refermer :
-  // on résout ce qui attendait — ou on le jette si l'annulation a été
-  // activée. L'Objet, lui, est brisé dans les deux cas.
-  if (result.state.pendingObjectBreak && !result.state.pendingReaction) {
-    const suspendu = result.state.pendingObjectBreak;
-    const etatSansBris: GameState = { ...result.state, pendingObjectBreak: undefined };
-    if (suspendu.cancelled) {
-      result = { ok: true, state: etatSansBris, events: result.events };
-    } else {
-      const reprise = resumeObjectBreakEffects(etatSansBris, suspendu);
-      result = { ok: true, state: reprise.state, events: [...result.events, ...reprise.events] };
-    }
   }
 
   // --- REPRISE D'UNE DESTRUCTION SUSPENDUE ------------------------------
@@ -347,7 +345,7 @@ export function dispatch(state: GameState, action: PlayerAction): ActionResult {
   // Déclencheurs à proposer : tout ce que l'action a produit — sauf, pour
   // `activateReaction`/`passReaction`, ce que la réaction a produit ELLE-MÊME,
   // déjà versé à la fenêtre en cours (chaîne continue, ou se ferme). Ce qui
-  // la SUIT, en revanche (reprise d'une attaque, d'un Bris, d'une entame de
+  // la SUIT, en revanche (reprise d'une attaque, d'une entame de
   // tour ou d'une destruction, morts, survies), est neuf et se propose comme
   // le reste. Plus les coups reportés par une fenêtre de sauvetage, dont la
   // survie vient seulement d'être jugée.
@@ -472,8 +470,6 @@ function applyAction(state: GameState, action: PlayerAction): ActionResult {
       return endTurn(state, action);
     case "saborder":
       return saborder(state, action);
-    case "breakObject":
-      return breakObject(state, action);
     case "advancePhase":
       return advancePhase(state, action);
     case "activateReaction":
@@ -569,4 +565,10 @@ function gardeQuiIntercepte(state: GameState, attaque: NonNullable<GameState["pe
   return assertValidDefender(state, attaque.playerId, attaque.attackerInstanceId, gardes[0]!.instanceId).ok
     ? gardes[0]!.instanceId
     : undefined;
+}
+
+/** Cette carte de la main est-elle un Objet « Chaîne » de dé (jouable pendant un jet) ? */
+function joueUneChaineDeDe(state: GameState, playerId: string, instanceId: string): boolean {
+  const card = state.players.find((p) => p.id === playerId)?.hand.find((c) => c.instanceId === instanceId);
+  return card !== undefined && isDieChainObject(getCardDefinition(card.cardId));
 }

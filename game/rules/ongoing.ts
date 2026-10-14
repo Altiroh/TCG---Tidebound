@@ -21,12 +21,28 @@ export function isOngoingEffect(def: CardDefinition): boolean {
   return def.type === "anomalie";
 }
 
-/** Les permanents d'un plateau — sans les effets en cours. */
-export function boardPermanents<T extends { cardId: string }>(board: readonly T[]): T[] {
-  return board.filter((card) => !isOngoingEffect(getCardDefinition(card.cardId)));
+/**
+ * ÉQUIPEMENT ATTACHÉ (refonte du 13/10/2026) : il est rangé dans l'état avec
+ * les cartes en jeu, mais il ne prend AUCUN Slot — il fait corps avec la
+ * carte qu'il équipe. Rien ne le désigne comme une unité, ne l'attaque ni ne
+ * le blesse ; seuls les effets qui visent « un Équipement » l'atteignent.
+ */
+export function isAttachedCard(def: CardDefinition): boolean {
+  return def.type === "equipement";
 }
 
-/** Slots occupés : les effets en cours n'en prennent aucun. */
+/**
+ * Les permanents d'un plateau qui occupent un Slot — sans les effets en
+ * cours ni les Équipements, attachés à leur porteur.
+ */
+export function boardPermanents<T extends { cardId: string }>(board: readonly T[]): T[] {
+  return board.filter((card) => {
+    const def = getCardDefinition(card.cardId);
+    return !isOngoingEffect(def) && !isAttachedCard(def);
+  });
+}
+
+/** Slots occupés : les effets en cours et les Équipements n'en prennent aucun. */
 export function slotsUsed(board: readonly { cardId: string }[]): number {
   return boardPermanents(board).length;
 }

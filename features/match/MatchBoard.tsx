@@ -10,7 +10,6 @@ import {
   eligibleCandidatesFor,
   getCardDefinition,
   getShipDefinition,
-  graveyardChoicesForBreak,
   isMainPhase,
   applyBotAction,
   botHasSomethingToDo,
@@ -110,7 +109,6 @@ interface MatchBoardProps {
 type Pending =
   | { kind: "playCard"; instanceId: string; needsTarget: boolean }
   | { kind: "attack"; attackerId: string }
-  | { kind: "break"; instanceId: string; needsTarget: boolean; fromHand?: boolean }
   | { kind: "reaction"; sourceInstanceId: string; abilityIndex: number; needsTarget: boolean };
 
 /**
@@ -532,7 +530,6 @@ export function MatchBoard({
         onAttack={(attackerInstanceId, defenderInstanceId) =>
           runAction({ type: "attack", playerId: activePlayerId, attackerInstanceId, defenderInstanceId })
         }
-        onBreakOnTarget={(instanceId, targetInstanceId) => runAction({ type: "breakObject", playerId: activePlayerId, instanceId, targetInstanceId })}
         onDropOnGraveyard={board.handleDropOnGraveyard}
         arrivalReadyIds={board.arrivalReadyIds}
         onArrivalTap={board.openArrivalFocus}
@@ -573,6 +570,8 @@ export function MatchBoard({
             onActivateMany={activateSelectedReactions}
             onPass={() => runReactionAction({ type: "passReaction", playerId: viewerPlayerId })}
             warningFor={(candidate) => reactionWarning(liveState, viewerPlayerId, candidate)}
+            chain={liveState.chainStack}
+            viewerId={viewerPlayerId}
           />
         )}
       {/* Le NAVIRE seul à pouvoir répondre : son panneau s'allume, et ce
@@ -588,7 +587,7 @@ export function MatchBoard({
           />
         )}
       {pending?.kind === "reaction" && pending.needsTarget && (() => {
-        // Un Objet réactif peut répondre depuis la MAIN (règle du 29/09/2026).
+        // Un Objet Chaîne répond depuis la MAIN (règle du 13/10/2026).
         const sourceCardId = [...viewerPlayer.board, ...viewerPlayer.hand, ...otherPlayer.board].find((u) => u.instanceId === pending.sourceInstanceId)?.cardId;
         const decline = () => {
           board.clearSelection();
@@ -688,7 +687,7 @@ export function MatchBoard({
         <ShipAbilityPrompt {...shipAbility.prompt} onConfirm={shipAbility.confirm} onCancel={shipAbility.cancel} />
       )}
       {/* La carte posée à droite : effet d'arrivée en réserve, Bris d'un Objet lâché sur le Cimetière. */}
-      <FocusedCardHost board={board} liveState={liveState} actorId={activePlayerId} tideState={state.environment.tideState} />
+      <FocusedCardHost board={board} tideState={state.environment.tideState} />
       {graveyardPick && (() => {
         // Une réaction ne part pas comme une action normale (elle peut
         // survenir hors de son tour) : `runReactionAction` pour elle,

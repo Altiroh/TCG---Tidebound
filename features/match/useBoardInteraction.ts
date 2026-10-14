@@ -8,7 +8,7 @@ import {
   getCardDefinition,
   getShipDefinition,
   graveyardChoicesForAbility,
-  graveyardChoicesForBreak,
+  isReactionChainObject,
   graveyardChoicesForPlay,
   type CardInstance,
   type ChromaticColor,
@@ -72,7 +72,6 @@ export interface HandCardClickOptions {
 export type BoardSelection =
   | { kind: "playCard"; instanceId: string; needsTarget: boolean }
   | { kind: "attack"; attackerId: string }
-  | { kind: "break"; instanceId: string; needsTarget: boolean; fromHand?: boolean }
   | { kind: "reaction"; sourceInstanceId: string; abilityIndex: number; needsTarget: boolean; triggerSourceInstanceId?: string }
   /** Effet d'arrivée en réserve activé depuis la carte posée à droite : sa cible se désigne sur le plateau. */
   | { kind: "arrival"; sourceInstanceId: string; abilityIndexes: number[] }
@@ -130,7 +129,7 @@ export interface BoardInteractionConfig {
   viewer: PlayerState;
   /** Au nom de qui les actions normales sont émises. */
   actorId: PlayerId;
-  /** Peut poser / briser / saborder maintenant. */
+  /** Peut jouer / saborder maintenant. */
   canPlayCards: boolean;
   /** Peut agir tout court (hors fenêtre de réaction en attente). */
   canAct: boolean;
@@ -152,28 +151,25 @@ export interface BoardInteractionConfig {
 /**
  * Geste suspendu à un choix dans le Cimetière.
  *
- * Trois formes, parce que trois gestes différents le demandent depuis le
- * Lot 13 — et pas une seule, parce que ce n'est pas la même action qui part
- * ensuite. Le Bris était le seul cas quand cet écran a été écrit.
+ * Deux formes, parce que deux gestes différents le demandent — et pas une
+ * seule, parce que ce n'est pas la même action qui part ensuite. Jouer un
+ * Objet (Grappin de Récupération) est une pose comme une autre.
  */
 export type GraveyardPickRequest =
-  | { kind: "break"; card: CardInstance; fromHand: boolean }
   | { kind: "play"; card: CardInstance; boardSlot?: number }
   | { kind: "reaction"; candidate: PendingReactionCandidate; arrival?: true };
 
 /**
  * LA CARTE POSÉE À DROITE (`FocusedCard`, retour du 12/10/2026) : ce qu'on
- * s'apprête à faire d'une carte — activer son effet d'arrivée en réserve,
- * Briser un Objet — sans fenêtre par-dessus la table.
+ * s'apprête à faire d'une carte — activer son effet d'arrivée en réserve —
+ * sans fenêtre par-dessus la table.
  *
  *   - `choose` : la carte est arrivée, ses boutons attendent ;
  *   - `targeting` : l'effet demande une cible, le plateau l'éclaire ;
  *   - `resolving` : l'action est partie, l'effet part de la carte ;
  *   - `leaving` : elle rentre (à sa place, ou au Cimetière).
  */
-export type FocusRequest =
-  | { kind: "arrival"; card: CardInstance; options: ActivatableArrival[] }
-  | { kind: "break"; card: CardInstance; source: "hand" | "board" };
+export type FocusRequest = { kind: "arrival"; card: CardInstance; options: ActivatableArrival[] };
 
 export interface FocusState {
   request: FocusRequest;
@@ -189,10 +185,7 @@ export interface BoardInteraction {
   setSelection: (selection: BoardSelection | null) => void;
   clearSelection: () => void;
 
-  /** Invite « Briser ou Saborder ? » d'un Objet lâché sur le crâne. */
-  breakPrompt: { card: CardInstance; source: "hand" | "board" } | null;
-  setBreakPrompt: (prompt: { card: CardInstance; source: "hand" | "board" } | null) => void;
-  /** Geste en attente d'une carte du Cimetière (Bris, pose ou réaction). */
+  /** Geste en attente d'une carte du Cimetière (pose ou réaction). */
   graveyardPick: GraveyardPickRequest | null;
   setGraveyardPick: (pick: GraveyardPickRequest | null) => void;
   /**
@@ -229,7 +222,6 @@ export interface BoardInteraction {
   handleHandCardClick: (instanceId: string, options?: HandCardClickOptions) => void;
   /** Cible désignée sur le plateau. Rend l'action de réaction à soumettre, ou `null` si le geste est déjà traité. */
   resolveBoardCardClick: (instanceId: string, ownerId: PlayerId) => PlayerAction | null;
-  requestBreak: (card: CardInstance, fromHand: boolean) => void;
   handleDropOnGraveyard: (instanceId: string, from: "hand" | "board") => void;
   /** Bouton « Activer » d'une carte du plateau (`activatableOncePerTurn`). */
   requestAbility: (instanceId: string) => void;
@@ -250,10 +242,6 @@ export interface BoardInteraction {
    * `false` si un mode ne vise rien (il faut alors choisir le mode d'abord).
    */
   startFocusedArrival: () => boolean;
-  /** « Briser » de la carte posée à droite. */
-  breakFocused: () => void;
-  /** « Saborder » d'un Objet posé, depuis la carte à droite. */
-  scuttleFocused: () => void;
   /** « Annuler » : la carte rentre à sa place. */
   cancelFocus: () => void;
   /** Fin du vol de retour. */
@@ -272,7 +260,6 @@ export function useBoardInteraction({
 }: BoardInteractionConfig): BoardInteraction {
   const [selection, setSelection] = useState<BoardSelection | null>(null);
   const [reactionQueue, setReactionQueue] = useState<PendingReactionCandidate[]>([]);
-  const [breakPrompt, setBreakPrompt] = useState<{ card: CardInstance; source: "hand" | "board" } | null>(null);
   const [graveyardPick, setGraveyardPick] = useState<GraveyardPickRequest | null>(null);
   const [assemblagePick, setAssemblagePick] = useState<AssemblagePick | null>(null);
   const [graveyardViewerPlayerId, setGraveyardViewerPlayerId] = useState<PlayerId | null>(null);
@@ -295,7 +282,7 @@ export function useBoardInteraction({
   }
 
   function cancelFocus() {
-    if (selection?.kind === "arrival" || selection?.kind === "break") clearSelection();
+    if (selection?.kind === "arrival") clearSelection();
     window.clearTimeout(holdTimer.current);
     setFocus((current) => (current ? { ...current, leaving: true } : current));
   }
@@ -345,29 +332,10 @@ export function useBoardInteraction({
     return true;
   }
 
-  function breakFocused() {
-    if (focus?.request.kind !== "break") return;
-    const { card, source } = focus.request;
-    const def = getCardDefinition(card.cardId);
-    if ((def.onBreakEffects ?? []).some((effect) => effect.target.kind === "chosenUnit")) {
-      setSelection({ kind: "break", instanceId: card.instanceId, needsTarget: true, fromHand: source === "hand" });
-      setFocus({ ...focus, stage: "targeting" });
-      return;
-    }
-    requestBreak(card, source === "hand");
-    focusResolving();
-  }
-
-  function scuttleFocused() {
-    if (focus?.request.kind !== "break" || focus.request.source !== "board") return;
-    act({ type: "saborder", playerId: actorId, instanceId: focus.request.card.instanceId });
-    focusResolving();
-  }
-
   // Échap : bascule le menu de pause, sauf si une fenêtre est déjà ouverte —
   // Échap y vaut « annuler », jamais « quitter la partie ».
   useEffect(() => {
-    const overlayOpen = Boolean(detailInstance || graveyardViewerPlayerId || breakPrompt || graveyardPick || assemblagePick);
+    const overlayOpen = Boolean(detailInstance || graveyardViewerPlayerId || graveyardPick || assemblagePick);
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key !== "Escape") return;
       if (overlayOpen) return;
@@ -375,7 +343,7 @@ export function useBoardInteraction({
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [detailInstance, graveyardViewerPlayerId, breakPrompt, graveyardPick, assemblagePick]);
+  }, [detailInstance, graveyardViewerPlayerId, graveyardPick, assemblagePick]);
 
   function clearSelection() {
     setSelection(null);
@@ -413,6 +381,12 @@ export function useBoardInteraction({
       return;
     }
     const def = getCardDefinition(card.cardId);
+    // Un Objet « Chaîne » de réaction ne se joue que dans sa fenêtre : le
+    // toucher le montre en grand, il ne tente rien.
+    if (isReactionChainObject(def)) {
+      setDetailInstance(card);
+      return;
+    }
     // « Assemblage Chromatique » : carte TOUCHÉE, la question se pose —
     // Assembler, ou payer le coût normal. Jamais décidée à la place du
     // joueur. Carte LÂCHÉE sur un emplacement libre (`confirmed`), le geste
@@ -426,8 +400,8 @@ export function useBoardInteraction({
       setSelection({ kind: "playCard", instanceId, needsTarget: true });
       return;
     }
-    // « À son arrivée, choisissez une unité dans votre Cimetière » : la
-    // question se pose AVANT la pose, comme pour un Bris. Sur l'état VIVANT,
+    // « À son arrivée, choisissez une unité dans votre Cimetière » (ou l'effet
+    // d'un Objet qui repêche) : la question se pose AVANT la pose. Sur l'état VIVANT,
     // le Cimetière affiché pouvant retarder d'une animation.
     if (graveyardChoicesForPlay(liveState, actorId, def).length > 0) {
       // L'emplacement voyage avec la question : le joueur a déjà lâché sa
@@ -467,14 +441,6 @@ export function useBoardInteraction({
     }
     if (selection?.kind === "playCard" && selection.needsTarget) {
       act({ type: "playCard", playerId: actorId, instanceId: selection.instanceId, targetInstanceId: instanceId });
-      return null;
-    }
-    if (selection?.kind === "break" && selection.needsTarget) {
-      act({ type: "breakObject", playerId: actorId, instanceId: selection.instanceId, targetInstanceId: instanceId, fromHand: selection.fromHand });
-      if (focus?.request.kind === "break") {
-        clearSelection();
-        focusResolving();
-      }
       return null;
     }
     if (selection?.kind === "ability") {
@@ -543,37 +509,18 @@ export function useBoardInteraction({
     act({ type: "activateAbility", playerId: actorId, sourceInstanceId: instanceId, targetInstanceId });
   }
 
-  /** Brise un Objet, posé ou depuis la main : cible ou carte de défausse d'abord si l'effet en demande une. */
-  function requestBreak(card: CardInstance, fromHand: boolean) {
-    if (!canAct) return;
-    setBreakPrompt(null);
-    const def = getCardDefinition(card.cardId);
-    if ((def.onBreakEffects ?? []).some((effect) => effect.target.kind === "chosenUnit")) {
-      setSelection({ kind: "break", instanceId: card.instanceId, needsTarget: true, fromHand });
-      return;
-    }
-    // Sur l'état VIVANT : la défausse affichée peut retarder d'une animation.
-    if (graveyardChoicesForBreak(liveState, actorId, def).length > 0) {
-      setGraveyardPick({ kind: "break", card, fromHand });
-      return;
-    }
-    act({ type: "breakObject", playerId: actorId, instanceId: card.instanceId, fromHand });
-  }
-
-  /** Carte lâchée sur le crâne : un Objet propose Briser / Saborder, tout autre permanent est Sabordé. */
+  /**
+   * Carte lâchée sur le crâne : un permanent du plateau est Sabordé. Un Objet
+   * de la main se JOUE (il finira au Cimetière une fois résolu) — c'est le
+   * geste qui servait à le Briser depuis la main.
+   */
   function handleDropOnGraveyard(instanceId: string, from: "hand" | "board") {
-    const zone = from === "hand" ? viewer.hand : viewer.board;
-    const card = zone.find((c) => c.instanceId === instanceId);
-    if (!card) return;
-    if (getCardDefinition(card.cardId).type === "objet") {
-      // L'Objet vole à droite, « Briser » ou « Annuler » dessous — plus de fenêtre par-dessus la table.
-      if (focus) return;
-      onGestureStart?.();
-      clearSelection();
-      setFocus({ request: { kind: "break", card, source: from }, stage: "choose", leaving: false });
+    if (from === "board") {
+      if (viewer.board.some((c) => c.instanceId === instanceId)) act({ type: "saborder", playerId: actorId, instanceId });
       return;
     }
-    if (from === "board") act({ type: "saborder", playerId: actorId, instanceId });
+    const card = viewer.hand.find((c) => c.instanceId === instanceId);
+    if (card && getCardDefinition(card.cardId).type === "objet") handleHandCardClick(instanceId, { dropped: true });
   }
 
   return {
@@ -582,8 +529,6 @@ export function useBoardInteraction({
     openArrivalFocus,
     activateFocusedArrival,
     startFocusedArrival,
-    breakFocused,
-    scuttleFocused,
     cancelFocus,
     focusDone,
     selection,
@@ -591,8 +536,6 @@ export function useBoardInteraction({
     requestAbility,
     activateAbilityOn,
     clearSelection,
-    breakPrompt,
-    setBreakPrompt,
     graveyardPick,
     setGraveyardPick,
     assemblagePick,
@@ -610,7 +553,6 @@ export function useBoardInteraction({
     beginReactionTargeting,
     handleHandCardClick,
     resolveBoardCardClick,
-    requestBreak,
     handleDropOnGraveyard,
   };
 }

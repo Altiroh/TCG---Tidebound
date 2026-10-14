@@ -625,8 +625,8 @@ const BREAK_RIM: ReadonlyArray<readonly [number, number]> = [
  * `shatterAtMs`, éclate : ses éclats sautent puis tombent dans le
  * Cimetière. L'original est masqué le temps du geste.
  *
- * `face` : l'élément à recopier — la carte sur le plateau, ou la carte du
- * dessus du Cimetière pour un Objet brisé depuis la main.
+ * `face` : l'élément à recopier — la carte du dessus du Cimetière, où un
+ * Objet joué arrive sans jamais avoir été posé.
  */
 export function breakObject(
   instanceId: string,

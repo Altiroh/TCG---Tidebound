@@ -91,6 +91,13 @@ export interface AuraContribution {
   sourceInstanceId?: string;
   attack: number;
   health: number;
+  /**
+   * Résistance IMPRIMÉE d'un Équipement attaché : une caractéristique de la
+   * carte, pas son texte — « son texte est ignoré » ne la retire pas
+   * (règle du 05/10/2026 : la carte garde ses stats). Point ouvert côté
+   * design, isolé ici.
+   */
+  printedEquipment?: true;
 }
 
 /**
@@ -261,8 +268,15 @@ export function collectAuraContributions(
       add(typeAura);
     }
 
-    // Lampe de Pont Rouge : bonus d'Équipement conditionnel à la Marée.
     if (source.attachedToInstanceId === unit.instanceId) {
+      // RÉSISTANCE IMPRIMÉE d'un Équipement (refonte du 13/10/2026) : elle
+      // s'ajoute à la Résistance maximale — donc actuelle — du porteur ;
+      // l'Équipement n'a pas de réserve à lui, les dégâts restent sur le
+      // porteur. Relue en direct : elle tombe avec l'Équipement.
+      if (sourceDef.type === "equipement" && sourceDef.health) {
+        contributions.push({ sourceCardId: source.cardId, sourceInstanceId: source.instanceId, attack: 0, health: sourceDef.health, printedEquipment: true });
+      }
+      // Lampe de Pont Rouge : bonus d'Équipement conditionnel à la Marée.
       const equipBuff = sourceDef.equipGrantsBuffWhileTideStateIn;
       if (equipBuff && equipBuff.tideStateIn.includes(tideState)) add(equipBuff);
       // Harpon de Pont, Treuil Rouillé… : bonus inconditionnel du porteur,
@@ -337,7 +351,7 @@ function auraTotals(unit: CardInstance, tideState: TideStateName, aura: AuraCont
   const selfIgnored = isTextIgnored(unit);
   const totals = { attack: 0, health: 0 };
   for (const c of collectAuraContributions(unit, tideState, aura)) {
-    if (c.sourceInstanceId && muettes?.has(c.sourceInstanceId)) continue;
+    if (c.sourceInstanceId && muettes?.has(c.sourceInstanceId) && !c.printedEquipment) continue;
     if (c.sourceInstanceId === unit.instanceId && selfIgnored) continue;
     totals.attack += c.attack;
     totals.health += c.health;
@@ -367,7 +381,8 @@ function auraProfile(def: CardDefinition): { receivesOwn: boolean; grants: boole
     const keys = Object.keys(def).filter((key) => def[key as keyof CardDefinition] !== undefined);
     profile = {
       receivesOwn: def.archetype === SENTINELLE_CHROMATIQUE || keys.some((key) => key.startsWith("selfBuff")),
-      grants: keys.some((key) => key.startsWith("auraBuff") || key.startsWith("equipGrantsBuff")),
+      // Un Équipement à Résistance imprimée en donne toujours une à son porteur.
+      grants: keys.some((key) => key.startsWith("auraBuff") || key.startsWith("equipGrantsBuff")) || (def.type === "equipement" && Boolean(def.health)),
     };
     auraProfileCache.set(def, profile);
   }

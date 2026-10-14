@@ -8,7 +8,7 @@ import { markerCount, unitHasSubtype } from "@/game/cards/markers";
 import { boardCapacity } from "@/game/rules/slotEffects";
 import type { CardInstance } from "@/game/cards/types";
 import type { GameState } from "@/game/state/types";
-import { answerHandDiscard, enFinDeTour, instance, testEnvironment, testGameState, testPlayer } from "./testHelpers";
+import { answerHandDiscard, enFinDeTour, instance, testEnvironment, testGameState, testPlayer, jouerObjet } from "./testHelpers";
 
 /**
  * LOT 18 — Un Dead / Mort-vivant : le MARQUEUR MORT.
@@ -125,7 +125,7 @@ describe("retours du Cimetière sur le plateau", () => {
   it("Encore une histoire : « d'un Cimetière » — une unité adverse revient sur VOTRE plateau, sous votre contrôle", () => {
     const histoire = instance("encore-une-histoire", "p1");
     const murene = instance("murene-aveugle", "p2"); // coût 2, au Cimetière adverse
-    const r = dispatch(table({ board: [histoire] }, { graveyard: [murene] }), { type: "breakObject", playerId: "p1", instanceId: histoire.instanceId });
+    const r = jouerObjet(table({ board: [histoire] }, { graveyard: [murene] }), { playerId: "p1", instanceId: histoire.instanceId }, dispatch);
     ok(r);
     const pris = prendre(r.state, murene.instanceId);
     ok(pris);
@@ -140,11 +140,10 @@ describe("retours du Cimetière sur le plateau", () => {
     const histoire = instance("encore-une-histoire", "p1");
     const mienne = instance("murene-aveugle", "p1");
     const adverse = instance("murene-aveugle", "p2");
-    const r = dispatch(table({ board: [histoire], graveyard: [mienne] }, { graveyard: [adverse] }), {
-      type: "breakObject",
+    const r = jouerObjet(table({ board: [histoire], graveyard: [mienne] }, { graveyard: [adverse] }), {
       playerId: "p1",
       instanceId: histoire.instanceId,
-    });
+    }, dispatch);
     ok(r);
     const pris = prendre(r.state, mienne.instanceId);
     ok(pris);
@@ -155,7 +154,7 @@ describe("retours du Cimetière sur le plateau", () => {
     const histoire = instance("encore-une-histoire", "p1");
     const chose = instance("chose-des-hauts-fonds", "p1"); // coût 4
     const ptitBout = instance("ptit-bout", "p1"); // Mort-vivant
-    const r = dispatch(table({ board: [histoire], graveyard: [chose, ptitBout] }), { type: "breakObject", playerId: "p1", instanceId: histoire.instanceId });
+    const r = jouerObjet(table({ board: [histoire], graveyard: [chose, ptitBout] }), { playerId: "p1", instanceId: histoire.instanceId }, dispatch);
     ok(r);
     const proposees = r.state.pendingChoice?.kind === "deckLook" ? r.state.pendingChoice.revealed.map((c) => c.instanceId) : [];
     expect(proposees).toEqual(expect.arrayContaining([chose.instanceId, ptitBout.instanceId]));
@@ -343,7 +342,7 @@ describe("cartes de plateau : emplacements condamnés et ajoutés", () => {
 
   it("Y'a plus de place ! condamne un emplacement libre adverse pendant 3 tours de table", () => {
     const objet = instance("ya-plus-de-place", "p1");
-    const r = dispatch(table({ board: [objet] }), { type: "breakObject", playerId: "p1", instanceId: objet.instanceId });
+    const r = jouerObjet(table({ board: [objet] }), { playerId: "p1", instanceId: objet.instanceId }, dispatch);
     ok(r);
     expect(capacite(r.state, "p2")).toBe(4);
     // Trois tours de table plus tard (six tours de jeu), à l'entame du tour de p1, l'emplacement est libre.
@@ -354,7 +353,7 @@ describe("cartes de plateau : emplacements condamnés et ajoutés", () => {
   it("Y'a plus de place ! n'a rien à condamner sur un terrain plein", () => {
     const objet = instance("ya-plus-de-place", "p1");
     const plein = Array.from({ length: 5 }, () => instance("marin-des-jetees", "p2"));
-    const r = dispatch(table({ board: [objet] }, { board: plein }), { type: "breakObject", playerId: "p1", instanceId: objet.instanceId });
+    const r = jouerObjet(table({ board: [objet] }, { board: plein }), { playerId: "p1", instanceId: objet.instanceId }, dispatch);
     ok(r);
     expect(joueur(r.state, "p2").slotEffects ?? []).toHaveLength(0);
   });
@@ -363,7 +362,7 @@ describe("cartes de plateau : emplacements condamnés et ajoutés", () => {
     const objet = instance("ya-plus-de-place", "p1");
     const quatre = Array.from({ length: 4 }, () => instance("marin-des-jetees", "p2"));
     const pose = instance("marin-des-jetees", "p2");
-    const r = dispatch(table({ board: [objet] }, { board: quatre, hand: [pose] }), { type: "breakObject", playerId: "p1", instanceId: objet.instanceId });
+    const r = jouerObjet(table({ board: [objet] }, { board: quatre, hand: [pose] }), { playerId: "p1", instanceId: objet.instanceId }, dispatch);
     ok(r);
     const tourAdverse: GameState = { ...r.state, activePlayerId: "p2", priorityPlayerId: "p2", phase: "mainPhase" };
     expect(dispatch(tourAdverse, { type: "playCard", playerId: "p2", instanceId: pose.instanceId }).ok).toBe(false);
@@ -387,7 +386,7 @@ describe("cartes de plateau : emplacements condamnés et ajoutés", () => {
       players: r.state.players.map((p) => (p.id === "p2" ? { ...p, board: [place] } : p)) as GameState["players"],
     };
     const main = joueur(tourAdverse, "p2").hand.length;
-    const libere = dispatch(tourAdverse, { type: "breakObject", playerId: "p2", instanceId: place.instanceId });
+    const libere = jouerObjet(tourAdverse, { playerId: "p2", instanceId: place.instanceId }, dispatch);
     ok(libere);
     expect(capacite(libere.state, "p2")).toBe(5);
     expect(joueur(libere.state, "p2").hand.length).toBe(main);
@@ -397,7 +396,7 @@ describe("cartes de plateau : emplacements condamnés et ajoutés", () => {
     const place = instance("place-au-large", "p1");
     const state = table({ board: [place] });
     const main = joueur(state).hand.length;
-    const r = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: place.instanceId });
+    const r = jouerObjet(state, { playerId: "p1", instanceId: place.instanceId }, dispatch);
     ok(r);
     expect(joueur(r.state).hand.length).toBe(main + 1);
   });
@@ -405,7 +404,7 @@ describe("cartes de plateau : emplacements condamnés et ajoutés", () => {
   it("Le Pont Sans Fin ajoute 1 emplacement pendant 3 tours de table ; à son terme, la carte posée dessus part au Cimetière", () => {
     const pont = instance("le-pont-sans-fin", "p1");
     const six = Array.from({ length: 5 }, (_, i) => instance("marin-des-jetees", "p1", { slot: i }));
-    const r = dispatch(table({ board: [pont, ...six] }), { type: "breakObject", playerId: "p1", instanceId: pont.instanceId });
+    const r = jouerObjet(table({ board: [pont, ...six] }), { playerId: "p1", instanceId: pont.instanceId }, dispatch);
     ok(r);
     expect(capacite(r.state, "p1")).toBe(7);
     const septieme = instance("vieux-loup-de-mer", "p1", { slot: 6 });

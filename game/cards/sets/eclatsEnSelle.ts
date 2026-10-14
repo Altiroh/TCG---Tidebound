@@ -377,7 +377,7 @@ const EQUIPAGE_DE_VERRE: CardDefinition[] = [
     setCode: ECLATS_EN_SELLE,
     cost: 1,
     maxCopies: 3,
-    text: "Brisez cet Objet : infligez 1 dégât à une unité.",
+    text: "Infligez 1 dégât à une unité.",
     onBreakEffects: [
       { type: "damage", target: { kind: "chosenUnit", among: { unitsOnly: true, sameController: false } }, amount: { kind: "flat", value: 1 } },
     ],
@@ -389,7 +389,7 @@ const EQUIPAGE_DE_VERRE: CardDefinition[] = [
     setCode: ECLATS_EN_SELLE,
     cost: 2,
     maxCopies: 3,
-    text: "Brisez cet Objet : infligez 1 dégât à une unité blessée. Si elle survit, restaurez-lui ensuite 2 Résistance.",
+    text: "Infligez 1 dégât à une unité blessée. Si elle survit, restaurez-lui ensuite 2 Résistance.",
     onBreakEffects: [
       {
         type: "damage",
@@ -411,7 +411,7 @@ const EQUIPAGE_DE_VERRE: CardDefinition[] = [
     setCode: ECLATS_EN_SELLE,
     cost: 2,
     maxCopies: 3,
-    text: "Brisez cet Objet : infligez 1 dégât à jusqu'à deux unités.",
+    text: "Infligez 1 dégât à jusqu'à deux unités.",
     onBreakEffects: [
       {
         type: "pickUnits",
@@ -431,16 +431,18 @@ const EQUIPAGE_DE_VERRE: CardDefinition[] = [
     cost: 2,
     maxCopies: 3,
     health: 2,
-    text: "L'unité équipée gagne +2 Résistance maximale. Sabordez cet Équipement : restaurez 2 Résistance à l'unité équipée.",
+    text: "Sabordez cet Équipement : restaurez 2 Résistance à l'unité équipée.",
     onPlayEffects: [{ type: "attachEquipment", target: { kind: "chosenUnit" } }],
-    // Une aura, relue en direct : la Résistance maximale retombe avec le
-    // Bouclier, et c'est bien ce que « maximale » veut dire.
-    equipGrantsBuff: { healthAmount: 2 },
+    // Refonte des Équipements (13/10/2026) : sa Résistance imprimée (2) suffit.
+    // Ordre STRICT au Sabordage : l'Équipement part, sa Résistance tombe, la
+    // survie du porteur est vérifiée — un porteur que la perte du bonus tue
+    // n'est PAS soigné (`conditionTargetSurvives`) ; sinon, 2 Résistance
+    // restaurées, sans dépasser son maximum.
     abilities: [
       {
         trigger: "onSaborde",
-        description: "Sabordez Bouclier Fendu : 2 Résistance restaurées à l'unité équipée.",
-        effects: [{ type: "heal", target: { kind: "equippedUnit" }, amount: { kind: "flat", value: 2 } }],
+        description: "Sabordez Bouclier Fendu : 2 Résistance restaurées à l'unité équipée, si elle survit au retrait.",
+        effects: [{ type: "heal", target: { kind: "equippedUnit" }, amount: { kind: "flat", value: 2 }, conditionTargetSurvives: true }],
       },
     ],
   },
@@ -801,10 +803,9 @@ const CAVALERIE_LOT: CardDefinition[] = [
     cost: 2,
     maxCopies: 3,
     health: 2,
-    text: "L'unité équipée gagne +1 Puissance. Si elle coûte 4 ou plus, elle gagne aussi +1 Résistance.",
+    text: "L'unité équipée gagne +1 Puissance.",
     onPlayEffects: [{ type: "attachEquipment", target: { kind: "chosenUnit" } }],
     equipGrantsBuff: { attackAmount: 1 },
-    equipGrantsBuffIfBearerCostAtLeast: { cost: 4, healthAmount: 1 },
   },
   {
     id: "harnais-de-retenue",
@@ -828,7 +829,7 @@ const CAVALERIE_LOT: CardDefinition[] = [
     setCode: ECLATS_EN_SELLE,
     cost: 2,
     maxCopies: 2,
-    text: "Brisez cet Objet : une unité adverse perd Garde jusqu'à la fin du tour.",
+    text: "Une unité adverse perd Garde jusqu'à la fin du tour.",
     onBreakEffects: [
       {
         type: "debuff",
@@ -845,6 +846,7 @@ const CAVALERIE_LOT: CardDefinition[] = [
     type: "objet",
     setCode: ECLATS_EN_SELLE,
     cost: 3,
+    chaine: true,
     maxCopies: 3,
     // RÉACTION, et non plus Bris à froid (décision de design du 24/09/2026) :
     // l'ancien texte faisait choisir une unité en Phase principale, avant de
@@ -853,23 +855,13 @@ const CAVALERIE_LOT: CardDefinition[] = [
     // dans la fenêtre ouverte à la déclaration de l'attaque. Le bonus est
     // « en attente » (`nextCombatVsKeyword`) : ce combat-ci le dépense.
     text:
-      "Lorsqu'une de vos unités combat une unité adverse ayant Garde, vous pouvez Briser cet Objet : elle gagne " +
-      "+2 Puissance pour ce combat.",
-    onBreakEffects: [
-      {
-        type: "buff",
-        target: { kind: "triggerSource" },
-        attackAmount: { kind: "flat", value: 2 },
-        healthAmount: { kind: "flat", value: 0 },
-        nextCombatVsKeyword: "garde",
-        duration: "endOfTurn",
-      },
-    ],
+      "Chaîne — Lorsqu'une de vos unités combat une unité adverse ayant Garde : elle gagne +2 Puissance pour ce " +
+      "combat.",
     abilities: [
       {
         trigger: "onCombatVsGarde",
         mode: "optional",
-        description: "Brisez Ouvrez la Ligne ! : votre unité gagne +2 Puissance pour ce combat.",
+        description: "Ouvrez la Ligne ! : votre unité gagne +2 Puissance pour ce combat.",
         effects: [
           {
             type: "buff",
@@ -879,7 +871,6 @@ const CAVALERIE_LOT: CardDefinition[] = [
             nextCombatVsKeyword: "garde",
             duration: "endOfTurn",
           },
-          { type: "saborde", target: { kind: "self" } },
         ],
       },
     ],
@@ -890,31 +881,21 @@ const CAVALERIE_LOT: CardDefinition[] = [
     type: "objet",
     setCode: ECLATS_EN_SELLE,
     cost: 3,
+    chaine: true,
     maxCopies: 2,
     text:
-      "Lorsqu'une unité adverse déclare une attaque directe contre votre Navire, Brisez cet Objet : une unité que " +
-      "vous contrôlez gagne Garde jusqu'à la fin du tour.",
-    // Même grammaire que les Objets réactifs du Lot 14 (Corde de Rappel) :
-    // l'effet de Bris, et la réponse à l'attaque qui Brise l'Objet. Une unité
-    // qui prend Garde pendant la fenêtre INTERCEPTE l'attaque directe : à la
-    // reprise, le coup se porte sur elle (`gardeQuiIntercepte`, engine.ts).
-    onBreakEffects: [
-      {
-        type: "buff",
-        target: { kind: "chosenUnit", among: { unitsOnly: true } },
-        attackAmount: { kind: "flat", value: 0 },
-        healthAmount: { kind: "flat", value: 0 },
-        grantKeywords: ["garde"],
-        duration: "endOfTurn",
-      },
-    ],
+      "Chaîne — Lorsqu'une unité adverse déclare une attaque directe contre votre Navire : une unité que vous " +
+      "contrôlez gagne Garde jusqu'à la fin du tour.",
+    // Même grammaire que les Objets Chaîne du Lot 14 (Corde de Rappel). Une
+    // unité qui prend Garde pendant la fenêtre INTERCEPTE l'attaque directe :
+    // à la reprise, le coup se porte sur elle (`gardeQuiIntercepte`, engine.ts).
     abilities: [
       {
         trigger: "onIncomingDirectAttack",
         mode: "optional",
         // « une UNITÉ adverse déclare une attaque » : pas un tir de Navire.
         condition: { attackFromUnit: true },
-        description: "Brisez Pas un Pas de Plus : une de vos unités gagne Garde jusqu'à la fin du tour.",
+        description: "Pas un Pas de Plus : une de vos unités gagne Garde jusqu'à la fin du tour.",
         effects: [
           {
             type: "buff",
@@ -924,7 +905,6 @@ const CAVALERIE_LOT: CardDefinition[] = [
             grantKeywords: ["garde"],
             duration: "endOfTurn",
           },
-          { type: "saborde", target: { kind: "self" } },
         ],
       },
     ],
@@ -1332,8 +1312,8 @@ const SENTINELLES: CardDefinition[] = [
     cost: 2,
     maxCopies: 3,
     text:
-      "Brisez cet Objet : regardez les 4 premières cartes de votre pioche. Vous pouvez ajouter une Sentinelle " +
-      "Chromatique parmi elles à votre main. Placez les autres sous votre pioche.",
+      "Regardez les 4 premières cartes de votre pioche. Vous pouvez ajouter une Sentinelle Chromatique parmi " +
+      "elles à votre main. Placez les autres sous votre pioche.",
     onBreakEffects: [
       {
         type: "lookAtDeckTop",
@@ -1353,7 +1333,9 @@ const SENTINELLES: CardDefinition[] = [
     setCode: ECLATS_EN_SELLE,
     cost: 2,
     maxCopies: 3,
-    text: "Brisez cet Objet : choisissez un Éclat Chromatique dans votre Cimetière et créez un Éclat de cette couleur sur votre terrain.",
+    text:
+      "Choisissez un Éclat Chromatique dans votre Cimetière et créez un Éclat de cette couleur sur votre " +
+      "terrain.",
     onBreakEffects: [
       { type: "summon", target: { kind: "controllerPlayer" }, cardIdFrom: "chosenGraveyardCard", filter: { subtype: ECLAT } },
     ],
@@ -1431,7 +1413,9 @@ const SENTINELLES: CardDefinition[] = [
     setCode: ECLATS_EN_SELLE,
     cost: 4,
     maxCopies: 3,
-    text: "Brisez cet Objet : choisissez une Sentinelle Chromatique. Jusqu'à la fin du tour, elle bénéficie également de son propre Signal Chromatique.",
+    text:
+      "Choisissez une Sentinelle Chromatique. Jusqu'à la fin du tour, elle bénéficie également de son propre " +
+      "Signal Chromatique.",
     onBreakEffects: [
       {
         type: "chromaticModify",
@@ -1512,8 +1496,8 @@ const SENTINELLES: CardDefinition[] = [
     cost: 3,
     maxCopies: 2,
     text:
-      "Brisez cet Objet : choisissez une couleur. Jusqu'à votre prochain tour, vous êtes considéré comme " +
-      "contrôlant cette couleur pour vos effets Chromatiques. Cette carte n'émet aucun Signal.",
+      "Choisissez une couleur. Jusqu'à votre prochain tour, vous êtes considéré comme contrôlant cette couleur " +
+      "pour vos effets Chromatiques. Cette carte n'émet aucun Signal.",
     onBreakEffects: [
       {
         type: "chooseChromaticColor",

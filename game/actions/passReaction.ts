@@ -4,6 +4,8 @@ import { consumeDeclinedOncePerTurnReactions } from "@/game/triggers/triggerBus"
 import { assertGameActive, assertPlayerInGame, combine } from "@/game/rules/validation";
 import type { GameState } from "@/game/state/types";
 import type { ActionResult, PassReactionAction } from "@/game/actions/types";
+import { withLeftovers } from "@/game/actions/activateReaction";
+import { runChain } from "@/game/chain/chainStack";
 
 function validate(state: GameState, action: PassReactionAction) {
   const generalChecks = combine(assertGameActive(state), assertPlayerInGame(state, action.playerId));
@@ -51,6 +53,12 @@ export function passReaction(state: GameState, action: PassReactionAction): Acti
       timestamp: Date.now(),
       playerId: nextPending.awaitingPlayerId,
     });
+  }
+
+  // Plus personne ne répond à la pile Chaîne : elle se résout, du haut vers le bas.
+  if (!nextPending && afterDecline.chainStack?.length) {
+    const suite = runChain({ ...afterDecline, pendingReaction: undefined });
+    return { ok: true, state: withLeftovers(suite.state, suite.leftoverTriggers), events: [...events, ...suite.events] };
   }
 
   return { ok: true, state: { ...afterDecline, pendingReaction: nextPending }, events };

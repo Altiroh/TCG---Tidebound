@@ -5,7 +5,7 @@ import type { CardDefinition } from "@/game/cards/types";
 import { dispatch } from "@/tests/game/arrivalDispatch";
 import { hasGraveyardArrival } from "@/game/effects/resolveEffect";
 import { countArchetypeUnits } from "@/game/cards/archetypes";
-import { answerHandDiscard, instance, testEnvironment, testGameState, testPlayer, enFinDeTour } from "./testHelpers";
+import { answerHandDiscard, instance, testEnvironment, testGameState, testPlayer, enFinDeTour, jouerObjet } from "./testHelpers";
 
 /**
  * Lot 13 — Un Dead / La Veillée des Disparus.
@@ -135,13 +135,13 @@ describe("Lot 13 — le meulage nourrit la Veillée", () => {
     name: "Meuleur d'essai",
     type: "objet",
     cost: 1,
-    text: "À son arrivée, placez les 2 premières cartes de la pioche ciblée dans son Cimetière.",
-    onPlayEffects: [],
+    text: "Brisez cet Objet : placez les 2 premières cartes de la pioche ciblée dans son Cimetière.",
+    onBreakEffects: [],
   } as unknown as CardDefinition;
 
   function meule(cible: "controllerPlayer" | "opponentPlayer", observateurs: ReturnType<typeof instance>[]) {
     const table = CARD_DATABASE as Map<string, CardDefinition>;
-    table.set(MEULEUR.id, { ...MEULEUR, onPlayEffects: [{ type: "mill", target: { kind: cible }, amount: { kind: "flat", value: 2 } }] } as CardDefinition);
+    table.set(MEULEUR.id, { ...MEULEUR, onBreakEffects: [{ type: "mill", target: { kind: cible }, amount: { kind: "flat", value: 2 } }] } as CardDefinition);
     try {
       const meuleur = instance(MEULEUR.id, "p1");
       const state = testGameState({
@@ -162,7 +162,8 @@ describe("Lot 13 — le meulage nourrit la Veillée", () => {
 
   it("La Marelle cogne quand la pioche va au Cimetière — une seule fois pour deux cartes meulées", () => {
     const { avant, apres } = meule("controllerPlayer", [instance("la-marelle", "p1")]);
-    expect(apres.players[0].graveyard).toHaveLength(2);
+    // Les 2 cartes meulées, plus le Meuleur joué (qui, lui, n'est pas une défausse).
+    expect(apres.players[0].graveyard.filter((c) => c.cardId !== MEULEUR.id)).toHaveLength(2);
     expect(ancrageAdverse(apres)).toBe(ancrageAdverse(avant) - 1);
   });
 
@@ -205,7 +206,7 @@ describe("Lot 13 — le Cimetière comme ressource", () => {
       ],
     });
 
-    const brise = dispatch(state, { type: "breakObject", playerId: "p1", instanceId: gouter.instanceId });
+    const brise = jouerObjet(state, { playerId: "p1", instanceId: gouter.instanceId }, dispatch);
     ok(brise);
     const apres = answerHandDiscard(brise.state, [ptitBout.instanceId]);
     ok(apres);
@@ -228,12 +229,11 @@ describe("Lot 13 — le Cimetière comme ressource", () => {
     });
     const ancrageAvant = state.players.find((p) => p.id === "p2")!.anchor;
 
-    const brise = dispatch(state, {
-      type: "breakObject",
+    const brise = jouerObjet(state, {
       playerId: "p1",
       instanceId: chanson.instanceId,
       chosenGraveyardInstanceId: ptitBout.instanceId,
-    });
+    }, dispatch);
     ok(brise);
 
     const p1 = brise.state.players.find((p) => p.id === "p1")!;
@@ -320,12 +320,11 @@ describe("Lot 13 — le Cimetière comme ressource", () => {
         testPlayer("p2", { shipId: "le-goliath" }),
       ],
     });
-    const brise = dispatch(state, {
-      type: "breakObject",
+    const brise = jouerObjet(state, {
       playerId: "p1",
       instanceId: chanson.instanceId,
       chosenGraveyardInstanceId: ptitBout.instanceId,
-    });
+    }, dispatch);
     ok(brise);
     expect(hasGraveyardArrival(brise.state, "p1", { cardIds: ["la-petite-chanson"], since: "thisTurn" })).toBe(true);
   });

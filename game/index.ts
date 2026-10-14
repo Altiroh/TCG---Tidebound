@@ -14,6 +14,7 @@ export type {
   PlayerId,
   GamePhase,
   Zone,
+  ChainLink,
 } from "@/game/state/types";
 export { getPlayer, getOpponent, findCardInstance, isMainPhase, MAIN_PHASES } from "@/game/state/types";
 export { hiddenZoneCards, toPlayerView } from "@/game/state/playerView";
@@ -28,7 +29,6 @@ export type {
   AttackAction,
   EndTurnAction,
   SaborderAction,
-  BreakObjectAction,
   AdvancePhaseAction,
   ActivateReactionAction,
   PassReactionAction,
@@ -61,6 +61,7 @@ export {
   isPermanentCard,
   isVisibleDuringTide,
   hasResistance,
+  equipmentResistance,
   hasKeyword,
   getMaxCopies,
   DEFAULT_MAX_COPIES,
@@ -71,7 +72,7 @@ export {
   STATUS_IMMOBILISE,
   STATUS_SILENCE,
 } from "@/game/cards/types";
-export { CARD_DATABASE, CORE_SET, getCardDefinition, canBeEquipTarget, hasAnyValidEquipTarget } from "@/game/cards/sets/core";
+export { CARD_DATABASE, CORE_SET, getCardDefinition, canBeEquipTarget, equipmentOf, equipTargetRefusal, hasAnyValidEquipTarget } from "@/game/cards/sets/core";
 export { isAbyssalVariant } from "@/game/cards/types";
 export { isLandeCard, type LandeRules } from "@/game/cards/types";
 export { landeRemainingTableTurns, unitArrivalsLeft } from "@/game/rules/lande";
@@ -207,7 +208,8 @@ export { eveilsThisTurn, hasEveil } from "@/game/rules/eveil";
 // --- Déraison (Raison négative, piste à prototyper du 2026-09-12) --------
 export { reasonCeiling, deraisonDebt, deraisonAnchorDamage } from "@/game/state/reason";
 export { playCardRefusal, previewPlayCardReason } from "@/game/actions/playCard";
-export { breaksOnlyInReaction, handBreakCost, previewBreakReason, previewHandBreakReason } from "@/game/actions/breakObject";
+export { isDieChainObject, isReactionChainObject, objectPlayTax } from "@/game/rules/objectPlay";
+export { linkEffects } from "@/game/chain/chainStack";
 export {
   graveyardChoicesForAbility,
   graveyardChoicesForBreak,

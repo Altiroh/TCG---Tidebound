@@ -12,7 +12,7 @@ import type { GameState, PlayerState } from "@/game/state/types";
  * qu'il faut sur la table pour que chaque leçon trouve son exemple :
  *
  *   - en main : une unité ordinaire, une unité à Pied marin, un Objet
- *     dont le Bris ne demande aucune cible, et une Lande qui retire la
+ *     dont l'effet ne demande aucune cible, et une Lande qui retire la
  *     Garde (08/10/2026 : la carte de terrain du Pont) ;
  *   - sur le plateau du joueur : une Structure à « Sabordage : » ;
  *   - en face : une unité à Garde et une unité offensive, pour que le
@@ -32,7 +32,7 @@ export const TUTORIAL_CARDS = {
   unit: "charpentier-de-bord",
   /** Pied marin : Sterne des Embruns, 1 Raison. */
   piedMarin: "sterne-des-embruns",
-  /** Objet à Briser, sans cible : Thermos du Dernier Quart (récupérez 2 Raison). */
+  /** Objet à jouer, sans cible : Thermos du Dernier Quart (récupérez 2 Raison). */
   object: "thermos-du-dernier-quart",
   /** Structure à Saborder : Caisse des Dernières Planches (1 Ancrage, 1 carte). */
   structure: "caisse-des-dernieres-planches",

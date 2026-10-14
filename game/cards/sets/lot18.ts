@@ -76,7 +76,7 @@ export const LOT18_SET: CardDefinition[] = [
     // Un seul exemplaire par deck (décision du 12/10/2026) : la carte qui
     // revient sans fin portait la force des Morts-vivants. Notion mis à jour.
     maxCopies: 1,
-    text: "Quand elle est détruite ou Sabordée, ou défaussée, ramenez-la du Cimetière sur le plateau à la fin du tour.",
+    text: "Si elle est détruite, Sabordée ou défaussée, ramenez-la du Cimetière sur le plateau en fin de tour.",
     // Elle ne revient qu'à la FIN du tour : une fois par tour au plus, sans
     // qu'il faille le suivre. Défaussée, elle arrive en jeu — c'est la carte
     // qui fait de la défausse un gain.
@@ -103,8 +103,8 @@ export const LOT18_SET: CardDefinition[] = [
     health: 3,
     maxCopies: 3,
     text:
-      "À son arrivée, vous pouvez défausser autant de cartes que vous voulez. Si vous le faites, elle gagne +1 / +1 " +
-      "pour chaque carte défaussée.",
+      "À l'arrivée : vous pouvez défausser autant de cartes que souhaité. Elle gagne +1/+1 par carte ainsi " +
+      "défaussée.",
     onPlayEffects: [
       { type: "discard", target: { kind: "controllerPlayer" }, amount: { kind: "handSize" }, discardAtMost: true, refusable: true },
       // Le bonus reste tant qu'elle est en jeu (décision du 09/10/2026 : le texte ne donne pas de durée).
@@ -127,8 +127,8 @@ export const LOT18_SET: CardDefinition[] = [
     health: 2,
     maxCopies: 3,
     text:
-      "La première fois à chaque tour qu'une autre de vos unités Mort-vivant est détruite ou Sabordée, ou qu'une de " +
-      "vos cartes Mort-vivant est défaussée, infligez 1 dégât au Navire adverse et récupérez 1 Ancrage.",
+      "Une fois par tour, si une autre unité Mort-vivant alliée est détruite ou Sabordée, ou si une carte " +
+      "Mort-vivant est défaussée : infligez 1 dégât au Navire adverse et récupérez 1 Ancrage.",
     abilities: meuteQuiTombe("pasSansMoi", "1 dégât au Navire adverse, récupérez 1 Ancrage.", [
       { type: "damage", target: { kind: "opponentPlayer" }, amount: flat(1) },
       { type: "heal", target: { kind: "controllerPlayer" }, amount: flat(1) },
@@ -141,7 +141,7 @@ export const LOT18_SET: CardDefinition[] = [
     cost: 1,
     maxCopies: 3,
     permanent: false,
-    text: "Placez un marqueur Mort sur une unité que vous contrôlez (hors Mort-vivant) qui n'en porte pas. Elle gagne +1 / +1.",
+    text: "Placez un marqueur Mort sur une unité alliée non Mort-vivant sans marqueur Mort. Elle gagne +1/+1.",
     // Une seule désignation pour toute la suite d'effets. Le +1 / +1 passe
     // AVANT le marqueur : une fois marquée, la cible ne répondrait plus au
     // filtre « qui n'en porte pas ».
@@ -166,8 +166,8 @@ export const LOT18_SET: CardDefinition[] = [
     cost: 2,
     maxCopies: 2,
     text:
-      "Brisez cet Objet : ramenez une unité de coût 4 ou moins d'un Cimetière sur votre plateau. Si ce n'est pas un " +
-      "Mort-vivant, elle porte un marqueur Mort. Elle ne peut pas attaquer ce tour.",
+      "Ramenez sur votre plateau une unité de coût 4 ou moins d'un Cimetière. Si elle n'est pas Mort-vivant, " +
+      "marquez-la Mort. Elle ne peut pas attaquer ce tour.",
     onBreakEffects: [
       {
         // « d'UN Cimetière » : le sien ou celui de l'adversaire (décision du
@@ -206,8 +206,8 @@ export const LOT18_SET: CardDefinition[] = [
     maxCopies: 2,
     permanent: false,
     text:
-      "Ramenez une unité de coût 3 ou moins de votre Cimetière sur le plateau. Si ce n'est pas un Mort-vivant, elle " +
-      "porte un marqueur Mort.",
+      "Ramenez sur votre plateau une unité de coût 3 ou moins de votre Cimetière. Si elle n'est pas Mort-vivant, " +
+      "marquez-la Mort.",
     onPlayEffects: [
       {
         type: "pickFromGraveyard",
@@ -228,11 +228,11 @@ export const LOT18_SET: CardDefinition[] = [
     maxCopies: 3,
     // Une unité marquée Mort est Mort-vivant : elle peut le porter aussi.
     equipTargetSubtype: MORT_VIVANT,
-    equipGrantsBuff: { attackAmount: 1, healthAmount: 1 },
+    equipGrantsBuff: { attackAmount: 1 },
     // Décision du 12/10/2026 : « récupérez autant d'Ancrage » devient Sangsue, CONFÉRÉE au porteur
     // (un Équipement ne porte pas de qualification, il la donne).
     equipGrantsQualifications: [{ id: "sangsue" }],
-    text: "Équipez un Mort-vivant que vous contrôlez. Il gagne +1 / +1 et Sangsue. Quand il est détruit, piochez 1 carte.",
+    text: "Équipez un Mort-vivant allié. Il gagne +1 Puissance et Sangsue. À sa destruction, piochez 1.",
     onPlayEffects: [{ type: "attachEquipment", target: { kind: "chosenUnit" } }],
     abilities: [
       {
@@ -253,7 +253,7 @@ export const LOT18_SET: CardDefinition[] = [
     health: 5,
     maxCopies: 2,
     keywords: ["garde"],
-    text: "Garde. Chaque fois qu'une autre de vos unités Mort-vivant est détruite ou Sabordée, il gagne +1 / +1.",
+    text: "Garde. Chaque autre Mort-vivant allié détruit ou Sabordé lui donne +1/+1.",
     abilities: [
       {
         trigger: "onDeath",
@@ -272,9 +272,9 @@ export const LOT18_SET: CardDefinition[] = [
     maxCopies: 2,
     durationTurns: 4,
     text:
-      "Durée : 4 tours de table. La première fois à chaque tour qu'une de vos unités Mort-vivant est détruite ou " +
-      "Sabordée, ou qu'une de vos cartes Mort-vivant est défaussée, vos unités Mort-vivant gagnent +1 / +1 tant que " +
-      "cette carte est en jeu.",
+      "Durée : 4 tours de table. Une fois par tour, lorsqu'un Mort-vivant allié est détruit ou Sabordé, ou " +
+      "qu'une carte Mort-vivant est défaussée : vos Mort-vivants gagnent +1/+1 tant que cette Structure est en " +
+      "jeu.",
     abilities: meuteQuiTombe("ceuxDenBas", "vos Mort-vivants gagnent +1 / +1 tant que Ceux d'en bas est en jeu.", [
       {
         type: "buff",
@@ -303,7 +303,7 @@ export const LOT18_PLATEAU_SET: CardDefinition[] = [
     setCode: LOT18_PLATEAU,
     cost: 6,
     maxCopies: 1,
-    text: "Brisez cet Objet : condamnez un emplacement libre adverse pendant 3 tours de table.",
+    text: "Condamnez un emplacement libre adverse pendant 3 tours de table.",
     onBreakEffects: [{ type: "condemnSlot", target: { kind: "opponentPlayer" }, tableTurns: 3, cardId: "ya-plus-de-place" }],
   },
   {
@@ -316,7 +316,7 @@ export const LOT18_PLATEAU_SET: CardDefinition[] = [
     maxCopies: 2,
     durationTurns: 4,
     text:
-      "Durée : 4 tours de table. À son arrivée, condamnez un emplacement libre adverse. Il reste condamné tant que " +
+      "Durée : 4 tours de table. À l'arrivée, bloquez un emplacement libre adverse. Il reste bloqué tant que " +
       "cette Structure est en jeu.",
     onPlayEffects: [{ type: "condemnSlot", target: { kind: "opponentPlayer" }, whileSourceInPlay: true, cardId: "le-barrage-des-egares" }],
   },
@@ -327,9 +327,7 @@ export const LOT18_PLATEAU_SET: CardDefinition[] = [
     setCode: LOT18_PLATEAU,
     cost: 6,
     maxCopies: 1,
-    text:
-      "Brisez cet Objet : ajoutez 1 emplacement à votre terrain pendant 3 tours de table. Quand il disparaît, la " +
-      "carte posée dessus part au Cimetière.",
+    text: "Ajoutez 1 emplacement à votre terrain pendant 3 tours de table.",
     onBreakEffects: [{ type: "addSlot", target: { kind: "controllerPlayer" }, tableTurns: 3, cardId: "le-pont-sans-fin" }],
   },
   {
@@ -339,9 +337,7 @@ export const LOT18_PLATEAU_SET: CardDefinition[] = [
     setCode: LOT18_PLATEAU,
     cost: 3,
     maxCopies: 2,
-    text:
-      "Brisez cet Objet : libérez un emplacement condamné de votre terrain. Si aucun emplacement n'est condamné, " +
-      "piochez 1 carte.",
+    text: "Libérez un emplacement condamné de votre terrain. Si aucun emplacement n'est condamné, piochez 1.",
     onBreakEffects: [
       // La pioche se lit AVANT la libération : « si aucun n'est condamné », au moment où l'Objet se brise.
       { type: "draw", target: { kind: "controllerPlayer" }, amount: flat(1), conditionControllerHasCondemnedSlot: false },

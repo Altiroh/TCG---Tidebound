@@ -10,14 +10,14 @@ import {
 import { needsPlayTarget } from "@/features/match/needsPlayTarget";
 
 /**
- * Ciblage en cours côté conteneur (clic sur une carte de main à effet, bris
- * ciblé, réaction ciblée, attaque, tir du canon de Navire). Le tir n'a pas
+ * Ciblage en cours côté conteneur (clic sur une carte de main à effet —
+ * Objet compris —, réaction ciblée, attaque, tir du canon de Navire). Le tir n'a pas
  * de `sourceInstanceId` : sa source est le Navire, qui n'est pas une carte
  * du plateau. Une réaction porte l'index de sa capacité et la carte qui l'a
  * déclenchée — ce sont eux qui disent quelles cibles sont légales.
  */
 export type TableTargeting =
-  | { kind: "playCard" | "break" | "attack" | "ability"; sourceInstanceId: string }
+  | { kind: "playCard" | "attack" | "ability"; sourceInstanceId: string }
   | { kind: "reaction"; sourceInstanceId: string; abilityIndex: number; triggerSourceInstanceId?: string }
   /**
    * Effet d'arrivée en réserve, peut-être à plusieurs modes (« choisissez :
@@ -109,15 +109,8 @@ export function legalTargetsFor(state: GameState, viewerId: PlayerId, targeting:
       if ((def.onPlayEffects ?? []).some((e) => e.type === "attachEquipment")) {
         return new Set(viewer.board.filter((unit) => canBeEquipTarget(def, viewer.board, unit)).map((unit) => unit.instanceId));
       }
-      return chosenAmong(state, def.onPlayEffects ?? [], viewerId, card.instanceId);
-    }
-    case "break": {
-      const card = [...viewer.hand, ...viewer.board].find((c) => c.instanceId === targeting.sourceInstanceId);
-      if (!card) return null;
-      // L'Objet brisé quitte le plateau avant ses effets : jamais sa propre cible.
-      const among = chosenAmong(state, getCardDefinition(card.cardId).onBreakEffects ?? [], viewerId, card.instanceId);
-      if (among) among.delete(card.instanceId);
-      return among;
+      // Un Objet joué résout son effet de Bris.
+      return chosenAmong(state, (def.type === "objet" ? def.onBreakEffects : def.onPlayEffects) ?? [], viewerId, card.instanceId);
     }
     case "ability": {
       const card = viewer.board.find((c) => c.instanceId === targeting.sourceInstanceId);
@@ -132,7 +125,7 @@ export function legalTargetsFor(state: GameState, viewerId: PlayerId, targeting:
       return union;
     }
     case "reaction": {
-      // La source peut être EN MAIN : un Objet réactif qui se Brise, ou une
+      // La source peut être EN MAIN : un Objet Chaîne qui se joue, ou une
       // carte jouée en réaction (Propagation, Mutation Réflexe — Lot 16). La
       // chercher seulement en jeu ne trouvait rien : aucune cible ne
       // s'éclairait, et le joueur restait dans la fenêtre sans savoir quoi toucher.

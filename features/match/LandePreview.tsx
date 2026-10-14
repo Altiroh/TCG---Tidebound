@@ -59,13 +59,21 @@ export function LandePreview() {
               hand: [
                 ...LANDES.filter((id) => id !== lande).map((id, i) => carte(id, p.id, i)),
                 carte("gaston-aventurier-de-ladalle", p.id, 0),
-                ...p.hand.slice(0, 3),
-              ],
-              // Un jeton de chaque côté : les animations doivent épouser son cadre ovale.
-              board: [carte("crabe-de-fer", p.id, 0), carte("marin-des-jetees", p.id, 1), { ...carte("peon-cra-poiscail", p.id, 2), illustrationVariant: 1 },
-                // Deux Objets à Briser : l'un vise une unité (dégâts, bleu), l'autre rend de la Raison (or).
+                // Deux Objets à jouer : l'un vise une unité (dégâts, bleu), l'autre rend de la Raison (or) ;
+                // et un Objet Chaîne, qui ne se joue qu'en réponse.
                 carte("eclat-de-bouteille", p.id, 3),
                 carte("thermos-du-dernier-quart", p.id, 4),
+                carte("harpon-a-ressort", p.id, 5),
+                ...p.hand.slice(0, 2),
+              ],
+              // Un jeton de chaque côté : les animations doivent épouser son cadre ovale.
+              // Deux Équipements attachés : glissés derrière leur porteur, sans case à eux.
+              board: [
+                carte("crabe-de-fer", p.id, 0),
+                { ...carte("harpon-de-pont", p.id, 0), attachedToInstanceId: carte("crabe-de-fer", p.id, 0).instanceId },
+                carte("marin-des-jetees", p.id, 1),
+                { ...carte("plaque-de-fortune", p.id, 1), attachedToInstanceId: carte("marin-des-jetees", p.id, 1).instanceId },
+                { ...carte("peon-cra-poiscail", p.id, 2), illustrationVariant: 1 },
               ],
             }
           : {

@@ -12,7 +12,8 @@ import { hasAnyValidEquipTarget, type CardDefinition, type CardInstance } from "
  * de ciblage vide laisserait le joueur devant un écran sans issue.
  */
 export function needsPlayTarget(def: CardDefinition, board: CardInstance[]): boolean {
-  const effects = def.onPlayEffects ?? [];
+  // L'effet d'un Objet joué est son effet de Bris (`onBreakEffects`).
+  const effects = (def.type === "objet" ? def.onBreakEffects : def.onPlayEffects) ?? [];
   if (!effects.some((e) => e.target.kind === "chosenUnit")) return false;
   const attachEffect = effects.some((e) => e.type === "attachEquipment");
   if (attachEffect) return hasAnyValidEquipTarget(def, board);

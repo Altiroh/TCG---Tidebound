@@ -25,13 +25,12 @@ function targetOf(state: GameState, action: PlayerAction): HeldTarget | null {
     case "attack":
       return action.defenderInstanceId ? { instanceId: action.defenderInstanceId, tone: "attack" } : null;
     case "playCard":
-    case "breakObject":
     case "activateAbility":
     case "activateReaction": {
       if (!action.targetInstanceId) return null;
-      const sourceId = action.type === "playCard" || action.type === "breakObject" ? action.instanceId : action.sourceInstanceId;
+      const sourceId = action.type === "playCard" ? action.instanceId : action.sourceInstanceId;
       const cardId = findCardId(state, sourceId);
-      const kind = action.type === "playCard" ? "playCard" : action.type === "breakObject" ? "break" : action.type === "activateAbility" ? "ability" : "reaction";
+      const kind = action.type === "playCard" ? "playCard" : action.type === "activateAbility" ? "ability" : "reaction";
       const tone = cardId ? sourcePolarity(cardId, kind, action.type === "activateReaction" ? action.abilityIndex : 0) : "hostile";
       return { instanceId: action.targetInstanceId, tone };
     }

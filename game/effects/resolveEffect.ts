@@ -7,7 +7,7 @@ import { addNextRollModifier, pendingDieRoll, rerollPending, rollDie, shiftPendi
 import { consumeUnitDamageBonus } from "@/game/state/damageBonus";
 import { armorEvents, armorOf } from "@/game/state/armor";
 import { damageShip } from "@/game/state/armor";
-import { boardPermanents } from "@/game/rules/ongoing";
+import { boardPermanents, isOngoingEffect } from "@/game/rules/ongoing";
 import {
   CHROMATIC_COLORS,
   hasResistance,
@@ -99,16 +99,39 @@ function returnPermanentToHand(
     ...(unit.illustrationVariant !== undefined ? { illustrationVariant: unit.illustrationVariant } : {}),
   };
 
-  // Un Équipement dont le porteur quitte le board n'équipe plus rien :
-  // `processDeaths` le ramasse au prochain passage (`destroyOrphanedEquipment`),
-  // exactement comme lorsque le porteur meurt.
-  const nextState = replacePlayer(state, {
-    ...owner,
-    board: owner.board.filter((u) => u.instanceId !== instanceId),
-    hand: [...owner.hand, fresh],
-  });
+  // Renvoi du porteur en main (refonte du 13/10/2026) : son Équipement
+  // rejoint le Cimetière, SANS être détruit — et sans retour gratuit en main.
+  const detaches = owner.board.filter((u) => u.attachedToInstanceId === instanceId && getCardDefinition(u.cardId).type === "equipement");
+  const detachedIds = new Set(detaches.map((u) => u.instanceId));
+  const nextState = replacePlayer(
+    state,
+    detaches.reduce<PlayerState>(
+      (acc, u) => recordGraveyardArrival(acc, { cardId: u.cardId, instanceId: u.instanceId, turnNumber: state.turnNumber, fromZone: "board" }),
+      {
+        ...owner,
+        board: owner.board.filter((u) => u.instanceId !== instanceId && !detachedIds.has(u.instanceId)),
+        hand: [...owner.hand, fresh],
+        graveyard: [
+          ...owner.graveyard,
+          ...detaches.map((u) => ({ ...u, damageMarked: 0, modifiers: [], attachedToInstanceId: undefined, graveyardCause: "detached" as const })),
+        ],
+      }
+    )
+  );
 
   const events: GameEvent[] = [
+    ...detaches.map(
+      (u): GameEvent => ({
+        type: "CARD_MOVED",
+        instanceId: u.instanceId,
+        fromZone: "board",
+        toZone: "graveyard",
+        cardId: u.cardId,
+        ownerId: u.ownerId,
+        turnNumber: state.turnNumber,
+        timestamp: 0,
+      })
+    ),
     {
       type: "CARD_MOVED",
       instanceId,
@@ -185,8 +208,6 @@ export interface EffectContext {
   chosenTargetPlayerId?: PlayerId;
   /** instanceId d'une carte de la DÉFAUSSE choisie par le joueur (`moveGraveyardCardToHand`, ex: Grappin de Récupération) — toujours dans la défausse de `controllerId`, jamais celle de l'adversaire. */
   chosenGraveyardInstanceId?: string;
-  /** Résolution d'un `onBreakEffects` déclenché par un Bris DEPUIS LA MAIN (`breakObject` avec `fromHand`) — lu par `conditionBrokenFromHand` (ex: Le Seau). */
-  brokenFromHand?: boolean;
   /** Carte qui a DÉCLENCHÉ la capacité en cours d'exécution (capacités d'observateur) — cible `{ kind: "triggerSource" }`. */
   triggerSourceInstanceId?: string;
   /** `onDealtDamage` : dégâts que la déclencheuse vient d'infliger — montant `{ kind: "triggerDamage" }`. */
@@ -566,10 +587,12 @@ function resolveUnitTargetsUnfiltered(
       const unit = owner?.board.find((u) => u.instanceId === context.chosenTargetInstanceId);
       return noDraw(unit && owner ? [{ unit, ownerId: owner.id }] : []);
     }
-    // Les effets en cours (Anomalies) ne sont pas des permanents : « toutes
-    // les unités » et « au hasard » ne les voient pas (`game/rules/ongoing.ts`).
+    // Les effets en cours (Anomalies) ne sont pas des permanents, et un
+    // Équipement fait corps avec son porteur : « toutes les unités » et « au
+    // hasard » ne les voient pas (`game/rules/ongoing.ts`) — sauf un effet qui
+    // vise expressément « un Équipement » (`filter.cardTypes`).
     case "allAllyUnits":
-      return noDraw(boardPermanents(controller.board).map((unit) => ({ unit, ownerId: controller.id })));
+      return noDraw(massPool(controller.board, effect).map((unit) => ({ unit, ownerId: controller.id })));
     case "allAllyUnitsWithSubtype": {
       const subtype = effect.target.subtype;
       return noDraw(
@@ -582,11 +605,11 @@ function resolveUnitTargetsUnfiltered(
       );
     }
     case "allEnemyUnits":
-      return noDraw(boardPermanents(opponent.board).map((unit) => ({ unit, ownerId: opponent.id })));
+      return noDraw(massPool(opponent.board, effect).map((unit) => ({ unit, ownerId: opponent.id })));
     case "allUnits":
       return noDraw([
-        ...boardPermanents(controller.board).map((unit) => ({ unit, ownerId: controller.id })),
-        ...boardPermanents(opponent.board).map((unit) => ({ unit, ownerId: opponent.id })),
+        ...massPool(controller.board, effect).map((unit) => ({ unit, ownerId: controller.id })),
+        ...massPool(opponent.board, effect).map((unit) => ({ unit, ownerId: opponent.id })),
       ]);
     case "randomAllyUnit": {
       const pool = boardPermanents(controller.board);
@@ -788,9 +811,6 @@ export function effectConditionsMet(
   if (effect.conditionOpponentReasonAtMost !== undefined) {
     const opponent = getOpponent(state, context.controllerId);
     if (opponent.reason > effect.conditionOpponentReasonAtMost) return false;
-  }
-  if (effect.conditionBrokenFromHand !== undefined && effect.conditionBrokenFromHand !== Boolean(context.brokenFromHand)) {
-    return false;
   }
   if (effect.conditionControlsAllCardIds) {
     const controller = getPlayer(state, context.controllerId);
@@ -1118,6 +1138,12 @@ function resolveEffectBody(
       let nextState = { ...state, rngState: healTargets.rngState };
 
       for (const { unit, ownerId } of healTargets.targets) {
+        // « si elle survit » (Bouclier Fendu) : une cible que ses dégâts
+        // détruisent déjà n'est pas soignée — la survie se juge AVANT le soin.
+        if (effect.conditionTargetSurvives) {
+          const max = computeEffectiveStats(unit, state.environment.tideState, auraContextOf(nextState, ownerId)).health;
+          if (unit.pendingRemoval || unit.damageMarked >= max) continue;
+        }
         // « toute sa Résistance » : le montant est ce qu'elle a perdu, et
         // c'est lui qui se journalise.
         const soin = effect.healFully ? unit.damageMarked : amount;
@@ -1499,7 +1525,6 @@ function resolveEffectBody(
         ...(context.chosenTargetInstanceId ? { chosenTargetInstanceId: context.chosenTargetInstanceId } : {}),
         ...(context.chosenGraveyardInstanceId ? { chosenGraveyardInstanceId: context.chosenGraveyardInstanceId } : {}),
         ...(context.triggerSourceInstanceId ? { triggerSourceInstanceId: context.triggerSourceInstanceId } : {}),
-        ...(context.brokenFromHand ? { brokenFromHand: true } : {}),
       });
       return { state: openChoice(lance.state, lance.choice), events };
     }
@@ -1795,6 +1820,25 @@ function resolveEffectBody(
         attachedToInstanceId: target.instanceId,
       }));
       return { state: nextState, events };
+    }
+
+    case "transferEquipment": {
+      // TRANSFERT PAR EFFET (refonte du 13/10/2026) : l'Équipement source,
+      // déjà attaché, passe sur un nouveau porteur NON équipé et légal pour
+      // lui, du même camp. L'ancien porteur perd aussitôt ses bonus — la
+      // passe de morts juge sa survie selon les règles ordinaires. Cible
+      // illégale à la résolution : rien ne se passe, aucun échange inventé.
+      if (!context.sourceInstanceId || !context.chosenTargetInstanceId) return { state, events };
+      const owner = findUnitOwner(state, context.sourceInstanceId);
+      const equipement = owner?.board.find((u) => u.instanceId === context.sourceInstanceId);
+      if (!owner || !equipement?.attachedToInstanceId) return { state, events };
+      const destination = owner.board.find((u) => u.instanceId === context.chosenTargetInstanceId);
+      if (!destination || destination.instanceId === equipement.attachedToInstanceId) return { state, events };
+      if (!canBeEquipTarget(getCardDefinition(equipement.cardId), owner.board, destination)) return { state, events };
+      return {
+        state: replaceUnit(state, owner.id, equipement.instanceId, (u) => ({ ...u, attachedToInstanceId: destination.instanceId })),
+        events,
+      };
     }
 
     case "tideReduceDuration":
@@ -2279,10 +2323,13 @@ function resolveEffectBody(
     }
 
     case "cancelObjectEffect": {
-      // Hors d'un Bris suspendu, il n'y a rien à annuler.
-      if (!state.pendingObjectBreak) return { state, events };
+      // L'Objet visé est le maillon de la pile Chaîne qui a déclenché la
+      // réaction (« lorsqu'un adversaire joue un Objet ») : il ne se
+      // résoudra pas. Déjà résolu ou absent : rien à annuler.
+      const visee = context.triggerSourceInstanceId;
+      if (!visee || !state.chainStack?.some((link) => link.card.instanceId === visee && !link.cancelled)) return { state, events };
       return {
-        state: { ...state, pendingObjectBreak: { ...state.pendingObjectBreak, cancelled: true } },
+        state: { ...state, chainStack: state.chainStack.map((link) => (link.card.instanceId === visee ? { ...link, cancelled: true } : link)) },
         events,
       };
     }
@@ -2718,4 +2765,14 @@ function resolveEffectBody(
     default:
       return { state, events };
   }
+}
+
+/**
+ * Cartes en jeu que voit un effet de MASSE : les permanents qui occupent un
+ * Slot — plus les Équipements quand l'effet vise expressément « un
+ * Équipement » (Eidolon Opalin LVX, L'Attire-Fer).
+ */
+function massPool(board: readonly CardInstance[], effect: EffectDefinition): CardInstance[] {
+  if (!effect.filter?.cardTypes?.includes("equipement")) return boardPermanents(board);
+  return board.filter((card) => !isOngoingEffect(getCardDefinition(card.cardId)));
 }

@@ -137,8 +137,6 @@ function reasonDurationMs(entry: Pick<EffectReason, "printed">): number {
 export interface EffectBreak {
   instanceId: string;
   ownerId: PlayerId;
-  /** Brisé depuis la main (Objet réactif) : il n'était pas sur le plateau. */
-  fromHand: boolean;
   /** Couleur de l'effet : dégâts (bleu), soin ou renfort (or), malus (pourpre). */
   tone: "attack" | "heal" | "malus";
 }
@@ -211,7 +209,7 @@ export function deriveEffectVolley(events: GameEvent[], before: GameState, after
   const touches: EffectTouch[] = [];
   const awakens = new Set<string>();
   const onBoard = (id: string) => onBoardBefore.has(id) || onBoardAfter.has(id);
-  // Les Objets brisés du lot : leur sort part d'EUX (au-dessus du Cimetière), même brisés depuis la main.
+  // Les Objets brisés du lot : leur sort part d'EUX (au-dessus du Cimetière) — joués, ils ne sont jamais posés.
   const brokenEvents = events.flatMap((event) => (event.type === "OBJECT_BROKEN" ? [event] : []));
   const broken = new Set(brokenEvents.map((event) => event.instanceId));
 
@@ -366,7 +364,7 @@ export function deriveEffectVolley(events: GameEvent[], before: GameState, after
         : buffs.some((buff) => buff.loss && fromThis(buff.source))
           ? "malus"
           : "heal";
-    return { instanceId: event.instanceId, ownerId: event.playerId, fromHand: event.fromHand, tone };
+    return { instanceId: event.instanceId, ownerId: event.playerId, tone };
   });
 
   if (shots.length === 0 && heals.length === 0 && buffs.length === 0 && reason.length === 0 && awakens.size === 0 && breaks.length === 0 && touches.length === 0) return null;

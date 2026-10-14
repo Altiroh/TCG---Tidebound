@@ -49,7 +49,7 @@ function firstTurnThenBot(seed: number): GameState {
   let state = scenario(seed);
   state = act(state, { type: "playCard", playerId: "p1", instanceId: inHand(state, TUTORIAL_CARDS.unit) });
   state = act(state, { type: "playCard", playerId: "p1", instanceId: inHand(state, TUTORIAL_CARDS.piedMarin) });
-  state = act(state, { type: "breakObject", playerId: "p1", instanceId: inHand(state, TUTORIAL_CARDS.object), fromHand: true });
+  state = act(state, { type: "playCard", playerId: "p1", instanceId: inHand(state, TUTORIAL_CARDS.object) });
   state = act(state, { type: "saborder", playerId: "p1", instanceId: onBoard(state, 0, TUTORIAL_CARDS.structure)! });
   state = act(enFinDeTour(state), { type: "endTurn", playerId: "p1" });
   state = runBotTurn(state, "p2", "facile");
@@ -120,7 +120,7 @@ describe("partie scénarisée", () => {
     let state = scenario();
     state = act(state, { type: "playCard", playerId: "p1", instanceId: inHand(state, TUTORIAL_CARDS.unit) });
     state = act(state, { type: "playCard", playerId: "p1", instanceId: inHand(state, TUTORIAL_CARDS.piedMarin) });
-    state = act(state, { type: "breakObject", playerId: "p1", instanceId: inHand(state, TUTORIAL_CARDS.object), fromHand: true });
+    state = act(state, { type: "playCard", playerId: "p1", instanceId: inHand(state, TUTORIAL_CARDS.object) });
     expect(state.players[0].reason).toBeGreaterThanOrEqual(0);
   });
 
@@ -132,13 +132,12 @@ describe("partie scénarisée", () => {
 });
 
 describe("parcours guidé, de bout en bout", () => {
-  it("compte un Bris depuis le PLATEAU comme depuis la main", () => {
-    // Le bug remonté : l'ancienne étape n'acceptait que la main, et un Objet
-    // Brisé sur le plateau la laissait bloquée.
+  it("valide l'étape « Jouer un Objet » quand le Thermos joué est Brisé", () => {
     let state = scenario();
+    expect(TUTORIAL_STEPS[indexOf("break")]!.isDone!(state, "p1")).toBe(false);
     state = act(state, { type: "playCard", playerId: "p1", instanceId: inHand(state, TUTORIAL_CARDS.object) });
-    const thermos = onBoard(state, 0, TUTORIAL_CARDS.object)!;
-    state = act(state, { type: "breakObject", playerId: "p1", instanceId: thermos });
+    // Jamais posé : il part au Cimetière, Brisé.
+    expect(onBoard(state, 0, TUTORIAL_CARDS.object)).toBeUndefined();
     expect(TUTORIAL_STEPS[indexOf("break")]!.isDone!(state, "p1")).toBe(true);
   });
 
