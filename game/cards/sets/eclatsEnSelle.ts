@@ -140,8 +140,8 @@ const EQUIPAGE_DE_VERRE: CardDefinition[] = [
     attack: 2,
     health: 4,
     text:
-      "Une fois pendant votre Main Phase, vous pouvez infliger 1 dégât à une autre unité que vous contrôlez. Si " +
-      "elle survit, restaurez 1 Résistance à une autre unité que vous contrôlez.",
+      "1 fois pendant votre phase principale : vous pouvez infliger 1 à une autre unité alliée. Si elle survit, " +
+      "restaurez 1 Résistance à une autre unité alliée.",
     // Deux cibles dans une phrase : la première se DÉSIGNE à l'activation,
     // la seconde se choisit ensuite (`pickUnits`), parmi les autres unités
     // blessées — restaurer une unité intacte ne ferait rien.
@@ -201,8 +201,8 @@ const EQUIPAGE_DE_VERRE: CardDefinition[] = [
     attack: 3,
     health: 4,
     text:
-      "À son arrivée, il subit 1 dégât et inflige 1 dégât à une unité adverse. La première fois à chaque tour " +
-      "qu'il survit à des dégâts, il gagne +1 Puissance.",
+      "À l'arrivée, il subit 1 dégât et en inflige 1 à une unité adverse. La première fois par tour qu'il survit " +
+      "à des dégâts, il gagne +1 Puissance.",
     // Le coup de recul se prend à la pose ; le tir, lui, se VISE dans la
     // fenêtre d'arrivée — sans quoi la carte ne se jouerait pas face à un
     // plateau vide, faute de cible à désigner en la posant.
@@ -242,8 +242,8 @@ const EQUIPAGE_DE_VERRE: CardDefinition[] = [
     attack: 2,
     health: 5,
     text:
-      "La première fois à chaque tour qu'une autre unité que vous contrôlez devrait être détruite par des dégâts, " +
-      "vous pouvez infliger 1 dégât au Porte-Éclats : cette unité reste en jeu avec 1 Résistance.",
+      "1re autre unité alliée menacée de destruction par dégâts par tour : vous pouvez infliger 1 à Porte-Éclats " +
+      "pour la laisser à 1 Résistance.",
     abilities: [
       {
         trigger: "onPermanentWouldBeDestroyed",
@@ -323,8 +323,8 @@ const EQUIPAGE_DE_VERRE: CardDefinition[] = [
     attack: 3,
     health: 6,
     text:
-      "La première fois pendant chacun de vos tours qu'une unité que vous contrôlez survit à des dégâts infligés " +
-      "par l'un de vos effets, récupérez 1 Raison.",
+      "La première fois pendant chacun de vos tours qu'une unité alliée survit à des dégâts infligés par l'un de " +
+      "vos effets, récupérez 1 Raison.",
     abilities: [
       {
         trigger: "onSurvivedDamage",
@@ -349,8 +349,8 @@ const EQUIPAGE_DE_VERRE: CardDefinition[] = [
     attack: 5,
     health: 7,
     text:
-      "Au début de votre Main Phase, elle subit 1 dégât. La première fois à chaque tour qu'elle survit à des " +
-      "dégâts, elle gagne +1 Puissance. Tant qu'elle a 3 Résistance ou moins, elle a Garde.",
+      "Au début de votre phase principale, elle subit 1 dégât. La première fois par tour qu'elle survit à des " +
+      "dégâts, elle gagne +1 Puissance. Avec 3 Résistance ou moins, elle a Garde.",
     conditionalKeywords: [{ keyword: "garde", selfResistanceAtMost: 3 }],
     abilities: [
       {
@@ -434,15 +434,15 @@ const EQUIPAGE_DE_VERRE: CardDefinition[] = [
     text: "Sabordez cet Équipement : restaurez 2 Résistance à l'unité équipée.",
     onPlayEffects: [{ type: "attachEquipment", target: { kind: "chosenUnit" } }],
     // Refonte des Équipements (13/10/2026) : sa Résistance imprimée (2) suffit.
-    // Ordre STRICT au Sabordage : l'Équipement part, sa Résistance tombe, la
-    // survie du porteur est vérifiée — un porteur que la perte du bonus tue
-    // n'est PAS soigné (`conditionTargetSurvives`) ; sinon, 2 Résistance
-    // restaurées, sans dépasser son maximum.
+    // Résolution ATOMIQUE (rectificatif Notion du 13/10/2026) : le Bouclier
+    // part et sa Résistance tombe, les dégâts restent ; 2 Résistance sont
+    // restaurées au porteur dans la limite de son NOUVEAU maximum ; la survie
+    // ne se juge qu'ensuite, une seule fois — le soin peut donc le sauver.
     abilities: [
       {
         trigger: "onSaborde",
-        description: "Sabordez Bouclier Fendu : 2 Résistance restaurées à l'unité équipée, si elle survit au retrait.",
-        effects: [{ type: "heal", target: { kind: "equippedUnit" }, amount: { kind: "flat", value: 2 }, conditionTargetSurvives: true }],
+        description: "Sabordez Bouclier Fendu : 2 Résistance restaurées à l'unité équipée.",
+        effects: [{ type: "heal", target: { kind: "equippedUnit" }, amount: { kind: "flat", value: 2 } }],
       },
     ],
   },
@@ -456,8 +456,8 @@ const EQUIPAGE_DE_VERRE: CardDefinition[] = [
     health: 3,
     durationTurns: 4,
     text:
-      "Durée : 4 tours de table. La première fois pendant chacun de vos tours qu'une unité que vous contrôlez survit à des " +
-      "dégâts infligés par l'un de vos effets, restaurez 1 Résistance à une autre unité que vous contrôlez.",
+      "Durée : 4 tours de table. 1re fois pendant votre tour qu'une unité alliée survit aux dégâts d'un de vos " +
+      "effets : restaurez 1 Résistance à une autre unité alliée.",
     abilities: [
       {
         trigger: "onSurvivedDamage",
@@ -487,9 +487,8 @@ const EQUIPAGE_DE_VERRE: CardDefinition[] = [
     // sur les unités déjà blessées, puis sur chaque survie jusqu'à la fin
     // du tour — une fois par unité en tout.
     text:
-      "Vous pouvez infliger 1 dégât supplémentaire à chacune de vos unités blessées ce tour-ci, puis, jusqu'à la fin " +
-      "du tour, à chacune de vos unités la première fois qu'elle survit à des dégâts — une fois par unité. Si elle " +
-      "survit encore, déclenchez à nouveau ses effets liés au fait de survivre à des dégâts.",
+      "Ce tour, vous pouvez infliger 1 dégât à chaque allié blessé. Premier dégât auquel chacun survit : " +
+      "infligez-lui 1 dégât, puis répétez ses effets de survie s'il résiste.",
     // À la pose : le joueur désigne celles de ses unités blessées ce tour-ci
     // qui prennent le dégât (aucune, s'il le veut). Chacune a alors eu son
     // tour — la capacité ci-dessous ne la reprendra pas.
@@ -575,8 +574,8 @@ const CAVALERIE_LOT: CardDefinition[] = [
     attack: 2,
     health: 4,
     text:
-      "La première fois à chaque tour qu'elle devrait être renvoyée en main, déplacée ou détruite par un effet " +
-      "adverse, vous pouvez lui retirer 1 Résistance à la place.",
+      "1re fois par tour qu'un effet adverse devrait la renvoyer en main, la déplacer ou la détruire : vous " +
+      "pouvez retirer 1 Résistance à la place.",
     opponentRemovalShieldOncePerTurn: { healthLoss: 1 },
   },
   {
@@ -633,7 +632,8 @@ const CAVALERIE_LOT: CardDefinition[] = [
     health: 6,
     // Standard Verrier (01/10/2026, validé par le propriétaire) : la Cavalerie
     // prend de l'élan. Coût et statistiques inchangés.
-    text: "Tant qu'il est blessé, il a Garde. La première fois à chaque tour qu'il survit à des dégâts, il gagne +1 Puissance.",
+    text:
+      "Tant qu'il est blessé, il a Garde. 1re fois par tour qu'il survit à des dégâts, il gagne +1 Puissance.",
     conditionalKeywords: [{ keyword: "garde", selfDamaged: true }],
     abilities: [
       {
@@ -656,7 +656,7 @@ const CAVALERIE_LOT: CardDefinition[] = [
     maxCopies: 3,
     attack: 5,
     health: 4,
-    text: "À son arrivée, si l'adversaire contrôle plus d'unités que vous, il a Pied marin jusqu'à la fin du tour.",
+    text: "À son arrivée, si l'adversaire contrôle plus d'unités que vous, il a Pied marin ce tour.",
     abilities: [
       {
         trigger: "onEnterPlay",
@@ -687,7 +687,7 @@ const CAVALERIE_LOT: CardDefinition[] = [
     maxCopies: 2,
     attack: 4,
     health: 5,
-    text: "À son arrivée, choisissez une unité adverse : elle perd Garde jusqu'à la fin du tour.",
+    text: "À son arrivée, choisissez une unité adverse : elle perd Garde ce tour.",
     // Visée dans la fenêtre d'arrivée, comme tout déclenchement qui désigne
     // une cible : la carte se pose même face à un plateau vide.
     abilities: [
@@ -829,7 +829,7 @@ const CAVALERIE_LOT: CardDefinition[] = [
     setCode: ECLATS_EN_SELLE,
     cost: 2,
     maxCopies: 2,
-    text: "Une unité adverse perd Garde jusqu'à la fin du tour.",
+    text: "Une unité adverse perd Garde ce tour.",
     onBreakEffects: [
       {
         type: "debuff",
@@ -966,7 +966,7 @@ const SENTINELLES: CardDefinition[] = [
     attack: 4,
     health: 4,
     chromatic: { colors: ["rouge"], emitsSignal: true },
-    text: "Signal Rouge. À son arrivée, une Sentinelle d'une autre couleur gagne +2 Puissance jusqu'à la fin du tour.",
+    text: "Signal Rouge. À son arrivée, une Sentinelle d'une autre couleur gagne +2 Puissance ce tour.",
     abilities: [
       {
         trigger: "onEnterPlay",
@@ -1031,9 +1031,8 @@ const SENTINELLES: CardDefinition[] = [
     health: 3,
     chromatic: { colors: ["bleu"], emitsSignal: true },
     text:
-      "Signal Bleu — La première fois à chaque tour qu'une autre Sentinelle que vous contrôlez attaque une unité " +
-      "adverse, cette unité adverse perd 1 Puissance jusqu'à votre prochain tour. Plusieurs Signaux Bleus ne lui retirent jamais plus de " +
-      "1 Puissance par attaque.",
+      "Signal Bleu — 1re attaque d'une autre Sentinelle alliée contre une unité par tour : cible −1 Puissance " +
+      "jusqu'à votre prochain tour (non cumulable).",
   },
   {
     id: "stratege-de-lazur",
@@ -1096,8 +1095,8 @@ const SENTINELLES: CardDefinition[] = [
     health: 4,
     chromatic: { colors: ["vert"], emitsSignal: true },
     text:
-      "Signal Vert. La première fois pendant votre tour que vous récupérez de la Raison grâce à une carte, il " +
-      "gagne +1 Puissance jusqu'à la fin du tour.",
+      "Signal Vert. 1re fois pendant votre tour que vous récupérez de la Raison grâce à une carte, il gagne +1 " +
+      "Puissance ce tour.",
     abilities: [
       {
         trigger: "onReasonGained",
@@ -1140,7 +1139,7 @@ const SENTINELLES: CardDefinition[] = [
     chromatic: { colors: ["violet"], emitsSignal: true },
     text:
       "Signal Violet. La première fois pendant votre tour que vous piochez puis défaussez par un effet de carte, " +
-      "elle gagne +2 Puissance jusqu'à la fin du tour.",
+      "elle gagne +2 Puissance ce tour.",
     abilities: [
       {
         trigger: "onCardDiscardedFromHand",
@@ -1244,8 +1243,8 @@ const SENTINELLES: CardDefinition[] = [
     maxCopies: 3,
     health: 2,
     text:
-      "Équipez une Sentinelle. Choisissez un Éclat Chromatique que vous contrôlez : elle est également considérée " +
-      "comme étant de cette couleur. Elle n'émet toujours qu'un seul Signal.",
+      "Équipez une Sentinelle. Choisissez un Éclat Chromatique allié : elle partage sa couleur, mais n'émet " +
+      "toujours qu'un seul Signal.",
     equipTargetArchetype: "sentinelle-chromatique",
     onPlayEffects: [{ type: "attachEquipment", target: { kind: "chosenUnit" } }],
     // La couleur est portée par le BRACELET et prêtée à la Sentinelle : elle
@@ -1278,8 +1277,8 @@ const SENTINELLES: CardDefinition[] = [
     maxCopies: 2,
     health: 2,
     text:
-      "Équipez une Sentinelle. Sabordez cet Équipement et détruisez un Éclat Chromatique : jusqu'à votre prochain " +
-      "tour, la Sentinelle équipée émet également le Signal de cet Éclat.",
+      "Équipez une Sentinelle. Sabordez cet Équipement et détruisez un Éclat Chromatique : elle émet aussi son " +
+      "Signal jusqu'à votre prochain tour.",
     equipTargetArchetype: "sentinelle-chromatique",
     onPlayEffects: [{ type: "attachEquipment", target: { kind: "chosenUnit" } }],
     abilities: [
@@ -1312,8 +1311,8 @@ const SENTINELLES: CardDefinition[] = [
     cost: 2,
     maxCopies: 3,
     text:
-      "Regardez les 4 premières cartes de votre pioche. Vous pouvez ajouter une Sentinelle Chromatique parmi " +
-      "elles à votre main. Placez les autres sous votre pioche.",
+      "Regardez les 4 cartes du dessus. Vous pouvez récupérer 1 Sentinelle Chromatique en main ; placez le reste " +
+      "sous votre pioche.",
     onBreakEffects: [
       {
         type: "lookAtDeckTop",
@@ -1379,8 +1378,8 @@ const SENTINELLES: CardDefinition[] = [
     health: 3,
     durationTurns: 4,
     text:
-      "Durée : 4 tours de table. La première fois pendant chacun de vos tours que vous jouez une Sentinelle d'une couleur " +
-      "que vous ne contrôliez pas encore, elle gagne +1 Résistance jusqu'à votre prochain tour.",
+      "Durée : 4 tours de table. 1re Sentinelle d'une couleur encore absente chez vous jouée pendant votre tour " +
+      ": +1 Résistance jusqu'à votre prochain tour.",
     // Deux moments pour un seul texte : la couleur d'une Sentinelle JOUÉE
     // se lit à son arrivée — ou, si elle la choisit en arrivant (Émissaire
     // de Quartz), une fois ce choix fait. Même clé « une fois par tour ».
@@ -1414,8 +1413,8 @@ const SENTINELLES: CardDefinition[] = [
     cost: 4,
     maxCopies: 3,
     text:
-      "Choisissez une Sentinelle Chromatique. Jusqu'à la fin du tour, elle bénéficie également de son propre " +
-      "Signal Chromatique.",
+      "Choisissez une Sentinelle Chromatique. Ce tour, elle bénéficie également de son propre Signal " +
+      "Chromatique.",
     onBreakEffects: [
       {
         type: "chromaticModify",
@@ -1474,8 +1473,8 @@ const SENTINELLES: CardDefinition[] = [
     cost: 6,
     maxCopies: 1,
     text:
-      "Jouable uniquement si vous contrôlez au moins 3 couleurs différentes. Jusqu'à la fin du tour, toutes vos " +
-      "Sentinelles Chromatiques bénéficient également de leur propre Signal.",
+      "Jouable uniquement si vous contrôlez au moins 3 couleurs différentes. Ce tour, toutes vos Sentinelles " +
+      "Chromatiques bénéficient également de leur propre Signal.",
     playableOnlyIf: { controllerChromaticColorsAtLeast: 3 },
     onPlayEffects: [
       {
@@ -1529,11 +1528,9 @@ const SENTINELLES: CardDefinition[] = [
     chromatic: { emitsSignal: true, benefitsFromOwnSignals: true },
     chromaticAssemblage: { sentinels: 4, reasonCost: 2 },
     text:
-      "Assemblage Chromatique — Si vous contrôlez au moins 4 Sentinelles de couleurs différentes, vous pouvez " +
-      "placer quatre de ces Sentinelles de couleurs différentes au Cimetière et jouer cette carte depuis votre main " +
-      "en payant 2 Raison au lieu de son coût. Cela ne compte pas comme une destruction. Le Géant Chromatique est " +
-      "considéré comme ayant les quatre couleurs utilisées pour son Assemblage. Il émet et bénéficie des Signaux " +
-      "Chromatiques correspondant à ces quatre couleurs.",
+      "Assemblage Chromatique — Avec 4 couleurs de Sentinelles alliées : mettez-en 4 différentes au Cimetière " +
+      "(sans destruction) pour jouer ce Géant depuis votre main pour 2 Raison. Il acquiert leurs 4 couleurs et " +
+      "Signaux.",
   },
   {
     id: "le-geant-chromatique-abyssal",
@@ -1550,12 +1547,9 @@ const SENTINELLES: CardDefinition[] = [
     chromatic: { emitsSignal: true, benefitsFromOwnSignals: true },
     chromaticAssemblage: { sentinels: 4, reasonCost: 2 },
     text:
-      "Assemblage Chromatique — Si vous contrôlez au moins 4 Sentinelles de couleurs différentes, vous pouvez " +
-      "placer quatre de ces Sentinelles de couleurs différentes au Cimetière et jouer cette carte depuis votre main " +
-      "en payant 2 Raison au lieu de son coût. Cela ne compte pas comme une destruction. Le Géant Chromatique est " +
-      "considéré comme ayant les quatre couleurs utilisées pour son Assemblage. À son arrivée par Assemblage, " +
-      "choisissez la cinquième couleur non utilisée : il est également considéré comme ayant cette couleur. Il " +
-      "émet et bénéficie des cinq Signaux Chromatiques.",
+      "Assemblage Chromatique — Avec 4 couleurs de Sentinelles alliées : mettez-en 4 différentes au Cimetière " +
+      "(sans destruction) pour jouer ce Géant depuis votre main pour 2 Raison. Il acquiert leurs 4 couleurs et " +
+      "Signaux. Arrivé par Assemblage : ajoutez la 5e couleur et son Signal.",
     abilities: [
       {
         trigger: "onEnterPlay",

@@ -1148,13 +1148,6 @@ export interface EffectDefinition {
    * visible"). Sans porteur, l'effet ne se résout pas.
    */
   conditionEquippedUnitVisible?: boolean;
-  /**
-   * Pour `heal` sur une unité : la survie de la cible se vérifie AVANT le
-   * soin — une cible que ses dégâts détruisent déjà (Résistance restante à 0
-   * ou moins, ou départ décidé) n'est pas soignée et part normalement
-   * (Bouclier Fendu, refonte des Équipements du 13/10/2026).
-   */
-  conditionTargetSurvives?: boolean;
 
   /**
    * Pour un Équipement : ne résout CET effet que si le permanent qu'il

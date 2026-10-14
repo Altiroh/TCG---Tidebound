@@ -269,25 +269,28 @@ describe("gestes du Verre", () => {
     expect(unite(choix.state, b.instanceId)!.damageMarked).toBe(1);
   });
 
-  it("Bouclier Fendu : sa Résistance imprimée (2) s'ajoute ; Sabordé, il soigne 2 un porteur qui survit au retrait", () => {
+  it("Bouclier Fendu : sa Résistance imprimée (2) s'ajoute ; Sabordé, il soigne 2 sans dépasser le nouveau maximum", () => {
     const porteur = instance("matelot-fele", "p1", { damageMarked: 2 });
     const bouclier = instance("bouclier-fendu", "p1", { attachedToInstanceId: porteur.instanceId });
     const state = table({ board: [porteur, bouclier] });
     expect(resistance(state, porteur.instanceId)).toBe(5);
     const r = dispatch(state, { type: "saborder", playerId: "p1", instanceId: bouclier.instanceId });
     ok(r);
-    // Retrait d'abord (maximum 3, 2 dégâts : il tient), soin ensuite, sans dépasser le maximum.
+    // Retrait (maximum 3, 2 dégâts conservés), soin de 2 plafonné : plus aucun dégât.
     expect(unite(r.state, porteur.instanceId)!.damageMarked).toBe(0);
     expect(resistance(r.state, porteur.instanceId)).toBe(3);
   });
 
-  it("Bouclier Fendu : un porteur que le retrait du bonus tue n'est pas soigné", () => {
-    const porteur = instance("matelot-fele", "p1", { damageMarked: 3 });
+  it("Bouclier Fendu : résolution atomique — le soin passe avant la survie et sauve un porteur que le seul retrait aurait tué", () => {
+    // Exemple du rectificatif Notion : maximum 3 + 2, 4 dégâts (reste 1/5).
+    // Retrait : 4 dégâts pour un maximum de 3 — mortel s'il était jugé là.
+    // Soin de 2 d'abord, puis une seule vérification : reste 1/3, il survit.
+    const porteur = instance("matelot-fele", "p1", { damageMarked: 4 });
     const bouclier = instance("bouclier-fendu", "p1", { attachedToInstanceId: porteur.instanceId });
     const r = dispatch(table({ board: [porteur, bouclier] }), { type: "saborder", playerId: "p1", instanceId: bouclier.instanceId });
     ok(r);
-    expect(unite(r.state, porteur.instanceId)).toBeUndefined();
-    expect(r.events.some((e) => e.type === "HEAL" && e.targetInstanceId === porteur.instanceId)).toBe(false);
+    expect(unite(r.state, porteur.instanceId)!.damageMarked).toBe(2);
+    expect(resistance(r.state, porteur.instanceId)).toBe(3);
   });
 });
 

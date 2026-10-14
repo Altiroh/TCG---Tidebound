@@ -71,10 +71,6 @@ const EXCEPTIONS: Record<string, string> = {
     "Le remplacement se décide AU MILIEU de l'effet adverse qui renvoie ou détruit la Bête, là où aucune fenêtre " +
     "de réaction ne peut s'ouvrir. Il est appliqué d'office, une fois par tour : refuser reviendrait à perdre " +
     "l'unité plutôt qu'1 Résistance, et la Bête n'a aucun effet d'arrivée qu'un renvoi permettrait de rejouer.",
-  "jusqua-ce-que-ca-casse:once-ever":
-    "« La première fois que chacune de vos unités » vaut pour la durée de l'Anomalie, qui ne vit que jusqu'à la " +
-    "fin du tour (`expiresAtEndOfTurn`) : le « une fois par tour » suivi PAR UNITÉ (`oncePerTurnPerTriggerSource`) " +
-    "en est la lecture exacte, sans `onceEver`.",
 };
 
 /**
@@ -184,12 +180,12 @@ function check(def: CardDefinition): Violation[] {
   const text = texteComplet.replace(SIGNAL_CLAUSE, "").trim();
 
   // --- Fréquence -----------------------------------------------------------
-  if (/(une (seule )?fois par tour|la premi[èe]re fois [àa] chaque tour|maximum 1 fois par tour|1x par tour)/i.test(text)) {
+  if (/(une (seule )?fois par tour|(la )?premi[èe]re fois ([àa] chaque|par) tour|\b1 fois par tour|\b1re fois par tour|maximum 1 fois par tour|1x par tour)/i.test(text)) {
     const inherent = abilities.some((a) => a.trigger === "startOfTurn" || a.trigger === "endOfTurn");
     const ok = abilities.some((a) => a.oncePerTurnKey) || hasOncePerTurnField(def) || Boolean(def.activatableOncePerTurn) || inherent;
     if (!ok) push("once-per-turn", "le texte limite l'effet à une fois par tour, mais aucune capacité n'a `oncePerTurnKey` (ni champ *PerTurn*)");
   }
-  if (/la premi[èe]re fois qu/i.test(text) && !/([àa] chaque tour|pendant son tour|chacun de (vos|ses) tours|par tour)/i.test(text)) {
+  if (/la premi[èe]re fois qu/i.test(text) && !/([àa] chaque tour|pendant (son|votre) tour|chacun de (vos|ses) tours|par tour)/i.test(text)) {
     if (!abilities.some((a) => a.onceEver) && !selfConsuming(def) && !hasOncePerTurnField(def)) push("once-ever", "« la première fois que… » sans « à chaque tour » : il manque `onceEver: true`");
   }
 

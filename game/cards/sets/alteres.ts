@@ -154,7 +154,7 @@ const MARINS_ALTERES: CardDefinition[] = [
     maxCopies: 3,
     attack: 2,
     health: 3,
-    text: "Éveil — Piochez 1 carte. Si c'est son deuxième Éveil ce tour, piochez-en 2 à la place.",
+    text: "Éveil — piochez 1. Si c'est son deuxième Éveil ce tour, piochez-en 2 à la place.",
     abilities: [
       eveil("Une carte, deux au deuxième Éveil du tour.", [
         { type: "draw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 }, ...RANG(undefined, 1) },
@@ -222,7 +222,7 @@ const MARINS_ALTERES: CardDefinition[] = [
     maxCopies: 3,
     attack: 3,
     health: 2,
-    text: "Éveil — Volez 1 Puissance à une unité adverse. Si sa Puissance tombe à 0 ainsi, piochez 1 carte.",
+    text: "Éveil — Volez 1 Puissance à une unité adverse. Si sa Puissance tombe à 0 ainsi, piochez 1.",
     // « Volez » sans durée : le transfert est conservé. Le Buveur ne gagne que
     // ce qu'il a réellement pris (`attackRemoved`) : rien sur une unité à 0.
     abilities: [
@@ -261,8 +261,8 @@ const MARINS_ALTERES: CardDefinition[] = [
     attack: 4,
     health: 3,
     text:
-      "À son arrivée, infligez 1 dégât à un autre Altéré que vous contrôlez et 1 dégât à une unité adverse. Puis " +
-      "déclenchez l'Éveil de l'Altéré blessé.",
+      "À l'arrivée : 1 dégât à un autre Altéré allié et 1 à une unité adverse. Déclenchez ensuite l'Éveil de " +
+      "l'Altéré blessé.",
     // L'unité adverse se désigne d'abord : l'Éveil de l'Altéré blessé vient
     // en dernier, comme le dit « Puis ». Un Altéré que ce dégât emporte ne
     // s'Éveille pas — il n'est plus là.
@@ -292,8 +292,8 @@ const MARINS_ALTERES: CardDefinition[] = [
     attack: 3,
     health: 5,
     text:
-      "Éveil — Restaurez toute sa Résistance à cette carte. Puis, si elle avait 1 Résistance restante ou moins avant " +
-      "d'être soignée, déclenchez l'Éveil d'un autre Altéré que vous contrôlez.",
+      "Éveil : restaurez entièrement sa Résistance. S'il était à 1 ou moins avant soin : déclenchez l'Éveil d'un " +
+      "autre Altéré allié.",
     // La question se pose AVANT le soin, pour lire la Résistance « avant
     // d'être soignée » ; l'Éveil désigné, lui, se résout à la réponse, donc
     // après le soin.
@@ -317,8 +317,8 @@ const MARINS_ALTERES: CardDefinition[] = [
     attack: 3,
     health: 4,
     text:
-      "Éveil — Jusqu'à votre prochain tour, cette carte ne peut pas être ciblée par l'adversaire. Pendant ce temps, " +
-      "quand un effet adverse cible une autre unité que vous contrôlez, piochez 1 carte.",
+      "Éveil : devient inciblable par l'adversaire jusqu'à votre prochain tour. Entre-temps, chaque ciblage " +
+      "adverse d'une autre unité alliée : piochez 1.",
     // « Quand un effet adverse échoue ainsi » (Notion) : l'effet qui ne peut
     // pas la viser en vise une autre — lecture arrêtée le 04/10/2026. Seules
     // les désignations de VOS unités sont visibles du moteur (`UNIT_TARGETED`).
@@ -379,9 +379,7 @@ const MARINS_ALTERES: CardDefinition[] = [
     maxCopies: 3,
     attack: 5,
     health: 4,
-    text:
-      "Éveil — Il gagne +2 Puissance jusqu'à la fin du tour. À son deuxième Éveil du tour, il peut attaquer " +
-      "immédiatement. À son troisième, il inflige 2 dégâts au Navire adverse.",
+    text: "Éveil : +2 Puissance ce tour. 2e Éveil du tour : attaque immédiate. 3e : 2 dégâts au Navire adverse.",
     // « il peut attaquer immédiatement » : Pied marin jusqu'à la fin du tour,
     // à partir du deuxième Éveil (au troisième, il le garde).
     abilities: [
@@ -419,8 +417,8 @@ const MARINS_ALTERES: CardDefinition[] = [
     attack: 4,
     health: 5,
     text:
-      "À son arrivée, renvoyez un Objet ou un Équipement dans la main de son propriétaire. Puis déclenchez l'Éveil d'un " +
-      "Altéré que vous contrôlez. Si la carte renvoyée était adverse, piochez 1 carte.",
+      "À l'arrivée : renvoyez un Objet ou Équipement en main de son propriétaire, puis déclenchez un Éveil " +
+      "allié. Si la carte était adverse : piochez 1.",
     // « adverse » se lit AVANT le renvoi : en main, la carte n'est plus sur
     // le plateau de personne. « un Altéré » sans « autre » : L'Attire-Fer peut
     // se désigner lui-même.
@@ -482,8 +480,8 @@ const MARINS_ALTERES: CardDefinition[] = [
     attack: 5,
     health: 6,
     text:
-      "Éveil — Renvoyez dans votre main un Altéré coûtant 3 ou moins depuis votre Cimetière. S'il coûtait 2 ou moins, " +
-      "vous pouvez le jouer pour 1 de moins ce tour.",
+      "Éveil : récupérez en main un Altéré de coût ≤3 du Cimetière. S'il coûte ≤2, vous pouvez le jouer pour −1 " +
+      "ce tour.",
     abilities: [
       eveil("Repêche un petit Altéré, moins cher s'il coûte 2 ou moins.", [
         {
@@ -519,8 +517,8 @@ const MARINS_ALTERES: CardDefinition[] = [
     attack: 5,
     health: 4,
     text:
-      "Éveil — Cette carte subit 1 dégât. Infligez 2 dégâts à une unité adverse. Si La Chute de l'Ange a 2 Résistance " +
-      "restante ou moins après cet effet, déclenchez l'Éveil d'un autre Altéré que vous contrôlez.",
+      "Éveil : subit 1 dégât, puis inflige 2 à une unité adverse. À ≤2 Résistance restante : déclenchez l'Éveil " +
+      "d'un autre Altéré allié.",
     abilities: [
       eveil("Se blesse, frappe ; à bout de force, propage l'Éveil.", [
         { type: "damage", target: { kind: "self" }, amount: { kind: "flat", value: 1 } },
@@ -610,8 +608,8 @@ const ABYSSALES: CardDefinition[] = [
     attack: 6,
     health: 5,
     text:
-      "Éveil — Cette carte subit 1 dégât. Infligez 3 dégâts à une unité adverse. Si La Chute de l'Ange a 3 Résistance " +
-      "restante ou moins après cet effet, déclenchez l'Éveil d'un autre Altéré que vous contrôlez.",
+      "Éveil : subit 1 dégât, puis inflige 3 à une unité adverse. À ≤3 Résistance restante : déclenchez l'Éveil " +
+      "d'un autre Altéré allié.",
     abilities: [
       eveil("Se blesse, frappe fort ; à bout de force, propage l'Éveil.", [
         { type: "damage", target: { kind: "self" }, amount: { kind: "flat", value: 1 } },
@@ -659,7 +657,7 @@ const SOUTIENS: CardDefinition[] = [
     setCode: LA_MUTATION_MONDIALE,
     cost: 1,
     maxCopies: 3,
-    text: "Déclenchez l'Éveil d'un Altéré que vous contrôlez. Il gagne +1 Puissance jusqu'à la fin du tour.",
+    text: "Déclenchez l'Éveil d'un Altéré que vous contrôlez. Il gagne +1 Puissance ce tour.",
     onPlayEffects: [
       { type: "triggerEveil", target: { kind: "chosenUnit", among: { subtype: ALTERE, unitsOnly: true } } },
       {
@@ -737,8 +735,8 @@ const SOUTIENS: CardDefinition[] = [
     cost: 2,
     maxCopies: 3,
     text:
-      "Regardez les 5 premières cartes de votre pioche. Ajoutez à votre main une carte Altéré coûtant 2 ou moins parmi " +
-      "elles. Remettez les autres au-dessus de votre pioche dans l'ordre de votre choix.",
+      "Regardez les 5 cartes du dessus. Prenez 1 Altéré de coût ≤2. Replacez les autres au-dessus dans l'ordre " +
+      "choisi.",
     // « une carte Altéré » : toute carte de la famille, unité ou Anomalie.
     onPlayEffects: [
       {

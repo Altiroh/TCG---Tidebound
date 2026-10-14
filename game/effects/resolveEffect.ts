@@ -1138,12 +1138,6 @@ function resolveEffectBody(
       let nextState = { ...state, rngState: healTargets.rngState };
 
       for (const { unit, ownerId } of healTargets.targets) {
-        // « si elle survit » (Bouclier Fendu) : une cible que ses dégâts
-        // détruisent déjà n'est pas soignée — la survie se juge AVANT le soin.
-        if (effect.conditionTargetSurvives) {
-          const max = computeEffectiveStats(unit, state.environment.tideState, auraContextOf(nextState, ownerId)).health;
-          if (unit.pendingRemoval || unit.damageMarked >= max) continue;
-        }
         // « toute sa Résistance » : le montant est ce qu'elle a perdu, et
         // c'est lui qui se journalise.
         const soin = effect.healFully ? unit.damageMarked : amount;

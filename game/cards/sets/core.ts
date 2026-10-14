@@ -164,7 +164,7 @@ const WRITTEN_SET: CardDefinition[] = [
     attack: 2,
     health: 4,
     maxCopies: 2,
-    text: "La première fois à chaque tour que vous perdez de la Raison, réduisez cette perte de 1.",
+    text: "1re fois par tour que vous perdez de la Raison, réduisez cette perte de 1.",
     reduceOwnReasonLossOncePerTurn: { amount: 1 },
   },
   {
@@ -457,8 +457,8 @@ const WRITTEN_SET: CardDefinition[] = [
     durationTurns: 4,
     maxCopies: 2,
     text:
-      "Durée : 4 tours de table. À la fin de votre tour, si l'adversaire contrôle au moins 3 unités, il perd 1 Raison " +
-      "pour chaque unité qu'il contrôle au-delà de 2.",
+      "Durée : 4 tours de table. Fin de votre tour, si l'adversaire contrôle 3+ unités : il perd 1 Raison par " +
+      "unité au-delà de 2.",
     abilities: [
       {
         trigger: "endOfTurn",
@@ -789,8 +789,8 @@ const WRITTEN_SET: CardDefinition[] = [
     visibleDuringTide: ["houle", "tempete", "abysses"],
     maxCopies: 2,
     text:
-      "Durée : 4 tours de table. Visible pendant Houle, Tempête et Abysses. La première fois à chaque tour que la Marée " +
-      "change, vous pouvez perdre 1 Raison. Si vous le faites, augmentez de 1 tour la durée du nouvel état.",
+      "Durée : 4 tours de table. Visible pendant Houle, Tempête et Abysses. 1 fois par tour, au changement de " +
+      "Marée : vous pouvez perdre 1 Raison pour prolonger la nouvelle Marée d'1 tour.",
     abilities: [
       {
         trigger: "onTideStateEntered",
@@ -847,8 +847,7 @@ const WRITTEN_SET: CardDefinition[] = [
     health: 4,
     maxCopies: 1,
     text:
-      "À son arrivée, perdez 2 Raison. Tant que vous êtes en Abysses, la première fois à chaque tour qu'il devrait " +
-      "être détruit, il reste à 1 Résistance à la place.",
+      "À l'arrivée : perdez 2 Raison. En Abysses, la 1re destruction subie par tour la laisse à 1 Résistance.",
     onPlayEffects: [{ type: "reasonLoss", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 2 } }],
     survivesLethalOncePerTurn: { tideStateIn: ["abysses"] },
   },
@@ -924,9 +923,7 @@ const WRITTEN_SET: CardDefinition[] = [
     attack: 6,
     health: 6,
     maxCopies: 1,
-    text:
-      "Vous devez avoir exactement 5 Raison pour jouer cette carte. Après paiement de son coût, votre Raison tombe " +
-      "donc à 0. À son arrivée, perdez 2 Ancrage.",
+    text: "Jouable avec exactement 5 Raison. Son coût vous laisse à 0 Raison. À l'arrivée : perdez 2 Ancrage.",
     requiresControllerReasonExactly: 5,
     onPlayEffects: [{ type: "damage", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 2 } }],
   },
@@ -968,8 +965,8 @@ const WRITTEN_SET: CardDefinition[] = [
     cost: 2,
     health: 2,
     text:
-      "Équipez un Marin. À votre début de tour, vous pouvez perdre 1 Raison. Si vous le faites, choisissez : " +
-      "réduisez de 1 tour la durée de la Marée actuelle ; ou inversez l'orientation de la Marée.",
+      "Équipez un Marin. À votre début de tour, vous pouvez payer 1 Raison : réduisez la Marée d'1 tour ou " +
+      "inversez son orientation.",
     // Deux capacités facultatives d'un même `choiceGroup` : activer l'une
     // écarte l'autre pour le tour (une seule option, comme le texte).
     equipTargetTypes: ["marin"],
@@ -1106,8 +1103,8 @@ const WRITTEN_SET: CardDefinition[] = [
     // Standard Verrier (30/09/2026, validé par le propriétaire) : « un piège
     // part, la troupe grandit ». Coût et statistiques inchangés.
     text:
-      "Tant que vous contrôlez une Structure visible, il gagne +1 Résistance. La première fois à chaque tour qu'une " +
-      "Structure que vous contrôlez est détruite ou Sabordée, il gagne +1 Puissance.",
+      "Tant que vous contrôlez une Structure visible, il gagne +1 Résistance. La première fois par tour qu'une " +
+      "Structure alliée est détruite ou Sabordée, il gagne +1 Puissance.",
     selfBuffWhileControllingVisibleStructure: { healthAmount: 1 },
     abilities: [
       {
@@ -1211,9 +1208,7 @@ const WRITTEN_SET: CardDefinition[] = [
     maxCopies: 2,
     attack: 2,
     health: 4,
-    text:
-      "Tant que vous êtes en Tempête ou Abysses, la première fois à chaque tour que vous devriez perdre de la " +
-      "Raison, réduisez cette perte de 1.",
+    text: "En Tempête/Abysses, 1re perte de Raison par tour : réduisez-la de 1.",
     reduceOwnReasonLossOncePerTurn: { amount: 1, tideStateIn: ["tempete", "abysses"] },
   },
   {
@@ -1296,8 +1291,8 @@ const WRITTEN_SET: CardDefinition[] = [
     // Standard Verrier (30/09/2026, validé par le propriétaire) : la Forteresse
     // « encaisse, grandit, frappe ». Coût et statistiques inchangés.
     text:
-      "Durée : 4 tours de table. Visible pendant Houle, Tempête et Abysses. Si elle est visible, la première fois à chaque " +
-      "tour qu'une de vos unités survit à des dégâts, cette unité gagne +1 Puissance.",
+      "Durée : 4 tours de table. Visible pendant Houle, Tempête et Abysses. 1re survie à des dégâts d'une unité " +
+      "alliée par tour : +1 Puissance à cette unité.",
     abilities: [
       {
         trigger: "onSurvivedDamage",
@@ -1352,9 +1347,8 @@ const WRITTEN_SET: CardDefinition[] = [
     durationTurns: 3,
     visibleDuringTide: ["calme", "houle", "tempete"],
     text:
-      "Durée : 3 tours de table. Visible pendant Calme, Houle et Tempête. Sabordage : réduisez de 1 tour la durée " +
-      "restante de la Marée actuelle. Si cette réduction la fait prendre fin, passez immédiatement à la Marée " +
-      "suivante.",
+      "Durée : 3 tours de table. Visible pendant Calme, Houle et Tempête. Sabordage : réduisez la Marée actuelle " +
+      "d'1 tour. Si elle expire, avancez à la suivante.",
     abilities: [
       {
         trigger: "onSaborde",
@@ -1375,8 +1369,8 @@ const WRITTEN_SET: CardDefinition[] = [
     durationTurns: 4,
     visibleDuringTide: ["houle", "tempete"],
     text:
-      "Durée : 4 tours de table. Visible pendant Houle et Tempête. Sabordage : uniquement pendant Houle ou Tempête, " +
-      "avancez immédiatement la Marée d'un état, puis perdez 1 Raison.",
+      "Durée : 4 tours de table. Visible pendant Houle et Tempête. Sabordage en Houle/Tempête : avancez la Marée " +
+      "d'un état, puis perdez 1 Raison.",
     abilities: [
       {
         trigger: "onSaborde",
@@ -1404,8 +1398,8 @@ const WRITTEN_SET: CardDefinition[] = [
     durationTurns: 4,
     visibleDuringTide: ["tempete", "abysses"],
     text:
-      "Durée : 4 tours de table. Visible pendant Tempête et Abysses. Sabordage : reculez immédiatement la Marée d'un " +
-      "état. La Marée ne peut pas reculer au-delà de Calme.",
+      "Durée : 4 tours de table. Visible pendant Tempête et Abysses. Sabordage : reculez la Marée d'un état " +
+      "(minimum Calme).",
     abilities: [
       {
         trigger: "onSaborde",
@@ -1424,8 +1418,7 @@ const WRITTEN_SET: CardDefinition[] = [
     health: 2,
     durationTurns: 3,
     text:
-      "Durée : 3 tours de table. Visible pendant toutes les Marées. Sabordage : choisissez soit de réduire de 2 tours " +
-      "la durée actuelle, soit de l'augmenter de 1 tour.",
+      "Durée : 3 tours de table. Visible pendant toutes les Marées. Sabordage : durée de Marée −2 ou +1 tour.",
     // Deux capacités automatiques d'un même `choiceGroup` : au Sabordage, le
     // moteur ouvre un choix (`GameState.pendingChoice`) et le joueur désigne
     // l'option qui se résout.
@@ -1499,9 +1492,8 @@ const WRITTEN_SET: CardDefinition[] = [
     attack: 3,
     health: 5,
     text:
-      "Lorsqu'il est posé, forcez immédiatement la Marée en Abysses. Les états intermédiaires sont ignorés. Après " +
-      "résolution, votre Navire perd 2 Ancrage. Jusqu'au début de votre prochain tour, vous ne pouvez pas récupérer " +
-      "de Raison.",
+      "À la pose : forcez Abysses, sans états intermédiaires. Puis perdez 2 Ancrage. Aucune récupération de " +
+      "Raison jusqu'à votre prochain tour.",
     onPlayEffects: [
       { type: "tideForceJumpToAbysses", target: { kind: "allPlayers" } },
       { type: "damage", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 2 } },
@@ -1518,9 +1510,7 @@ const WRITTEN_SET: CardDefinition[] = [
     permanent: false,
     cost: 7,
     maxCopies: 1,
-    text:
-      "Forcez immédiatement la Marée en Abysses, puis augmentez de 1 tour sa durée restante. Chaque joueur perd " +
-      "2 Raison. L'orientation devient Descendante après l'arrivée en Abysses.",
+    text: "Forcez Abysses et prolongez-les d'1 tour. Chaque joueur perd 2 Raison. Orientation : Descendante.",
     onPlayEffects: [
       {
         type: "tideForceJumpToAbysses",
@@ -1544,8 +1534,7 @@ const WRITTEN_SET: CardDefinition[] = [
     attack: 2,
     health: 4,
     text:
-      "La première fois à chaque tour qu'une Structure que vous contrôlez perd de la Résistance, rendez-lui 1 " +
-      "Résistance.",
+      "La première fois à chaque tour qu'une Structure alliée perd de la Résistance, rendez-lui 1 Résistance.",
     restoreResistanceOnAllyStructureLossOncePerTurn: 1,
   },
   {
@@ -1600,8 +1589,8 @@ const WRITTEN_SET: CardDefinition[] = [
     attack: 4,
     health: 3,
     text:
-      "Tant que la Marée est Tempête ou Abysses, il peut attaquer directement le Navire adverse même si un " +
-      "permanent possède Garde. Lorsqu'il inflige des dégâts directs pendant Abysses, l'adversaire perd aussi 1 Raison.",
+      "En Tempête ou Abysses, il peut attaquer le Navire adverse malgré Garde. En Abysses, ses dégâts directs " +
+      "font aussi perdre 1 Raison à l'adversaire.",
     bypassesGardeTideStateIn: ["tempete", "abysses"],
     opponentReasonLossOnDirectAttack: { amount: 1, tideStateIn: ["abysses"] },
   },
@@ -1612,7 +1601,9 @@ const WRITTEN_SET: CardDefinition[] = [
     cost: 1,
     // Refonte des Objets (13/10/2026) : seul le préfixe « Brisez cet Objet »
     // tombe. Jouée hors Calme, elle coûte 1 et son effet ne s'applique pas.
-    text: "Si la Marée est Calme, coûte 0 Raison. Récupérez 2 Raison. Cet effet ne s'applique que pendant Calme.",
+    text:
+      "Si la Marée est Calme, coûte 0 Raison. Récupérez 2 Raison. Cet effet ne peut être activé que pendant " +
+      "Calme.",
     costOverrideWhenTideStateIn: { tideStateIn: ["calme"], cost: 0 },
     onBreakEffects: [
       { type: "reasonGain", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 2 }, conditionTideStateIn: ["calme"] },
@@ -1759,8 +1750,8 @@ const WRITTEN_SET: CardDefinition[] = [
     health: 3,
     durationTurns: 3,
     text:
-      "Durée : 3 tours de table. La première fois à chaque tour qu'une autre unité Cra-Poiscail que vous contrôlez arrive en " +
-      "jeu, cette unité gagne +1 Résistance jusqu'à votre prochain tour.",
+      "Durée : 3 tours de table. 1er autre Cra-Poiscail allié arrivé par tour : +1 Résistance jusqu'à votre " +
+      "prochain tour.",
     abilities: [
       {
         trigger: "onEnterPlay",
@@ -1790,7 +1781,7 @@ const WRITTEN_SET: CardDefinition[] = [
     // Slot (même traitement que les Grandes Anomalies du Lot 08).
     permanent: false,
     cost: 3,
-    text: "Invoquez 2 Péons Cra-Poiscail 1 / 1. Ils gagnent Pied marin jusqu'à la fin du tour.",
+    text: "Invoquez 2 Péons Cra-Poiscail 1 / 1. Ils gagnent Pied marin ce tour.",
     onPlayEffects: [
       {
         type: "summon",
@@ -1820,8 +1811,8 @@ const WRITTEN_SET: CardDefinition[] = [
     attack: 1,
     health: 3,
     text:
-      "La première fois à chaque tour qu'une autre unité Cra-Poiscail que vous contrôlez arrive en jeu, cette unité " +
-      "gagne +1 Puissance jusqu'à la fin du tour.",
+      "1re fois par tour qu'une autre unité Cra-Poiscail que vous contrôlez arrive en jeu, cette unité gagne +1 " +
+      "Puissance ce tour.",
     abilities: [
       {
         trigger: "onEnterPlay",
@@ -1849,9 +1840,7 @@ const WRITTEN_SET: CardDefinition[] = [
     // grossit — le gain est conservé. Le texte nomme désormais l'arrivante,
     // que le code renforçait déjà (l'ancien texte nommait le Chef lui-même).
     // Coût et statistiques inchangés.
-    text:
-      "La première fois à chaque tour qu'une autre unité Cra-Poiscail que vous contrôlez arrive en jeu, " +
-      "elle gagne +1 / +1.",
+    text: "La première fois par tour qu'un autre Cra-Poiscail allié arrive en jeu, il gagne +1/+1.",
     abilities: [
       {
         trigger: "onEnterPlay",
@@ -1883,7 +1872,7 @@ const WRITTEN_SET: CardDefinition[] = [
     health: 2,
     // Standard Verrier (01/10/2026, validé par le propriétaire) : le banc
     // grossit — le gain est conservé. Coût et statistiques inchangés.
-    text: "La première fois à chaque tour que vous Brisez un Objet, il gagne +1 / +1.",
+    text: "1re fois par tour que vous Brisez un Objet, il gagne +1 / +1.",
     abilities: [
       {
         trigger: "onObjectBroken",
@@ -1985,9 +1974,7 @@ const WRITTEN_SET: CardDefinition[] = [
     setCode: CRA_POISCAIL_BOOSTER_2,
     cost: 2,
     health: 3,
-    text:
-      "La première fois à chaque tour que vous Brisez un Objet, vous pouvez choisir une unité Cra-Poiscail que vous " +
-      "contrôlez : elle gagne +1 / +1 jusqu'à la fin du tour.",
+    text: "1er Objet que vous Brisez par tour : vous pouvez donner +1/+1 à un Cra-Poiscail allié ce tour.",
     // "Choisissez" passe par une fenêtre de réaction (`mode: "optional"`),
     // seul mécanisme du moteur qui laisse le joueur DÉSIGNER sa cible.
     // Écart assumé (arbitrage du 2026-09-14) : l'effet devient refusable,
@@ -2113,8 +2100,8 @@ const WRITTEN_SET: CardDefinition[] = [
     attack: 3,
     health: 2,
     text:
-      "La première fois à chaque tour qu'une autre unité Cra-Poiscail que vous contrôlez est détruite, il gagne +1 " +
-      "Puissance jusqu'à la fin du tour.",
+      "1re fois par tour qu'une autre unité Cra-Poiscail que vous contrôlez est détruite, il gagne +1 Puissance " +
+      "ce tour.",
     abilities: [
       {
         trigger: "onDeath",
@@ -2201,9 +2188,8 @@ const WRITTEN_SET: CardDefinition[] = [
     health: 2,
     equipTargetArchetype: "cra-poiscail",
     text:
-      "Équipez une unité Cra-Poiscail. Il gagne +1 Puissance. La première fois à chaque tour qu'il attaque, vous " +
-      "pouvez choisir une autre unité Cra-Poiscail que vous contrôlez : elle gagne +1 Puissance jusqu'à la fin du " +
-      "tour.",
+      "Équipez un Cra-Poiscail. Il gagne +1 Puissance. Lors de sa première attaque du tour, vous pouvez donner " +
+      "+1 Puissance à un autre Cra-Poiscail allié ce tour.",
     onPlayEffects: [
       { type: "attachEquipment", target: { kind: "chosenUnit" } },
     ],
@@ -2270,7 +2256,7 @@ const WRITTEN_SET: CardDefinition[] = [
     maxCopies: 2,
     durationTurns: 4,
     text:
-      "Durée : 4 tours de table. La première fois à chaque tour que votre Chevalier Cra-Poiscail attaque alors que vous " +
+      "Durée : 4 tours de table. 1re fois par tour que votre Chevalier Cra-Poiscail attaque alors que vous " +
       "contrôlez un Destrier du Grand Étang, récupérez 1 Raison.",
     abilities: [
       {
@@ -2294,7 +2280,7 @@ const WRITTEN_SET: CardDefinition[] = [
     permanent: false,
     cost: 5,
     maxCopies: 1,
-    text: "Invoquez 3 Péons Cra-Poiscail 1 / 1. Ils gagnent +1 Puissance et Pied marin jusqu'à la fin du tour.",
+    text: "Invoquez 3 Péons Cra-Poiscail 1 / 1. Ils gagnent +1 Puissance et Pied marin ce tour.",
     onPlayEffects: [
       {
         type: "summon",
@@ -2316,8 +2302,8 @@ const WRITTEN_SET: CardDefinition[] = [
     cost: 4,
     maxCopies: 2,
     text:
-      "Jusqu'à la fin du tour, vos Chevalier Cra-Poiscail, Destrier du Grand Étang et Bourreau Cra-Poiscail " +
-      "gagnent +1 / +1. Si vous contrôlez les trois à la résolution, piochez 1 carte.",
+      "Ce tour : Chevalier, Destrier et Bourreau Cra-Poiscail alliés gagnent +1/+1. Si vous contrôlez les trois " +
+      ": piochez 1.",
     onPlayEffects: [
       {
         type: "buff",
@@ -2355,9 +2341,8 @@ const WRITTEN_SET: CardDefinition[] = [
     health: 7,
     maxCopies: 1,
     text:
-      "À son arrivée, invoquez 2 Péons Cra-Poiscail 1 / 1. Vos autres unités Cra-Poiscail gagnent +1 / +1. La " +
-      "première fois à chaque tour qu'une unité Péon Cra-Poiscail arrive en jeu sous votre contrôle, vous perdez 1 " +
-      "Raison.",
+      "À l'arrivée : créez 2 Péons Cra-Poiscail 1/1. Autres Cra-Poiscail alliés : +1/+1. 1er Péon arrivé par " +
+      "tour : perdez 1 Raison.",
     onPlayEffects: [
       { type: "summon", target: { kind: "controllerPlayer" }, cardId: "peon-cra-poiscail", count: 2 },
     ],
@@ -2411,9 +2396,8 @@ const WRITTEN_SET: CardDefinition[] = [
     health: 5,
     maxCopies: 1,
     text:
-      "Tant que vous contrôlez un Destrier du Grand Étang, il gagne Garde et +1 Puissance. La première fois à " +
-      "chaque tour qu'il attaque, vous pouvez choisir une autre unité Cra-Poiscail que vous contrôlez : elle gagne " +
-      "+1 / +1 jusqu'à la fin du tour.",
+      "Tant que vous contrôlez Destrier du Grand Étang, il a Garde et gagne +1 Puissance. Lors de sa première " +
+      "attaque du tour, vous pouvez donner +1/+1 à un autre Cra-Poiscail allié ce tour.",
     selfBuffWhileControllingCardIds: { cardIds: ["destrier-du-grand-etang"], attackAmount: 1 },
     conditionalKeywords: [{ keyword: "garde", controllingCardIds: ["destrier-du-grand-etang"] }],
     // Seconde phrase : même règle que la Fourchette du Grand Étang — la
@@ -3004,9 +2988,7 @@ const WRITTEN_SET: CardDefinition[] = [
     attack: 1,
     health: 3,
     maxCopies: 2,
-    text:
-      "La première fois à chaque tour qu'une Structure que vous contrôlez est détruite ou Sabordée, récupérez " +
-      "1 Ancrage.",
+    text: "1re fois par tour qu'une Structure alliée est détruite ou Sabordée, récupérez 1 Ancrage.",
     abilities: [
       {
         // Un Sabordage émet TOUJOURS `onDeath` en plus de `onSaborde` : un
@@ -3240,7 +3222,7 @@ const WRITTEN_SET: CardDefinition[] = [
     cost: 3,
     health: 4,
     durationTurns: 3,
-    text: "Durée : 3 tours de table. Sabordage : récupérez 1 Ancrage et piochez 1 carte.",
+    text: "Durée : 3 tours de table. Sabordage : récupérez 1 Ancrage et piochez 1.",
     abilities: [
       {
         trigger: "onSaborde",
@@ -3263,7 +3245,7 @@ const WRITTEN_SET: CardDefinition[] = [
     durationTurns: 3,
     maxCopies: 1,
     text:
-      "Durée : 3 tours de table. Sabordage : récupérez 2 Ancrage et piochez 1 carte. Si vous avez 0 Raison ou moins, " +
+      "Durée : 3 tours de table. Sabordage : récupérez 2 Ancrage et piochez 1. Si vous avez 0 Raison ou moins, " +
       "récupérez également 1 Raison.",
     abilities: [
       {
@@ -3318,7 +3300,7 @@ const WRITTEN_SET: CardDefinition[] = [
     attack: 1,
     health: 1,
     keywords: ["pied-marin"],
-    text: "Pied marin. Lorsqu'elle attaque, elle gagne +1 Puissance jusqu'à la fin du tour.",
+    text: "Pied marin. Lorsqu'elle attaque, elle gagne +1 Puissance ce tour.",
     abilities: [
       {
         trigger: "onAttack",
@@ -3439,7 +3421,7 @@ const WRITTEN_SET: CardDefinition[] = [
     keywords: ["garde"],
     // Standard Verrier (30/09/2026, validé par le propriétaire) : la Forteresse
     // « encaisse, grandit, frappe ». Coût et statistiques inchangés.
-    text: "Garde. La première fois à chaque tour qu'elle survit à des dégâts, elle gagne +1 Puissance.",
+    text: "Garde. 1re fois par tour qu'elle survit à des dégâts, elle gagne +1 Puissance.",
     abilities: [
       {
         trigger: "onSurvivedDamage",
@@ -3472,7 +3454,7 @@ const WRITTEN_SET: CardDefinition[] = [
     cost: 2,
     attack: 1,
     health: 3,
-    text: "La première fois à chaque tour que vous Brisez un Objet, récupérez 1 Ancrage.",
+    text: "1re fois par tour que vous Brisez un Objet, récupérez 1 Ancrage.",
     abilities: [
       {
         trigger: "onObjectBroken",
@@ -3498,7 +3480,7 @@ const WRITTEN_SET: CardDefinition[] = [
     attack: 2,
     health: 4,
     maxCopies: 1,
-    text: "La première fois à chaque tour que vous Brisez un Objet, récupérez 1 Ancrage et piochez 1 carte.",
+    text: "1re fois par tour que vous Brisez un Objet, récupérez 1 Ancrage et piochez 1.",
     abilities: [
       {
         trigger: "onObjectBroken",
@@ -3526,8 +3508,8 @@ const WRITTEN_SET: CardDefinition[] = [
     health: 1,
     keywords: ["pied-marin"],
     text:
-      "Pied marin. Lorsqu'il attaque, si vous contrôlez au moins 3 unités Cra-Poiscail, il gagne +1 Puissance " +
-      "jusqu'à la fin du tour.",
+      "Pied marin. Lorsqu'il attaque, si vous contrôlez au moins 3 unités Cra-Poiscail, il gagne +1 Puissance ce " +
+      "tour.",
     abilities: [
       {
         trigger: "onAttack",
@@ -3555,8 +3537,8 @@ const WRITTEN_SET: CardDefinition[] = [
     health: 3,
     durationTurns: 3,
     text:
-      "Durée : 3 tours de table. La première fois à chaque tour qu'une unité Cra-Poiscail que vous contrôlez est détruite, " +
-      "cette Structure gagne +1 Résistance. Sabordage : récupérez 1 Ancrage.",
+      "Durée : 3 tours de table. 1er Cra-Poiscail allié détruit par tour : cette Structure gagne +1 Résistance. " +
+      "Sabordage : récupérez 1 Ancrage.",
     abilities: [
       {
         trigger: "onDeath",
@@ -3619,8 +3601,8 @@ const WRITTEN_SET: CardDefinition[] = [
     health: 5,
     maxCopies: 1,
     text:
-      "La première fois à chaque tour qu'une autre unité Marionnette que vous contrôlez revient dans votre main, " +
-      "piochez 1 carte et récupérez 1 Raison.",
+      "1re fois par tour qu'une autre unité Marionnette que vous contrôlez revient dans votre main, piochez 1 et " +
+      "récupérez 1 Raison.",
     abilities: [
       {
         trigger: "onReturnedToHand",
@@ -3718,7 +3700,8 @@ const WRITTEN_SET: CardDefinition[] = [
     durationTurns: 3,
     visibleDuringTide: ["houle", "tempete"],
     maxCopies: 2,
-    text: "Durée : 3 tours de table. Visible pendant Houle et Tempête. À votre début de tour, si elle est visible, récupérez 1 Ancrage.",
+    text:
+      "Durée : 3 tours de table. Visible pendant Houle et Tempête. À votre début de tour, récupérez 1 Ancrage.",
     abilities: [
       {
         trigger: "startOfTurn",
