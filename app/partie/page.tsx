@@ -41,12 +41,13 @@ export default async function PartiePage() {
    * dépensé puisqu'il n'y a pas de compte pour en tenir le compte.
    *
    * Avec un compte, seuls les préconstruits réellement débloqués sont
-   * jouables — par le choix gratuit ou par un Jeton, la base ne distingue
-   * que ça depuis la fusion des deux rayons (22/09/2026).
+   * jouables — starters de la première mission, ancien choix gratuit ou
+   * Jeton. Les decks retirés du rayon (15/10/2026) restent jouables pour
+   * qui les a débloqués, et ne s'ouvrent plus hors connexion.
    */
   const unlockedDeckIds = isSignedIn
     ? catalog.decks.filter((entry) => entry.unlocked).map((entry) => entry.deck.id)
-    : PRECON_DECKS.map((deck) => deck.id);
+    : PRECON_DECKS.filter((deck) => deck.offer !== "retired").map((deck) => deck.id);
 
   // `useSearchParams` (mode en ligne, code d'invitation, défi) impose une frontière de
   // suspense : sans elle, Next rend toute la page en client au build.

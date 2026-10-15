@@ -487,10 +487,14 @@ function DeckFiche(props: DeckTableProps & { deck: BrowserDeck | null }) {
                   Copier
                 </button>
               )}
-              {deck.kind === "precon" && !catalog?.unlocked && (
+              {deck.kind === "precon" && !catalog?.unlocked && catalog?.deck.offer === "shop" && (
                 <span className={styles.chip}>
                   <PreconToken size={12} /> 1 Jeton
                 </span>
+              )}
+              {/* Les starters ne s'achètent pas : la première mission les offre. */}
+              {deck.kind === "precon" && !catalog?.unlocked && catalog?.deck.offer === "starter" && (
+                <span className={styles.chip}>Offert par la première mission</span>
               )}
             </>
           )}

@@ -1,6 +1,7 @@
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import { STANDARD_BOOSTER_ID } from "@/game/economy";
 import { syncAchievements } from "@/features/achievements/achievementService";
+import { ensureStarterDecks, grantStarterDecks, missingStarterDeckIds, starterMissionAccomplished } from "@/features/onboarding/starterMission";
 
 /**
  * Onboarding — opérations SERVEUR (pas de `"use server"`). Les Server
@@ -16,6 +17,10 @@ import { syncAchievements } from "@/features/achievements/achievementService";
  * migration `..._player_progression_meta.sql`, qui a retiré cet octroi de
  * `handle_new_user`) : il est la récompense de l'APPRENTISSAGE, et rien
  * d'autre ne le donne.
+ *
+ * PREMIÈRE MISSION (15/10/2026) : terminé OU passé, le tutoriel débloque
+ * les trois starters (`features/onboarding/starterMission.ts`). Elle
+ * remplace le choix gratuit d'un préconstruit.
  */
 
 export type TutorialStatus = "not_started" | "completed" | "skipped";
@@ -25,30 +30,39 @@ export interface OnboardingState {
   /** `true` si le booster de tutoriel a déjà été crédité. */
   tutorialRewardClaimed: boolean;
   /**
-   * Préconstruit pris avec le choix GRATUIT, ou `null`.
-   *
-   * En base la ligne porte toujours `source = 'borrowed'` : depuis la
-   * fusion des deux rayons (22/09/2026), cette valeur ne désigne plus une
-   * famille de deck mais la PORTE par laquelle il est entré — le choix
-   * gratuit, par opposition au Jeton.
+   * `true` quand la première mission est accomplie ET que les trois
+   * starters sont bien débloqués — ce qui autorise son annonce.
    */
-  freeDeckId: string | null;
+  starterMissionDone: boolean;
+  /** Starters NOUVELLEMENT accordés par cette lecture (rattrapage d'un compte existant). */
+  startersJustGranted: string[];
 }
 
-const UNKNOWN: OnboardingState = { tutorialStatus: "not_started", tutorialRewardClaimed: false, freeDeckId: null };
+const UNKNOWN: OnboardingState = { tutorialStatus: "not_started", tutorialRewardClaimed: false, starterMissionDone: false, startersJustGranted: [] };
 
-/** État d'onboarding d'un joueur — jamais d'exception, la page appelante doit survivre à une base absente. */
+/**
+ * État d'onboarding d'un joueur — jamais d'exception, la page appelante doit
+ * survivre à une base absente.
+ *
+ * RATTRAPAGE PARESSEUX : un compte dont le tutoriel est déjà terminé ou
+ * passé mais à qui manque un starter le reçoit ici (comptes d'avant le
+ * 15/10/2026) — sans reprise de données en base.
+ */
 export async function readOnboarding(userId: string): Promise<OnboardingState> {
   try {
     const service = createSupabaseServiceRoleClient();
-    const [onboarding, gratuit] = await Promise.all([
+    const [onboarding, unlocks] = await Promise.all([
       service.from("player_onboarding").select("tutorial_status, tutorial_reward_claimed").eq("user_id", userId).maybeSingle(),
-      service.from("player_deck_unlocks").select("deck_id").eq("user_id", userId).eq("source", "borrowed").maybeSingle(),
+      service.from("player_deck_unlocks").select("deck_id").eq("user_id", userId),
     ]);
+    const tutorialStatus = (onboarding.data?.tutorial_status as TutorialStatus | undefined) ?? "not_started";
+    const before = (unlocks.data ?? []).map((row) => row.deck_id);
+    const after = await ensureStarterDecks(userId, tutorialStatus, before);
     return {
-      tutorialStatus: (onboarding.data?.tutorial_status as TutorialStatus | undefined) ?? "not_started",
+      tutorialStatus,
       tutorialRewardClaimed: onboarding.data?.tutorial_reward_claimed ?? false,
-      freeDeckId: gratuit.data?.deck_id ?? null,
+      starterMissionDone: starterMissionAccomplished(tutorialStatus) && missingStarterDeckIds(after).length === 0,
+      startersJustGranted: [...after].filter((deckId) => !before.includes(deckId)),
     };
   } catch (error) {
     console.error("[readOnboarding] Lecture impossible :", error);
@@ -61,12 +75,19 @@ export interface FinishTutorialResult {
   error?: string;
   /** `true` si un booster vient d'être crédité (tutoriel terminé, première fois). */
   boosterGranted?: boolean;
+  /** Starters NOUVELLEMENT débloqués par la première mission — vide au tutoriel rejoué. */
+  startersGranted?: string[];
 }
 
 /**
  * Clôt le tutoriel, terminé ou passé. Idempotent : le booster n'est crédité
  * qu'à la première complétion, et repasser par « passer » après l'avoir
  * terminé ne retire rien.
+ *
+ * Dans les DEUX cas, la première mission est accomplie : les starters sont
+ * accordés juste après (`grant_starter_decks`, idempotent — un tutoriel
+ * rejoué ne double rien). Un échec de l'octroi ne fait pas échouer la fin
+ * du tutoriel : le rattrapage de `readOnboarding` le reprendra.
  */
 export async function finishTutorial(userId: string, completed: boolean): Promise<FinishTutorialResult> {
   try {
@@ -81,8 +102,8 @@ export async function finishTutorial(userId: string, completed: boolean): Promis
       return { ok: false, error: "Impossible d'enregistrer la fin du tutoriel." };
     }
     // « Premier quart » se débloque dès que le tutoriel est terminé.
-    if (completed) await syncAchievements(userId);
-    return { ok: true, boosterGranted: Boolean(data?.booster_granted) };
+    const [startersGranted] = await Promise.all([grantStarterDecks(userId), completed ? syncAchievements(userId) : undefined]);
+    return { ok: true, boosterGranted: Boolean(data?.booster_granted), startersGranted };
   } catch (error) {
     console.error("[finishTutorial] Échec :", error);
     return { ok: false, error: "Impossible d'enregistrer la fin du tutoriel." };

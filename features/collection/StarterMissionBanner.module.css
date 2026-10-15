@@ -1,0 +1,48 @@
+/* Les trois starters annoncés par le bandeau de la première mission. */
+.crews {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(8px, 1.4vw, 16px);
+  margin: 0;
+  padding: 4px 0 0;
+  list-style: none;
+}
+
+.crew {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+  text-align: center;
+}
+
+.crewArt {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  margin-bottom: 4px;
+  border: 1px solid rgba(241, 220, 168, 0.35);
+  border-radius: 4px;
+  background: rgba(241, 220, 168, 0.08) center / cover no-repeat;
+}
+
+.crewName {
+  color: #f1dca8;
+  font-size: calc(13.5px * var(--tb-text-scale));
+  font-weight: 600;
+}
+
+.crewMeta {
+  color: rgba(214, 226, 236, 0.72);
+  font-size: calc(11.5px * var(--tb-text-scale));
+}
+
+@media (max-width: 560px) {
+  .crews {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .crewArt {
+    display: none;
+  }
+}

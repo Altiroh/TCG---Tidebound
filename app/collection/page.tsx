@@ -1,5 +1,4 @@
 import { CollectionScreen } from "@/features/collection/CollectionScreen";
-import { readDeckCatalogSummary } from "@/features/decks/catalogSummary";
 import { fetchOnboarding } from "@/features/onboarding/actions";
 import { decodeShelfFilter, FAVORITES_FILTER, notebookFilter, type ShelfFilter } from "@/features/collection/shelf/shelf";
 import { getOwnedCardIds } from "@/lib/supabase/ownedCards";
@@ -13,23 +12,18 @@ function shelfFromParams(searchParams: Record<string, string | string[] | undefi
 }
 
 export default async function CollectionPage({ searchParams = {} }: { searchParams?: Record<string, string | string[] | undefined> }) {
-  // `player_cards` n'est lu qu'UNE fois : le rayon des préconstruits calcule
-  // sa possession sur la collection que la page lit déjà (hors connexion
-  // ou lecture en échec, il relit lui-même).
-  const collectionPromise = getOwnedCardIds();
-  const [{ isSignedIn, ownedCardIds, ownedCounts }, catalog, onboarding] = await Promise.all([
-    collectionPromise,
-    readDeckCatalogSummary(collectionPromise.then((collection) => (collection.isSignedIn ? collection.ownedCounts : null))),
-    fetchOnboarding(),
-  ]);
+  // Le rayon des préconstruits n'est plus lu ici (15/10/2026) : l'invite du
+  // premier deck gratuit, seule à s'en servir, cède la place à l'annonce de
+  // la PREMIÈRE MISSION, dont les starters sont accordés par le serveur
+  // (`fetchOnboarding` rattrape aussi les comptes existants).
+  const [{ isSignedIn, ownedCardIds, ownedCounts }, onboarding] = await Promise.all([getOwnedCardIds(), fetchOnboarding()]);
 
   return (
     <CollectionScreen
       isSignedIn={isSignedIn}
       ownedCardIds={ownedCardIds}
       ownedCounts={ownedCounts}
-      catalog={catalog}
-      needsFirstDeck={onboarding.needsFirstDeck}
+      showStarterMission={onboarding.showStarterMission}
       openShelf={shelfFromParams(searchParams)}
     />
   );

@@ -736,13 +736,15 @@ export interface Database {
         Update: Record<string, never>;
         Relationships: [];
       };
-      /** Préconstruits débloqués. `source` dit par quelle PORTE : le choix gratuit
-       *  (`borrowed`, nom historique, un seul par compte) ou un Jeton. */
+      /** Préconstruits débloqués. `source` dit par quelle PORTE : l'ancien choix
+       *  gratuit (`borrowed`, un seul par compte, plus proposé depuis le
+       *  15/10/2026), un Jeton (`precon_token`) ou la première mission (`starter`). */
       player_deck_unlocks: {
         Row: {
           user_id: string;
           deck_id: string;
-          source: "borrowed" | "precon_token";
+          /** `starter` : offert par la première mission (migration 20261104120000). */
+          source: "borrowed" | "precon_token" | "starter";
           unlocked_at: string;
         };
         Insert: Record<string, never>;
@@ -1029,6 +1031,15 @@ export interface Database {
       unlock_precon_deck: {
         Args: { p_user_id: string; p_deck_id: string };
         Returns: { ok: boolean; error?: string; deck_id?: string; tokens?: number };
+      };
+      /**
+       * Première mission (migration 20261104120000) : accorde les starters
+       * manquants, tutoriel terminé ou passé. Idempotent ; `granted` = ceux
+       * NOUVELLEMENT accordés.
+       */
+      grant_starter_decks: {
+        Args: { p_user_id: string; p_deck_ids: string[] };
+        Returns: { ok: boolean; error?: string; granted?: string[] };
       };
       /** Exploits : `[{ code, tides }]`, filtré par l'appelant ; la clé primaire évite tout doublon. */
       claim_achievement: {

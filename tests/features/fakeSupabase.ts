@@ -55,6 +55,7 @@ const PRIMARY_KEYS: Record<string, string[]> = {
   match_lifetime_stats: ["match_id", "user_id"],
   quest_event_progress: ["user_id", "event_key"],
   player_deck_unlocks: ["user_id", "deck_id"],
+  player_onboarding: ["user_id"],
 };
 
 let uuidCounter = 0;
@@ -779,14 +780,50 @@ function runRpc(db: FakeDatabase, fn: string, args: Row): any {
       return { ok: true, granted, tides: 0 };
     }
 
-    // `20261020120000_statistiques_a_vie.sql`
+    // `20261104120000_starters_premiere_mission.sql` : ni starter, ni deck retiré du rayon.
     case "unlock_precon_deck": {
+      if (["le-rempart-vivant", "les-saboteurs-du-pont", "l-assaut-des-marees"].includes(args.p_deck_id)) {
+        return { ok: false, error: "Ce deck est offert par la première mission : il ne s'achète pas." };
+      }
+      if (["la-forteresse", "epavistes", "a-bout-de-raison"].includes(args.p_deck_id)) return { ok: false, error: "Ce préconstruit a quitté le rayon." };
       const progression = db.one("player_progression", { user_id: args.p_user_id });
       if (db.one("player_deck_unlocks", { user_id: args.p_user_id, deck_id: args.p_deck_id })) return { ok: false, error: "Ce préconstruit est déjà débloqué." };
       if (!progression || (progression.precon_tokens ?? 0) < 1) return { ok: false, error: "Aucun Jeton de Préconstruit disponible." };
       progression.precon_tokens -= 1;
       db.table("player_deck_unlocks").push({ user_id: args.p_user_id, deck_id: args.p_deck_id, source: "precon_token" });
       return { ok: true, tokens: progression.precon_tokens };
+    }
+
+    // `20260915120000_player_progression_meta.sql` : le booster à la première complétion seulement.
+    case "finish_tutorial": {
+      const status = args.p_completed ? "completed" : "skipped";
+      const existing = db.one("player_onboarding", { user_id: args.p_user_id });
+      let granted = false;
+      if (args.p_completed && !existing?.tutorial_reward_claimed) {
+        granted = true;
+        const boosterId = args.p_booster_id ?? "standard";
+        db.upsert("player_boosters", { user_id: args.p_user_id, booster_definition_id: boosterId, quantity: 1 }, (row) => {
+          row.quantity += 1;
+        });
+      }
+      if (existing) {
+        existing.tutorial_status = status;
+        existing.tutorial_reward_claimed = Boolean(existing.tutorial_reward_claimed) || granted;
+      } else {
+        db.table("player_onboarding").push({ user_id: args.p_user_id, tutorial_status: status, tutorial_reward_claimed: granted });
+      }
+      return { ok: true, booster_granted: granted, status };
+    }
+
+    // `20261104120000_starters_premiere_mission.sql`
+    case "grant_starter_decks": {
+      const allowed = ["le-rempart-vivant", "les-saboteurs-du-pont", "l-assaut-des-marees"];
+      const ids: string[] = args.p_deck_ids ?? [];
+      if (!ids.every((id) => allowed.includes(id))) return { ok: false, error: "Seuls les starters de la première mission s'accordent ainsi.", granted: [] };
+      const status = db.one("player_onboarding", { user_id: args.p_user_id })?.tutorial_status ?? "not_started";
+      if (status !== "completed" && status !== "skipped") return { ok: false, error: "La première mission n'est pas encore accomplie.", granted: [] };
+      const granted = ids.filter((id) => db.insertIfAbsent("player_deck_unlocks", { user_id: args.p_user_id, deck_id: id, source: "starter" }));
+      return { ok: true, granted };
     }
 
     case "record_quest_event_progress": {

@@ -13,33 +13,38 @@ import { getSessionUser } from "@/lib/supabase/sessionUser";
  * autre compte et lui faire créditer un booster.
  */
 
-const SIGNED_OUT: OnboardingState = { tutorialStatus: "not_started", tutorialRewardClaimed: false, freeDeckId: null };
+const SIGNED_OUT: OnboardingState = { tutorialStatus: "not_started", tutorialRewardClaimed: false, starterMissionDone: false, startersJustGranted: [] };
 
 export interface OnboardingSummary extends OnboardingState {
   isSignedIn: boolean;
   /** `true` tant que le joueur n'a ni terminé ni passé le tutoriel : l'écran de proposition s'affiche. */
   needsTutorialChoice: boolean;
-  /** `true` si le joueur n'a pas encore pris son préconstruit gratuit (§3). */
-  needsFirstDeck: boolean;
+  /**
+   * `true` si la PREMIÈRE MISSION est accomplie et ses trois starters
+   * débloqués : l'écran peut l'annoncer. L'annonce ne se montre qu'UNE fois
+   * par compte — c'est la préférence `STARTER_MISSION_SEEN_KEY`
+   * (`features/collection/StarterMissionBanner.tsx`) qui le retient.
+   */
+  showStarterMission: boolean;
 }
 
 export async function fetchOnboarding(): Promise<OnboardingSummary> {
   try {
     const user = await getSessionUser();
-    if (!user) return { ...SIGNED_OUT, isSignedIn: false, needsTutorialChoice: false, needsFirstDeck: false };
+    if (!user) return { ...SIGNED_OUT, isSignedIn: false, needsTutorialChoice: false, showStarterMission: false };
 
     const state = await readOnboarding(user.id);
     return {
       ...state,
       isSignedIn: true,
       needsTutorialChoice: state.tutorialStatus === "not_started",
-      // Le préconstruit gratuit ne se propose qu'APRÈS le tutoriel (terminé ou
-      // passé) : c'est l'étape 4 du flow de la spec, pas un choix parallèle.
-      needsFirstDeck: state.tutorialStatus !== "not_started" && state.freeDeckId === null,
+      // La mission ne s'annonce qu'APRÈS le tutoriel (terminé ou passé), et
+      // seulement quand ses starters sont réellement en base.
+      showStarterMission: state.starterMissionDone,
     };
   } catch (error) {
     console.error("[fetchOnboarding] Lecture impossible :", error);
-    return { ...SIGNED_OUT, isSignedIn: false, needsTutorialChoice: false, needsFirstDeck: false };
+    return { ...SIGNED_OUT, isSignedIn: false, needsTutorialChoice: false, showStarterMission: false };
   }
 }
 
@@ -47,6 +52,8 @@ export interface FinishTutorialActionResult {
   ok: boolean;
   error?: string;
   boosterGranted?: boolean;
+  /** Starters NOUVELLEMENT débloqués par la première mission. */
+  startersGranted?: string[];
 }
 
 /**
@@ -91,6 +98,8 @@ export async function completeTutorial(completed: boolean, ticket?: string): Pro
     revalidatePath("/");
     revalidatePath("/collection");
     revalidatePath("/boosters");
+    revalidatePath("/decks");
+    revalidatePath("/partie");
   }
   return result;
 }

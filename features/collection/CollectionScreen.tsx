@@ -7,13 +7,12 @@ import type { ShelfFilter } from "@/features/collection/shelf/shelf";
 import { CardGrid } from "@/features/collection/CardGrid";
 import { CollectionSidebar } from "@/features/collection/CollectionSidebar";
 import { CollectionToolbar } from "@/features/collection/CollectionToolbar";
-import { FirstDeckPrompt } from "@/features/collection/FirstDeckPrompt";
+import { StarterMissionBanner } from "@/features/collection/StarterMissionBanner";
 import { CardDetailModal } from "@/features/collection/card-detail/CardDetailModal";
 import { SurplusResaleDialog } from "@/features/collection/SurplusResaleDialog";
 import { surplusPlan } from "@/features/collection/recycleValue";
 import surplusStyles from "@/features/collection/SurplusResale.module.css";
 import { playButtonClick } from "@/lib/sound";
-import type { DeckCatalogView } from "@/features/decks/catalogService";
 import { useCardBrowser } from "@/features/collection/useCardBrowser";
 import { CandleToy } from "@/features/shell/CandleToy";
 import { GameScreen } from "@/features/shell/GameScreen";
@@ -26,13 +25,12 @@ import { BookSearch } from "@/features/decks/BookSearch";
 interface CollectionScreenProps {
   isSignedIn: boolean;
   /**
-   * Decks fournis par le jeu + possession. Sert à l'invite de PREMIER DECK :
-   * après le tutoriel, le joueur est conduit ici pour prendre son premier
-   * équipage (Notion « Progression joueur » §2, étape 5).
+   * `true` quand la PREMIÈRE MISSION est accomplie (tutoriel terminé ou
+   * passé, trois starters débloqués) : la Collection l'annonce, une fois
+   * par compte (`StarterMissionBanner`). Remplace l'invite de premier deck
+   * gratuit (15/10/2026).
    */
-  catalog?: DeckCatalogView;
-  /** `true` tant que le joueur n'a pas pris son préconstruit gratuit. */
-  needsFirstDeck?: boolean;
+  showStarterMission?: boolean;
   /** Cartes possédées (`player_cards.card_id`, quantité > 0). Ignoré si `isSignedIn` est `false`. */
   ownedCardIds: string[];
   /** Exemplaires possédés par carte — affichés en pastille sous chaque carte possédée. */
@@ -79,7 +77,7 @@ export function CollectionScreen(props: CollectionScreenProps) {
  * exemplaires possédés sous chaque carte, « Revendre le surplus », le
  * filtre de Raison, les carnets en tête de colonne et « Créer un deck ».
  */
-function CollectionScreenBody({ isSignedIn, ownedCardIds, ownedCounts, catalog, needsFirstDeck = false, openShelf }: CollectionScreenProps) {
+function CollectionScreenBody({ isSignedIn, ownedCardIds, ownedCounts, showStarterMission = false, openShelf }: CollectionScreenProps) {
   const owned = useMemo(() => (isSignedIn ? new Set(ownedCardIds) : null), [isSignedIn, ownedCardIds]);
   const browser = useCardBrowser({ owned, persistKey: "collection" });
   // Arrivée depuis le mur des carnets : la grille s'ouvre sur le carnet choisi.
@@ -203,7 +201,7 @@ function CollectionScreenBody({ isSignedIn, ownedCardIds, ownedCounts, catalog, 
       {/* eslint-disable-next-line @next/next/no-img-element -- décor peint, positionné à la main */}
       <img className={book.decor} src="/assets/ui/accessoires/longue-vue.webp" alt="" draggable={false} />
 
-      {needsFirstDeck && catalog && <FirstDeckPrompt catalog={catalog} />}
+      {isSignedIn && <StarterMissionBanner show={showStarterMission} />}
 
       {surplusOpen && <SurplusResaleDialog lines={surplusLines} onClose={() => setSurplusOpen(false)} />}
 

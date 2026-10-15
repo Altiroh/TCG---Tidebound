@@ -24,8 +24,10 @@ import { playButtonClick, playGameStart } from "@/lib/sound";
  *   1. écran de proposition ;
  *   2. **Faire le tutoriel** → partie guidée → 1 booster ;
  *      **Passer** → accès direct, aucun booster ;
- *   3. dans les DEUX cas, redirection vers la Collection, où le joueur
- *      choisit son premier préconstruit.
+ *   3. dans les DEUX cas, la PREMIÈRE MISSION est accomplie : les trois
+ *      starters sont débloqués côté serveur (`finishTutorial`), et la
+ *      Collection l'annonce (15/10/2026 — il n'y a plus de deck gratuit à
+ *      choisir).
  *
  * Le booster n'est jamais accordé côté client : `completeTutorial` est une
  * Server Action, et c'est la base qui décide (`finish_tutorial`). La partie
@@ -39,7 +41,7 @@ import { playButtonClick, playGameStart } from "@/lib/sound";
  * jusqu'au bout avec les deux préconstruits.
  *
  * La fin reprend l'écran de victoire ou de défaite, avec un mot propre au
- * tutoriel et des boutons qui mènent au booster et au premier deck.
+ * tutoriel et des boutons qui mènent au booster et aux starters.
  */
 /** D'où vient la fin : la partie s'est terminée, ou le joueur a quitté la table une fois les leçons vues. */
 type TutorialEnding = { kind: "finished"; state: GameState } | { kind: "left"; state: GameState };
@@ -73,7 +75,7 @@ export function TutorialScreen({ autoStart = false }: { autoStart?: boolean } = 
     return { player, opponent };
   }, []);
 
-  /** Clôt le tutoriel côté serveur, puis conduit à la Collection (étape 4 du flow). */
+  /** Clôt le tutoriel côté serveur (première mission comprise), puis conduit à la Collection. */
   const finish = useCallback(
     (completed: boolean) => {
       setError(null);
@@ -150,15 +152,17 @@ export function TutorialScreen({ autoStart = false }: { autoStart?: boolean } = 
     );
   }
 
-  // --- Tutoriel passé : cap sur la Collection ----------------------------
+  // --- Tutoriel passé : première mission accomplie ------------------------
   if (outcome) {
     return (
       <div className={styles.reward} role="status">
-        <h1 className={styles.rewardTitle}>Cap sur la Collection</h1>
-        <p className={styles.rewardText}>Tutoriel passé — il n&apos;y a donc pas de booster. Choisis ton premier préconstruit.</p>
+        <h1 className={styles.rewardTitle}>Première mission accomplie</h1>
+        <p className={styles.rewardText}>
+          Tutoriel passé — il n&apos;y a donc pas de booster. Trois équipages t&apos;attendent : Le Rempart Vivant, Les Saboteurs du Pont et L&apos;Assaut des Marées.
+        </p>
         <div className={styles.choiceFoot}>
           <button type="button" className={game.primary} onClick={() => router.push("/collection")}>
-            Choisir mon deck
+            Voir mes équipages
           </button>
         </div>
       </div>
@@ -233,7 +237,7 @@ export function TutorialScreen({ autoStart = false }: { autoStart?: boolean } = 
             <button type="button" className={`${game.tile} ${styles.choice}`} onClick={skip}>
               <span className={styles.choiceTitle}>Passer le tutoriel</span>
               <span className={styles.choiceText}>
-                Tu connais déjà ce genre de jeu. Tu vas directement à ta Collection choisir ton premier deck.
+                Tu connais déjà ce genre de jeu. Tu reçois directement tes trois premiers équipages.
               </span>
               <span className={styles.choiceFoot}>
                 <span className={game.tag}>Sans booster</span>
@@ -276,12 +280,12 @@ function tutorialEpilogue(
   const reward = error
     ? `La récompense n'a pas pu être enregistrée : ${error}`
     : boosterGranted
-      ? "Un booster t'attend dans ta réserve : ouvre-le, puis choisis ton premier préconstruit."
-      : "Choisis maintenant ton premier préconstruit.";
+      ? "Première mission accomplie : trois équipages t'attendent, et un booster dans ta réserve."
+      : "Première mission accomplie : trois équipages t'attendent.";
   return {
     title,
     text: `${story} ${reward}`,
-    back: boosterGranted ? { label: "Choisir mon deck", onClick: () => go("/collection") } : { label: "Retour au menu", onClick: () => go("/") },
-    next: boosterGranted ? { label: "Ouvrir mon booster", onClick: () => go("/boosters") } : { label: "Choisir mon deck", onClick: () => go("/collection") },
+    back: boosterGranted ? { label: "Voir mes équipages", onClick: () => go("/collection") } : { label: "Retour au menu", onClick: () => go("/") },
+    next: boosterGranted ? { label: "Ouvrir mon booster", onClick: () => go("/boosters") } : { label: "Voir mes équipages", onClick: () => go("/collection") },
   };
 }

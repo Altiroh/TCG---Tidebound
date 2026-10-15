@@ -38,6 +38,8 @@ const SYNCED_KEYS = new Set([
   "tidebound:nouvelle-partie:dernier-deck",
   "tb:streak-popup-day",
   "tb:sponsors-seen",
+  // Annonce de la première mission vue (`features/collection/StarterMissionBanner.tsx`).
+  "tb:mission-starters-vue",
 ]);
 
 /** Les favoris de decks ont déjà leur table (`player_deck_favorites`) : la copie locale n'y est qu'un repli. */

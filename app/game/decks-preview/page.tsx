@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
-import { PRECON_DECKS, deckOwnership } from "@/game";
+import { PRECON_DECKS, SHOP_DECKS, deckOwnership } from "@/game";
 import type { PlayerDeckSummary } from "@/app/decks/actions";
 import { DecksScreen } from "@/features/decks/DecksScreen";
+import { shelfView } from "@/features/decks/deckEntries";
 
 export const metadata: Metadata = {
   title: "Decks Preview · Tidebound",
@@ -40,16 +41,23 @@ function fakeDeck(index: number): PlayerDeckSummary {
  * (`DecksScreen`) avec sept decks personnels fabriqués et tout le rayon des
  * préconstruits. Aucune lecture de session : les actions (renommer,
  * dupliquer…) échouent proprement, c'est attendu.
+ *
+ * Le rayon est celui d'un joueur qui a accompli la PREMIÈRE MISSION (les
+ * trois starters débloqués), acheté un deck au Jeton, et qui possède un
+ * deck RETIRÉ (La Forteresse) — les deux autres retirés lui sont masqués.
+ * `?mission=0` : la mission n'est pas encore accomplie (starters marqués
+ * « Offert par la première mission », aucun retiré).
  */
-export default function DecksPreviewRoute() {
+export default function DecksPreviewRoute({ searchParams = {} }: { searchParams?: Record<string, string | string[] | undefined> }) {
+  const missionDone = searchParams.mission !== "0";
+  const unlocked = new Set<string>(missionDone ? ["le-rempart-vivant", "les-saboteurs-du-pont", "l-assaut-des-marees", "la-forteresse", SHOP_DECKS[0]!.id] : []);
   const allOwned = Object.fromEntries(PRECON_DECKS.flatMap((deck) => deck.cardIds).map((cardId) => [cardId, 9]));
   return (
     <DecksScreen
       isSignedIn
       initialDecks={Array.from({ length: 7 }, (_, index) => fakeDeck(index))}
       catalog={{
-        decks: PRECON_DECKS.map((deck, index) => ({ deck, ownership: deckOwnership(deck.cardIds, allOwned), unlocked: index < 2 })),
-        freeDeckId: PRECON_DECKS[0]!.id,
+        decks: shelfView(PRECON_DECKS.map((deck) => ({ deck, ownership: deckOwnership(deck.cardIds, allOwned), unlocked: unlocked.has(deck.id) }))),
         preconTokens: 1,
       }}
     />

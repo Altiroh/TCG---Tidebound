@@ -46,7 +46,8 @@ export type MatchDeckRejection =
 export type MatchDeckResult = { ok: true; deck: DeckList } | ({ ok: false } & MatchDeckRejection);
 
 /** Message montré quand un préconstruit n'est pas débloqué — partagé par toutes les entrées en partie. */
-export const LOCKED_PRECON_MESSAGE = "Ce préconstruit n'est pas encore débloqué : il s'obtient avec un Jeton de Préconstruit, depuis l'écran Decks.";
+export const LOCKED_PRECON_MESSAGE =
+  "Ce préconstruit n'est pas encore débloqué : les starters s'obtiennent par la première mission (le tutoriel, terminé ou passé), les autres avec un Jeton de Préconstruit, depuis l'écran Decks.";
 
 /** Les identifiants du catalogue ne sont pas des uuid : inutile d'interroger `player_decks` avec, Postgres refuserait la comparaison. */
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

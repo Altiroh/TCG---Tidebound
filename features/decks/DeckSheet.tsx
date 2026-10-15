@@ -18,14 +18,6 @@ interface DeckSheetProps {
   unlocked: boolean;
   /** Jetons de Préconstruit disponibles — pour un préconstruit verrouillé. */
   tokens: number;
-  /**
-   * Le choix GRATUIT est-il encore disponible ? (un seul par compte)
-   *
-   * C'est lui, et non une famille de deck, qui décide de l'action proposée
-   * en bas de fiche depuis la fusion des deux rayons (22/09/2026) : le
-   * premier préconstruit ne coûte rien, les suivants coûtent un Jeton.
-   */
-  freeChoiceAvailable: boolean;
   busy: boolean;
   error: string | null;
   onUnlock: () => void;
@@ -48,7 +40,6 @@ export function DeckSheet({
   ownership,
   unlocked,
   tokens,
-  freeChoiceAvailable,
   busy,
   error,
   onUnlock,
@@ -74,24 +65,28 @@ export function DeckSheet({
   const peak = Math.max(1, ...curve);
   const ownedRatio = ownership.total === 0 ? 0 : ownership.owned / ownership.total;
 
-  const canUnlock = freeChoiceAvailable || tokens >= 1;
-  const unlockLabel = freeChoiceAvailable ? (
-    "Choisir ce deck — gratuit"
-  ) : (
+  // Seul le rayon au Jeton s'achète (15/10/2026) : un starter vient de la
+  // première mission, un deck retiré ne se vend plus.
+  const purchasable = deck.offer === "shop";
+  const canUnlock = purchasable && tokens >= 1;
+  const unlockLabel = (
     <>
       <PreconToken size={15} /> Débloquer — 1 Jeton de Préconstruit
     </>
   );
-  const unlockHint = freeChoiceAvailable ? (
-    "Ton premier préconstruit est gratuit : les cartes que tu ne possèdes pas restent prêtées."
-  ) : (
-    <>
-      <PreconToken size={14} />{" "}
-      {tokens >= 1
-        ? `${tokens} Jeton${tokens > 1 ? "s" : ""} disponible${tokens > 1 ? "s" : ""}`
-        : "Aucun Jeton disponible — les gros paliers de niveau en donnent un tous les 10 niveaux."}
-    </>
-  );
+  const unlockHint =
+    deck.offer === "starter" ? (
+      "Offert par la première mission : termine ou passe le tutoriel pour recevoir les trois starters."
+    ) : deck.offer === "retired" ? (
+      "Ce préconstruit a quitté le rayon."
+    ) : (
+      <>
+        <PreconToken size={14} />{" "}
+        {tokens >= 1
+          ? `${tokens} Jeton${tokens > 1 ? "s" : ""} disponible${tokens > 1 ? "s" : ""}`
+          : "Aucun Jeton disponible — les gros paliers de niveau en donnent un tous les 10 niveaux."}
+      </>
+    );
 
   return (
     <Dialog
@@ -106,7 +101,7 @@ export function DeckSheet({
           <button type="button" className={game.secondary} onClick={onClose}>
             Fermer
           </button>
-          {!unlocked && (
+          {!unlocked && purchasable && (
             <button type="button" className={game.primary} onClick={onUnlock} disabled={busy || !canUnlock}>
               {busy ? "…" : unlockLabel}
             </button>

@@ -3,6 +3,7 @@ import { MarketScreen } from "@/features/market/MarketScreen";
 import { previewBoosterInventory } from "@/features/boosters/previewInventory";
 import { readDeckCatalog } from "@/features/decks/catalogService";
 import { loadCollectables } from "@/features/cosmetics/collectablesService";
+import { SHOP_DECKS } from "@/game";
 
 export const metadata: Metadata = {
   title: "Market Preview · Tidebound",
@@ -42,7 +43,8 @@ export default async function MarketPreviewRoute({ searchParams = {} }: { search
         ...catalog,
         isSignedIn: true,
         preconTokens: 2,
-        decks: catalog.decks.map((entry, index) => ({ ...entry, unlocked: index === 1 })),
+        // Le deuxième deck du rayon AU JETON (les starters, en tête du rayon, n'y sont pas vendus).
+        decks: catalog.decks.map((entry) => ({ ...entry, unlocked: entry.deck.id === SHOP_DECKS[1]?.id })),
       }}
       collectables={{
         ...collectables,

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   PRECON_DECKS,
   RULES,
+  shelfOrder,
   validateDeckList,
   deckProfile,
   type BotDifficulty,
@@ -88,13 +89,15 @@ interface NewMatchScreenProps {
  * l'affichage, pour que deux parties d'affilée donnent bien deux
  * adversaires différents.
  *
- * Tiré parmi TOUS les decks fournis, y compris ceux que le joueur n'a pas
- * débloqués : l'adversaire n'est pas limité par la collection du joueur.
+ * Tiré parmi les decks fournis du rayon ET les starters, y compris ceux que
+ * le joueur n'a pas débloqués : l'adversaire n'est pas limité par la
+ * collection du joueur. Les decks RETIRÉS du rayon (15/10/2026) n'en font
+ * plus partie.
  *
  * `Math.random` est ici un choix d'INTERFACE, pas un aléa de moteur : il
  * ne touche pas `GameState.rngState`, qui doit rester déterministe.
  */
-const BOT_DECK_POOL: readonly DeckList[] = PRECON_DECKS;
+const BOT_DECK_POOL: readonly DeckList[] = PRECON_DECKS.filter((deck) => deck.offer !== "retired");
 
 function pickRandomDeck(): DeckList {
   return BOT_DECK_POOL[Math.floor(Math.random() * BOT_DECK_POOL.length)]!;
@@ -285,15 +288,15 @@ export function NewMatchScreen({
         // se distinguaient que par la façon de l'obtenir.
         //
         // Depuis le 09/10/2026, seuls les préconstruits DÉBLOQUÉS se jouent
-        // (le deck offert à l'arrivée, ou un Jeton de Préconstruit) ; le
+        // (les starters de la première mission, ou un Jeton de Préconstruit) ; le
         // serveur refuse les autres (`resolveMatchDeck`, refus « locked »).
         // Depuis le 12/10/2026, l'écran de partie ne montre QUE ceux-là : on
         // choisit un deck à jouer, pas une vitrine — ce qu'un Jeton ouvre se
-        // découvre sur l'écran Decks.
+        // découvre sur l'écran Decks. Starters en tête (`shelfOrder`).
         id: "precon",
         label: "Préconstruits",
         hint: "Tes préconstruits débloqués. Les autres s'ouvrent avec un Jeton de Préconstruit, depuis l'écran Decks.",
-        decks: PRECON_DECKS.filter((deck) => unlocked.has(deck.id)),
+        decks: PRECON_DECKS.filter((deck) => unlocked.has(deck.id)).sort((a, b) => shelfOrder(a) - shelfOrder(b)),
         issueFor: () => null,
       },
     ],

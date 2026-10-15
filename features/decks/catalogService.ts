@@ -8,23 +8,25 @@ import {
   type DeckOwnership,
 } from "@/game";
 import { syncAchievements } from "@/features/achievements/achievementService";
+import { shelfView } from "@/features/decks/deckEntries";
+import { ensureStarterDecks, type MissionTutorialStatus } from "@/features/onboarding/starterMission";
 import { recordQuestEvent } from "@/features/quests/questService";
 
 /**
  * Préconstruits — opérations SERVEUR (pas de `"use server"`).
  *
- * UN SEUL RAYON, DEUX PORTES (Notion « Progression joueur » §3 et §4) :
- *   - le PREMIER préconstruit est gratuit, choisi une fois depuis la
- *     Collection ;
- *   - les SUIVANTS coûtent chacun un Jeton de Préconstruit.
+ * UN SEUL RAYON, DEUX PORTES (décision du 15/10/2026) :
+ *   - la PREMIÈRE MISSION (tutoriel terminé ou passé) offre les trois
+ *     starters (`source = 'starter'`, `features/onboarding/starterMission.ts`).
+ *     Elle remplace l'ancien choix gratuit d'un préconstruit (`'borrowed'`),
+ *     dont les déblocages restent valides ;
+ *   - les AUTRES coûtent chacun un Jeton de Préconstruit — seulement ceux du
+ *     rayon (`offer: "shop"`) : ni les starters, ni les decks retirés.
  *
- * La base ne change pas avec la fusion du 22/09/2026 : `player_deck_unlocks
- * .source` valait déjà 'borrowed' ou 'precon', et c'est exactement ce qu'on
- * veut continuer à noter — par quelle porte le deck est entré. Les RPC
- * gardent donc leurs noms (`claim_borrowed_deck`, `unlock_precon_deck`) ;
- * ce qui disparaît, c'est l'idée qu'il existait deux ESPÈCES de decks.
+ * `player_deck_unlocks.source` note par quelle porte le deck est entré ; ce
+ * n'est jamais une famille de deck.
  *
- * Dans les deux cas, AUCUNE carte n'est créditée à la collection : c'est
+ * Dans tous les cas, AUCUNE carte n'est créditée à la collection : c'est
  * tout le principe du prêt. « Le premier deck ne doit pas injecter un gros
  * volume de cartes gratuites dans la collection » — le joueur joue le deck
  * tout de suite, et le possède progressivement.
@@ -34,15 +36,17 @@ import { recordQuestEvent } from "@/features/quests/questService";
 export interface CatalogDeckView {
   deck: CatalogDeck;
   ownership: DeckOwnership;
-  /** `true` si le joueur a débloqué ce deck (choix gratuit, ou Jeton dépensé). */
+  /** `true` si le joueur a débloqué ce deck (première mission, ancien choix gratuit, ou Jeton dépensé). */
   unlocked: boolean;
 }
 
 export interface DeckCatalogView {
-  /** Tout le rayon, verrouillés compris — un seul, depuis la fusion. */
+  /**
+   * Le rayon tel que CE joueur le voit, verrouillés compris : les starters
+   * en tête, puis le rayon au Jeton ; un deck retiré n'y figure que s'il
+   * l'a débloqué (`isDeckOnShelf`).
+   */
   decks: CatalogDeckView[];
-  /** Le préconstruit pris avec le choix GRATUIT — un seul, pour toujours. */
-  freeDeckId: string | null;
   preconTokens: number;
 }
 
@@ -63,7 +67,8 @@ export async function readOwnedCounts(userId: string): Promise<Record<string, nu
 /**
  * Tout le rayon, possession calculée. Les VERROUILLÉS sont inclus : « les
  * préconstruits verrouillés doivent rester visibles » et « consultables
- * avant achat » (§4, §13).
+ * avant achat » (§4, §13). Les RETIRÉS, eux, ne restent visibles qu'à qui
+ * les a débloqués.
  *
  * `preloadedOwnedCounts` : la collection déjà lue (ou en cours de lecture)
  * par l'appelant — la page Collection lit `player_cards` pour son propre
@@ -80,20 +85,23 @@ export async function readDeckCatalog(
       ? Promise.resolve(preloadedOwnedCounts).then((counts) => counts ?? readOwnedCounts(userId), () => readOwnedCounts(userId))
       : readOwnedCounts(userId);
   let unlockedIds = new Set<string>();
-  let freeDeckId: string | null = null;
   let preconTokens = 0;
 
   if (userId) {
     try {
       const service = createSupabaseServiceRoleClient();
-      const [unlocks, progression] = await Promise.all([
-        service.from("player_deck_unlocks").select("deck_id, source").eq("user_id", userId),
+      const [unlocks, progression, onboarding] = await Promise.all([
+        service.from("player_deck_unlocks").select("deck_id").eq("user_id", userId),
         service.from("player_progression").select("precon_tokens").eq("user_id", userId).maybeSingle(),
+        service.from("player_onboarding").select("tutorial_status").eq("user_id", userId).maybeSingle(),
       ]);
-      unlockedIds = new Set((unlocks.data ?? []).map((row) => row.deck_id));
-      // `source = 'borrowed'` reste le marqueur du choix gratuit en base :
-      // c'est la PORTE d'entrée, pas une famille de deck.
-      freeDeckId = (unlocks.data ?? []).find((row) => row.source === "borrowed")?.deck_id ?? null;
+      // Rattrapage de la première mission : un compte qui arrive ici avant
+      // l'accueil reçoit aussi ses starters (idempotent).
+      unlockedIds = await ensureStarterDecks(
+        userId,
+        onboarding.data?.tutorial_status as MissionTutorialStatus | undefined,
+        (unlocks.data ?? []).map((row) => row.deck_id)
+      );
       preconTokens = progression.data?.precon_tokens ?? 0;
     } catch (error) {
       console.error("[readDeckCatalog] Lecture impossible :", error);
@@ -107,7 +115,7 @@ export async function readDeckCatalog(
     unlocked: unlockedIds.has(deck.id),
   });
 
-  return { decks: PRECON_DECKS.map(view), freeDeckId, preconTokens };
+  return { decks: shelfView(PRECON_DECKS.map(view)), preconTokens };
 }
 
 export interface UnlockResult {
@@ -118,29 +126,19 @@ export interface UnlockResult {
   tokens?: number;
 }
 
-/** Prend le préconstruit GRATUIT — une seule fois par compte. */
-export async function claimFreePreconDeck(userId: string, deckId: string): Promise<UnlockResult> {
-  if (!isPreconDeckId(deckId)) return { ok: false, error: "Ce deck n'est pas un préconstruit." };
-  try {
-    const service = createSupabaseServiceRoleClient();
-    const { data, error } = await service.rpc("claim_borrowed_deck", { p_user_id: userId, p_deck_id: deckId });
-    if (error) {
-      console.error("[claimFreePreconDeck] Refusé :", error.message);
-      return { ok: false, error: "Choix impossible pour le moment." };
-    }
-    if (!data?.ok) return { ok: false, error: data?.error ?? "Choix impossible." };
-    // « Nouvel équipage » : le deck offert est un préconstruit débloqué comme un autre.
-    await recordQuestEvent(userId, `unlock:${deckId}`, { unlock_precon_decks: 1 });
-    return { ok: true, deckId };
-  } catch (error) {
-    console.error("[claimFreePreconDeck] Échec :", error);
-    return { ok: false, error: "Choix impossible pour le moment." };
-  }
-}
-
-/** Débloque un préconstruit en dépensant un Jeton — atomique côté base. */
+/**
+ * Débloque un préconstruit en dépensant un Jeton — atomique côté base.
+ *
+ * Seul le rayon au Jeton (`offer: "shop"`) s'achète : un starter vient de
+ * la première mission, un deck retiré ne se vend plus. Refusé ICI, donc
+ * aussi pour le panier du Market (`checkoutCartFor`), et refusé encore par
+ * la base (`unlock_precon_deck`, migration 20261104120000).
+ */
 export async function unlockPreconDeck(userId: string, deckId: string): Promise<UnlockResult> {
-  if (!isPreconDeckId(deckId)) return { ok: false, error: "Ce deck n'est pas un préconstruit." };
+  const deck = catalogDeckById(deckId);
+  if (!deck || !isPreconDeckId(deckId)) return { ok: false, error: "Ce deck n'est pas un préconstruit." };
+  if (deck.offer === "starter") return { ok: false, error: "Ce deck est offert par la première mission : il ne s'achète pas." };
+  if (deck.offer === "retired") return { ok: false, error: "Ce préconstruit a quitté le rayon." };
   try {
     const service = createSupabaseServiceRoleClient();
     const { data, error } = await service.rpc("unlock_precon_deck", { p_user_id: userId, p_deck_id: deckId });

@@ -1,4 +1,5 @@
 import { PRECON_DECK_LISTS } from "@/game/cards/decks/precon";
+import { STARTER_DECK_IDS } from "@/game/cards/decks/starters";
 import type { DeckList } from "@/game/cards/decks/types";
 
 /**
@@ -13,10 +14,11 @@ import type { DeckList } from "@/game/cards/decks/types";
  * chaque écran à ranger deux rayons qui disaient la même chose. Ce qui
  * subsiste, et qui suffit (Notion « Progression joueur » §3 et §4) :
  *
- *   - le PREMIER préconstruit est gratuit, choisi une fois depuis la
- *     Collection à la sortie du tutoriel ;
- *   - les SUIVANTS coûtent un Jeton de Préconstruit, gagné aux gros
- *     paliers de niveau.
+ *   - la PREMIÈRE MISSION (tutoriel terminé ou passé) offre les trois
+ *     starters d'un coup (15/10/2026 — elle remplace l'ancien choix
+ *     gratuit d'un préconstruit, dont les déblocages restent valides) ;
+ *   - les AUTRES coûtent un Jeton de Préconstruit, gagné aux gros
+ *     paliers de niveau (`offer: "shop"`) — sauf les retirés.
  *
  * Dans les deux cas les cartes restent PRÊTÉES : « le premier deck ne doit
  * pas injecter un gros volume de cartes gratuites dans la collection ».
@@ -32,6 +34,18 @@ import type { DeckList } from "@/game/cards/decks/types";
 /** Difficulté affichée en étoiles sur la fiche (§4). */
 export type DeckDifficulty = 1 | 2 | 3 | 4 | 5;
 
+/**
+ * Comment un deck du catalogue s'OBTIENT (décision du 15/10/2026) :
+ *
+ *   - `shop`    : au rayon, contre un Jeton de Préconstruit ;
+ *   - `starter` : offert par la PREMIÈRE MISSION (tutoriel terminé ou
+ *                 passé) — jamais au Jeton ;
+ *   - `retired` : retiré du rayon. Plus achetable, masqué pour qui ne l'a
+ *                 pas ; qui l'a débloqué le garde, jouable. La liste reste
+ *                 dans `PRECON_DECKS` (résolution des parties, tests).
+ */
+export type DeckOffer = "shop" | "starter" | "retired";
+
 /** Un deck du catalogue système, enrichi de quoi le présenter au joueur. */
 export interface CatalogDeck extends DeckList {
   /** « agressif / swarm », « contrôle », … — la phrase que le joueur lit d'abord. */
@@ -39,9 +53,11 @@ export interface CatalogDeck extends DeckList {
   difficulty: DeckDifficulty;
   /** Mécaniques principales, 2 à 4 entrées courtes. */
   mechanics: string[];
+  /** Comment le deck s'obtient — voir `DeckOffer`. */
+  offer: DeckOffer;
 }
 
-type DeckMeta = Omit<CatalogDeck, keyof DeckList>;
+type DeckMeta = Omit<CatalogDeck, keyof DeckList | "offer"> & { offer?: DeckOffer };
 
 /**
  * Métadonnées par identifiant de deck. Séparées des listes de cartes pour
@@ -87,10 +103,12 @@ const DECK_META: Record<string, DeckMeta> = {
     difficulty: 4,
     mechanics: ["Réactions cachées", "Fenêtres de Marée", "Punition du développement"],
   },
+  // Retiré du rayon le 15/10/2026 : Le Rempart Vivant reprend la défense.
   "la-forteresse": {
     style: "Défensif / Garde et Ancrage",
     difficulty: 2,
     mechanics: ["Grosse coque", "Réduction de dégâts", "Réparations"],
+    offer: "retired",
   },
   "descente-aux-abysses": {
     style: "Contrôle / Marée et Abysses",
@@ -101,11 +119,15 @@ const DECK_META: Record<string, DeckMeta> = {
     style: "Contrôle / Structures, Sabordage et recyclage",
     difficulty: 3,
     mechanics: ["Sabordage volontaire", "Récupération au Cimetière", "Ancrage regagné"],
+    // Retiré du rayon le 15/10/2026.
+    offer: "retired",
   },
   "a-bout-de-raison": {
     style: "Contrôle / pression sur la Raison",
     difficulty: 4,
     mechanics: ["Perte de Raison adverse", "Déraison imposée", "Lecture de la main"],
+    // Retiré du rayon le 15/10/2026.
+    offer: "retired",
   },
   "arsenal-de-pont": {
     style: "Tempo / Objets et Bris depuis la main",
@@ -155,12 +177,37 @@ const DECK_META: Record<string, DeckMeta> = {
     difficulty: 3,
     mechanics: ["Jets de dé", "Chaîne", "Retour en main"],
   },
+  // Les trois starters de la PREMIÈRE MISSION (15/10/2026) : offerts au
+  // tutoriel terminé ou passé, jamais au Jeton. Difficulté 1–2 : ce sont les
+  // premiers decks qu'un joueur pilote.
+  "le-rempart-vivant": {
+    style: "Défensif / défense active",
+    difficulty: 1,
+    mechanics: ["Encaisser pour grandir", "Ripostes", "Soin"],
+    offer: "starter",
+  },
+  "les-saboteurs-du-pont": {
+    style: "Contrôle / pièges et emplacements",
+    difficulty: 2,
+    mechanics: ["Pièges cachés", "Emplacements condamnés", "Structures qui nourrissent les ouvriers"],
+    offer: "starter",
+  },
+  "l-assaut-des-marees": {
+    style: "Aggro / Pied marin et Tempête",
+    difficulty: 1,
+    mechanics: ["Pied marin", "Renfort à l'attaque", "Pioche en attaquant"],
+    offer: "starter",
+  },
 };
 
 const FALLBACK_META: DeckMeta = { style: "Polyvalent", difficulty: 3, mechanics: [] };
 
 function withMeta(deck: DeckList): CatalogDeck {
-  return { ...deck, ...(DECK_META[deck.id] ?? FALLBACK_META) };
+  const meta = DECK_META[deck.id] ?? FALLBACK_META;
+  // Un starter l'est par son identifiant (`starters.ts`), même si sa méta
+  // l'oubliait : il ne doit jamais devenir achetable par omission.
+  const offer: DeckOffer = STARTER_DECK_IDS.includes(deck.id) ? "starter" : (meta.offer ?? "shop");
+  return { ...deck, ...meta, offer };
 }
 
 /**
@@ -186,4 +233,31 @@ export function catalogDeckById(deckId: string): CatalogDeck | undefined {
 
 export function isPreconDeckId(deckId: string): boolean {
   return PRECON_DECKS.some((deck) => deck.id === deckId);
+}
+
+/** Les starters de la première mission, dans l'ordre d'affichage. */
+export const STARTER_DECKS: readonly CatalogDeck[] = PRECON_DECKS.filter((deck) => deck.offer === "starter");
+
+/** Le rayon au Jeton : ni starters, ni decks retirés. */
+export const SHOP_DECKS: readonly CatalogDeck[] = PRECON_DECKS.filter((deck) => deck.offer === "shop");
+
+/** `true` si le deck s'achète au Jeton aujourd'hui. */
+export function isShopDeckId(deckId: string): boolean {
+  return SHOP_DECKS.some((deck) => deck.id === deckId);
+}
+
+/**
+ * `true` si le deck se MONTRE au rayon pour ce joueur : un deck retiré ne
+ * s'affiche plus qu'à qui l'a débloqué (il le garde, jouable).
+ */
+export function isDeckOnShelf(deck: CatalogDeck, unlocked: boolean): boolean {
+  return deck.offer !== "retired" || unlocked;
+}
+
+/**
+ * Ordre du rayon : les starters en tête, puis le rayon au Jeton, puis les
+ * retirés (seulement chez qui les possède, voir `isDeckOnShelf`).
+ */
+export function shelfOrder(deck: CatalogDeck): number {
+  return deck.offer === "starter" ? 0 : deck.offer === "shop" ? 1 : 2;
 }

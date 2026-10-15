@@ -1,4 +1,4 @@
-import { deckProfile, deckStyleFromText, deckStyleLabel, getCardDefinition, type DeckStyleId } from "@/game";
+import { deckProfile, deckStyleFromText, deckStyleLabel, getCardDefinition, isDeckOnShelf, shelfOrder, type DeckStyleId } from "@/game";
 import type { PlayerDeckSummary } from "@/app/decks/actions";
 import type { CatalogDeckView, DeckCatalogView } from "@/features/decks/catalogService";
 import { plateArtUrl, nameplateArtUrl } from "@/features/decks/nameplateArt";
@@ -83,6 +83,16 @@ export function mineEntries(decks: readonly PlayerDeckSummary[]): BrowserDeck[] 
       mine: deck,
     };
   });
+}
+
+/**
+ * Le rayon vu par UN joueur (15/10/2026) : un deck retiré n'y figure que
+ * s'il l'a débloqué, et les starters de la première mission passent en
+ * tête, puis le rayon au Jeton, puis les retirés possédés. Tri stable :
+ * l'ordre de `PRECON_DECKS` tient à l'intérieur de chaque groupe.
+ */
+export function shelfView(decks: readonly CatalogDeckView[]): CatalogDeckView[] {
+  return decks.filter((entry) => isDeckOnShelf(entry.deck, entry.unlocked)).sort((a, b) => shelfOrder(a.deck) - shelfOrder(b.deck));
 }
 
 /**

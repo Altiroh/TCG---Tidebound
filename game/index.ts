@@ -123,9 +123,15 @@ export {
   PRECON_DECKS,
   catalogDeckById,
   isPreconDeckId,
+  isShopDeckId,
+  isDeckOnShelf,
+  shelfOrder,
   PLAYABLE_DECKS,
+  SHOP_DECKS,
+  STARTER_DECKS,
 } from "@/game/cards/decks/catalog";
-export type { CatalogDeck, DeckDifficulty } from "@/game/cards/decks/catalog";
+export type { CatalogDeck, DeckDifficulty, DeckOffer } from "@/game/cards/decks/catalog";
+export { STARTER_DECK_IDS, STARTER_DECK_LISTS, isStarterDeckId } from "@/game/cards/decks/starters";
 /* Le profil DÉDUIT d une liste de cartes — ce qu une fiche de deck affiche
    quand la liste n a pas de métadonnées écrites (deck monté par le joueur). */
 export { deckProfile } from "@/game/cards/decks/deckProfile";

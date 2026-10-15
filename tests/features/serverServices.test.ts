@@ -96,7 +96,6 @@ describe("catalogue de decks", () => {
     // quand plus rien ne répond — sinon l'écran Decks se vide.
     expect(catalog.decks.length).toBeGreaterThan(0);
     expect(catalog.preconTokens).toBe(0);
-    expect(catalog.freeDeckId).toBeNull();
   });
 
   it("hors connexion, ne consulte pas la base du tout", async () => {

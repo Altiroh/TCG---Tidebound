@@ -1,4 +1,5 @@
 import { repeat, type DeckList } from "@/game/cards/decks/types";
+import { STARTER_DECK_LISTS } from "@/game/cards/decks/starters";
 
 /**
  * DECKS PRÉCONSTRUITS — les listes fournies par le jeu.
@@ -1181,4 +1182,7 @@ export const PRECON_DECK_LISTS: readonly DeckList[] = [
   // Lot 17 — Dungeon et Ladalle / Opalins (05/10/2026).
   DECK_LES_VEILLEURS_D_OPALE,
   DECK_LA_QUETE_ETAIT_POURTANT_SIMPLE,
+  // Les trois starters de la première mission (15/10/2026) — EN FIN de
+  // liste : des tests et des écrans indexent [0], [1], [2].
+  ...STARTER_DECK_LISTS,
 ];

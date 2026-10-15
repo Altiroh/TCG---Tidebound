@@ -12,7 +12,7 @@ import {
   setDeckFavorite,
   type PlayerDeckSummary,
 } from "@/app/decks/actions";
-import { chooseFreePreconDeck, unlockPreconstructedDeck } from "@/features/decks/catalogActions";
+import { unlockPreconstructedDeck } from "@/features/decks/catalogActions";
 import type { DeckCatalogView } from "@/features/decks/catalogService";
 import { catalogEntries, mineEntries, type BrowserDeck } from "@/features/decks/deckEntries";
 import { DECK_SORTS, filterDecks, sortDecks, type DeckSortId } from "@/features/decks/deckFilters";
@@ -69,9 +69,9 @@ export function DecksScreen({ isSignedIn, initialDecks, catalog, recentDeckIds =
     decode: (raw) => oneOf(DECK_SORTS.map((option) => option.id), raw),
   });
   const [currentId, setCurrentId] = useState<string | null>(null);
-  // Le joueur qui n'a pas encore pris son préconstruit gratuit arrive
-  // directement sur le rayon : c'est l'étape qui lui manque pour jouer.
-  const [tab, setTab] = useState<TableTab>(isSignedIn && catalog.freeDeckId === null ? "precon" : "mine");
+  // Le joueur qui n'a encore AUCUN préconstruit (première mission pas encore
+  // accomplie) arrive directement sur le rayon : il y voit ce qui l'attend.
+  const [tab, setTab] = useState<TableTab>(isSignedIn && !catalog.decks.some((entry) => entry.unlocked) ? "precon" : "mine");
   // Favoris de l'APPAREIL : le repli hors connexion (ou sans la table en base).
   const [localFavorites, setLocalFavorites] = usePersistedState<ReadonlySet<string>>("decks:favoris", new Set<string>(), {
     encode: (value) => Array.from(value),
@@ -262,13 +262,12 @@ export function DecksScreen({ isSignedIn, initialDecks, catalog, recentDeckIds =
     act("Effacement", () => purgeDecks([deck.id]), () => notify("success", `« ${deck.name} » a été effacé.`));
   }
 
-  /** Déblocage d'un préconstruit : le premier est gratuit, les suivants coûtent un Jeton. */
+  /** Déblocage d'un préconstruit du rayon contre un Jeton (les starters viennent de la première mission). */
   function handleUnlock(deck: BrowserDeck) {
     playButtonClick();
     setCatalogError(null);
-    const gratuit = catalog.freeDeckId === null;
     startTransition(async () => {
-      const result = gratuit ? await chooseFreePreconDeck(deck.id) : await unlockPreconstructedDeck(deck.id);
+      const result = await unlockPreconstructedDeck(deck.id);
       if (!result.ok) {
         setCatalogError(result.error ?? "Action impossible.");
         return;
@@ -340,7 +339,6 @@ export function DecksScreen({ isSignedIn, initialDecks, catalog, recentDeckIds =
           ownership={catalogTarget.catalog.ownership}
           unlocked={catalogTarget.catalog.unlocked}
           tokens={catalog.preconTokens}
-          freeChoiceAvailable={catalog.freeDeckId === null}
           busy={isPending}
           error={catalogError}
           onUnlock={() => handleUnlock(catalogTarget)}

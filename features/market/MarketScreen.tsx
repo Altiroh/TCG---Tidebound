@@ -149,9 +149,16 @@ export function MarketScreen({ inventory, catalog, collectables, sandbox = false
     [collectables.families]
   );
 
+  /**
+   * Le rayon au Jeton seulement (15/10/2026) : les starters viennent de la
+   * première mission, les decks retirés ne se vendent plus — même à qui les
+   * possède, ils restent dans Decks, pas au Market.
+   */
+  const shopDecks = useMemo(() => catalog.decks.filter((entry) => entry.deck.offer === "shop"), [catalog.decks]);
+
   // ── Le panier, ligne par ligne ───────────────────────────────────
   const boosterLines = onSale.filter((booster) => (cart.boosters[booster.boosterId] ?? 0) > 0);
-  const deckLines = catalog.decks.filter((entry) => cart.decks.includes(entry.deck.id) && !entry.unlocked);
+  const deckLines = shopDecks.filter((entry) => cart.decks.includes(entry.deck.id) && !entry.unlocked);
   const cosmeticLines = cosmeticsOnSale.filter((row) => cart.cosmetics.includes(row.key) && !row.option.owned);
 
   const boosterCount = boosterLines.reduce((sum, booster) => sum + (cart.boosters[booster.boosterId] ?? 0), 0);
@@ -377,9 +384,9 @@ export function MarketScreen({ inventory, catalog, collectables, sandbox = false
               key="decks"
               dock="decks"
               label="decks"
-              count={catalog.decks.length}
+              count={shopDecks.length}
               render={(index, slot) => {
-                const entry = catalog.decks[index]!;
+                const entry = shopDecks[index]!;
                 return (
                   <DeckGoods
                     entry={entry}
@@ -572,7 +579,7 @@ export function MarketScreen({ inventory, catalog, collectables, sandbox = false
 /** Laboratoire : un panier garni des trois rayons, pour voir toutes ses sortes de lignes. */
 function sampleCart(inventory: BoosterInventory, catalog: DeckCatalogSummary, collectables: CollectablesView): Cart {
   const boosters = inventory.boosters.filter((booster) => booster.isPurchasable && booster.price !== null).slice(0, 2);
-  const deck = catalog.decks.find((entry) => !entry.unlocked);
+  const deck = catalog.decks.find((entry) => !entry.unlocked && entry.deck.offer === "shop");
   const cosmetic = collectables.families
     .flatMap((family) =>
       family.options
