@@ -1,0 +1,89 @@
+/* Panneau latéral du bandeau (`SidePanel`) — même matière que le Courrier (`Mail.module.css`). */
+.panel {
+  position: relative;
+  /* Porté hors de l'écran (portail) : les alias de `GameScreen` (`--line`, `--ink`…) que
+     ses contrôles lisent, repris ici. */
+  --cb-cyan: var(--tb-accent);
+  --cb-cyan-soft: var(--tb-accent-soft);
+  --panel: var(--tb-surface);
+  --panel-solid: var(--tb-surface-solid);
+  --panel-raised: var(--tb-surface-raised);
+  --panel-inset: var(--tb-surface-inset);
+  --line: var(--tb-border);
+  --line-strong: var(--tb-border-strong);
+  --ink: var(--tb-text);
+  --ink-strong: var(--tb-text-strong);
+  --ink-dim: var(--tb-text-muted);
+  --ink-faint: var(--tb-text-soft);
+  --danger: var(--tb-danger);
+  --success: var(--tb-success);
+  --gold: var(--tb-gold);
+  --radius: var(--tb-radius-lg);
+  --radius-sm: var(--tb-radius-sm);
+  display: flex;
+  flex-direction: column;
+  width: min(460px, 100vw);
+  height: 100dvh;
+  padding: calc(18px + var(--tb-safe-top, 0px)) calc(18px + var(--tb-safe-right, 0px)) calc(14px + var(--tb-safe-bottom, 0px)) 18px;
+  border-left: 1px solid var(--tb-border-strong);
+  background: linear-gradient(170deg, var(--tb-surface-solid-raised), var(--tb-surface-solid) 55%);
+  box-shadow: -24px 0 48px rgba(0, 0, 0, 0.55);
+  color: var(--tb-text);
+  animation: slideIn 220ms var(--tb-ease, ease-out) both;
+}
+
+@keyframes slideIn {
+  from { transform: translateX(24px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 12px;
+  background: linear-gradient(90deg, transparent, rgba(217, 181, 106, 0.55) 15%, rgba(217, 181, 106, 0.55) 85%, transparent) bottom / 100% 1px no-repeat;
+}
+
+.headIcon {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.6));
+}
+
+.title {
+  flex: 1;
+  margin: 0;
+  color: #f1ebdc;
+  font-family: var(--tb-font-display, Georgia, serif);
+  font-size: calc(clamp(19px, 1.8vw, 24px) * var(--tb-text-scale));
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.close {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(207, 224, 240, 0.3);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.05);
+  color: #e2e8f0;
+  font-size: calc(20px * var(--tb-text-scale));
+  line-height: 1;
+  cursor: var(--tb-cursor-pointer);
+}
+
+.scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  margin: 12px -6px 0;
+  padding: 4px 6px;
+  scrollbar-width: thin;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel { animation: none; }
+}

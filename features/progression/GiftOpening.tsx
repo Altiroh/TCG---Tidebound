@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import styles from "@/features/progression/GiftOpening.module.css";
+import banner from "@/features/shell/BlackBanner.module.css";
 
 /** Durée de la scène avant la révélation des récompenses. */
 export const GIFT_OPEN_MS = 1900;
@@ -31,7 +32,9 @@ export function GiftOpening({ color, name, onDone }: { color?: string; name?: st
 
   if (!mounted) return null;
   return createPortal(
-    <div className={styles.scene} data-color={color} data-phase={phase} role="status" aria-label={`Un colis${name ? ` de ${name}` : ""} s'ouvre`}>
+    // Le bandeau noir des présentations (15/10/2026) : le coffret s'ouvre dedans.
+    <div className={banner.veil}>
+    <div className={`${banner.band} ${styles.scene}`} data-color={color} data-phase={phase} role="status" aria-label={`Un colis${name ? ` de ${name}` : ""} s'ouvre`}>
       <div className={styles.box}>
         <span className={styles.glow} aria-hidden />
         {phase === "burst" && <span className={styles.rays} aria-hidden />}
@@ -47,6 +50,7 @@ export function GiftOpening({ color, name, onDone }: { color?: string; name?: st
         {/* eslint-enable @next/next/no-img-element */}
       </div>
       {name && <p className={styles.caption}>Un colis de {name}</p>}
+    </div>
     </div>,
     document.body
   );

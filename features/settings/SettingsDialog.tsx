@@ -7,7 +7,7 @@ import { AudioSettingsSection } from "@/features/settings/AudioSettingsSection";
 import { InterfaceSettingsSection } from "@/features/settings/InterfaceSettingsSection";
 import { ChangePasswordSection } from "@/features/settings/ChangePasswordSection";
 import { DeleteAccountSection } from "@/features/settings/DeleteAccountSection";
-import { Dialog } from "@/features/shell/Dialog";
+import { SidePanel } from "@/features/shell/SidePanel";
 import styles from "@/features/settings/Settings.module.css";
 import { playButtonClick } from "@/lib/sound";
 
@@ -22,18 +22,16 @@ interface SettingsDialogProps {
  * Dialogue des Options, atteignable depuis l'engrenage du bandeau (tous
  * les écrans) et depuis le menu principal.
  *
- * Monté sur le `Dialog` commun plutôt que sur sa propre fenêtre de verre :
- * c'est la même fenêtre flottante que « Choisir le Navire » ou
- * « Modifications non sauvegardées », donc le même cadre, le même filet
- * cyan en tête, la même croix, les mêmes sorties (Échap, voile, croix). Il
- * ne restait de l'ancienne version qu'une matière de plus à entretenir.
+ * PANNEAU LATÉRAL (15/10/2026), comme le Courrier : il glisse depuis la
+ * droite (`SidePanel`), l'écran reste deviné à gauche ; mêmes sorties
+ * qu'avant (Échap, voile, croix).
  *
  * Sections (Audio, Interface, Tutoriel, Atelier, Compte) séparées par un filet : tout ce
  * qui se règle aujourd'hui tient sur un écran, sans onglets ni page dédiée.
  */
 export function SettingsDialog({ isSignedIn, isAdmin = false, onClose }: SettingsDialogProps) {
   return (
-    <Dialog title="Options" onClose={onClose} width={460}>
+    <SidePanel title="Options" onClose={onClose}>
       <div className={styles.settings}>
         <section className={styles.section}>
           <h3 className={styles.sectionTitle}>Audio</h3>
@@ -141,6 +139,6 @@ export function SettingsDialog({ isSignedIn, isAdmin = false, onClose }: Setting
         </p>
         )}
       </div>
-    </Dialog>
+    </SidePanel>
   );
 }

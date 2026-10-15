@@ -1,14 +1,17 @@
+/* Le voile et le bandeau viennent de `BlackBanner.module.css` (15/10/2026) ; le
+   bandeau du coffret prend la teinte du mécène, et laisse le couvercle s'envoler. */
 .scene {
   --gift: #5fd0e6;
-  position: fixed;
-  inset: 0;
-  z-index: 95;
   display: grid;
   place-items: center;
-  align-content: center;
   gap: 18px;
-  background: radial-gradient(60% 55% at 50% 48%, color-mix(in srgb, var(--gift) 22%, transparent), rgba(2, 6, 11, 0.86) 70%);
-  animation: sceneIn 260ms ease-out both;
+}
+
+.scene.scene {
+  overflow: visible;
+  background:
+    radial-gradient(45% 80% at 50% 50%, color-mix(in srgb, var(--gift) 22%, transparent), transparent 70%),
+    linear-gradient(180deg, rgba(0, 0, 0, 0.9), rgba(4, 8, 14, 0.96) 50%, rgba(0, 0, 0, 0.9));
 }
 
 .scene[data-color="jaune"] { --gift: #e8b92f; }

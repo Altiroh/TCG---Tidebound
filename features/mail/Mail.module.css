@@ -5,6 +5,25 @@
  */
 .panel {
   position: relative;
+  /* Porté hors de l'écran (portail) : les alias de `GameScreen` (`--line`, `--ink`…) que
+     ses contrôles lisent, repris ici. */
+  --cb-cyan: var(--tb-accent);
+  --cb-cyan-soft: var(--tb-accent-soft);
+  --panel: var(--tb-surface);
+  --panel-solid: var(--tb-surface-solid);
+  --panel-raised: var(--tb-surface-raised);
+  --panel-inset: var(--tb-surface-inset);
+  --line: var(--tb-border);
+  --line-strong: var(--tb-border-strong);
+  --ink: var(--tb-text);
+  --ink-strong: var(--tb-text-strong);
+  --ink-dim: var(--tb-text-muted);
+  --ink-faint: var(--tb-text-soft);
+  --danger: var(--tb-danger);
+  --success: var(--tb-success);
+  --gold: var(--tb-gold);
+  --radius: var(--tb-radius-lg);
+  --radius-sm: var(--tb-radius-sm);
   display: flex;
   flex-direction: column;
   width: min(460px, 100vw);

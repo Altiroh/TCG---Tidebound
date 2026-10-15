@@ -1,0 +1,101 @@
+/*
+ * BANDEAU NOIR des PRÉSENTATIONS (décision du 15/10/2026) : toute annonce
+ * — récompense obtenue, escale du jour, colis ouvert, mission accomplie —
+ * passe par le même grand bandeau noir d'un bord à l'autre de l'écran que
+ * les confirmations (`Dialog` `variant="banner"`, `Dialog.module.css`) :
+ * deux filets cyan qui le bordent, un voile qui assombrit sans flouter.
+ *
+ * `.veil` couvre l'écran et centre le bandeau ; `.band` est le bandeau, son
+ * contenu centré dans une colonne (`--band-content`, 760 px par défaut).
+ * Les décors d'une présentation (rayons, éclats) se posent DANS le bandeau,
+ * qui les rogne.
+ */
+.veil {
+  position: fixed;
+  inset: 0;
+  z-index: 150;
+  display: grid;
+  align-content: safe center;
+  overflow-x: hidden;
+  overflow-y: auto;
+  background: rgba(2, 6, 12, 0.6);
+  color: var(--tb-text, #e8edf0);
+  animation: veilIn 200ms ease-out both;
+}
+
+.band {
+  --band-content: 760px;
+  position: relative;
+  width: 100%;
+  max-height: none;
+  overflow: hidden;
+  padding: clamp(22px, 4vh, 40px) max(calc(16px + var(--tb-safe-left, 0px)), calc((100vw - var(--band-content)) / 2));
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.9), rgba(4, 8, 14, 0.96) 50%, rgba(0, 0, 0, 0.9));
+  box-shadow: 0 0 60px rgba(0, 0, 0, 0.75);
+  text-align: center;
+  animation: bandIn 260ms var(--tb-ease, cubic-bezier(0.2, 0.8, 0.2, 1)) both;
+}
+
+/* Les deux filets du bandeau, en haut et en bas. */
+.band::before,
+.band::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--tb-accent, #5fd0e6) 30%, var(--tb-accent, #5fd0e6) 70%, transparent);
+  opacity: 0.75;
+  pointer-events: none;
+}
+
+.band::before {
+  top: 0;
+}
+
+.band::after {
+  bottom: 0;
+}
+
+/* Croix de fermeture, sur le bord droit du bandeau (comme le `Dialog`). */
+.close {
+  position: absolute;
+  top: 50%;
+  right: max(calc(16px + var(--tb-safe-right, 0px)), 3vw);
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  background: none;
+  color: var(--tb-text-muted, #9eb3c2);
+  font-size: 20px;
+  line-height: 1;
+  translate: 0 -50%;
+  cursor: var(--tb-cursor-pointer);
+}
+
+.close:hover {
+  background: var(--tb-accent-soft, rgba(95, 208, 230, 0.12));
+  color: var(--tb-text-strong, #fff);
+}
+
+@keyframes veilIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes bandIn {
+  from { opacity: 0; transform: scaleY(0.6); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .veil,
+  .band {
+    animation: none;
+  }
+}

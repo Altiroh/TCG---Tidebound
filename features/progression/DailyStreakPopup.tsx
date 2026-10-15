@@ -9,6 +9,7 @@ import { loginGainsText } from "@/features/progression/dailyLogin";
 import { notifyProgressionChanged } from "@/features/progression/progressionSync";
 import { RewardIcon } from "@/features/progression/RewardIcon";
 import styles from "@/features/progression/DailyStreakPopup.module.css";
+import banner from "@/features/shell/BlackBanner.module.css";
 import { playButtonClick, playStreakClaimed } from "@/lib/sound";
 import { MicroLoader } from "@/features/shell/MicroLoader";
 
@@ -88,10 +89,11 @@ export function DailyStreakPopup({ onClose, initialLogin }: DailyStreakPopupProp
   }
 
   return createPortal(
-    <div className={styles.scene} role="dialog" aria-modal aria-labelledby="daily-streak-title">
+    // Le bandeau noir des présentations (15/10/2026).
+    <div className={banner.veil} role="dialog" aria-modal aria-labelledby="daily-streak-title">
       <button type="button" className={styles.backdrop} aria-label="Fermer" onClick={onClose} />
-      <div className={styles.card}>
-        <button type="button" className={styles.close} aria-label="Fermer" onClick={onClose}>
+      <div className={`${banner.band} ${styles.card}`}>
+        <button type="button" className={banner.close} aria-label="Fermer" onClick={onClose}>
           ×
         </button>
 

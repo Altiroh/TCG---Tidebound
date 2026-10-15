@@ -8,6 +8,7 @@ import { CardTile } from "@/features/match/CardTile";
 import { chooseRewardCard, type PendingCardChoice } from "@/features/progression/profileActions";
 import { RewardIcon, type RewardItem } from "@/features/progression/RewardIcon";
 import styles from "@/features/progression/RewardReveal.module.css";
+import banner from "@/features/shell/BlackBanner.module.css";
 import { playButtonClick, playExploitClaimed, playRewardObtained } from "@/lib/sound";
 
 export interface RevealedLevel {
@@ -178,7 +179,9 @@ export function RewardReveal({ levels, choices, extraItems = [], title: forcedTi
     (levels.length === 1 ? `Palier ${levels[0]!.level} réclamé !` : levels.length > 1 ? `${levels.length} paliers réclamés !` : "Choisis ta carte");
 
   return createPortal(
-    <div className={styles.scene} role="dialog" aria-modal aria-label={title} onClick={phase === "items" ? finishItems : undefined} data-tap={phase === "items" ? "" : undefined}>
+    <div className={`${banner.veil} ${styles.scene}`} role="dialog" aria-modal aria-label={title} onClick={phase === "items" ? finishItems : undefined} data-tap={phase === "items" ? "" : undefined}>
+      {/* Le bandeau noir des présentations (15/10/2026) : la récompense s'y révèle, rayons et éclats compris. */}
+      <div className={`${banner.band} ${styles.band}`}>
       <span className={styles.rays} aria-hidden />
       <span className={styles.burst} aria-hidden>
         {Array.from({ length: 18 }, (_, index) => (
@@ -259,6 +262,7 @@ export function RewardReveal({ levels, choices, extraItems = [], title: forcedTi
           {kept.length > 0 && <p className={styles.kept}>Déjà gardée{kept.length > 1 ? "s" : ""} : {kept.map((id) => getCardDefinition(id).name).join(", ")}</p>}
         </div>
       ) : null}
+      </div>
     </div>,
     document.body
   );
