@@ -38,8 +38,11 @@ const BOOT_FONTS_MAX_MS = 2500;
  */
 // Un peu plus longues, et sans accélération finale (27/09/2026) : la
 // découverte finissait en ease-in, l'ombre « tombait » hors de l'écran.
-const COVER_MS = 360;
-const REVEAL_MS = 460;
+// Raccourcies (audit de fluidité du 14/10/2026) : 0,8 s fixes par
+// changement d'écran, avant même le chargement — 0,6 s désormais. La page
+// visée se précharge pendant que l'ombre couvre (`router.prefetch`).
+const COVER_MS = 260;
+const REVEAL_MS = 340;
 const ANIMATION_SLACK_MS = 150;
 
 function sleep(ms: number): Promise<void> {

@@ -1,7 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { claimFreePreconDeck, readDeckCatalog, unlockPreconDeck, type DeckCatalogView, type UnlockResult } from "@/features/decks/catalogService";
+import { claimFreePreconDeck, unlockPreconDeck, type UnlockResult } from "@/features/decks/catalogService";
+import { readDeckCatalogSummary, type DeckCatalogSummary } from "@/features/decks/catalogSummary";
 import { getSessionUser } from "@/lib/supabase/sessionUser";
 
 /**
@@ -13,20 +14,10 @@ import { getSessionUser } from "@/lib/supabase/sessionUser";
  * prévoit.
  */
 
-export interface DeckCatalogSummary extends DeckCatalogView {
-  isSignedIn: boolean;
-}
+export type { DeckCatalogSummary };
 
 export async function fetchDeckCatalog(): Promise<DeckCatalogSummary> {
-  try {
-    const user = await getSessionUser();
-    const view = await readDeckCatalog(user?.id ?? null);
-    return { ...view, isSignedIn: Boolean(user) };
-  } catch (error) {
-    console.error("[fetchDeckCatalog] Lecture impossible :", error);
-    const view = await readDeckCatalog(null);
-    return { ...view, isSignedIn: false };
-  }
+  return readDeckCatalogSummary();
 }
 
 /** Prend le préconstruit GRATUIT (§3) — une seule fois par compte. */

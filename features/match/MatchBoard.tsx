@@ -4,7 +4,7 @@ import { useNoMenuAmbiance } from "@/components/menu/MenuAmbiance";
 import { matchAudienceVerdict } from "@/features/audience/verdict";
 import { useEndScreenHold } from "@/features/match/useEndScreenHold";
 import { useScreenWakeLock } from "@/features/match/useScreenWakeLock";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   dispatch,
   eligibleCandidatesFor,
@@ -190,10 +190,14 @@ export function MatchBoard({
   );
   // La première cible d'une action qui n'est pas allée au bout reste marquée.
   const heldTarget = useHeldTarget(state);
-  const myReactionCandidates =
-    state.pendingReaction?.awaitingPlayerId === viewerPlayerId
-      ? eligibleCandidatesFor(state, state.pendingReaction.events, viewerPlayerId, state.pendingReaction.turnNumber, state.pendingReaction.usedCandidateKeys)
-      : [];
+  // Mémorisé sur l'état : le plateau se re-rend à chaque mouvement de pointeur.
+  const myReactionCandidates = useMemo(
+    () =>
+      state.pendingReaction?.awaitingPlayerId === viewerPlayerId
+        ? eligibleCandidatesFor(state, state.pendingReaction.events, viewerPlayerId, state.pendingReaction.turnNumber, state.pendingReaction.usedCandidateKeys)
+        : [],
+    [state, viewerPlayerId]
+  );
 
   // Une seule capacité à proposer, et elle vise une unité : pas de question
   // « Oui / Non » d'abord — on passe DIRECTEMENT à la désignation sur le
@@ -440,8 +444,13 @@ export function MatchBoard({
 
   // La partie finie, la table reste le temps de VOIR le coup qui l'a finie.
   const endHold = useEndScreenHold(state);
-  const tableLabel = (id?: string) =>
-    id === botPlayerId ? "Le bot" : id === humanPlayerId ? (displayNames.me ?? "Joueur 1") : id === "p1" ? "Joueur 1" : id === "p2" ? "Joueur 2" : "?";
+  // Stable entre deux rendus : le journal (`EventFeed`) mémorise ses lignes sur cette fonction.
+  const myName = displayNames.me;
+  const tableLabel = useCallback(
+    (id?: string) =>
+      id === botPlayerId ? "Le bot" : id === humanPlayerId ? (myName ?? "Joueur 1") : id === "p1" ? "Joueur 1" : id === "p2" ? "Joueur 2" : "?",
+    [botPlayerId, humanPlayerId, myName]
+  );
 
   if (state.status === "finished" && !hideEndScreen && endHold.showEnd) {
     // Contre un bot, l'écran appartient au joueur humain ; en hot-seat, c'est
@@ -499,9 +508,7 @@ export function MatchBoard({
           <EventFeed
             variant="rail"
             state={state}
-            playerLabel={(id) =>
-              id === botPlayerId ? "Le bot" : id === humanPlayerId ? (displayNames.me ?? "Joueur 1") : id === "p1" ? "Joueur 1" : id === "p2" ? "Joueur 2" : "?"
-            }
+            playerLabel={tableLabel}
           />
         }
         canPlayCards={canPlayCards}

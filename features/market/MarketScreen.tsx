@@ -7,13 +7,13 @@ import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/market/Market.module.css";
 import { PreconToken, TideCoin } from "@/features/shell/GameIcons";
 import { ScreenToast, type ScreenToastMessage } from "@/features/shell/ScreenToast";
-import { purchaseBooster, type BoosterInventory, type BoosterInventoryEntry } from "@/features/boosters/actions";
+import type { BoosterInventory, BoosterInventoryEntry } from "@/features/boosters/actions";
 import { MAX_PURCHASE_QUANTITY } from "@/features/boosters/constants";
 import { SHELF_BOOSTER_IDS } from "@/game/boosters";
 import { closedPackVariables, getBoosterPackVisual } from "@/features/boosters/opening/boosterPackVisuals";
-import { purchaseCollectable } from "@/features/cosmetics/collectablesActions";
+import { checkoutCart, type CheckoutCart, type CheckoutCartResult } from "@/features/market/actions";
 import type { CollectablesView } from "@/features/cosmetics/collectablesService";
-import { unlockPreconstructedDeck, type DeckCatalogSummary } from "@/features/decks/catalogActions";
+import type { DeckCatalogSummary } from "@/features/decks/catalogActions";
 import type { CatalogDeckView } from "@/features/decks/catalogService";
 import { DeckBox } from "@/features/decks/DeckBox";
 import { nameplateArtUrl } from "@/features/decks/nameplateArt";
@@ -54,13 +54,6 @@ interface Cart {
 }
 
 const EMPTY_CART: Cart = { boosters: {}, decks: [], cosmetics: [] };
-
-/** Achats simulés du laboratoire : tout réussit, rien n'est écrit. */
-const SANDBOX_ACTIONS = {
-  purchaseBooster: async (..._args: Parameters<typeof purchaseBooster>) => ({ ok: true as const, error: undefined as string | undefined }),
-  unlockPreconstructedDeck: async (..._args: Parameters<typeof unlockPreconstructedDeck>) => ({ ok: true as const, error: undefined as string | undefined }),
-  purchaseCollectable: async (..._args: Parameters<typeof purchaseCollectable>) => ({ ok: true as const, error: undefined as string | undefined }),
-};
 
 /** Trois socles par ponton (`market/pedestals.webp`) : au-delà, les articles attendent dehors et la vitrine défile en boucle. */
 const PACKS_PER_PLATE = 3;
@@ -229,49 +222,31 @@ export function MarketScreen({ inventory, catalog, collectables, sandbox = false
     playButtonClick();
     setIsBuying(true);
 
-    const actions = sandbox ? SANDBOX_ACTIONS : { purchaseBooster, unlockPreconstructedDeck, purchaseCollectable };
-    const bought = { boosters: 0, decks: 0, cosmetics: 0, tides: 0, tokens: 0 };
-    let failure: string | null = null;
+    // UN seul appel serveur pour tout le panier (`checkoutCart`) : mêmes
+    // achats, même ordre, même arrêt au premier refus qu'avant, mais une
+    // seule revalidation et un seul rendu de /market en retour.
+    const lines: CheckoutCart = {
+      boosters: boosterLines.map((booster) => ({ boosterId: booster.boosterId, quantity: cart.boosters[booster.boosterId] ?? 0 })),
+      decks: deckLines.map((entry) => entry.deck.id),
+      cosmetics: cosmeticLines.map((row) => ({ kind: row.family, id: row.option.id })),
+    };
+    const outcome: CheckoutCartResult = sandbox
+      ? // Laboratoire : tout réussit, rien n'est écrit — le récapitulatif vient des prix affichés.
+        {
+          ok: true,
+          bought: { boosters: boosterCount, decks: deckLines.length, cosmetics: cosmeticLines.length, tides: tidesTotal, tokens: tokensTotal },
+          purchased: lines,
+          remaining: { boosters: [], decks: [], cosmetics: [] },
+        }
+      : await checkoutCart(lines);
+    const { bought } = outcome;
+    const failure = outcome.ok ? null : (outcome.error ?? "Achat impossible.");
+
+    // Ce qui est parti quitte le panier ; le reste (refusé, ou pas tenté) y demeure.
     const remaining: Cart = { boosters: { ...cart.boosters }, decks: [...cart.decks], cosmetics: [...cart.cosmetics] };
-
-    for (const booster of boosterLines) {
-      const quantity = cart.boosters[booster.boosterId] ?? 0;
-      const result = await actions.purchaseBooster(booster.boosterId, quantity);
-      if (!result.ok) {
-        failure = result.error ?? "Achat impossible.";
-        break;
-      }
-      bought.boosters += quantity;
-      bought.tides += (booster.price ?? 0) * quantity;
-      remaining.boosters[booster.boosterId] = 0;
-    }
-
-    if (!failure) {
-      for (const entry of deckLines) {
-        const result = await actions.unlockPreconstructedDeck(entry.deck.id);
-        if (!result.ok) {
-          failure = result.error ?? "Déblocage impossible.";
-          break;
-        }
-        bought.decks += 1;
-        bought.tokens += 1;
-        remaining.decks = remaining.decks.filter((id) => id !== entry.deck.id);
-      }
-    }
-
-    if (!failure) {
-      for (const row of cosmeticLines) {
-        const result = await actions.purchaseCollectable(row.family, row.option.id);
-        if (!result.ok) {
-          failure = result.error ?? "Achat impossible.";
-          break;
-        }
-        bought.cosmetics += 1;
-        bought.tides += row.option.priceTides ?? 0;
-        bought.tokens += row.option.priceTokens ?? 0;
-        remaining.cosmetics = remaining.cosmetics.filter((key) => key !== row.key);
-      }
-    }
+    for (const line of outcome.purchased.boosters) remaining.boosters[line.boosterId] = 0;
+    remaining.decks = remaining.decks.filter((id) => !outcome.purchased.decks.includes(id));
+    remaining.cosmetics = remaining.cosmetics.filter((key) => !outcome.purchased.cosmetics.some((line) => cosmeticKey(line.kind, line.id) === key));
 
     setIsBuying(false);
     setCart(remaining);
@@ -281,8 +256,8 @@ export function MarketScreen({ inventory, catalog, collectables, sandbox = false
       // Même partiel, un achat a eu lieu : il s'entend.
       playMarketBuy();
       if (!sandbox) notifyProgressionChanged();
-      // Pas de router.refresh() : chaque achat a revalidé, et la réponse du
-      // dernier porte déjà la page relue (audit de fluidité du 14/10/2026).
+      // Pas de router.refresh() : `checkoutCart` a revalidé une fois, et sa
+      // réponse porte déjà la page relue (audit de fluidité du 14/10/2026).
     }
 
     const recap = [

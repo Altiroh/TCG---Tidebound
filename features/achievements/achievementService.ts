@@ -40,7 +40,7 @@ export async function readAchievementStats(userId: string): Promise<AchievementS
 async function readStats(userId: string): Promise<AchievementStats | null> {
   const service = createSupabaseServiceRoleClient();
 
-  const [progression, onboarding, unlocks, cards, boosters, losses, voyages, lifetimeRows] = await Promise.all([
+  const [progression, onboarding, unlocks, cards, boosters, losses, voyages, lifetimeRows, abyssalCards] = await Promise.all([
     service.from("player_progression").select("level, xp_total, matches_played, pvp_wins").eq("user_id", userId).maybeSingle(),
     service.from("player_onboarding").select("tutorial_status").eq("user_id", userId).maybeSingle(),
     service.from("player_deck_unlocks").select("deck_id, source").eq("user_id", userId),
@@ -61,6 +61,10 @@ async function readStats(userId: string): Promise<AchievementStats | null> {
     // `20261020120000_statistiques_a_vie`. Absente, les conditions qui la
     // lisent restent à zéro — et rien d'autre ne s'éteint avec elles.
     service.from("player_lifetime_stats").select("stat_key, total, record").eq("user_id", userId),
+    // Les cartes Abyssales du catalogue (une poignée), lues EN MÊME TEMPS que
+    // la collection plutôt qu'après elle : l'intersection se fait ici, sans
+    // second aller-retour. La rareté fait autorité côté base (`cards.rarity`).
+    service.from("cards").select("id").eq("rarity", "abyssal"),
   ]);
 
   if (!progression.data) return null;
@@ -78,16 +82,8 @@ async function readStats(userId: string): Promise<AchievementStats | null> {
 
   // La rareté fait autorité côté base (`cards.rarity`), jamais côté code.
   const ownedIds = Object.keys(owned);
-  let ownsAbyssalCard = false;
-  if (ownedIds.length > 0) {
-    const { data: abyssal } = await service
-      .from("cards")
-      .select("id")
-      .eq("rarity", "abyssal")
-      .in("id", ownedIds)
-      .limit(1);
-    ownsAbyssalCard = (abyssal?.length ?? 0) > 0;
-  }
+  const ownedSet = new Set(ownedIds);
+  const ownsAbyssalCard = (abyssalCards.data ?? []).some((row) => ownedSet.has(row.id));
 
   if (losses.error) console.warn("[readAchievementStats] Compteur de défaites indisponible :", losses.error.message);
   if (lifetimeRows.error) console.warn("[readAchievementStats] Statistiques à vie indisponibles :", lifetimeRows.error.message);

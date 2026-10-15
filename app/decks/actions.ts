@@ -111,18 +111,34 @@ export async function listPlayerDecks(): Promise<PlayerDeckSummary[]> {
   const userId = await currentUserId(supabase);
   if (!userId) return [];
 
-  const { error: purgeError } = await supabase
-    .from("player_decks")
-    .delete()
-    .eq("user_id", userId)
-    .lt("deleted_at", trashPurgeCutoff().toISOString());
-  if (purgeError) console.error("[listPlayerDecks] Échec du vidage de la corbeille :", purgeError.message);
+  /*
+   * Vidage de la corbeille, lecture des decks et lecture des profils écrits
+   * partent ENSEMBLE. La lecture peut donc encore voir un deck que la purge
+   * est en train d'effacer : il est écarté ci-dessous avec la MÊME date
+   * butoir, si bien que l'écran reçoit exactement ce qu'il recevait quand
+   * la purge passait d'abord.
+   */
+  const cutoff = trashPurgeCutoff();
+  const [purge, read, profilesRead] = await Promise.all([
+    supabase.from("player_decks").delete().eq("user_id", userId).lt("deleted_at", cutoff.toISOString()),
+    supabase
+      .from("player_decks")
+      .select("id, name, ship_id, is_valid, art_card_id, deleted_at, is_default, description, created_at, updated_at")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: true }),
+    /*
+     * Le profil écrit à la main se lit À PART, et son échec ne coûte rien
+     * d'autre que lui-même : la migration `20260930120000` s'applique à la
+     * main, et tant qu'elle n'est pas passée, un `select` groupé ferait
+     * tomber toute la lecture sur son repli — la corbeille et le deck par
+     * défaut disparaîtraient de l'écran pour une colonne manquante qui ne
+     * les concerne pas.
+     */
+    supabase.from("player_decks").select("id, style, difficulty, mechanics").eq("user_id", userId),
+  ]);
+  if (purge.error) console.error("[listPlayerDecks] Échec du vidage de la corbeille :", purge.error.message);
 
-  let { data: decks, error: decksError } = await supabase
-    .from("player_decks")
-    .select("id, name, ship_id, is_valid, art_card_id, deleted_at, is_default, description, created_at, updated_at")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: true });
+  let { data: decks, error: decksError } = read;
   if (decksError) {
     // Base pas encore migrée (`20260923120000_deck_trash.sql` : colonne
     // `deleted_at` ; `20260924120000_default_deck.sql` : `is_default`) :
@@ -142,21 +158,16 @@ export async function listPlayerDecks(): Promise<PlayerDeckSummary[]> {
     decksError = fallback.error;
     if (decksError) console.error("[listPlayerDecks] Échec de la relecture sans corbeille :", decksError.message);
   }
+  // Ce que la purge efface (ou aurait effacé) n'est pas montré. Si elle a
+  // échoué, on garde l'ancien comportement : le deck échu reste visible.
+  if (decks && !purge.error) {
+    const limit = cutoff.getTime();
+    decks = decks.filter((deck) => !deck.deleted_at || !(Date.parse(deck.deleted_at) < limit));
+  }
   if (!decks || decks.length === 0) return [];
 
-  /*
-   * Le profil écrit à la main se lit À PART, et son échec ne coûte rien
-   * d'autre que lui-même : la migration `20260930120000` s'applique à la
-   * main, et tant qu'elle n'est pas passée, un `select` groupé ferait
-   * tomber toute la lecture sur son repli — la corbeille et le deck par
-   * défaut disparaîtraient de l'écran pour une colonne manquante qui ne
-   * les concerne pas.
-   */
   const written = new Map<string, { style: string | null; difficulty: number | null; mechanics: string[] | null }>();
-  const { data: profiles, error: profilesError } = await supabase
-    .from("player_decks")
-    .select("id, style, difficulty, mechanics")
-    .eq("user_id", userId);
+  const { data: profiles, error: profilesError } = profilesRead;
   if (profilesError) {
     console.error("[listPlayerDecks] Profils de deck illisibles (migration player_deck_profile appliquée ?) :", profilesError.message);
   }

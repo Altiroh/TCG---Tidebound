@@ -46,7 +46,15 @@
   52%, 100% { transform: translateX(45%); opacity: 0; }
 }
 
-/* Une étoile à quatre branches, placée et décalée par style en ligne. */
+/*
+ * Une étoile à quatre branches, placée et décalée par style en ligne.
+ *
+ * Son halo doré est PEINT dans le dégradé (branches élargies et pâles,
+ * auréole au cœur) au lieu d'un `filter: drop-shadow` + `mix-blend-mode` :
+ * l'animation ne touche plus qu'à l'opacité et à la transformation, que le
+ * compositeur joue seul — le filtre, lui, se recalculait à chaque image,
+ * pour chaque étoile de chaque légendaire en main (audit de fluidité, lot 2).
+ */
 .etoile {
   position: absolute;
   width: 6cqw;
@@ -55,11 +63,38 @@
   background:
     radial-gradient(circle, rgba(255, 255, 240, 1) 0 8%, rgba(255, 220, 130, 0.9) 14%, transparent 34%),
     linear-gradient(0deg, transparent 47%, rgba(255, 240, 190, 0.95) 50%, transparent 53%),
-    linear-gradient(90deg, transparent 47%, rgba(255, 240, 190, 0.95) 50%, transparent 53%);
-  filter: drop-shadow(0 0 1cqw rgba(255, 210, 110, 0.9));
-  mix-blend-mode: screen;
+    linear-gradient(90deg, transparent 47%, rgba(255, 240, 190, 0.95) 50%, transparent 53%),
+    /* Le halo : la lueur des branches, puis celle du cœur. */
+    linear-gradient(0deg, transparent 39%, rgba(255, 210, 110, 0.38) 50%, transparent 61%),
+    linear-gradient(90deg, transparent 39%, rgba(255, 210, 110, 0.38) 50%, transparent 61%),
+    radial-gradient(circle, rgba(255, 210, 110, 0.6) 0, rgba(255, 210, 110, 0.22) 26%, transparent 50%);
   opacity: 0;
   animation: scintille 2.6s ease-in-out infinite;
+}
+
+/*
+ * AU REPOS DANS LA MAIN DE LA TABLE (`[data-cadre-repos]`, posé par
+ * `TableBoard`) : jusqu'à trois légendaires et huit étoiles chacune
+ * bouclaient sans fin pendant toute la partie. Tant que la carte n'est pas
+ * survolée, les boucles s'arrêtent : les étoiles se figent, à demi
+ * allumées (comme quand l'appareil demande moins d'animations), et l'éclat
+ * ne passe plus. Au survol, comme dans l'aperçu et la carte agrandie, tout
+ * reprend.
+ */
+[data-cadre-repos]:not(:hover) .etoile {
+  animation: none;
+  opacity: 0.7;
+  transform: scale(0.7) rotate(45deg);
+}
+
+[data-cadre-repos]:not(:hover) .eclatDore,
+[data-cadre-repos]:not(:hover) .refletNacre {
+  animation: none;
+  opacity: 0;
+}
+
+[data-cadre-repos]:not(:hover) .irisation {
+  animation-play-state: paused;
 }
 
 @keyframes scintille {

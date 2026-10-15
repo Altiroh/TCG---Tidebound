@@ -482,17 +482,18 @@ export function TableBoard(props: TableBoardProps) {
     return attacksRemaining(state, viewerId, instance);
   }
 
-  /** Cibles légales d'une carte de main à effet ciblé (`null` = se pose sans cible). */
-  function playTargets(instance: CardInstance): Set<string> | null {
-    return legalTargetsFor(state, viewerId, { kind: "playCard", sourceInstanceId: instance.instanceId });
-  }
-
   /**
    * Cibles légales du ciblage EN COURS côté conteneur (carte de main,
    * réaction, capacité, attaque…) : elles s'éclairent, et un toucher ne
    * désigne qu'elles. `null` : le conteneur tranche seul.
+   *
+   * Mémorisées : le plateau se re-rend à chaque mouvement de pointeur
+   * (survol, glisser). Le conteneur refabrique l'objet `targeting` à chaque
+   * rendu (`tableTargetingFor`) : c'est son CONTENU qui sert de clé.
    */
-  const selectionTargets = legalTargetsFor(state, viewerId, targeting);
+  const targetingKey = targeting ? JSON.stringify(targeting) : "";
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const selectionTargets = useMemo(() => legalTargetsFor(state, viewerId, targeting), [state, viewerId, targetingKey]);
   /** Une carte en jeu qu'on peut agrandir : une Structure adverse invisible ne montre que son dos. */
   const canZoom = (id: string) => {
     const entry = byId.get(id);
@@ -505,7 +506,23 @@ export function TableBoard(props: TableBoardProps) {
   /** La carte est-elle jouable, restriction du tutoriel comprise ? */
   const isPlayable = (instanceId: string) => canPlayCards && (props.playableHandCards?.has(instanceId) ?? true);
   const discardMode = props.handLimitDiscard ?? null;
-  const handTargets = new Map(viewer.hand.map((card) => [card.instanceId, isPlayable(card.instanceId) ? playTargets(card) : null] as const));
+  const playableHandCards = props.playableHandCards;
+  /**
+   * Cibles légales de chaque carte de main à effet ciblé (`null` = se pose
+   * sans cible). Mémorisées sur l'état : un calcul de ciblage par carte, à
+   * chaque mouvement de pointeur, pesait sur le glisser.
+   */
+  const handTargets = useMemo(
+    () =>
+      new Map(
+        viewer.hand.map((card) => {
+          const playable = canPlayCards && (playableHandCards?.has(card.instanceId) ?? true);
+          const targets = playable ? legalTargetsFor(state, viewerId, { kind: "playCard", sourceInstanceId: card.instanceId }) : null;
+          return [card.instanceId, targets] as const;
+        })
+      ),
+    [state, viewer, viewerId, canPlayCards, playableHandCards]
+  );
 
   const dropId = (drop: string) => drop.replace(/^(own|unit):/, "");
 
@@ -528,20 +545,37 @@ export function TableBoard(props: TableBoardProps) {
    * Assemblage n'est possible). Une Sentinelle en fait partie si au moins un
    * Assemblage passe par elle.
    */
+  const assemblageEnabled = Boolean(props.onAssemblageDrop);
+  // Calculées une fois par état pour toute la main : le rendu de chaque carte de main les lit.
+  const assemblageByHandCard = useMemo(() => {
+    const byCard = new Map<string, Set<string>>();
+    if (!assemblageEnabled) return byCard;
+    for (const card of viewer.hand) {
+      const requis = getCardDefinition(card.cardId).chromaticAssemblage?.sentinels;
+      if (!requis || !canPlayCards || !(playableHandCards?.has(card.instanceId) ?? true)) continue;
+      const ids = viewer.board.filter((unit) => findAssemblage(viewer.board, requis, unit.instanceId)).map((unit) => unit.instanceId);
+      if (ids.length > 0) byCard.set(card.instanceId, new Set(ids));
+    }
+    return byCard;
+  }, [viewer, assemblageEnabled, canPlayCards, playableHandCards]);
   function assemblageSentinels(instanceId: string): Set<string> | null {
-    const instance = viewer.hand.find((c) => c.instanceId === instanceId);
-    const requis = instance && getCardDefinition(instance.cardId).chromaticAssemblage?.sentinels;
-    if (!requis || !props.onAssemblageDrop || !isPlayable(instanceId)) return null;
-    const ids = viewer.board.filter((unit) => findAssemblage(viewer.board, requis, unit.instanceId)).map((unit) => unit.instanceId);
-    return ids.length > 0 ? new Set(ids) : null;
+    return assemblageByHandCard.get(instanceId) ?? null;
   }
 
   /**
    * Cibles légales de la capacité activable d'une unité du joueur (celles de
    * son effet « unité désignée ») ; `null` : sa capacité ne vise personne.
+   *
+   * En cache pour l'état courant : `isValidDrop` les redemande à chaque
+   * mouvement de pointeur pendant le glisser d'une pastille.
    */
+  const abilityTargetsCache = useMemo(() => ({ state, viewerId, bySource: new Map<string, Set<string> | null>() }), [state, viewerId]);
   function abilityTargetsOf(sourceId: string): Set<string> | null {
-    return legalTargetsFor(state, viewerId, { kind: "ability", sourceInstanceId: sourceId });
+    const cache = abilityTargetsCache;
+    if (!cache.bySource.has(sourceId)) {
+      cache.bySource.set(sourceId, legalTargetsFor(cache.state, cache.viewerId, { kind: "ability", sourceInstanceId: sourceId }));
+    }
+    return cache.bySource.get(sourceId) ?? null;
   }
 
   // Lâcher refusé : un mot bref au centre de la table, qui s'efface seul.
@@ -1382,6 +1416,8 @@ export function TableBoard(props: TableBoardProps) {
               return (
                 <div
                   data-card-id={card.id}
+                  // Les effets continus du cadre (étoiles, éclat) dorment tant que la carte n'est pas survolée.
+                  data-cadre-repos=""
                   data-muted={muted ? "" : undefined}
                   {...previewHandlers(card.id)}
                   onPointerDown={startGesture(kind, card.id)}

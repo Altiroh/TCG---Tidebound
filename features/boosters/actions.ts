@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient, createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import { createSeed } from "@/game/rng";
-import { MAX_BATCH_OPEN, MAX_PURCHASE_QUANTITY } from "@/features/boosters/constants";
+import { MAX_BATCH_OPEN } from "@/features/boosters/constants";
+import { describeFailure, purchaseBoosterFor } from "@/features/boosters/purchaseService";
 import { drawBooster, rarityForCardId, type BoosterPoolCard, type BoosterSlotRule, type CardRarity, type DrawnCard } from "@/game/boosters";
 import { getSessionUser } from "@/lib/supabase/sessionUser";
 
@@ -126,14 +127,9 @@ export async function openBooster(boosterId: string): Promise<ActionResult<OpenB
  * cause quand on la reconnaît, et on laisse le message d'origine passer
  * sinon — cet écran est déjà réservé au joueur connecté, et un message
  * vague coûte plus qu'il ne protège.
+ *
+ * (`describeFailure` vit dans `purchaseService.ts`, partagé avec le panier du Market.)
  */
-function describeFailure(error: unknown, fallback: string): string {
-  const message = error instanceof Error ? error.message : String(error);
-  if (message.includes("SUPABASE_SERVICE_ROLE_KEY")) {
-    return "Configuration serveur incomplète : SUPABASE_SERVICE_ROLE_KEY est absente. Achat et ouverture de boosters passent par elle (`.env.local` en local, variables d'environnement Vercel en prod).";
-  }
-  return `${fallback} (${message})`;
-}
 
 async function requireUser() {
   const supabase = createSupabaseServerClient();
@@ -216,28 +212,14 @@ export async function purchaseBooster(boosterId: string, quantity = 1): Promise<
   const session = await requireUser();
   if (!session) return { ok: false, error: "Connecte-toi pour acheter un booster." };
 
-  if (!Number.isInteger(quantity) || quantity < 1 || quantity > MAX_PURCHASE_QUANTITY) {
-    return { ok: false, error: `Quantité invalide (1 à ${MAX_PURCHASE_QUANTITY}).` };
-  }
+  // Bornes de quantité, appel atomique et messages : `purchaseBoosterFor`,
+  // partagé avec le panier du Market (`checkoutCart`).
+  const result = await purchaseBoosterFor(session.userId, boosterId, quantity);
+  if (!result.ok) return { ok: false, error: result.error };
 
-  try {
-    const service = createSupabaseServiceRoleClient();
-    const { data, error } = await service.rpc("purchase_booster", {
-      p_user_id: session.userId,
-      p_booster_id: boosterId,
-      p_quantity: quantity,
-    });
-
-    if (error) return { ok: false, error: error.message };
-    if (!data?.ok) return { ok: false, error: data?.error ?? "Achat refusé." };
-
-    revalidatePath("/market");
-    revalidatePath("/boosters");
-    return { ok: true, data: { balance: data.balance ?? 0 } };
-  } catch (error) {
-    console.error("[purchaseBooster] Échec :", error);
-    return { ok: false, error: describeFailure(error, "Achat impossible pour le moment.") };
-  }
+  revalidatePath("/market");
+  revalidatePath("/boosters");
+  return { ok: true, data: { balance: result.balance ?? 0 } };
 }
 
 /** Ce qu'un tirage doit savoir du booster et du joueur, lu une fois pour tout le lot. */

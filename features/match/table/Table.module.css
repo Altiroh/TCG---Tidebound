@@ -1398,10 +1398,11 @@
      `filter` (son halo), ce qui borne le flou d'arrière-plan à lui-même —
      sur le plateau, le verre clair laissait voir les cartes nettes au
      travers et le texte devenait illisible. Le fond tient donc seul ; le
-     flou, quand le navigateur peut l'appliquer, n'est qu'un plus. */
-  background: linear-gradient(160deg, rgba(40, 50, 64, 0.9), rgba(14, 20, 30, 0.92));
-  -webkit-backdrop-filter: blur(32px) brightness(1.1) saturate(1.5);
-  backdrop-filter: blur(32px) brightness(1.1) saturate(1.5);
+     flou n'était qu'un plus — et un flou de 32 px recalculé sous un plateau
+     animé coûtait cher à chaque image : fumé opaque partout (audit de
+     fluidité, lot 2), un cran plus dense pour couvrir ce que le flou
+     brouillait. */
+  background: linear-gradient(160deg, rgba(40, 50, 64, 0.94), rgba(14, 20, 30, 0.95));
   box-shadow:
     inset 0 1px 1px rgba(255, 255, 255, 0.5),
     inset 0 0 0 1px rgba(255, 255, 255, 0.08),
@@ -3333,19 +3334,37 @@
 }
 
 .boardSlotNext {
+  position: relative;
   box-shadow: inset 0 0 0 2px var(--accent), inset 0 0 18px rgba(126, 224, 208, 0.3);
   background: rgba(126, 224, 208, 0.12);
+}
+
+/* La pulsation : un voile de la même teinte dont seule l'OPACITÉ bat
+   (composée, sans repeindre le fond à chaque image). Posé sur le fond à
+   0.12, il le mène à 0.24 au plus fort, comme l'ancien `background` animé. */
+.boardSlotNext::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: rgba(126, 224, 208, 0.14);
+  opacity: 0;
+  pointer-events: none;
   animation: slotPulse 1s ease-in-out infinite;
 }
 
 .boardDropOver .boardSlotNext {
-  animation: none;
   background: rgba(126, 224, 208, 0.28);
+}
+
+.boardDropOver .boardSlotNext::after {
+  animation: none;
+  opacity: 0;
 }
 
 @keyframes slotPulse {
   50% {
-    background: rgba(126, 224, 208, 0.24);
+    opacity: 1;
   }
 }
 
@@ -3401,8 +3420,10 @@
     calc(clamp(8px, 2vw, 20px) + var(--tb-safe-right))
     calc(clamp(6px, 1.6dvh, 16px) + var(--tb-safe-bottom))
     calc(clamp(8px, 2vw, 20px) + var(--tb-safe-left));
-  background: rgba(2, 6, 23, 0.72);
-  backdrop-filter: blur(2px);
+  /* Fond fumé opaque, sans `backdrop-filter` : le flou se recalculait sous
+     un plateau qui s'anime encore (audit de fluidité, lot 2). Plus dense
+     qu'avant pour couvrir ce que le flou brouillait. */
+  background: rgba(2, 6, 23, 0.86);
   touch-action: none;
   animation: cardZoomFade 140ms ease-out;
 }
@@ -4378,20 +4399,10 @@
 /*
  * ÉCRANS TACTILES — le téléphone paie cher ce que l'ordinateur ne voit pas.
  *
- * Les verres floutés (`backdrop-filter`) posés par-dessus un plateau animé
- * deviennent des fonds opaques.
+ * (Les verres floutés de `.cardZoom` et `.shipAbilityCard`, retirés ici
+ * d'abord, sont désormais des fonds fumés opaques partout.)
  */
 @media (pointer: coarse) {
-  .cardZoom {
-    background: rgba(2, 6, 23, 0.86);
-    backdrop-filter: none;
-  }
-
-  .shipAbilityCard {
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
-  }
-
   /* Chaque carte isole son empilement. Le filtre animé en créait un par
      accident ; sans lui, la zone de toucher de la pastille de capacité, qui
      déborde de sa carte, passerait par-dessus la voisine — un toucher sur
@@ -4432,7 +4443,7 @@
   }
 
   .targetable,
-  .boardSlotNext,
+  .boardSlotNext::after,
   .cardZoom,
   .cardZoomCard,
   .fxFlash,

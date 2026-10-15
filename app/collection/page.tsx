@@ -1,5 +1,5 @@
 import { CollectionScreen } from "@/features/collection/CollectionScreen";
-import { fetchDeckCatalog } from "@/features/decks/catalogActions";
+import { readDeckCatalogSummary } from "@/features/decks/catalogSummary";
 import { fetchOnboarding } from "@/features/onboarding/actions";
 import { decodeShelfFilter, FAVORITES_FILTER, notebookFilter, type ShelfFilter } from "@/features/collection/shelf/shelf";
 import { getOwnedCardIds } from "@/lib/supabase/ownedCards";
@@ -13,9 +13,13 @@ function shelfFromParams(searchParams: Record<string, string | string[] | undefi
 }
 
 export default async function CollectionPage({ searchParams = {} }: { searchParams?: Record<string, string | string[] | undefined> }) {
+  // `player_cards` n'est lu qu'UNE fois : le rayon des préconstruits calcule
+  // sa possession sur la collection que la page lit déjà (hors connexion
+  // ou lecture en échec, il relit lui-même).
+  const collectionPromise = getOwnedCardIds();
   const [{ isSignedIn, ownedCardIds, ownedCounts }, catalog, onboarding] = await Promise.all([
-    getOwnedCardIds(),
-    fetchDeckCatalog(),
+    collectionPromise,
+    readDeckCatalogSummary(collectionPromise.then((collection) => (collection.isSignedIn ? collection.ownedCounts : null))),
     fetchOnboarding(),
   ]);
 

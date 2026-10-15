@@ -64,9 +64,21 @@ export async function readOwnedCounts(userId: string): Promise<Record<string, nu
  * Tout le rayon, possession calculée. Les VERROUILLÉS sont inclus : « les
  * préconstruits verrouillés doivent rester visibles » et « consultables
  * avant achat » (§4, §13).
+ *
+ * `preloadedOwnedCounts` : la collection déjà lue (ou en cours de lecture)
+ * par l'appelant — la page Collection lit `player_cards` pour son propre
+ * compte, inutile de la relire ici. Résolue à `null`, on relit nous-mêmes.
+ * La possession se lit EN MÊME TEMPS que les déblocages, pas avant.
  */
-export async function readDeckCatalog(userId: string | null): Promise<DeckCatalogView> {
-  const ownedCounts = userId ? await readOwnedCounts(userId) : {};
+export async function readDeckCatalog(
+  userId: string | null,
+  preloadedOwnedCounts?: PromiseLike<Record<string, number> | null>
+): Promise<DeckCatalogView> {
+  const ownedCountsPromise: Promise<Record<string, number>> = !userId
+    ? Promise.resolve({})
+    : preloadedOwnedCounts
+      ? Promise.resolve(preloadedOwnedCounts).then((counts) => counts ?? readOwnedCounts(userId), () => readOwnedCounts(userId))
+      : readOwnedCounts(userId);
   let unlockedIds = new Set<string>();
   let freeDeckId: string | null = null;
   let preconTokens = 0;
@@ -87,6 +99,7 @@ export async function readDeckCatalog(userId: string | null): Promise<DeckCatalo
       console.error("[readDeckCatalog] Lecture impossible :", error);
     }
   }
+  const ownedCounts = await ownedCountsPromise;
 
   const view = (deck: CatalogDeck): CatalogDeckView => ({
     deck,

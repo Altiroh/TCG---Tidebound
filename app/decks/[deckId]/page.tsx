@@ -10,16 +10,21 @@ async function loadDeck(deckId: string) {
   const user = await getSessionUser();
   if (!user) return null;
 
-  const { data: deck } = await supabase
-    .from("player_decks")
-    .select("id, name, ship_id, art_card_id, description")
-    .eq("id", deckId)
-    // Un deck à la corbeille ne s'édite pas : il faut d'abord le restaurer.
-    .is("deleted_at", null)
-    .maybeSingle();
+  // Deck, cartes et style se lisent par le même identifiant : un seul étage.
+  // Les cartes et le style d'un deck introuvable (ou à la corbeille) sont
+  // simplement ignorés — la RLS ne rend de toute façon que ceux du joueur.
+  const [{ data: deck }, { data: cards }, styleId] = await Promise.all([
+    supabase
+      .from("player_decks")
+      .select("id, name, ship_id, art_card_id, description")
+      .eq("id", deckId)
+      // Un deck à la corbeille ne s'édite pas : il faut d'abord le restaurer.
+      .is("deleted_at", null)
+      .maybeSingle(),
+    supabase.from("player_deck_cards").select("card_id, quantity").eq("deck_id", deckId),
+    loadChosenStyle(supabase, deckId),
+  ]);
   if (!deck) return null;
-
-  const { data: cards } = await supabase.from("player_deck_cards").select("card_id, quantity").eq("deck_id", deckId);
 
   const cardIds = (cards ?? []).flatMap((row) => Array.from({ length: row.quantity }, () => row.card_id));
 
@@ -30,7 +35,7 @@ async function loadDeck(deckId: string) {
     cardIds,
     artCardId: deck.art_card_id,
     description: deck.description ?? "",
-    styleId: await loadChosenStyle(supabase, deckId),
+    styleId,
   };
 }
 

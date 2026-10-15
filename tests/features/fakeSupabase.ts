@@ -837,6 +837,25 @@ function runRpc(db: FakeDatabase, fn: string, args: Row): any {
       return { ok: true, recorded: true, applied };
     }
 
+    // `20260923120000_collectables_unlocks.sql`
+    case "purchase_cosmetic": {
+      if (!args.p_price || args.p_price < 1) return { ok: false, error: "Prix invalide." };
+      const owned = db.one("player_cosmetics", { user_id: args.p_user_id, cosmetic_kind: args.p_cosmetic_kind, cosmetic_id: args.p_cosmetic_id });
+      if (owned) return { ok: false, error: "already_owned" };
+      const wallet = db.one("player_currency", { user_id: args.p_user_id });
+      if ((wallet?.balance ?? 0) < args.p_price) return { ok: false, error: "insufficient_funds" };
+      wallet!.balance -= args.p_price;
+      db.table("currency_transactions").push({ user_id: args.p_user_id, amount: -args.p_price, reason: "cosmetic_purchase" });
+      db.insertIfAbsent("player_cosmetics", {
+        user_id: args.p_user_id,
+        cosmetic_kind: args.p_cosmetic_kind,
+        cosmetic_id: args.p_cosmetic_id,
+        label: args.p_label ?? "",
+        equipped: false,
+      });
+      return { ok: true, balance: wallet!.balance, cosmetic_id: args.p_cosmetic_id };
+    }
+
     case "purchase_cosmetic_tokens": {
       if (!args.p_price_tokens || args.p_price_tokens < 1) return { ok: false, error: "Prix invalide." };
       const progression = db.one("player_progression", { user_id: args.p_user_id });

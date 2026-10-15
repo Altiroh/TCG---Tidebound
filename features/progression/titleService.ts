@@ -52,10 +52,25 @@ function options(unlockedCodes: ReadonlySet<string>): TitleOption[] {
  * n'est plus en base n'est pas affiché : on ne montre jamais un titre que
  * le serveur refuserait d'équiper.
  */
-export async function loadTitles(userId: string | null, unlockedCodes: ReadonlySet<string>): Promise<ProfileTitles> {
-  const base = options(unlockedCodes);
-  if (!userId) return { options: base, equipped: null, available: false };
+export async function loadTitles(
+  userId: string | null,
+  unlockedCodesInput: ReadonlySet<string> | PromiseLike<ReadonlySet<string>>
+): Promise<ProfileTitles> {
+  // Les exploits peuvent arriver en PROMESSE : le profil lance la lecture du
+  // titre porté sans attendre l'octroi des exploits, et les deux se
+  // rejoignent ici (un étage d'attente de moins).
+  if (!userId) return { options: options(await unlockedCodesInput), equipped: null, available: false };
 
+  const [stored, unlockedCodes] = await Promise.all([readStoredTitle(userId), unlockedCodesInput]);
+  const base = options(unlockedCodes);
+  if (!stored.available) return { options: base, equipped: null, available: false };
+  const title = titleById(stored.titleId);
+  const equipped = title && isTitleUnlocked(title, unlockedCodes) ? title.id : null;
+  return { options: base, equipped, available: true };
+}
+
+/** Titre choisi tel que stocké. Ne lève jamais : sans table ou sans base, `available: false`. */
+async function readStoredTitle(userId: string): Promise<{ titleId: string | null; available: boolean }> {
   try {
     const { data, error } = await createSupabaseServiceRoleClient()
       .from("player_titles")
@@ -64,14 +79,12 @@ export async function loadTitles(userId: string | null, unlockedCodes: ReadonlyS
       .maybeSingle();
     if (error) {
       console.warn("[loadTitles] Titres indisponibles :", error.message);
-      return { options: base, equipped: null, available: false };
+      return { titleId: null, available: false };
     }
-    const stored = titleById(data?.title_id ?? null);
-    const equipped = stored && isTitleUnlocked(stored, unlockedCodes) ? stored.id : null;
-    return { options: base, equipped, available: true };
+    return { titleId: data?.title_id ?? null, available: true };
   } catch (cause) {
     console.error("[loadTitles] Lecture impossible :", cause);
-    return { options: base, equipped: null, available: false };
+    return { titleId: null, available: false };
   }
 }
 

@@ -1,7 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { collectablePrice, collectablesForSecret, collectableTokenPrice, COLLECTABLE_FAMILIES, isCosmeticSecret, isFree } from "@/game";
+import { collectablesForSecret, COLLECTABLE_FAMILIES, isCosmeticSecret, isFree } from "@/game";
+import { purchaseCollectableFor, type PurchaseCollectableResult } from "@/features/cosmetics/collectablesService";
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import { getSessionUser } from "@/lib/supabase/sessionUser";
 
@@ -14,99 +15,26 @@ import { getSessionUser } from "@/lib/supabase/sessionUser";
  * paramètre et reste hors de portée du réseau.
  */
 
-export interface PurchaseCollectableResult {
-  ok: boolean;
-  error?: string;
-  /** Solde après achat — le bandeau n'a pas à le relire. */
-  balance?: number;
-  /** Jetons de Préconstruit restants, après un achat en Jetons. */
-  tokens?: number;
-}
+export type { PurchaseCollectableResult };
 
 /**
  * Achète un Collectable — en Tides, ou en Jetons de Préconstruit si c'est
- * la monnaie que le catalogue lui donne.
- *
- * Le prix n'est JAMAIS reçu du client : il est relu au catalogue à partir
- * de l'identifiant, et la MONNAIE avec lui. C'est le seul endroit où ils se
- * décident, et ça rend impossible l'achat à un prix choisi par l'appelant.
+ * la monnaie que le catalogue lui donne. Le prix et la monnaie sont relus
+ * au catalogue côté serveur (`purchaseCollectableFor`), jamais reçus du
+ * client.
  */
 export async function purchaseCollectable(kind: string, id: string): Promise<PurchaseCollectableResult> {
   const user = await getSessionUser();
   if (!user) return { ok: false, error: "Connecte-toi pour acheter un cosmétique." };
 
-  const item = COLLECTABLE_FAMILIES.find((family) => family.kind === kind)?.items.find((entry) => entry.id === id);
-  if (!item) return { ok: false, error: "Ce cosmétique n'existe pas." };
-
-  const tokenPrice = collectableTokenPrice(kind, id);
-  if (tokenPrice !== null) return purchaseWithTokens(user.id, kind, id, item.label, tokenPrice);
-
-  const price = collectablePrice(kind, id);
-  if (price === null) return { ok: false, error: "Ce cosmétique n'est pas en vente." };
-
-  try {
-    const { data, error } = await createSupabaseServiceRoleClient().rpc("purchase_cosmetic", {
-      p_user_id: user.id,
-      p_cosmetic_kind: kind,
-      p_cosmetic_id: id,
-      p_label: item.label,
-      p_price: price,
-    });
-
-    if (error) {
-      console.error("[purchaseCollectable] Achat refusé :", error.message);
-      return { ok: false, error: "L'achat n'a pas pu aboutir — réessaie dans un instant." };
-    }
-    if (!data?.ok) {
-      // Les deux refus que le joueur doit comprendre ; le reste reste générique.
-      if (data?.error === "insufficient_funds") return { ok: false, error: "Tides insuffisants." };
-      if (data?.error === "already_owned") return { ok: false, error: "Tu le possèdes déjà." };
-      return { ok: false, error: "L'achat n'a pas pu aboutir." };
-    }
-
+  const { spentTides: _tides, spentTokens, ...result } = await purchaseCollectableFor(user.id, kind, id);
+  if (result.ok) {
     revalidatePath("/collectables");
     revalidatePath("/market");
-    return { ok: true, balance: data.balance };
-  } catch (cause) {
-    console.error("[purchaseCollectable] Échec inattendu :", cause);
-    return { ok: false, error: "L'achat n'a pas pu aboutir — réessaie dans un instant." };
+    // Les Jetons s'affichent aussi à l'écran Decks.
+    if (spentTokens > 0) revalidatePath("/decks");
   }
-}
-
-/**
- * L'achat en Jetons (`purchase_cosmetic_tokens`) : même garanties que
- * l'achat en Tides, dans l'autre monnaie du Market. Tant que la migration
- * `20261020120000_statistiques_a_vie` n'est pas appliquée, la fonction
- * n'existe pas : l'achat échoue proprement, sans rien débiter.
- */
-async function purchaseWithTokens(userId: string, kind: string, id: string, label: string, priceTokens: number): Promise<PurchaseCollectableResult> {
-  try {
-    const { data, error } = await createSupabaseServiceRoleClient().rpc("purchase_cosmetic_tokens", {
-      p_user_id: userId,
-      p_cosmetic_kind: kind,
-      p_cosmetic_id: id,
-      p_label: label,
-      p_price_tokens: priceTokens,
-    });
-
-    if (error) {
-      console.error("[purchaseCollectable] Achat en Jetons refusé :", error.message);
-      return { ok: false, error: "L'achat n'a pas pu aboutir — réessaie dans un instant." };
-    }
-    if (!data?.ok) {
-      if (data?.error === "insufficient_tokens") return { ok: false, error: "Jetons de Préconstruit insuffisants." };
-      if (data?.error === "already_owned") return { ok: false, error: "Tu le possèdes déjà." };
-      return { ok: false, error: "L'achat n'a pas pu aboutir." };
-    }
-
-    revalidatePath("/collectables");
-    revalidatePath("/market");
-    revalidatePath("/decks");
-    return { ok: true, tokens: data.tokens };
-  } catch (cause) {
-    console.error("[purchaseCollectable] Échec inattendu :", cause);
-    return { ok: false, error: "L'achat n'a pas pu aboutir — réessaie dans un instant." };
-  }
+  return result;
 }
 
 export interface EquipCollectableResult {

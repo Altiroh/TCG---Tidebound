@@ -51,9 +51,37 @@ function onAnyBoard(state: GameState, instanceId: string): boolean {
   return state.players.some((player) => player.board.some((unit) => unit.instanceId === instanceId));
 }
 
-/** Premier `ATTACK` du lot, avec les dégâts déjà résolus par le moteur (jamais recalculés côté client). */
+/**
+ * L'`ATTACK` d'indice `index` n'est qu'une DÉCLARATION suspendue : le moteur
+ * l'émet quand une fenêtre de réaction s'ouvre avant le coup
+ * (`suspendrePourInterception`, `game/actions/attack.ts`), puis l'émet de
+ * nouveau à la reprise, quand le coup se résout pour de bon. Mettre en scène
+ * les deux jouait deux élans et deux retenues — la première pour un « −0 »
+ * trompeur, et la fenêtre n'apparaissait qu'après elle. Seule la résolution
+ * s'anime ; si la réaction annule l'attaque, il n'y a simplement pas de coup.
+ *
+ * Reconnue à deux signes concordants : une fenêtre de réaction s'ouvre après
+ * l'`ATTACK` sans qu'aucun coup (`DAMAGE.combat`) ne soit tombé, ET l'état
+ * d'après garde l'attaque de CET attaquant en suspens (`pendingAttack`).
+ */
+export function isSuspendedDeclaration(events: GameEvent[], index: number, after: GameState): boolean {
+  const declared = events[index];
+  if (!declared || declared.type !== "ATTACK") return false;
+  if (after.pendingAttack?.attackerInstanceId !== declared.attackerInstanceId) return false;
+  for (const next of events.slice(index + 1)) {
+    if (next.type === "ATTACK" || (next.type === "DAMAGE" && next.combat)) return false;
+    if (next.type === "REACTION_WINDOW_OPENED") return true;
+  }
+  return false;
+}
+
+/**
+ * Premier `ATTACK` RÉSOLU du lot, avec les dégâts déjà résolus par le moteur
+ * (jamais recalculés côté client). Une déclaration suspendue par une fenêtre
+ * de réaction ne compte pas (`isSuspendedDeclaration`).
+ */
 export function deriveAttack(events: GameEvent[], after: GameState, id: number): AttackAnimation | null {
-  const index = events.findIndex((event) => event.type === "ATTACK");
+  const index = events.findIndex((event, at) => event.type === "ATTACK" && !isSuspendedDeclaration(events, at, after));
   const event = events[index];
   if (!event || event.type !== "ATTACK") return null;
 

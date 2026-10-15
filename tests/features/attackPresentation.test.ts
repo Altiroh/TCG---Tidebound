@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { dispatch } from "@/game/engine";
 import { deriveAttack } from "@/features/match/useAttackPresentation";
-import { instance, testGameState, testPlayer } from "../game/testHelpers";
+import { BASE_FRAME_MS, framePaceMs } from "@/features/match/framePacing";
+import { activateReactionFor, instance, testEnvironment, testGameState, testPlayer } from "../game/testHelpers";
 import type { GameEvent, GameState } from "@/game";
 
 /**
@@ -108,5 +109,77 @@ describe("animation d'attaque : seul le coup porté compte", () => {
     ];
     // Aucun coup marqué : l'animation vise toujours le Navire adverse, pour 0.
     expect(deriveAttack(events, after, 1)).toMatchObject({ defenderPlayerId: "p2", amount: 0 });
+  });
+});
+
+/**
+ * Fenêtre de réaction ouverte à la DÉCLARATION (`suspendrePourInterception`) :
+ * le moteur émet `ATTACK` deux fois, à la déclaration puis à la reprise.
+ * Une seule mise en scène — celle du coup résolu.
+ */
+describe("animation d'attaque : une seule quand une fenêtre de réaction s'ouvre", () => {
+  const nouveaux = (avant: GameState, apres: GameState) => apres.eventLog.slice(avant.eventLog.length);
+  function situation() {
+    const attaquant = instance("la-chose-qui-remonte", "p1", { summoningSick: false }); // 5 Puissance
+    const cylindre = instance("cylindre-flottant", "p2", { turnsRemaining: 3 });
+    const state = testGameState({
+      phase: "combatPhase",
+      environment: testEnvironment({ tideState: "houle", tideRemainingTurns: 4 }),
+      players: [testPlayer("p1", { board: [attaquant], anchor: 20 }), testPlayer("p2", { board: [cylindre], anchor: 20 })],
+    });
+    return { attaquant, state };
+  }
+
+  it("la déclaration suspendue ne se met pas en scène, la résolution si", () => {
+    const { attaquant, state } = situation();
+    const declaree = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: attaquant.instanceId });
+    expect(declaree.ok).toBe(true);
+    if (!declaree.ok) return;
+    const declaration = nouveaux(state, declaree.state);
+    expect(declaration.some((event) => event.type === "ATTACK")).toBe(true);
+    expect(declaration.some((event) => event.type === "REACTION_WINDOW_OPENED")).toBe(true);
+    expect(deriveAttack(declaration, declaree.state, 1)).toBeNull();
+    // Rien n'est retenu : la fenêtre s'affiche aussitôt, sans attendre un élan.
+    expect(framePaceMs(state, declaree.state)).toBe(BASE_FRAME_MS);
+
+    const passe = dispatch(declaree.state, { type: "passReaction", playerId: "p2" });
+    expect(passe.ok).toBe(true);
+    if (!passe.ok) return;
+    expect(deriveAttack(nouveaux(declaree.state, passe.state), passe.state, 2)).toMatchObject({
+      attackerInstanceId: attaquant.instanceId,
+      defenderPlayerId: "p2",
+      amount: 5,
+    });
+  });
+
+  it("une réaction qui détruit l'attaquant : pas de coup à mettre en scène", () => {
+    const attaquant = instance("murene-aveugle", "p1", { summoningSick: false }); // 3/1
+    const cylindre = instance("cylindre-flottant", "p2", { turnsRemaining: 3 });
+    const state = testGameState({
+      phase: "combatPhase",
+      environment: testEnvironment({ tideState: "houle", tideRemainingTurns: 4 }),
+      players: [testPlayer("p1", { board: [attaquant], anchor: 20 }), testPlayer("p2", { board: [cylindre], anchor: 20 })],
+    });
+    const declaree = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: attaquant.instanceId });
+    expect(declaree.ok).toBe(true);
+    if (!declaree.ok) return;
+    expect(deriveAttack(nouveaux(state, declaree.state), declaree.state, 1)).toBeNull();
+    const active = activateReactionFor(declaree.state, "cylindre-flottant", attaquant.instanceId);
+    expect(active.ok).toBe(true);
+    if (!active.ok) return;
+    expect(active.state.pendingAttack).toBeUndefined();
+    expect(deriveAttack(nouveaux(declaree.state, active.state), active.state, 2)).toBeNull();
+  });
+
+  it("sans fenêtre, l'attaque se met en scène dès la déclaration", () => {
+    const attaquant = instance("la-chose-qui-remonte", "p1", { summoningSick: false });
+    const state = testGameState({
+      phase: "combatPhase",
+      players: [testPlayer("p1", { board: [attaquant], anchor: 20 }), testPlayer("p2", { anchor: 20 })],
+    });
+    const result = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: attaquant.instanceId });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(deriveAttack(nouveaux(state, result.state), result.state, 1)).toMatchObject({ defenderPlayerId: "p2", amount: 5 });
   });
 });

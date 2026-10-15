@@ -189,12 +189,27 @@ const SIGNED_OUT: ProfileSummary = {
  * `claimed_at` (migration pas encore passée), tout est considéré réclamé :
  * c'était le comportement d'avant, où l'exploit créditait tout seul.
  */
-async function readAchievementRows(userId: string): Promise<Array<{ code: string; claimable: boolean }>> {
+async function readAchievementRows(userId: string): Promise<{ rows: Array<{ code: string; claimable: boolean }>; claimTracked: boolean }> {
   const service = createSupabaseServiceRoleClient();
   const full = await service.from("player_achievements").select("code, claimed_at").eq("user_id", userId);
-  if (!full.error) return (full.data ?? []).map((row) => ({ code: row.code, claimable: row.claimed_at === null }));
+  if (!full.error) return { rows: (full.data ?? []).map((row) => ({ code: row.code, claimable: row.claimed_at === null })), claimTracked: true };
   const basic = await service.from("player_achievements").select("code").eq("user_id", userId);
-  return (basic.data ?? []).map((row) => ({ code: row.code, claimable: false }));
+  return { rows: (basic.data ?? []).map((row) => ({ code: row.code, claimable: false })), claimTracked: false };
+}
+
+/**
+ * Exploits en base APRÈS l'octroi, sans les relire : ceux lus avant, plus
+ * ceux que `grant_achievements` vient RÉELLEMENT d'ajouter (il ne rend que
+ * ceux-là, insérés avec `claimed_at` nul — donc à réclamer). Même résultat
+ * qu'une relecture, un aller-retour de moins.
+ */
+function withGranted(
+  stored: { rows: Array<{ code: string; claimable: boolean }>; claimTracked: boolean },
+  granted: readonly string[]
+): Array<{ code: string; claimable: boolean }> {
+  const known = new Set(stored.rows.map((row) => row.code));
+  const added = granted.filter((code) => !known.has(code)).map((code) => ({ code, claimable: stored.claimTracked }));
+  return [...stored.rows, ...added];
 }
 
 /** `true` si une série dont le dernier jour compté est `day` court toujours. */
@@ -213,30 +228,48 @@ export async function fetchProfile(): Promise<ProfileSummary> {
     // Rattrape les exploits dus mais pas encore octroyés : le profil est
     // l'endroit naturel pour ça, et l'opération est idempotente.
     // Les compteurs sont lus UNE fois : ils servent à l'octroi et aux jauges.
-    const stats = await readAchievementStats(user.id);
-    await syncAchievements(user.id, stats);
-
+    //
+    // UN SEUL étage d'attente : tout part en même temps, et seules les
+    // vraies dépendances s'enchaînent, chacune sur sa branche —
+    //   compteurs → octroi des exploits (`grant_achievements` n'écrit que
+    //     `player_achievements` : rien d'autre à lire ne l'attend) ;
+    //   exploits en base + octroi → titres (le déblocage se lit dans les
+    //     exploits EN BASE, pas dans les compteurs) ;
+    //   progression → niveau → vue du hub (ses lectures, elles, n'attendent pas) ;
+    //   choix de carte → réparation.
     const service = createSupabaseServiceRoleClient();
-    const [progression, currency, profile, claimed, unlocked, login, cardBacks, ownedCards, choices, questBoard] = await Promise.all([
-      service.from("player_progression").select("xp_total, level, matches_played, pvp_wins, precon_tokens, play_streak, best_play_streak, play_streak_day").eq("user_id", user.id).maybeSingle(),
+    const statsPromise = readAchievementStats(user.id);
+    const grantedPromise = statsPromise.then((stats) => syncAchievements(user.id, stats));
+    const unlockedPromise = Promise.all([readAchievementRows(user.id), grantedPromise]).then(([stored, granted]) => withGranted(stored, granted));
+    const progressionPromise = Promise.resolve(
+      service.from("player_progression").select("xp_total, level, matches_played, pvp_wins, precon_tokens, play_streak, best_play_streak, play_streak_day").eq("user_id", user.id).maybeSingle()
+    );
+    const [stats, progression, currency, profile, claimed, unlocked, login, cardBacks, ownedCards, choices, questBoard, titles, hub] = await Promise.all([
+      statsPromise,
+      progressionPromise,
       service.from("player_currency").select("balance").eq("user_id", user.id).maybeSingle(),
       service.from("profiles").select("display_name, avatar_card_id").eq("id", user.id).maybeSingle(),
       service.from("player_level_rewards").select("level").eq("user_id", user.id).order("level", { ascending: false }),
-      readAchievementRows(user.id),
+      unlockedPromise,
       readLoginRewards(user.id),
       loadCardBacks(user.id),
       // `quantity > 0` : une carte entièrement revendue laisse une ligne à
       // zéro, elle ne doit plus être proposée comme illustration.
       service.from("player_cards").select("card_id").eq("user_id", user.id).gt("quantity", 0),
-      service.from("player_card_choices").select("id, source, source_ref, rarity, offered_card_ids").eq("user_id", user.id).is("resolved_at", null),
+      Promise.resolve(
+        service.from("player_card_choices").select("id, source, source_ref, rarity, offered_card_ids").eq("user_id", user.id).is("resolved_at", null)
+      ).then((rows) => repairCardChoices(user.id, rows.data ?? [])),
       fetchQuestBoard().catch(() => null),
+      loadTitles(user.id, unlockedPromise.then((rows) => new Set(rows.map((row) => row.code)))),
+      readProgressionHub(user.id, progressionPromise.then((row) => progressionView(row.data?.xp_total ?? 0).level)),
+      // L'octroi n'a rien à rendre à l'écran (il est déjà dans `unlocked`) :
+      // attendu ici seulement pour qu'il soit terminé avant de répondre.
+      grantedPromise,
     ]);
 
     const view = progressionView(progression.data?.xp_total ?? 0);
     const unlockedCodes = new Set(unlocked.map((row) => row.code));
     const claimableCodes = new Set(unlocked.filter((row) => row.claimable).map((row) => row.code));
-    // Le déblocage des titres se lit dans les exploits EN BASE, pas dans les compteurs.
-    const titles = await loadTitles(user.id, unlockedCodes);
 
     return {
       isSignedIn: true,
@@ -264,7 +297,7 @@ export async function fetchProfile(): Promise<ProfileSummary> {
         reachedLevel(progression.data?.xp_total ?? 0, progression.data?.level ?? 1),
         (claimed.data ?? []).map((row) => row.level)
       ),
-      pendingCardChoices: (await repairCardChoices(user.id, choices.data ?? [])).map((row) => ({
+      pendingCardChoices: choices.map((row) => ({
         id: row.id,
         level: row.source === "level" && /^\d+$/.test(row.source_ref) ? Number(row.source_ref) : null,
         rarity: row.rarity,
@@ -294,7 +327,7 @@ export async function fetchProfile(): Promise<ProfileSummary> {
       cardBacks,
       titles,
       maxRewardedLevelReached: view.level >= MAX_REWARDED_LEVEL,
-      hub: await readProgressionHub(user.id, view.level),
+      hub,
       playerStats: stats
         ? {
             matchesPlayed: stats.matchesPlayed,

@@ -231,9 +231,14 @@ async function readMatchHistory(service: Service, userId: string, weekStart: str
   const xpByShip = new Map<string, number>();
   const matchesByShip = new Map<string, number>();
   const matchIds = rows.map((row) => row.match_id);
-  for (let start = 0; start < matchIds.length; start += 200) {
-    const chunk = matchIds.slice(start, start + 200);
-    const matches = await readMatchShips(service, userId, chunk);
+  // Tranches de 200 identifiants (longueur d'URL) INDÉPENDANTES : lues
+  // toutes ensemble plutôt que l'une après l'autre, puis cumulées dans
+  // l'ordre — les sommes ne dépendent pas de l'ordre d'arrivée.
+  const starts: number[] = [];
+  for (let start = 0; start < matchIds.length; start += 200) starts.push(start);
+  const chunks = await Promise.all(starts.map((start) => readMatchShips(service, userId, matchIds.slice(start, start + 200))));
+  for (const [index, start] of starts.entries()) {
+    const matches = chunks[index]!;
     const shipOf = new Map<string, string>();
     for (const match of matches) {
       const isPlayer1 = match.player1_id === userId;
@@ -303,18 +308,27 @@ export async function countClaimableMasteryLevels(userId: string): Promise<{ tot
   }
 }
 
-export async function readProgressionHub(userId: string, accountLevel: number, now: Date = new Date()): Promise<ProgressionHubView> {
+/**
+ * `accountLevel` peut arriver en PROMESSE : il ne sert qu'au calcul de la
+ * vue, pas aux lectures — le profil lance donc celles-ci sans attendre sa
+ * propre lecture de `player_progression`.
+ */
+export async function readProgressionHub(
+  userId: string,
+  accountLevelInput: number | PromiseLike<number>,
+  now: Date = new Date()
+): Promise<ProgressionHubView> {
   const today = utcDayKey(now);
   const weekIndex = loginWeekIndex(today);
-  const empty = hubViewFrom({ weekIndex, accountLevel, playedThisWeek: 0, xpByShip: new Map(), pointsBySponsor: new Map(), claims: new Set(), today });
 
   try {
     const service = createSupabaseServiceRoleClient();
-    const [claims, history, interest, audience] = await Promise.all([
+    const [claims, history, interest, audience, accountLevel] = await Promise.all([
       readClaims(service, userId),
       readMatchHistory(service, userId, weekStartDay(today)),
       service.from("player_sponsor_interest").select("sponsor_id, points, updated_at").eq("user_id", userId),
       readAudience(service, userId),
+      accountLevelInput,
     ]);
     return hubViewFrom({
       weekIndex,
@@ -330,7 +344,8 @@ export async function readProgressionHub(userId: string, accountLevel: number, n
     });
   } catch (error) {
     console.error("[readProgressionHub] Lecture impossible :", error);
-    return empty;
+    const accountLevel = await Promise.resolve(accountLevelInput).catch(() => 0);
+    return hubViewFrom({ weekIndex, accountLevel, playedThisWeek: 0, xpByShip: new Map(), pointsBySponsor: new Map(), claims: new Set(), today });
   }
 }
 
