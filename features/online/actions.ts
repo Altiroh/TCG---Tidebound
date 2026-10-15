@@ -8,11 +8,12 @@ import {
   advanceBot,
   loadSnapshot,
   settleExpiredDeadlines,
-  submitAction,
+  submitActions,
+  type MatchBatchUpdate,
   type MatchSnapshot,
   type MatchUpdate,
 } from "@/features/matches/matchStore";
-import { packFrames, type PackedFrames } from "@/features/matches/matchFrames";
+import { packFrames, parseKnownLog, type PackedFrames } from "@/features/matches/matchFrames";
 import { resolveMatchDeck } from "@/features/decks/matchDeck";
 import { resumeVerdict } from "@/features/online/resumable";
 import { loadEquippedCosmetics } from "@/features/cosmetics/equippedCosmeticsService";
@@ -107,10 +108,19 @@ export async function joinOnlineMatch(inviteCode: string, deckId: string): Promi
 /**
  * Métadonnées de la partie et vue projetée pour l'appelant. Appelée au
  * chargement, puis chaque fois que Realtime signale une nouvelle version.
+ *
+ * `known` (facultatif) : ce que l'écran possède déjà.
+ *   - `log` : longueur et empreinte de son journal — la vue ne transporte
+ *     que la suite quand le préfixe est identique (`packFrames`) ;
+ *   - `version` : la version affichée — si la partie n'a pas bougé (après
+ *     rattrapage des échéances), la réponse n'a pas de vue (`unchanged`).
+ *     Pour les relectures de garde du sondage seulement : un réalignement
+ *     après une prédiction refusée a besoin de la vue, même inchangée.
  */
 export async function fetchMatchView(
-  matchId: string
-): Promise<ActionResult<{ match: MatchSnapshot["match"]; frames: PackedFrames | null }>> {
+  matchId: string,
+  known?: { version?: number; log?: unknown }
+): Promise<ActionResult<{ match: MatchSnapshot["match"]; frames: PackedFrames | null; unchanged?: boolean }>> {
   const user = await requireUser();
   // Une lecture est aussi le moment où le serveur constate l'heure : si
   // l'adversaire a laissé filer son délai, la partie avance ICI, sans que
@@ -119,8 +129,13 @@ export async function fetchMatchView(
   // Une seule lecture en base : le rattrapage rend la partie telle qu'elle est.
   const snapshot = await settleExpiredDeadlines(matchId, user.id);
   if (!snapshot) return { ok: false, error: "Partie introuvable." };
+  const knownVersion = known && typeof known === "object" ? known.version : undefined;
+  if (typeof knownVersion === "number" && snapshot.view && snapshot.match.state_version === knownVersion) {
+    return { ok: true, data: { match: snapshot.match, frames: null, unchanged: true } };
+  }
   // Emballée comme les vues d'un coup : les decks masqués ne font pas le voyage (`matchFrames`).
-  return { ok: true, data: { match: snapshot.match, frames: snapshot.view ? packFrames([snapshot.view]) : null } };
+  const knownLog = known && typeof known === "object" ? parseKnownLog(known.log) : undefined;
+  return { ok: true, data: { match: snapshot.match, frames: snapshot.view ? packFrames([snapshot.view], knownLog) : null } };
 }
 
 /**
@@ -146,13 +161,31 @@ export async function fetchMatchCosmetics(matchId: string): Promise<ActionResult
  * (`dispatch()`), fait jouer le bot le cas échéant, puis enregistre. Le
  * navigateur ne décide jamais de l'issue d'une action — ni d'une partie.
  */
-export async function submitMatchAction(matchId: string, action: PlayerAction): Promise<ActionResult<MatchUpdate>> {
+export async function submitMatchAction(matchId: string, action: PlayerAction, knownLog?: unknown): Promise<ActionResult<MatchBatchUpdate>> {
+  return submitMatchActions(matchId, [action], knownLog);
+}
+
+/**
+ * Propose un LOT de coups, enchaînés par le joueur pendant qu'un autre était
+ * en route (`MAX_ACTIONS_PER_BATCH` au plus) : un seul aller-retour, une
+ * seule lecture, un seul enregistrement (`submitActions`). Un coup refusé
+ * arrête le lot : ce qui précède est enregistré, le refus est rendu avec
+ * son index (`rejected`).
+ *
+ * `knownLog` : longueur et empreinte du journal que l'écran possède déjà —
+ * la réponse n'en transporte que la suite (`packFrames`).
+ */
+export async function submitMatchActions(
+  matchId: string,
+  actions: PlayerAction[],
+  knownLog?: unknown
+): Promise<ActionResult<MatchBatchUpdate>> {
   const user = await requireUser();
   try {
-    const result = await submitAction(matchId, user.id, action);
+    const result = await submitActions(matchId, user.id, actions, parseKnownLog(knownLog));
     return result.ok ? { ok: true, data: result.data } : { ok: false, error: result.error };
   } catch (error) {
-    console.error("[submitMatchAction] Échec :", error);
+    console.error("[submitMatchActions] Échec :", error);
     return { ok: false, error: "Coup non enregistré, réessaie." };
   }
 }
@@ -162,10 +195,10 @@ export async function submitMatchAction(matchId: string, action: PlayerAction): 
  * (`advanceBot`). Appelée par l'écran tant que `botToMove` le demande,
  * pendant qu'il rejoue ce qu'il a déjà reçu.
  */
-export async function advanceBotMatch(matchId: string): Promise<ActionResult<MatchUpdate>> {
+export async function advanceBotMatch(matchId: string, knownLog?: unknown): Promise<ActionResult<MatchUpdate>> {
   const user = await requireUser();
   try {
-    const result = await advanceBot(matchId, user.id);
+    const result = await advanceBot(matchId, user.id, parseKnownLog(knownLog));
     return result.ok ? { ok: true, data: result.data } : { ok: false, error: result.error };
   } catch (error) {
     console.error("[advanceBotMatch] Échec :", error);

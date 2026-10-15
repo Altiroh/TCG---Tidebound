@@ -4,14 +4,14 @@ import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/types";
 import { awardMatchReward } from "@/features/progression/rewards";
 import { botCountsAsPvp } from "@/features/progression/botRewardPolicy";
-import { hasSaneActionShape } from "@/features/matches/actionShape";
+import { hasSaneActionShape, MAX_ACTIONS_PER_BATCH } from "@/features/matches/actionShape";
 import { audienceOpponent, countsAsPlayedMatch, matchActivity, matchModePaysRewards, utcDayKey } from "@/game/progression";
 import { recordMatchQuestProgress } from "@/features/quests/questService";
 import { recordMatchLifetimeStats } from "@/features/achievements/lifetimeStatsService";
 import { recordMatchBalanceReport } from "@/features/balance/balanceBankService";
 import { recordMatchAudience } from "@/features/progression/hubService";
 import { isRecentDeck } from "@/features/decks/recentDecks";
-import { packFrames, type PackedFrames } from "@/features/matches/matchFrames";
+import { packFrames, type KnownLog, type PackedFrames } from "@/features/matches/matchFrames";
 
 /**
  * Parties arbitrées côté serveur — PvP comme contre bot.
@@ -109,33 +109,100 @@ export function winnerUserId(match: MatchRow, state: GameState): string | null {
 }
 
 /**
- * Applique un coup du joueur connecté et l'enregistre. Contre le bot, sa
- * réponse ne vient pas ici : `botToMove` dit au client de la demander
- * (`advanceBot`).
+ * Réponse à un LOT de coups (`submitActions`). Les vues de `frames` se
+ * répartissent entre les coups PRIS EN CHARGE, dans l'ordre :
+ * `frameEnds[i]` est l'index (exclu) de la dernière vue du coup `i`. Les
+ * vues d'un rattrapage d'échéance précèdent celles du premier coup ; celles
+ * d'une première tranche du bot suivent celles du dernier.
+ *
+ * Les coups au-delà de `frameEnds.length` n'ont PAS été tentés — le bot a
+ * pris la main entre-temps, ou la partie s'est terminée — sauf si
+ * `rejected` est présent : le coup `rejected.index` a été refusé par le
+ * moteur, ceux d'avant sont enregistrés, ceux d'après abandonnés.
  */
-export async function submitAction(matchId: string, userId: string, action: PlayerAction): Promise<StoreResult<MatchUpdate>> {
+export interface MatchBatchUpdate extends MatchUpdate {
+  frameEnds: number[];
+  rejected?: { index: number; error: string };
+}
+
+/**
+ * Applique un coup du joueur connecté et l'enregistre — un lot d'un seul
+ * coup (`submitActions`), conservé pour les appelants existants.
+ */
+export async function submitAction(
+  matchId: string,
+  userId: string,
+  action: PlayerAction,
+  known?: KnownLog
+): Promise<StoreResult<MatchBatchUpdate>> {
+  return submitActions(matchId, userId, [action], known);
+}
+
+/** Refus de FORME ou d'identité d'un coup reçu du navigateur, avant toute lecture. `null` : recevable. */
+function actionRejection(action: PlayerAction, userId: string): string | null {
   // Le moteur valide la légalité d'un coup, pas l'identité de celui qui
   // l'envoie : sans cette vérification, un joueur pourrait terminer le tour
   // de son adversaire, ou jouer à la place du bot.
-  if (!action || typeof action !== "object" || action.playerId !== userId) {
-    return { ok: false, error: "Action refusée." };
-  }
+  if (!action || typeof action !== "object" || action.playerId !== userId) return "Action refusée.";
   // Une échéance ne s'invoque pas, elle se constate : seul le serveur émet
   // `timeout` (`applyExpiredDeadlines`), avec SA propre heure. Reçue du
   // navigateur, elle porterait un `now` choisi par le joueur.
-  if (action.type === "timeout") return { ok: false, error: "Action refusée." };
+  if (action.type === "timeout") return "Action refusée.";
   // Forme avant légalité : nombres finis, chaînes et tableaux bornés.
-  if (!hasSaneActionShape(action)) return { ok: false, error: "Action refusée." };
+  if (!hasSaneActionShape(action)) return "Action refusée.";
+  return null;
+}
+
+/**
+ * Applique un LOT de coups du joueur connecté — ceux qu'il a enchaînés
+ * pendant qu'un autre était en route — avec UNE lecture, les `dispatch`
+ * successifs et UN enregistrement : un aller-retour pour toute la file, au
+ * lieu d'un par coup.
+ *
+ * Mêmes garanties que coup par coup : chaque coup est contrôlé (identité,
+ * forme) et revalidé par le moteur sur l'état laissé par le précédent. Un
+ * coup refusé arrête le lot : ce qui précède est enregistré, ce qui suit
+ * abandonné (`rejected`). Contre le bot, le lot s'arrête dès que le bot a
+ * la main — joué coup par coup, il aurait répondu avant le coup suivant —
+ * et les coups restants ne sont pas tentés (le client les renvoie).
+ */
+export async function submitActions(
+  matchId: string,
+  userId: string,
+  actions: readonly PlayerAction[],
+  known?: KnownLog
+): Promise<StoreResult<MatchBatchUpdate>> {
+  if (!Array.isArray(actions) || actions.length === 0 || actions.length > MAX_ACTIONS_PER_BATCH) {
+    return { ok: false, error: "Action refusée." };
+  }
+  // Un coup irrecevable coupe le lot à cet endroit, comme un refus du moteur.
+  let receivable = actions.length;
+  let rejection: string | null = null;
+  for (let index = 0; index < actions.length; index += 1) {
+    rejection = actionRejection(actions[index]!, userId);
+    if (rejection) {
+      receivable = index;
+      break;
+    }
+  }
+  if (receivable === 0) return { ok: false, error: rejection ?? "Action refusée." };
+  const batch = actions.slice(0, receivable);
+  const shapeRejected = rejection ? { index: receivable, error: rejection } : undefined;
 
   // Une écriture concurrente — l'écran de l'adversaire qui constate une
   // échéance au même instant, typiquement — fait échouer l'enregistrement
-  // sous verrou optimiste. Le coup n'a alors PAS eu lieu : on le rejoue sur
-  // l'état frais, que le moteur revalide entièrement (un coup devenu
+  // sous verrou optimiste. Les coups n'ont alors PAS eu lieu : on les rejoue
+  // sur l'état frais, que le moteur revalide entièrement (un coup devenu
   // illégal est refusé comme n'importe quel autre). Le joueur n'a plus à
   // refaire son geste sur un « la partie a changé entre-temps ».
-  let attempt = await submitActionOnce(matchId, userId, action);
+  let attempt = await submitActionsOnce(matchId, userId, batch, known);
   for (let retry = 1; retry < MAX_COMMIT_ATTEMPTS && !attempt.ok && attempt.conflict; retry += 1) {
-    attempt = await submitActionOnce(matchId, userId, action);
+    attempt = await submitActionsOnce(matchId, userId, batch, known);
+  }
+  if (!attempt.ok) return { ok: false, error: attempt.error };
+  // Le lot a été joué jusqu'au coup irrecevable : c'est lui qui l'arrête.
+  if (shapeRejected && !attempt.data.rejected && attempt.data.frameEnds.length === batch.length) {
+    return { ok: true, data: { ...attempt.data, rejected: shapeRejected } };
   }
   return attempt;
 }
@@ -143,7 +210,9 @@ export async function submitAction(matchId: string, userId: string, action: Play
 /** Tentatives d'enregistrement d'un même coup face à des écritures concurrentes. */
 const MAX_COMMIT_ATTEMPTS = 3;
 
-async function submitActionOnce(matchId: string, userId: string, action: PlayerAction): Promise<CommitResult> {
+type BatchCommitResult = { ok: true; data: MatchBatchUpdate } | { ok: false; error: string; conflict?: boolean };
+
+async function submitActionsOnce(matchId: string, userId: string, actions: readonly PlayerAction[], known?: KnownLog): Promise<BatchCommitResult> {
   // Les deux lectures en parallèle : un aller-retour en base de moins par
   // coup. L'état complet ne quitte jamais cette fonction, il n'y a donc rien
   // à protéger en attendant la vérification de participation.
@@ -158,23 +227,92 @@ async function submitActionOnce(matchId: string, userId: string, action: PlayerA
   const frames: GameState[] = [];
   const rattrape = applyExpiredDeadlines(full.state, match, Date.now(), userId);
   frames.push(...rattrape.frames);
-  const beforeAction = rattrape.state;
+  let state = rattrape.state;
 
   // Le rattrapage a pu terminer la partie (abandon automatique) : le coup
-  // qui suit n'a plus lieu d'être, mais ce qui vient d'arriver, si.
-  if (beforeAction.status !== "active") {
-    return await commitAndSettle(matchId, userId, match, full.version, frames, beforeAction);
+  // qui suit n'a plus lieu d'être, mais ce qui vient d'arriver, si. Le
+  // premier coup est pris en charge (sans effet), les suivants non tentés.
+  if (state.status !== "active") {
+    return withFrameEnds(await commitAndSettle(matchId, userId, match, full.version, frames, state, known), [frames.length]);
   }
 
-  const result = dispatch(beforeAction, action);
-  if (!result.ok) return { ok: false, error: result.error };
+  const frameEnds: number[] = [];
+  let rejected: MatchBatchUpdate["rejected"];
+  for (let index = 0; index < actions.length; index += 1) {
+    const result = dispatch(state, actions[index]!);
+    if (!result.ok) {
+      rejected = { index, error: result.error };
+      break;
+    }
+    state = result.state;
+    frames.push(state);
+    frameEnds.push(frames.length);
+    // Partie terminée, ou le bot a quelque chose à décider (son tour, une
+    // réaction) : coup par coup, il aurait répondu avant le coup suivant.
+    if (state.status !== "active" || botStillToMove(match, state)) break;
+  }
+  // Refusé dès le premier coup : rien n'a eu lieu, rien n'est enregistré.
+  if (frameEnds.length === 0) return { ok: false, error: rejected?.error ?? "Action refusée." };
 
-  // Contre le bot, le coup du joueur est enregistré et RENVOYÉ SEUL : le bot
-  // joue ensuite, par tranches (`advanceBot`). Autrefois le serveur calculait
-  // tout le tour du bot avant de répondre — une fin de tour restait figée le
-  // temps de toute sa réflexion, puis le tour entier arrivait d'un bloc.
-  frames.push(result.state);
-  return await commitAndSettle(matchId, userId, match, full.version, frames, result.state);
+  // PREMIÈRE TRANCHE DU BOT dans la même requête : le plus souvent, son tour
+  // entier (quelques millisecondes en facile/moyen), sans second aller-retour.
+  // Le reste se demande comme avant (`advanceBot`, `botToMove`).
+  if (!rejected && botStillToMove(match, state)) {
+    const inline = playBotSlice(state, match, BOT_INLINE_BUDGET_MS, { inline: true });
+    if (inline.frames.length > 0) {
+      frames.push(...inline.frames);
+      state = inline.state;
+      frameEnds[frameEnds.length - 1] = frames.length;
+    }
+  }
+
+  const committed = await commitAndSettle(matchId, userId, match, full.version, frames, state, known);
+  return withFrameEnds(committed, frameEnds, rejected);
+}
+
+function withFrameEnds(result: CommitResult, frameEnds: number[], rejected?: MatchBatchUpdate["rejected"]): BatchCommitResult {
+  if (!result.ok) return result;
+  return { ok: true, data: { ...result.data, frameEnds, ...(rejected ? { rejected } : {}) } };
+}
+
+/**
+ * Budget de la première tranche du bot jouée dans la requête du coup du
+ * joueur. Court : la réponse au coup ne doit pas attendre le bot ; ce qui ne
+ * tient pas dedans se joue par `advanceBot`. Un pas facile ou moyen coûte
+ * de l'ordre de la milliseconde (p95 ≈ 6 ms, mesuré le 14/10/2026).
+ */
+const BOT_INLINE_BUDGET_MS = 40;
+
+/**
+ * Fait jouer le bot tant qu'il a quelque chose à décider, dans la limite
+ * d'un budget de temps et de `MAX_BOT_ACTIONS_PER_SLICE` actions.
+ *
+ * `inline` : tranche jouée dans la requête d'un coup du joueur. Elle n'a
+ * pas lieu en difficulté « difficile », dont un seul pas coûte 120 à 275 ms
+ * — la réponse au coup partirait aussitôt sans elle. Sinon, au moins une
+ * action, quoi qu'il arrive.
+ */
+function playBotSlice(
+  initial: GameState,
+  match: MatchRow,
+  budgetMs: number,
+  { inline = false }: { inline?: boolean } = {}
+): { state: GameState; frames: GameState[] } {
+  const difficulty = match.bot_difficulty ?? "moyen";
+  const frames: GameState[] = [];
+  if (inline && difficulty === "difficile") return { state: initial, frames };
+  let state = initial;
+  const startedAt = performance.now();
+  while (frames.length < MAX_BOT_ACTIONS_PER_SLICE && state.status === "active" && botHasSomethingToDo(state, BOT_PLAYER_ID)) {
+    if (inline && performance.now() - startedAt >= budgetMs) break;
+    const step = stepBotTurn(state, BOT_PLAYER_ID, difficulty);
+    // Aucune progression possible : on s'arrête plutôt que de boucler.
+    if (step.state === state) break;
+    state = step.state;
+    frames.push(state);
+    if (step.done || performance.now() - startedAt >= budgetMs) break;
+  }
+  return { state, frames };
 }
 
 /**
@@ -194,28 +332,18 @@ const MAX_BOT_ACTIONS_PER_SLICE = 40;
  * demande ne porte aucun coup : c'est le serveur qui fait jouer le bot, sur
  * l'état autoritaire, sous le même verrou optimiste qu'un coup du joueur.
  */
-export async function advanceBot(matchId: string, userId: string): Promise<StoreResult<MatchUpdate>> {
+export async function advanceBot(matchId: string, userId: string, known?: KnownLog): Promise<StoreResult<MatchUpdate>> {
   const [match, full] = await Promise.all([loadMatchRow(matchId), loadFullState(matchId)]);
   if (!match || !isParticipant(match, userId)) return { ok: false, error: "Partie introuvable." };
   if (match.mode !== "bot" || match.status !== "active" || !full) return { ok: false, error: "Cette partie n'est pas en cours." };
 
-  const frames: GameState[] = [];
-  let state = full.state;
-  const startedAt = Date.now();
-  while (frames.length < MAX_BOT_ACTIONS_PER_SLICE && state.status === "active" && botHasSomethingToDo(state, BOT_PLAYER_ID)) {
-    const step = stepBotTurn(state, BOT_PLAYER_ID, match.bot_difficulty ?? "moyen");
-    // Aucune progression possible : on s'arrête plutôt que de boucler.
-    if (step.state === state) break;
-    state = step.state;
-    frames.push(state);
-    if (step.done || Date.now() - startedAt >= BOT_SLICE_BUDGET_MS) break;
-  }
+  const { state, frames } = playBotSlice(full.state, match, BOT_SLICE_BUDGET_MS);
 
   // Rien à jouer : la vue telle quelle, sans écriture.
   if (frames.length === 0) {
-    return { ok: true, data: { match, frames: packFrames([toPlayerView(state, userId)]), botToMove: false } };
+    return { ok: true, data: { match, frames: packFrames([toPlayerView(state, userId)], known), botToMove: false } };
   }
-  return await commitAndSettle(matchId, userId, match, full.version, frames, state);
+  return await commitAndSettle(matchId, userId, match, full.version, frames, state, known);
 }
 
 /**
@@ -285,7 +413,8 @@ async function commitAndSettle(
   match: MatchRow,
   expectedVersion: number,
   frames: GameState[],
-  finalState: GameState
+  finalState: GameState,
+  known?: KnownLog
 ): Promise<CommitResult> {
   const finished = finalState.status === "finished";
 
@@ -333,7 +462,10 @@ async function commitAndSettle(
     ok: true,
     data: {
       match: updatedMatch,
-      frames: packFrames(frames.map((frame) => toPlayerView(frame, userId))),
+      frames: packFrames(
+        frames.map((frame) => toPlayerView(frame, userId)),
+        known
+      ),
       botToMove: botStillToMove(match, finalState),
     },
   };

@@ -891,7 +891,8 @@ describe("tour du bot par tranches — la fin de tour répond sans attendre le b
   });
 
   it("une table rouverte au milieu du tour du bot le voit terminé", async () => {
-    const started = await startBotMatch(DECK.id, OTHER_DECK.id, "moyen");
+    // « difficile » : sa première tranche n'est jamais jouée dans la requête du coup, le tour reste en suspens.
+    const started = await startBotMatch(DECK.id, OTHER_DECK.id, "difficile");
     const matchId = started.matchId!;
     const ended = await finirTour(matchId);
     expect(ended.data!.botToMove).toBe(true);
@@ -950,5 +951,172 @@ describe("quête « Nouvel équipage » : débloquer un préconstruit", () => {
     expect(db.where("quest_event_progress", { user_id: USER })).toHaveLength(1);
 
     expect((await startBotMatch(third.id, OTHER_DECK.id, "facile")).ok).toBe(true);
+  });
+});
+
+const { submitMatchActions } = await import("@/features/online/actions");
+const { unpackFrames, hashEventLog } = await import("@/features/matches/matchFrames");
+const { toPlayerView } = await import("@/game");
+
+describe("lot de coups — un aller-retour pour toute la file", () => {
+  const avancer = { type: "advancePhase", playerId: USER } as const;
+
+  /** Les mêmes coups joués un par un par le moteur, sur l'état enregistré : la référence. */
+  function rejouer(state: any, actions: readonly any[]): any {
+    return actions.reduce((current, action) => {
+      const result = dispatch(current, action);
+      expect(result.ok).toBe(true);
+      return result.ok ? result.state : current;
+    }, state);
+  }
+
+  it("applique les coups dans l'ordre, sur une lecture et un seul enregistrement", async () => {
+    const matchId = (await startBotMatch(DECK.id, OTHER_DECK.id, "difficile")).matchId!;
+    const before = { ...db.one("match_states", { match_id: matchId })! };
+    const expected = rejouer(before.state, [avancer, avancer]);
+    db.rpcCalls.length = 0;
+
+    const result = await submitMatchActions(matchId, [avancer, avancer]);
+    expect(result.error).toBeUndefined();
+    expect(result.data!.frameEnds).toEqual([1, 2]);
+    expect(result.data!.rejected).toBeUndefined();
+    expect(result.data!.frames.views).toHaveLength(2);
+    expect(db.rpcCalls.filter((call) => call.fn === "commit_match_state")).toHaveLength(1);
+
+    const after = db.one("match_states", { match_id: matchId })!;
+    expect(after.version).toBe(before.version + 1);
+    expect(after.state.phase).toBe(expected.phase);
+    expect(after.state.eventLog.length).toBe(expected.eventLog.length);
+  });
+
+  it("un coup refusé par le moteur en cours de lot : le préfixe est enregistré, le refus rendu avec son index", async () => {
+    const matchId = (await startBotMatch(DECK.id, OTHER_DECK.id, "difficile")).matchId!;
+    const before = { ...db.one("match_states", { match_id: matchId })! };
+    const expected = rejouer(before.state, [avancer]);
+
+    const result = await submitMatchActions(matchId, [avancer, { type: "playCard", playerId: USER, instanceId: "inexistante" }, avancer]);
+    expect(result.ok).toBe(true);
+    expect(result.data!.frameEnds).toEqual([1]);
+    expect(result.data!.rejected?.index).toBe(1);
+    expect(result.data!.rejected?.error).toBeTruthy();
+    const after = db.one("match_states", { match_id: matchId })!;
+    expect(after.version).toBe(before.version + 1);
+    expect(after.state.phase).toBe(expected.phase);
+  });
+
+  it("un coup irrecevable (au nom d'un autre, `timeout`) coupe le lot au même endroit", async () => {
+    const matchId = (await startBotMatch(DECK.id, OTHER_DECK.id, "difficile")).matchId!;
+    const version = db.one("match_states", { match_id: matchId })!.version;
+
+    const impostor = await submitMatchActions(matchId, [avancer, { type: "advancePhase", playerId: OPPONENT }]);
+    expect(impostor.data!.frameEnds).toEqual([1]);
+    expect(impostor.data!.rejected).toEqual({ index: 1, error: "Action refusée." });
+    expect(db.one("match_states", { match_id: matchId })!.version).toBe(version + 1);
+
+    const declared = await submitMatchActions(matchId, [{ type: "timeout", playerId: USER, now: Date.now() + 10 ** 9 } as never, avancer]);
+    expect(declared.ok).toBe(false);
+    expect(db.one("match_states", { match_id: matchId })!.version).toBe(version + 1);
+  });
+
+  it("refuse un lot vide, trop long ou qui n'est pas un tableau, sans rien écrire", async () => {
+    const matchId = (await startBotMatch(DECK.id, OTHER_DECK.id, "difficile")).matchId!;
+    const version = db.one("match_states", { match_id: matchId })!.version;
+    expect((await submitMatchActions(matchId, [])).ok).toBe(false);
+    expect((await submitMatchActions(matchId, Array.from({ length: 9 }, () => avancer))).ok).toBe(false);
+    expect((await submitMatchActions(matchId, avancer as never)).ok).toBe(false);
+    expect(db.one("match_states", { match_id: matchId })!.version).toBe(version);
+  });
+
+  it("contre le bot, le lot s'arrête quand le bot prend la main : les coups suivants ne sont pas tentés", async () => {
+    const matchId = (await startBotMatch(DECK.id, OTHER_DECK.id, "difficile")).matchId!;
+    let state = db.one("match_states", { match_id: matchId })!.state;
+    const toEnd: any[] = [];
+    while (state.phase !== "mainPhase2") {
+      toEnd.push(avancer);
+      state = rejouer(state, [avancer]);
+    }
+    const result = await submitMatchActions(matchId, [...toEnd, { type: "endTurn", playerId: USER }, avancer]);
+    expect(result.error).toBeUndefined();
+    expect(result.data!.rejected).toBeUndefined();
+    // Tous les coups jusqu'à la fin de tour, pas celui d'après.
+    expect(result.data!.frameEnds).toHaveLength(toEnd.length + 1);
+    // « difficile » : aucune tranche du bot dans la requête du coup.
+    expect(result.data!.frames.views).toHaveLength(toEnd.length + 1);
+    expect(result.data!.botToMove).toBe(true);
+    expect(db.one("match_states", { match_id: matchId })!.state.activePlayerId).toBe(BOT_PLAYER_ID);
+  });
+});
+
+describe("première tranche du bot dans la requête du coup", () => {
+  it("la fin de tour contre un bot moyen embarque sa réponse, vues dans l'ordre, et la suite vient par advanceBot", async () => {
+    const matchId = (await startBotMatch(DECK.id, OTHER_DECK.id, "moyen")).matchId!;
+    for (let i = 0; i < 2; i++) {
+      const state = db.one("match_states", { match_id: matchId })!.state;
+      if (state.phase === "mainPhase2") break;
+      expect((await submitMatchActions(matchId, [{ type: "advancePhase", playerId: USER }])).ok).toBe(true);
+    }
+    const before = db.one("match_states", { match_id: matchId })!.state;
+    const afterPlayer = dispatch(before, { type: "endTurn", playerId: USER });
+    expect(afterPlayer.ok).toBe(true);
+
+    const ended = await submitMatchActions(matchId, [{ type: "endTurn", playerId: USER }]);
+    expect(ended.error).toBeUndefined();
+    const views = unpackFrames(ended.data!.frames);
+    // Le coup du joueur d'abord, tel quel ; puis les actions du bot, une vue chacune.
+    expect(views.length).toBeGreaterThan(1);
+    expect(ended.data!.frameEnds).toEqual([views.length]);
+    const playerView = toPlayerView(afterPlayer.ok ? afterPlayer.state : before, USER);
+    expect(views[0]!.eventLog.length).toBe(playerView.eventLog.length);
+    expect(views[0]!.activePlayerId).toBe(playerView.activePlayerId);
+    for (let index = 1; index < views.length; index += 1) {
+      expect(views[index]!.eventLog.length).toBeGreaterThanOrEqual(views[index - 1]!.eventLog.length);
+    }
+    // La dernière vue est l'état enregistré, et la suite éventuelle se demande comme avant.
+    const stored = db.one("match_states", { match_id: matchId })!.state;
+    expect(views[views.length - 1]).toEqual(toPlayerView(stored, USER));
+    expect(ended.data!.botToMove).toBe(stored.status === "active" && botHasSomethingToDo(stored, BOT_PLAYER_ID));
+    let more = ended.data!.botToMove;
+    for (let garde = 0; more && garde < 30; garde += 1) more = (await advanceBotMatch(matchId)).data!.botToMove;
+    expect(more).toBe(false);
+  });
+});
+
+describe("journal en delta — seule la suite du journal fait le voyage", () => {
+  it("le préfixe annoncé est omis s'il est identique, et recollé à l'identique côté client", async () => {
+    const matchId = (await startBotMatch(DECK.id, OTHER_DECK.id, "difficile")).matchId!;
+    const first = await fetchMatchView(matchId);
+    const known = unpackFrames(first.data!.frames!)[0]!.eventLog;
+    const knownLog = { length: known.length, hash: hashEventLog(known) };
+
+    const result = await submitMatchActions(matchId, [{ type: "advancePhase", playerId: USER }], knownLog);
+    expect(result.data!.frames.logBase).toBe(known.length);
+    // Aller-retour JSON : c'est ce que subit réellement la réponse d'une Server Action.
+    const views = unpackFrames(JSON.parse(JSON.stringify(result.data!.frames)), known);
+    expect(views[views.length - 1]).toEqual(toPlayerView(db.one("match_states", { match_id: matchId })!.state, USER));
+    const full = await submitMatchActions(matchId, [{ type: "advancePhase", playerId: USER }]);
+    expect(full.data!.frames.logBase).toBeUndefined();
+  });
+
+  it("une empreinte qui ne correspond pas (événement re-projeté depuis) fait repartir le journal complet", async () => {
+    const matchId = (await startBotMatch(DECK.id, OTHER_DECK.id, "difficile")).matchId!;
+    const known = unpackFrames((await fetchMatchView(matchId)).data!.frames!)[0]!.eventLog;
+    const altered = known.map((event, index) => (index === 0 ? { ...event, cardId: "masquee" } : event));
+    const view = await fetchMatchView(matchId, { log: { length: known.length, hash: hashEventLog(altered as typeof known) } });
+    expect(view.data!.frames!.logBase).toBeUndefined();
+    expect(unpackFrames(view.data!.frames!)[0]!.eventLog).toEqual(known);
+    // Annonce malformée : ignorée, journal complet.
+    const junk = await fetchMatchView(matchId, { log: { length: -1, hash: "zz" } });
+    expect(junk.data!.frames!.logBase).toBeUndefined();
+  });
+
+  it("relecture de garde à version inchangée : réponse sans vue ; version dépassée : la vue", async () => {
+    const matchId = (await startBotMatch(DECK.id, OTHER_DECK.id, "difficile")).matchId!;
+    const version = db.one("matches", { id: matchId })!.state_version;
+    const same = await fetchMatchView(matchId, { version });
+    expect(same.data!.unchanged).toBe(true);
+    expect(same.data!.frames).toBeNull();
+    const older = await fetchMatchView(matchId, { version: version - 1 });
+    expect(older.data!.unchanged).toBeUndefined();
+    expect(older.data!.frames).not.toBeNull();
   });
 });

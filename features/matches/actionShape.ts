@@ -32,3 +32,10 @@ export function hasSaneActionShape(value: unknown, depth = 0): boolean {
   }
   return false;
 }
+
+/**
+ * Coups envoyés d'un seul aller-retour (`submitMatchActions`) : ceux que le
+ * joueur a enchaînés pendant qu'un autre était en route. Au-delà, la suite
+ * part dans la requête suivante.
+ */
+export const MAX_ACTIONS_PER_BATCH = 8;

@@ -4,11 +4,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { botHasSomethingToDo, type GameState, type PlayerAction } from "@/game";
 import { COIN_TOSS_MS } from "@/features/match/CoinToss";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
-import { advanceBotMatch, fetchMatchCosmetics, fetchMatchView, submitMatchAction } from "@/features/online/actions";
+import { advanceBotMatch, fetchMatchCosmetics, fetchMatchView, submitMatchActions } from "@/features/online/actions";
 import { OnlineBoard } from "@/features/online/OnlineBoard";
 import { MatchCosmeticsProvider, type PlayerCosmetics } from "@/features/cosmetics/MatchCosmeticsProvider";
 import type { MatchRow } from "@/features/matches/matchStore";
-import { unpackFrames } from "@/features/matches/matchFrames";
+import { hashEventLog, nextKnownLog, unpackFrames, type PackedFrames } from "@/features/matches/matchFrames";
+import { MAX_ACTIONS_PER_BATCH } from "@/features/matches/actionShape";
 import { predictView } from "@/features/online/predictView";
 import { BASE_FRAME_MS, framePaceMs } from "@/features/match/framePacing";
 import { WaitingRoom } from "@/features/online/WaitingRoom";
@@ -76,12 +77,48 @@ export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: On
   const [waiting, setWaiting] = useState<"coup" | "bot" | null>(null);
   /** États du bot encore à rejouer à l'écran : tant qu'il y en a, le bot ne « réfléchit » pas aux yeux du joueur. */
   const framesToShow = useRef(0);
+  /**
+   * JOURNAL CONNU : le dernier journal reçu DU SERVEUR (jamais une
+   * prédiction) et son empreinte. Annoncé à chaque requête, il permet au
+   * serveur de n'envoyer que la suite (`packFrames`). La paire est capturée
+   * à l'envoi et c'est elle qui sert à recoller la réponse : une relecture
+   * concurrente peut la remplacer entre-temps sans rien casser.
+   */
+  const serverLog = useRef<{ log: GameState["eventLog"]; hash: string } | null>(null);
+  function knownLog() {
+    if (!serverLog.current) {
+      const log = initialView?.eventLog ?? [];
+      serverLog.current = { log, hash: hashEventLog(log) };
+    }
+    return serverLog.current;
+  }
+  /** Vues d'une réponse, recollées sur le journal annoncé à l'envoi (`base`), et journal connu mis à jour. */
+  function receiveFrames(packed: PackedFrames, base: { log: GameState["eventLog"]; hash: string }): GameState[] {
+    try {
+      const views = unpackFrames(packed, base.log);
+      serverLog.current = nextKnownLog(packed, views, base);
+      return views;
+    } catch (error) {
+      // Impossible en principe (la base est capturée à l'envoi) : la
+      // prochaine requête repartira du journal complet.
+      serverLog.current = { log: [], hash: hashEventLog([]) };
+      throw error;
+    }
+  }
+
   /** Appel au bot du serveur, avec le micro-chargement s'il n'y a rien d'autre à regarder. */
-  function askBot() {
+  async function askBot(): Promise<{ ok: true; match: MatchRow; views: GameState[]; botToMove: boolean } | { ok: false; error?: string }> {
     if (framesToShow.current === 0) setWaiting("bot");
-    return advanceBotMatch(matchId)
-      .catch(() => ({ ok: false as const, error: "Le bot n'a pas pu jouer, réessaie.", data: undefined }))
-      .finally(() => setWaiting(null));
+    const base = knownLog();
+    try {
+      const slice = await advanceBotMatch(matchId, { length: base.log.length, hash: base.hash });
+      if (!slice.ok || !slice.data) return { ok: false, error: slice.error };
+      return { ok: true, match: slice.data.match, views: receiveFrames(slice.data.frames, base), botToMove: slice.data.botToMove };
+    } catch {
+      return { ok: false, error: "Le bot n'a pas pu jouer, réessaie." };
+    } finally {
+      setWaiting(null);
+    }
   }
 
   const shownVersion = useRef(initialMatch.state_version);
@@ -189,8 +226,13 @@ export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: On
   /** `paced` : vue d'un coup adverse arrivée par Realtime — elle attend la fin de la scène en cours. */
   async function refresh({ paced = false, onlyIfNewer = false }: { paced?: boolean; onlyIfNewer?: boolean } = {}) {
     let result: Awaited<ReturnType<typeof fetchMatchView>>;
+    const base = knownLog();
     try {
-      result = await fetchMatchView(matchId);
+      // Relecture de garde : la version affichée suffit au serveur pour répondre « rien de neuf » sans vue.
+      result = await fetchMatchView(matchId, {
+        log: { length: base.log.length, hash: base.hash },
+        ...(onlyIfNewer ? { version: shownVersion.current } : {}),
+      });
       refreshFailures.current = 0;
     } catch (error) {
       // Hors ligne, l'échec est attendu : ni compté, ni suivi d'un
@@ -208,13 +250,20 @@ export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: On
       }
       return;
     }
-    if (!result.ok || !result.data) return;
+    if (!result.ok || !result.data || result.data.unchanged) return;
     // Relecture de garde : rien de neuf, rien ne bouge à l'écran.
     if (onlyIfNewer && result.data.match.state_version <= shownVersion.current) return;
+    let next: GameState | null = null;
+    try {
+      next = result.data.frames ? receiveFrames(result.data.frames, base)[0]! : null;
+    } catch (error) {
+      // Le journal connu vient d'être oublié : la relecture suivante le reprend en entier.
+      console.error("[OnlineMatch] Vue illisible, relecture complète :", error);
+      return refresh({ paced, onlyIfNewer });
+    }
     shownVersion.current = result.data.match.state_version;
     latestRemoteVersion.current = Math.max(latestRemoteVersion.current, shownVersion.current);
     setMatch(result.data.match);
-    const next = result.data.frames ? unpackFrames(result.data.frames)[0]! : null;
     if (paced) {
       showPaced(next);
       return;
@@ -369,69 +418,121 @@ export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: On
     cancelPendingRemote();
 
     while (queue.current.length > 0) {
-      const item = queue.current.shift()!;
-      if (!item.predicted) setPending(true);
+      if (queue.current.some((entry) => !entry.predicted)) setPending(true);
       // Hors ligne, le coup n'est pas encore parti : il attend le réseau
       // (affiché s'il se prédit) plutôt que d'échouer. Un échec EN VOL, lui,
       // n'est jamais renvoyé — le serveur l'a peut-être déjà enregistré.
       await waitUntilOnline();
 
-      if (!item.predicted) setWaiting("coup");
-      const result = await submitMatchAction(matchId, item.action)
+      // LOT : tous les coups en file partent ensemble — ceux joués pendant
+      // que le précédent était en route —, un aller-retour pour toute la
+      // file au lieu d'un par coup (`submitMatchActions`).
+      const batch = queue.current.splice(0, MAX_ACTIONS_PER_BATCH);
+      if (batch.some((entry) => !entry.predicted)) setWaiting("coup");
+      const base = knownLog();
+      const result = await submitMatchActions(
+        matchId,
+        batch.map((entry) => entry.action),
+        { length: base.log.length, hash: base.hash }
+      )
         .catch(() => ({ ok: false as const, error: "Coup non enregistré, réessaie.", data: undefined }))
         .finally(() => setWaiting(null));
 
-      if (!result.ok || !result.data) {
+      let views: GameState[] | null = null;
+      if (result.ok && result.data) {
+        try {
+          views = receiveFrames(result.data.frames, base);
+        } catch (error) {
+          console.error("[OnlineMatch] Réponse illisible :", error);
+        }
+      }
+      const consumed = result.data?.frameEnds.length ?? 0;
+      if (!result.ok || !result.data || !views || consumed === 0) {
         // Les coups suivants avaient été prédits sur un état qui n'a pas eu
         // lieu : ils sont abandonnés, et l'affichage se réaligne sur le serveur.
         const dropped = queue.current.splice(0);
-        setError(result.error ?? "Action refusée.");
+        if (!result.ok || !result.data) setError(result.error ?? "Action refusée.");
         await refresh();
-        item.resolve();
+        batch.forEach((entry) => entry.resolve());
         dropped.forEach((entry) => entry.resolve());
         break;
       }
 
-      const { match: updated, frames, botToMove } = result.data;
-      const views = unpackFrames(frames);
+      const { match: updated, botToMove, frameEnds, rejected } = result.data;
       shownVersion.current = updated.state_version;
       setMatch(updated);
+      // Coups NON TENTÉS : le bot a pris la main avant eux. Ils repartent en
+      // tête de file, une fois sa réponse jouée — comme coup par coup.
+      const refused = rejected ? batch.slice(consumed) : [];
+      if (!rejected) queue.current.unshift(...batch.slice(consumed));
 
-      const [first, ...botFrames] = views;
+      // Les vues de chaque coup, dans l'ordre, rejouées à leur rythme
+      // (`paceFrames`) : la première tout de suite, les suivantes — les
+      // coups non prédits du lot, puis le bot — chacune après la mise en
+      // scène de la précédente.
       const beforeFirst = viewRef.current;
-      // Le coup suivant est déjà affiché par prédiction : remettre la vue du
-      // serveur maintenant le ferait disparaître un instant. Sa propre
-      // réponse fera foi.
-      const nextIsPredicted = queue.current[0]?.predicted ?? false;
-      if (first && !(nextIsPredicted && botFrames.length === 0 && !botToMove)) showView(first);
+      let replay: ReturnType<typeof paceFrames> | null = null;
+      const shownFor: Promise<void>[] = [];
+      let start = 0;
+      for (let index = 0; index < consumed; index += 1) {
+        const group = views.slice(start, frameEnds[index]);
+        start = frameEnds[index]!;
+        const last = index === consumed - 1;
+        const next = last ? (rejected ? undefined : queue.current[0]) : batch[index + 1];
+        // Le coup suivant est déjà affiché par prédiction : remettre la vue
+        // du serveur maintenant le ferait disparaître un instant. Sa propre
+        // réponse fera foi.
+        const skip = (next?.predicted ?? false) && group.length === 1 && !(last && botToMove);
+        if (!skip && group.length > 0) {
+          if (!replay) {
+            showView(group[0]!);
+            replay = paceFrames(beforeFirst, group[0]!);
+            replay.enqueue(group.slice(1));
+          } else {
+            replay.enqueue(group);
+          }
+        }
+        shownFor.push(replay ? replay.finished() : Promise.resolve());
+      }
 
-      // Tour du bot : chaque état intermédiaire est rejoué à son rythme
-      // (`paceFrames`). Les tranches suivantes (`advanceBotMatch`) sont
-      // demandées PENDANT ce rejeu : le bot réfléchit à la suite pendant
+      // Tour du bot : les tranches suivantes (`advanceBotMatch`) sont
+      // demandées PENDANT le rejeu : le bot réfléchit à la suite pendant
       // qu'on regarde ce qu'il vient de jouer. La promesse du coup ne se
       // résout qu'à la fin du rejeu, pour que l'activation enchaînée de
       // plusieurs réactions n'envoie jamais la suivante pendant celui-ci.
-      const replay = paceFrames(beforeFirst, first ?? null);
-      replay.enqueue(botFrames);
+      const pacing = replay ?? paceFrames(viewRef.current, viewRef.current);
       let botStillToMove = botToMove;
       while (botStillToMove) {
         const slice = await askBot();
-        if (!slice.ok || !slice.data) {
+        if (!slice.ok) {
           // La lecture de la table termine le tour du bot côté serveur
           // (`settleExpiredDeadlines`) : on montre ce qui est arrivé, puis l'état final.
-          await replay.finished();
+          await pacing.finished();
           setError(slice.error ?? "Le bot n'a pas pu jouer.");
           await refresh();
           break;
         }
-        shownVersion.current = slice.data.match.state_version;
-        setMatch(slice.data.match);
-        replay.enqueue(unpackFrames(slice.data.frames));
-        botStillToMove = slice.data.botToMove;
+        shownVersion.current = slice.match.state_version;
+        setMatch(slice.match);
+        pacing.enqueue(slice.views);
+        botStillToMove = slice.botToMove;
       }
-      await replay.finished();
+      // Chaque coup se résout une fois SES vues montrées ; le dernier, après le bot.
+      shownFor.slice(0, -1).forEach((shown, index) => void shown.then(() => batch[index]!.resolve()));
+      await pacing.finished();
+      batch[consumed - 1]!.resolve();
 
-      item.resolve();
+      if (rejected) {
+        // Refusé en cours de lot : ce qui précède est enregistré (et vient
+        // d'être montré) ; le coup refusé et tout ce qui le suivait, prédit
+        // sur un état qui n'a pas eu lieu, sont abandonnés.
+        const dropped = queue.current.splice(0);
+        setError(rejected.error);
+        await refresh();
+        refused.forEach((entry) => entry.resolve());
+        dropped.forEach((entry) => entry.resolve());
+        break;
+      }
     }
 
     busy.current = false;
@@ -457,15 +558,15 @@ export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: On
     let more = true;
     while (more) {
       const slice = await askBot();
-      if (!slice.ok || !slice.data) {
+      if (!slice.ok) {
         await replay.finished();
         await refresh();
         break;
       }
-      shownVersion.current = slice.data.match.state_version;
-      setMatch(slice.data.match);
-      replay.enqueue(unpackFrames(slice.data.frames));
-      more = slice.data.botToMove;
+      shownVersion.current = slice.match.state_version;
+      setMatch(slice.match);
+      replay.enqueue(slice.views);
+      more = slice.botToMove;
     }
     await replay.finished();
     busy.current = false;
