@@ -397,7 +397,7 @@
   flex: none;
   border-radius: 50%;
   background:
-    radial-gradient(circle at 50% 38%, #1d3444 0 55%, #0b1620 70%) content-box,
+    radial-gradient(circle at 50% 38%, #232425 0 55%, #0e0f10 70%) content-box,
     linear-gradient(160deg, #f0d08a, #a8741f 55%, #6f4a14);
   padding: calc(0.16cqw * var(--z, 1));
   color: #f4ead4;

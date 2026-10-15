@@ -64,7 +64,7 @@
   padding: 5px 12px;
   border: 1px solid rgba(217, 181, 106, 0.55);
   border-radius: 999px;
-  background: rgba(6, 14, 20, 0.82);
+  background: rgba(8, 9, 10, 0.82);
   color: #efe6d2;
   font-family: var(--tb-font-display);
   font-size: calc(clamp(max(11px, var(--tb-fs-floor, 0px)), 0.95vw, 14px) * var(--tb-text-scale));
@@ -236,7 +236,7 @@
   height: clamp(34px, 4.2cqw, 52px);
   border: 1px solid rgba(217, 181, 106, 0.7);
   border-radius: 50%;
-  background: radial-gradient(circle at 50% 30%, #1d2a33, #081018 75%);
+  background: radial-gradient(circle at 50% 30%, #202122, #0a0b0c 75%);
   color: #efe6d2;
   box-shadow: 0 6px 14px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 230, 170, 0.22), inset 0 0 0 3px rgba(217, 181, 106, 0.12);
   cursor: var(--tb-cursor-pointer);
@@ -503,7 +503,7 @@
   padding: 0.4cqw 1cqw;
   border: 1px solid rgba(88, 200, 216, 0.6);
   border-radius: 999px;
-  background: rgba(3, 10, 16, 0.9);
+  background: rgba(5, 6, 7, 0.9);
   color: #eaf8fb;
   font-size: calc(clamp(11px, 1.4cqw, 16px) * var(--tb-text-scale));
   font-weight: 700;
@@ -598,7 +598,7 @@
   padding: 0.3cqw 0.9cqw;
   border: 1px solid rgba(217, 181, 106, 0.5);
   border-radius: 999px;
-  background: rgba(6, 14, 20, 0.75);
+  background: rgba(8, 9, 10, 0.75);
   color: #e6edf1;
   font: inherit;
   font-size: calc(clamp(max(10px, var(--tb-fs-floor, 0px)), 1cqw, 13px) * var(--tb-text-scale));
@@ -809,7 +809,7 @@
   height: 28px;
   border: 1px solid rgba(217, 181, 106, 0.45);
   border-radius: 4px;
-  background: rgba(6, 14, 20, 0.7);
+  background: rgba(8, 9, 10, 0.7);
   color: #efe6d2;
   cursor: var(--tb-cursor-pointer);
   transition: border-color 150ms ease-out, color 150ms ease-out, box-shadow 150ms ease-out;

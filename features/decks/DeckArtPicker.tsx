@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { getCardDefinition } from "@/game";
 import { cardIllustrationThumbUrl, signatureCardId } from "@/features/decks/nameplateArt";
-import { Dialog } from "@/features/shell/Dialog";
+import { SidePanel } from "@/features/shell/SidePanel";
 import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/decks/DeckBuilder.module.css";
 import { playButtonClick } from "@/lib/sound";
@@ -38,6 +38,9 @@ function cardName(cardId: string): string {
  * Seules les cartes DU DECK sont proposées : une plaque qui montrerait une
  * carte absente mentirait sur son contenu. « Choix automatique » reste
  * offert, et c'est le comportement par défaut.
+ *
+ * PANNEAU LATÉRAL (15/10/2026), comme le Courrier et les Options : le deck
+ * reste visible à gauche pendant qu'on choisit.
  */
 export function DeckArtPicker({ cardIds, artCardId, onChoose, onClose }: DeckArtPickerProps) {
   const options = useMemo(
@@ -50,23 +53,17 @@ export function DeckArtPicker({ cardIds, artCardId, onChoose, onClose }: DeckArt
   const automatic = useMemo(() => signatureCardId(cardIds), [cardIds]);
 
   return (
-    <Dialog
-      title="Illustration du deck"
-      width={820}
-      onClose={onClose}
-      actions={
-        <button
-          type="button"
-          className={artCardId === null ? game.primary : game.secondary}
-          onClick={() => {
-            playButtonClick();
-            onChoose(null);
-          }}
-        >
-          Choix automatique{automatic ? ` (${cardName(automatic)})` : ""}
-        </button>
-      }
-    >
+    <SidePanel title="Illustration du deck" onClose={onClose}>
+      <button
+        type="button"
+        className={`${artCardId === null ? game.primary : game.secondary} ${styles.artAutomatic}`}
+        onClick={() => {
+          playButtonClick();
+          onChoose(null);
+        }}
+      >
+        Choix automatique{automatic ? ` (${cardName(automatic)})` : ""}
+      </button>
       {options.length === 0 ? (
         <p className={game.muted}>Ajoute des cartes au deck : c&apos;est parmi elles que se choisit son illustration.</p>
       ) : (
@@ -88,6 +85,6 @@ export function DeckArtPicker({ cardIds, artCardId, onChoose, onClose }: DeckArt
           ))}
         </div>
       )}
-    </Dialog>
+    </SidePanel>
   );
 }

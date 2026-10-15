@@ -155,7 +155,7 @@
 .tabActive {
   composes: tab;
   border-color: rgba(88, 200, 216, 0.42);
-  background: linear-gradient(90deg, rgba(13, 52, 69, 0.8), rgba(13, 52, 69, 0.3));
+  background: linear-gradient(90deg, rgba(21, 22, 23, 0.8), rgba(21, 22, 23, 0.3));
   color: #eaf8fb;
   box-shadow: inset 3px 0 0 var(--cb-cyan);
 }
@@ -216,7 +216,7 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
-  scrollbar-color: var(--line-strong) transparent;
+  scrollbar-color: var(--tb-scrollbar-thumb) transparent;
 }
 
 .tabBody {
@@ -403,7 +403,7 @@
 .escaleCurrent {
   composes: escale;
   border-color: rgba(88, 200, 216, 0.55);
-  background: rgba(13, 52, 69, 0.5);
+  background: rgba(21, 22, 23, 0.5);
   color: #dceaec;
   box-shadow: 0 0 0 1px rgba(88, 200, 216, 0.2), 0 0 18px rgba(88, 200, 216, 0.12);
 }
@@ -501,7 +501,7 @@
   overscroll-behavior: contain;
   scroll-behavior: smooth;
   scrollbar-width: thin;
-  scrollbar-color: var(--line-strong) transparent;
+  scrollbar-color: var(--tb-scrollbar-thumb) transparent;
 }
 
 /* Le rail : il court du premier au dernier nœud. */
@@ -560,7 +560,7 @@
   height: var(--node);
   border: 1px solid var(--line-strong);
   border-radius: 50%;
-  background: #0a1724;
+  background: #0e0f10;
   font-size: calc(11px * var(--tb-text-scale));
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -597,18 +597,18 @@
   padding: 0 14px;
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: rgba(8, 18, 30, 0.45);
+  background: rgba(11, 12, 13, 0.45);
   transition: border-color 200ms ease-out, background-color 200ms ease-out;
 }
 
 .stage[data-milestone="true"] .stageCard {
   border-color: rgba(199, 154, 78, 0.38);
-  background: linear-gradient(90deg, rgba(60, 44, 18, 0.35), rgba(8, 18, 30, 0.45) 60%);
+  background: linear-gradient(90deg, rgba(60, 44, 18, 0.35), rgba(11, 12, 13, 0.45) 60%);
 }
 
 .stage[data-state="next"] .stageCard {
   border-color: rgba(88, 200, 216, 0.6);
-  background: linear-gradient(90deg, rgba(13, 52, 69, 0.75), rgba(8, 18, 30, 0.5));
+  background: linear-gradient(90deg, rgba(21, 22, 23, 0.75), rgba(11, 12, 13, 0.5));
 }
 
 .stage[data-state="locked"] .stageIcons,
@@ -695,7 +695,7 @@
   position: fixed;
   inset: 0;
   z-index: 95;
-  background: rgba(3, 8, 14, 0.6);
+  background: rgba(5, 6, 7, 0.6);
   backdrop-filter: blur(3px);
   animation: drawerScrimIn 180ms ease-out;
 }
@@ -734,7 +734,7 @@
   border-left: 1px solid rgba(0, 183, 255, 0.45);
   background:
     radial-gradient(90% 60% at 30% 0%, rgba(14, 52, 78, 0.5), transparent 60%),
-    linear-gradient(180deg, #071a29 0%, #061522 100%);
+    linear-gradient(180deg, #0c0d0e 0%, #0a0b0c 100%);
   box-shadow: -24px 0 60px rgba(0, 0, 0, 0.6), -1px 0 10px rgba(0, 183, 255, 0.2);
   color: var(--ink);
   font-family: var(--cb-font-ui);
@@ -763,7 +763,7 @@
   height: 36px;
   border: 1px solid #195374;
   border-radius: 50%;
-  background: linear-gradient(180deg, #0b2638 0%, #071826 100%);
+  background: linear-gradient(180deg, #121314 0%, #0c0d0e 100%);
   color: #c8d7e1;
   cursor: var(--tb-cursor-pointer);
 }
@@ -856,7 +856,7 @@
   padding: 10px 14px;
   border: 1px solid rgba(255, 200, 90, 0.5);
   border-radius: 10px;
-  background: linear-gradient(90deg, rgba(90, 64, 18, 0.5), rgba(8, 18, 30, 0.4));
+  background: linear-gradient(90deg, rgba(90, 64, 18, 0.5), rgba(11, 12, 13, 0.4));
 }
 
 .claimBannerText {
@@ -923,7 +923,7 @@
 
 .stage[data-state="claimable"] .stageCard {
   border-color: rgba(255, 200, 90, 0.6);
-  background: linear-gradient(90deg, rgba(90, 64, 18, 0.55), rgba(8, 18, 30, 0.45) 70%);
+  background: linear-gradient(90deg, rgba(90, 64, 18, 0.55), rgba(11, 12, 13, 0.45) 70%);
 }
 
 .stage[data-state="claimable"] .stageLevel {

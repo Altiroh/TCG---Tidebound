@@ -20,13 +20,33 @@
   justify-content: center;
   padding: 16px;
   /* Voile bleu nuit, pas noir : l'écran reste deviné derrière. */
-  background: radial-gradient(120% 90% at 50% 40%, rgba(6, 18, 32, 0.6), rgba(3, 9, 18, 0.82));
+  background: radial-gradient(120% 90% at 50% 40%, rgba(10, 11, 12, 0.6), rgba(5, 6, 7, 0.82));
   backdrop-filter: blur(6px);
   animation: overlayIn var(--tb-duration) ease-out both;
 }
 
 .dialog {
   position: relative;
+  /* Porté sur `body` (15/10/2026) : les alias de `GameScreen` que lisent les
+     contrôles posés dedans (`--line`, `--ink`…), repris ici. */
+  --cb-cyan: var(--tb-accent);
+  --cb-cyan-soft: var(--tb-accent-soft);
+  --cb-violet: var(--tb-abyssal);
+  --panel: var(--tb-surface);
+  --panel-solid: var(--tb-surface-solid);
+  --panel-raised: var(--tb-surface-raised);
+  --panel-inset: var(--tb-surface-inset);
+  --line: var(--tb-border);
+  --line-strong: var(--tb-border-strong);
+  --ink: var(--tb-text);
+  --ink-strong: var(--tb-text-strong);
+  --ink-dim: var(--tb-text-muted);
+  --ink-faint: var(--tb-text-soft);
+  --danger: var(--tb-danger);
+  --success: var(--tb-success);
+  --gold: var(--tb-gold);
+  --radius: var(--tb-radius-lg);
+  --radius-sm: var(--tb-radius-sm);
   display: flex;
   flex-direction: column;
   gap: clamp(10px, 1.4vh, 16px);
@@ -144,23 +164,23 @@
   color: var(--tb-text-muted);
 }
 
-.body {
+/* Le corps défile dans la barre du jeu (`ScrollArea`, 15/10/2026) : `.bodyArea` est la boîte qui défile, `.body` la mise en page du contenu. */
+.bodyArea {
   position: relative;
   z-index: 1;
+  flex: 0 1 auto;
+  min-height: 0;
+}
+
+.body {
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
-  min-height: 0;
-  overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: var(--tb-border-strong) transparent;
   font-size: var(--tb-fs-body);
   line-height: 1.5;
   color: var(--tb-text-muted);
 }
 
-.body::-webkit-scrollbar { width: 6px; }
-.body::-webkit-scrollbar-thumb { border-radius: 999px; background: var(--tb-border-strong); }
 
 .actions {
   position: relative;
@@ -182,7 +202,7 @@
  */
 .overlay[data-variant="banner"] {
   padding: 0;
-  background: rgba(2, 6, 12, 0.6);
+  background: rgba(4, 5, 6, 0.6);
   backdrop-filter: none;
 }
 
@@ -195,7 +215,7 @@
   padding: clamp(22px, 4vh, 40px) var(--banner-inline);
   border: 0;
   border-radius: 0;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0.9), rgba(4, 8, 14, 0.96) 50%, rgba(0, 0, 0, 0.9));
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.9), rgba(6, 7, 8, 0.96) 50%, rgba(0, 0, 0, 0.9));
   box-shadow: 0 0 60px rgba(0, 0, 0, 0.75);
   text-align: center;
   animation: bannerIn 240ms var(--tb-ease) both;
@@ -249,7 +269,7 @@
   translate: 0 -50%;
 }
 
-.dialog[data-variant="banner"] .body {
+.dialog[data-variant="banner"] .bodyArea {
   width: min(100%, 520px);
   text-align: left;
 }

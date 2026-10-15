@@ -15,7 +15,7 @@
   padding: 12px 14px;
   border: 1px solid rgba(95, 208, 230, 0.35);
   border-radius: 10px;
-  background: linear-gradient(180deg, rgba(10, 28, 42, 0.97), rgba(5, 15, 24, 0.97));
+  background: linear-gradient(180deg, rgba(15, 16, 17, 0.97), rgba(8, 9, 10, 0.97));
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.55);
   color: rgba(214, 228, 238, 0.9);
   font-family: var(--tb-font-ui);

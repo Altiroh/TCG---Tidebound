@@ -14,7 +14,7 @@
 .window {
   position: absolute;
   overflow: hidden;
-  background: #071019;
+  background: #0a0b0c;
 }
 
 .illustration {
@@ -28,7 +28,7 @@
 .unknown {
   width: 100%;
   height: 100%;
-  background: radial-gradient(70% 60% at 50% 55%, rgba(88, 200, 216, 0.18), transparent 70%), #071019;
+  background: radial-gradient(70% 60% at 50% 55%, rgba(88, 200, 216, 0.18), transparent 70%), #0a0b0c;
 }
 
 .frame {

@@ -38,7 +38,7 @@
       calc(clamp(20px, 5vw, 40px) + var(--tb-safe-bottom)) calc(clamp(20px, 5vw, 40px) + var(--tb-safe-left));
     text-align: center;
     background:
-      radial-gradient(120% 80% at 50% 0%, rgba(13, 52, 69, 0.55) 0%, transparent 70%),
+      radial-gradient(120% 80% at 50% 0%, rgba(21, 22, 23, 0.55) 0%, transparent 70%),
       var(--tb-bg-deep);
     color: var(--tb-text);
     font-family: var(--tb-font-ui);

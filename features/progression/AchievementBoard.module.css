@@ -170,7 +170,7 @@ section.board > :not(.scroller) {
   padding: 0 14px;
   border: 1px solid var(--book-brass-line);
   border-radius: var(--tb-radius-pill);
-  background: rgba(5, 12, 20, 0.82);
+  background: rgba(7, 8, 9, 0.82);
   box-shadow: var(--book-shadow-contact);
   color: var(--book-ivory-dim);
   font: inherit;
@@ -190,7 +190,7 @@ section.board > :not(.scroller) {
 
 .filter[data-active="true"] {
   border-color: var(--tb-accent-line);
-  background: linear-gradient(180deg, rgba(95, 208, 230, 0.2), rgba(5, 12, 20, 0.88));
+  background: linear-gradient(180deg, rgba(95, 208, 230, 0.2), rgba(7, 8, 9, 0.88));
   box-shadow: var(--book-shadow-contact), var(--tb-glow-sm);
   color: var(--book-ivory-strong);
 }
@@ -401,7 +401,7 @@ div.claimChip::after {
   margin: 0 0 10px;
   padding: 7px 4px 6px;
   border-bottom: 1px solid var(--book-brass-line);
-  background: linear-gradient(180deg, #050c14, #0a1621);
+  background: linear-gradient(180deg, #070809, #0d0e0f);
   box-shadow: 0 6px 10px -6px rgba(0, 0, 0, 0.8);
   font-size: inherit;
   font-weight: inherit;
@@ -523,7 +523,7 @@ article.card {
   height: 22px;
   border: 1px solid var(--tb-success-line);
   border-radius: 50%;
-  background: rgba(5, 12, 20, 0.85);
+  background: rgba(7, 8, 9, 0.85);
   color: var(--tb-success);
 }
 

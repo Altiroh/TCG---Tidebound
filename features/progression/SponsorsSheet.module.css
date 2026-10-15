@@ -16,7 +16,7 @@
   padding-right: var(--tb-safe-right, 0px);
   overflow: hidden;
   background:
-    linear-gradient(180deg, rgba(4, 8, 12, 0.55) 0%, rgba(4, 8, 12, 0.1) 22%, rgba(4, 8, 12, 0.15) 70%, rgba(4, 8, 12, 0.7) 100%),
+    linear-gradient(180deg, rgba(5, 6, 7, 0.55) 0%, rgba(5, 6, 7, 0.1) 22%, rgba(5, 6, 7, 0.15) 70%, rgba(5, 6, 7, 0.7) 100%),
     url("/assets/mecenes/scene/fond.webp") center / cover no-repeat,
     #1a0f08;
   box-shadow: -30px 0 60px rgba(0, 0, 0, 0.55);
@@ -94,7 +94,7 @@
   height: 38px;
   border: 1.5px solid rgba(241, 230, 207, 0.7);
   border-radius: 50%;
-  background: rgba(8, 12, 18, 0.7);
+  background: rgba(10, 11, 12, 0.7);
   color: #f1e6cf;
   font-size: calc(22px * var(--tb-text-scale));
   line-height: 1;
@@ -168,7 +168,7 @@
   height: 55%;
   overflow: hidden;
   border-radius: 6% / 9%;
-  background: #04070d;
+  background: #050607;
   animation: screenFlicker 4.3s infinite;
 }
 
@@ -404,7 +404,7 @@
 
 /* Un mécène encore anonyme : une silhouette dans la brume, sa couleur autour. */
 .photoWindow[data-hidden] {
-  background: radial-gradient(80% 70% at 50% 40%, color-mix(in srgb, var(--sponsor) 45%, #120c1c), #07050b 95%);
+  background: radial-gradient(80% 70% at 50% 40%, color-mix(in srgb, var(--sponsor) 45%, #0e0f10), #07050b 95%);
 }
 
 .photoWindow[data-hidden] img {
@@ -464,7 +464,7 @@
   aspect-ratio: 1;
   border: 1.4cqw solid #c9a55a;
   border-radius: 50%;
-  background: radial-gradient(circle at 40% 35%, #1f2d3d, #070c14 75%);
+  background: radial-gradient(circle at 40% 35%, #242526, #090a0b 75%);
   box-shadow:
     0 0 0 0.7cqw #4a3514,
     0 1.2cqw 2cqw rgba(0, 0, 0, 0.6),
@@ -538,7 +538,7 @@
   padding: 12px 14px;
   border: 1px solid rgba(160, 200, 225, 0.22);
   border-radius: 12px;
-  background: linear-gradient(180deg, rgba(10, 20, 30, 0.9), rgba(4, 10, 16, 0.92));
+  background: linear-gradient(180deg, rgba(13, 14, 15, 0.9), rgba(6, 7, 8, 0.92));
   box-shadow: 0 10px 26px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
@@ -683,7 +683,7 @@
   padding: 4px 14px;
   border: 1px solid var(--sponsor);
   border-radius: 999px;
-  background: color-mix(in srgb, var(--sponsor) 30%, #0a121a);
+  background: color-mix(in srgb, var(--sponsor) 30%, #0c0d0e);
   box-shadow: 0 0 10px color-mix(in srgb, var(--sponsor) 50%, transparent);
   color: #fff;
   font: inherit;

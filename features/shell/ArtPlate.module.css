@@ -22,7 +22,7 @@
   overflow: hidden;
   border: 1px solid var(--tb-accent-line);
   border-radius: var(--tb-radius-md);
-  background: linear-gradient(180deg, rgba(10, 30, 50, 0.9), rgba(5, 15, 26, 0.95));
+  background: linear-gradient(180deg, rgba(16, 17, 18, 0.9), rgba(8, 9, 10, 0.95));
   /* Liseré intérieur électrique : c'est lui qui donne le « vif », pas la
      saturation du fond — un fond plus saturé mangerait l'illustration. */
   box-shadow:
@@ -97,7 +97,7 @@
     /* Assombrissement vertical : transparent en haut, dense EN BAS SEULEMENT,
        sous le texte. Il commence tard (65 %) pour ne pas noyer le milieu de
        l'image, où vivent les tentacules. */
-    linear-gradient(180deg, rgba(4, 16, 30, 0) 0%, rgba(4, 18, 34, 0.06) 50%, rgba(3, 13, 24, 0.5) 80%, rgba(2, 10, 20, 0.84) 100%),
+    linear-gradient(180deg, rgba(8, 9, 10, 0) 0%, rgba(9, 10, 11, 0.06) 50%, rgba(6, 7, 8, 0.5) 80%, rgba(5, 6, 7, 0.84) 100%),
     /* Teinte bleue, tenue BASSE : à pleine force elle transformait la plaque
        en aplat — l'illustration se devinait à peine et les tentacules
        disparaissaient. Elle ramène l'image dans la palette, elle ne la
@@ -162,5 +162,5 @@
 /* Plaque vide (aucune illustration connue) : le fond dégradé suffit, mais
    on garde les tentacules pour que le cadre ne paraisse pas mort. */
 .plate[data-art="none"] .veil {
-  background: linear-gradient(180deg, rgba(16, 44, 68, 0.55), rgba(6, 16, 26, 0.85));
+  background: linear-gradient(180deg, rgba(24, 25, 26, 0.55), rgba(9, 10, 11, 0.85));
 }

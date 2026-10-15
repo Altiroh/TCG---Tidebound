@@ -8,7 +8,7 @@
 /* Quadruple : l'emporte sur `[data-backdrop="cabine"]` de la coquille. */
 .screenPort.screenPort.screenPort.screenPort {
   background-image:
-    linear-gradient(180deg, rgba(5, 12, 22, 0.55) 0%, rgba(5, 12, 22, 0) 12%),
+    linear-gradient(180deg, rgba(8, 9, 10, 0.55) 0%, rgba(8, 9, 10, 0) 12%),
     url("/assets/rewards/lantern-glow.svg"),
     url("/assets/rewards/background.webp");
   background-size: cover, cover, cover;

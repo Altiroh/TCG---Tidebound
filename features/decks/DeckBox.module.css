@@ -23,7 +23,7 @@
   height: 76%;
   overflow: hidden;
   border-radius: 3% / 2%;
-  background: #061522;
+  background: #0a0b0c;
   transform: perspective(900px) rotateY(6deg);
   transform-origin: 50% 50%;
 }
@@ -42,7 +42,7 @@
 .art {
   position: absolute;
   inset: -4%;
-  background: #061522 center 30% / cover no-repeat;
+  background: #0a0b0c center 30% / cover no-repeat;
   filter: saturate(1.1) contrast(1.04);
   transition: opacity 280ms var(--tb-ease, cubic-bezier(0.2, 0.8, 0.2, 1));
 }

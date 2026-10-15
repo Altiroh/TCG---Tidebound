@@ -104,7 +104,7 @@
   padding: 12px;
   border: 1px solid rgba(140, 170, 190, 0.25);
   border-radius: 12px;
-  background: rgba(6, 16, 26, 0.7);
+  background: rgba(9, 10, 11, 0.7);
 }
 .rewardCaption {
   font-size: calc(11px * var(--tb-text-scale));

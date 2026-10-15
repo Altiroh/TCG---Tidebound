@@ -8,7 +8,7 @@
   padding: 5px 11px;
   border: 1px solid #195374;
   border-radius: 8px;
-  background: linear-gradient(180deg, #0b2638, #071826);
+  background: linear-gradient(180deg, #121314, #0c0d0e);
   color: #c8d7e1;
   font: inherit;
   font-size: calc(clamp(11px, 1.25vh, 13px) * var(--tb-text-scale));
@@ -102,7 +102,7 @@
   padding: 5px 8px 5px 5px;
   border: 1px solid #17405a;
   border-radius: 8px;
-  background: rgba(7, 26, 41, 0.7);
+  background: rgba(12, 13, 14, 0.7);
 }
 
 .art {

@@ -25,21 +25,24 @@
  *     importants (action primaire, sélection, focus), jamais posé partout.
  */
 :root {
-  /* ── Couleurs : structure bleu nuit ─────────────────────────── */
-  /* Fond le plus profond : un navy, jamais un noir pur. */
-  --tb-bg-deep: #050e1a;
+  /* ── Couleurs : structure NOIRE (15/10/2026) ────────────────── */
+  /* Plus de fond bleu : panneaux, fenêtres et tiroirs passent au noir du
+     bandeau des présentations (`BlackBanner.module.css`), à peine refroidi.
+     L'accent cyan, les filets et le texte ne changent pas. */
+  /* Fond le plus profond. */
+  --tb-bg-deep: #030405;
   /* Fond courant des écrans (sous le décor). */
-  --tb-bg: #081626;
-  /* Panneau posé sur le décor : translucide, bleu nuit, lisible. */
-  --tb-surface: rgba(12, 28, 46, 0.72);
+  --tb-bg: #06080a;
+  /* Panneau posé sur le décor : translucide, noir, lisible. */
+  --tb-surface: rgba(4, 6, 8, 0.78);
   /* Panneau plus présent : tuiles sélectionnables, en-têtes. */
-  --tb-surface-raised: rgba(20, 40, 62, 0.84);
+  --tb-surface-raised: rgba(14, 17, 20, 0.86);
   /* Creux : champs de saisie, zones de liste, sous-panneaux. */
-  --tb-surface-inset: rgba(5, 14, 26, 0.58);
+  --tb-surface-inset: rgba(0, 0, 0, 0.5);
   /* Opaque : fenêtres flottantes, tiroirs, menus — rien ne doit
      transparaître derrière un dialogue. */
-  --tb-surface-solid: #0b1a2c;
-  --tb-surface-solid-raised: #10243a;
+  --tb-surface-solid: #07090b;
+  --tb-surface-solid-raised: #0e1114;
 
   --tb-border: rgba(140, 190, 225, 0.18);
   --tb-border-strong: rgba(140, 190, 225, 0.36);
@@ -245,10 +248,19 @@
   --tb-duration: 160ms;
   --tb-duration-slow: 260ms;
 
+  /* ── Barres de défilement (15/10/2026) ─────────────────────────
+     La barre DESSINÉE du jeu (`ScrollArea`, curseur cyan à halo) équipe les
+     panneaux et fenêtres ; ailleurs, la barre native prend au moins sa
+     couleur. Une zone à décor propre (parchemin, laiton) garde la sienne. */
+  --tb-scrollbar-thumb: rgba(95, 208, 230, 0.7);
+  scrollbar-color: var(--tb-scrollbar-thumb) transparent;
+
   /* ── Plans (z-index) ────────────────────────────────────────── */
   --tb-z-dropdown: 30;
   --tb-z-drawer: 70;
-  --tb-z-dialog: 80;
+  /* Au-dessus des panneaux latéraux et des feuilles (90), le `Dialog` étant
+     porté sur `body` (15/10/2026) : une confirmation passe devant ce qui l'a ouverte. */
+  --tb-z-dialog: 160;
   --tb-z-toast: 90;
   --tb-z-tooltip: 100;
 }

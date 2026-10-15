@@ -11,7 +11,7 @@
   overflow: visible;
   background:
     radial-gradient(45% 80% at 50% 50%, color-mix(in srgb, var(--gift) 22%, transparent), transparent 70%),
-    linear-gradient(180deg, rgba(0, 0, 0, 0.9), rgba(4, 8, 14, 0.96) 50%, rgba(0, 0, 0, 0.9));
+    linear-gradient(180deg, rgba(0, 0, 0, 0.9), rgba(6, 7, 8, 0.96) 50%, rgba(0, 0, 0, 0.9));
 }
 
 .scene[data-color="jaune"] { --gift: #e8b92f; }

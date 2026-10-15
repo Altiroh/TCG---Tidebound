@@ -25,7 +25,7 @@
   padding: 0;
   border: 1px solid var(--tb-border-strong, rgba(241, 227, 196, 0.3));
   border-radius: 50%;
-  background: var(--panel-solid, rgba(4, 10, 18, 0.9));
+  background: var(--panel-solid, rgba(6, 7, 8, 0.9));
   color: rgba(241, 227, 196, 0.7);
   box-shadow: var(--tb-shadow-sm, 0 2px 6px rgba(0, 0, 0, 0.5));
   cursor: var(--tb-cursor-pointer);
@@ -62,7 +62,7 @@
   padding: 10px 12px;
   border: 1px solid var(--tb-border);
   border-radius: var(--tb-radius-sm);
-  background: rgba(6, 17, 26, 0.45);
+  background: rgba(9, 10, 11, 0.45);
 }
 
 .favoriteButton {
@@ -153,7 +153,7 @@
   padding: 6px 10px;
   border: 0;
   border-radius: var(--tb-radius-pill);
-  background: rgba(4, 10, 18, 0.82);
+  background: rgba(6, 7, 8, 0.82);
   color: #f4ead4;
   font: inherit;
   font-size: calc(12px * var(--tb-text-scale));
@@ -169,7 +169,7 @@
 }
 
 .savePicker:hover {
-  background: rgba(4, 10, 18, 0.95);
+  background: rgba(6, 7, 8, 0.95);
 }
 
 .savePickerName {
@@ -203,12 +203,12 @@
 
 /* Déjà rangée : le bouton s'éteint, un clic l'en retire. */
 .saveButton[data-saved] {
-  background: rgba(4, 10, 18, 0.9);
+  background: rgba(6, 7, 8, 0.9);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
 }
 
 .saveButton[data-saved]:hover {
-  background: rgba(20, 30, 42, 0.95);
+  background: rgba(23, 24, 25, 0.95);
 }
 
 .savePicker:focus-visible,
@@ -226,7 +226,7 @@
   max-height: min(440px, calc(100dvh - 24px));
   border: 1px solid var(--tb-border-strong, rgba(241, 227, 196, 0.25));
   border-radius: 14px;
-  background: #0b1824;
+  background: #0f1011;
   color: var(--tb-text, #e8e0cf);
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
   overflow: hidden;
@@ -245,7 +245,7 @@
   padding: 8px 12px;
   border: 1px solid var(--tb-border-strong, rgba(241, 227, 196, 0.3));
   border-radius: 10px;
-  background: rgba(4, 10, 18, 0.6);
+  background: rgba(6, 7, 8, 0.6);
   color: var(--tb-text-strong, #fff);
   font: inherit;
   font-size: calc(13px * var(--tb-text-scale));
@@ -328,7 +328,7 @@
 .popoverSaved {
   padding: 3px 8px;
   border-radius: var(--tb-radius-pill);
-  background: rgba(4, 10, 18, 0.9);
+  background: rgba(6, 7, 8, 0.9);
   color: #f4ead4;
   font-size: calc(11px * var(--tb-text-scale));
   font-weight: 700;
@@ -391,7 +391,7 @@
   padding: 6px 10px;
   border: 1px solid var(--tb-border-strong);
   border-radius: 6px;
-  background: rgba(4, 10, 18, 0.6);
+  background: rgba(6, 7, 8, 0.6);
   color: var(--tb-text-strong);
   font: inherit;
   font-size: calc(13px * var(--tb-text-scale));

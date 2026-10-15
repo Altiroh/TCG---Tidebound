@@ -29,13 +29,15 @@
   color: var(--tb-text-strong);
 }
 
+/* La zone qui défile (`ScrollArea`, barre du jeu à halo) ; le contenu laisse la place du rail. */
 .scroll {
   flex: 1;
   min-height: 0;
-  overflow-y: auto;
-  margin: 8px -6px 0;
-  padding: 4px 6px;
-  scrollbar-width: thin;
+  margin: 8px -6px 0 0;
+}
+
+.scrollContent {
+  padding: 4px 16px 4px 2px;
 }
 
 .empty,
@@ -249,7 +251,7 @@
   padding: 0.6em 0.9em;
   border: 1px solid rgba(207, 224, 240, 0.22);
   border-radius: 10px;
-  background: rgba(3, 10, 19, 0.72);
+  background: rgba(5, 6, 7, 0.72);
   box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.45);
   color: var(--tb-text-strong, #f1f5f9);
   font: inherit;
@@ -268,7 +270,7 @@
 .input:focus {
   outline: none;
   border-color: var(--tb-accent, #5fd0e6);
-  background: rgba(5, 14, 26, 0.9);
+  background: rgba(8, 9, 10, 0.9);
   box-shadow: 0 0 0 3px rgba(95, 208, 230, 0.18), inset 0 1px 3px rgba(0, 0, 0, 0.45);
 }
 
@@ -307,12 +309,9 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
   gap: 8px;
-  max-height: 260px;
   margin: 0;
-  padding: 2px;
-  overflow-y: auto;
+  padding: 2px 14px 2px 2px;
   list-style: none;
-  scrollbar-width: thin;
 }
 
 .artTile {

@@ -410,7 +410,7 @@
   overflow-y: auto;
   list-style: none;
   scrollbar-width: thin;
-  scrollbar-color: var(--line-strong) transparent;
+  scrollbar-color: var(--tb-scrollbar-thumb) transparent;
 }
 
 .deckList::-webkit-scrollbar { width: 8px; }
@@ -582,7 +582,7 @@
   min-height: 0;
   overflow-y: auto;
   scrollbar-width: thin;
-  scrollbar-color: var(--line-strong) transparent;
+  scrollbar-color: var(--tb-scrollbar-thumb) transparent;
   /*
    * La colonne de texte s'arrête avant l'illustration, et se mesure SUR LA
    * FICHE plutôt qu'en largeur de fenêtre : un plafond fixe la maintenait à

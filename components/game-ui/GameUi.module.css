@@ -65,7 +65,7 @@
   color: var(--tb-text);
   box-shadow: var(--tb-shadow-md);
   scrollbar-width: thin;
-  scrollbar-color: var(--tb-border-strong) transparent;
+  scrollbar-color: var(--tb-scrollbar-thumb) transparent;
   animation: menuIn var(--tb-duration) var(--tb-ease) both;
 }
 .menuDown { top: calc(100% + 6px); }

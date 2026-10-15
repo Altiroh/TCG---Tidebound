@@ -47,7 +47,7 @@
      restent devinables, ce qui garde le contexte de navigation. */
   /* Plus dense depuis que la fiche n'a plus de panneau (05/10/2026) : c'est
      le voile seul qui porte la lisibilité du texte. */
-  background: radial-gradient(120% 90% at 50% 40%, rgba(6, 18, 32, 0.78), rgba(3, 9, 18, 0.92));
+  background: radial-gradient(120% 90% at 50% 40%, rgba(10, 11, 12, 0.78), rgba(5, 6, 7, 0.92));
   backdrop-filter: blur(14px) saturate(0.9);
   animation: detail-fade 200ms ease-out both;
 }
@@ -191,7 +191,7 @@
   overscroll-behavior: contain;
   padding-right: 4px;
   scrollbar-width: thin;
-  scrollbar-color: var(--line-strong) transparent;
+  scrollbar-color: var(--tb-scrollbar-thumb) transparent;
 }
 
 .info::-webkit-scrollbar {
@@ -685,7 +685,7 @@
   min-width: 2em;
   padding: 0.45em 0.6em;
   border: 0;
-  background: rgba(10, 30, 44, 0.6);
+  background: rgba(15, 16, 17, 0.6);
   font: inherit;
   font-size: calc(clamp(12px, 1.4vh, 14px) * var(--tb-text-scale));
   line-height: 1;
@@ -695,7 +695,7 @@
 }
 
 .resaleQtyStep:hover:not(:disabled) {
-  background: rgba(16, 52, 72, 0.9);
+  background: rgba(24, 25, 26, 0.9);
   color: #fff;
 }
 

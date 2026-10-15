@@ -148,13 +148,13 @@
 
 .badgeStandard {
   border-color: #1f6fa3;
-  background: #0a2a45;
+  background: #131415;
   color: #9cd4ff;
 }
 
 .badgeAbyssal {
   border-color: #7a4fc2;
-  background: #1f1236;
+  background: #171819;
   color: #cbb2ff;
 }
 
@@ -230,7 +230,7 @@
   margin-inline: -4px;
   padding-inline: 4px;
   scrollbar-width: thin;
-  scrollbar-color: var(--line-strong) transparent;
+  scrollbar-color: var(--tb-scrollbar-thumb) transparent;
 }
 
 .list::-webkit-scrollbar { width: 6px; }
@@ -377,7 +377,7 @@
   padding: 8px 14px;
   border: 1px solid #00b7ff;
   border-radius: 8px;
-  background: linear-gradient(180deg, #0b4265 0%, #08273d 100%);
+  background: linear-gradient(180deg, #0b4265 0%, #101112 100%);
   box-shadow:
     0 0 9px rgba(0, 183, 255, 0.45),
     inset 0 0 10px rgba(0, 183, 255, 0.12);
@@ -394,7 +394,7 @@
 /* « À jour » : plus rien à faire, le bouton redevient secondaire. */
 .save:disabled {
   border-color: #195374;
-  background: linear-gradient(180deg, #0b2638 0%, #071826 100%);
+  background: linear-gradient(180deg, #121314 0%, #0c0d0e 100%);
   box-shadow: none;
   color: #c8d7e1;
   opacity: 0.75;
@@ -410,7 +410,7 @@
   min-height: 38px;
   border: 1px solid #195374;
   border-radius: 8px;
-  background: linear-gradient(180deg, #0b2638 0%, #071826 100%);
+  background: linear-gradient(180deg, #121314 0%, #0c0d0e 100%);
   color: #c8d7e1;
   cursor: var(--tb-cursor-pointer);
   transition: border-color 140ms ease-out, box-shadow 140ms ease-out;
@@ -498,7 +498,7 @@
   padding: 5px 12px;
   border: 1px solid #195374;
   border-radius: 999px;
-  background: linear-gradient(180deg, #0b2638 0%, #071826 100%);
+  background: linear-gradient(180deg, #121314 0%, #0c0d0e 100%);
   color: #c8d7e1;
   font: inherit;
   font-size: calc(12px * var(--tb-text-scale));
@@ -561,7 +561,7 @@
     z-index: 4;
     border: none;
     padding: 0;
-    background: rgba(3, 8, 14, 0.55);
+    background: rgba(5, 6, 7, 0.55);
   }
 
   .deckToggle.deckToggle { display: inline-flex; }
@@ -576,16 +576,16 @@
 }
 
 /* ── Sélecteur d'illustration du deck ───────────────────────── */
+/* Dans le panneau latéral (`SidePanel`, 15/10/2026) : c'est le panneau qui défile. */
 .artPicker {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(clamp(92px, 9vw, 128px), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
   gap: 10px;
-  /* Un deck peut compter des dizaines de cartes distinctes : le dialogue
-     défile plutôt que de pousser ses boutons hors de l'écran. */
-  max-height: min(56dvh, 460px);
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding-right: 4px;
+}
+
+.artAutomatic {
+  width: 100%;
+  margin-bottom: 14px;
 }
 
 .artOption {

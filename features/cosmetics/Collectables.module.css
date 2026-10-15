@@ -135,7 +135,7 @@
 
 .familyRow[data-active="true"] {
   border-color: #57cde0;
-  background: linear-gradient(180deg, #14405a, #0b2636);
+  background: linear-gradient(180deg, #14405a, #111213);
   color: #f1e3c4;
   box-shadow: 0 0 calc(0.9cqw * var(--z, 1)) rgba(87, 205, 224, 0.45), inset 0 0 calc(0.6cqw * var(--z, 1)) rgba(0, 0, 0, 0.45);
 }
@@ -696,7 +696,7 @@
   position: absolute;
   inset: 16% 22% 24% 22%;
   border-radius: 45% 45% 12% 12% / 32% 32% 10% 10%;
-  background: radial-gradient(120% 90% at 50% 35%, #134a5e, #0a2a38 70%, #071d28);
+  background: radial-gradient(120% 90% at 50% 35%, #134a5e, #111213 70%, #0c0d0e);
 }
 
 /* Verrouillé : lisible, mais visiblement hors de portée. */
@@ -712,7 +712,7 @@
   padding: calc(0.18cqw * var(--z, 1)) calc(0.55cqw * var(--z, 1));
   border: 1px solid rgba(95, 208, 230, 0.6);
   border-radius: calc(0.35cqw * var(--z, 1));
-  background: #0b1d29;
+  background: #101112;
   color: #e6f7fb;
   font-family: var(--tb-font-display, Georgia, serif);
   font-size: calc(max(7px, var(--tb-fs-floor, 0px), calc(0.72cqw * var(--z, 1))) * var(--tb-text-scale));

@@ -451,7 +451,7 @@ button.row:disabled {
   width: calc(50 * var(--u));
   aspect-ratio: 1170 / 1116;
   border-radius: calc(4 * var(--u));
-  background: radial-gradient(circle at 50% 40%, #2c3a40, #10181c 75%);
+  background: radial-gradient(circle at 50% 40%, #2f3031, #121314 75%);
   box-shadow: 0 calc(2 * var(--u)) calc(4 * var(--u)) rgba(0, 0, 0, 0.45);
 }
 

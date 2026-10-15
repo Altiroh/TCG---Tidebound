@@ -3,6 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import styles from "@/features/shell/SidePanel.module.css";
+import { ScrollArea } from "@/features/shell/ScrollArea";
 
 interface SidePanelProps {
   title: string;
@@ -44,7 +45,9 @@ export function SidePanel({ title, iconSrc, onClose, children }: SidePanelProps)
             ×
           </button>
         </header>
-        <div className={styles.scroll}>{children}</div>
+        <ScrollArea className={styles.scroll} contentClassName={styles.scrollContent}>
+          {children}
+        </ScrollArea>
       </div>
     </div>,
     document.body

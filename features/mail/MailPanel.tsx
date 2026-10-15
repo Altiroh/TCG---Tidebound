@@ -11,6 +11,7 @@ import { RewardIcon } from "@/features/progression/RewardIcon";
 import { RewardReveal } from "@/features/progression/RewardReveal";
 import { notifyProgressionChanged } from "@/features/progression/progressionSync";
 import { Dialog } from "@/features/shell/Dialog";
+import { ScrollArea } from "@/features/shell/ScrollArea";
 import side from "@/features/shell/SidePanel.module.css";
 import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/mail/Mail.module.css";
@@ -129,7 +130,7 @@ export function MailPanel({ isAdmin, onClose }: { isAdmin: boolean; onClose: () 
           </div>
         )}
 
-        <div className={styles.scroll}>
+        <ScrollArea className={styles.scroll} contentClassName={styles.scrollContent}>
           {tab === "write" && isAdmin ? (
             <MailComposer onSent={load} />
           ) : loadError ? (
@@ -166,7 +167,7 @@ export function MailPanel({ isAdmin, onClose }: { isAdmin: boolean; onClose: () 
               ))}
             </ul>
           )}
-        </div>
+        </ScrollArea>
       </div>
 
       {opened && (

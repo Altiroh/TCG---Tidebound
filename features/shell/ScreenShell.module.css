@@ -62,8 +62,8 @@
      descend dans le bleu pétrole et un fond de cale plus sombre en bas. */
   background-color: var(--cb-navy-deep);
   background-image:
-    radial-gradient(130% 75% at 50% -14%, rgba(13, 52, 69, 0.62) 0%, rgba(8, 26, 39, 0.25) 48%, transparent 72%),
-    radial-gradient(80% 55% at 50% 112%, rgba(4, 12, 19, 0.95) 0%, transparent 72%);
+    radial-gradient(130% 75% at 50% -14%, rgba(21, 22, 23, 0.62) 0%, rgba(13, 14, 15, 0.25) 48%, transparent 72%),
+    radial-gradient(80% 55% at 50% 112%, rgba(6, 7, 8, 0.95) 0%, transparent 72%);
 }
 
 /* ---------- PLAN 1 — Header ---------- */
@@ -343,7 +343,7 @@
   height: clamp(36px, 4.8dvh, 50px);
   border: 1.5px solid var(--tb-accent-line);
   border-radius: 50%;
-  background: radial-gradient(circle at 50% 30%, rgba(42, 143, 168, 0.55), rgba(10, 30, 50, 0.9) 75%);
+  background: radial-gradient(circle at 50% 30%, rgba(42, 143, 168, 0.55), rgba(16, 17, 18, 0.9) 75%);
   box-shadow: inset 0 1px 0 var(--tb-border-light);
   font-family: var(--cb-font-display);
   font-size: calc(clamp(14px, 2dvh, 19px) * var(--tb-text-scale));
@@ -368,7 +368,7 @@
 /* Illustration de profil : la carte recadrée sur son sujet, dans le même
    jeton de laiton que l'initiale. */
 .accountAvatarArt {
-  background-color: #0b1a26;
+  background-color: #0f1011;
   background-size: cover;
   background-position: 50% 30%;
   box-shadow: inset 0 0 0 1px rgba(3, 10, 16, 0.4), 0 1px 4px rgba(0, 0, 0, 0.55), 0 0 10px rgba(95, 208, 230, 0.25);
@@ -639,7 +639,7 @@
   padding: 6px 14px;
   border: 1px solid rgba(88, 200, 216, 0.45);
   border-radius: 999px;
-  background: rgba(4, 10, 17, 0.42);
+  background: rgba(6, 7, 8, 0.42);
   color: #eaf8fb;
   font-size: calc(clamp(12px, 0.9vw, 14px) * var(--tb-text-scale));
   font-weight: 600;
@@ -651,7 +651,7 @@
 
 .signInLink:hover {
   border-color: var(--cb-teal);
-  background: rgba(13, 52, 69, 0.6);
+  background: rgba(21, 22, 23, 0.6);
 }
 
 /*
@@ -684,7 +684,7 @@
   color: var(--cb-ivory);
   /* Un voile en haut seulement : le bandeau reste lisible sur le ciel du
      décor sans poser de barre opaque sur le menu. */
-  background: linear-gradient(180deg, rgba(3, 8, 14, 0.72) 0%, rgba(3, 8, 14, 0.35) 70%, transparent 100%);
+  background: linear-gradient(180deg, rgba(5, 6, 7, 0.72) 0%, rgba(5, 6, 7, 0.35) 70%, transparent 100%);
 }
 
 /*

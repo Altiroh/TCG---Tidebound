@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import styles from "@/features/shell/Dialog.module.css";
+import { ScrollArea } from "@/features/shell/ScrollArea";
 
 export type DialogTone = "default" | "danger";
 
@@ -49,6 +51,10 @@ interface DialogProps {
  */
 export function Dialog({ title, description, children, actions, onClose, width, variant, tone = "default", hideCloseButton = false }: DialogProps) {
   const shape = variant ?? (width ? "panel" : "banner");
+  // Porté sur `body` (15/10/2026) : ouvert depuis un panneau latéral, le
+  // bandeau prenait la boîte du panneau pour repère et s'y écrasait.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   useEffect(() => {
     function handleKey(event: KeyboardEvent) {
       if (event.key === "Escape") onClose();
@@ -57,7 +63,8 @@ export function Dialog({ title, description, children, actions, onClose, width, 
     return () => window.removeEventListener("keydown", handleKey);
   }, [onClose]);
 
-  return (
+  if (!mounted) return null;
+  return createPortal(
     <div className={styles.overlay} data-variant={shape} onClick={onClose} role="presentation">
       <div
         className={styles.dialog}
@@ -82,9 +89,14 @@ export function Dialog({ title, description, children, actions, onClose, width, 
             </button>
           )}
         </div>
-        {children && <div className={styles.body}>{children}</div>}
+        {children && (
+          <ScrollArea className={styles.bodyArea} contentClassName={styles.body}>
+            {children}
+          </ScrollArea>
+        )}
         {actions && <div className={styles.actions}>{actions}</div>}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

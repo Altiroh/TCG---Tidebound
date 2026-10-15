@@ -7,7 +7,7 @@
   place-items: center;
   padding: calc(16px + var(--tb-safe-top, 0px)) calc(16px + var(--tb-safe-right, 0px)) calc(16px + var(--tb-safe-bottom, 0px))
     calc(16px + var(--tb-safe-left, 0px));
-  background: radial-gradient(110% 90% at 50% 45%, rgba(6, 18, 30, 0.75), rgba(2, 6, 11, 0.92));
+  background: radial-gradient(110% 90% at 50% 45%, rgba(10, 11, 12, 0.75), rgba(3, 4, 5, 0.92));
   backdrop-filter: blur(6px);
   animation: fade 180ms ease-out both;
 }
@@ -87,7 +87,7 @@
 .backdrop[data-side] {
   place-items: stretch end;
   padding: 0;
-  background: linear-gradient(90deg, rgba(2, 6, 11, 0.25), rgba(2, 6, 11, 0.75));
+  background: linear-gradient(90deg, rgba(3, 4, 5, 0.25), rgba(3, 4, 5, 0.75));
 }
 
 .notif {
@@ -217,7 +217,7 @@
   margin: 4px 4px 0;
   aspect-ratio: 16 / 9;
   border-radius: 6px 6px 0 0;
-  background: #0b1824 center 40% / cover no-repeat;
+  background: #0f1011 center 40% / cover no-repeat;
   mask-image: linear-gradient(to bottom, #000 65%, transparent);
   -webkit-mask-image: linear-gradient(to bottom, #000 65%, transparent);
 }
@@ -247,7 +247,7 @@
   height: 40px;
   border: 2px solid #c79a4b;
   border-radius: 50%;
-  background: radial-gradient(circle at 50% 35%, #173449, #07131e);
+  background: radial-gradient(circle at 50% 35%, #173449, #0a0b0c);
   box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.55);
   color: #f4ead4;
   font-family: var(--tb-font-display, Georgia, serif);
@@ -291,7 +291,7 @@
   padding: 5px 8px;
   border: 1px solid rgba(199, 154, 75, 0.28);
   border-radius: 8px;
-  background: rgba(2, 8, 14, 0.45);
+  background: rgba(4, 5, 6, 0.45);
 }
 
 .shipRewardIcons {

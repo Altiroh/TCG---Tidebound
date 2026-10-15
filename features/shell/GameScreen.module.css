@@ -72,7 +72,7 @@
     /* Voile BLEU NUIT, pas noir : assez dense en haut pour le bandeau,
        plus léger au milieu pour que la scène respire, et un pied navy
        qui assoit les panneaux sans les étouffer. */
-    linear-gradient(180deg, rgba(5, 14, 26, 0.7) 0%, rgba(6, 18, 32, 0.34) 30%, rgba(5, 14, 26, 0.6) 100%),
+    linear-gradient(180deg, rgba(8, 9, 10, 0.7) 0%, rgba(10, 11, 12, 0.34) 30%, rgba(8, 9, 10, 0.6) 100%),
     var(--screen-backdrop);
   background-size: cover, cover;
   background-position: center, center;
@@ -106,7 +106,7 @@
 /* Le rayon Decks du Market pose `--market-backdrop` (Market.module.css). */
 .screen.screen[data-backdrop="market"] {
   background-image:
-    linear-gradient(180deg, rgba(4, 9, 15, 0.72) 0%, rgba(4, 10, 17, 0.12) 22%, rgba(3, 8, 13, 0.1) 60%, rgba(3, 8, 13, 0.55) 100%),
+    linear-gradient(180deg, rgba(6, 7, 8, 0.72) 0%, rgba(6, 7, 8, 0.12) 22%, rgba(5, 6, 7, 0.1) 60%, rgba(5, 6, 7, 0.55) 100%),
     var(--market-backdrop, url("/assets/market/background.webp"));
   background-position: center, center 40%;
 }
@@ -121,7 +121,7 @@
 /* La cabine du Profil : son voile est allégé, la cabine est déjà sombre. */
 .screen.screen[data-backdrop="cabine"] {
   background-image:
-    linear-gradient(180deg, rgba(5, 12, 22, 0.55) 0%, rgba(5, 12, 22, 0) 12%),
+    linear-gradient(180deg, rgba(8, 9, 10, 0.55) 0%, rgba(8, 9, 10, 0) 12%),
     url("/assets/profile/lantern-glow.svg"),
     url("/assets/profile/background.webp");
   background-size: cover, cover, cover;
@@ -159,7 +159,7 @@
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  background: radial-gradient(130% 105% at 50% 45%, transparent 46%, rgba(4, 10, 20, 0.58) 100%);
+  background: radial-gradient(130% 105% at 50% 45%, transparent 46%, rgba(6, 7, 8, 0.58) 100%);
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -230,7 +230,7 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
-  scrollbar-color: var(--line-strong) transparent;
+  scrollbar-color: var(--tb-scrollbar-thumb) transparent;
   /* Le bas du défilement s'arrête au-dessus de la barre de gestes iOS, et
      les côtés à l'écart des coins arrondis en paysage.
 
@@ -807,7 +807,7 @@
 .input:focus {
   outline: none;
   border-color: var(--cb-cyan);
-  background: rgba(5, 14, 26, 0.8);
+  background: rgba(8, 9, 10, 0.8);
   box-shadow: var(--tb-glow-sm);
 }
 .input:disabled { opacity: 0.5; cursor: not-allowed; }

@@ -10,7 +10,7 @@
   z-index: 90;
   display: grid;
   place-items: stretch end;
-  background: rgba(2, 6, 12, 0.6);
+  background: rgba(4, 5, 6, 0.6);
   animation: veilIn 200ms ease-out both;
 }
 
@@ -45,7 +45,7 @@
   width: min(460px, 100vw);
   height: 100dvh;
   padding: calc(18px + var(--tb-safe-top, 0px)) calc(18px + var(--tb-safe-right, 0px)) calc(14px + var(--tb-safe-bottom, 0px)) 18px;
-  background: linear-gradient(90deg, rgba(0, 0, 0, 0.9), rgba(4, 8, 14, 0.96) 50%, rgba(0, 0, 0, 0.92));
+  background: linear-gradient(90deg, rgba(0, 0, 0, 0.9), rgba(6, 7, 8, 0.96) 50%, rgba(0, 0, 0, 0.92));
   box-shadow: 0 0 60px rgba(0, 0, 0, 0.75);
   color: var(--tb-text);
   animation: slideIn 220ms var(--tb-ease, ease-out) both;
@@ -120,13 +120,15 @@
   outline-offset: 2px;
 }
 
+/* La zone qui défile (`ScrollArea`, barre du jeu à halo) ; le contenu laisse la place du rail. */
 .scroll {
   flex: 1;
   min-height: 0;
-  overflow-y: auto;
-  margin: 12px -6px 0;
-  padding: 4px 6px;
-  scrollbar-width: thin;
+  margin: 12px -6px 0 0;
+}
+
+.scrollContent {
+  padding: 4px 16px 4px 0;
 }
 
 @media (prefers-reduced-motion: reduce) {

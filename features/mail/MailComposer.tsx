@@ -19,6 +19,7 @@ import {
   type MailDraft,
 } from "@/features/mail/mailDraft";
 import { Dialog } from "@/features/shell/Dialog";
+import { ScrollArea } from "@/features/shell/ScrollArea";
 import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/mail/Mail.module.css";
 import { playButtonClick } from "@/lib/sound";
@@ -171,6 +172,7 @@ export function MailComposer({ onSent }: { onSent: () => void }) {
         {picking ? (
           <>
             <input className={styles.input} value={query} placeholder="Chercher une carte…" autoFocus onChange={(event) => setQuery(event.target.value)} />
+            <ScrollArea style={{ maxHeight: 260 }}>
             <ul className={styles.artGrid} aria-label="Illustrations">
               {shownCards.map((card) => (
                 <li key={card.id}>
@@ -191,6 +193,7 @@ export function MailComposer({ onSent }: { onSent: () => void }) {
                 </li>
               ))}
             </ul>
+            </ScrollArea>
             {shownCards.length === 0 && <p className={styles.itemMeta}>Aucune carte ne porte ce nom.</p>}
             <div className={styles.row}>
               <button type="button" className={`${game.secondary} ${game.buttonSm}`} onClick={() => setPicking(false)}>

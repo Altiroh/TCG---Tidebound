@@ -138,7 +138,7 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
-  scrollbar-color: var(--line-strong) transparent;
+  scrollbar-color: var(--tb-scrollbar-thumb) transparent;
 }
 
 .filterList::-webkit-scrollbar { width: 6px; }
@@ -457,7 +457,7 @@
   overscroll-behavior: contain;
   padding: clamp(14px, 2vh, 26px) clamp(12px, 1.2vw, 24px) clamp(16px, 2.2vh, 30px);
   scrollbar-width: thin;
-  scrollbar-color: var(--line-strong) transparent;
+  scrollbar-color: var(--tb-scrollbar-thumb) transparent;
 }
 
 .gridScroll::-webkit-scrollbar { width: 8px; }
@@ -610,7 +610,7 @@
     z-index: 4;
     border: none;
     padding: 0;
-    background: rgba(3, 8, 14, 0.55);
+    background: rgba(5, 6, 7, 0.55);
   }
 
   .workspace[data-columns="3"] .filtersToggle.filtersToggle { display: inline-flex; }
@@ -655,7 +655,7 @@
     z-index: 4;
     border: none;
     padding: 0;
-    background: rgba(3, 8, 14, 0.55);
+    background: rgba(5, 6, 7, 0.55);
   }
 
   .filtersToggle.filtersToggle { display: inline-flex; }
@@ -772,7 +772,7 @@
     overscroll-behavior: contain;
     padding: 0 10px 10px;
     scrollbar-width: thin;
-    scrollbar-color: var(--line-strong) transparent;
+    scrollbar-color: var(--tb-scrollbar-thumb) transparent;
   }
 
   .sidebarInner::-webkit-scrollbar { width: 6px; }

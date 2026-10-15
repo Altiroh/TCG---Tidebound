@@ -490,7 +490,7 @@
 .left [class*="_filterRowActive__"] [class*="_filterCheck__"] {
   border-color: #5fd0e6;
   border-radius: 50%;
-  background: #0c2b36;
+  background: #121314;
 }
 
 .left [class*="_filterRowActive__"] [class*="_filterCheck__"]::after {
@@ -681,7 +681,7 @@
   height: 16px;
   border: 1px solid #5fd0e6;
   border-radius: 50%;
-  background: radial-gradient(circle at 50% 40%, #2a8fae, #0c2b36 75%);
+  background: radial-gradient(circle at 50% 40%, #2a8fae, #121314 75%);
   box-shadow: 0 0 5px rgba(95, 208, 230, 0.55);
 }
 
@@ -1296,14 +1296,14 @@
   height: 18px;
   border: 1px solid rgba(20, 12, 5, 0.7);
   border-radius: 50%;
-  background: radial-gradient(circle at 45% 35%, #1f3a5c, #0b1a2c 70%);
+  background: radial-gradient(circle at 45% 35%, #1f3a5c, #101112 70%);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.12);
   color: #e6eef6;
 }
 
 .left [class*="_filterRowActive__"] [class*="_filterMedallion__"] {
   border-color: #5fd0e6;
-  background: radial-gradient(circle at 45% 35%, #2a8fae, #0c2b36 75%);
+  background: radial-gradient(circle at 45% 35%, #2a8fae, #121314 75%);
   box-shadow: 0 0 5px rgba(95, 208, 230, 0.55);
   color: #ffffff;
 }
@@ -1678,7 +1678,7 @@
 /* La réglette de Raison : les médaillons ronds des lignes de filtre. */
 .collection .left [class*="_costChip__"] {
   border: 1px solid rgba(20, 12, 5, 0.7);
-  background: radial-gradient(circle at 45% 35%, #1f3a5c, #0b1a2c 70%);
+  background: radial-gradient(circle at 45% 35%, #1f3a5c, #101112 70%);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.12);
   color: #e6eef6;
   font-family: var(--tb-font-display, Georgia, serif);
@@ -1687,7 +1687,7 @@
 
 .collection .left [class*="_costChipActive__"] {
   border-color: #5fd0e6;
-  background: radial-gradient(circle at 45% 35%, #2a8fae, #0c2b36 75%);
+  background: radial-gradient(circle at 45% 35%, #2a8fae, #121314 75%);
   box-shadow: 0 0 5px rgba(95, 208, 230, 0.55);
   color: #ffffff;
 }

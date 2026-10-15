@@ -25,7 +25,7 @@
   position: absolute;
   inset: 0;
   overflow: hidden;
-  background: #050d16;
+  background: #08090a;
 }
 
 /*
@@ -54,7 +54,7 @@
   inset: 0;
   z-index: 3;
   pointer-events: none;
-  background: radial-gradient(120% 90% at 50% 45%, transparent 54%, rgba(3, 9, 16, 0.5) 100%);
+  background: radial-gradient(120% 90% at 50% 45%, transparent 54%, rgba(5, 6, 7, 0.5) 100%);
 }
 
 /* ──────────────────────────────────────────────────────────────

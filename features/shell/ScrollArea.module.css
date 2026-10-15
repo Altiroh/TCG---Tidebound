@@ -1,0 +1,103 @@
+/*
+ * Barre de défilement du jeu (`ScrollArea`) : rail fin, curseur cyan à
+ * halo — cœur clair, lueur, liseré qui vacille, comme le halo des cartes
+ * prêtes à attaquer (`orbHalo`, `Table.module.css`).
+ */
+.area {
+  --scroll-core: 230, 251, 255;
+  --scroll-main: 95, 208, 230;
+  --scroll-deep: 44, 143, 176;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.viewport {
+  /* `auto` et non 0 : une zone sans hauteur imposée (corps d'un `Dialog`) prend celle de son contenu, puis rétrécit et défile quand son parent la contraint. */
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  /* La barre native disparaît : le curseur dessiné la remplace. */
+  scrollbar-width: none;
+}
+
+.viewport::-webkit-scrollbar {
+  display: none;
+}
+
+.rail {
+  position: absolute;
+  top: 6px;
+  right: 0;
+  bottom: 6px;
+  z-index: 2;
+  width: 12px;
+  cursor: var(--tb-cursor-pointer);
+}
+
+/* Le fil du rail : à peine visible, il dit où court le curseur. */
+.rail::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  background: linear-gradient(180deg, transparent, rgba(var(--scroll-main), 0.22) 12%, rgba(var(--scroll-main), 0.22) 88%, transparent);
+  translate: -50% 0;
+}
+
+.thumb {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 4px;
+  margin-left: -2px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(var(--scroll-core), 1), rgba(var(--scroll-main), 1) 35%, rgba(var(--scroll-main), 1) 65%, rgba(var(--scroll-deep), 1));
+  box-shadow: 0 0 1.5px rgba(var(--scroll-core), 1), 0 0 5px rgba(var(--scroll-main), 0.9), 0 0 11px rgba(var(--scroll-deep), 0.65);
+  cursor: grab;
+  touch-action: none;
+  transition: width 140ms ease-out, margin-left 140ms ease-out, box-shadow 140ms ease-out;
+}
+
+/* Le liseré qui vacille : intensité irrégulière, comme le halo des cartes. */
+.thumb::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: inherit;
+  box-shadow: 0 0 8px 1px rgba(var(--scroll-main), 0.55);
+  animation: scrollHalo 3.2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.rail:hover .thumb,
+.thumb[data-dragging] {
+  width: 6px;
+  margin-left: -3px;
+  box-shadow: 0 0 2px rgba(var(--scroll-core), 1), 0 0 7px rgba(var(--scroll-main), 1), 0 0 16px rgba(var(--scroll-deep), 0.8);
+}
+
+.thumb[data-dragging] {
+  cursor: grabbing;
+}
+
+@keyframes scrollHalo {
+  0%,
+  100% { opacity: 0.55; }
+  18% { opacity: 1; }
+  31% { opacity: 0.6; }
+  47% { opacity: 0.9; }
+  66% { opacity: 0.5; }
+  82% { opacity: 0.85; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .thumb::after {
+    animation: none;
+  }
+}

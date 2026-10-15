@@ -18,7 +18,7 @@
   padding: 0.22em 0.85em;
   border: 1px solid rgba(var(--status-glow), 0.55);
   border-radius: 0.4em;
-  background: rgba(6, 14, 22, 0.88);
+  background: rgba(8, 9, 10, 0.88);
   color: var(--status-ink);
   font-size: var(--status-size, calc(clamp(max(8px, var(--tb-fs-floor, 0px)), 0.8vw, 11px) * var(--tb-text-scale)));
   font-weight: 700;
