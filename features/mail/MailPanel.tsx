@@ -11,7 +11,7 @@ import { RewardIcon } from "@/features/progression/RewardIcon";
 import { RewardReveal } from "@/features/progression/RewardReveal";
 import { notifyProgressionChanged } from "@/features/progression/progressionSync";
 import { Dialog } from "@/features/shell/Dialog";
-import hubStyles from "@/features/progression/HubSheets.module.css";
+import side from "@/features/shell/SidePanel.module.css";
 import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/mail/Mail.module.css";
 import { playButtonClick } from "@/lib/sound";
@@ -107,13 +107,13 @@ export function MailPanel({ isAdmin, onClose }: { isAdmin: boolean; onClose: () 
   const unread = mails?.filter((mail) => !mail.read).length ?? 0;
 
   return createPortal(
-    <div className={hubStyles.backdrop} data-side onClick={onClose} role="presentation">
-      <div className={styles.panel} role="dialog" aria-modal aria-label="Courrier" onClick={(event) => event.stopPropagation()}>
-        <header className={styles.head}>
+    <div className={side.veil} onClick={onClose} role="presentation">
+      <div className={side.panel} role="dialog" aria-modal aria-label="Courrier" onClick={(event) => event.stopPropagation()}>
+        <header className={side.head}>
           {/* eslint-disable-next-line @next/next/no-img-element -- icône locale */}
-          <img className={styles.headIcon} src={unread > 0 ? ENVELOPE_CLOSED : ENVELOPE_OPEN} alt="" draggable={false} />
-          <h2 className={styles.title}>Courrier</h2>
-          <button type="button" className={styles.close} onClick={onClose} aria-label="Fermer">
+          <img className={side.headIcon} src={unread > 0 ? ENVELOPE_CLOSED : ENVELOPE_OPEN} alt="" draggable={false} />
+          <h2 className={side.title}>Courrier</h2>
+          <button type="button" className={side.close} onClick={onClose} aria-label="Fermer">
             ×
           </button>
         </header>

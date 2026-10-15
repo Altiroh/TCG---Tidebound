@@ -1,4 +1,24 @@
-/* Panneau latéral du bandeau (`SidePanel`) — même matière que le Courrier (`Mail.module.css`). */
+/*
+ * PANNEAU LATÉRAL du bandeau (`SidePanel` : Options ; le Courrier porte les
+ * mêmes classes) — dans la DA du BANDEAU NOIR (15/10/2026,
+ * `BlackBanner.module.css`) : fond noir, filet cyan qui s'éteint aux deux
+ * bouts, voile qui assombrit sans flouter, titre et croix du bandeau.
+ */
+.veil {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: stretch end;
+  background: rgba(2, 6, 12, 0.6);
+  animation: veilIn 200ms ease-out both;
+}
+
+@keyframes veilIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 .panel {
   position: relative;
   /* Porté hors de l'écran (portail) : les alias de `GameScreen` (`--line`, `--ink`…) que
@@ -25,11 +45,23 @@
   width: min(460px, 100vw);
   height: 100dvh;
   padding: calc(18px + var(--tb-safe-top, 0px)) calc(18px + var(--tb-safe-right, 0px)) calc(14px + var(--tb-safe-bottom, 0px)) 18px;
-  border-left: 1px solid var(--tb-border-strong);
-  background: linear-gradient(170deg, var(--tb-surface-solid-raised), var(--tb-surface-solid) 55%);
-  box-shadow: -24px 0 48px rgba(0, 0, 0, 0.55);
+  background: linear-gradient(90deg, rgba(0, 0, 0, 0.9), rgba(4, 8, 14, 0.96) 50%, rgba(0, 0, 0, 0.92));
+  box-shadow: 0 0 60px rgba(0, 0, 0, 0.75);
   color: var(--tb-text);
   animation: slideIn 220ms var(--tb-ease, ease-out) both;
+}
+
+/* Le filet du bandeau, posé sur le bord du panneau. */
+.panel::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 1px;
+  background: linear-gradient(180deg, transparent, var(--tb-accent, #5fd0e6) 30%, var(--tb-accent, #5fd0e6) 70%, transparent);
+  opacity: 0.75;
+  pointer-events: none;
 }
 
 @keyframes slideIn {
@@ -42,7 +74,7 @@
   align-items: center;
   gap: 12px;
   padding-bottom: 12px;
-  background: linear-gradient(90deg, transparent, rgba(217, 181, 106, 0.55) 15%, rgba(217, 181, 106, 0.55) 85%, transparent) bottom / 100% 1px no-repeat;
+  background: linear-gradient(90deg, transparent, var(--tb-accent, #5fd0e6) 30%, var(--tb-accent, #5fd0e6) 70%, transparent) bottom / 100% 1px no-repeat;
 }
 
 .headIcon {
@@ -55,24 +87,37 @@
 .title {
   flex: 1;
   margin: 0;
-  color: #f1ebdc;
+  color: var(--tb-text-strong);
   font-family: var(--tb-font-display, Georgia, serif);
-  font-size: calc(clamp(19px, 1.8vw, 24px) * var(--tb-text-scale));
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: calc(clamp(20px, 2vw, 30px) * var(--tb-text-scale));
+  font-weight: 600;
+  letter-spacing: 0.04em;
 }
 
 .close {
   flex: none;
-  width: 34px;
-  height: 34px;
-  border: 1px solid rgba(207, 224, 240, 0.3);
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid transparent;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.05);
-  color: #e2e8f0;
+  background: none;
+  color: var(--tb-text-muted);
   font-size: calc(20px * var(--tb-text-scale));
   line-height: 1;
   cursor: var(--tb-cursor-pointer);
+  transition: color 120ms ease-out, background-color 120ms ease-out;
+}
+
+.close:hover {
+  background: var(--tb-accent-soft);
+  color: var(--tb-text-strong);
+}
+
+.close:focus-visible {
+  outline: 2px solid var(--tb-accent);
+  outline-offset: 2px;
 }
 
 .scroll {
@@ -85,5 +130,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .veil,
   .panel { animation: none; }
 }

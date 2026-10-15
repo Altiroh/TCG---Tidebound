@@ -2,7 +2,6 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import hubStyles from "@/features/progression/HubSheets.module.css";
 import styles from "@/features/shell/SidePanel.module.css";
 
 interface SidePanelProps {
@@ -35,7 +34,7 @@ export function SidePanel({ title, iconSrc, onClose, children }: SidePanelProps)
   if (!mounted) return null;
 
   return createPortal(
-    <div className={hubStyles.backdrop} data-side onClick={onClose} role="presentation">
+    <div className={styles.veil} onClick={onClose} role="presentation">
       <div className={styles.panel} role="dialog" aria-modal aria-label={title} onClick={(event) => event.stopPropagation()}>
         <header className={styles.head}>
           {/* eslint-disable-next-line @next/next/no-img-element -- icône locale */}
