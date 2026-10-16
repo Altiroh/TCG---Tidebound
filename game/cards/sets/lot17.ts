@@ -1333,24 +1333,12 @@ const OPALINS: CardDefinition[] = [
 // Nées avec le lot. Depuis le nettoyage du 06/10/2026, Mousse superstitieux et
 // Pièce porte-bonheur sont des soutiens Dungeon et Ladalle (booster du lot) ;
 // les dix autres sont redistribuées dans les anciens boosters (`LOT17_PASSERELLES`).
-// Corde de rappel et Route barrée sont écartées (redondantes).
+// Corde de rappel et Route barrée sont écartées (redondantes). Les sept
+// passerelles sorties des pools à l'audit du 06/10/2026 (Cartographe du Large,
+// Gardien des Balises, Boussole fendue, Campement provisoire, Tour de guet
+// mobile, Marée imprévisible, Terres inconnues) sont retirées du jeu le 16/10/2026.
 
 const GENERIQUES: CardDefinition[] = [
-  {
-    id: "cartographe-du-large",
-    name: "Cartographe du Large",
-    type: "marin",
-    subtypes: ["humain"],
-    setCode: LOT17_PASSERELLES,
-    cost: 2,
-    attack: 2,
-    health: 3,
-    maxCopies: 3,
-    text: "À l'arrivée, si une Lande est active, regardez les 2 cartes du dessus de votre deck et replacez-les dans l'ordre de votre choix.",
-    onPlayEffects: [
-      { type: "lookAtDeckTop", target: { kind: "controllerPlayer" }, amount: flat(2), uses: 0, restTo: "deckTopChosenOrder", refusable: true, conditionLandeActive: true },
-    ],
-  },
   {
     id: "aventuriere-en-retard",
     name: "Aventurière en retard",
@@ -1397,29 +1385,6 @@ const GENERIQUES: CardDefinition[] = [
     ],
   },
   {
-    id: "gardien-des-balises",
-    name: "Gardien des Balises",
-    type: "marin",
-    subtypes: ["humain"],
-    setCode: LOT17_PASSERELLES,
-    cost: 3,
-    attack: 3,
-    health: 4,
-    maxCopies: 3,
-    text: "Tant qu'une Lande est active, il gagne +0/+1.",
-    selfBuffWhileLandeActive: { healthAmount: 1 },
-  },
-  {
-    id: "boussole-fendue",
-    name: "Boussole fendue",
-    type: "objet",
-    setCode: LOT17_PASSERELLES,
-    cost: 1,
-    maxCopies: 3,
-    text: "Regardez les 2 cartes du dessus. Gardez-en une au-dessus et placez l'autre dessous.",
-    onBreakEffects: [{ type: "lookAtDeckTop", target: { kind: "controllerPlayer" }, amount: flat(2), uses: 1, takeTo: "deckTop" }],
-  },
-  {
     id: "piece-porte-bonheur",
     name: "Pièce porte-bonheur",
     type: "objet",
@@ -1442,48 +1407,6 @@ const GENERIQUES: CardDefinition[] = [
     onBreakEffects: [{ type: "pickFromGraveyard", target: { kind: "controllerPlayer" }, filter: { cardTypes: ["lande"] }, uses: 1, takeTo: "deckBottom" }],
   },
   {
-    id: "campement-provisoire",
-    name: "Campement provisoire",
-    type: "structure",
-    setCode: LOT17_PASSERELLES,
-    cost: 2,
-    health: 3,
-    maxCopies: 3,
-    text: "La première carte que vous rejouez depuis votre main après qu'elle y soit revenue à chacun de vos tours coûte 1 de moins.",
-    replayedCardDiscount: 1,
-  },
-  {
-    id: "tour-de-guet-mobile",
-    name: "Tour de guet mobile",
-    type: "structure",
-    setCode: LOT17_PASSERELLES,
-    cost: 3,
-    health: 4,
-    maxCopies: 3,
-    text: "La première fois qu'une Lande arrive en jeu à chacun de vos tours, gagnez 1 Armure.",
-    abilities: [
-      {
-        trigger: "onLandePlaced",
-        condition: { factOf: "any", duringOwnTurn: true },
-        oncePerTurnKey: "tourDeGuet",
-        description: "Une Lande arrive en jeu : gagnez 1 Armure.",
-        effects: [{ type: "gainArmor", target: { kind: "controllerPlayer" }, amount: flat(1) }],
-      },
-    ],
-  },
-  {
-    id: "maree-imprevisible",
-    name: "Marée imprévisible",
-    type: "anomalie",
-    setCode: LOT17_PASSERELLES,
-    cost: 3,
-    maxCopies: 3,
-    permanent: false,
-    text: "Déplacez immédiatement la Marée d'un état dans le sens de votre choix.",
-    onPlayEffects: [{ type: "chooseAbilityOption", target: { kind: "controllerPlayer" }, optionGroup: "mareeSens", cardId: "maree-imprevisible" }],
-    abilities: deplacerLaMaree("mareeSens"),
-  },
-  {
     id: "calme-trompeur",
     name: "Calme trompeur",
     type: "lande",
@@ -1492,18 +1415,6 @@ const GENERIQUES: CardDefinition[] = [
     maxCopies: 2,
     text: "Durée : 3 tours de table. La première unité coûtant 2 ou moins que chaque joueur joue à son tour gagne +0/+1.",
     lande: { durationTableTurns: 3, firstCheapUnitEachTurnBuff: { maxCost: 2, attack: 0, health: 1 } },
-  },
-  {
-    id: "terres-inconnues",
-    name: "Terres inconnues",
-    type: "lande",
-    setCode: LOT17_PASSERELLES,
-    cost: 3,
-    maxCopies: 2,
-    text:
-      "Durée : 4 tours de table. La première carte que vous rejouez depuis votre main après qu'elle y soit revenue à " +
-      "chacun de vos tours coûte 1 de moins.",
-    lande: { durationTableTurns: 4, replayedCardDiscount: 1 },
   },
 ];
 

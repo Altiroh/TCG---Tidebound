@@ -81,7 +81,7 @@ const BADGE_SIZE: Record<BoardPreviewBreakpoint, number> = {
 };
 
 /** Les Landes que le labo du pont sait poser (bouton « Lande » de la barre de debug). */
-const PONT_LANDES = ["pluie-corrosive", "chaine-de-construction", "vallee-de-verre", "le-donjon-de-ladalle", "calme-trompeur", "terres-inconnues"];
+const PONT_LANDES = ["pluie-corrosive", "chaine-de-construction", "vallee-de-verre", "le-donjon-de-ladalle", "calme-trompeur"];
 
 /**
  * Le labo monte le Pont du Capitaine, seul plateau officiel (09/10/2026 :

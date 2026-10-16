@@ -36,22 +36,7 @@ const DOSSIER = path.join(process.cwd(), "public", "assets", "cards", "illustrat
  * écrite, pas un contournement. Et l'exception ne survit pas à l'arrivée
  * de son visuel — le troisième test le refuse.
  */
-const SANS_VISUEL: Record<string, string> = {
-  // Le Lot 17 a reçu ses visuels le 06/10/2026 ; les passerelles encore
-  // obtenables ou rattachées à un archétype ont suivi le même jour. Restent
-  // sans visuel les sept passerelles sorties des pools à l'audit du 06/10.
-  ...Object.fromEntries(
-    [
-      "cartographe-du-large",
-      "gardien-des-balises",
-      "boussole-fendue",
-      "campement-provisoire",
-      "tour-de-guet-mobile",
-      "maree-imprevisible",
-      "terres-inconnues",
-    ].map((id) => [id, "Passerelle du Lot 17 livrée sans visuel (06/10/2026)"])
-  ),
-};
+const SANS_VISUEL: Record<string, string> = {};
 
 const fichiers = new Set(readdirSync(DOSSIER));
 

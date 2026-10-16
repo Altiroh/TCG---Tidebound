@@ -591,18 +591,11 @@ const LOT17_RARITY: Record<string, CardRarity> = {
   "veille-des-niveaux": "uncommon",
   "fragment-d-eveil": "rare",
   "sommeil-de-pierre": "uncommon",
-  "cartographe-du-large": "common",
   "aventuriere-en-retard": "common",
   "mousse-superstitieux": "uncommon",
-  "gardien-des-balises": "common",
-  "boussole-fendue": "common",
   "piece-porte-bonheur": "uncommon",
   "carte-detrempee": "common",
-  "campement-provisoire": "uncommon",
-  "tour-de-guet-mobile": "common",
-  "maree-imprevisible": "uncommon",
   "calme-trompeur": "rare",
-  "terres-inconnues": "rare",
 };
 
 /** Lot 18 — Un Dead / Mort-vivant (Notion, pool validé le 09/10/2026). */

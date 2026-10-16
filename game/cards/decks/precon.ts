@@ -1090,6 +1090,8 @@ export const DECK_LES_ALTERES: DeckList = {
  * D'AUTORITÉ : la liste Notion met 2 Morhal (Max deck 1) et 3 Eidolon LV1
  * (Max deck 2). Ramenée aux limites des cartes, elle complète ses 40 avec
  * +1 Veille des Niveaux et +1 Sommeil de Pierre (tous deux limités à 3).
+ * 16/10/2026 : Boussole fendue retirée du jeu — ses deux places vont à un
+ * 3e Elyor et un 3e Coup de Harpon (choix à confirmer).
  */
 export const DECK_LES_VEILLEURS_D_OPALE: DeckList = {
   id: "les-veilleurs-d-opale",
@@ -1104,7 +1106,7 @@ export const DECK_LES_VEILLEURS_D_OPALE: DeckList = {
     ...repeat("kaor-opalin-des-reliques", 2),
     ...repeat("seren-opalin-du-silence", 2),
     ...repeat("tharos-opalin-des-brisants", 2),
-    ...repeat("elyor-opalin-du-retour", 2),
+    ...repeat("elyor-opalin-du-retour", 3),
     ...repeat("morhal-opalin-des-navires", 1),
     ...repeat("dhar-opalin-du-premier-coup", 2),
     ...repeat("astel-opalin-de-la-derniere-veille", 1),
@@ -1114,9 +1116,8 @@ export const DECK_LES_VEILLEURS_D_OPALE: DeckList = {
     ...repeat("fragment-d-eveil", 2),
     ...repeat("sommeil-de-pierre", 3),
     ...repeat("veille-des-niveaux", 3),
-    ...repeat("boussole-fendue", 2),
     ...repeat("bouclier-decume", 2),
-    ...repeat("coup-de-harpon", 2),
+    ...repeat("coup-de-harpon", 3),
   ],
 };
 

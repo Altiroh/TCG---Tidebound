@@ -562,21 +562,12 @@ const BIENVENUE: readonly string[] = DEFAUT.filter((cardId) => {
 });
 
 /**
- * Cartes du catalogue VOLONTAIREMENT hors de tout booster : les passerelles
- * du Lot 17 sorties des pools à l'audit du 06/10/2026. Leurs définitions
- * restent (les joueurs qui les possèdent les gardent ; Boussole fendue reste
- * dans le préconstruit Les Veilleurs d'Opale), mais aucun sachet ne les
- * donne plus. Toute AUTRE carte hors booster est une erreur (tests).
+ * Cartes du catalogue VOLONTAIREMENT hors de tout booster. VIDE depuis le
+ * 16/10/2026 : les sept passerelles du Lot 17 sorties des pools à l'audit du
+ * 06/10/2026 ont quitté le jeu (migration `20261106120000_retrait_7_passerelles_lot17.sql`).
+ * Toute carte hors booster est une erreur (tests) — sauf à l'inscrire ici.
  */
-export const CARTES_HORS_POOLS: readonly string[] = [
-  "boussole-fendue",
-  "campement-provisoire",
-  "cartographe-du-large",
-  "gardien-des-balises",
-  "maree-imprevisible",
-  "terres-inconnues",
-  "tour-de-guet-mobile",
-];
+export const CARTES_HORS_POOLS: readonly string[] = [];
 
 /** Cartes éligibles par booster. La base en est le miroir (`booster_pool_cards`). */
 export const BOOSTER_POOLS: Readonly<Record<string, readonly string[]>> = {

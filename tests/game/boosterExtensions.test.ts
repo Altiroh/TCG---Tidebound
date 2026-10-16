@@ -147,9 +147,8 @@ describe("sigle de collection (bas gauche de la carte)", () => {
     expect(cardSetMark("pulcinella-gonfle")).toMatch(/-BD$/);
   });
 
-  it("toute carte du catalogue a un sigle ; une carte hors sachet n'imprime que sa rareté", () => {
-    for (const def of CORE_SET) expect(cardSetMark(def.id), def.id).toMatch(/^(C|PC|R|E|L|A)(-[A-Z]{2,3})?$/);
-    expect(cardSetMark("boussole-fendue")).toBe("C");
+  it("toute carte du catalogue a un sigle, extension comprise ; un jeton n'en a pas", () => {
+    for (const def of CORE_SET) expect(cardSetMark(def.id), def.id).toMatch(/^(C|PC|R|E|L|A)-[A-Z]{2,3}$/);
     expect(cardSetMark("larve")).toBeNull();
   });
 });
