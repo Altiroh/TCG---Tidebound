@@ -46,8 +46,8 @@ function aSaMort(description: string, effects: EffectDefinition[], extra: Partia
  * « Chaîne — <effet> », sans situation dans le texte : un Objet Chaîne
  * INSTANTANÉ (`CardDefinition.chaineLibre`). Il se joue en Phase principale
  * (ses `onBreakEffects`), ou en réaction depuis la main quand une unité
- * adverse attaque, ou quand l'adversaire joue un Objet — les deux moments où
- * un instantané change quelque chose. Mêmes effets dans les trois voies.
+ * attaque — adverse ou l'une des vôtres — ou quand l'adversaire joue un
+ * Objet. Mêmes effets dans toutes les voies.
  */
 function chaineLibre(
   description: string,
@@ -59,6 +59,8 @@ function chaineLibre(
     onBreakEffects: effects,
     abilities: [
       { trigger: "onUnitAttackDeclared", mode: "optional", description, effects },
+      // Pendant VOTRE attaque aussi : un instantané n'attend pas le tour adverse.
+      { trigger: "onOwnAttackDeclared", mode: "optional", description, effects },
       { trigger: "onObjectPlayed", triggeredBy: { opponentOnly: true }, mode: "optional", description, effects },
     ],
   };

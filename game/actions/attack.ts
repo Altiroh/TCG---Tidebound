@@ -304,6 +304,9 @@ function suspendrePourInterception(
   // Navire devrait subir des dégâts directs » ne concerne que la coque.
   const triggerEvents: TriggerEvent[] = [
     { trigger: "onUnitAttackDeclared", playerId: defenderId, sourceInstanceId: action.attackerInstanceId },
+    // Le camp qui ATTAQUE peut aussi répondre à sa propre attaque (Lot 19 —
+    // Objets Chaîne instantanés : un bonus sur l'attaquant avant le coup).
+    { trigger: "onOwnAttackDeclared", playerId: action.playerId, sourceInstanceId: action.attackerInstanceId },
     ...(action.defenderInstanceId
       ? []
       : ([{ trigger: "onIncomingDirectAttack", playerId: defenderId, sourceInstanceId: action.attackerInstanceId }] as TriggerEvent[])),
@@ -340,6 +343,7 @@ function suspendrePourInterception(
       attackerInstanceId: action.attackerInstanceId,
       defenderInstanceId: action.defenderInstanceId,
       attackerPower: declaredAttackPower(attaquant, action.defenderInstanceId, state),
+      attackerEffectivePowerAtDeclaration: effectiveAttack(attaquant, state),
       priorAttacks: attacksMade(attaquant),
     },
   };
@@ -437,8 +441,15 @@ function resolveAttack(state: GameState, action: AttackAction): ActionResult {
   // À la REPRISE, la Puissance déclarée fait foi : c'est elle qu'un piège a
   // pu amputer (`modifyAttackerPower`), et la recalculer ici effacerait sa
   // réduction. Hors interception, elle se calcule normalement.
-  const declaredPower =
-    etat.pendingAttack?.attackerPower ?? declaredAttackPower(declaredAttacker, action.defenderInstanceId, etat);
+  // Ce que la fenêtre a changé sur l'attaquant (un bonus, un malus posé
+  // sur lui) compte aussi : la Puissance de départ s'en trouve corrigée.
+  const pendingAtt = etat.pendingAttack;
+  const declaredPower = pendingAtt
+    ? pendingAtt.attackerPower +
+      (pendingAtt.attackerEffectivePowerAtDeclaration !== undefined
+        ? effectiveAttack(declaredAttacker, etat) - pendingAtt.attackerEffectivePowerAtDeclaration
+        : 0)
+    : declaredAttackPower(declaredAttacker, action.defenderInstanceId, etat);
   const powerBeforeAttackTriggers = effectiveAttack(declaredAttacker, etat);
   const events: GameEvent[] = [...evenementsDeclaration];
   const base = { turnNumber: etat.turnNumber, timestamp: Date.now() };

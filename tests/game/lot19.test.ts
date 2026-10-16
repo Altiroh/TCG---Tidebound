@@ -333,6 +333,26 @@ describe("Objets Chaîne : bloquer, annuler, et les instantanés", () => {
     expect(boardCapacity(r, joueur(r, "p2"))).toBe(avant - 1);
   });
 
+  it("Greffe Instable se joue aussi pendant SA propre attaque : le bonus compte dans le coup", () => {
+    const greffe = instance("greffe-instable", "p1");
+    const attaquant = pret("couveuse-difforme", "p1"); // 1/4
+    let state = table({ board: [attaquant], hand: [greffe] }, { anchor: 20 });
+    state = etat(attaquer(state, attaquant));
+    // La fenêtre s'ouvre pour l'ATTAQUANT.
+    expect(state.pendingReaction?.awaitingPlayerId).toBe("p1");
+    state = etat(activateReactionFor(state, "greffe-instable", attaquant.instanceId));
+    // 1 + 3 Puissance sur la coque adverse, et 1 dégât sur la Couveuse.
+    expect(joueur(state, "p2").anchor).toBe(16);
+    expect(unite(state, attaquant.instanceId)!.damageMarked).toBe(1);
+  });
+
+  it("Sérum de Mauvaise Vie est proposé pendant sa propre attaque", () => {
+    const serum = instance("serum-de-mauvaise-vie", "p1");
+    const attaquant = pret("murene-aveugle", "p1");
+    const state = etat(attaquer(table({ board: [attaquant], hand: [serum], anchor: 10 }), attaquant));
+    expect(pendingCandidates(state).some((c) => c.cardId === "serum-de-mauvaise-vie")).toBe(true);
+  });
+
   it("un Objet Chaîne de réaction (sans `chaineLibre`) reste refusé en Phase principale", () => {
     const stop = instance("stop", "p1");
     expect(jouer(table({ hand: [stop] }), stop).ok).toBe(false);

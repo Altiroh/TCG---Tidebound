@@ -555,6 +555,7 @@ function collectTriggeredWorkRaw(
   if (
     event.trigger === "onIncomingDirectAttack" ||
     event.trigger === "onUnitAttackDeclared" ||
+    event.trigger === "onOwnAttackDeclared" ||
     event.trigger === "onCombatVsGarde"
   ) {
     // Fenêtre d'INTERCEPTION : la capacité se lit sur le plateau du

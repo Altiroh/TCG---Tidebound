@@ -59,6 +59,7 @@ const OBSERVERS: ReadonlySet<TriggerType> = new Set([
 const DEFENSIVE_WINDOWS: ReadonlySet<TriggerType> = new Set([
   "onIncomingDirectAttack",
   "onUnitAttackDeclared",
+  "onOwnAttackDeclared",
   "onPermanentWouldBeDestroyed",
   "onCombatVsGarde",
 ]);

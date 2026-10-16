@@ -620,6 +620,12 @@ export interface PendingAttack {
   /** Puissance de l'attaquant au moment de la déclaration — ce que « autant de dégâts » renvoie. */
   attackerPower: number;
   /**
+   * Puissance EFFECTIVE de l'attaquant à la déclaration, hors bonus de cible.
+   * À la reprise, ce qui a changé depuis (un bonus posé pendant la fenêtre —
+   * Greffe Instable sur son propre attaquant) s'ajoute à `attackerPower`.
+   */
+  attackerEffectivePowerAtDeclaration?: number;
+  /**
    * Réduction de dégâts DIRECTS posée par un piège (`reduceIncomingDamage`,
    * Cage de Flottaison, Caisses Arrimées). Cumulative : deux pièges qui
    * répondent à la même attaque additionnent leurs réductions.

@@ -517,7 +517,13 @@ export function MatchBoard({
         targeting={tableTargetingFor(pending)}
         reactionSourceIds={myReactionCandidates.map((c) => c.sourceInstanceId)}
         hint={hint}
-        onCancelHint={board.clearSelection}
+        onCancelHint={() => {
+          // Seule réaction proposée, désignée d'office : annuler, c'est NE RIEN FAIRE —
+          // sans quoi la fenêtre resterait ouverte sans rien à l'écran (partie bloquée).
+          const seule = pending?.kind === "reaction" && pending.needsTarget && directTarget !== null;
+          board.clearSelection();
+          if (seule) runReactionAction({ type: "passReaction", playerId: viewerPlayerId });
+        }}
         handLimitDiscard={handLimit.mode}
         boardAllocation={healAllocation.mode}
         salveAllocation={salveAllocation.mode}
