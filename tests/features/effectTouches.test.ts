@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { dispatch } from "@/game/engine";
-import { deriveEffectVolley, GLOW_LAND_MS, patchedDisplay, TOUCH_LAND_MS, volleyLandingMs } from "@/features/match/effectPresentation";
+import { deriveEffectVolley, patchedDisplay, SHOT_FLIGHT_MS, TOUCH_LAND_MS, volleyLandingMs } from "@/features/match/effectPresentation";
 import type { GameState } from "@/game";
 import { instance, testEnvironment, testGameState, testPlayer } from "../game/testHelpers";
 
@@ -27,7 +27,7 @@ describe("L'Amiral sans Pavillon détruit sa cible sous les yeux du joueur", () 
     ],
   });
 
-  it("la destruction porte son lanceur, et l'Amiral s'illumine pour la toucher", () => {
+  it("la destruction porte son lanceur, et l'Amiral lance son sort pour la toucher", () => {
     const pose = dispatch(posee, { type: "playCard", playerId: "p1", instanceId: amiral.instanceId });
     ok(pose);
     const effet = dispatch(pose.state, { type: "activateArrival", playerId: "p1", sourceInstanceId: amiral.instanceId, abilityIndex: 0, targetInstanceId: cible.instanceId });
@@ -41,21 +41,21 @@ describe("L'Amiral sans Pavillon détruit sa cible sous les yeux du joueur", () 
     expect(volley.touches).toEqual([
       {
         to: { kind: "unit", id: cible.instanceId },
-        source: { from: { kind: "unit", id: amiral.instanceId }, originPlayerId: "p1", glow: true },
+        source: { from: { kind: "unit", id: amiral.instanceId }, originPlayerId: "p1" },
         kind: "destroy",
         tone: "attack",
       },
     ]);
     expect(volley.awakens).toContain(amiral.instanceId);
     expect(volley.awakenTones?.[amiral.instanceId]).toBe("attack");
-    expect(volleyLandingMs(volley)).toBe(GLOW_LAND_MS + TOUCH_LAND_MS);
+    expect(volleyLandingMs(volley)).toBe(volley.delayMs + volley.castMs + SHOT_FLIGHT_MS + TOUCH_LAND_MS);
     // La cible reste à sa place jusqu'à ce que l'effet la touche.
     expect(onBoard(patchedDisplay(pose.state, effet.state, volley), cible.instanceId)).toBe(true);
   });
 });
 
 describe("Guetteur Méfiant : son effet activé se met en scène", () => {
-  it("les dégâts partent du Guetteur, qui s'illumine (halo d'orbe bleu)", () => {
+  it("les dégâts partent du Guetteur, en sort (orbe bleue)", () => {
     const guetteur = instance("guetteur-mefiant", "p2");
     const posee = instance("matelot-du-sans-nom", "p1");
     const cible = instance("matelot-du-sans-nom", "p1");
@@ -74,7 +74,7 @@ describe("Guetteur Méfiant : son effet activé se met en scène", () => {
     const volley = deriveEffectVolley(tir.events, pose.state, tir.state, 1)!;
     expect(volley.awakens).toEqual([guetteur.instanceId]);
     expect(volley.awakenTones).toEqual({ [guetteur.instanceId]: "attack" });
-    expect(volley.shots).toMatchObject([{ to: { kind: "unit", id: cible.instanceId }, look: "glow", amount: 2 }]);
+    expect(volley.shots).toMatchObject([{ to: { kind: "unit", id: cible.instanceId }, look: "magic", amount: 2 }]);
   });
 });
 

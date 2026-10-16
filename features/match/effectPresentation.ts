@@ -224,8 +224,10 @@ export function deriveEffectVolley(events: GameEvent[], before: GameState, after
     if (id !== undefined && onBoard(id)) {
       if (!onBoardBefore.has(id)) arrived = true;
       awakens.add(id);
-      // Un permanent en jeu ACTIVE son effet : il s'illumine, pas de projectile.
-      return { from: { kind: "unit", id }, originPlayerId: origin.playerId, glow: true };
+      // Un effet ACTIVÉ est un sort comme un autre (16/10/2026, retour sur la
+      // décision du 12/10/2026) : la carte se réveille, son orbe se forme et
+      // file vers la cible — la même animation qu'un sort joué de la main.
+      return { from: { kind: "unit", id }, originPlayerId: origin.playerId };
     }
     return { from: { kind: "ship", id: origin.playerId }, originPlayerId: origin.playerId };
   };
