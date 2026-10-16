@@ -1,9 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useId, useRef } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { buildCardDetailModel } from "@/features/collection/card-detail/cardDetailData";
 import { CardDetailArtwork } from "@/features/collection/card-detail/CardDetailArtwork";
+import { CardDetailFinishes } from "@/features/collection/card-detail/CardDetailFinishes";
+import { rarestFinish, type CardFinish } from "@/game/cosmetics/finishes";
 import { CardDetailEffect } from "@/features/collection/card-detail/CardDetailEffect";
 import { CardDetailHeader } from "@/features/collection/card-detail/CardDetailHeader";
 import { CardDetailKeywords } from "@/features/collection/card-detail/CardDetailKeywords";
@@ -31,6 +33,13 @@ interface CardDetailModalProps {
    * que d'afficher « 0 possédée » à quelqu'un qui n'a pas de collection.
    */
   ownedCount?: number;
+  /**
+   * Finitions rares possédées de cette carte (16/10/2026). `undefined` :
+   * possession inconnue — les cinq finitions restent consultables en aperçu.
+   */
+  ownedFinishes?: readonly CardFinish[];
+  /** Finition de l'exemplaire touché dans la grille : la fiche s'ouvre dessus. Absente : la plus rare possédée. */
+  initialFinish?: CardFinish;
 }
 
 /**
@@ -46,8 +55,14 @@ interface CardDetailModalProps {
  * `CardDetail.module.css` ; ce composant ne fait qu'assembler les sections
  * et tenir le comportement modal (fermeture, navigation, focus, défilement).
  */
-export function CardDetailModal({ cardId, onClose, onPrevious, onNext, onShowCard, ownedCount }: CardDetailModalProps) {
+export function CardDetailModal({ cardId, onClose, onPrevious, onNext, onShowCard, ownedCount, ownedFinishes, initialFinish }: CardDetailModalProps) {
   const model = buildCardDetailModel(cardId);
+  // La fiche s'ouvre sur la finition la plus rare possédée ; changer de carte y revient.
+  const [finition, setFinition] = useState<CardFinish>(() => initialFinish ?? rarestFinish(ownedFinishes));
+  const finitionsCle = (ownedFinishes ?? []).join(",");
+  useEffect(() => {
+    setFinition(initialFinish ?? rarestFinish(finitionsCle ? (finitionsCle.split(",") as CardFinish[]) : []));
+  }, [cardId, finitionsCle, initialFinish]);
   const panelRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const titleId = useId();
@@ -153,7 +168,7 @@ export function CardDetailModal({ cardId, onClose, onPrevious, onNext, onShowCar
 
         {onPrevious && onNext && <CardDetailNavigation onPrevious={onPrevious} onNext={onNext} />}
 
-        <CardDetailArtwork cardId={cardId} />
+        <CardDetailArtwork cardId={cardId} finish={finition} />
 
         <div className={styles.info}>
           <CardDetailHeader model={model} titleId={titleId} />
@@ -164,6 +179,7 @@ export function CardDetailModal({ cardId, onClose, onPrevious, onNext, onShowCar
           {qualifications.length > 0 && <CardDetailQualifications chips={qualifications} />}
           {keywords.length > 0 && <CardDetailKeywords keywords={keywords} />}
           <CardDetailMeta model={model} onShowCounterpart={onShowCard} />
+          <CardDetailFinishes shown={finition} owned={ownedFinishes} onShow={setFinition} />
           {ownedCount !== undefined && <CardDetailResale cardId={cardId} owned={ownedCount} />}
         </div>
       </div>

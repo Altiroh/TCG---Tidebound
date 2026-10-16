@@ -7,6 +7,7 @@ import { CORE_SET, isAbyssalVariant, type CardDefinition, type CardType } from "
 import { CardTile } from "@/features/match/CardTile";
 import { NouveauCadreCard } from "@/features/cadre-preview/NouveauCadreCard";
 import { qualificationChips } from "@/features/match/qualificationDisplay";
+import { CARD_FINISHES, CARD_FINISH_DESCRIPTIONS, CARD_FINISH_LABELS, type CardFinish } from "@/game/cosmetics/finishes";
 
 /** La carte de la maquette d'abord, puis une carte par type (une sans stats, une Résistance seule…), puis deux Abyssales, puis le texte le plus long du catalogue (zone qui défile). */
 const MAQUETTE_ID = "la-bete-quon-nattend-plus";
@@ -30,6 +31,7 @@ export function CadrePreview() {
   const [legendaire, setLegendaire] = useState(false);
   const [largeur, setLargeur] = useState(260);
   const [comparer, setComparer] = useState(true);
+  const [finition, setFinition] = useState<CardFinish>("classique");
   // `?cartes=id1,id2` : une liste précise plutôt que l'échantillon.
   const demandees = (useSearchParams().get("cartes") ?? "").split(",").filter(Boolean);
   const cartes = demandees.length > 0 ? CORE_SET.filter((def) => demandees.includes(def.id)) : echantillon();
@@ -47,6 +49,16 @@ export function CadrePreview() {
           Comparer à l&apos;ancien
         </label>
         <label className="flex items-center gap-2 text-sm">
+          Finition
+          <select className="bg-slate-800 px-2 py-1" value={finition} onChange={(event) => setFinition(event.target.value as CardFinish)}>
+            {CARD_FINISHES.map((f) => (
+              <option key={f} value={f}>
+                {CARD_FINISH_LABELS[f]} — {CARD_FINISH_DESCRIPTIONS[f]}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex items-center gap-2 text-sm">
           Largeur
           <input type="range" min={120} max={420} value={largeur} onChange={(event) => setLargeur(Number(event.target.value))} />
           <span className="tabular-nums">{largeur}px</span>
@@ -57,7 +69,7 @@ export function CadrePreview() {
         {cartes.map((def) => (
           <div key={def.id} className="flex gap-3">
             <div style={{ width: largeur }}>
-              <NouveauCadreCard def={def} legendaire={legendaire || rarityForCardId(def.id) === "legendary"} widthClassName="w-full" qualifications={qualificationChips(def)} />
+              <NouveauCadreCard def={def} legendaire={legendaire || rarityForCardId(def.id) === "legendary"} widthClassName="w-full" qualifications={qualificationChips(def)} finition={finition} />
             </div>
             {comparer && (
               <div style={{ width: largeur }} className="opacity-90">

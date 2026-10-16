@@ -42,9 +42,11 @@ describe("pools de boosters", () => {
     // (B2) restent dans les pools — B1 61, B2 55, B3 52.
     // 09/10/2026 : Le Pont Sans Fin et Place au Large (cartes de plateau du
     // Lot 18) rejoignent B1 (61 → 63).
-    expect(BOOSTER_POOLS[BOOSTER_DEFAUT]).toHaveLength(63);
-    expect(BOOSTER_POOLS[BOOSTER_POISSONS_PAS_FRAIS]).toHaveLength(55);
-    expect(BOOSTER_POOLS[BOOSTER_ETRANGETE_SOUS_MARINE]).toHaveLength(52);
+    // 16/10/2026 : Lot 19 (Les Chairs Dévoyées) — 5 cartes en B1, plus Zone
+    // infecté et Stop (63 → 70), 8 en B2 (55 → 63), 4 en B3 (52 → 56).
+    expect(BOOSTER_POOLS[BOOSTER_DEFAUT]).toHaveLength(70);
+    expect(BOOSTER_POOLS[BOOSTER_POISSONS_PAS_FRAIS]).toHaveLength(63);
+    expect(BOOSTER_POOLS[BOOSTER_ETRANGETE_SOUS_MARINE]).toHaveLength(56);
   });
 
   it("n'a que trois cartes passerelles ENTRE LES TROIS PREMIERS boosters, exactement celles que le cadrage nomme", () => {

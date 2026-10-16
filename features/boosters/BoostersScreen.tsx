@@ -252,6 +252,7 @@ export function BoostersScreen({ inventory, sandbox = false }: BoostersScreenPro
         cardId: card.cardId,
         rarity: toOpeningRarity(card.rarity),
         isNew: card.isNew,
+        ...(card.finish ? { finish: card.finish } : {}),
       }));
 
     const origin: BoosterOpeningOrigin | null =

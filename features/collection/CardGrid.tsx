@@ -2,6 +2,7 @@
 
 import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { CardDefinition, CardInstance } from "@/game";
+import type { CardFinish } from "@/game/cosmetics/finishes";
 import styles from "@/features/collection/CardBrowser.module.css";
 import game from "@/features/shell/GameScreen.module.css";
 import { CardTile } from "@/features/match/CardTile";
@@ -14,6 +15,8 @@ const BATCH_SIZE = 24;
 const STAGGER_COUNT = 12;
 /** Délai cosmétique avant d'ajouter le lot suivant — juste assez pour que l'indicateur de chargement soit perceptible. */
 const LOAD_DELAY_MS = 180;
+
+const CLASSIQUE_SEULE: readonly CardFinish[] = ["classique"];
 
 /** Instance factice, pour afficher une carte hors de toute partie (stats de base, aucun état vivant). */
 function displayInstance(cardId: string): CardInstance {
@@ -43,10 +46,12 @@ const GridCell = memo(function GridCell({
   onCardClick,
   cellExtras,
   onCardDragStart,
+  finish,
 }: {
   def: CardDefinition;
   index: number;
   missing: boolean;
+  finish?: CardFinish;
   onCardClick: CardGridProps["onCardClick"];
   cellExtras: CardGridProps["cellExtras"];
   onCardDragStart: CardGridProps["onCardDragStart"];
@@ -80,7 +85,8 @@ const GridCell = memo(function GridCell({
          * sert aussi l'Éditeur de deck, avait été oubliée.
          */
         showStatusBadges={false}
-        onClick={() => onCardClick(def.id)}
+        finish={finish}
+        onClick={() => onCardClick(def.id, finish)}
         draggable={Boolean(onCardDragStart)}
         onDragStart={onCardDragStart ? (event) => onCardDragStart(def, event) : undefined}
       />
@@ -89,14 +95,14 @@ const GridCell = memo(function GridCell({
       {/* Le cœur des favoris, posé SUR la carte : il se soulève avec elle. */}
       <FavoriteToggle cardId={def.id} cardName={def.name} />
       </div>
-      {cellExtras && <div className={styles.cellExtras}>{cellExtras(def)}</div>}
+      {cellExtras && <div className={styles.cellExtras}>{cellExtras(def, finish)}</div>}
     </div>
   );
 });
 
 interface CardGridProps {
   cards: CardDefinition[];
-  onCardClick: (cardId: string) => void;
+  onCardClick: (cardId: string, finish?: CardFinish) => void;
   hasAnyCards: boolean;
   /**
    * Cartes réellement possédées. Les autres restent affichées mais
@@ -112,13 +118,20 @@ interface CardGridProps {
    * Builder y met la quantité dans le deck et ses boutons. `null` pour une
    * carte sans superposition. La grille ne sait rien de ce qu'elle affiche.
    */
-  cellExtras?: (def: CardDefinition) => ReactNode;
+  cellExtras?: (def: CardDefinition, finish?: CardFinish) => ReactNode;
   /**
    * Rend les cartes glissables (HTML natif) et reçoit le `dragstart` — le
    * Deck Builder y pose l'identifiant de la carte pour la zone de dépôt de
    * sa liste. Sans ce prop, rien ne se glisse (Collection).
    */
   onCardDragStart?: (def: CardDefinition, event: React.DragEvent<HTMLButtonElement>) => void;
+  /**
+   * Les EXEMPLAIRES à montrer pour chaque carte, une cellule par finition
+   * (16/10/2026) : un exemplaire en finition rare ne s'empile pas avec la
+   * même carte en Classique, il a sa propre cellule juste après elle. Une
+   * liste vide ne montre rien de la carte. Absent : une cellule Classique.
+   */
+  finishesFor?: (def: CardDefinition) => readonly CardFinish[];
 }
 
 /**
@@ -133,7 +146,7 @@ interface CardGridProps {
  * référence qui déclenche le retour en haut + la réinitialisation du lot,
  * sans plomberie supplémentaire côté parent.
  */
-export function CardGrid({ cards, onCardClick, hasAnyCards, owned, emptyLabel, cellExtras, onCardDragStart }: CardGridProps) {
+export function CardGrid({ cards, onCardClick, hasAnyCards, owned, emptyLabel, cellExtras, onCardDragStart, finishesFor }: CardGridProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const loadTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -211,17 +224,20 @@ export function CardGrid({ cards, onCardClick, hasAnyCards, owned, emptyLabel, c
       ) : (
         <>
           <div className={styles.cardGrid}>
-            {visibleCards.map((def, index) => (
-              <GridCell
-                key={`${generation}:${def.id}`}
-                def={def}
-                index={index}
-                missing={Boolean(owned && !owned.has(def.id))}
-                onCardClick={onCardClick}
-                cellExtras={cellExtras}
-                onCardDragStart={onCardDragStart}
-              />
-            ))}
+            {visibleCards.flatMap((def, index) =>
+              (finishesFor?.(def) ?? CLASSIQUE_SEULE).map((finish) => (
+                <GridCell
+                  key={`${generation}:${def.id}:${finish}`}
+                  def={def}
+                  index={index}
+                  missing={Boolean(owned && !owned.has(def.id))}
+                  onCardClick={onCardClick}
+                  cellExtras={cellExtras}
+                  onCardDragStart={onCardDragStart}
+                  finish={finish === "classique" ? undefined : finish}
+                />
+              ))
+            )}
           </div>
 
           {hasMore && (

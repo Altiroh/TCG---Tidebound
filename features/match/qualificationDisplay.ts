@@ -132,6 +132,13 @@ export function effectLead(text: string | undefined, chips: readonly Qualificati
     keywords.push(found);
     rest = rest.slice(found.length + 1).trimStart();
   }
+  // Une qualification que le texte NOMME en tête (« Sangsue. Carnage. », Lot
+  // 19) est déjà dans la spé. par son médaillon : le nom n'y est pas répété.
+  for (;;) {
+    const named = chips.find((chip) => !chip.equivalent && rest.startsWith(`${chip.label}.`));
+    if (!named) break;
+    rest = rest.slice(named.label.length + 1).trimStart();
+  }
   return { lead: [...keywords, ...chips.map((chip) => chip.label)].join(" · "), text: rest };
 }
 

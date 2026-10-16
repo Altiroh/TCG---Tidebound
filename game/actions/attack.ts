@@ -251,7 +251,11 @@ function validate(state: GameState, action: AttackAction) {
     assertIsActivePlayer(state, action.playerId),
     assertInPhase(state, action.playerId, "combatPhase"),
     assertUnitCanAttack(state, action.playerId, action.attackerInstanceId),
-    assertValidDefender(state, action.playerId, action.attackerInstanceId, action.defenderInstanceId),
+    // Une attaque BLOQUÉE (Gâteau garnis, Lot 19) se porte sur le bloqueur que
+    // le défenseur a choisi : sa Garde ne refuse pas ce combat-là.
+    state.pendingAttack?.blockerInstanceId !== undefined && state.pendingAttack.blockerInstanceId === action.defenderInstanceId
+      ? { ok: true as const }
+      : assertValidDefender(state, action.playerId, action.attackerInstanceId, action.defenderInstanceId),
     salveCheck(state, action)
   );
 }

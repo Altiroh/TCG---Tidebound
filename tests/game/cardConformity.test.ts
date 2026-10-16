@@ -64,6 +64,9 @@ const EXCEPTIONS: Record<string, string> = {
   "le-pont-sans-fin:duration":
     "« pendant 3 tours de table » est la durée de l'EMPLACEMENT AJOUTÉ (`tableTurns` de l'effet `addSlot`), pas " +
     "celle de l'Objet : il se brise pour produire l'effet, il n'a pas à expirer.",
+  "zone-infecte:duration":
+    "« pendant 2 tours de table » est la durée du BLOCAGE (`tableTurns` de l'effet `condemnSlot`), pas celle de " +
+    "l'Objet : il se résout et part au Cimetière, il n'a pas à expirer.",
   "le-donjon-de-ladalle:optional":
     "« Vous pouvez relancer » est une option du jet ouvert (`firstRollRerollEachTurn` de la Lande) : le joueur " +
     "relance ou garde son résultat ; rien ne se relance d'office.",

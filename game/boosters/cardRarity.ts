@@ -625,6 +625,43 @@ const LOT18_RARITY: Record<string, CardRarity> = {
 };
 
 /**
+ * Lot 19 — Les Chairs Dévoyées (Notion, raretés attribuées le 15/10/2026 ;
+ * Zone infecté et Stop le 16/10/2026). La variante Abyssale d'Échec Numéro
+ * Treize se déduit de son suffixe.
+ */
+const LOT19_RARITY: Record<string, CardRarity> = {
+  "larve-de-cale": "common",
+  "moucheron-sanguin": "common",
+  "mante-devoreuse": "common",
+  "couveuse-difforme": "rare",
+  "necrophage-des-fonds": "uncommon",
+  "essaim-vorace": "uncommon",
+  "parasite-ecarlate": "common",
+  "reine-des-charognes": "rare",
+  "marin-infecte": "uncommon",
+  "aberration-vorace": "uncommon",
+  "devoreur-de-moelle": "rare",
+  "echec-numero-treize": "uncommon",
+  "masse-tumorale": "rare",
+  "le-parfait-rate": "rare",
+  "homoncule-recousu": "common",
+  "petit-chirurgien": "uncommon",
+  "gateau-garnis": "uncommon",
+  "experience-sans-yeux": "common",
+  "pigeon-delirant": "common",
+  "crabe-transfuseur": "uncommon",
+  "poisson-bombe": "common",
+  "mouette-gangrenee": "rare",
+  "scie-de-dissection": "uncommon",
+  "cuve-de-regeneration": "uncommon",
+  "greffe-instable": "common",
+  "pluie-de-chair": "rare",
+  "serum-de-mauvaise-vie": "common",
+  "zone-infecte": "legendary",
+  stop: "legendary",
+};
+
+/**
  * Rareté d'une carte. Les variantes Abyssales sont déduites de leur slug
  * plutôt que listées une par une : c'est une règle de design, pas une
  * décision carte par carte, et ça évite d'oublier une variante ajoutée
@@ -643,6 +680,7 @@ export function rarityForCardId(cardId: string): CardRarity | null {
     LANDES_RARITY[cardId] ??
     LOT17_RARITY[cardId] ??
     LOT18_RARITY[cardId] ??
+    LOT19_RARITY[cardId] ??
     PROVISIONAL_RARITY[cardId] ??
     null
   );

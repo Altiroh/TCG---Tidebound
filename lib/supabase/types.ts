@@ -254,6 +254,27 @@ export interface Database {
         };
         Relationships: [];
       };
+      /** Finitions TRÈS rares obtenues (migration 20261105120000) — cosmétique, jamais lue en partie. */
+      player_card_finishes: {
+        Row: {
+          user_id: string;
+          card_id: string;
+          finish: "monochrome" | "star-foil" | "prismatic" | "negative";
+          quantity: number;
+          first_obtained_at: string;
+        };
+        Insert: {
+          user_id: string;
+          card_id: string;
+          finish: "monochrome" | "star-foil" | "prismatic" | "negative";
+          quantity?: number;
+          first_obtained_at?: string;
+        };
+        Update: {
+          quantity?: number;
+        };
+        Relationships: [];
+      };
       player_decks: {
         Row: {
           art_card_id: string | null;
@@ -867,6 +888,15 @@ export interface Database {
        * `p_expected_*` : compteurs de garantie sur lesquels le tirage a été calculé. S'ils ont bougé en base
        * (ouverture concurrente), la fonction refuse avec `error: "pity_conflict"` sans rien consommer.
        */
+      /** Ajoute les finitions rares tirées à une ouverture (`p_card_ids[i]` dans `p_finishes[i]`). */
+      add_card_finishes: {
+        Args: {
+          p_user_id: string;
+          p_card_ids: string[];
+          p_finishes: string[];
+        };
+        Returns: { ok: boolean; error?: string };
+      };
       open_booster: {
         Args: {
           p_user_id: string;

@@ -1391,6 +1391,19 @@ export interface CardDefinition {
    */
   chaine?: boolean;
   /**
+   * « Chaîne — <effet> » SANS situation dans le texte (Lot 19 — Sérum de
+   * Mauvaise Vie, Greffe Instable, Zone infecté) : un Objet Chaîne INSTANTANÉ.
+   * Il se joue :
+   *  - dans votre Phase principale, comme un Objet classique mais sans
+   *    exiger d'emplacement libre (il résout ses `onBreakEffects`) ;
+   *  - en réaction, depuis la main, dans les fenêtres que décrivent ses
+   *    capacités — les mêmes effets, posés sur les situations où un
+   *    instantané a du sens (une attaque adverse, un Objet adverse joué).
+   * Sans ce drapeau, un Objet Chaîne à capacité ne se joue JAMAIS en Phase
+   * principale (`objectTimingRefusal`).
+   */
+  chaineLibre?: boolean;
+  /**
    * « Une fois par tour, après l'un de vos jets, modifiez son résultat de +1
    * ou -1 » (Miss Franche-Comté 1987) : capacité EN JEU, utilisable pendant
    * un jet de son contrôleur. `extraUseOnCriticalSuccess` : si le jet ajusté

@@ -118,6 +118,17 @@ const DEFAUT: readonly string[] = [
   // guet mobile sont sorties des pools (définitions conservées).
   "carte-detrempee",
   "calme-trompeur",
+  // --- Lot 19 — Les Chairs Dévoyées (B1, 15/10/2026) ---
+  "larve-de-cale",
+  "gateau-garnis",
+  "experience-sans-yeux",
+  "pigeon-delirant",
+  "serum-de-mauvaise-vie",
+  // Zone infecté et Stop (16/10/2026) : Notion ne leur attribue pas de pool.
+  // Rangées ici, avec les autres Légendaires de plateau du Lot 18 (Le Pont
+  // Sans Fin) — choix à confirmer, signalé dans Notion.
+  "zone-infecte",
+  "stop",
 ];
 
 /**
@@ -184,6 +195,15 @@ const POISSONS_PAS_FRAIS: readonly string[] = [
   // Passerelle du Lot 17 (06/10/2026) : Dungeon et Ladalle par sa famille,
   // obtenue ici. Marée imprévisible est sortie des pools à l'audit du 06/10.
   "aventuriere-en-retard",
+  // --- Lot 19 — Les Chairs Dévoyées (B2, 15/10/2026) ---
+  "moucheron-sanguin",
+  "mante-devoreuse",
+  "essaim-vorace",
+  "parasite-ecarlate",
+  "crabe-transfuseur",
+  "poisson-bombe",
+  "scie-de-dissection",
+  "greffe-instable",
 ];
 
 /**
@@ -246,6 +266,11 @@ const ETRANGETE_SOUS_MARINE: readonly string[] = [
   "etau-du-calfat",
   "sonde-des-courants-perdus",
   // Terres inconnues (passerelle du Lot 17) : sortie des pools à l'audit du 06/10/2026.
+  // --- Lot 19 — Les Chairs Dévoyées (B3, 15/10/2026) ---
+  "devoreur-de-moelle",
+  "le-parfait-rate",
+  "mouette-gangrenee",
+  "pluie-de-chair",
 ];
 
 /**
@@ -489,9 +514,29 @@ const ECLATS_EN_SELLE_POOL: readonly string[] = [
  * l'Abyssale du lot par Notion, n'est pas une variante et plafonne à
  * Légendaire (`cardRarity.ts`).
  */
-const LA_MUTATION_MONDIALE_POOL: readonly string[] = CORE_SET.filter((card) => card.setCode === BOOSTER_LA_MUTATION_MONDIALE).map(
-  (card) => card.id
-);
+/**
+ * Lot 19 — Les Chairs Dévoyées, part de B4 (15/10/2026) : mutants,
+ * homoncules, sacrifices et récupération. L'Abyssale d'Échec Numéro Treize
+ * n'est tirée qu'au slot Profondeur, comme toute Abyssale (rareté `abyssal`).
+ */
+export const LOT19_EN_MUTATION_MONDIALE: readonly string[] = [
+  "couveuse-difforme",
+  "necrophage-des-fonds",
+  "reine-des-charognes",
+  "marin-infecte",
+  "aberration-vorace",
+  "echec-numero-treize",
+  "echec-numero-treize-abyssal",
+  "masse-tumorale",
+  "homoncule-recousu",
+  "petit-chirurgien",
+  "cuve-de-regeneration",
+];
+
+const LA_MUTATION_MONDIALE_POOL: readonly string[] = [
+  ...CORE_SET.filter((card) => card.setCode === BOOSTER_LA_MUTATION_MONDIALE).map((card) => card.id),
+  ...LOT19_EN_MUTATION_MONDIALE,
+];
 
 /**
  * B8 — Lot 17, Dungeon et Ladalle / Opalins. Même règle que B7 : les cartes

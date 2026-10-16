@@ -61,6 +61,10 @@ export const SUBTYPE_LABELS = {
   "mort-vivant": "Mort-vivant",
   // 09/10/2026 : On joue aux morts (Lot 18).
   grenouille: "Grenouille",
+  // 16/10/2026 : Lot 19 — Les Chairs Dévoyées.
+  insecte: "Insecte",
+  mutant: "Mutant",
+  homoncule: "Homoncule",
 
   // --- Rôles ------------------------------------------------------------
   pirate: "Pirate",
@@ -88,6 +92,7 @@ export const SUBTYPE_FAMILIES: Readonly<Record<string, readonly SubtypeId[]>> = 
   especes: [
     "volatile", "humain", "poisson", "amphibien", "squelette", "crustace", "bete", "reptile", "monstre",
     "metahumain", "homme-poisson", "homme-bete", "gobelin", "gnome", "nain", "troll", "geant", "dragon", "fantome", "mort-vivant", "grenouille",
+    "insecte", "mutant", "homoncule",
   ],
   roles: ["pirate", "chevalier", "gardien", "soigneur", "mage", "hero", "voleur", "necromancien"],
   natures: ["mecanique", "maudit", "sauvage", "mythique"],

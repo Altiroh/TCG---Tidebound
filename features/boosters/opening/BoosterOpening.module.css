@@ -2096,3 +2096,35 @@
 .scene[data-reduced-motion] .orb {
   animation: none;
 }
+
+/* Finition TRÈS rare (16/10/2026) : un ruban irisé sous la carte, qui dit laquelle. */
+.finishRibbon {
+  position: absolute;
+  left: 50%;
+  bottom: -0.4em;
+  z-index: 6;
+  translate: -50% 0;
+  padding: 0.2em 0.8em;
+  border-radius: 999px;
+  white-space: nowrap;
+  pointer-events: none;
+  font-family: var(--font-card-title);
+  font-weight: 700;
+  font-size: calc(clamp(max(9px, var(--tb-fs-floor, 0px)), calc(var(--u) * 1.05), 13px) * var(--tb-text-scale));
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #1a1206;
+  background: linear-gradient(110deg, #ffd1f0, #fff3b0, #b8ffe0, #b8dcff, #e3c2ff);
+  box-shadow: 0 0 12px rgba(255, 255, 255, 0.55);
+  animation: newBadgeIn 600ms ease-out 500ms both;
+}
+
+.finishRibbon[data-finish="monochrome"] {
+  color: #f4f4f4;
+  background: linear-gradient(110deg, #111, #555, #111);
+}
+
+.finishRibbon[data-finish="negative"] {
+  color: #e8f4ff;
+  background: linear-gradient(110deg, #0c1a3a, #3b2a6b, #0c1a3a);
+}

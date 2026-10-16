@@ -628,6 +628,12 @@ export interface PendingAttack {
   /** Un piège a annulé les dégâts directs de cette attaque. */
   intercepted?: boolean;
   /**
+   * Unité du DÉFENSEUR qui a BLOQUÉ l'attaque (`blockIncomingAttack`, Gâteau
+   * garnis — Lot 19) : `defenderInstanceId` la désigne désormais, et la
+   * reprise ne lui oppose pas la Garde — le défenseur a choisi ce combat.
+   */
+  blockerInstanceId?: string;
+  /**
    * Attaques déjà résolues par l'attaquant quand celle-ci a été déclarée
    * (Rafale, Déluge, Carnage) : tant qu'il n'en a pas résolu davantage,
    * celle-ci est encore « en cours » (`attaquesAdversesDuTour`).

@@ -36,6 +36,7 @@ import { effectLead, effectLine, qualificationChips } from "@/features/match/qua
 import { useDebordPleinCadre } from "@/features/match/useDebordPleinCadre";
 import { NOUVEAU_CADRE } from "@/features/match/cardFrame";
 import { rarityForCardId } from "@/game/boosters";
+import type { CardFinish } from "@/game/cosmetics/finishes";
 
 interface CardTileProps {
   instance: CardInstance;
@@ -106,6 +107,12 @@ interface CardTileProps {
    * Fourni par le plateau (il lit l'état) ; absent ailleurs.
    */
   attacksLeft?: number;
+  /**
+   * Finition de l'exemplaire montré (Monochrome, Star Foil, Prismatic,
+   * Negative — `game/cosmetics/finishes.ts`) : un filtre de l'illustration du
+   * nouveau cadre. Collection et ouverture de booster ; absente : Classique.
+   */
+  finish?: CardFinish;
 }
 
 /**
@@ -608,6 +615,7 @@ function CardTileView({
   liftOnHover = false,
   variant = "full",
   attacksLeft,
+  finish,
 }: CardTileProps) {
   // Face cachée : le dos est celui du PROPRIÉTAIRE de la carte (hors partie,
   // « booster » ou « preview » n'ont pas de contexte : dos local).
@@ -947,6 +955,7 @@ function CardTileView({
               resistanceFlashing ? "animate-stat-hit text-white" : `${statColorClass(resistanceDelta)} ${healthChanged ? "animate-stat-buff" : ""}`
             }`}
             qualifications={qualifications}
+            finition={finish}
           />
         ) : (
         <>

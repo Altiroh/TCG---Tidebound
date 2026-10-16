@@ -2,6 +2,7 @@
 
 import { memo, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent, type PointerEvent } from "react";
 import { getCardDefinition } from "@/game";
+import { CARD_FINISH_LABELS } from "@/game/cosmetics/finishes";
 import { CardTile } from "@/features/match/CardTile";
 import styles from "@/features/boosters/opening/BoosterOpening.module.css";
 import { useCardBackSrc } from "@/features/cosmetics/CardBackProvider";
@@ -234,6 +235,7 @@ export const BoosterCard = memo(function BoosterCard({
                     tideState="calme"
                     widthClassName="w-full"
                     scaleOnHover={false}
+                    finish={card.finish}
                   />
                 </span>
               ) : (
@@ -268,6 +270,12 @@ export const BoosterCard = memo(function BoosterCard({
           </span>
         )}
         {revealed && card.rarity === "legendary" && <BoosterParticles variant="sparks" />}
+        {/* Finition TRÈS rare (16/10/2026) : son nom, en ruban au pied de la carte. */}
+        {revealed && card.finish && card.finish !== "classique" && (
+          <span className={styles.finishRibbon} data-finish={card.finish}>
+            {CARD_FINISH_LABELS[card.finish]}
+          </span>
+        )}
       </span>
     </div>
   );

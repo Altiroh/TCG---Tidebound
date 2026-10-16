@@ -79,6 +79,13 @@ describe("effectLead : la spé. en tête de l'effet", () => {
     });
     expect(effectLead("Garde. Perd Garde pendant Calme.", [])).toEqual({ lead: "Garde", text: "Perd Garde pendant Calme." });
   });
+
+  it("une qualification NOMMÉE en tête du texte n'y est pas répétée (Lot 19 — « Sangsue. Carnage. »)", () => {
+    const def = getCardDefinition("devoreur-de-moelle");
+    expect(effectLead(def.text, qualificationChips(def))).toEqual({ lead: "Carnage · Sangsue", text: "" });
+    const parasite = getCardDefinition("parasite-ecarlate");
+    expect(effectLine(parasite.text, qualificationChips(parasite))).toBe("Sangsue — À sa mort — Votre Navire récupère 1 Ancrage.");
+  });
 });
 
 describe("Équipement : il confère, il ne porte pas", () => {

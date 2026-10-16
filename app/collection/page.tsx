@@ -16,13 +16,17 @@ export default async function CollectionPage({ searchParams = {} }: { searchPara
   // premier deck gratuit, seule à s'en servir, cède la place à l'annonce de
   // la PREMIÈRE MISSION, dont les starters sont accordés par le serveur
   // (`fetchOnboarding` rattrape aussi les comptes existants).
-  const [{ isSignedIn, ownedCardIds, ownedCounts }, onboarding] = await Promise.all([getOwnedCardIds(), fetchOnboarding()]);
+  const [{ isSignedIn, ownedCardIds, ownedCounts, ownedFinishes }, onboarding] = await Promise.all([
+    getOwnedCardIds({ withFinishes: true }),
+    fetchOnboarding(),
+  ]);
 
   return (
     <CollectionScreen
       isSignedIn={isSignedIn}
       ownedCardIds={ownedCardIds}
       ownedCounts={ownedCounts}
+      ownedFinishes={ownedFinishes}
       showStarterMission={onboarding.showStarterMission}
       openShelf={shelfFromParams(searchParams)}
     />

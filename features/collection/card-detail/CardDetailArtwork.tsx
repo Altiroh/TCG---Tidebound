@@ -1,4 +1,5 @@
 import type { CardInstance } from "@/game";
+import type { CardFinish } from "@/game/cosmetics/finishes";
 import { CardTile } from "@/features/match/CardTile";
 import styles from "@/features/collection/card-detail/CardDetail.module.css";
 
@@ -28,7 +29,7 @@ function displayInstance(cardId: string): CardInstance {
  * éteints : ils décrivent une carte EN PARTIE, alors qu'ici on inspecte une
  * définition de catalogue.
  */
-export function CardDetailArtwork({ cardId }: { cardId: string }) {
+export function CardDetailArtwork({ cardId, finish }: { cardId: string; /** Finition montrée (aperçu de la fiche). */ finish?: CardFinish }) {
   return (
     <div className={styles.artwork} key={cardId}>
       <CardTile
@@ -39,6 +40,7 @@ export function CardDetailArtwork({ cardId }: { cardId: string }) {
         // Hors partie, « Immobilisé » / « Engourdi » seraient déduits d'une
         // Marée arbitraire : la fiche montre la carte, pas un état de jeu.
         showStatusBadges={false}
+        finish={finish}
       />
     </div>
   );

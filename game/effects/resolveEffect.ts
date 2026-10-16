@@ -1736,6 +1736,44 @@ function resolveEffectBody(
       };
     }
 
+    case "blockIncomingAttack": {
+      // Seule une attaque d'UNITÉ se bloque : un tir de Navire n'a pas de corps à arrêter.
+      const attaque = state.pendingAttack;
+      if (!attaque || attaque.kind === "tirDeNavire") return { state, events };
+      const bloqueur = resolveUnitTargets(state, effect, context).targets.find(
+        ({ unit, ownerId }) => ownerId !== attaque.playerId && UNIT_CARD_TYPES.includes(getCardDefinition(unit.cardId).type)
+      );
+      if (!bloqueur) return { state, events };
+      return {
+        state: {
+          ...state,
+          pendingAttack: { ...attaque, defenderInstanceId: bloqueur.unit.instanceId, blockerInstanceId: bloqueur.unit.instanceId },
+        },
+        events: [
+          ...events,
+          { ...base, type: "ATTACK_BLOCKED", attackerInstanceId: attaque.attackerInstanceId, blockerInstanceId: bloqueur.unit.instanceId },
+        ],
+      };
+    }
+
+    case "cancelCombatPhase": {
+      // L'attaque déclarée n'a pas lieu, et la Phase de combat se ferme : le
+      // joueur actif passe en Phase principale 2 (`advancePhase`).
+      if (state.phase !== "combatPhase") return { state, events };
+      const annulee = state.pendingAttack;
+      return {
+        state: { ...state, pendingAttack: undefined, phase: "mainPhase2" },
+        events: [
+          ...events,
+          ...(annulee && annulee.kind !== "tirDeNavire"
+            ? [{ ...base, type: "ATTACK_INTERCEPTED" as const, attackerInstanceId: annulee.attackerInstanceId }]
+            : []),
+          { ...base, type: "COMBAT_PHASE_CANCELLED", playerId: state.activePlayerId },
+          { ...base, type: "PHASE_CHANGED", playerId: state.activePlayerId, phase: "mainPhase2" },
+        ],
+      };
+    }
+
     case "reduceIncomingDamage": {
       if (!state.pendingAttack) return { state, events };
       const reduction = amountValue(effect.amount, state, context.controllerId, context);

@@ -24,7 +24,7 @@ vi.mock("next/cache", () => ({ revalidatePath: () => {} }));
 
 const { purchaseBooster, openBooster } = await import("@/features/boosters/actions");
 const { cardRows, boosterPoolCardRows } = await import("@/scripts/seedRows");
-const { BOOSTER_POOLS } = await import("@/game/boosters/pools");
+const { BOOSTER_POOLS, LOT19_EN_MUTATION_MONDIALE } = await import("@/game/boosters/pools");
 const { BOOSTER_SPECIALIZED_PRICE } = await import("@/game/economy/constants");
 const { CORE_SET } = await import("@/game/cards/sets/core");
 
@@ -74,14 +74,17 @@ beforeEach(() => {
 });
 
 describe("La mutation mondiale — le pool", () => {
-  it("porte les cartes du Lot 16 et elles seules", () => {
+  it("porte les cartes du Lot 16, plus la part B4 du Lot 19, et elles seules", () => {
     const lot = CORE_SET.filter((def) => def.setCode === MUTATION).map((def) => def.id);
     expect(lot.length).toBeGreaterThanOrEqual(20);
-    expect([...BOOSTER_POOLS[MUTATION]!].sort()).toEqual([...lot].sort());
+    // 16/10/2026 : le Lot 19 (Les Chairs Dévoyées) range dix cartes et une Abyssale en B4.
+    expect(LOT19_EN_MUTATION_MONDIALE).toHaveLength(11);
+    expect([...BOOSTER_POOLS[MUTATION]!].sort()).toEqual([...lot, ...LOT19_EN_MUTATION_MONDIALE].sort());
   });
 
   it("a ses propres Abyssales, et L'Anomalie Première y reste Légendaire", () => {
     expect(BOOSTER_POOLS[MUTATION]!.filter((id) => id.endsWith("-abyssal")).sort()).toEqual([
+      "echec-numero-treize-abyssal",
       "la-chute-de-lange-abyssal",
       "le-diable-en-personne-abyssal",
     ]);
@@ -119,7 +122,7 @@ describe("La mutation mondiale — achat et ouverture", () => {
     }
   });
 
-  it("au 20e booster sans Abyssale, le pity rend l'une des deux variantes Abyssales", async () => {
+  it("au 20e booster sans Abyssale, le pity rend l'une des trois variantes Abyssales", async () => {
     crediterBoosters(1);
     db.upsert("player_pity", { user_id: USER, booster_definition_id: MUTATION, packs_since_abyssal: 19, packs_since_new_card: 0 }, (row) => {
       row.packs_since_abyssal = 19;
@@ -128,6 +131,7 @@ describe("La mutation mondiale — achat et ouverture", () => {
     expect(result.ok).toBe(true);
     expect(result.data!.abyssalPulled).toBe(true);
     const ids = result.data!.cards.map((c) => c.cardId);
-    expect(ids.some((id) => id === "la-chute-de-lange-abyssal" || id === "le-diable-en-personne-abyssal")).toBe(true);
+    const abyssales = ["la-chute-de-lange-abyssal", "le-diable-en-personne-abyssal", "echec-numero-treize-abyssal"];
+    expect(ids.some((id) => abyssales.includes(id))).toBe(true);
   });
 });

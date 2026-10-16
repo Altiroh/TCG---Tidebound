@@ -1,4 +1,5 @@
 import { nextFloat, nextInt } from "@/game/rng";
+import { rollCardFinish } from "@/game/cosmetics/finishes";
 import { DEPTH_SLOT_BASE_ABYSSAL_CHANCE, PITY } from "@/game/boosters/constants";
 import {
   RARITY_ORDER,
@@ -218,6 +219,14 @@ export function drawBooster({ slots, pool, ownedCardIds, packsSinceAbyssal, pack
     rngSeed = forced.nextSeed;
     if (forced.forced) abyssalPulled = abyssalPulled || forced.cards.some((card) => card.rarity === "abyssal" && card.isNew);
   }
+
+  // Finitions TRÈS rares (16/10/2026) : tirées APRÈS les cartes, une par
+  // exemplaire — la composition du booster n'en dépend jamais.
+  finalCards = finalCards.map((card) => {
+    const roll = rollCardFinish(rngSeed);
+    rngSeed = roll.nextState;
+    return roll.finish ? { ...card, finish: roll.finish } : card;
+  });
 
   const newCardPulled = finalCards.some((card) => card.isNew);
 

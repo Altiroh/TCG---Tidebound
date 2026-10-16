@@ -7,6 +7,7 @@ import { ALTERES_SET } from "@/game/cards/sets/alteres";
 import { LANDES_SET } from "@/game/cards/sets/landes";
 import { LOT17_SET } from "@/game/cards/sets/lot17";
 import { LOT18_PLATEAU_SET, LOT18_SET } from "@/game/cards/sets/lot18";
+import { LOT19_SET } from "@/game/cards/sets/lot19";
 import { EQUIPPABLE_CARD_TYPES, type CardDefinition, type CardInstance } from "@/game/cards/types";
 
 /**
@@ -5240,6 +5241,8 @@ const WRITTEN_SET: CardDefinition[] = [
   ...LOT18_SET,
   // Lot 18 — cartes de plateau génériques (emplacements condamnés / ajoutés).
   ...LOT18_PLATEAU_SET,
+  // Lot 19 — Les Chairs Dévoyées : Insectes, Mutants, Homoncules (`game/cards/sets/lot19.ts`).
+  ...LOT19_SET,
 ];
 
 export const CORE_SET: CardDefinition[] = WRITTEN_SET.map(withOptionalArrival);

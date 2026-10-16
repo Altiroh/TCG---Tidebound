@@ -1,5 +1,8 @@
 import { ARCHETYPE_LABELS, type ArchetypeId } from "@/game/cards/archetypes";
+import { rarityForCardId } from "@/game/boosters/cardRarity";
+import type { CardRarity } from "@/game/boosters/types";
 import {
+  boostersContaining,
   BOOSTER_BIENVENUE,
   BOOSTER_DEFAUT,
   BOOSTER_DUNGEON_ET_LADALLE,
@@ -86,6 +89,12 @@ export interface BoosterExtension {
   tagline: string;
   /** L'histoire derrière le booster : trois à cinq lignes, jamais des règles. */
   lore: string;
+  /**
+   * SIGLE de l'extension, imprimé en bas à gauche des cartes après la rareté
+   * (« L-BD » : Légendaire, Booster Défaut — `cardSetMark`). Deux ou trois
+   * capitales, uniques sur le rayon.
+   */
+  code: string;
 }
 
 /**
@@ -114,6 +123,7 @@ const EXTENSIONS: readonly BoosterExtension[] = [
   {
     boosterId: BOOSTER_DEFAUT,
     name: "Booster Défaut",
+    code: "BD",
     kind: "base",
     archetype: null,
     tagline: "Le fond du coffre",
@@ -129,6 +139,7 @@ const EXTENSIONS: readonly BoosterExtension[] = [
     // commun que tous les decks partagent.
     boosterId: BOOSTER_NECESSAIRE_DU_MARIN,
     name: "Nécessaire du Marin",
+    code: "NM",
     kind: "base",
     archetype: null,
     tagline: "Ce qu'il faut à bord",
@@ -141,6 +152,7 @@ const EXTENSIONS: readonly BoosterExtension[] = [
   {
     boosterId: BOOSTER_POISSONS_PAS_FRAIS,
     name: "Poissons pas frais",
+    code: "PPF",
     kind: "extension",
     archetype: null,
     tagline: "Ce que le filet ramène",
@@ -152,6 +164,7 @@ const EXTENSIONS: readonly BoosterExtension[] = [
   {
     boosterId: BOOSTER_ETRANGETE_SOUS_MARINE,
     name: "Étrangeté sous-marine",
+    code: "ESM",
     kind: "extension",
     archetype: null,
     tagline: "La mer cesse d'imiter la mer",
@@ -163,6 +176,7 @@ const EXTENSIONS: readonly BoosterExtension[] = [
   {
     boosterId: BOOSTER_VEILLEE_DES_DISPARUS,
     name: "La Veillée des Disparus",
+    code: "VD",
     kind: "extension",
     archetype: "un-dead",
     tagline: "Les ombres se souviennent",
@@ -177,6 +191,7 @@ const EXTENSIONS: readonly BoosterExtension[] = [
     // (23/09/2026) : le rayon annonce le LOT, pas l'une de ses trois familles.
     boosterId: BOOSTER_ECLATS_EN_SELLE,
     name: "Éclats en Selle",
+    code: "ES",
     kind: "extension",
     archetype: null,
     familyLabel: "Éclats en Selle",
@@ -194,6 +209,7 @@ const EXTENSIONS: readonly BoosterExtension[] = [
     // annoncée.
     boosterId: BOOSTER_LA_MUTATION_MONDIALE,
     name: "La mutation mondiale",
+    code: "MM",
     kind: "extension",
     archetype: "alteres",
     tagline: "Ce qui s'éveille sous la peau",
@@ -209,6 +225,7 @@ const EXTENSIONS: readonly BoosterExtension[] = [
     // Notion, pas l'une des deux.
     boosterId: BOOSTER_DUNGEON_ET_LADALLE,
     name: "Perturbation dimensionnelle",
+    code: "PD",
     kind: "extension",
     archetype: null,
     familyLabel: "Dungeon et Ladalle · Opalins",
@@ -256,4 +273,33 @@ export function boosterExtensionLabel(boosterId: string): string {
   if (entry.familyLabel) return `Booster d'extension · ${entry.familyLabel}`;
   if (!entry.archetype) return "Booster d'extension";
   return `Booster d'extension · ${ARCHETYPE_LABELS[entry.archetype]}`;
+}
+
+/** Initiales de rareté du sigle de carte : C, PC, R, E, L, A. */
+export const RARITY_INITIALS: Record<CardRarity, string> = {
+  common: "C",
+  uncommon: "PC",
+  rare: "R",
+  epic: "E",
+  legendary: "L",
+  abyssal: "A",
+};
+
+/**
+ * Sigle de collection imprimé en bas à gauche d'une carte : sa RARETÉ, puis
+ * l'EXTENSION d'où elle provient — « L-BD » pour une Légendaire du Booster
+ * Défaut, « PC-MM » pour une Peu commune de La mutation mondiale.
+ *
+ * Une carte que plusieurs sachets donnent (passerelles, rééditions) porte le
+ * sigle du PREMIER dans l'ordre du rayon — son extension d'origine. Le Mini
+ * Booster de Bienvenue ne compte pas : ce n'est pas une extension. Une carte
+ * hors de tout sachet n'imprime que sa rareté. `null` pour ce qui n'a pas de
+ * rareté (jetons).
+ */
+export function cardSetMark(cardId: string): string | null {
+  const rarity = rarityForCardId(cardId);
+  if (!rarity) return null;
+  const sachets = boostersContaining(cardId);
+  const origine = EXTENSIONS.find((entry) => sachets.includes(entry.boosterId));
+  return origine ? `${RARITY_INITIALS[rarity]}-${origine.code}` : RARITY_INITIALS[rarity];
 }

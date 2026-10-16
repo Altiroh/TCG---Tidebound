@@ -6,7 +6,9 @@ import {
   SHELF_BOOSTER_IDS,
   boosterExtension,
   boosterExtensionLabel,
+  cardSetMark,
 } from "@/game/boosters";
+import { CORE_SET } from "@/game/cards/sets/core";
 import { BOOSTER_POOLS } from "@/game/boosters/pools";
 import { ARCHETYPE_LABELS } from "@/game/cards/archetypes";
 import { getCardDefinition } from "@/game/cards/sets/core";
@@ -123,5 +125,31 @@ describe("extensions de boosters", () => {
     const dernierBase = kinds.lastIndexOf("base");
     expect(kinds.slice(0, dernierBase + 1).every((kind) => kind === "base")).toBe(true);
     expect(new Set(SHELF_BOOSTER_IDS).size).toBe(SHELF_BOOSTER_IDS.length);
+  });
+});
+
+describe("sigle de collection (bas gauche de la carte)", () => {
+  it("chaque extension du rayon a un sigle unique, en capitales", () => {
+    const codes = BOOSTER_EXTENSIONS.map((entry) => entry.code);
+    expect(new Set(codes).size).toBe(codes.length);
+    for (const code of codes) expect(code).toMatch(/^[A-Z]{2,3}$/);
+  });
+
+  it("rareté puis extension d'origine : « L-BD », « A-MM », « C-PPF »", () => {
+    expect(cardSetMark("stop")).toBe("L-BD");
+    expect(cardSetMark("echec-numero-treize-abyssal")).toBe("A-MM");
+    expect(cardSetMark("moucheron-sanguin")).toBe("C-PPF");
+    expect(cardSetMark("devoreur-de-moelle")).toBe("R-ESM");
+  });
+
+  it("une carte de plusieurs sachets porte celui de son extension d'origine (le premier du rayon)", () => {
+    // Pulcinella Gonflé est une passerelle B1 / B3 : il vient du Booster Défaut.
+    expect(cardSetMark("pulcinella-gonfle")).toMatch(/-BD$/);
+  });
+
+  it("toute carte du catalogue a un sigle ; une carte hors sachet n'imprime que sa rareté", () => {
+    for (const def of CORE_SET) expect(cardSetMark(def.id), def.id).toMatch(/^(C|PC|R|E|L|A)(-[A-Z]{2,3})?$/);
+    expect(cardSetMark("boussole-fendue")).toBe("C");
+    expect(cardSetMark("larve")).toBeNull();
   });
 });

@@ -21,6 +21,8 @@ export interface BoosterOpeningCard {
   rarity: BoosterOpeningRarity;
   /** Carte que le joueur ne possédait pas avant cette ouverture : badge « Nouveau ». */
   isNew?: boolean;
+  /** Finition TRÈS rare de l'exemplaire (Monochrome, Star Foil…) : appliquée à la carte, et annoncée. */
+  finish?: import("@/game/cosmetics/finishes").CardFinish;
 }
 
 /** Traduction d'une rareté de collection vers un palier de mise en scène — un pour un. */

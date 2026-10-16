@@ -159,6 +159,24 @@ export type EffectType =
    */
   | "reduceIncomingDamage"
   /**
+   * « Bloquez l'attaque adverse avec une unité » (Gâteau garnis, Lot 19) :
+   * l'attaque en cours d'interception (`pendingAttack`) change de cible —
+   * elle se porte sur l'unité désignée (`chosenUnit`), qui doit être une
+   * unité du DÉFENSEUR. Le bloqueur est retenu (`PendingAttack.blockerInstanceId`) :
+   * à la reprise, la Garde adverse ne peut pas refuser ce combat — c'est le
+   * défenseur qui l'a imposé. Le combat se résout ensuite normalement
+   * (riposte comprise). Hors fenêtre d'interception, l'effet est sans objet.
+   */
+  | "blockIncomingAttack"
+  /**
+   * « Lorsqu'un adversaire attaque, annulez sa phase de combat » (Stop,
+   * Lot 19) : l'attaque en cours d'interception n'a pas lieu — ni dégâts ni
+   * riposte, l'attaquant n'a pas attaqué — et le joueur actif quitte sa Phase
+   * de combat pour la Phase principale 2 : plus aucune attaque ce tour.
+   * Hors Phase de combat, l'effet est sans objet.
+   */
+  | "cancelCombatPhase"
+  /**
    * Retire `amount` de Puissance à l'attaquant POUR CETTE ATTAQUE (Filet à
    * la Dérive), sans jamais descendre sous 0.
    *

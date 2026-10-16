@@ -28,6 +28,8 @@ export type GameEventType =
   | "CARD_MOVED"
   | "DURATION_CHANGED"
   | "ATTACK_INTERCEPTED"
+  | "ATTACK_BLOCKED"
+  | "COMBAT_PHASE_CANCELLED"
   | "TURN_STARTED"
   | "END_TURN"
   | "TIDE_ADVANCED"
@@ -327,6 +329,19 @@ export interface ReasonChangedEvent extends BaseGameEvent {
 export interface AttackInterceptedEvent extends BaseGameEvent {
   type: "ATTACK_INTERCEPTED";
   attackerInstanceId: string;
+}
+
+/** Une unité du défenseur a pris l'attaque à sa charge (`blockIncomingAttack`, Gâteau garnis — Lot 19). */
+export interface AttackBlockedEvent extends BaseGameEvent {
+  type: "ATTACK_BLOCKED";
+  attackerInstanceId: string;
+  blockerInstanceId: string;
+}
+
+/** La Phase de combat du joueur actif est annulée (`cancelCombatPhase`, Stop — Lot 19). */
+export interface CombatPhaseCancelledEvent extends BaseGameEvent {
+  type: "COMBAT_PHASE_CANCELLED";
+  playerId: PlayerId;
 }
 
 export interface DurationChangedEvent extends BaseGameEvent {
@@ -729,6 +744,8 @@ export interface ShipAbilityFiredEvent extends BaseGameEvent {
 export type GameEvent =
   | EveilEvent
   | AttackInterceptedEvent
+  | AttackBlockedEvent
+  | CombatPhaseCancelledEvent
   | DurationChangedEvent
   | DrawCardEvent
   | PlayCardEvent

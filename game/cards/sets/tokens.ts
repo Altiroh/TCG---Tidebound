@@ -107,6 +107,19 @@ export const TOKEN_SET: CardDefinition[] = [
     health: 1,
   },
   {
+    // « Invoquez une Larve 1/1 » (Couveuse Difforme, Essaim Vorace — Lot 19) :
+    // un corps nu, Insecte comme ce qui l'a pondu. À ne pas confondre avec
+    // Larve de Cale, une carte du deck.
+    id: "larve",
+    name: "Larve",
+    type: "creature",
+    subtypes: ["insecte"],
+    token: true,
+    cost: 0,
+    attack: 1,
+    health: 1,
+  },
+  {
     // « Créez une Bestiole ?/?, plafonnée à 4/4 » (Brigitte, Druidesse des
     // caves — Lot 17) : un corps nu, dont les statistiques sont le résultat
     // du jet (`summonStatsFromAmount`).

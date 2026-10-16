@@ -2,6 +2,8 @@
 
 import { ARCHETYPE_LABELS, displayedSubtypes, isAbyssalVariant, subtypeLabel, type CardDefinition } from "@/game";
 import { CARD_TYPE_LABELS } from "@/features/match/cardDisplay";
+import { cardSetMark } from "@/game/boosters";
+import type { CardFinish } from "@/game/cosmetics/finishes";
 import { useLayoutEffect, useRef } from "react";
 import { useDebordPleinCadre } from "@/features/match/useDebordPleinCadre";
 import { useImageOk } from "@/features/match/useImageOk";
@@ -50,6 +52,12 @@ export interface NouveauCadreFaceProps {
   healthClassName?: string;
   /** Qualifications (« spé. ») à écrire en tête de l'effet, en gras : « Sangsue — … ». */
   qualifications?: readonly QualificationChip[];
+  /**
+   * Finition de l'exemplaire (16/10/2026, `game/cosmetics/finishes.ts`) :
+   * Monochrome, Star Foil, Prismatic, Negative — des FILTRES posés sur
+   * l'illustration seule, jamais sur le cadre ni les textes. Défaut : Classique.
+   */
+  finition?: CardFinish;
 }
 
 /** Enveloppe à largeur fixe de la page de test : la face y compose tout en `cqw`. */
@@ -62,7 +70,16 @@ export function NouveauCadreCard({ widthClassName = "w-64", ...props }: NouveauC
 }
 
 /** La face seule : elle remplit son parent (format 5:7) et y ouvre son propre conteneur de `cqw`. */
-export function NouveauCadreFace({ def, legendaire = false, attack, health, attackClassName = "", healthClassName = "", qualifications }: NouveauCadreFaceProps) {
+export function NouveauCadreFace({
+  def,
+  legendaire = false,
+  attack,
+  health,
+  attackClassName = "",
+  healthClassName = "",
+  qualifications,
+  finition = "classique",
+}: NouveauCadreFaceProps) {
   const illustration = `/assets/cards/illustrations/${def.id}.webp`;
   const illustrationOk = useImageOk(illustration);
   const hasPower = def.attack !== undefined;
@@ -83,20 +100,27 @@ export function NouveauCadreFace({ def, legendaire = false, attack, health, atta
 
   const cadre = frameName(def, legendaire);
   const calage = CALAGES[cadre];
+  // Rareté et extension d'origine, « L-BD » (16/10/2026) : le sigle de collection.
+  const sigle = cardSetMark(def.id);
 
   return (
     <div
-      className="absolute inset-0 select-none"
+      // Negative : les textes passent en noir sur halo blanc, les icônes s'inversent (16/10/2026).
+      className={`absolute inset-0 select-none ${finition === "negative" ? styles.negatif : ""}`}
+      data-finition={finition}
       style={{ containerType: "inline-size", ["--illus-inset" as string]: calage.illustration, ["--illus-radius" as string]: calage.rayon }}
     >
       {/* Couche 1 : l'illustration, plein cadre, coupée à l'arrondi du liseré. */}
       <div className="absolute overflow-hidden bg-slate-900" style={{ inset: "var(--illus-inset)", borderRadius: "var(--illus-radius)" }}>
         {illustrationOk ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={illustration} alt="" className="h-full w-full object-cover" draggable={false} />
+          <img src={illustration} alt="" className={`h-full w-full object-cover ${FILTRE_FINITION[finition]}`} draggable={false} />
         ) : (
-          <div className="h-full w-full bg-gradient-to-b from-slate-700 to-slate-950" />
+          <div className={`h-full w-full bg-gradient-to-b from-slate-700 to-slate-950 ${FILTRE_FINITION[finition]}`} />
         )}
+        {/* Finitions à reflets : leur lumière reste DANS l'illustration, sous le liseré. */}
+        {finition === "star-foil" && <EffetStarFoil />}
+        {finition === "prismatic" && <EffetPrismatic />}
         {/* Pas de voile continu (maquette du 04/10/2026) : chaque texte porte sa
             propre ombre floue (`HALO`), l'illustration reste lisible partout ailleurs. */}
       </div>
@@ -116,7 +140,7 @@ export function NouveauCadreFace({ def, legendaire = false, attack, health, atta
         // comme elle (même boîte, même cadrage), par-dessus le liseré.
         <div className="pointer-events-none absolute" style={{ inset: "var(--illus-inset)" }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={debord} alt="" className={`h-full w-full object-cover ${styles.debord}`} draggable={false} />
+          <img src={debord} alt="" className={`h-full w-full object-cover ${styles.debord} ${FILTRE_FINITION[finition]}`} draggable={false} />
         </div>
       )}
       {abyssale && debordOk && debord && debordPlein === false && (
@@ -127,7 +151,7 @@ export function NouveauCadreFace({ def, legendaire = false, attack, health, atta
           <img
             src={debord}
             alt=""
-            className={`absolute object-contain object-bottom ${styles.debord}`}
+            className={`absolute object-contain object-bottom ${styles.debord} ${FILTRE_FINITION[finition]}`}
             style={{ top: 0, left: 0, width: "100%", height: "66%" }}
             draggable={false}
           />
@@ -157,6 +181,7 @@ export function NouveauCadreFace({ def, legendaire = false, attack, health, atta
           gap: "1cqw",
           // Pas de plaque : une ombre épaisse et floue derrière, comme sur la maquette.
           background: "radial-gradient(ellipse at center, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.5) 45%, rgba(0,0,0,0) 72%)",
+          ["--plaque-type" as string]: "1",
           textShadow: HALO,
         }}
       >
@@ -164,6 +189,7 @@ export function NouveauCadreFace({ def, legendaire = false, attack, health, atta
         <img
           src={`${ASSETS}/types/${def.type}.webp?v=${ICONES_REV}`}
           alt=""
+          data-icone
           className="object-contain"
           style={{ height: "9cqw", width: "auto", filter: "drop-shadow(0 0 1cqw rgba(0,0,0,0.9)) drop-shadow(0 0 3cqw rgba(0,0,0,0.6))" }}
           draggable={false}
@@ -194,6 +220,19 @@ export function NouveauCadreFace({ def, legendaire = false, attack, health, atta
           style={{ left: "32%", right: "32%", bottom: "4.6%", fontSize: "2.3cqw", letterSpacing: "0.05em", opacity: 0.6, textShadow: HALO_TEXTE }}
         >
           {ARCHETYPE_LABELS[def.archetype]}
+        </span>
+      )}
+
+      {/* SIGLE DE COLLECTION, en bas à gauche (16/10/2026) : la rareté puis
+          l'extension d'où vient la carte — « L-BD », Légendaire du Booster Défaut. */}
+      {sigle && (
+        <span
+          data-set-mark
+          title="Rareté — extension"
+          className="absolute whitespace-nowrap font-semibold uppercase leading-none text-white [font-family:var(--font-card-title)]"
+          style={{ left: "9%", bottom: "4.6%", fontSize: "2.6cqw", letterSpacing: "0.08em", opacity: 0.8, textShadow: HALO_TEXTE }}
+        >
+          {sigle}
         </span>
       )}
 
@@ -231,7 +270,8 @@ export function NouveauCadreFace({ def, legendaire = false, attack, health, atta
           className={`absolute font-semibold text-white [font-family:var(--font-card-body)] ${styles.regles}`}
           style={{
             top: `${ZONE_EFFET_HAUT}%`,
-            bottom: hasPower || hasResistance ? "14%" : "5%",
+            // Sans stats, le texte s'arrête au-dessus du pied (sigle de collection, archétype).
+            bottom: hasPower || hasResistance ? "14%" : "8%",
             left: "9%",
             right: "9%",
             fontSize: `max(${rulesSizeCqw(texteEffet)}cqw, ${RULES_FLOOR})`,
@@ -324,6 +364,60 @@ function EffetLegendaire() {
           style={{ top: `${etoile.top}%`, left: `${etoile.left}%`, animationDelay: `${etoile.delai}s` }}
         />
       ))}
+    </>
+  );
+}
+
+/** Filtre de l'illustration par finition — le sujet d'une Abyssale (débord) le reçoit aussi. */
+const FILTRE_FINITION: Record<CardFinish, string> = {
+  classique: "",
+  monochrome: styles.finitionMonochrome!,
+  "star-foil": styles.finitionStarFoil!,
+  prismatic: styles.finitionPrismatic!,
+  negative: styles.finitionNegative!,
+};
+
+/** Éclats de la Star Foil : position (% de l'illustration), couleur et décalage, fixes. */
+const ECLATS_STAR_FOIL = [
+  { top: 9, left: 18, teinte: 52, delai: 0 },
+  { top: 15, left: 72, teinte: 190, delai: 0.6 },
+  { top: 28, left: 40, teinte: 300, delai: 1.4 },
+  { top: 36, left: 86, teinte: 120, delai: 0.3 },
+  { top: 44, left: 10, teinte: 20, delai: 1.9 },
+  { top: 52, left: 58, teinte: 260, delai: 1.1 },
+  { top: 61, left: 30, teinte: 170, delai: 2.3 },
+  { top: 66, left: 80, teinte: 45, delai: 0.8 },
+  { top: 22, left: 92, teinte: 330, delai: 1.7 },
+  { top: 72, left: 52, teinte: 210, delai: 2.6 },
+  { top: 5, left: 52, teinte: 90, delai: 2.0 },
+  { top: 48, left: 34, teinte: 0, delai: 0.5 },
+  { top: 33, left: 64, teinte: 140, delai: 1.2 },
+  { top: 58, left: 92, teinte: 280, delai: 0.2 },
+  { top: 18, left: 6, teinte: 200, delai: 2.8 },
+  { top: 70, left: 14, teinte: 60, delai: 1.6 },
+];
+
+function EffetStarFoil() {
+  return (
+    <>
+      <div className={styles.holoFoil} aria-hidden />
+      {ECLATS_STAR_FOIL.map((eclat, index) => (
+        <span
+          key={index}
+          className={styles.eclatFoil}
+          aria-hidden
+          style={{ top: `${eclat.top}%`, left: `${eclat.left}%`, animationDelay: `${eclat.delai}s`, ["--teinte" as string]: eclat.teinte }}
+        />
+      ))}
+    </>
+  );
+}
+
+function EffetPrismatic() {
+  return (
+    <>
+      <div className={styles.prismeRayons} aria-hidden />
+      <div className={styles.prismeArcEnCiel} aria-hidden />
     </>
   );
 }
@@ -427,6 +521,7 @@ function StatIcon({ src, height }: { src: string; height: string }) {
       src={src}
       alt=""
       aria-hidden
+      data-icone
       className="w-auto shrink-0"
       style={{ height, filter: "drop-shadow(0 0 0.8cqw rgba(0,0,0,0.9)) drop-shadow(0 0 2.5cqw rgba(0,0,0,0.6))" }}
       draggable={false}

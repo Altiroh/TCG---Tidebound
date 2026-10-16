@@ -2,6 +2,7 @@ import { existsSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { CORE_SET } from "@/game/cards/sets/core";
+import { LOT19_SET } from "@/game/cards/sets/lot19";
 import { SHELF_BOOSTER_IDS } from "@/game/boosters/extensions";
 import { DEFAULT_PACK_VISUAL, getBoosterPackVisual } from "@/features/boosters/opening/boosterPackVisuals";
 import { STANDARD_BOOSTER_ID } from "@/game/economy/constants";
@@ -50,6 +51,10 @@ const SANS_VISUEL: Record<string, string> = {
       "maree-imprevisible",
       "terres-inconnues",
     ].map((id) => [id, "Passerelle du Lot 17 livrée sans visuel (06/10/2026)"])
+  ),
+  // Lot 19 — Les Chairs Dévoyées : codé le 16/10/2026, visuels pas encore livrés.
+  ...Object.fromEntries(
+    LOT19_SET.map((def) => [def.id, "Lot 19 (Les Chairs Dévoyées) codé avant la livraison de ses visuels (16/10/2026)"])
   ),
 };
 

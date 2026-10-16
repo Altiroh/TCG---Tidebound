@@ -382,8 +382,9 @@ export function useBoardInteraction({
     }
     const def = getCardDefinition(card.cardId);
     // Un Objet « Chaîne » de réaction ne se joue que dans sa fenêtre : le
-    // toucher le montre en grand, il ne tente rien.
-    if (isReactionChainObject(def)) {
+    // toucher le montre en grand, il ne tente rien. Une Chaîne instantanée
+    // (`chaineLibre`) se joue aussi d'ici, comme un Objet classique.
+    if (isReactionChainObject(def) && !def.chaineLibre) {
       setDetailInstance(card);
       return;
     }

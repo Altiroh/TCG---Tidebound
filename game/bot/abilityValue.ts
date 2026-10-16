@@ -50,6 +50,7 @@ const OBSERVERS: ReadonlySet<TriggerType> = new Set([
   "onObjectBroken",
   "onPowerGained",
   "onReasonGained",
+  "onShipHealed",
   "onTideStateEntered",
   "onTideStateExited",
   "onTideAnnounced",

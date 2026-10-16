@@ -7,6 +7,7 @@ import { MAX_BATCH_OPEN } from "@/features/boosters/constants";
 import { describeFailure, purchaseBoosterFor } from "@/features/boosters/purchaseService";
 import { drawBooster, rarityForCardId, type BoosterPoolCard, type BoosterSlotRule, type CardRarity, type DrawnCard } from "@/game/boosters";
 import { getSessionUser } from "@/lib/supabase/sessionUser";
+import type { RareCardFinish } from "@/game/cosmetics/finishes";
 
 /**
  * Boosters — achat et ouverture, entièrement autoritaires côté serveur.
@@ -70,6 +71,8 @@ export interface OpenedCard {
   cardId: string;
   rarity: CardRarity;
   isNew: boolean;
+  /** Finition TRÈS rare de cet exemplaire (Monochrome, Star Foil…) ; absente : Classique. */
+  finish?: RareCardFinish;
 }
 
 export interface OpenBoosterResult {
@@ -367,6 +370,21 @@ async function openPacks(boosterId: string, count: number): Promise<ActionResult
         break;
       }
 
+      // Finitions rares : écrites À CÔTÉ de l'ouverture (`add_card_finishes`).
+      // L'exemplaire est déjà acquis ; une finition qui ne s'écrit pas (base
+      // sans la migration 20261105120000) est signalée, jamais bloquante.
+      const rares = draw.cards.filter((card) => card.finish);
+      if (rares.length > 0) {
+        const finitions = await service.rpc("add_card_finishes", {
+          p_user_id: userId,
+          p_card_ids: rares.map((card) => card.cardId),
+          p_finishes: rares.map((card) => card.finish!),
+        });
+        if (finitions.error || !finitions.data?.ok) {
+          console.warn("[openBooster] Finitions non conservées :", finitions.error?.message ?? finitions.data?.error);
+        }
+      }
+
       for (const card of draw.cards) context.ownedCardIds.add(card.cardId);
       // `abyssal_pulled`/`packs_since_abyssal` viennent de la BASE, pas du
       // tirage : c'est `cards.rarity` qui fait autorité sur la rareté.
@@ -396,5 +414,5 @@ async function openPacks(boosterId: string, count: number): Promise<ActionResult
 }
 
 function toOpenedCard(card: DrawnCard): OpenedCard {
-  return { slotIndex: card.slotIndex, cardId: card.cardId, rarity: card.rarity, isNew: card.isNew };
+  return { slotIndex: card.slotIndex, cardId: card.cardId, rarity: card.rarity, isNew: card.isNew, ...(card.finish ? { finish: card.finish } : {}) };
 }

@@ -7,6 +7,7 @@ import { useCardShelf } from "@/features/collection/shelf/CardShelfProvider";
 import { FAVORITES_FILTER, notebookFilter } from "@/features/collection/shelf/shelf";
 import { BOOSTER_EXTENSIONS, boostersContaining, rarityForCardId } from "@/game/boosters";
 import type { CardRarity } from "@/game/boosters/types";
+import { CARD_FINISH_LABELS, RARE_CARD_FINISHES, type RareCardFinish } from "@/game/cosmetics/finishes";
 import { CARD_RARITY_LABELS, CARD_TYPE_LABELS, typeGlyphUrl } from "@/features/match/cardDisplay";
 import { TYPE_FILTERS } from "@/features/collection/cardFilters";
 import {
@@ -57,6 +58,15 @@ interface CollectionSidebarProps {
    * 12/10/2026) — la grille ne montre que les cartes du deck en cours.
    */
   deckFilter?: { active: boolean; count: number; onToggle: () => void };
+  /**
+   * Collection : le filtre « Finition » (16/10/2026) — les cartes possédées
+   * dans une finition très rare. `counts` : par finition, dans la sélection.
+   */
+  finishFilter?: {
+    active: RareCardFinish | null;
+    counts: Record<RareCardFinish, number>;
+    onSelect: (finish: RareCardFinish | null) => void;
+  };
 }
 
 /** Couleur de chaque gemme de rareté — celles du récapitulatif de boosters. */
@@ -279,6 +289,7 @@ export function CollectionSidebar({
   shelfCards = null,
   order = "collection",
   deckFilter,
+  finishFilter,
 }: CollectionSidebarProps) {
   /** Ordre et axes de la maquette de l'Éditeur : carnets en bas, pas de Raison. */
   const editorOrder = order === "editeur";
@@ -310,6 +321,24 @@ export function CollectionSidebar({
           <FilterList rowCount={2}>
             <FilterRow label="Toutes les cartes" active={!deckFilter.active} onClick={() => deckFilter.active && deckFilter.onToggle()} />
             <FilterRow label="Déjà dans le deck" active={deckFilter.active} count={deckFilter.count} onClick={() => !deckFilter.active && deckFilter.onToggle()} />
+          </FilterList>
+        </section>
+      )}
+
+      {finishFilter && (
+        <section className={styles.filterSection}>
+          <h2 className={styles.sectionTitle}>Finition</h2>
+          <FilterList rowCount={RARE_CARD_FINISHES.length + 1}>
+            <FilterRow label="Toutes" active={finishFilter.active === null} onClick={() => finishFilter.onSelect(null)} />
+            {RARE_CARD_FINISHES.map((finish) => (
+              <FilterRow
+                key={finish}
+                label={CARD_FINISH_LABELS[finish]}
+                active={finishFilter.active === finish}
+                count={finishFilter.counts[finish]}
+                onClick={() => finishFilter.onSelect(finishFilter.active === finish ? null : finish)}
+              />
+            ))}
           </FilterList>
         </section>
       )}

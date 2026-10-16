@@ -26,7 +26,7 @@ interface SettingsDialogProps {
  * droite (`SidePanel`), l'écran reste deviné à gauche ; mêmes sorties
  * qu'avant (Échap, voile, croix).
  *
- * Sections (Audio, Interface, Tutoriel, Atelier, Compte) séparées par un filet : tout ce
+ * Sections (Audio, Interface, raccourcis Tutoriel / Atelier, Compte) séparées par un filet : tout ce
  * qui se règle aujourd'hui tient sur un écran, sans onglets ni page dédiée.
  */
 export function SettingsDialog({ isSignedIn, isAdmin = false, onClose }: SettingsDialogProps) {
@@ -47,50 +47,36 @@ export function SettingsDialog({ isSignedIn, isAdmin = false, onClose }: Setting
 
         <hr className={styles.divider} />
 
-        {isSignedIn && (
+        {/* Tutoriel et Atelier (labo réservé aux Admins, 14/10/2026) : deux
+            ICÔNES cliquables sur une ligne (16/10/2026) plutôt que deux
+            sections de texte — la place va aux réglages. Leur libellé reste
+            lisible au survol (`title`) et pour les lecteurs d'écran. */}
+        {(isSignedIn || isAdmin) && (
           <>
-            <section className={styles.section}>
-              <h3 className={styles.sectionTitle}>Tutoriel</h3>
-              <p className={styles.signedOut}>
-                Rejouer la partie guidée. Chaque étape peut se passer si elle bloque.{" "}
-                <Link
+            <nav className={styles.shortcuts} aria-label="Raccourcis">
+              {isSignedIn && (
+                <ShortcutIcon
                   href="/tutoriel?lancer=1"
-                  className={`${AUTH_LINK_CLASS} hover:underline`}
-                  onClick={() => {
-                    playButtonClick();
-                    onClose();
-                  }}
+                  label="Tutoriel"
+                  hint="Rejouer la partie guidée — chaque étape peut se passer si elle bloque."
+                  onClose={onClose}
                 >
-                  Lancer le tutoriel
-                </Link>
-              </p>
-            </section>
-
-            <hr className={styles.divider} />
-          </>
-        )}
-
-        {/* Labos réservés aux Admins (14/10/2026) : ouvrir le plateau hors
-            partie (`/game/board-preview`, sans moteur ni base) pour régler
-            l'espace de jeu. */}
-        {isAdmin && (
-          <>
-            <section className={styles.section}>
-              <h3 className={styles.sectionTitle}>Atelier</h3>
-              <p className={styles.signedOut}>
-                Le plateau seul, sans partie ni adversaire, pour régler l&apos;espace de jeu.{" "}
-                <Link
+                  <path d="M12 3.5 2.5 8 12 12.5 21.5 8z" />
+                  <path d="M6.5 10v4.5c1.4 1.4 3.4 2 5.5 2s4.1-.6 5.5-2V10" />
+                  <path d="M21.5 8v5.5" />
+                </ShortcutIcon>
+              )}
+              {isAdmin && (
+                <ShortcutIcon
                   href="/game/board-preview"
-                  className={`${AUTH_LINK_CLASS} hover:underline`}
-                  onClick={() => {
-                    playButtonClick();
-                    onClose();
-                  }}
+                  label="Atelier"
+                  hint="Le plateau seul, sans partie ni adversaire, pour régler l'espace de jeu."
+                  onClose={onClose}
                 >
-                  Ouvrir le plateau
-                </Link>
-              </p>
-            </section>
+                  <path d="M14.5 6.5a4 4 0 0 0-5.3 5.3L3.5 17.5l3 3 5.7-5.7a4 4 0 0 0 5.3-5.3l-2.6 2.6-2.4-.6-.6-2.4z" />
+                </ShortcutIcon>
+              )}
+            </nav>
 
             <hr className={styles.divider} />
           </>
@@ -140,5 +126,38 @@ export function SettingsDialog({ isSignedIn, isAdmin = false, onClose }: Setting
         )}
       </div>
     </SidePanel>
+  );
+}
+
+/** Un raccourci en icône : le libellé s'affiche dessous, l'explication au survol. */
+function ShortcutIcon({
+  href,
+  label,
+  hint,
+  onClose,
+  children,
+}: {
+  href: string;
+  label: string;
+  hint: string;
+  onClose: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      className={styles.shortcut}
+      title={hint}
+      aria-label={`${label} — ${hint}`}
+      onClick={() => {
+        playButtonClick();
+        onClose();
+      }}
+    >
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        {children}
+      </svg>
+      <span>{label}</span>
+    </Link>
   );
 }

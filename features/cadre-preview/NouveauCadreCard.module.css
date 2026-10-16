@@ -177,6 +177,166 @@
   border-radius: 1cqw;
 }
 
+/* ─── Finitions (16/10/2026) ─────────────────────────────────────────────
+ * Des FILTRES de l'illustration, rien d'autre : le cadre, les textes et
+ * les chiffres restent ceux de la carte. Les calques de reflet vivent dans
+ * le conteneur de l'illustration (coupé à l'arrondi du liseré).
+ */
+
+/* Monochrome — noir et blanc, un peu plus contrasté que la couleur. */
+.finitionMonochrome {
+  filter: grayscale(1) contrast(1.15) brightness(1.04);
+}
+
+/* Negative — couleurs inversées (la peau devient bleue, la nuit blanche). */
+.finitionNegative {
+  filter: invert(1) saturate(1.15) contrast(1.05);
+}
+
+/* Star Foil — couleurs avivées sous un film holographique pailleté. */
+.finitionStarFoil {
+  filter: saturate(1.25) contrast(1.05);
+}
+
+/* Prismatic — couleurs avivées, sous des rayons de lumière décomposée. */
+.finitionPrismatic {
+  filter: saturate(1.2) brightness(1.04);
+}
+
+/*
+ * Negative, au-delà de l'illustration : tout s'inverse — les textes passent
+ * en NOIR et leur ombrage en BLANC, les icônes blanches deviennent noires,
+ * et la plaque sombre du type devient claire. `!important` : ces couleurs et
+ * halos sont posés en style en ligne par le composant.
+ */
+.negatif h3,
+.negatif p,
+.negatif span,
+.negatif strong {
+  color: #0b0b0b !important;
+  text-shadow:
+    0 0 0.6cqw rgba(255, 255, 255, 1),
+    0 0 2cqw rgba(255, 255, 255, 0.95),
+    0 0.4cqw 4cqw rgba(255, 255, 255, 0.85),
+    0 0.6cqw 7cqw rgba(255, 255, 255, 0.6) !important;
+}
+
+.negatif [data-icone] {
+  filter: invert(1) drop-shadow(0 0 0.8cqw rgba(255, 255, 255, 0.95)) drop-shadow(0 0 2.5cqw rgba(255, 255, 255, 0.6)) !important;
+}
+
+.negatif [style*="--plaque-type"] {
+  background: radial-gradient(ellipse at center, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0.5) 45%, rgba(255, 255, 255, 0) 72%) !important;
+}
+
+/* Le film holographique de la Star Foil : un dégradé irisé qui glisse. */
+.holoFoil {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    120deg,
+    rgba(255, 120, 200, 0.35) 0%,
+    rgba(255, 230, 120, 0.3) 18%,
+    rgba(120, 255, 200, 0.3) 36%,
+    rgba(120, 190, 255, 0.35) 54%,
+    rgba(200, 130, 255, 0.35) 72%,
+    rgba(255, 120, 200, 0.35) 100%
+  );
+  background-size: 260% 260%;
+  mix-blend-mode: color-dodge;
+  opacity: 0.55;
+  animation: derive 6s linear infinite;
+}
+
+/* Un éclat étoilé à quatre branches, d'une teinte propre (`--teinte`). */
+.eclatFoil {
+  position: absolute;
+  width: 8cqw;
+  height: 8cqw;
+  margin: -4cqw 0 0 -4cqw;
+  pointer-events: none;
+  background:
+    radial-gradient(circle, rgba(255, 255, 255, 1) 0 9%, hsla(var(--teinte), 100%, 72%, 0.9) 16%, transparent 36%),
+    linear-gradient(0deg, transparent 47%, hsla(var(--teinte), 100%, 85%, 0.95) 50%, transparent 53%),
+    linear-gradient(90deg, transparent 47%, hsla(var(--teinte), 100%, 85%, 0.95) 50%, transparent 53%),
+    radial-gradient(circle, hsla(var(--teinte), 100%, 65%, 0.5) 0, transparent 50%);
+  opacity: 0;
+  animation: scintille 2.2s ease-in-out infinite;
+}
+
+/* Les rayons du Prismatic : des faisceaux d'arc-en-ciel en éventail. */
+.prismeRayons {
+  position: absolute;
+  inset: -30%;
+  pointer-events: none;
+  background: repeating-conic-gradient(
+    from 200deg at 85% 0%,
+    rgba(255, 60, 60, 0) 0deg,
+    rgba(255, 80, 80, 0.32) 3deg,
+    rgba(255, 220, 80, 0.32) 6deg,
+    rgba(80, 255, 140, 0.32) 9deg,
+    rgba(80, 170, 255, 0.32) 12deg,
+    rgba(190, 90, 255, 0.32) 15deg,
+    rgba(255, 60, 60, 0) 18deg,
+    rgba(255, 60, 60, 0) 34deg
+  );
+  mix-blend-mode: screen;
+  opacity: 0.85;
+  animation: prismeOscille 7s ease-in-out infinite alternate;
+}
+
+/* Un voile d'arc-en-ciel diagonal, qui glisse par-dessus les rayons. */
+.prismeArcEnCiel {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 0, 0, 0.35),
+    rgba(255, 165, 0, 0.35),
+    rgba(255, 255, 0, 0.35),
+    rgba(0, 255, 120, 0.35),
+    rgba(0, 160, 255, 0.35),
+    rgba(150, 0, 255, 0.35),
+    rgba(255, 0, 0, 0.35)
+  );
+  background-size: 300% 300%;
+  mix-blend-mode: overlay;
+  animation: derive 9s linear infinite;
+}
+
+@keyframes prismeOscille {
+  0% { transform: rotate(-4deg); }
+  100% { transform: rotate(4deg); }
+}
+
+/* Au repos dans la main de la table, les reflets se figent comme ceux des légendaires. */
+[data-cadre-repos]:not(:hover) .eclatFoil {
+  animation: none;
+  opacity: 0.7;
+  transform: scale(0.7) rotate(45deg);
+}
+
+[data-cadre-repos]:not(:hover) .holoFoil,
+[data-cadre-repos]:not(:hover) .prismeRayons,
+[data-cadre-repos]:not(:hover) .prismeArcEnCiel {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .holoFoil,
+  .eclatFoil,
+  .prismeRayons,
+  .prismeArcEnCiel {
+    animation: none;
+  }
+  .eclatFoil {
+    opacity: 0.9;
+    transform: scale(0.85) rotate(45deg);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .eclatDore,
   .refletNacre,

@@ -180,7 +180,9 @@ function playedEffects(def: CardDefinition) {
  * la fenêtre que décrit son texte (`activateReaction`).
  */
 function objectTimingRefusal(state: GameState, action: PlayCardAction, def: CardDefinition): string | null {
-  if (isReactionChainObject(def)) {
+  // Une Chaîne INSTANTANÉE (`chaineLibre`, Lot 19) se joue AUSSI en Phase
+  // principale : elle suit alors la voie d'un Objet classique, sans emplacement.
+  if (isReactionChainObject(def) && !def.chaineLibre) {
     return "Chaîne : cet Objet se joue en réaction, depuis votre main, quand la situation de son texte se présente.";
   }
   const jet = pendingDieRoll(state);

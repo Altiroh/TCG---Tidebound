@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { CardDefinition } from "@/game";
+import { RARE_CARD_FINISHES, type CardFinish, type RareCardFinish } from "@/game/cosmetics/finishes";
 import { CardShelfProvider, type ShelfBackend } from "@/features/collection/shelf/CardShelfProvider";
 import type { ShelfFilter } from "@/features/collection/shelf/shelf";
 import { CardGrid } from "@/features/collection/CardGrid";
@@ -35,10 +36,20 @@ interface CollectionScreenProps {
   ownedCardIds: string[];
   /** Exemplaires possédés par carte — affichés en pastille sous chaque carte possédée. */
   ownedCounts: Record<string, number>;
+  /** Finitions TRÈS rares possédées, par carte (16/10/2026). Absent : aucune. */
+  ownedFinishes?: Record<string, Partial<Record<RareCardFinish, number>>>;
   /** Ouvrir la grille sur les favoris ou un carnet (`/collection?carnet=…`, depuis le mur des carnets). */
   openShelf?: ShelfFilter;
   /** Étagère en mémoire du laboratoire `/game/carnets-preview` ; absente : le compte. */
   shelfBackend?: ShelfBackend;
+}
+
+/** Référence stable : un `{}` neuf à chaque rendu relancerait les mémos des finitions. */
+const AUCUNE_FINITION: Record<string, Partial<Record<RareCardFinish, number>>> = {};
+
+/** Finitions rares possédées d'une carte, de la moins à la plus rare. */
+function finitionsPossedees(quantites: Partial<Record<RareCardFinish, number>> | undefined): RareCardFinish[] {
+  return RARE_CARD_FINISHES.filter((f) => (quantites?.[f] ?? 0) > 0);
 }
 
 /**
@@ -77,15 +88,53 @@ export function CollectionScreen(props: CollectionScreenProps) {
  * exemplaires possédés sous chaque carte, « Revendre le surplus », le
  * filtre de Raison, les carnets en tête de colonne et « Créer un deck ».
  */
-function CollectionScreenBody({ isSignedIn, ownedCardIds, ownedCounts, showStarterMission = false, openShelf }: CollectionScreenProps) {
+function CollectionScreenBody({ isSignedIn, ownedCardIds, ownedCounts, ownedFinishes = AUCUNE_FINITION, showStarterMission = false, openShelf }: CollectionScreenProps) {
   const owned = useMemo(() => (isSignedIn ? new Set(ownedCardIds) : null), [isSignedIn, ownedCardIds]);
   const browser = useCardBrowser({ owned, persistKey: "collection" });
-  // Arrivée depuis le mur des carnets : la grille s'ouvre sur le carnet choisi.
-  const { patchFilters } = browser;
-  useEffect(() => {
-    if (openShelf !== undefined) patchFilters({ shelf: openShelf });
-  }, [openShelf, patchFilters]);
+  // FINITIONS (16/10/2026) : le filtre ne garde que les cartes possédées dans
+  // la finition choisie, et les montre ainsi ; sans filtre, chaque carte se
+  // montre dans la plus rare de ses finitions.
+  const [finishFilter, setFinishFilter] = useState<RareCardFinish | null>(null);
+  const shownCards = useMemo(
+    () => (finishFilter ? browser.cards.filter((def) => (ownedFinishes[def.id]?.[finishFilter] ?? 0) > 0) : browser.cards),
+    [browser.cards, finishFilter, ownedFinishes]
+  );
+  const finishCounts = useMemo(() => {
+    const counts = Object.fromEntries(RARE_CARD_FINISHES.map((f) => [f, 0])) as Record<RareCardFinish, number>;
+    for (const def of browser.cards) for (const f of finitionsPossedees(ownedFinishes[def.id])) counts[f] += 1;
+    return counts;
+  }, [browser.cards, ownedFinishes]);
+  /** Exemplaires Classiques : le total moins ceux d'une finition rare. */
+  const classicCount = useCallback(
+    (cardId: string) => {
+      const rares = Object.values(ownedFinishes[cardId] ?? {}).reduce((sum, n) => sum + (n ?? 0), 0);
+      return Math.max(0, (ownedCounts[cardId] ?? 0) - rares);
+    },
+    [ownedCounts, ownedFinishes]
+  );
+  // Une cellule par finition possédée, APRÈS la Classique — jamais empilées
+  // ensemble. Une carte possédée seulement en finition rare n'a pas de cellule
+  // Classique ; le filtre « Finition » ne montre que la sienne.
+  const finishesFor = useCallback(
+    (def: CardDefinition): CardFinish[] => {
+      if (finishFilter) return [finishFilter];
+      const rares = finitionsPossedees(ownedFinishes[def.id]);
+      if (rares.length === 0) return ["classique"];
+      return classicCount(def.id) > 0 ? ["classique", ...rares] : rares;
+    },
+    [finishFilter, ownedFinishes, classicCount]
+  );
   const [detailCardId, setDetailCardId] = useState<string | null>(null);
+  // La finition de la cellule touchée : la fiche s'ouvre sur CET exemplaire.
+  const [detailFinish, setDetailFinish] = useState<CardFinish | undefined>(undefined);
+  const openDetail = useCallback((cardId: string, finish?: CardFinish) => {
+    setDetailCardId(cardId);
+    setDetailFinish(finish);
+  }, []);
+  const stepDetail = (delta: 1 | -1) => {
+    setDetailFinish(undefined);
+    setDetailCardId((id) => (id ? browser.relativeCardId(id, delta) : id));
+  };
   const [surplusOpen, setSurplusOpen] = useState(false);
   // Figé à l'ouverture : le récapitulatif confirmé ne bouge pas sous les yeux
   // quand la collection est relue après la vente.
@@ -95,9 +144,10 @@ function CollectionScreenBody({ isSignedIn, ownedCardIds, ownedCounts, showStart
 
   // Même pastille que la quantité du Deck Builder, ancrée au pied de la
   // carte. Rien sur une carte non possédée : l'estompage le dit déjà.
+  // Chaque cellule compte SES exemplaires : la Classique sans les finitions rares, une finition les siens.
   const renderOwnedCount = useCallback(
-    (def: CardDefinition) => {
-      const count = ownedCounts[def.id] ?? 0;
+    (def: CardDefinition, finish?: CardFinish) => {
+      const count = finish && finish !== "classique" ? (ownedFinishes[def.id]?.[finish] ?? 0) : classicCount(def.id) || (ownedCounts[def.id] ?? 0);
       if (!isSignedIn || count <= 0) return null;
       return (
         <span className={styles.ownedCount} aria-label={`${count} exemplaire${count > 1 ? "s" : ""} possédé${count > 1 ? "s" : ""}`}>
@@ -106,7 +156,7 @@ function CollectionScreenBody({ isSignedIn, ownedCardIds, ownedCounts, showStart
         </span>
       );
     },
-    [isSignedIn, ownedCounts]
+    [isSignedIn, ownedCounts, ownedFinishes, classicCount]
   );
 
   const surplusButton = isSignedIn ? (
@@ -164,12 +214,13 @@ function CollectionScreenBody({ isSignedIn, ownedCardIds, ownedCounts, showStart
             owned={browser.ownedForFilters}
             showOwnership={isSignedIn}
             shelfCards={browser.shelfCards}
+            finishFilter={isSignedIn ? { active: finishFilter, counts: finishCounts, onSelect: setFinishFilter } : undefined}
           />
         </aside>
 
         <main className={`${game.panel} ${styles.main} ${book.frame} ${book.center}`}>
           <CollectionToolbar
-            count={browser.cards.length}
+            count={shownCards.length}
             sort={browser.sort}
             onSortChange={browser.setSort}
             onOpenFilters={() => browser.setDrawerOpen((open) => !open)}
@@ -185,8 +236,9 @@ function CollectionScreenBody({ isSignedIn, ownedCardIds, ownedCounts, showStart
           />
 
           <CardGrid
-            cards={browser.cards}
-            onCardClick={setDetailCardId}
+            cards={shownCards}
+            finishesFor={isSignedIn ? finishesFor : undefined}
+            onCardClick={openDetail}
             // Ce que le joueur possède, PAS ce que le filtre laisse passer :
             // sinon une recherche sans résultat afficherait « tu ne possèdes
             // aucune carte » à un joueur qui en a.
@@ -209,9 +261,11 @@ function CollectionScreenBody({ isSignedIn, ownedCardIds, ownedCounts, showStart
         <CardDetailModal
           cardId={detailCardId}
           onClose={() => setDetailCardId(null)}
-          onPrevious={browser.cards.length > 1 ? () => setDetailCardId((id) => (id ? browser.relativeCardId(id, -1) : id)) : undefined}
-          onNext={browser.cards.length > 1 ? () => setDetailCardId((id) => (id ? browser.relativeCardId(id, 1) : id)) : undefined}
-          onShowCard={setDetailCardId}
+          ownedFinishes={isSignedIn ? finitionsPossedees(ownedFinishes[detailCardId]) : undefined}
+          initialFinish={detailFinish}
+          onPrevious={browser.cards.length > 1 ? () => stepDetail(-1) : undefined}
+          onNext={browser.cards.length > 1 ? () => stepDetail(1) : undefined}
+          onShowCard={(id) => openDetail(id)}
           ownedCount={isSignedIn ? (ownedCounts[detailCardId] ?? 0) : undefined}
         />
       )}

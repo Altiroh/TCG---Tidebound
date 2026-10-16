@@ -63,6 +63,8 @@ export interface DrawnCard {
   rarity: CardRarity;
   /** `true` si le joueur ne possédait pas encore cette carte avant l'ouverture. */
   isNew: boolean;
+  /** Finition TRÈS rare tirée pour cet exemplaire (`game/cosmetics/finishes.ts`) ; absente : Classique. */
+  finish?: import("@/game/cosmetics/finishes").RareCardFinish;
 }
 
 export interface DrawBoosterResult {

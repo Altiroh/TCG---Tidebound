@@ -475,6 +475,7 @@ function collectObserverWork(
  */
 /** Déclencheurs de FAITS DE JOUEUR (Lot 17) — cf. leur branche dans `collectTriggeredWork`. */
 const PLAYER_FACT_TRIGGERS = new Set<string>([
+  "onShipHealed",
   "onArmorGained",
   "onDieResolved",
   "onCardPutUnderDeck",

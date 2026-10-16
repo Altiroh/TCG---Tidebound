@@ -72,3 +72,41 @@
   /* Un numéro se relit et se recopie : on doit pouvoir le sélectionner. */
   user-select: text;
 }
+
+/* Raccourcis en icônes (Tutoriel, Atelier — 16/10/2026) : une ligne compacte. */
+.shortcuts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.shortcut {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 64px;
+  min-height: 56px;
+  padding: 8px 10px 6px;
+  border: 1px solid rgba(232, 200, 140, 0.28);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(243, 230, 207, 0.9);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transition: border-color 150ms ease, background 150ms ease, color 150ms ease;
+}
+
+.shortcut svg {
+  width: 24px;
+  height: 24px;
+}
+
+.shortcut:hover,
+.shortcut:focus-visible {
+  border-color: rgba(232, 200, 140, 0.75);
+  background: rgba(232, 200, 140, 0.1);
+  color: #fff3dc;
+}

@@ -25,8 +25,10 @@ export {
   BOOSTER_EXTENSIONS,
   OFF_SHELF_BOOSTER_IDS,
   SHELF_BOOSTER_IDS,
+  RARITY_INITIALS,
   boosterExtension,
   boosterExtensionLabel,
+  cardSetMark,
 } from "@/game/boosters/extensions";
 // Où une carte peut être OBTENUE : ce que la Collection filtre.
 export { boostersContaining } from "@/game/boosters/pools";

@@ -12,6 +12,10 @@ export function playerFactTriggerEvents(state: GameState, events: readonly GameE
   const derived: TriggerEvent[] = [];
   for (const event of events) {
     switch (event.type) {
+      // Lot 19 : un Navire récupère de l'Ancrage (effet ou Sangsue). Un soin d'UNITÉ n'en est pas un.
+      case "HEAL":
+        if (event.targetPlayerId && event.amount > 0) derived.push({ trigger: "onShipHealed", playerId: event.targetPlayerId });
+        break;
       case "ARMOR_CHANGED":
         if (event.delta > 0) derived.push({ trigger: "onArmorGained", playerId: event.playerId });
         break;
