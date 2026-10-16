@@ -232,7 +232,7 @@ export interface BoardInteraction {
   focus: FocusState | null;
   /** Cartes du joueur dont l'effet d'arrivée attend en réserve : elles luisent. */
   arrivalReadyIds: string[];
-  /** Carte lumineuse touchée : elle vole à droite, avec « Activer » et « Annuler ». */
+  /** Carte lumineuse touchée : elle vole à droite et son effet part aussitôt (cible à désigner, ou résolution). */
   openArrivalFocus: (instanceId: string) => void;
   /** « Activer » (une option si la carte en a plusieurs — « choisissez : A ou B »). */
   activateFocusedArrival: (option: ActivatableArrival) => void;
@@ -297,7 +297,20 @@ export function useBoardInteraction({
     if (!card || options.length === 0 || focus) return;
     onGestureStart?.();
     clearSelection();
-    setFocus({ request: { kind: "arrival", card, options }, stage: "choose", leaving: false });
+    const focusState: FocusState = { request: { kind: "arrival", card, options }, stage: "choose", leaving: false };
+    setFocus(focusState);
+    // PAS DE SECONDE VALIDATION (16/10/2026) : toucher la carte lance son
+    // effet. Un seul effet : il part (cible à désigner, « Annuler » possible,
+    // ou résolution aussitôt). Plusieurs modes qui visent tous une unité : la
+    // cible touchée choisit le mode. Seul un choix entre modes sans cible reste à faire.
+    if (options.length === 1) {
+      activateFocusedArrival(options[0]!);
+      return;
+    }
+    if (options.every((option) => option.candidate.needsTarget)) {
+      setSelection({ kind: "arrival", sourceInstanceId: instanceId, abilityIndexes: options.map((option) => option.entry.abilityIndex) });
+      setFocus({ ...focusState, stage: "targeting" });
+    }
   }
 
   function activateFocusedArrival({ candidate }: ActivatableArrival) {
@@ -486,24 +499,26 @@ export function useBoardInteraction({
    * d'abord la cible. Le moteur ne choisit jamais à sa place.
    */
   /**
-   * Capacité activable (16/10/2026) : toucher la carte la pose à DROITE
-   * (`TableBoard`, carte qui cible). Si l'effet vise une unité, le plateau
-   * s'éclaire de ses cibles ; sinon, « Activer » sous la carte confirme —
-   * c'est ce second appel qui part au moteur.
+   * Capacité activable (16/10/2026) : toucher la carte LANCE l'effet, sans
+   * seconde validation. S'il vise une unité, la carte se pose à droite et le
+   * plateau s'éclaire de ses cibles (« Annuler » possible) ; sinon il se
+   * résout aussitôt.
    */
   function requestAbility(instanceId: string) {
     if (!canAct) return;
     const card = viewer.board.find((c) => c.instanceId === instanceId);
     if (!card) return;
     onGestureStart?.();
-    const spec = getCardDefinition(card.cardId).activatableOncePerTurn;
-    const targeted = spec?.effects.some((effect) => effect.target.kind === "chosenUnit") ?? false;
     if (selection?.kind === "ability" && selection.instanceId === instanceId) {
       clearSelection();
-      if (!targeted) act({ type: "activateAbility", playerId: actorId, sourceInstanceId: instanceId });
       return;
     }
-    setSelection({ kind: "ability", instanceId });
+    const spec = getCardDefinition(card.cardId).activatableOncePerTurn;
+    if (spec?.effects.some((effect) => effect.target.kind === "chosenUnit")) {
+      setSelection({ kind: "ability", instanceId });
+      return;
+    }
+    act({ type: "activateAbility", playerId: actorId, sourceInstanceId: instanceId });
   }
 
   /** La cible a été désignée D'UN GESTE (glisser la pastille jusqu'à elle) : le joueur a choisi, on active. */

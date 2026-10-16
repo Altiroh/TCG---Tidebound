@@ -836,9 +836,7 @@ export function TableBoard(props: TableBoardProps) {
     const def = getCardDefinition(instance.cardId);
     const detail =
       targeting.kind === "reaction" ? (def.abilities?.[targeting.abilityIndex]?.description ?? def.text) : def.text;
-    // Une capacité qui ne vise personne se confirme sous la carte.
-    const confirme = targeting.kind === "ability" && selectionTargets === null;
-    return { instance, detail, confirme };
+    return { instance, detail };
   })();
   /** Désignations sur toute la table (marques tenues + sélection en cours) : le compteur de colonne s'affiche dès qu'il y en a plusieurs. */
   const totalDesignations = (props.heldTargets?.length ?? 0) + (props.boardPick?.picked.size ?? 0);
@@ -1507,16 +1505,11 @@ export function TableBoard(props: TableBoardProps) {
             key={carteQuiCible.instance.instanceId}
             card={carteQuiCible.instance}
             tideState={tideState}
-            eyebrow={carteQuiCible.confirme ? "Activer l'effet" : "Choisis ta cible"}
+            eyebrow="Choisis ta cible"
             detail={carteQuiCible.detail}
-            hint={carteQuiCible.confirme ? undefined : (props.hint ?? (targeting?.kind === "ability" ? targetingHint("ability") : targetingHint("playCard")) ?? undefined)}
-            actions={[
-              ...(carteQuiCible.confirme && props.onActivateAbility
-                ? [{ label: "Activer", tone: "accept" as const, onClick: () => props.onActivateAbility!(carteQuiCible.instance.instanceId) }]
-                : []),
-              ...(props.onCancelHint ? [{ label: "Annuler", tone: "neutral" as const, onClick: props.onCancelHint }] : []),
-            ]}
-            waiting={!carteQuiCible.confirme}
+            hint={props.hint ?? (targeting?.kind === "ability" ? targetingHint("ability") : targetingHint("playCard")) ?? undefined}
+            actions={props.onCancelHint ? [{ label: "Annuler", tone: "neutral", onClick: props.onCancelHint }] : []}
+            waiting
             leaving={false}
             onDone={() => {}}
           />
