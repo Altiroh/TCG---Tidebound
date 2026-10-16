@@ -107,23 +107,6 @@ export function SettingsDialog({ isSignedIn, isAdmin = false, onClose }: Setting
          * pied de dialogue suffit.
          */}
         <p className={styles.version}>{appVersionLabel()}</p>
-        {/* Admins seulement : mesurer l'écran depuis l'app installée, qui n'a
-            pas de barre d'adresse (bande en bas sur iPhone, 01/10). À retirer
-            avec `app/diagnostic-ecran`. */}
-        {isAdmin && (
-        <p className={styles.version}>
-          <Link
-            href="/diagnostic-ecran"
-            className={`${AUTH_LINK_CLASS} inline-flex min-h-11 items-center hover:underline`}
-            onClick={() => {
-              playButtonClick();
-              onClose();
-            }}
-          >
-            Diagnostic d&apos;écran
-          </Link>
-        </p>
-        )}
       </div>
     </SidePanel>
   );

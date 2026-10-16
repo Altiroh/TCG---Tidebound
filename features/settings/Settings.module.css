@@ -74,9 +74,9 @@
 }
 
 /* Raccourcis en icônes (Tutoriel, Atelier — 16/10/2026) : une ligne compacte. */
+/* Les raccourcis se partagent toute la largeur, à parts égales. */
 .shortcuts {
   display: flex;
-  flex-wrap: wrap;
   gap: 10px;
 }
 
@@ -86,7 +86,8 @@
   align-items: center;
   justify-content: center;
   gap: 4px;
-  min-width: 64px;
+  flex: 1 1 0;
+  min-width: 0;
   min-height: 56px;
   padding: 8px 10px 6px;
   border: 1px solid rgba(232, 200, 140, 0.28);

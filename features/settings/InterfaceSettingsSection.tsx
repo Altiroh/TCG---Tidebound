@@ -9,8 +9,8 @@ export function InterfaceSettingsSection() {
   return (
     <div className="flex flex-col">
       <ToggleSwitch
-        label="Afficher les informations de récompenses rapides"
-        description="Les losanges sous ton profil, en haut à droite, qui mènent droit à ce qui attend d'être réclamé."
+        label="Récompenses rapides"
+        description="Les losanges sous ton profil."
         checked={settings.rewardShortcuts}
         onChange={(value) => setInterfaceSetting("rewardShortcuts", value)}
       />
