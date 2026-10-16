@@ -3193,9 +3193,31 @@
 }
 
 /* Pendant un ciblage, ce qui n'est pas une cible s'estompe (`TableBoard`, `dimmed`). */
+/* Hors cible pendant un ciblage : noir et blanc, assombri (16/10/2026). */
 .targetDim {
-  opacity: 0.45;
-  filter: saturate(0.55);
+  opacity: 0.85;
+  filter: grayscale(1) brightness(0.55);
+  transition: filter 180ms ease-out, opacity 180ms ease-out;
+}
+
+/* Le décor du terrain suit : tout passe en noir et blanc, sauf ce qui peut être visé. */
+.viewport[data-targeting] .background {
+  filter: grayscale(1) brightness(0.6);
+  transition: filter 220ms ease-out;
+}
+
+.background {
+  transition: filter 220ms ease-out;
+}
+
+/* Les cases vides, la piste de Marée et les piles passent aussi en noir et blanc. */
+.viewport[data-targeting] .boardSlotEmpty,
+.viewport[data-targeting] [data-tide-track],
+.viewport[data-targeting] .tide,
+.viewport[data-targeting] [data-graveyard],
+.viewport[data-targeting] [data-drop="lande"] {
+  filter: grayscale(1) brightness(0.6);
+  transition: filter 220ms ease-out;
 }
 
 /* Enveloppe du Navire adverse : garde la hauteur de la cellule. */
@@ -4767,14 +4789,10 @@
 .heldMark {
   --held-rgb: 239, 68, 68;
   position: absolute;
-  inset: -4px;
+  inset: 0;
   z-index: 23;
-  display: grid;
-  place-items: center;
-  border-radius: var(--card-radius, 8px);
-  box-shadow: 0 0 0 2.5px rgba(var(--held-rgb), 0.95), 0 0 18px 3px rgba(var(--held-rgb), 0.65), inset 0 0 22px rgba(var(--held-rgb), 0.35);
   pointer-events: none;
-  animation: heldIn 260ms cubic-bezier(0.2, 0.9, 0.3, 1.3) both;
+  animation: heldIn 320ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
 }
 
 .heldMark[data-tone="friendly"] {
@@ -4785,39 +4803,88 @@
   --held-rgb: 251, 113, 84;
 }
 
-.heldMark svg {
-  width: 46%;
-  max-width: 64px;
-  aspect-ratio: 1;
-  fill: none;
-  stroke: rgba(var(--held-rgb), 1);
-  stroke-width: 2.6;
-  stroke-linecap: round;
-  filter: drop-shadow(0 0 4px rgba(var(--held-rgb), 0.9)) drop-shadow(0 2px 3px rgba(0, 0, 0, 0.7));
-  animation: heldSpin 6s linear infinite;
+/*
+ * COLONNE DE LUMIÈRE (16/10/2026) : un puits de lumière qui tombe du haut
+ * au milieu de la carte désignée — comme une colonne de feu. Le cœur blanc,
+ * les bords de la couleur de l'effet (rouge nuisible, bleu bienfaisant).
+ */
+.heldBeam {
+  position: absolute;
+  left: 50%;
+  bottom: 42%;
+  width: 34%;
+  height: 92%;
+  translate: -50% 0;
+  border-radius: 50% 50% 40% 40% / 12% 12% 8% 8%;
+  background:
+    linear-gradient(90deg, transparent 0%, rgba(var(--held-rgb), 0.55) 22%, rgba(255, 250, 235, 0.95) 50%, rgba(var(--held-rgb), 0.55) 78%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to top, #000 0%, #000 55%, transparent 100%);
+  mask-image: linear-gradient(to top, #000 0%, #000 55%, transparent 100%);
+  filter: blur(3px);
+  mix-blend-mode: screen;
+  transform-origin: 50% 100%;
+  animation: heldFlicker 1.6s ease-in-out infinite;
 }
 
-.heldCore {
-  fill: rgba(var(--held-rgb), 1);
-  stroke: none;
+/* La flaque de lumière où la colonne touche la carte. */
+.heldPool {
+  position: absolute;
+  left: 50%;
+  top: 58%;
+  width: 70%;
+  aspect-ratio: 2.4;
+  translate: -50% -50%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(255, 250, 235, 0.9) 0%, rgba(var(--held-rgb), 0.65) 35%, rgba(var(--held-rgb), 0) 72%);
+  mix-blend-mode: screen;
+  animation: heldPulse 1.6s ease-in-out infinite;
+}
+
+/* Le compte des désignations, juste en haut de la colonne : le chiffre seul, à la couleur de l'effet. */
+.heldCount {
+  position: absolute;
+  left: 50%;
+  bottom: 132%;
+  translate: -50% 0;
+  font-family: var(--font-card-title);
+  font-weight: 800;
+  font-size: clamp(16px, calc(var(--card-w, 80px) * 0.26), 28px);
+  line-height: 1;
+  color: rgb(var(--held-rgb));
+  text-shadow: 0 0 6px rgba(var(--held-rgb), 0.9), 0 0 2px rgba(0, 0, 0, 0.9), 0 1px 3px rgba(0, 0, 0, 0.8);
+  animation: heldCountIn 280ms cubic-bezier(0.2, 0.9, 0.3, 1.5) both;
 }
 
 @keyframes heldIn {
   from {
     opacity: 0;
-    transform: scale(1.18);
+    transform: translateY(-14%);
   }
 }
 
-@keyframes heldSpin {
-  to {
-    transform: rotate(360deg);
+@keyframes heldFlicker {
+  0%, 100% { opacity: 0.95; transform: scaleX(1); }
+  35% { opacity: 0.8; transform: scaleX(0.9); }
+  70% { opacity: 1; transform: scaleX(1.06); }
+}
+
+@keyframes heldPulse {
+  0%, 100% { opacity: 0.9; }
+  50% { opacity: 0.6; }
+}
+
+@keyframes heldCountIn {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .heldMark,
-  .heldMark svg {
+  .heldBeam,
+  .heldPool,
+  .heldCount {
     animation: none;
   }
 }
@@ -4879,7 +4946,7 @@
 
 /* Désignation de cible en cours : la main s'efface avec le reste de ce qui n'est pas visé. */
 .handDim {
-  filter: brightness(0.42) saturate(0.6);
+  filter: grayscale(1) brightness(0.45);
   transition: filter 180ms ease-out;
 }
 

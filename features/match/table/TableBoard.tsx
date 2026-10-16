@@ -36,6 +36,7 @@ import {
   type PlayerState,
 } from "@/game";
 import { AttackImpactLayer } from "@/features/match/AttackImpactLayer";
+import { FocusedCard } from "@/features/match/FocusedCard";
 import { useCardBackSrcFor } from "@/features/cosmetics/MatchCosmeticsProvider";
 import { CardTile, cardStatusLegend } from "@/features/match/CardTile";
 import { TIDE_STATE_LABELS } from "@/features/match/cardDisplay";
@@ -807,6 +808,32 @@ export function TableBoard(props: TableBoardProps) {
   // Capacité de Navire ciblée : tout ce qui a une Résistance, des deux
   // côtés, et les deux Navires — le ton « effet », puisque ce n'est pas une attaque.
   const anyTargeting = targeting?.kind === "shipTarget";
+  // Un ciblage est-il en cours ? Le terrain passe alors en noir et blanc.
+  const ciblageActif =
+    (props.boardPick ?? null) !== null ||
+    (targeting !== null && selectionTargets !== null) ||
+    casting !== null ||
+    abilityDrag !== null ||
+    (aiming !== null && aimAttacks);
+  // LA CARTE QUI CIBLE, POSÉE À DROITE (16/10/2026) : pendant qu'un effet
+  // attend sa cible (réaction, capacité, carte jouée), sa carte quitte sa place
+  // pour la droite de l'écran, avec ce qu'elle fait — comme un effet d'arrivée.
+  // L'attaque et le tir de Navire gardent leur flèche ; l'effet d'arrivée a
+  // déjà la sienne (`FocusedCardHost`).
+  const carteQuiCible = (() => {
+    if (!targeting || (targeting.kind !== "reaction" && targeting.kind !== "ability" && targeting.kind !== "playCard")) return null;
+    const sourceId = targeting.sourceInstanceId;
+    const instance = state.players
+      .flatMap((p) => [...p.board, ...p.hand, ...p.graveyard])
+      .find((c) => c.instanceId === sourceId);
+    if (!instance) return null;
+    const def = getCardDefinition(instance.cardId);
+    const detail =
+      targeting.kind === "reaction" ? (def.abilities?.[targeting.abilityIndex]?.description ?? def.text) : def.text;
+    return { instance, detail };
+  })();
+  /** Désignations sur toute la table (marques tenues + sélection en cours) : le compteur de colonne s'affiche dès qu'il y en a plusieurs. */
+  const totalDesignations = (props.heldTargets?.length ?? 0) + (props.boardPick?.picked.size ?? 0);
   /** L'attaquant désigné (touché ou glissé) peut-il viser le Navire ? Non avec Déluge. */
   const attackerId = targeting?.kind === "attack" ? targeting.sourceInstanceId : aimAttacks ? aimSource?.instanceId : undefined;
   const attackerUnit = attackerId ? byId.get(attackerId)?.instance : undefined;
@@ -873,16 +900,14 @@ export function TableBoard(props: TableBoardProps) {
     // tenue par une action qui attend encore sa suite.
     const held = picked ? (pick!.polarity as HeldTarget["tone"]) : props.heldTargets?.find((t) => t.instanceId === card.id)?.tone;
     const targetable = effectTarget || attackTarget || allocatable || pickable;
-    // Pendant un ciblage, ce qui n'est pas une cible s'estompe : l'œil va
-    // droit aux cartes éclairées, et le doigt aussi.
-    const targetingActive =
-      pick !== null ||
-      (targeting !== null && selectionTargets !== null) ||
-      casting !== null ||
-      abilityDrag !== null ||
-      (aiming !== null && aimAttacks);
+    // Pendant un ciblage, ce qui n'est pas une cible passe en NOIR ET BLANC
+    // (16/10/2026) : seules les cibles gardent leurs couleurs et leur halo.
+    // La carte qui CIBLE aussi — Reine des Charognes ne peut pas se viser
+    // elle-même ; seul l'attaquant qu'on glisse garde sa couleur, la flèche en part.
     const dimmed =
-      targetingActive && !targetable && !held && targeting?.sourceInstanceId !== card.id && aiming?.sourceId !== card.id && abilityDrag?.sourceId !== card.id;
+      ciblageActif && !targetable && !held && aiming?.sourceId !== card.id && !(attackTargeting && targeting?.sourceInstanceId === card.id);
+    // Combien de fois cette carte est désignée dans la suite d'effets en cours.
+    const designations = (props.heldTargets ?? []).filter((t) => t.instanceId === card.id).length + (picked ? 1 : 0);
 
     return (
       <div
@@ -990,12 +1015,17 @@ export function TableBoard(props: TableBoardProps) {
           />
         )}
         {held && (
-          <span className={styles.heldMark} data-tone={held} aria-label="Cible désignée">
-            <svg viewBox="0 0 40 40" aria-hidden>
-              <circle cx="20" cy="20" r="13" />
-              <circle cx="20" cy="20" r="3.2" className={styles.heldCore} />
-              <path d="M20 2v9M20 29v9M2 20h9M29 20h9" />
-            </svg>
+          // COLONNE DE LUMIÈRE (16/10/2026, à la place du réticule tournant) :
+          // un puits de lumière tombe au milieu de la carte désignée. Désignée
+          // plusieurs fois, ou parmi plusieurs cibles, son compte s'inscrit en haut.
+          <span className={styles.heldMark} data-tone={held} aria-label={designations > 1 ? `Cible désignée ${designations} fois` : "Cible désignée"}>
+            <span className={styles.heldBeam} aria-hidden />
+            <span className={styles.heldPool} aria-hidden />
+            {(designations > 1 || totalDesignations > 1) && (
+              <span key={designations} className={styles.heldCount} aria-hidden>
+                {designations}
+              </span>
+            )}
           </span>
         )}
         {allocated > 0 && (
@@ -1153,7 +1183,7 @@ export function TableBoard(props: TableBoardProps) {
 
   return (
     <>
-      <GameViewport>
+      <GameViewport targeting={ciblageActif}>
         <BackgroundLayer
           table={pont ? TABLE_PONT : undefined}
           floor={(() => {
@@ -1236,7 +1266,7 @@ export function TableBoard(props: TableBoardProps) {
                   setShipInfoHover(false);
                   setShipInfoFor(opponent.id);
                 }}
-                className={`${styles.shipTarget} ${shipAttackable || anyTargeting ? styles.targetable : styles.shipInspectable} ${hover === "ship" && (shipAttackable || anyTargeting) ? styles.targetHover : ""}`}
+                className={`${styles.shipTarget} ${shipAttackable || anyTargeting ? styles.targetable : `${styles.shipInspectable} ${ciblageActif ? styles.targetDim : ""}`} ${hover === "ship" && (shipAttackable || anyTargeting) ? styles.targetHover : ""}`}
               >
                 {ship}
               </div>
@@ -1320,7 +1350,7 @@ export function TableBoard(props: TableBoardProps) {
                 <div className={`${styles.centerHint} ${styles.centerHintError}`} role="alert">
                   <span>{dropError}</span>
                 </div>
-              ) : props.hint ? (
+              ) : props.hint && !carteQuiCible ? (
                 <div className={styles.centerHint} role="status">
                   <span>{props.hint}</span>
                   {props.onCancelHint && (
@@ -1352,7 +1382,7 @@ export function TableBoard(props: TableBoardProps) {
             wrapShip={(ship) => (
               <div
                 data-ship-target={viewer.id}
-                className={`${styles.shipTarget} ${anyTargeting || shipAllocation?.eligible ? `${styles.targetable} ${styles.effectTone}` : styles.shipInspectable}`}
+                className={`${styles.shipTarget} ${anyTargeting || shipAllocation?.eligible ? `${styles.targetable} ${styles.effectTone}` : `${styles.shipInspectable} ${ciblageActif ? styles.targetDim : ""}`}`}
                 {...(() => {
                   const info = shipInfoHandlers(viewer.id, () => anyTargeting || Boolean(shipAllocation));
                   return { onPointerEnter: info.onPointerEnter, onPointerLeave: info.onPointerLeave, onPointerDown: info.onPointerDown, onClick: () => {
@@ -1494,6 +1524,20 @@ export function TableBoard(props: TableBoardProps) {
             ownerId={landeArrival.ownerId}
             tideState={tideState}
             onDone={() => setLandeArrival(null)}
+          />
+        )}
+        {carteQuiCible && (
+          <FocusedCard
+            key={carteQuiCible.instance.instanceId}
+            card={carteQuiCible.instance}
+            tideState={tideState}
+            eyebrow="Choisis ta cible"
+            detail={carteQuiCible.detail}
+            hint={props.hint ?? (targeting?.kind === "ability" ? targetingHint("ability") : targetingHint("playCard")) ?? undefined}
+            actions={props.onCancelHint ? [{ label: "Annuler", tone: "neutral", onClick: props.onCancelHint }] : []}
+            waiting
+            leaving={false}
+            onDone={() => {}}
           />
         )}
         <DragLayer
