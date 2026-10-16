@@ -716,6 +716,12 @@ export function TableBoard(props: TableBoardProps) {
         props.onHandCardClick(sourceId);
         return true;
       }
+      // Capacité activable (16/10/2026) : plus de pastille — la carte luit, et
+      // la toucher la pose à droite (cible à désigner, ou « Activer »).
+      if (!targeting && kind === "aim" && entry.owner.id === viewerId && props.onActivateAbility && canActivateAbility(state, viewerId, sourceId)) {
+        props.onActivateAbility(sourceId);
+        return true;
+      }
       // Carte qui luit d'un effet d'arrivée en réserve : elle vole à droite, « Activer » dessous.
       if (!targeting && kind === "aim" && props.arrivalReadyIds?.includes(sourceId) && props.onArrivalTap) {
         props.onArrivalTap(sourceId);
@@ -830,7 +836,9 @@ export function TableBoard(props: TableBoardProps) {
     const def = getCardDefinition(instance.cardId);
     const detail =
       targeting.kind === "reaction" ? (def.abilities?.[targeting.abilityIndex]?.description ?? def.text) : def.text;
-    return { instance, detail };
+    // Une capacité qui ne vise personne se confirme sous la carte.
+    const confirme = targeting.kind === "ability" && selectionTargets === null;
+    return { instance, detail, confirme };
   })();
   /** Désignations sur toute la table (marques tenues + sélection en cours) : le compteur de colonne s'affiche dès qu'il y en a plusieurs. */
   const totalDesignations = (props.heldTargets?.length ?? 0) + (props.boardPick?.picked.size ?? 0);
@@ -1038,38 +1046,6 @@ export function TableBoard(props: TableBoardProps) {
               {allocated}
             </span>
           )
-        )}
-        {/* APRÈS la carte : posé avant, il était recouvert par elle et ne recevait aucun clic. */}
-        {activatable && (
-          <button
-            type="button"
-            className={styles.abilityButton}
-            title={`Activer (toucher, ou glisser jusqu'à la cible) — ${getCardDefinition(instance.cardId).text}`}
-            aria-label={`Activer ${getCardDefinition(instance.cardId).name}`}
-            // Le bouton vit DANS la carte, qui démarre son propre geste au pointeur : c'est
-            // celui de la PASTILLE qui part (toucher = activer, glisser = viser la cible).
-            onPointerDown={(event) => {
-              event.stopPropagation();
-              startGesture("ability", card.id)(event);
-            }}
-            onClick={(event) => {
-              event.stopPropagation();
-              // Au clavier seulement (Entrée, Espace) : le pointeur passe par le geste.
-              if (event.detail === 0) props.onActivateAbility?.(card.id);
-            }}
-          >
-            {/* Un doigt qui touche : « à cliquer », sans bouton qui masque la carte. */}
-            <svg viewBox="0 0 24 24" fill="none" aria-hidden>
-              <path
-                d="M9 11V5.5a1.5 1.5 0 013 0V10m0-1.5a1.5 1.5 0 013 0V11m0-1a1.5 1.5 0 013 0v4.5a6 6 0 01-6 6h-.6a6 6 0 01-4.6-2.2L4.6 15.4a1.5 1.5 0 012.2-2L9 15V11"
-                stroke="currentColor"
-                strokeWidth={1.7}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <path d="M6.5 4.5L5 3M10.5 2.5V1M14.5 4.5L16 3" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" />
-            </svg>
-          </button>
         )}
       </div>
     );
@@ -1531,11 +1507,16 @@ export function TableBoard(props: TableBoardProps) {
             key={carteQuiCible.instance.instanceId}
             card={carteQuiCible.instance}
             tideState={tideState}
-            eyebrow="Choisis ta cible"
+            eyebrow={carteQuiCible.confirme ? "Activer l'effet" : "Choisis ta cible"}
             detail={carteQuiCible.detail}
-            hint={props.hint ?? (targeting?.kind === "ability" ? targetingHint("ability") : targetingHint("playCard")) ?? undefined}
-            actions={props.onCancelHint ? [{ label: "Annuler", tone: "neutral", onClick: props.onCancelHint }] : []}
-            waiting
+            hint={carteQuiCible.confirme ? undefined : (props.hint ?? (targeting?.kind === "ability" ? targetingHint("ability") : targetingHint("playCard")) ?? undefined)}
+            actions={[
+              ...(carteQuiCible.confirme && props.onActivateAbility
+                ? [{ label: "Activer", tone: "accept" as const, onClick: () => props.onActivateAbility!(carteQuiCible.instance.instanceId) }]
+                : []),
+              ...(props.onCancelHint ? [{ label: "Annuler", tone: "neutral" as const, onClick: props.onCancelHint }] : []),
+            ]}
+            waiting={!carteQuiCible.confirme}
             leaving={false}
             onDone={() => {}}
           />

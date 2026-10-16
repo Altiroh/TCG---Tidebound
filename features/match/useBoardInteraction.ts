@@ -485,21 +485,25 @@ export function useBoardInteraction({
    * suite, ou — si un effet vise une unité désignée — le joueur désigne
    * d'abord la cible. Le moteur ne choisit jamais à sa place.
    */
+  /**
+   * Capacité activable (16/10/2026) : toucher la carte la pose à DROITE
+   * (`TableBoard`, carte qui cible). Si l'effet vise une unité, le plateau
+   * s'éclaire de ses cibles ; sinon, « Activer » sous la carte confirme —
+   * c'est ce second appel qui part au moteur.
+   */
   function requestAbility(instanceId: string) {
     if (!canAct) return;
     const card = viewer.board.find((c) => c.instanceId === instanceId);
     if (!card) return;
     onGestureStart?.();
+    const spec = getCardDefinition(card.cardId).activatableOncePerTurn;
+    const targeted = spec?.effects.some((effect) => effect.target.kind === "chosenUnit") ?? false;
     if (selection?.kind === "ability" && selection.instanceId === instanceId) {
       clearSelection();
+      if (!targeted) act({ type: "activateAbility", playerId: actorId, sourceInstanceId: instanceId });
       return;
     }
-    const spec = getCardDefinition(card.cardId).activatableOncePerTurn;
-    if (spec?.effects.some((effect) => effect.target.kind === "chosenUnit")) {
-      setSelection({ kind: "ability", instanceId });
-      return;
-    }
-    act({ type: "activateAbility", playerId: actorId, sourceInstanceId: instanceId });
+    setSelection({ kind: "ability", instanceId });
   }
 
   /** La cible a été désignée D'UN GESTE (glisser la pastille jusqu'à elle) : le joueur a choisi, on active. */
