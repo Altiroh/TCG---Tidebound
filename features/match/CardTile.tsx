@@ -26,7 +26,7 @@ import {
   type MarkerId,
 } from "@/game";
 import { CARD_TYPE_LABELS, THICK_TEXT_OUTLINE } from "@/features/match/cardDisplay";
-import { useCardBackSrcFor } from "@/features/cosmetics/MatchCosmeticsProvider";
+import { useCardBackSrcFor, useCardEditionFor } from "@/features/cosmetics/MatchCosmeticsProvider";
 import { StatusBadge } from "@/features/match/StatusBadge";
 import { useDecreaseFlash } from "@/features/match/useDecreaseFlash";
 import { useImageOk } from "@/features/match/useImageOk";
@@ -624,9 +624,14 @@ function CardTileView({
   liftOnHover = false,
   variant = "full",
   attacksLeft,
-  finish,
-  artwork,
+  finish: finishProp,
+  artwork: artworkProp,
 }: CardTileProps) {
+  // En partie, l'édition que le PROPRIÉTAIRE de la carte a choisie de montrer
+  // (`MatchCosmeticsProvider`) ; ailleurs, celle que l'écran passe.
+  const editionEnJeu = useCardEditionFor(instance.ownerId, instance.cardId);
+  const finish = finishProp ?? (editionEnJeu?.finish === "classique" ? undefined : editionEnJeu?.finish);
+  const artwork = artworkProp ?? (editionEnJeu?.artwork === "classique" ? undefined : editionEnJeu?.artwork);
   // Face cachée : le dos est celui du PROPRIÉTAIRE de la carte (hors partie,
   // « booster » ou « preview » n'ont pas de contexte : dos local).
   const cardBack = useCardBackSrcFor(instance.ownerId);

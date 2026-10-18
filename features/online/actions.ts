@@ -151,7 +151,7 @@ export async function fetchMatchCosmetics(matchId: string): Promise<ActionResult
   const snapshot = await loadSnapshot(matchId, user.id);
   if (!snapshot) return { ok: false, error: "Partie introuvable." };
   const { player1_id, player2_id } = snapshot.match;
-  const cosmetics = await loadEquippedCosmetics([player1_id, player2_id].filter((id): id is string => Boolean(id)));
+  const cosmetics = await loadEquippedCosmetics([player1_id, player2_id].filter((id): id is string => Boolean(id)), { withEditions: true });
   return { ok: true, data: cosmetics };
 }
 

@@ -2133,3 +2133,139 @@
   color: #e8f4ff;
   background: linear-gradient(110deg, #0c1a3a, #3b2a6b, #0c1a3a);
 }
+
+.finishRibbon[data-artwork="styled"] {
+  color: #1d1205;
+  background: linear-gradient(110deg, #f6e3b8, #ffd27a, #f6e3b8);
+}
+
+.finishRibbon[data-artwork="styled-fa"] {
+  color: #1d1205;
+  background: linear-gradient(110deg, #fff6d6, #ffcf5a, #ffe9f6, #ffcf5a, #fff6d6);
+  background-size: 200% 100%;
+  box-shadow: 0 0 16px rgba(255, 214, 120, 0.85);
+  animation:
+    newBadgeIn 600ms ease-out 500ms both,
+    editionRuban 2.4s linear 1.1s infinite;
+}
+
+@keyframes editionRuban {
+  to { background-position: 200% 0; }
+}
+
+/* ─── Tirages exceptionnels (Collection visuelle V2, 18/10/2026) ─────────
+ * Au retournement d'une édition rare, un temps de plus que la rareté :
+ *  - Styled : un pinceau de lumière dorée balaie la carte, comme si on la
+ *    repeignait ;
+ *  - Styled Full-Art : éclat blanc, rayons tournants et anneau doré qui
+ *    reste — c'est le tirage le plus rare d'un booster ;
+ *  - finition seule : un reflet irisé qui traverse la carte une fois.
+ * Tout est posé SUR la carte retournée (`.cardLift`), sans toucher au
+ * retournement ni aux halos de rareté.
+ */
+.editionReveal {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.editionSweep {
+  position: absolute;
+  inset: 0;
+  border-radius: calc(var(--u) * 1.2);
+  overflow: hidden;
+}
+
+.editionSweep::before {
+  content: "";
+  position: absolute;
+  inset: -20% -80%;
+  background: linear-gradient(
+    105deg,
+    transparent 38%,
+    rgba(255, 255, 255, 0.05) 44%,
+    var(--edition-sweep, rgba(170, 230, 255, 0.75)) 50%,
+    rgba(255, 255, 255, 0.05) 56%,
+    transparent 62%
+  );
+  mix-blend-mode: screen;
+  transform: translateX(-60%);
+  animation: editionBalaye 1100ms cubic-bezier(0.3, 0.6, 0.2, 1) 350ms both;
+}
+
+.editionReveal[data-artwork="styled"] .editionSweep::before,
+.editionReveal[data-artwork="styled-fa"] .editionSweep::before {
+  --edition-sweep: rgba(255, 214, 130, 0.9);
+  animation-duration: 1500ms;
+}
+
+@keyframes editionBalaye {
+  from { transform: translateX(-60%); opacity: 1; }
+  80% { opacity: 1; }
+  to { transform: translateX(60%); opacity: 0; }
+}
+
+/* Full-Art : des rayons dorés qui tournent derrière la carte, puis s'apaisent. */
+.editionRays {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: calc(var(--card-w) * 2.2);
+  height: calc(var(--card-w) * 2.2);
+  margin: calc(var(--card-w) * -1.1) 0 0 calc(var(--card-w) * -1.1);
+  z-index: -1;
+  border-radius: 50%;
+  background: repeating-conic-gradient(from 0deg, rgba(255, 215, 120, 0.42) 0deg 6deg, transparent 6deg 22deg);
+  -webkit-mask-image: radial-gradient(circle, #000 18%, transparent 68%);
+  mask-image: radial-gradient(circle, #000 18%, transparent 68%);
+  animation:
+    editionRayonsTournent 9s linear infinite,
+    editionRayonsArrivent 1600ms ease-out 200ms both;
+}
+
+@keyframes editionRayonsTournent {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes editionRayonsArrivent {
+  from { opacity: 0; scale: 0.4; }
+  35% { opacity: 1; scale: 1.08; }
+  to { opacity: 0.55; scale: 1; }
+}
+
+/* Full-Art : l'éclat blanc du retournement. */
+.editionFlash {
+  position: absolute;
+  inset: -12%;
+  border-radius: 30%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.95) 0%, rgba(255, 236, 190, 0.6) 35%, transparent 70%);
+  animation: editionEclat 900ms ease-out 150ms both;
+}
+
+@keyframes editionEclat {
+  from { opacity: 0; scale: 0.6; }
+  25% { opacity: 1; scale: 1.05; }
+  to { opacity: 0; scale: 1.2; }
+}
+
+/* Le halo d'une édition rare reste, plus chaud que celui de la rareté. */
+.card[data-state="revealed"][data-edition-artwork="styled-fa"] .cardGlow {
+  box-shadow:
+    0 0 calc(var(--u) * 2.5) rgba(255, 214, 120, 0.85),
+    0 0 calc(var(--u) * 6) rgba(255, 190, 90, 0.45);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .editionSweep::before,
+  .editionRays,
+  .editionFlash,
+  .finishRibbon[data-artwork="styled-fa"] {
+    animation: none;
+  }
+  .editionSweep::before,
+  .editionFlash {
+    opacity: 0;
+  }
+}

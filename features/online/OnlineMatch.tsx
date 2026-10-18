@@ -133,8 +133,10 @@ export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: On
    * Dos et cadre équipés par l'ADVERSAIRE, par identifiant de joueur. Lus
    * une fois les deux sièges occupés (et relus si le second joueur change de
    * `player2_id`, c'est-à-dire quand il s'assied) : avant, il n'y a personne
-   * à dessiner. Contre le bot, rien à lire : il joue avec les cosmétiques
-   * d'origine, ce que le fournisseur fait pour tout identifiant inconnu.
+   * à dessiner. Le bot, lui, n'a rien équipé : il joue avec les cosmétiques
+   * d'origine, ce que le fournisseur fait pour tout identifiant inconnu. La
+   * lecture porte aussi les ÉDITIONS montrées par chaque joueur (Full-Art…),
+   * y compris les siennes — d'où sa présence contre le bot.
    */
   const [cosmetics, setCosmetics] = useState<Record<string, PlayerCosmetics>>({});
   const opponentUserId = match.player1_id === myUserId ? match.player2_id : match.player1_id;
@@ -150,7 +152,9 @@ export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: On
   const [opponentOnChannel, setOpponentOnChannel] = useState<boolean | null>(null);
   const opponentPresence = useOpponentPresence(isBotMatch ? null : opponentOnChannel);
   useEffect(() => {
-    if (isBotMatch || !opponentUserId) return;
+    // Contre le bot aussi : les ÉDITIONS montrées (Full-Art…) sont celles du
+    // joueur lui-même, que seule la partie annonce.
+    if (!isBotMatch && !opponentUserId) return;
     let cancelled = false;
     void fetchMatchCosmetics(matchId).then((result) => {
       if (!cancelled && result.ok && result.data) setCosmetics(result.data);

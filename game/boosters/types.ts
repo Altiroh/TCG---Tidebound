@@ -55,6 +55,14 @@ export interface DrawBoosterInput {
   packsSinceNewCard?: number;
   /** Graine du RNG déterministe (`game/rng.ts`). */
   seed: number;
+  /**
+   * Illustrations alternatives que CE booster propose pour une carte
+   * (Collection visuelle V2). Absent : aucune — le tirage reste celui des
+   * cartes et des finitions.
+   */
+  artworksFor?: (cardId: string) => readonly import("@/game/cosmetics/artworks").RareCardArtwork[];
+  /** Éditions rares déjà possédées, clés `<cardId>|<editionKey>` : pour le badge « Nouveau » d'une édition. */
+  ownedEditionKeys?: ReadonlySet<string>;
 }
 
 export interface DrawnCard {
@@ -65,6 +73,15 @@ export interface DrawnCard {
   isNew: boolean;
   /** Finition TRÈS rare tirée pour cet exemplaire (`game/cosmetics/finishes.ts`) ; absente : Classique. */
   finish?: import("@/game/cosmetics/finishes").RareCardFinish;
+  /** Illustration alternative tirée pour cet exemplaire (`game/cosmetics/artworks.ts`) ; absente : Classique. */
+  artwork?: import("@/game/cosmetics/artworks").RareCardArtwork;
+  /**
+   * L'exemplaire est d'une ÉDITION (illustration ou finition rare) que le
+   * joueur n'avait pas : il porte son badge « Nouveau ». Distinct de
+   * `isNew`, qui ne regarde que la carte et seul nourrit la garantie de
+   * carte nouvelle.
+   */
+  editionNew?: boolean;
 }
 
 export interface DrawBoosterResult {

@@ -2,7 +2,7 @@
 
 import { memo, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent, type PointerEvent } from "react";
 import { getCardDefinition } from "@/game";
-import { CARD_FINISH_LABELS } from "@/game/cosmetics/finishes";
+import { editionLabel } from "@/game/cosmetics/editions";
 import { CardTile } from "@/features/match/CardTile";
 import styles from "@/features/boosters/opening/BoosterOpening.module.css";
 import { useCardBackSrc } from "@/features/cosmetics/CardBackProvider";
@@ -85,6 +85,10 @@ export const BoosterCard = memo(function BoosterCard({
   const cardName = card.cardId ? getCardDefinition(card.cardId).name : "Carte test";
   const cardBack = useCardBackSrc();
   const showBackImage = cardBackAvailable && !backFailed;
+  // Édition exceptionnelle (illustration alternative ou finition rare) : son
+  // ruban, son badge « Nouveau » et sa propre mise en scène au retournement.
+  const edition = { artwork: card.artwork ?? ("classique" as const), finish: card.finish ?? ("classique" as const) };
+  const exceptionnelle = edition.artwork !== "classique" || edition.finish !== "classique";
   const highRarity = card.rarity === "rare" || card.rarity === "epic" || card.rarity === "legendary" || card.rarity === "abyssal";
 
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
@@ -171,6 +175,8 @@ export const BoosterCard = memo(function BoosterCard({
       data-card-index={index}
       data-state={state}
       data-rarity={card.rarity}
+      data-edition-artwork={exceptionnelle ? edition.artwork : undefined}
+      data-edition-finish={exceptionnelle ? edition.finish : undefined}
       // Nouveau cadre (`cardFrame.ts`) : sa silhouette est plus étroite que la boîte
       // de la carte — la face et le halo s'y calent (`BoosterOpening.module.css`).
       data-cadre={NOUVEAU_CADRE && card.cardId ? "nouveau" : undefined}
@@ -236,6 +242,7 @@ export const BoosterCard = memo(function BoosterCard({
                     widthClassName="w-full"
                     scaleOnHover={false}
                     finish={card.finish}
+                    artwork={card.artwork}
                   />
                 </span>
               ) : (
@@ -264,16 +271,26 @@ export const BoosterCard = memo(function BoosterCard({
             ))}
           </span>
         )}
-        {revealed && card.isNew && (
+        {/* Tirage exceptionnel (Collection visuelle V2) : Styled — un pinceau de
+            lumière repeint la carte ; Full-Art — éclat blanc, rayons et anneau
+            doré ; finition seule — un reflet qui la traverse. */}
+        {revealed && exceptionnelle && (
+          <span className={styles.editionReveal} data-artwork={edition.artwork} data-finish={edition.finish} aria-hidden>
+            <span className={styles.editionSweep} />
+            {edition.artwork === "styled-fa" && <span className={styles.editionRays} />}
+            {edition.artwork === "styled-fa" && <span className={styles.editionFlash} />}
+          </span>
+        )}
+        {revealed && (card.isNew || card.editionNew) && (
           <span className={styles.statusFrame}>
             <StatusTag tone="new" className={styles.newBadge} />
           </span>
         )}
         {revealed && card.rarity === "legendary" && <BoosterParticles variant="sparks" />}
-        {/* Finition TRÈS rare (16/10/2026) : son nom, en ruban au pied de la carte. */}
-        {revealed && card.finish && card.finish !== "classique" && (
-          <span className={styles.finishRibbon} data-finish={card.finish}>
-            {CARD_FINISH_LABELS[card.finish]}
+        {/* Édition rare (illustration, finition) : son nom, en ruban au pied de la carte. */}
+        {revealed && exceptionnelle && (
+          <span className={styles.finishRibbon} data-finish={edition.finish} data-artwork={edition.artwork}>
+            {editionLabel(edition)}
           </span>
         )}
       </span>

@@ -23,6 +23,10 @@ export interface BoosterOpeningCard {
   isNew?: boolean;
   /** Finition TRÈS rare de l'exemplaire (Monochrome, Star Foil…) : appliquée à la carte, et annoncée. */
   finish?: import("@/game/cosmetics/finishes").CardFinish;
+  /** Illustration alternative de l'exemplaire (Styled, Styled Full-Art) : montrée, annoncée, et mise en scène. */
+  artwork?: import("@/game/cosmetics/artworks").CardArtwork;
+  /** Édition jamais obtenue (illustration ou finition rare) : badge « Nouveau », même si la carte est déjà possédée. */
+  editionNew?: boolean;
 }
 
 /** Traduction d'une rareté de collection vers un palier de mise en scène — un pour un. */

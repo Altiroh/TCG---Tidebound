@@ -7,7 +7,22 @@ import { useCardShelf } from "@/features/collection/shelf/CardShelfProvider";
 import { FAVORITES_FILTER, notebookFilter } from "@/features/collection/shelf/shelf";
 import { BOOSTER_EXTENSIONS, boostersContaining, rarityForCardId } from "@/game/boosters";
 import type { CardRarity } from "@/game/boosters/types";
-import { CARD_FINISH_LABELS, RARE_CARD_FINISHES, type RareCardFinish } from "@/game/cosmetics/finishes";
+import { CARD_FINISH_LABELS, type RareCardFinish } from "@/game/cosmetics/finishes";
+import { CARD_ARTWORK_LABELS, type RareCardArtwork } from "@/game/cosmetics/artworks";
+
+/**
+ * Filtre « Édition » de la Collection (Collection visuelle V2) : une
+ * illustration alternative (Styled, Styled Full-Art) ou une finition rare.
+ */
+export type EditionFilter = { kind: "artwork"; value: RareCardArtwork } | { kind: "finish"; value: RareCardFinish };
+
+function editionFilterLabel(filter: EditionFilter): string {
+  return filter.kind === "artwork" ? CARD_ARTWORK_LABELS[filter.value] : CARD_FINISH_LABELS[filter.value];
+}
+
+function sameEditionFilter(a: EditionFilter | null, b: EditionFilter): boolean {
+  return a !== null && a.kind === b.kind && a.value === b.value;
+}
 import { CARD_RARITY_LABELS, CARD_TYPE_LABELS, typeGlyphUrl } from "@/features/match/cardDisplay";
 import { TYPE_FILTERS } from "@/features/collection/cardFilters";
 import {
@@ -59,13 +74,14 @@ interface CollectionSidebarProps {
    */
   deckFilter?: { active: boolean; count: number; onToggle: () => void };
   /**
-   * Collection : le filtre « Finition » (16/10/2026) — les cartes possédées
-   * dans une finition très rare. `counts` : par finition, dans la sélection.
+   * Collection : le filtre « Édition » (Collection visuelle V2) — les cartes
+   * possédées dans une illustration alternative ou une finition rare.
+   * `options` : chaque filtre et son nombre de cartes, dans la sélection.
    */
-  finishFilter?: {
-    active: RareCardFinish | null;
-    counts: Record<RareCardFinish, number>;
-    onSelect: (finish: RareCardFinish | null) => void;
+  editionFilter?: {
+    active: EditionFilter | null;
+    options: ReadonlyArray<{ filter: EditionFilter; count: number }>;
+    onSelect: (filter: EditionFilter | null) => void;
   };
 }
 
@@ -289,7 +305,7 @@ export function CollectionSidebar({
   shelfCards = null,
   order = "collection",
   deckFilter,
-  finishFilter,
+  editionFilter,
 }: CollectionSidebarProps) {
   /** Ordre et axes de la maquette de l'Éditeur : carnets en bas, pas de Raison. */
   const editorOrder = order === "editeur";
@@ -325,20 +341,23 @@ export function CollectionSidebar({
         </section>
       )}
 
-      {finishFilter && (
+      {editionFilter && (
         <section className={styles.filterSection}>
-          <h2 className={styles.sectionTitle}>Finition</h2>
-          <FilterList rowCount={RARE_CARD_FINISHES.length + 1}>
-            <FilterRow label="Toutes" active={finishFilter.active === null} onClick={() => finishFilter.onSelect(null)} />
-            {RARE_CARD_FINISHES.map((finish) => (
-              <FilterRow
-                key={finish}
-                label={CARD_FINISH_LABELS[finish]}
-                active={finishFilter.active === finish}
-                count={finishFilter.counts[finish]}
-                onClick={() => finishFilter.onSelect(finishFilter.active === finish ? null : finish)}
-              />
-            ))}
+          <h2 className={styles.sectionTitle}>Édition</h2>
+          <FilterList rowCount={editionFilter.options.length + 1}>
+            <FilterRow label="Toutes" active={editionFilter.active === null} onClick={() => editionFilter.onSelect(null)} />
+            {editionFilter.options.map(({ filter, count }) => {
+              const active = sameEditionFilter(editionFilter.active, filter);
+              return (
+                <FilterRow
+                  key={`${filter.kind}:${filter.value}`}
+                  label={editionFilterLabel(filter)}
+                  active={active}
+                  count={count}
+                  onClick={() => editionFilter.onSelect(active ? null : filter)}
+                />
+              );
+            })}
           </FilterList>
         </section>
       )}

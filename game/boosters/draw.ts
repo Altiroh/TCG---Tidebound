@@ -1,5 +1,6 @@
 import { nextFloat, nextInt } from "@/game/rng";
 import { rollCardFinish } from "@/game/cosmetics/finishes";
+import { editionKey, rollCardArtwork } from "@/game/cosmetics/editions";
 import { DEPTH_SLOT_BASE_ABYSSAL_CHANCE, PITY } from "@/game/boosters/constants";
 import {
   RARITY_ORDER,
@@ -181,7 +182,16 @@ function forceNewCard(
   return { cards: next, nextSeed: draw.nextState, forced: true };
 }
 
-export function drawBooster({ slots, pool, ownedCardIds, packsSinceAbyssal, packsSinceNewCard = 0, seed }: DrawBoosterInput): DrawBoosterResult {
+export function drawBooster({
+  slots,
+  pool,
+  ownedCardIds,
+  packsSinceAbyssal,
+  packsSinceNewCard = 0,
+  seed,
+  artworksFor,
+  ownedEditionKeys,
+}: DrawBoosterInput): DrawBoosterResult {
   const cards: DrawnCard[] = [];
   // Copie locale de la collection : une Abyssale tirée au slot 7 ne doit
   // pas être re-proposée par la protection au slot 8 du MÊME booster.
@@ -226,6 +236,28 @@ export function drawBooster({ slots, pool, ownedCardIds, packsSinceAbyssal, pack
     const roll = rollCardFinish(rngSeed);
     rngSeed = roll.nextState;
     return roll.finish ? { ...card, finish: roll.finish } : card;
+  });
+
+  // Illustrations alternatives (Collection visuelle V2, 18/10/2026) : APRÈS
+  // les finitions, pour les seules cartes que le booster propose en Styled /
+  // Full-Art. Elles cumulent leur rareté avec celle de la finition, et
+  // n'entrent ni dans la garantie de carte nouvelle ni dans la protection
+  // Abyssale, déjà réglées plus haut sur la seule carte.
+  const ownedEditions = new Set(ownedEditionKeys);
+  finalCards = finalCards.map((card) => {
+    const available = artworksFor?.(card.cardId) ?? [];
+    let withArtwork = card;
+    if (available.length > 0) {
+      const roll = rollCardArtwork(rngSeed, available);
+      rngSeed = roll.nextState;
+      if (roll.artwork) withArtwork = { ...card, artwork: roll.artwork };
+    }
+    if (!withArtwork.artwork && !withArtwork.finish) return withArtwork;
+    // Badge « Nouveau » de l'édition : jamais vue avant, ni plus tôt dans ce booster.
+    const key = `${card.cardId}|${editionKey({ artwork: withArtwork.artwork ?? "classique", finish: withArtwork.finish ?? "classique" })}`;
+    const editionNew = !ownedEditions.has(key);
+    ownedEditions.add(key);
+    return { ...withArtwork, editionNew };
   });
 
   const newCardPulled = finalCards.some((card) => card.isNew);

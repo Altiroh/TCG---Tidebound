@@ -2,6 +2,8 @@ import { rarityForCardId } from "@/game/boosters/cardRarity";
 import type { CardRarity } from "@/game/boosters/types";
 import { CORE_SET } from "@/game/cards/sets/core";
 import { toOpeningRarity, type BoosterOpeningCard } from "@/features/boosters/opening/types";
+import { artworksOf, cardIdsWithAlternateArt, type CardArtwork } from "@/game/cosmetics/artworks";
+import { RARE_CARD_FINISHES, type RareCardFinish } from "@/game/cosmetics/finishes";
 
 /**
  * Contenu de TEST de la scène d'ouverture : de vraies cartes du catalogue
@@ -92,7 +94,7 @@ export function drawTestBoosterCards(boosterId: string, random: () => number = M
   const pool = cardPool();
   const used = new Set<string>();
 
-  return testSlotsFor(boosterId).flatMap((weights, slotIndex) => {
+  const cards = testSlotsFor(boosterId).flatMap((weights, slotIndex) => {
     const rarity = pickWeighted(weights, random);
     let drawn = takeFrom(pool, rarity, used, random);
 
@@ -113,6 +115,37 @@ export function drawTestBoosterCards(boosterId: string, random: () => number = M
     // Essai : une carte sur deux passe pour « nouvelle », pour voir le badge.
     return [{ id: `${slotIndex}-${drawn.cardId}`, cardId: drawn.cardId, rarity: toOpeningRarity(drawn.rarity), isNew: random() < 0.5 }];
   });
+  return withEditionShowcase(cards, random);
+}
+
+/**
+ * VITRINE DES ÉDITIONS (Collection visuelle V2) : au vrai taux, une Styled ou
+ * une Full-Art ne sortirait presque jamais du labo. Trois sachets sur quatre
+ * remplacent donc leur dernière carte par une édition rare — illustration
+ * alternative, finition, ou les deux — pour régler ses animations. La carte
+ * de remplacement garde la RARETÉ de celle qu'elle remplace : la vitrine ne
+ * change pas ce qu'un sachet a le droit de contenir.
+ */
+function withEditionShowcase(cards: BoosterOpeningCard[], random: () => number): BoosterOpeningCard[] {
+  const last = cards[cards.length - 1];
+  if (!last) return cards;
+  const candidates = cardIdsWithAlternateArt().filter((cardId) => artworksOf(cardId).length > 1 && rarityForCardId(cardId) === last.rarity);
+  if (candidates.length === 0 || random() >= 0.75) return cards;
+  const cardId = candidates[Math.floor(random() * candidates.length)]!;
+  const artworks: CardArtwork[] = artworksOf(cardId);
+  const artwork = artworks[Math.floor(random() * artworks.length)]!;
+  const finish: RareCardFinish | undefined =
+    artwork === "classique" || random() < 0.5 ? RARE_CARD_FINISHES[Math.floor(random() * RARE_CARD_FINISHES.length)] : undefined;
+  const vitrine: BoosterOpeningCard = {
+    id: `${last.id}-edition`,
+    cardId,
+    rarity: last.rarity,
+    isNew: false,
+    editionNew: true,
+    ...(artwork !== "classique" ? { artwork } : {}),
+    ...(finish ? { finish } : {}),
+  };
+  return [...cards.slice(0, -1), vitrine];
 }
 
 /** Une carte encore inutilisée de cette rareté, ou `null` si le pool est vide. */

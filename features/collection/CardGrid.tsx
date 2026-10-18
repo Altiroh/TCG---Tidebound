@@ -2,7 +2,7 @@
 
 import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { CardDefinition, CardInstance } from "@/game";
-import type { CardFinish } from "@/game/cosmetics/finishes";
+import { CLASSIC_EDITION, editionKey, type CardEdition } from "@/game/cosmetics/editions";
 import styles from "@/features/collection/CardBrowser.module.css";
 import game from "@/features/shell/GameScreen.module.css";
 import { CardTile } from "@/features/match/CardTile";
@@ -16,7 +16,7 @@ const STAGGER_COUNT = 12;
 /** Délai cosmétique avant d'ajouter le lot suivant — juste assez pour que l'indicateur de chargement soit perceptible. */
 const LOAD_DELAY_MS = 180;
 
-const CLASSIQUE_SEULE: readonly CardFinish[] = ["classique"];
+const CLASSIQUE_SEULE: readonly CardEdition[] = [CLASSIC_EDITION];
 
 /** Instance factice, pour afficher une carte hors de toute partie (stats de base, aucun état vivant). */
 function displayInstance(cardId: string): CardInstance {
@@ -46,12 +46,12 @@ const GridCell = memo(function GridCell({
   onCardClick,
   cellExtras,
   onCardDragStart,
-  finish,
+  edition,
 }: {
   def: CardDefinition;
   index: number;
   missing: boolean;
-  finish?: CardFinish;
+  edition?: CardEdition;
   onCardClick: CardGridProps["onCardClick"];
   cellExtras: CardGridProps["cellExtras"];
   onCardDragStart: CardGridProps["onCardDragStart"];
@@ -85,8 +85,9 @@ const GridCell = memo(function GridCell({
          * sert aussi l'Éditeur de deck, avait été oubliée.
          */
         showStatusBadges={false}
-        finish={finish === "classique" ? undefined : finish}
-        onClick={() => onCardClick(def.id, finish)}
+        finish={edition && edition.finish !== "classique" ? edition.finish : undefined}
+        artwork={edition && edition.artwork !== "classique" ? edition.artwork : undefined}
+        onClick={() => onCardClick(def.id, edition)}
         draggable={Boolean(onCardDragStart)}
         onDragStart={onCardDragStart ? (event) => onCardDragStart(def, event) : undefined}
       />
@@ -95,14 +96,14 @@ const GridCell = memo(function GridCell({
       {/* Le cœur des favoris, posé SUR la carte : il se soulève avec elle. */}
       <FavoriteToggle cardId={def.id} cardName={def.name} />
       </div>
-      {cellExtras && <div className={styles.cellExtras}>{cellExtras(def, finish)}</div>}
+      {cellExtras && <div className={styles.cellExtras}>{cellExtras(def, edition)}</div>}
     </div>
   );
 });
 
 interface CardGridProps {
   cards: CardDefinition[];
-  onCardClick: (cardId: string, finish?: CardFinish) => void;
+  onCardClick: (cardId: string, edition?: CardEdition) => void;
   hasAnyCards: boolean;
   /**
    * Cartes réellement possédées. Les autres restent affichées mais
@@ -118,7 +119,7 @@ interface CardGridProps {
    * Builder y met la quantité dans le deck et ses boutons. `null` pour une
    * carte sans superposition. La grille ne sait rien de ce qu'elle affiche.
    */
-  cellExtras?: (def: CardDefinition, finish?: CardFinish) => ReactNode;
+  cellExtras?: (def: CardDefinition, edition?: CardEdition) => ReactNode;
   /**
    * Rend les cartes glissables (HTML natif) et reçoit le `dragstart` — le
    * Deck Builder y pose l'identifiant de la carte pour la zone de dépôt de
@@ -126,12 +127,13 @@ interface CardGridProps {
    */
   onCardDragStart?: (def: CardDefinition, event: React.DragEvent<HTMLButtonElement>) => void;
   /**
-   * Les EXEMPLAIRES à montrer pour chaque carte, une cellule par finition
-   * (16/10/2026) : un exemplaire en finition rare ne s'empile pas avec la
-   * même carte en Classique, il a sa propre cellule juste après elle. Une
-   * liste vide ne montre rien de la carte. Absent : une cellule Classique.
+   * Les EXEMPLAIRES à montrer pour chaque carte, une cellule par ÉDITION
+   * (illustration × finition, Collection visuelle V2) : un exemplaire rare
+   * ne s'empile pas avec la même carte en Classique, il a sa propre cellule
+   * juste après elle. Une liste vide ne montre rien de la carte. Absent :
+   * une cellule Classique.
    */
-  finishesFor?: (def: CardDefinition) => readonly CardFinish[];
+  editionsFor?: (def: CardDefinition) => readonly CardEdition[];
 }
 
 /**
@@ -146,7 +148,7 @@ interface CardGridProps {
  * référence qui déclenche le retour en haut + la réinitialisation du lot,
  * sans plomberie supplémentaire côté parent.
  */
-export function CardGrid({ cards, onCardClick, hasAnyCards, owned, emptyLabel, cellExtras, onCardDragStart, finishesFor }: CardGridProps) {
+export function CardGrid({ cards, onCardClick, hasAnyCards, owned, emptyLabel, cellExtras, onCardDragStart, editionsFor }: CardGridProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const loadTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -225,19 +227,19 @@ export function CardGrid({ cards, onCardClick, hasAnyCards, owned, emptyLabel, c
         <>
           <div className={styles.cardGrid}>
             {visibleCards.flatMap((def, index) =>
-              (finishesFor?.(def) ?? CLASSIQUE_SEULE).map((finish) => (
+              (editionsFor?.(def) ?? CLASSIQUE_SEULE).map((edition) => (
                 <GridCell
-                  key={`${generation}:${def.id}:${finish}`}
+                  key={`${generation}:${def.id}:${editionKey(edition)}`}
                   def={def}
                   index={index}
                   missing={Boolean(owned && !owned.has(def.id))}
                   onCardClick={onCardClick}
                   cellExtras={cellExtras}
                   onCardDragStart={onCardDragStart}
-                  // « classique » transmis tel quel quand la grille montre les
-                  // finitions : sans lui, la fiche ouverte depuis la cellule
+                  // La Classique transmise telle quelle quand la grille montre les
+                  // éditions : sans elle, la fiche ouverte depuis la cellule
                   // Classique retombait sur la plus rare possédée.
-                  finish={finishesFor ? finish : undefined}
+                  edition={editionsFor ? edition : undefined}
                 />
               ))
             )}

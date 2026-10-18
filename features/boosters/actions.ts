@@ -5,9 +5,12 @@ import { createSupabaseServerClient, createSupabaseServiceRoleClient } from "@/l
 import { createSeed } from "@/game/rng";
 import { MAX_BATCH_OPEN } from "@/features/boosters/constants";
 import { describeFailure, purchaseBoosterFor } from "@/features/boosters/purchaseService";
-import { drawBooster, rarityForCardId, type BoosterPoolCard, type BoosterSlotRule, type CardRarity, type DrawnCard } from "@/game/boosters";
+import { boosterArtworksFor, drawBooster, rarityForCardId, type BoosterPoolCard, type BoosterSlotRule, type CardRarity, type DrawnCard } from "@/game/boosters";
 import { getSessionUser } from "@/lib/supabase/sessionUser";
 import type { RareCardFinish } from "@/game/cosmetics/finishes";
+import type { RareCardArtwork } from "@/game/cosmetics/artworks";
+import { editionKey } from "@/game/cosmetics/editions";
+import { addOwnedEditions, ownedEditionKeys, readOwnedEditions } from "@/lib/supabase/cardEditions";
 
 /**
  * Boosters — achat et ouverture, entièrement autoritaires côté serveur.
@@ -73,6 +76,10 @@ export interface OpenedCard {
   isNew: boolean;
   /** Finition TRÈS rare de cet exemplaire (Monochrome, Star Foil…) ; absente : Classique. */
   finish?: RareCardFinish;
+  /** Illustration alternative de cet exemplaire (Styled, Styled Full-Art) ; absente : Classique. */
+  artwork?: RareCardArtwork;
+  /** Édition (illustration / finition rare) que le joueur n'avait pas : badge « Nouveau », distinct de `isNew`. */
+  editionNew?: boolean;
 }
 
 export interface OpenBoosterResult {
@@ -232,6 +239,8 @@ interface DrawContext {
   ownedCardIds: Set<string>;
   packsSinceAbyssal: number;
   packsSinceNewCard: number;
+  /** Éditions rares possédées (`<cardId>|<editionKey>`) : badge « Nouveau » d'une édition. */
+  ownedEditionKeys: Set<string>;
 }
 
 type Service = ReturnType<typeof createSupabaseServiceRoleClient>;
@@ -241,7 +250,7 @@ async function loadDrawContext(service: Service, userId: string, boosterId: stri
   // base qui décide de ce qui est tirable, pas le catalogue TypeScript
   // (une carte peut être désactivée ou rendue non collectionnable sans
   // toucher au moteur).
-  const [slots, pool, pity, ownedCards] = await Promise.all([
+  const [slots, pool, pity, ownedCards, ownedEditions] = await Promise.all([
     service
       .from("booster_slots")
       .select("slot_index, guaranteed_rarity, weighted_rarities")
@@ -268,6 +277,7 @@ async function loadDrawContext(service: Service, userId: string, boosterId: stri
       .eq("booster_definition_id", boosterId)
       .maybeSingle(),
     service.from("player_cards").select("card_id").eq("user_id", userId).gt("quantity", 0),
+    readOwnedEditions(userId, service),
   ]);
 
   if (slots.error) return { ok: false, error: slots.error.message };
@@ -314,6 +324,7 @@ async function loadDrawContext(service: Service, userId: string, boosterId: stri
       ownedCardIds: new Set((ownedCards.data ?? []).map((row) => row.card_id)),
       packsSinceAbyssal: pity.data?.packs_since_abyssal ?? 0,
       packsSinceNewCard: pity.data?.packs_since_new_card ?? 0,
+      ownedEditionKeys: ownedEditionKeys(ownedEditions),
     },
   };
 }
@@ -348,6 +359,10 @@ async function openPacks(boosterId: string, count: number): Promise<ActionResult
         // n'a pas à être rejouable. C'est le seul endroit du code où on veut
         // explicitement de l'imprévisible.
         seed: createSeed(),
+        // Illustrations Styled / Full-Art : tirées après la carte et sa
+        // finition, hors garantie de nouveauté (`drawBooster`).
+        artworksFor: (cardId) => boosterArtworksFor(boosterId, cardId),
+        ownedEditionKeys: context.ownedEditionKeys,
       });
 
       const { data, error } = await service.rpc("open_booster", {
@@ -370,20 +385,14 @@ async function openPacks(boosterId: string, count: number): Promise<ActionResult
         break;
       }
 
-      // Finitions rares : écrites À CÔTÉ de l'ouverture (`add_card_finishes`).
-      // L'exemplaire est déjà acquis ; une finition qui ne s'écrit pas (base
-      // sans la migration 20261105120000) est signalée, jamais bloquante.
-      const rares = draw.cards.filter((card) => card.finish);
-      if (rares.length > 0) {
-        const finitions = await service.rpc("add_card_finishes", {
-          p_user_id: userId,
-          p_card_ids: rares.map((card) => card.cardId),
-          p_finishes: rares.map((card) => card.finish!),
-        });
-        if (finitions.error || !finitions.data?.ok) {
-          console.warn("[openBooster] Finitions non conservées :", finitions.error?.message ?? finitions.data?.error);
-        }
-      }
+      // Éditions rares (illustration, finition) : écrites À CÔTÉ de
+      // l'ouverture. L'exemplaire est déjà acquis ; une édition qui ne
+      // s'écrit pas est signalée, jamais bloquante (`addOwnedEditions`).
+      const editions = draw.cards
+        .filter((card) => card.artwork || card.finish)
+        .map((card) => ({ cardId: card.cardId, artwork: card.artwork ?? ("classique" as const), finish: card.finish ?? ("classique" as const) }));
+      await addOwnedEditions(service, userId, editions);
+      for (const edition of editions) context.ownedEditionKeys.add(`${edition.cardId}|${editionKey(edition)}`);
 
       for (const card of draw.cards) context.ownedCardIds.add(card.cardId);
       // `abyssal_pulled`/`packs_since_abyssal` viennent de la BASE, pas du
@@ -414,5 +423,13 @@ async function openPacks(boosterId: string, count: number): Promise<ActionResult
 }
 
 function toOpenedCard(card: DrawnCard): OpenedCard {
-  return { slotIndex: card.slotIndex, cardId: card.cardId, rarity: card.rarity, isNew: card.isNew, ...(card.finish ? { finish: card.finish } : {}) };
+  return {
+    slotIndex: card.slotIndex,
+    cardId: card.cardId,
+    rarity: card.rarity,
+    isNew: card.isNew,
+    ...(card.finish ? { finish: card.finish } : {}),
+    ...(card.artwork ? { artwork: card.artwork } : {}),
+    ...(card.editionNew !== undefined ? { editionNew: card.editionNew } : {}),
+  };
 }

@@ -1,6 +1,7 @@
 import { CARD_BACK_COSMETIC_KIND, SHIP_FRAME_COSMETIC_KIND, cardBackById, shipFrameById } from "@/game";
 import { DEFAULT_PLAYER_COSMETICS, type PlayerCosmetics } from "@/features/cosmetics/MatchCosmeticsProvider";
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
+import { readDisplayedEditions } from "@/lib/supabase/cardEditions";
 
 /**
  * Les cosmétiques VISIBLES qu'un lot de joueurs a équipés — dos de carte et
@@ -16,7 +17,10 @@ import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
  * rend les cosmétiques d'origine pour tout le monde. Une partie ne doit
  * jamais attendre un dos de carte.
  */
-export async function loadEquippedCosmetics(userIds: readonly string[]): Promise<Record<string, PlayerCosmetics>> {
+export async function loadEquippedCosmetics(
+  userIds: readonly string[],
+  { withEditions = false }: { withEditions?: boolean } = {}
+): Promise<Record<string, PlayerCosmetics>> {
   const result: Record<string, PlayerCosmetics> = {};
   const distinct = Array.from(new Set(userIds.filter((id): id is string => Boolean(id))));
   for (const id of distinct) result[id] = { ...DEFAULT_PLAYER_COSMETICS };
@@ -24,6 +28,12 @@ export async function loadEquippedCosmetics(userIds: readonly string[]): Promise
 
   try {
     const service = createSupabaseServiceRoleClient();
+    // Éditions montrées en partie (Collection visuelle V2) : seulement pour
+    // une table — l'écran de profil n'a besoin que du dos et du cadre.
+    if (withEditions) {
+      const editions = await readDisplayedEditions(distinct, service);
+      for (const id of distinct) result[id]!.cardEditions = editions[id] ?? {};
+    }
     const { data, error } = await service
       .from("player_cosmetics")
       .select("user_id, cosmetic_kind, cosmetic_id")

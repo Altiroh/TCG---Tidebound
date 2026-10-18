@@ -5,6 +5,7 @@ import { DEFAULT_CARD_BACK_ID, cardBackSrc, type PlayerId } from "@/game";
 import { useCardBackSrc } from "@/features/cosmetics/CardBackProvider";
 import { useShipFrameGeometry } from "@/features/cosmetics/ShipFrameProvider";
 import { DEFAULT_SHIP_FRAME, shipFrame, type ShipFrameGeometry } from "@/features/ships/shipFrame";
+import type { CardEdition } from "@/game/cosmetics/editions";
 
 /**
  * Cosmétiques VISIBLES de chaque camp pendant une partie : le dos de ses
@@ -29,6 +30,13 @@ import { DEFAULT_SHIP_FRAME, shipFrame, type ShipFrameGeometry } from "@/feature
 export interface PlayerCosmetics {
   cardBackId: string;
   shipFrameId: string;
+  /**
+   * Édition que ce joueur montre pour chaque carte (Collection visuelle V2 :
+   * Styled, Full-Art, finitions). Absente : la Classique. Contrairement au
+   * dos et au cadre, elle vaut AUSSI pour le joueur de cet appareil : rien
+   * ne la miroite localement, c'est la partie qui l'annonce pour tous.
+   */
+  cardEditions?: Readonly<Record<string, CardEdition>>;
 }
 
 export const DEFAULT_PLAYER_COSMETICS: PlayerCosmetics = {
@@ -67,6 +75,17 @@ export function useCardBackSrcFor(ownerId: PlayerId | undefined): string {
   const other = cosmeticsOf(ownerId, useContext(MatchCosmeticsContext));
   const own = useCardBackSrc();
   return other ? cardBackSrc(other.cardBackId) : own;
+}
+
+/**
+ * Édition que `ownerId` montre pour cette carte — la sienne comme celle de
+ * l'adversaire, telles que le conteneur de partie les a annoncées.
+ * `undefined` hors partie, pour un joueur sans choix, ou une Classique.
+ */
+export function useCardEditionFor(ownerId: PlayerId | undefined, cardId: string): CardEdition | undefined {
+  const context = useContext(MatchCosmeticsContext);
+  if (!context || ownerId === undefined) return undefined;
+  return context.byPlayer[ownerId]?.cardEditions?.[cardId];
 }
 
 /** Géométrie du cadre de Navire que porte `ownerId` — le sien pour le joueur local, celui annoncé pour l'adversaire. */

@@ -4,9 +4,10 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { buildCardDetailModel } from "@/features/collection/card-detail/cardDetailData";
 import { CardDetailArtwork } from "@/features/collection/card-detail/CardDetailArtwork";
-import { CardDetailArtworks, CardDetailFinishes } from "@/features/collection/card-detail/CardDetailFinishes";
+import { CardDetailArtworks, CardDetailDisplayChoice, CardDetailFinishes } from "@/features/collection/card-detail/CardDetailFinishes";
 import type { CardArtwork } from "@/game/cosmetics/artworks";
-import { rarestFinish, type CardFinish } from "@/game/cosmetics/finishes";
+import type { CardFinish } from "@/game/cosmetics/finishes";
+import { CLASSIC_EDITION, editionKey, editionRank, type CardEdition } from "@/game/cosmetics/editions";
 import { CardDetailEffect } from "@/features/collection/card-detail/CardDetailEffect";
 import { CardDetailHeader } from "@/features/collection/card-detail/CardDetailHeader";
 import { CardDetailKeywords } from "@/features/collection/card-detail/CardDetailKeywords";
@@ -35,12 +36,20 @@ interface CardDetailModalProps {
    */
   ownedCount?: number;
   /**
-   * Finitions rares possédées de cette carte (16/10/2026). `undefined` :
-   * possession inconnue — les cinq finitions restent consultables en aperçu.
+   * ÉDITIONS rares possédées de cette carte (Collection visuelle V2).
+   * `undefined` : possession inconnue — illustrations et finitions restent
+   * consultables en aperçu, sans choix d'affichage en partie.
    */
-  ownedFinishes?: readonly CardFinish[];
-  /** Finition de l'exemplaire touché dans la grille : la fiche s'ouvre dessus. Absente : la plus rare possédée. */
-  initialFinish?: CardFinish;
+  ownedEditions?: readonly CardEdition[];
+  /** Édition de l'exemplaire touché dans la grille : la fiche s'ouvre dessus. Absente : la plus rare possédée. */
+  initialEdition?: CardEdition;
+  /** Édition que le joueur montre aujourd'hui en partie. Absente : pas de choix d'affichage (hors Collection). */
+  displayedEdition?: CardEdition;
+}
+
+/** La plus rare des éditions possédées, la Classique sinon. */
+function rarestEdition(editions: readonly CardEdition[] | undefined): CardEdition {
+  return (editions ?? []).reduce<CardEdition>((best, e) => (editionRank(e) > editionRank(best) ? e : best), CLASSIC_EDITION);
 }
 
 /**
@@ -56,17 +65,31 @@ interface CardDetailModalProps {
  * `CardDetail.module.css` ; ce composant ne fait qu'assembler les sections
  * et tenir le comportement modal (fermeture, navigation, focus, défilement).
  */
-export function CardDetailModal({ cardId, onClose, onPrevious, onNext, onShowCard, ownedCount, ownedFinishes, initialFinish }: CardDetailModalProps) {
+export function CardDetailModal({
+  cardId,
+  onClose,
+  onPrevious,
+  onNext,
+  onShowCard,
+  ownedCount,
+  ownedEditions,
+  initialEdition,
+  displayedEdition,
+}: CardDetailModalProps) {
   const model = buildCardDetailModel(cardId);
-  // La fiche s'ouvre sur la finition la plus rare possédée ; changer de carte y revient.
-  const [finition, setFinition] = useState<CardFinish>(() => initialFinish ?? rarestFinish(ownedFinishes));
-  const finitionsCle = (ownedFinishes ?? []).join(",");
+  // La fiche s'ouvre sur l'édition touchée, sinon la plus rare possédée ;
+  // changer de carte y revient. Illustration et finition se choisissent
+  // ensuite séparément, en aperçu.
+  const depart = initialEdition ?? rarestEdition(ownedEditions);
+  const [illustration, setIllustration] = useState<CardArtwork>(depart.artwork);
+  const [finition, setFinition] = useState<CardFinish>(depart.finish);
+  const editionsCle = (ownedEditions ?? []).map(editionKey).join(",");
+  const initialeCle = initialEdition ? editionKey(initialEdition) : "";
   useEffect(() => {
-    setFinition(initialFinish ?? rarestFinish(finitionsCle ? (finitionsCle.split(",") as CardFinish[]) : []));
-  }, [cardId, finitionsCle, initialFinish]);
-  // Illustration montrée (Styled, Full-Art) : un aperçu, Classique à chaque carte.
-  const [illustration, setIllustration] = useState<CardArtwork>("classique");
-  useEffect(() => setIllustration("classique"), [cardId]);
+    setIllustration(depart.artwork);
+    setFinition(depart.finish);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `depart` se déduit de ces clés
+  }, [cardId, editionsCle, initialeCle]);
   const panelRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const titleId = useId();
@@ -183,8 +206,16 @@ export function CardDetailModal({ cardId, onClose, onPrevious, onNext, onShowCar
           {qualifications.length > 0 && <CardDetailQualifications chips={qualifications} />}
           {keywords.length > 0 && <CardDetailKeywords keywords={keywords} />}
           <CardDetailMeta model={model} onShowCounterpart={onShowCard} />
-          <CardDetailArtworks cardId={cardId} shown={illustration} onShow={setIllustration} />
-          <CardDetailFinishes shown={finition} owned={ownedFinishes} onShow={setFinition} />
+          <CardDetailArtworks cardId={cardId} shown={illustration} owned={ownedEditions} onShow={setIllustration} />
+          <CardDetailFinishes shown={finition} owned={ownedEditions?.filter((e) => e.artwork === illustration).map((e) => e.finish)} onShow={setFinition} />
+          {displayedEdition && ownedEditions && (
+            <CardDetailDisplayChoice
+              cardId={cardId}
+              shown={{ artwork: illustration, finish: finition }}
+              owned={ownedEditions}
+              displayed={displayedEdition}
+            />
+          )}
           {ownedCount !== undefined && <CardDetailResale cardId={cardId} owned={ownedCount} />}
         </div>
       </div>

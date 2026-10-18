@@ -275,6 +275,52 @@ export interface Database {
         };
         Relationships: [];
       };
+      /** Éditions RARES possédées (illustration × finition), migration 20261108120000. */
+      player_card_editions: {
+        Row: {
+          user_id: string;
+          card_id: string;
+          artwork: "classique" | "styled" | "styled-fa";
+          finish: "classique" | "monochrome" | "foil" | "negative" | "prismatic" | "star-foil";
+          quantity: number;
+          first_obtained_at: string;
+        };
+        Insert: {
+          user_id: string;
+          card_id: string;
+          artwork: "classique" | "styled" | "styled-fa";
+          finish: "classique" | "monochrome" | "foil" | "negative" | "prismatic" | "star-foil";
+          quantity?: number;
+          first_obtained_at?: string;
+        };
+        Update: {
+          quantity?: number;
+        };
+        Relationships: [];
+      };
+      /** Édition montrée en partie, par carte (migration 20261108120000). */
+      player_card_display: {
+        Row: {
+          user_id: string;
+          card_id: string;
+          artwork: "classique" | "styled" | "styled-fa";
+          finish: "classique" | "monochrome" | "foil" | "negative" | "prismatic" | "star-foil";
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          card_id: string;
+          artwork: "classique" | "styled" | "styled-fa";
+          finish: "classique" | "monochrome" | "foil" | "negative" | "prismatic" | "star-foil";
+          updated_at?: string;
+        };
+        Update: {
+          artwork?: "classique" | "styled" | "styled-fa";
+          finish?: "classique" | "monochrome" | "foil" | "negative" | "prismatic" | "star-foil";
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       player_decks: {
         Row: {
           art_card_id: string | null;
@@ -894,6 +940,26 @@ export interface Database {
           p_user_id: string;
           p_card_ids: string[];
           p_finishes: string[];
+        };
+        Returns: { ok: boolean; error?: string };
+      };
+      /** Ajoute les éditions tirées à une ouverture (`p_card_ids[i]` en `p_artworks[i]` / `p_finishes[i]`). */
+      add_card_editions: {
+        Args: {
+          p_user_id: string;
+          p_card_ids: string[];
+          p_artworks: string[];
+          p_finishes: string[];
+        };
+        Returns: { ok: boolean; error?: string };
+      };
+      /** Édition montrée en partie pour une carte ; la Classique efface le choix. */
+      set_card_display: {
+        Args: {
+          p_user_id: string;
+          p_card_id: string;
+          p_artwork: string;
+          p_finish: string;
         };
         Returns: { ok: boolean; error?: string };
       };

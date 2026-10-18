@@ -23,6 +23,8 @@ import {
 } from "@/game";
 import { GlassAlert } from "@/components/ui/GlassAlert";
 import { DEFAULT_PLAYER_COSMETICS, MatchCosmeticsProvider } from "@/features/cosmetics/MatchCosmeticsProvider";
+import { fetchMyDisplayedEditions } from "@/features/collection/editionActions";
+import type { CardEdition } from "@/game/cosmetics/editions";
 import { ActionToastStack } from "@/features/match/ActionToastStack";
 import { CardDetailModal } from "@/features/match/CardDetailModal";
 import { EventFeed } from "@/features/match/EventFeed";
@@ -452,6 +454,27 @@ export function MatchBoard({
     [botPlayerId, humanPlayerId, myName]
   );
 
+  // Éditions montrées par le joueur (Collection visuelle V2 : Full-Art,
+  // finitions), lues une fois — hors session, la Classique partout.
+  const [myEditions, setMyEditions] = useState<Record<string, CardEdition>>({});
+  useEffect(() => {
+    if (!botPlayerId) return;
+    let cancelled = false;
+    void fetchMyDisplayedEditions()
+      .then((editions) => !cancelled && setMyEditions(editions))
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [botPlayerId]);
+  const byPlayer = useMemo(
+    () =>
+      botPlayerId && humanPlayerId
+        ? { [botPlayerId]: DEFAULT_PLAYER_COSMETICS, [humanPlayerId]: { ...DEFAULT_PLAYER_COSMETICS, cardEditions: myEditions } }
+        : {},
+    [botPlayerId, humanPlayerId, myEditions]
+  );
+
   if (state.status === "finished" && !hideEndScreen && endHold.showEnd) {
     // Contre un bot, l'écran appartient au joueur humain ; en hot-seat, c'est
     // celui du vainqueur — ou, sur un match nul, celui qui a la main.
@@ -480,6 +503,7 @@ export function MatchBoard({
   // rétrécit pas à travers une fermeture, une constante si.
   const { graveyardPick, detailInstance, graveyardViewerPlayerId } = board;
 
+
   /*
    * Cosmétiques par camp. Contre le bot : le bot n'a rien équipé, il joue
    * avec le dos et le cadre d'origine, le joueur humain avec les siens. En
@@ -488,7 +512,7 @@ export function MatchBoard({
    */
   const withCosmetics = (node: React.ReactElement) =>
     botPlayerId && humanPlayerId ? (
-      <MatchCosmeticsProvider viewerId={humanPlayerId} byPlayer={{ [botPlayerId]: DEFAULT_PLAYER_COSMETICS }}>
+      <MatchCosmeticsProvider viewerId={humanPlayerId} byPlayer={byPlayer}>
         {node}
       </MatchCosmeticsProvider>
     ) : (

@@ -14,6 +14,7 @@ export {
 } from "@/game/boosters/constants";
 
 export { abyssalChanceWithPity, drawBooster } from "@/game/boosters/draw";
+export { boosterArtworksFor } from "@/game/boosters/boosterArtworks";
 // La rareté d'une carte est une donnée de CODE : les écritures en base en
 // découlent (`scripts/seedCards.ts`), jamais l'inverse.
 export { rarityForCardId, cardIdsMissingRarity, assertRarityCoverage } from "@/game/boosters/cardRarity";

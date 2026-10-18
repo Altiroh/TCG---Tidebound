@@ -807,3 +807,20 @@
 .finishChip[data-owned][data-finish="prismatic"] {
   background: linear-gradient(110deg, rgba(255, 150, 220, 0.25), rgba(255, 240, 150, 0.25), rgba(150, 255, 210, 0.25), rgba(150, 200, 255, 0.25));
 }
+
+/* Édition montrée en partie (Collection visuelle V2). */
+.displayChoice {
+  margin: 0.2rem 0 0.4rem;
+  font-size: 0.85rem;
+  opacity: 0.85;
+}
+
+.finishChip[data-display-choice]:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.finishChip[data-owned][data-artwork="styled"],
+.finishChip[data-owned][data-artwork="styled-fa"] {
+  background: linear-gradient(110deg, rgba(255, 214, 130, 0.22), rgba(255, 240, 200, 0.18), rgba(255, 214, 130, 0.22));
+}
