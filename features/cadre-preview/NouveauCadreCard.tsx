@@ -63,8 +63,8 @@ export interface NouveauCadreFaceProps {
   /**
    * Illustration de l'exemplaire (Collection visuelle V2, `artworks.ts`).
    * Styled : l'image change, le cadre reste. Styled Full-Art : nom, coût,
-   * type et effet sont PEINTS dans l'image — le cadre ne pose plus que le
-   * liseré, Puissance et Résistance. Défaut : Classique.
+   * type et effet sont PEINTS dans l'image — ni liseré ni textes : le cadre
+   * ne pose plus que Puissance et Résistance. Défaut : Classique.
    */
   illustration?: CardArtwork;
 }
@@ -122,7 +122,13 @@ export function NouveauCadreFace({
       className={`absolute inset-0 select-none ${finition === "negative" ? styles.negatif : ""}`}
       data-finition={finition}
       data-illustration={oeuvre}
-      style={{ containerType: "inline-size", ["--illus-inset" as string]: calage.illustration, ["--illus-radius" as string]: calage.rayon }}
+      style={{
+        containerType: "inline-size",
+        // Full-Art : PAS de liseré (retour du 18/10/2026) — l'image occupe toute
+        // la silhouette de la carte, celle que dessinerait le liseré.
+        ["--illus-inset" as string]: textesPeints ? calage.silhouette : calage.illustration,
+        ["--illus-radius" as string]: textesPeints ? calage.rayonSilhouette : calage.rayon,
+      }}
     >
       {/* Couche 1 : l'illustration, plein cadre, coupée à l'arrondi du liseré. */}
       <div className="absolute overflow-hidden bg-slate-900" style={{ inset: "var(--illus-inset)", borderRadius: "var(--illus-radius)" }}>
@@ -140,14 +146,16 @@ export function NouveauCadreFace({
             propre ombre floue (`HALO`), l'illustration reste lisible partout ailleurs. */}
       </div>
 
-      {/* Couche 2 : le liseré. */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={`${ASSETS}/${cadre}.webp`}
-        alt=""
-        className="pointer-events-none absolute inset-0 h-full w-full"
-        draggable={false}
-      />
+      {/* Couche 2 : le liseré — jamais sur une Full-Art, dont l'image est le cadre. */}
+      {!textesPeints && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={`${ASSETS}/${cadre}.webp`}
+          alt=""
+          className="pointer-events-none absolute inset-0 h-full w-full"
+          draggable={false}
+        />
+      )}
 
       {/* Couche 3 (Abyssales) : le sujet, qui déborde du liseré et se fond dans le voile en pied. */}
       {abyssale && debordOk && debord && debordPlein === true && (

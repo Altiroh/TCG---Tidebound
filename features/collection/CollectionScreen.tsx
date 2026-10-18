@@ -43,6 +43,8 @@ interface CollectionScreenProps {
   ownedEditions?: Record<string, OwnedEdition[]>;
   /** Édition choisie pour la partie, par carte. Absent : la Classique partout. */
   displayedEditions?: Record<string, CardEdition>;
+  /** Admin (ou développement local) : la fiche montre Illustrations, Finitions et « En partie ». */
+  showEditionControls?: boolean;
   /** Ouvrir la grille sur les favoris ou un carnet (`/collection?carnet=…`, depuis le mur des carnets). */
   openShelf?: ShelfFilter;
   /** Étagère en mémoire du laboratoire `/game/carnets-preview` ; absente : le compte. */
@@ -111,6 +113,7 @@ function CollectionScreenBody({
   ownedCounts,
   ownedEditions = AUCUNE_EDITION,
   displayedEditions = AUCUN_AFFICHAGE,
+  showEditionControls = false,
   showStarterMission = false,
   openShelf,
 }: CollectionScreenProps) {
@@ -306,6 +309,7 @@ function CollectionScreenBody({
           ownedEditions={isSignedIn ? editionsPossedees(ownedEditions[detailCardId]) : undefined}
           initialEdition={detailEdition}
           displayedEdition={isSignedIn ? (displayedEditions[detailCardId] ?? CLASSIC_EDITION) : undefined}
+          showEditionControls={showEditionControls}
           onPrevious={browser.cards.length > 1 ? () => stepDetail(-1) : undefined}
           onNext={browser.cards.length > 1 ? () => stepDetail(1) : undefined}
           onShowCard={(id) => openDetail(id)}

@@ -2,6 +2,15 @@ import { CollectionScreen } from "@/features/collection/CollectionScreen";
 import { fetchOnboarding } from "@/features/onboarding/actions";
 import { decodeShelfFilter, FAVORITES_FILTER, notebookFilter, type ShelfFilter } from "@/features/collection/shelf/shelf";
 import { getOwnedCardIds } from "@/lib/supabase/ownedCards";
+import { getSessionUser } from "@/lib/supabase/sessionUser";
+import { isAdmin } from "@/features/admin/roles";
+
+/** Illustrations, finitions et édition en partie dans la fiche : Admins, et développement local. */
+async function canSeeEditionControls(): Promise<boolean> {
+  if (process.env.NODE_ENV === "development") return true;
+  const user = await getSessionUser();
+  return user ? isAdmin(user.id) : false;
+}
 
 /** `?carnet=<id>` ouvre un carnet, `?favoris` les favoris — les liens du mur des carnets. */
 function shelfFromParams(searchParams: Record<string, string | string[] | undefined>): ShelfFilter | undefined {
@@ -16,9 +25,10 @@ export default async function CollectionPage({ searchParams = {} }: { searchPara
   // premier deck gratuit, seule à s'en servir, cède la place à l'annonce de
   // la PREMIÈRE MISSION, dont les starters sont accordés par le serveur
   // (`fetchOnboarding` rattrape aussi les comptes existants).
-  const [{ isSignedIn, ownedCardIds, ownedCounts, ownedEditions, displayedEditions }, onboarding] = await Promise.all([
+  const [{ isSignedIn, ownedCardIds, ownedCounts, ownedEditions, displayedEditions }, onboarding, showEditionControls] = await Promise.all([
     getOwnedCardIds({ withEditions: true }),
     fetchOnboarding(),
+    canSeeEditionControls(),
   ]);
 
   return (
@@ -28,6 +38,7 @@ export default async function CollectionPage({ searchParams = {} }: { searchPara
       ownedCounts={ownedCounts}
       ownedEditions={ownedEditions}
       displayedEditions={displayedEditions}
+      showEditionControls={showEditionControls}
       showStarterMission={onboarding.showStarterMission}
       openShelf={shelfFromParams(searchParams)}
     />

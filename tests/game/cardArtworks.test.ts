@@ -2,6 +2,8 @@ import { existsSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { CARD_DATABASE } from "@/game/cards/sets/core";
+import { BOOSTER_POOLS } from "@/game/boosters/pools";
+import { BOOSTER_ARTWORKS, boosterArtworkEntries } from "@/game/boosters/boosterArtworks";
 import {
   artworksOf,
   boardTileArtwork,
@@ -66,6 +68,21 @@ describe("illustrations Styled / Styled Full-Art", () => {
     expect(paintedTextMatches("SUR 3-4, POUR -1", "sur 3–4, pour −1")).toBe(true);
     expect(paintedTextMatches("A son arrivée", "À son arrivée")).toBe(false);
     expect(paintedTextMatches("contrôle moins 4", "contrôle au moins 4")).toBe(false);
+  });
+
+  it("chaque illustration répartie dans un booster vise une carte de SON pool", () => {
+    for (const [boosterId, cartes] of Object.entries(BOOSTER_ARTWORKS)) {
+      for (const cardId of Object.keys(cartes)) expect(BOOSTER_POOLS[boosterId] ?? [], `${cardId} dans ${boosterId}`).toContain(cardId);
+    }
+  });
+
+  it("chaque illustration obtenable est répartie dans au moins un booster", () => {
+    const reparties = new Set(Object.keys(BOOSTER_ARTWORKS).flatMap((id) => boosterArtworkEntries(id).map((e) => `${e.cardId}/${e.artwork}`)));
+    for (const cardId of cardIdsWithAlternateArt()) {
+      for (const artwork of artworksOf(cardId)) {
+        if (artwork !== "classique") expect(reparties.has(`${cardId}/${artwork}`), `${cardId} en ${artwork}`).toBe(true);
+      }
+    }
   });
 
   it("la tuile de plateau, qui écrit nom et stats, n'affiche jamais une Full-Art", () => {

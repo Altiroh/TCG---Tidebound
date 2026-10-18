@@ -353,3 +353,29 @@
     border-radius: 50%;
   }
 }
+
+/* Illustrations Styled / Full-Art obtenables (Collection visuelle V2) :
+   un liseré doré, et leur chance relative à la carte en étiquette. */
+.card[data-artwork] {
+  --rarity-color: #f1cf7a;
+  box-shadow: 0 0 0 1px rgba(241, 207, 122, 0.55), 0 0 14px rgba(241, 207, 122, 0.25);
+}
+
+.card[data-artwork="styled-fa"] {
+  box-shadow: 0 0 0 1px rgba(255, 226, 150, 0.85), 0 0 20px rgba(255, 210, 110, 0.45);
+}
+
+.artworkTag {
+  position: absolute;
+  top: -9px;
+  left: 50%;
+  translate: -50% 0;
+  padding: 1px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+  font-size: calc(max(10px, var(--tb-fs-floor, 0px)) * var(--tb-text-scale));
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #1d1205;
+  background: linear-gradient(110deg, #f6e3b8, #ffd27a, #f6e3b8);
+}

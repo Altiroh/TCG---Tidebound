@@ -45,6 +45,12 @@ interface CardDetailModalProps {
   initialEdition?: CardEdition;
   /** Édition que le joueur montre aujourd'hui en partie. Absente : pas de choix d'affichage (hors Collection). */
   displayedEdition?: CardEdition;
+  /**
+   * Sections Illustrations, Finitions et « En partie » — réservées aux
+   * Admins et au développement local (18/10/2026) : les joueurs voient
+   * l'édition qu'ils ont touchée, sans en choisir d'autre.
+   */
+  showEditionControls?: boolean;
 }
 
 /** La plus rare des éditions possédées, la Classique sinon. */
@@ -75,6 +81,7 @@ export function CardDetailModal({
   ownedEditions,
   initialEdition,
   displayedEdition,
+  showEditionControls = false,
 }: CardDetailModalProps) {
   const model = buildCardDetailModel(cardId);
   // La fiche s'ouvre sur l'édition touchée, sinon la plus rare possédée ;
@@ -206,9 +213,13 @@ export function CardDetailModal({
           {qualifications.length > 0 && <CardDetailQualifications chips={qualifications} />}
           {keywords.length > 0 && <CardDetailKeywords keywords={keywords} />}
           <CardDetailMeta model={model} onShowCounterpart={onShowCard} />
+          {showEditionControls && (
+            <>
           <CardDetailArtworks cardId={cardId} shown={illustration} owned={ownedEditions} onShow={setIllustration} />
           <CardDetailFinishes shown={finition} owned={ownedEditions?.filter((e) => e.artwork === illustration).map((e) => e.finish)} onShow={setFinition} />
-          {displayedEdition && ownedEditions && (
+            </>
+          )}
+          {showEditionControls && displayedEdition && ownedEditions && (
             <CardDetailDisplayChoice
               cardId={cardId}
               shown={{ artwork: illustration, finish: finition }}

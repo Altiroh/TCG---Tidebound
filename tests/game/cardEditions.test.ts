@@ -23,14 +23,17 @@ const POOL = [
 ];
 const SLOTS = [1, 2, 3, 4, 5, 6, 7, 8].map((slotIndex) => ({ slotIndex, guaranteedRarity: "uncommon" as const }));
 const TOUT_POSSEDE = new Set(POOL.map((card) => card.id));
-const artworksFor = (cardId: string) => boosterArtworksFor("booster-defaut", cardId);
+// Chaque carte du pool d'essai tirée depuis le booster où ses illustrations sont réparties.
+const BOOSTER_DE: Record<string, string> = { "aberration-vorace": "la-mutation-mondiale", "chirurgien-du-bord": "necessaire-du-marin" };
+const artworksFor = (cardId: string) => boosterArtworksFor(BOOSTER_DE[cardId] ?? "standard", cardId);
 
 describe("éditions de carte", () => {
-  it("un booster propose les illustrations alternatives des cartes de son pool", () => {
-    expect(artworksFor("aberration-vorace")).toEqual(["styled", "styled-fa"]);
-    expect(artworksFor("marin-des-jetees")).toEqual([]);
-    // Full-Art à repeindre : jamais proposée.
-    expect(artworksFor("le-brise-ligne")).toEqual(["styled"]);
+  it("un booster propose les illustrations qui y sont réparties, et elles seules", () => {
+    expect(boosterArtworksFor("la-mutation-mondiale", "aberration-vorace")).toEqual(["styled", "styled-fa"]);
+    expect(boosterArtworksFor("standard", "aberration-vorace")).toEqual([]);
+    expect(boosterArtworksFor("standard", "marin-des-jetees")).toEqual([]);
+    // Full-Art à repeindre : jamais proposée, même répartie.
+    expect(boosterArtworksFor("necessaire-du-marin", "le-brise-ligne")).toEqual(["styled"]);
   });
 
   it("le tirage d'illustration respecte ses chances, sans reporter une illustration absente sur l'autre", () => {

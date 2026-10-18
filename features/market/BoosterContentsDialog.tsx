@@ -3,6 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { getCardDefinition } from "@/game";
 import { RARITY_ORDER, type CardRarity } from "@/game/boosters/types";
+import { boosterArtworkEntries } from "@/game/boosters/boosterArtworks";
+import { CARD_ARTWORK_LABELS } from "@/game/cosmetics/artworks";
+import { CARD_ARTWORK_ODDS, type CardEdition } from "@/game/cosmetics/editions";
+import { cardArtworkThumbUrl } from "@/features/decks/cardArtUrl";
 import { oneOf } from "@/lib/persistCodecs";
 import { usePersistedState } from "@/lib/persistedState";
 import type { BoosterInventoryEntry } from "@/features/boosters/actions";
@@ -51,7 +55,7 @@ export function BoosterContentsDialog({ booster, owned, onClose }: BoosterConten
   const [missingOnly, setMissingOnly] = usePersistedState<boolean>("contenu-booster:manquantes", false, {
     decode: (raw) => (typeof raw === "boolean" ? raw : undefined),
   });
-  const [detail, setDetail] = useState<string | null>(null);
+  const [detail, setDetail] = useState<{ cardId: string; edition?: CardEdition } | null>(null);
 
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
@@ -66,6 +70,19 @@ export function BoosterContentsDialog({ booster, owned, onClose }: BoosterConten
     for (const entry of booster.pool) if (!seen.has(entry.cardId)) seen.set(entry.cardId, entry.rarity);
     return [...seen.entries()].map(([cardId, cardRarity]) => ({ cardId, rarity: cardRarity, name: safeName(cardId), owned: owned.has(cardId) }));
   }, [booster.pool, owned]);
+
+  // ILLUSTRATIONS obtenables dans CE booster (Collection visuelle V2) : la
+  // Styled et la Full-Art des cartes qui y sont réparties, au pied de la
+  // liste — elles sortent APRÈS la carte, à leur propre chance.
+  const illustrations = useMemo(
+    () =>
+      boosterArtworkEntries(booster.boosterId)
+        .map((entry) => ({ ...entry, name: safeName(entry.cardId), rarity: unique.find((card) => card.cardId === entry.cardId)?.rarity }))
+        .filter((entry) => entry.rarity !== undefined)
+        .sort((a, b) => (a.artwork === b.artwork ? a.name.localeCompare(b.name, "fr") : a.artwork === "styled" ? -1 : 1)),
+    [booster.boosterId, unique]
+  );
+  const shownIllustrations = missingOnly ? [] : illustrations.filter((entry) => !rarity || entry.rarity === rarity);
 
   const ownedCount = unique.filter((card) => card.owned).length;
   const rarities = RARITY_ORDER.filter((entry) => unique.some((card) => card.rarity === entry));
@@ -82,6 +99,7 @@ export function BoosterContentsDialog({ booster, owned, onClose }: BoosterConten
             <h2 className={`${game.cabinTitle} ${styles.title}`}>{booster.name}</h2>
             <p className={styles.sub}>
               {booster.cardCount} cartes par booster · <b>{ownedCount}</b> / {unique.length} déjà possédées
+              {illustrations.length > 0 && ` · ${illustrations.length} illustration${illustrations.length > 1 ? "s" : ""} Styled / Full-Art`}
             </p>
           </div>
           <button type="button" className={styles.close} onClick={onClose} aria-label="Fermer">
@@ -132,7 +150,7 @@ export function BoosterContentsDialog({ booster, owned, onClose }: BoosterConten
                   data-owned={card.owned ? "true" : "false"}
                   onClick={() => {
                     playButtonClick();
-                    setDetail(card.cardId);
+                    setDetail({ cardId: card.cardId });
                   }}
                   title={card.owned ? `${card.name} — déjà dans ta collection` : `${card.name} — pas encore possédée`}
                 >
@@ -146,13 +164,35 @@ export function BoosterContentsDialog({ booster, owned, onClose }: BoosterConten
                 </span>
               </li>
             ))}
+            {shownIllustrations.map((entry) => (
+              <li key={`${entry.cardId}/${entry.artwork}`} className={styles.cell}>
+                <button
+                  type="button"
+                  className={styles.card}
+                  data-rarity={entry.rarity}
+                  data-artwork={entry.artwork}
+                  onClick={() => {
+                    playButtonClick();
+                    setDetail({ cardId: entry.cardId, edition: { artwork: entry.artwork, finish: "classique" } });
+                  }}
+                  title={`${entry.name} — ${CARD_ARTWORK_LABELS[entry.artwork]} : 1 tirage de cette carte sur ${Math.round(1 / CARD_ARTWORK_ODDS[entry.artwork])}`}
+                >
+                  <span className={styles.art} style={{ backgroundImage: `url("${cardArtworkThumbUrl(entry.cardId, entry.artwork)}")` }} aria-hidden />
+                  <span className={styles.name}>{entry.name}</span>
+                  <span className={styles.rarity}>{CARD_ARTWORK_LABELS[entry.artwork]}</span>
+                </button>
+                <span className={styles.status}>
+                  <span className={styles.artworkTag}>1 / {Math.round(1 / CARD_ARTWORK_ODDS[entry.artwork])}</span>
+                </span>
+              </li>
+            ))}
           </ul>
         )}
       </div>
 
       {detail && (
         <div onClick={(event) => event.stopPropagation()}>
-          <CardDetailModal cardId={detail} onClose={() => setDetail(null)} />
+          <CardDetailModal cardId={detail.cardId} initialEdition={detail.edition} onClose={() => setDetail(null)} />
         </div>
       )}
     </div>
