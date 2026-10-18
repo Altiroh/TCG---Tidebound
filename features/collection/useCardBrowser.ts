@@ -27,6 +27,12 @@ interface UseCardBrowserOptions {
    * Builder ne partagent pas leurs réglages. Absente : rien n'est retenu.
    */
   persistKey?: string;
+  /**
+   * Cartes POSSÉDÉES à qui il manque encore une illustration obtenable
+   * (Styled, Full-Art) : le filtre « Manquantes » les montre aussi, puisqu'il
+   * reste quelque chose à y trouver.
+   */
+  incomplete?: ReadonlySet<string>;
 }
 
 const SORT_MODES: readonly SortMode[] = [...new Set([...SORT_OPTIONS, ...COLLECTION_SORT_OPTIONS].map((option) => option.value))];
@@ -41,9 +47,14 @@ const SORT_MODES: readonly SortMode[] = [...new Set([...SORT_OPTIONS, ...COLLECT
  * deck à droite. Un filtre qui se comporterait différemment d'un écran à
  * l'autre serait un bug — d'où un seul hook plutôt que deux copies.
  */
-export function useCardBrowser({ owned, initialFilters, persistKey }: UseCardBrowserOptions) {
+export function useCardBrowser({ owned, initialFilters, persistKey, incomplete }: UseCardBrowserOptions) {
   /** Ensemble utilisé par les filtres : vide plutôt que `null`, pour ne pas avoir à tester partout. */
   const ownedForFilters = useMemo(() => owned ?? new Set<string>(), [owned]);
+  /** Pour « Manquantes » : une carte incomplète n'est pas encore tout à fait possédée. */
+  const ownedComplete = useMemo(
+    () => (incomplete && incomplete.size > 0 ? new Set([...ownedForFilters].filter((id) => !incomplete.has(id))) : ownedForFilters),
+    [ownedForFilters, incomplete]
+  );
 
   const [filters, setFilters] = usePersistedState<CollectionFilterState>(
     persistKey ?? null,
@@ -80,10 +91,10 @@ export function useCardBrowser({ owned, initialFilters, persistKey }: UseCardBro
 
   const cards = useMemo<CardDefinition[]>(
     () =>
-      CORE_SET.filter((def) => matchesFilters(def, appliedFilters, ownedForFilters, undefined, shelfCards)).sort((a, b) =>
-        compareCards(a, b, sort)
-      ),
-    [appliedFilters, ownedForFilters, shelfCards, sort]
+      CORE_SET.filter((def) =>
+        matchesFilters(def, appliedFilters, appliedFilters.ownership === "missing" ? ownedComplete : ownedForFilters, undefined, shelfCards)
+      ).sort((a, b) => compareCards(a, b, sort)),
+    [appliedFilters, ownedForFilters, ownedComplete, shelfCards, sort]
   );
 
   const patchFilters = useCallback(

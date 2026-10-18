@@ -58,6 +58,12 @@ interface CollectionSidebarProps {
   owned: ReadonlySet<string>;
   /** La possession n'a de sens que pour un compte connecté — sinon la section entière disparaît. */
   showOwnership: boolean;
+  /**
+   * Compteurs du « Statut de collection » quand l'écran compte AUSSI les
+   * illustrations (Collection visuelle V2) : une Styled non tirée est une
+   * pièce manquante. Absents : on compte les cartes.
+   */
+  ownershipCounts?: Record<"all" | "owned" | "missing", number>;
   /** Le Deck Builder n'a pas à proposer d'en créer un autre depuis sa colonne de filtres. Défaut : `true`. */
   showCreateDeck?: boolean;
   /** Cartes du favori ou du carnet choisi (`useCardBrowser`) — les compteurs des autres axes en tiennent compte. */
@@ -301,6 +307,7 @@ export function CollectionSidebar({
   onReset,
   owned,
   showOwnership,
+  ownershipCounts,
   showCreateDeck = true,
   shelfCards = null,
   order = "collection",
@@ -415,9 +422,10 @@ export function CollectionSidebar({
                 key={status.value}
                 label={status.label}
                 active={filters.ownership === status.value}
-                count={countFor("ownership", (def) =>
-                  status.value === "all" ? true : status.value === "owned" ? owned.has(def.id) : !owned.has(def.id)
-                )}
+                count={
+                  ownershipCounts?.[status.value] ??
+                  countFor("ownership", (def) => (status.value === "all" ? true : status.value === "owned" ? owned.has(def.id) : !owned.has(def.id)))
+                }
                 onClick={() => onChange({ ownership: status.value })}
               />
             ))}

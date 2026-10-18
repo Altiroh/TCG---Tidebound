@@ -6,6 +6,8 @@ import { RARE_CARD_FINISHES } from "@/game/cosmetics/finishes";
 import { RARE_CARD_ARTWORKS } from "@/game/cosmetics/artworks";
 import { obtainableArtworksOf } from "@/game/boosters/boosterArtworks";
 import type { GridEdition } from "@/features/collection/CardGrid";
+import { CORE_SET } from "@/game";
+import { matchesFilters } from "@/features/collection/collectionFilters";
 import { CLASSIC_EDITION, editionRank, type CardEdition, type OwnedEdition } from "@/game/cosmetics/editions";
 import type { EditionFilter } from "@/features/collection/CollectionSidebar";
 import { CardShelfProvider, type ShelfBackend } from "@/features/collection/shelf/CardShelfProvider";
@@ -131,7 +133,14 @@ function CollectionScreenBody({
   openShelf,
 }: CollectionScreenProps) {
   const owned = useMemo(() => (isSignedIn ? new Set(ownedCardIds) : null), [isSignedIn, ownedCardIds]);
-  const browser = useCardBrowser({ owned, persistKey: "collection" });
+  // Cartes possédées à qui il manque une Styled / Full-Art obtenable : encore « à compléter ».
+  const incomplete = useMemo(() => {
+    const set = new Set<string>();
+    if (!owned) return set;
+    for (const cardId of owned) if (illustrationsManquantes(cardId, editionsPossedees(ownedEditions[cardId])).length > 0) set.add(cardId);
+    return set;
+  }, [owned, ownedEditions]);
+  const browser = useCardBrowser({ owned, persistKey: "collection", incomplete });
   // ÉDITIONS (Collection visuelle V2) : le filtre ne garde que les cartes
   // possédées dans l'illustration ou la finition choisie, et ne montre que
   // ces éditions ; sans filtre, chaque édition possédée a sa cellule.
@@ -173,11 +182,32 @@ function CollectionScreenBody({
       // « Possédées » : rien d'estompé. Sinon, les illustrations manquantes suivent la carte.
       const manquantes = browser.filters.ownership === "owned" ? [] : illustrationsManquantes(def.id, rares);
       if (editionFilter) return [...rares, ...manquantes].filter((e) => matchesFilter(e, editionFilter));
+      // « Manquantes » sur une carte possédée : seulement ce qui reste à trouver.
+      if (browser.filters.ownership === "missing" && owned?.has(def.id)) return manquantes;
       const base = rares.length === 0 || classicCount(def.id) > 0 ? [CLASSIC_EDITION, ...rares] : rares;
       return [...base, ...manquantes];
     },
-    [editionFilter, ownedEditions, classicCount, browser.filters.ownership]
+    [editionFilter, ownedEditions, classicCount, browser.filters.ownership, owned]
   );
+  // « Statut de collection » en PIÈCES : chaque carte, plus chaque illustration
+  // obtenable — sinon une collection complète en cartes s'affichait finie
+  // alors qu'aucune Styled n'était tirée. Mêmes autres filtres que la grille.
+  const ownershipCounts = useMemo(() => {
+    const counts = { all: 0, owned: 0, missing: 0 };
+    if (!owned) return counts;
+    for (const def of CORE_SET) {
+      if (!matchesFilters(def, browser.filters, owned, "ownership", browser.shelfCards)) continue;
+      const illustrations = obtainableArtworksOf(def.id);
+      const possedees = editionsPossedees(ownedEditions[def.id]);
+      const illustrationsPossedees = illustrations.filter((artwork) => possedees.some((e) => e.artwork === artwork)).length;
+      const carte = owned.has(def.id) ? 1 : 0;
+      counts.all += 1 + illustrations.length;
+      counts.owned += carte + illustrationsPossedees;
+      counts.missing += 1 - carte + illustrations.length - illustrationsPossedees;
+    }
+    return counts;
+  }, [owned, ownedEditions, browser.filters, browser.shelfCards]);
+
   const [detailCardId, setDetailCardId] = useState<string | null>(null);
   // L'édition de la cellule touchée : la fiche s'ouvre sur CET exemplaire.
   const [detailEdition, setDetailEdition] = useState<CardEdition | undefined>(undefined);
@@ -276,6 +306,7 @@ function CollectionScreenBody({
             onReset={browser.resetFilters}
             owned={browser.ownedForFilters}
             showOwnership={isSignedIn}
+            ownershipCounts={isSignedIn ? ownershipCounts : undefined}
             shelfCards={browser.shelfCards}
             editionFilter={isSignedIn ? { active: editionFilter, options: editionCounts, onSelect: setEditionFilter } : undefined}
           />
@@ -283,7 +314,8 @@ function CollectionScreenBody({
 
         <main className={`${game.panel} ${styles.main} ${book.frame} ${book.center}`}>
           <CollectionToolbar
-            count={shownCards.length}
+            // L'effectif compte les CASES : une carte et chacune de ses éditions affichées.
+            count={isSignedIn ? shownCards.reduce((sum, def) => sum + editionsFor(def).length, 0) : shownCards.length}
             sort={browser.sort}
             onSortChange={browser.setSort}
             onOpenFilters={() => browser.setDrawerOpen((open) => !open)}
