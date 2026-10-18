@@ -26,28 +26,35 @@ export function recycleValueOf(cardId: string): number | null {
 }
 
 /**
- * REVENTE PAR ÉDITION (Collection visuelle V2, barème du 18/10/2026 —
- * provisoire jusqu'à la simulation économique, cf. Notion « Boosters &
- * économie de collection »). Le prix garanti au jeu d'une édition est :
+ * REVENTE PAR ÉDITION (Collection visuelle V2). Le prix garanti au jeu
+ * d'une édition est :
  *
  *   base de la rareté × multiplicateur d'illustration × multiplicateur de finition
  *
- * arrondi pour se lire (`roundResale`). Repères tenus par les tests :
- * Aberration Vorace Classique 11 Tides, Styled Full-Art Star Foil 1 500.
+ * arrondi pour se lire (`roundResale`).
+ *
+ * Barème RELEVÉ le 18/10/2026 (décision de l'utilisatrice : « comme une carte
+ * Magic ultra rare ») : la valeur suit enfin la rareté. Une Styled Full-Art
+ * Star Foil vaut 20 000 fois sa Classique — 220 000 Tides pour Aberration
+ * Vorace, 640 000 pour une Épique. C'est un jackpot assumé : il sort moins
+ * d'une fois sur 900 000 boosters pour une carte précise, et sa part dans
+ * la revente MOYENNE d'un booster reste infime. Le garde-fou est là, pas
+ * dans le plafond : `tests/game/obtentionCartes.test.ts` vérifie qu'un
+ * booster entièrement revendu rapporte en moyenne moins que son prix.
  */
 export const ARTWORK_RESALE_MULTIPLIER: Record<CardArtwork, number> = {
   classique: 1,
-  styled: 4,
-  "styled-fa": 15,
+  styled: 10,
+  "styled-fa": 100,
 };
 
 export const FINISH_RESALE_MULTIPLIER: Record<CardFinish, number> = {
   classique: 1,
   monochrome: 2,
-  foil: 3,
-  negative: 4,
-  prismatic: 6,
-  "star-foil": 9,
+  foil: 4,
+  negative: 8,
+  prismatic: 25,
+  "star-foil": 200,
 };
 
 /** À l'unité sous 100, à la dizaine jusqu'à 999, à la cinquantaine au-delà. */

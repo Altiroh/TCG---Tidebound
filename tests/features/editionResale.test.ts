@@ -5,13 +5,15 @@ import { CARD_FINISHES } from "@/game/cosmetics/finishes";
 
 /**
  * REVENTE PAR ÉDITION (Collection visuelle V2, barème du 18/10/2026) :
- * rareté × illustration × finition, arrondi. Les deux repères de Notion
- * doivent tenir tant que le barème ne change pas sur décision.
+ * rareté × illustration × finition, arrondi. Barème relevé le 18/10/2026 :
+ * les repères changent avec lui, sur décision seulement.
  */
 describe("revente par édition", () => {
-  it("tient les repères de Notion : Aberration Vorace 11 en Classique, 1 500 en Styled Full-Art Star Foil", () => {
+  it("tient les repères : Aberration Vorace 11 en Classique, 220 000 en Styled Full-Art Star Foil", () => {
     expect(editionRecycleValueOf("aberration-vorace", { artwork: "classique", finish: "classique" })).toBe(11);
-    expect(editionRecycleValueOf("aberration-vorace", { artwork: "styled-fa", finish: "star-foil" })).toBe(1500);
+    expect(editionRecycleValueOf("aberration-vorace", { artwork: "styled-fa", finish: "star-foil" })).toBe(220_000);
+    // Une Épique (Jugement du Phare) : le sommet actuel du catalogue.
+    expect(editionRecycleValueOf("jugement-du-phare", { artwork: "styled-fa", finish: "star-foil" })).toBe(640_000);
   });
 
   it("la Classique vaut exactement l'ancienne revente à la rareté", () => {

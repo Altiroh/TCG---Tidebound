@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { BOOSTER_POOLS, PURCHASABLE_BOOSTER_IDS, BOOSTER_NECESSAIRE_DU_MARIN } from "@/game/boosters/pools";
 import { boosterArtworksFor, drawBooster, rarityForCardId } from "@/game/boosters";
 import type { BoosterPoolCard, BoosterSlotRule, CardRarity } from "@/game/boosters/types";
-import { BOOSTER_STANDARD_PRICE } from "@/game/economy/constants";
+import { BOOSTER_SPECIALIZED_PRICE, BOOSTER_STANDARD_PRICE } from "@/game/economy/constants";
+import { BOOSTER_DEFAUT } from "@/game/boosters/pools";
 import { CARD_ARTWORK_ODDS } from "@/game/cosmetics/editions";
 import { CARD_FINISH_ODDS, rareFinishChance } from "@/game/cosmetics/finishes";
 import { editionRecycleValueOf } from "@/features/collection/recycleValue";
@@ -186,7 +187,11 @@ describe("chances d'obtention des cartes et des éditions", () => {
     }
   });
 
-  it("revendre un booster entier, éditions comprises, rapporte moins que son prix", () => {
-    for (const m of MESURES) expect(m.revente, m.boosterId).toBeLessThan(BOOSTER_STANDARD_PRICE);
+  it("revendre un booster entier, éditions comprises, rapporte EN MOYENNE moins que son prix", () => {
+    // Prix des `booster_definitions` : 100 Tides pour le Défaut et le
+    // Nécessaire du Marin, 150 pour les extensions. Le jackpot d'une
+    // Full-Art Star Foil ne doit jamais faire d'un booster un placement.
+    const prix = (id: string) => (id === BOOSTER_DEFAUT || id === BOOSTER_NECESSAIRE_DU_MARIN ? BOOSTER_STANDARD_PRICE : BOOSTER_SPECIALIZED_PRICE);
+    for (const m of MESURES) expect(m.revente, m.boosterId).toBeLessThan(prix(m.boosterId) * 0.95);
   });
 });
