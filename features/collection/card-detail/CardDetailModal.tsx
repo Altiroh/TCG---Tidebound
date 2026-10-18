@@ -7,7 +7,7 @@ import { CardDetailArtwork } from "@/features/collection/card-detail/CardDetailA
 import { CardDetailArtworks, CardDetailDisplayChoice, CardDetailFinishes } from "@/features/collection/card-detail/CardDetailFinishes";
 import type { CardArtwork } from "@/game/cosmetics/artworks";
 import type { CardFinish } from "@/game/cosmetics/finishes";
-import { CLASSIC_EDITION, editionKey, editionRank, type CardEdition } from "@/game/cosmetics/editions";
+import { CLASSIC_EDITION, editionKey, editionRank, isClassicEdition, type CardEdition, type OwnedEdition } from "@/game/cosmetics/editions";
 import { CardDetailEffect } from "@/features/collection/card-detail/CardDetailEffect";
 import { CardDetailHeader } from "@/features/collection/card-detail/CardDetailHeader";
 import { CardDetailKeywords } from "@/features/collection/card-detail/CardDetailKeywords";
@@ -40,7 +40,7 @@ interface CardDetailModalProps {
    * `undefined` : possession inconnue — illustrations et finitions restent
    * consultables en aperçu, sans choix d'affichage en partie.
    */
-  ownedEditions?: readonly CardEdition[];
+  ownedEditions?: readonly OwnedEdition[];
   /** Édition de l'exemplaire touché dans la grille : la fiche s'ouvre dessus. Absente : la plus rare possédée. */
   initialEdition?: CardEdition;
   /** Édition que le joueur montre aujourd'hui en partie. Absente : pas de choix d'affichage (hors Collection). */
@@ -216,7 +216,21 @@ export function CardDetailModal({
               displayed={displayedEdition}
             />
           )}
-          {ownedCount !== undefined && <CardDetailResale cardId={cardId} owned={ownedCount} />}
+          {ownedCount !== undefined && (
+            // La revente porte sur l'ÉDITION montrée : ses exemplaires à elle,
+            // et la Classique sans ceux d'une édition rare.
+            <CardDetailResale
+              // Changer d'édition remet la quantité et la confirmation à zéro.
+              key={`${cardId}:${illustration}/${finition}`}
+              cardId={cardId}
+              edition={{ artwork: illustration, finish: finition }}
+              owned={
+                isClassicEdition({ artwork: illustration, finish: finition })
+                  ? ownedCount - (ownedEditions ?? []).reduce((sum, e) => sum + e.quantity, 0)
+                  : ((ownedEditions ?? []).find((e) => e.artwork === illustration && e.finish === finition)?.quantity ?? 0)
+              }
+            />
+          )}
         </div>
       </div>
     </div>

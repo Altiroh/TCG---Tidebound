@@ -3,7 +3,8 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { recycleCard } from "@/features/collection/recycleActions";
-import { keptCopiesOf, recycleValueOf } from "@/features/collection/recycleValue";
+import { editionRecycleValueOf, keptCopiesOf } from "@/features/collection/recycleValue";
+import { CLASSIC_EDITION, editionLabel, isClassicEdition, type CardEdition } from "@/game/cosmetics/editions";
 import { notifyProgressionChanged } from "@/features/progression/progressionSync";
 import { TideCoin } from "@/features/shell/GameIcons";
 import styles from "@/features/collection/card-detail/CardDetail.module.css";
@@ -11,8 +12,10 @@ import { playButtonClick, playSurplusSell } from "@/lib/sound";
 
 interface CardDetailResaleProps {
   cardId: string;
-  /** Exemplaires possédés, tels que la Collection les a lus. */
+  /** Exemplaires possédés DE CETTE ÉDITION, tels que la Collection les a lus. */
   owned: number;
+  /** Édition revendue (celle que la fiche montre). Absente : la Classique. */
+  edition?: CardEdition;
 }
 
 /**
@@ -30,11 +33,13 @@ interface CardDetailResaleProps {
  * vente passe toujours par la confirmation — on ne rachète pas une carte
  * vendue.
  *
- * Le prix suit la RARETÉ (`RECYCLE_VALUE`). La base tranche la possession
- * sous verrou (`recycle_card`) : ce qui s'affiche ici n'en est qu'un
- * miroir.
+ * Le prix suit la RARETÉ et l'ÉDITION (Collection visuelle V2 :
+ * `editionRecycleValueOf`) — une Styled Full-Art Star Foil vaut bien plus
+ * qu'une Classique. La fiche revend l'édition qu'elle montre ; la base
+ * tranche la possession sous verrou (`recycle_edition`) : ce qui s'affiche
+ * ici n'en est qu'un miroir.
  */
-export function CardDetailResale({ cardId, owned }: CardDetailResaleProps) {
+export function CardDetailResale({ cardId, owned, edition = CLASSIC_EDITION }: CardDetailResaleProps) {
   const router = useRouter();
   const [quantity, setQuantity] = useState(1);
   const [confirming, setConfirming] = useState(false);
@@ -42,7 +47,8 @@ export function CardDetailResale({ cardId, owned }: CardDetailResaleProps) {
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  const unitValue = recycleValueOf(cardId);
+  const unitValue = editionRecycleValueOf(cardId, edition);
+  const rare = !isClassicEdition(edition);
   const keep = keptCopiesOf(cardId);
   if (unitValue === null || keep === null) return null;
 
@@ -59,7 +65,7 @@ export function CardDetailResale({ cardId, owned }: CardDetailResaleProps) {
     setError(null);
     setMessage(null);
     startTransition(async () => {
-      const result = await recycleCard(cardId, wanted);
+      const result = await recycleCard(cardId, wanted, edition);
       setConfirming(false);
       if (!result.ok) {
         setError(result.error ?? "Revente impossible.");
@@ -71,7 +77,9 @@ export function CardDetailResale({ cardId, owned }: CardDetailResaleProps) {
       setQuantity(1);
       setMessage(
         result.remaining === 0
-          ? `+${result.tidesGained} Tides — cette carte a quitté ta collection.`
+          ? rare
+            ? `+${result.tidesGained} Tides — cette édition a quitté ta collection.`
+            : `+${result.tidesGained} Tides — plus aucun exemplaire Classique.`
           : `+${result.tidesGained} Tides — il t'en reste ${result.remaining}.`
       );
       // Le solde du bandeau a changé : il doit le relire sans attendre un
@@ -90,14 +98,14 @@ export function CardDetailResale({ cardId, owned }: CardDetailResaleProps) {
   return (
     <section className={styles.resale} aria-label="Revente">
       <p className={styles.resaleHead}>
-        <span className={styles.resaleLabel}>Revente</span>
+        <span className={styles.resaleLabel}>Revente{rare ? ` · ${editionLabel(edition)}` : ""}</span>
         <span className={styles.resaleValue}>
           <TideCoin size={14} /> {unitValue} Tides / exemplaire
         </span>
       </p>
 
       {sellable === 0 ? (
-        <p className={styles.resaleNote}>Tu ne possèdes pas encore cette carte.</p>
+        <p className={styles.resaleNote}>{rare ? "Tu ne possèdes pas cette édition." : "Tu ne possèdes pas encore cette carte."}</p>
       ) : confirming ? (
         <div className={styles.resaleConfirm} role="alertdialog" aria-label="Confirmer la revente">
           <p className={styles.resaleConfirmText}>

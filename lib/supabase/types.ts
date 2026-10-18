@@ -985,6 +985,11 @@ export interface Database {
        * `RECYCLE_VALUE` (`game/boosters/constants.ts`) : le barème vit dans
        * le catalogue TypeScript, la base garantit possession et intégrité.
        */
+      /** Revente d'exemplaires d'UNE édition (migration 20261109120000). */
+      recycle_edition: {
+        Args: { p_user_id: string; p_card_id: string; p_artwork: string; p_finish: string; p_quantity: number; p_unit_value: number };
+        Returns: { ok: boolean; error?: string; tides_gained?: number; balance?: number; remaining?: number };
+      };
       recycle_card: {
         Args: { p_user_id: string; p_card_id: string; p_quantity: number; p_unit_value: number; p_min_keep: number };
         Returns: { ok: boolean; error?: string; tides_gained?: number; balance?: number; remaining?: number };

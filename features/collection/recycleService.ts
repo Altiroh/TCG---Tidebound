@@ -1,5 +1,8 @@
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
-import { keptCopiesOf, recycleValueOf } from "@/features/collection/recycleValue";
+import { editionRecycleValueOf, keptCopiesOf, recycleValueOf } from "@/features/collection/recycleValue";
+import { hasArtwork, isCardArtwork } from "@/game/cosmetics/artworks";
+import { isCardFinish } from "@/game/cosmetics/finishes";
+import { isClassicEdition, type CardEdition } from "@/game/cosmetics/editions";
 
 /**
  * Revente de cartes — module SERVEUR, volontairement sans `"use server"` :
@@ -71,6 +74,46 @@ export async function recycleCardFor(userId: string, cardId: string, quantity: n
     return { ok: true, tidesGained: data.tides_gained, balance: data.balance, remaining: data.remaining };
   } catch (cause) {
     console.error("[recycleCardFor] Échec inattendu :", cause);
+    return { ok: false, error: "La revente n'a pas pu aboutir — réessaie dans un instant." };
+  }
+}
+
+/**
+ * Revend `quantity` exemplaires d'UNE ÉDITION de `cardId` (Collection
+ * visuelle V2), au prix de cette édition (`editionRecycleValueOf`). Pour la
+ * Classique, la base ne vend que les exemplaires qui ne sont d'aucune
+ * édition rare ; pour une édition rare, que les siens (`recycle_edition`).
+ *
+ * Base sans la migration 20261109120000 : la Classique retombe sur
+ * `recycleCardFor` ; une édition rare, elle, refuse plutôt que de partir au
+ * prix d'une Classique.
+ */
+export async function recycleEditionFor(userId: string, cardId: string, edition: CardEdition, quantity: number): Promise<RecycleResult> {
+  if (!Number.isInteger(quantity) || quantity < 1) return { ok: false, error: "Quantité invalide." };
+  if (!isCardArtwork(edition?.artwork) || !isCardFinish(edition?.finish) || !hasArtwork(cardId, edition.artwork)) {
+    return { ok: false, error: "Édition inconnue pour cette carte." };
+  }
+  const unitValue = editionRecycleValueOf(cardId, edition);
+  if (unitValue === null) return { ok: false, error: "Carte inconnue." };
+
+  try {
+    const { data, error } = await createSupabaseServiceRoleClient().rpc("recycle_edition", {
+      p_user_id: userId,
+      p_card_id: cardId,
+      p_artwork: edition.artwork,
+      p_finish: edition.finish,
+      p_quantity: quantity,
+      p_unit_value: unitValue,
+    });
+    if (error) {
+      console.error("[recycleEditionFor] Revente refusée :", error.message);
+      if (isClassicEdition(edition)) return recycleCardFor(userId, cardId, quantity);
+      return { ok: false, error: "La revente de cette édition n'est pas encore ouverte (migration à appliquer)." };
+    }
+    if (!data?.ok) return { ok: false, error: data?.error ?? "La revente n'a pas pu aboutir." };
+    return { ok: true, tidesGained: data.tides_gained, balance: data.balance, remaining: data.remaining };
+  } catch (cause) {
+    console.error("[recycleEditionFor] Échec inattendu :", cause);
     return { ok: false, error: "La revente n'a pas pu aboutir — réessaie dans un instant." };
   }
 }

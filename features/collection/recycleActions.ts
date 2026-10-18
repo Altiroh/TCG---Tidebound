@@ -1,7 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { recycleCardFor, recycleSurplusFor, type RecycleResult, type RecycleSurplusResult } from "@/features/collection/recycleService";
+import { recycleEditionFor, recycleSurplusFor, type RecycleResult, type RecycleSurplusResult } from "@/features/collection/recycleService";
+import { CLASSIC_EDITION, type CardEdition } from "@/game/cosmetics/editions";
 import { getSessionUser } from "@/lib/supabase/sessionUser";
 
 /**
@@ -11,11 +12,13 @@ import { getSessionUser } from "@/lib/supabase/sessionUser";
  * serait un point d'entrée HTTP permettant de vider la collection de
  * n'importe qui.
  */
-export async function recycleCard(cardId: string, quantity = 1): Promise<RecycleResult> {
+export async function recycleCard(cardId: string, quantity = 1, edition: CardEdition = CLASSIC_EDITION): Promise<RecycleResult> {
   const user = await getSessionUser();
   if (!user) return { ok: false, error: "Connecte-toi pour revendre une carte." };
 
-  const result = await recycleCardFor(user.id, cardId, quantity);
+  // Toujours PAR ÉDITION (Collection visuelle V2) : la Classique ne vend que
+  // ses propres exemplaires, une édition rare part à son prix.
+  const result = await recycleEditionFor(user.id, cardId, edition, quantity);
   // La collection et le solde du bandeau changent : les pages qui les
   // affichent doivent être relues au prochain rendu.
   if (result.ok) {
