@@ -259,14 +259,14 @@ export interface Database {
         Row: {
           user_id: string;
           card_id: string;
-          finish: "monochrome" | "star-foil" | "prismatic" | "negative";
+          finish: "monochrome" | "foil" | "negative" | "prismatic" | "star-foil";
           quantity: number;
           first_obtained_at: string;
         };
         Insert: {
           user_id: string;
           card_id: string;
-          finish: "monochrome" | "star-foil" | "prismatic" | "negative";
+          finish: "monochrome" | "foil" | "negative" | "prismatic" | "star-foil";
           quantity?: number;
           first_obtained_at?: string;
         };

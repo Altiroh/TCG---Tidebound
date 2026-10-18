@@ -188,6 +188,11 @@
   filter: grayscale(1) contrast(1.15) brightness(1.04);
 }
 
+/* Foil — un film holographique lisse, sans éclats (18/10/2026). */
+.finitionFoil {
+  filter: saturate(1.12) contrast(1.04);
+}
+
 /* Negative — couleurs inversées (la peau devient bleue, la nuit blanche). */
 .finitionNegative {
   filter: invert(1) saturate(1.15) contrast(1.05);
@@ -247,6 +252,25 @@
   mix-blend-mode: color-dodge;
   opacity: 0.55;
   animation: derive 6s linear infinite;
+}
+
+/* Le reflet de la Foil : des bandes de lumière irisée qui balaient la carte. */
+.foilReflet {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    115deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(170, 230, 255, 0.4) 6%,
+    rgba(255, 200, 240, 0.35) 10%,
+    rgba(255, 255, 255, 0) 16%,
+    rgba(255, 255, 255, 0) 30%
+  );
+  background-size: 220% 220%;
+  mix-blend-mode: color-dodge;
+  opacity: 0.5;
+  animation: derive 7s linear infinite;
 }
 
 /* Un éclat étoilé à quatre branches, d'une teinte propre (`--teinte`). */
@@ -319,6 +343,7 @@
 }
 
 [data-cadre-repos]:not(:hover) .holoFoil,
+[data-cadre-repos]:not(:hover) .foilReflet,
 [data-cadre-repos]:not(:hover) .prismeRayons,
 [data-cadre-repos]:not(:hover) .prismeArcEnCiel {
   animation-play-state: paused;
@@ -326,6 +351,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .holoFoil,
+  .foilReflet,
   .eclatFoil,
   .prismeRayons,
   .prismeArcEnCiel {

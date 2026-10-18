@@ -2124,6 +2124,11 @@
   background: linear-gradient(110deg, #111, #555, #111);
 }
 
+.finishRibbon[data-finish="foil"] {
+  color: #10233a;
+  background: linear-gradient(110deg, #d9f3ff, #ffe0f4, #d9f3ff);
+}
+
 .finishRibbon[data-finish="negative"] {
   color: #e8f4ff;
   background: linear-gradient(110deg, #0c1a3a, #3b2a6b, #0c1a3a);

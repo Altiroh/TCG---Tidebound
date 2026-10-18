@@ -4,6 +4,8 @@ import { ARCHETYPE_LABELS, displayedSubtypes, isAbyssalVariant, subtypeLabel, ty
 import { CARD_TYPE_LABELS } from "@/features/match/cardDisplay";
 import { cardSetMark } from "@/game/boosters";
 import type { CardFinish } from "@/game/cosmetics/finishes";
+import { isFullArt, type CardArtwork } from "@/game/cosmetics/artworks";
+import { cardArtworkUrl } from "@/features/decks/cardArtUrl";
 import { useLayoutEffect, useRef } from "react";
 import { useDebordPleinCadre } from "@/features/match/useDebordPleinCadre";
 import { useImageOk } from "@/features/match/useImageOk";
@@ -54,10 +56,17 @@ export interface NouveauCadreFaceProps {
   qualifications?: readonly QualificationChip[];
   /**
    * Finition de l'exemplaire (16/10/2026, `game/cosmetics/finishes.ts`) :
-   * Monochrome, Star Foil, Prismatic, Negative — des FILTRES posés sur
+   * Monochrome, Foil, Negative, Prisma, Star Foil — des FILTRES posés sur
    * l'illustration seule, jamais sur le cadre ni les textes. Défaut : Classique.
    */
   finition?: CardFinish;
+  /**
+   * Illustration de l'exemplaire (Collection visuelle V2, `artworks.ts`).
+   * Styled : l'image change, le cadre reste. Styled Full-Art : nom, coût,
+   * type et effet sont PEINTS dans l'image — le cadre ne pose plus que le
+   * liseré, Puissance et Résistance. Défaut : Classique.
+   */
+  illustration?: CardArtwork;
 }
 
 /** Enveloppe à largeur fixe de la page de test : la face y compose tout en `cqw`. */
@@ -79,14 +88,18 @@ export function NouveauCadreFace({
   healthClassName = "",
   qualifications,
   finition = "classique",
+  illustration: oeuvre = "classique",
 }: NouveauCadreFaceProps) {
-  const illustration = `/assets/cards/illustrations/${def.id}.webp`;
+  const illustration = cardArtworkUrl(def.id, oeuvre);
+  // Le texte d'une Full-Art est dans l'image : le réécrire le doublerait.
+  const textesPeints = isFullArt(oeuvre);
   const illustrationOk = useImageOk(illustration);
   const hasPower = def.attack !== undefined;
   const hasResistance = def.health !== undefined;
   const abyssale = isAbyssalVariant(def);
   const shownSubtypes = displayedSubtypes(def);
-  const debord = abyssale ? `/assets/cards/illustrations/${def.id}-debord.webp` : null;
+  // Le débord est le sujet de l'illustration CLASSIQUE d'une Abyssale.
+  const debord = abyssale && oeuvre === "classique" ? `/assets/cards/illustrations/${def.id}-debord.webp` : null;
   const debordOk = useImageOk(debord);
   const debordPlein = useDebordPleinCadre(debordOk ? debord : null);
   const nomRef = useRef<HTMLHeadingElement>(null);
@@ -108,6 +121,7 @@ export function NouveauCadreFace({
       // Negative : les textes passent en noir sur halo blanc, les icônes s'inversent (16/10/2026).
       className={`absolute inset-0 select-none ${finition === "negative" ? styles.negatif : ""}`}
       data-finition={finition}
+      data-illustration={oeuvre}
       style={{ containerType: "inline-size", ["--illus-inset" as string]: calage.illustration, ["--illus-radius" as string]: calage.rayon }}
     >
       {/* Couche 1 : l'illustration, plein cadre, coupée à l'arrondi du liseré. */}
@@ -119,6 +133,7 @@ export function NouveauCadreFace({
           <div className={`h-full w-full bg-gradient-to-b from-slate-700 to-slate-950 ${FILTRE_FINITION[finition]}`} />
         )}
         {/* Finitions à reflets : leur lumière reste DANS l'illustration, sous le liseré. */}
+        {finition === "foil" && <div className={styles.foilReflet} aria-hidden />}
         {finition === "star-foil" && <EffetStarFoil />}
         {finition === "prismatic" && <EffetPrismatic />}
         {/* Pas de voile continu (maquette du 04/10/2026) : chaque texte porte sa
@@ -161,6 +176,8 @@ export function NouveauCadreFace({
       {/* Couche 4 : l'effet de rareté, sous les textes. */}
       {abyssale ? <EffetAbyssal /> : legendaire ? <EffetLegendaire /> : null}
 
+      {!textesPeints && (
+      <>
       {/* Coût + Raison. */}
       <div
         className="absolute flex items-center font-bold leading-none text-white [font-family:var(--font-card-title)]"
@@ -288,12 +305,25 @@ export function NouveauCadreFace({
           {reste}
         </p>
       )}
+      </>
+      )}
 
       {/* Stats : une ligne en bas à droite, la Puissance à gauche de la Résistance. */}
       {(hasPower || hasResistance) && (
         <div
           className="absolute flex items-center font-bold leading-none text-white [font-family:var(--font-card-title)]"
-          style={{ right: "9%", bottom: "4.5%", gap: "4cqw", fontSize: "9cqw", textShadow: HALO }}
+          style={{
+            right: "9%",
+            bottom: "4.5%",
+            gap: "4cqw",
+            fontSize: "9cqw",
+            textShadow: HALO,
+            // Full-Art : rien n'est réservé à cet endroit de l'image (Elyor y a
+            // ses ornements) — une ombre épaisse, comme la plaque du type.
+            ...(textesPeints
+              ? { padding: "2cqw 3cqw", background: "radial-gradient(ellipse at center, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.55) 50%, rgba(0,0,0,0) 75%)" }
+              : null),
+          }}
         >
           {hasPower && (
             <span className="flex items-center" style={{ gap: "1.5cqw" }}>
@@ -372,9 +402,10 @@ function EffetLegendaire() {
 const FILTRE_FINITION: Record<CardFinish, string> = {
   classique: "",
   monochrome: styles.finitionMonochrome!,
-  "star-foil": styles.finitionStarFoil!,
-  prismatic: styles.finitionPrismatic!,
+  foil: styles.finitionFoil!,
   negative: styles.finitionNegative!,
+  prismatic: styles.finitionPrismatic!,
+  "star-foil": styles.finitionStarFoil!,
 };
 
 /** Éclats de la Star Foil : position (% de l'illustration), couleur et décalage, fixes. */

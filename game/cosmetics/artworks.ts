@@ -1,0 +1,166 @@
+/**
+ * ILLUSTRATIONS DE CARTE — Collection visuelle V2 (Notion « Boosters &
+ * économie de collection », validation du 16/10/2026 ; mise en œuvre du
+ * 18/10/2026).
+ *
+ * Trois dimensions distinctes, que rien ne mélange :
+ *  - la CARTE (gameplay, rareté) — jamais touchée par ce module ;
+ *  - l'ILLUSTRATION — Classique (toute carte), Styled, Styled Full-Art
+ *    (certaines cartes seulement, listées ici) ;
+ *  - la FINITION (`finishes.ts`) — un filtre posé sur n'importe laquelle de
+ *    ces illustrations.
+ *
+ * Une Styled et une Styled Full-Art sont des ÉDITIONS à part entière de la
+ * carte : elles se collectionnent, portent les finitions, et leurs raretés
+ * se cumulent (une Styled Full-Art Star Foil est ultra ultra rare). Le moteur
+ * ne lit jamais ce module : c'est une donnée de COLLECTION et d'affichage.
+ *
+ * Styled Full-Art : nom, coût, type et texte sont PEINTS dans l'image ; seuls
+ * Puissance, Résistance et les états de partie sont posés par le code. Le
+ * texte peint est donc recopié ici (`textePeint`) : si le texte de la carte
+ * change, `tests/game/cardArtworks.test.ts` échoue tant que l'illustration
+ * n'est pas repeinte — une Full-Art ne peut pas mentir sur la carte.
+ *
+ * Fichiers : `public/assets/cards/illustrations/<illustration>/<cardId>.webp`
+ * (vignettes dans `illustrations/mini/<illustration>/`), fabriqués par
+ * `scripts/optimizeImages.mjs`.
+ */
+export type CardArtwork = "classique" | "styled" | "styled-fa";
+
+/** Les illustrations ALTERNATIVES, de la moins à la plus rare. */
+export type RareCardArtwork = Exclude<CardArtwork, "classique">;
+
+export const CARD_ARTWORKS: readonly CardArtwork[] = ["classique", "styled", "styled-fa"];
+export const RARE_CARD_ARTWORKS: readonly RareCardArtwork[] = ["styled", "styled-fa"];
+
+export const CARD_ARTWORK_LABELS: Record<CardArtwork, string> = {
+  classique: "Classique",
+  styled: "Styled",
+  "styled-fa": "Styled Full-Art",
+};
+
+export const CARD_ARTWORK_DESCRIPTIONS: Record<CardArtwork, string> = {
+  classique: "Illustration originale",
+  styled: "Illustration retravaillée, dans le cadre de la carte",
+  "styled-fa": "Illustration pleine carte, texte peint dedans",
+};
+
+/** Une Full-Art porte elle-même nom, coût, type et texte : le cadre ne les réécrit pas. */
+export function isFullArt(artwork: CardArtwork | undefined): boolean {
+  return artwork === "styled-fa";
+}
+
+interface CardAlternateArt {
+  styled?: true;
+  /**
+   * `textePeint` : le texte d'effet tel qu'il est PEINT sur la Full-Art
+   * (relu sur l'image le 18/10/2026). `aRepeindre` : le texte peint ne dit
+   * pas ce que dit la carte — la Full-Art reste hors collection et hors
+   * booster tant qu'elle n'est pas repeinte.
+   */
+  fullArt?: { textePeint: string; aRepeindre?: string };
+}
+
+/** Cartes qui ont une illustration alternative. Ordre alphabétique des ids. */
+const ALTERNATE_ARTS: Record<string, CardAlternateArt> = {
+  "aberration-vorace": { styled: true, fullArt: { textePeint: "À son arrivée — Sabordez une Créature alliée : gagne +2/+2 permanent." } },
+  "bretteuse-au-bord": {
+    styled: true,
+    fullArt: { textePeint: "Après qu'elle attaque, elle subit 1 dégât. La première fois à chaque tour qu'elle survit à des dégâts, elle gagne +1 Puissance." },
+  },
+  "chirurgien-du-bord": { styled: true, fullArt: { textePeint: "À l'arrivée : restaurez jusqu'à 3 Résistance répartie entre vos unités." } },
+  "eclaireur-ebreche": {
+    styled: true,
+    fullArt: { textePeint: "Au début de votre Main Phase, il subit 1 dégât. La première fois à chaque tour qu'il survit à des dégâts, il gagne +2 Puissance." },
+  },
+  "elyor-opalin-du-retour": {
+    styled: true,
+    fullArt: {
+      textePeint:
+        "À l'arrivée : renvoyez une unité de coût 2 ou moins dans la main de son propriétaire. Une fois par tour, lorsqu'une carte adverse revient en main, gagnez 1 Armure.",
+    },
+  },
+  "gaston-aventurier-de-ladalle": {
+    styled: true,
+    fullArt: { textePeint: "À l'arrivée : gagne +?/+0 tant qu'il reste en jeu. Réussite critique : gagne Pied marin ce tour. Échec critique : subit 1 dégât." },
+  },
+  "il-capitano-naufrage": { styled: true, fullArt: { textePeint: "La première fois qu'il subit des dégâts, il perd définitivement 3 Puissance et 2 Résistance." } },
+  "jugement-du-phare": {
+    styled: true,
+    fullArt: {
+      textePeint:
+        "Durée : 3 tours de table. Visible pendant Tempête et Abysses. Une fois par tour, si une unité adverse arrive alors que l'adversaire en contrôle au moins 4 : elle subit 2 dégâts.",
+    },
+  },
+  "la-revenante": {
+    styled: true,
+    // Peint en capitales, « -1 » au tiret simple : la comparaison les tolère.
+    fullArt: { textePeint: "ÉVEIL : RÉCUPÉREZ EN MAIN UN ALTÉRÉ DE COÛT ≤3 DU CIMETIÈRE. S'IL COÛTE ≤2, VOUS POUVEZ LE JOUER POUR -1 CE TOUR." },
+  },
+  "la-taverne-avant-le-donjon": { styled: true, fullArt: { textePeint: "Première unité alliée renvoyée en main pendant votre tour : récupérez 1 Ancrage." } },
+  "le-brise-ligne": {
+    styled: true,
+    fullArt: {
+      textePeint: "À l'arrivée : si l'adversaire contrôle moins 4 unités, infligez 1 dégât à toutes ses unités.",
+      aRepeindre: "« au » manque devant « moins 4 unités » : le sens s'inverse.",
+    },
+  },
+  "le-nain-qui-connait-un-raccourci": {
+    styled: true,
+    fullArt: { textePeint: "À l'arrivée : sur 3-4, votre prochaine carte coûte 1 de moins ce tour. Réussite critique : elle coûte 2 de moins à la place." },
+  },
+  "le-naufrage-impossible": { styled: true, fullArt: { textePeint: "La première fois qu'il devrait être détruit, il reste en jeu avec 1 Résistance." } },
+  // Full-Art livrée le 18/10/2026 sans Styled.
+  "mousse-des-quarts": {
+    fullArt: { textePeint: "A son arrivée, piochez 1 carte puis défaussez 1 carte.", aRepeindre: "« À » peint sans accent." },
+  },
+  "relance-j-te-jure": { styled: true, fullArt: { textePeint: "Chaîne — Relancez le dé en cours et gardez le nouveau résultat." } },
+};
+
+/** Les illustrations d'une carte, Classique en tête (toujours présente). */
+export function artworksOf(cardId: string): CardArtwork[] {
+  const alt = ALTERNATE_ARTS[cardId];
+  const result: CardArtwork[] = ["classique"];
+  if (alt?.styled) result.push("styled");
+  if (alt?.fullArt && !alt.fullArt.aRepeindre) result.push("styled-fa");
+  return result;
+}
+
+export function hasArtwork(cardId: string, artwork: CardArtwork): boolean {
+  return artworksOf(cardId).includes(artwork);
+}
+
+/** Cartes qui ont au moins une illustration alternative. */
+export function cardIdsWithAlternateArt(): string[] {
+  return Object.keys(ALTERNATE_ARTS);
+}
+
+/** La Full-Art livrée d'une carte (même à repeindre), `undefined` si elle n'en a pas. */
+export function paintedFullArt(cardId: string): { textePeint: string; aRepeindre?: string } | undefined {
+  return ALTERNATE_ARTS[cardId]?.fullArt;
+}
+
+/**
+ * Texte peint et texte de la carte disent-ils la même chose ? La casse et les
+ * tirets (−, –, -) sont tolérés : une Full-Art peinte en capitales ou au tiret
+ * simple reste juste. Un mot ou un accent de différence, non.
+ */
+export function paintedTextMatches(textePeint: string, texteCarte: string): boolean {
+  const norm = (t: string) => t.replace(/[−–—]/g, "-").replace(/\s+/g, " ").trim().toLocaleLowerCase("fr");
+  return norm(textePeint) === norm(texteCarte);
+}
+
+/**
+ * Illustration à poser sur la TUILE DE PLATEAU, qui écrit elle-même nom et
+ * stats par-dessus : une Full-Art, dont le texte est peint, y ferait
+ * doublon. Elle cède la place à la Styled de la carte, sinon à la Classique.
+ */
+export function boardTileArtwork(cardId: string, artwork: CardArtwork | undefined): CardArtwork {
+  if (!artwork || artwork === "classique") return "classique";
+  if (!isFullArt(artwork)) return hasArtwork(cardId, artwork) ? artwork : "classique";
+  return hasArtwork(cardId, "styled") ? "styled" : "classique";
+}
+
+export function isCardArtwork(value: unknown): value is CardArtwork {
+  return typeof value === "string" && (CARD_ARTWORKS as readonly string[]).includes(value);
+}

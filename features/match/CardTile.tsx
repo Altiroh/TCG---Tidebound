@@ -37,6 +37,8 @@ import { useDebordPleinCadre } from "@/features/match/useDebordPleinCadre";
 import { NOUVEAU_CADRE } from "@/features/match/cardFrame";
 import { rarityForCardId } from "@/game/boosters";
 import type { CardFinish } from "@/game/cosmetics/finishes";
+import { boardTileArtwork, type CardArtwork } from "@/game/cosmetics/artworks";
+import { cardArtworkUrl } from "@/features/decks/cardArtUrl";
 
 interface CardTileProps {
   instance: CardInstance;
@@ -108,11 +110,17 @@ interface CardTileProps {
    */
   attacksLeft?: number;
   /**
-   * Finition de l'exemplaire montré (Monochrome, Star Foil, Prismatic,
-   * Negative — `game/cosmetics/finishes.ts`) : un filtre de l'illustration du
+   * Finition de l'exemplaire montré (Monochrome, Foil, Negative, Prisma,
+   * Star Foil — `game/cosmetics/finishes.ts`) : un filtre de l'illustration du
    * nouveau cadre. Collection et ouverture de booster ; absente : Classique.
    */
   finish?: CardFinish;
+  /**
+   * Illustration de l'exemplaire montré (Classique, Styled, Styled Full-Art —
+   * `game/cosmetics/artworks.ts`). La tuile de plateau, qui écrit nom et
+   * stats elle-même, remplace une Full-Art par la Styled (`boardTileArtwork`).
+   */
+  artwork?: CardArtwork;
 }
 
 /**
@@ -374,7 +382,8 @@ function getTypeIconUrl(def: CardDefinition): string {
  *    sort ici, sinon le jeton changerait de tête à chaque rendu et
  *    différerait d'un joueur à l'autre.
  */
-function getIllustrationUrl(def: CardDefinition, instance: CardInstance): string {
+function getIllustrationUrl(def: CardDefinition, instance: CardInstance, artwork: CardArtwork = "classique"): string {
+  if (!def.token && artwork !== "classique") return cardArtworkUrl(instance.cardId, artwork);
   const directory = def.token ? "/assets/token" : "/assets/cards/illustrations";
   const variant = def.illustrationVariants && instance.illustrationVariant ? `-${instance.illustrationVariant}` : "";
   return `${directory}/${instance.cardId}${variant}.webp`;
@@ -616,6 +625,7 @@ function CardTileView({
   variant = "full",
   attacksLeft,
   finish,
+  artwork,
 }: CardTileProps) {
   // Face cachée : le dos est celui du PROPRIÉTAIRE de la carte (hors partie,
   // « booster » ou « preview » n'ont pas de contexte : dos local).
@@ -680,10 +690,14 @@ function CardTileView({
 
   const frameUrl = getFrameUrl(def);
   const typeIconUrl = getTypeIconUrl(def);
-  const illustrationUrl = getIllustrationUrl(def, instance);
+  const isBoardTile = variant === "board";
+  // L'illustration posée par CE rendu : la carte complète montre l'édition
+  // telle quelle ; la tuile de plateau écarte la Full-Art (texte peint).
+  const shownArtwork = isBoardTile ? boardTileArtwork(def.id, artwork) : (artwork ?? "classique");
+  const illustrationUrl = getIllustrationUrl(def, instance, shownArtwork);
   // Le débord n'existe que pour les Abyssales (`public/assets/cards/README.md`) :
   // inutile d'aller le chercher pour toutes les autres cartes.
-  const debordUrl = isAbyssal ? getDebordUrl(instance.cardId) : null;
+  const debordUrl = isAbyssal && shownArtwork === "classique" ? getDebordUrl(instance.cardId) : null;
   const frameThumbUrl = getThumbUrl(frameUrl);
   // Le cadre, lui, reste sondé (sa présence décide de la mise en page) —
   // mais sur sa VIGNETTE : ~65 Ko au lieu de ~245.
@@ -700,7 +714,6 @@ function CardTileView({
   const debordOk = useImageOk(debordUrl);
   // Calque peint sur le canevas de l'illustration : posé comme elle, pas dans la zone d'une silhouette.
   const debordPlein = useDebordPleinCadre(debordOk ? debordUrl : null);
-  const isBoardTile = variant === "board";
   // Nouveau cadre (`cardFrame.ts`) : seulement la carte complète d'une
   // vraie carte — ni la tuile de plateau, ni un jeton, ni une carte cachée.
   /** Texte de l'ancien cadre, « spé. » comprise : c'est sur lui que se calcule la taille de police. */
@@ -956,6 +969,7 @@ function CardTileView({
             }`}
             qualifications={qualifications}
             finition={finish}
+            illustration={artwork}
           />
         ) : (
         <>

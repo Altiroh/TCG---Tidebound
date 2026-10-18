@@ -347,6 +347,11 @@ for await (const file of walk(ROOT)) {
  */
 const THUMBNAILS = [
   { source: path.join(ROOT, "cards", "illustrations"), width: 360, quality: 78 },
+  // Illustrations Styled et Styled Full-Art (Collection visuelle V2) : leurs
+  // vignettes rejoignent `illustrations/mini/<dossier>/`, là où `CardTile`
+  // les cherche (même règle que la Classique : `mini/` + le chemin relatif).
+  { source: path.join(ROOT, "cards", "illustrations", "styled"), target: path.join(ROOT, "cards", "illustrations", "mini", "styled"), width: 360, quality: 78 },
+  { source: path.join(ROOT, "cards", "illustrations", "styled-fa"), target: path.join(ROOT, "cards", "illustrations", "mini", "styled-fa"), width: 360, quality: 82 },
   // Les cadres suivent la même logique que les illustrations, avec une
   // qualité plus haute : filets fins et bords transparents.
   { source: path.join(ROOT, "cards", "frames"), width: 400, quality: 88 },
@@ -354,7 +359,7 @@ const THUMBNAILS = [
 
 const thumbs = { made: 0, skipped: 0 };
 for (const family of THUMBNAILS) {
-  const targetDir = path.join(family.source, "mini");
+  const targetDir = family.target ?? path.join(family.source, "mini");
   for (const entry of await readdir(family.source, { withFileTypes: true })) {
     if (!entry.isFile() || !entry.name.endsWith(".webp")) continue;
     const source = path.join(family.source, entry.name);

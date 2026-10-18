@@ -9,12 +9,14 @@ import {
 } from "@/game/cosmetics/finishes";
 
 /**
- * FINITIONS DE CARTE (16/10/2026) : Monochrome, Star Foil, Prismatic,
- * Negative — très rares, sur n'importe quelle carte, sans effet de jeu.
+ * FINITIONS DE CARTE (16/10/2026, Foil ajoutée le 18/10) : Monochrome, Foil,
+ * Negative, Prisma, Star Foil — très rares, sur n'importe quelle carte, sans
+ * effet de jeu.
  */
 describe("finitions de carte", () => {
-  it("sont TRÈS rares : moins d'une carte sur 200, et la Prismatic la plus rare", () => {
-    expect(rareFinishChance()).toBeLessThan(1 / 200);
+  it("sont TRÈS rares : environ une carte sur 200, et la Star Foil la plus rare", () => {
+    expect(rareFinishChance()).toBeLessThan(1 / 180);
+    expect(RARE_CARD_FINISHES[RARE_CARD_FINISHES.length - 1]).toBe("star-foil");
     expect(rareFinishChance()).toBeGreaterThan(0);
     const odds = RARE_CARD_FINISHES.map((f) => CARD_FINISH_ODDS[f]);
     expect([...odds].sort((a, b) => b - a)).toEqual(odds);
@@ -56,5 +58,6 @@ describe("finitions de carte", () => {
   it("la collection montre la finition la plus rare possédée", () => {
     expect(rarestFinish(undefined)).toBe("classique");
     expect(rarestFinish(["monochrome", "prismatic", "negative"])).toBe("prismatic");
+    expect(rarestFinish(["star-foil", "foil", "prismatic"])).toBe("star-foil");
   });
 });

@@ -8,6 +8,7 @@ import { CardTile } from "@/features/match/CardTile";
 import { NouveauCadreCard } from "@/features/cadre-preview/NouveauCadreCard";
 import { qualificationChips } from "@/features/match/qualificationDisplay";
 import { CARD_FINISHES, CARD_FINISH_DESCRIPTIONS, CARD_FINISH_LABELS, type CardFinish } from "@/game/cosmetics/finishes";
+import { CARD_ARTWORKS, CARD_ARTWORK_LABELS, artworksOf, type CardArtwork } from "@/game/cosmetics/artworks";
 
 /** La carte de la maquette d'abord, puis une carte par type (une sans stats, une Résistance seule…), puis deux Abyssales, puis le texte le plus long du catalogue (zone qui défile). */
 const MAQUETTE_ID = "la-bete-quon-nattend-plus";
@@ -32,9 +33,17 @@ export function CadrePreview() {
   const [largeur, setLargeur] = useState(260);
   const [comparer, setComparer] = useState(true);
   const [finition, setFinition] = useState<CardFinish>("classique");
+  // Illustration (Collection visuelle V2) : hors Classique, l'échantillon
+  // devient les cartes qui ONT cette illustration.
+  const [illustration, setIllustration] = useState<CardArtwork>("classique");
   // `?cartes=id1,id2` : une liste précise plutôt que l'échantillon.
   const demandees = (useSearchParams().get("cartes") ?? "").split(",").filter(Boolean);
-  const cartes = demandees.length > 0 ? CORE_SET.filter((def) => demandees.includes(def.id)) : echantillon();
+  const cartes =
+    demandees.length > 0
+      ? CORE_SET.filter((def) => demandees.includes(def.id))
+      : illustration === "classique"
+        ? echantillon()
+        : CORE_SET.filter((def) => artworksOf(def.id).includes(illustration));
 
   return (
     <main className="min-h-dvh bg-slate-950 p-6 text-slate-100">
@@ -59,6 +68,16 @@ export function CadrePreview() {
           </select>
         </label>
         <label className="flex items-center gap-2 text-sm">
+          Illustration
+          <select className="bg-slate-800 px-2 py-1" value={illustration} onChange={(event) => setIllustration(event.target.value as CardArtwork)}>
+            {CARD_ARTWORKS.map((a) => (
+              <option key={a} value={a}>
+                {CARD_ARTWORK_LABELS[a]}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex items-center gap-2 text-sm">
           Largeur
           <input type="range" min={120} max={420} value={largeur} onChange={(event) => setLargeur(Number(event.target.value))} />
           <span className="tabular-nums">{largeur}px</span>
@@ -69,7 +88,7 @@ export function CadrePreview() {
         {cartes.map((def) => (
           <div key={def.id} className="flex gap-3">
             <div style={{ width: largeur }}>
-              <NouveauCadreCard def={def} legendaire={legendaire || rarityForCardId(def.id) === "legendary"} widthClassName="w-full" qualifications={qualificationChips(def)} finition={finition} />
+              <NouveauCadreCard def={def} legendaire={legendaire || rarityForCardId(def.id) === "legendary"} widthClassName="w-full" qualifications={qualificationChips(def)} finition={finition} illustration={artworksOf(def.id).includes(illustration) ? illustration : "classique"} />
             </div>
             {comparer && (
               <div style={{ width: largeur }} className="opacity-90">

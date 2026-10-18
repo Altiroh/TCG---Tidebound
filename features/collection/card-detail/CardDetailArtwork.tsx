@@ -1,5 +1,6 @@
 import type { CardInstance } from "@/game";
 import type { CardFinish } from "@/game/cosmetics/finishes";
+import type { CardArtwork } from "@/game/cosmetics/artworks";
 import { CardTile } from "@/features/match/CardTile";
 import styles from "@/features/collection/card-detail/CardDetail.module.css";
 
@@ -29,7 +30,17 @@ function displayInstance(cardId: string): CardInstance {
  * éteints : ils décrivent une carte EN PARTIE, alors qu'ici on inspecte une
  * définition de catalogue.
  */
-export function CardDetailArtwork({ cardId, finish }: { cardId: string; /** Finition montrée (aperçu de la fiche). */ finish?: CardFinish }) {
+export function CardDetailArtwork({
+  cardId,
+  finish,
+  artwork,
+}: {
+  cardId: string;
+  /** Finition montrée (aperçu de la fiche). */
+  finish?: CardFinish;
+  /** Illustration montrée (aperçu de la fiche). */
+  artwork?: CardArtwork;
+}) {
   return (
     <div className={styles.artwork} key={cardId}>
       <CardTile
@@ -41,6 +52,7 @@ export function CardDetailArtwork({ cardId, finish }: { cardId: string; /** Fini
         // Marée arbitraire : la fiche montre la carte, pas un état de jeu.
         showStatusBadges={false}
         finish={finish}
+        artwork={artwork}
       />
     </div>
   );

@@ -802,6 +802,7 @@
 }
 
 /* Une finition possédée : sa pastille luit de ses propres couleurs. */
+.finishChip[data-owned][data-finish="foil"],
 .finishChip[data-owned][data-finish="star-foil"],
 .finishChip[data-owned][data-finish="prismatic"] {
   background: linear-gradient(110deg, rgba(255, 150, 220, 0.25), rgba(255, 240, 150, 0.25), rgba(150, 255, 210, 0.25), rgba(150, 200, 255, 0.25));

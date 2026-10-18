@@ -4,7 +4,8 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { buildCardDetailModel } from "@/features/collection/card-detail/cardDetailData";
 import { CardDetailArtwork } from "@/features/collection/card-detail/CardDetailArtwork";
-import { CardDetailFinishes } from "@/features/collection/card-detail/CardDetailFinishes";
+import { CardDetailArtworks, CardDetailFinishes } from "@/features/collection/card-detail/CardDetailFinishes";
+import type { CardArtwork } from "@/game/cosmetics/artworks";
 import { rarestFinish, type CardFinish } from "@/game/cosmetics/finishes";
 import { CardDetailEffect } from "@/features/collection/card-detail/CardDetailEffect";
 import { CardDetailHeader } from "@/features/collection/card-detail/CardDetailHeader";
@@ -63,6 +64,9 @@ export function CardDetailModal({ cardId, onClose, onPrevious, onNext, onShowCar
   useEffect(() => {
     setFinition(initialFinish ?? rarestFinish(finitionsCle ? (finitionsCle.split(",") as CardFinish[]) : []));
   }, [cardId, finitionsCle, initialFinish]);
+  // Illustration montrée (Styled, Full-Art) : un aperçu, Classique à chaque carte.
+  const [illustration, setIllustration] = useState<CardArtwork>("classique");
+  useEffect(() => setIllustration("classique"), [cardId]);
   const panelRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const titleId = useId();
@@ -168,7 +172,7 @@ export function CardDetailModal({ cardId, onClose, onPrevious, onNext, onShowCar
 
         {onPrevious && onNext && <CardDetailNavigation onPrevious={onPrevious} onNext={onNext} />}
 
-        <CardDetailArtwork cardId={cardId} finish={finition} />
+        <CardDetailArtwork cardId={cardId} finish={finition} artwork={illustration} />
 
         <div className={styles.info}>
           <CardDetailHeader model={model} titleId={titleId} />
@@ -179,6 +183,7 @@ export function CardDetailModal({ cardId, onClose, onPrevious, onNext, onShowCar
           {qualifications.length > 0 && <CardDetailQualifications chips={qualifications} />}
           {keywords.length > 0 && <CardDetailKeywords keywords={keywords} />}
           <CardDetailMeta model={model} onShowCounterpart={onShowCard} />
+          <CardDetailArtworks cardId={cardId} shown={illustration} onShow={setIllustration} />
           <CardDetailFinishes shown={finition} owned={ownedFinishes} onShow={setFinition} />
           {ownedCount !== undefined && <CardDetailResale cardId={cardId} owned={ownedCount} />}
         </div>

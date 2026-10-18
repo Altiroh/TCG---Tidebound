@@ -1,3 +1,5 @@
+import type { CardArtwork } from "@/game/cosmetics/artworks";
+
 /**
  * URLs des illustrations de carte — et RIEN d'autre.
  *
@@ -21,6 +23,20 @@ function illustrationFile(cardId: string): string {
 /** Illustration d'une carte, telle que servie par `public/assets` — pour l'afficher seule. */
 export function cardIllustrationUrl(cardId: string): string {
   return `/assets/cards/illustrations/${illustrationFile(cardId)}.webp`;
+}
+
+/**
+ * Fichier d'une ILLUSTRATION précise (Collection visuelle V2,
+ * `game/cosmetics/artworks.ts`) : la Classique reste à la racine, une Styled
+ * ou une Full-Art vit dans le dossier qui porte son nom.
+ */
+export function cardArtworkUrl(cardId: string, artwork: CardArtwork = "classique"): string {
+  return artwork === "classique" ? cardIllustrationUrl(cardId) : `/assets/cards/illustrations/${artwork}/${cardId}.webp`;
+}
+
+/** Vignette de cette illustration (`illustrations/mini/<illustration>/`). */
+export function cardArtworkThumbUrl(cardId: string, artwork: CardArtwork = "classique"): string {
+  return artwork === "classique" ? cardIllustrationThumbUrl(cardId) : `/assets/cards/illustrations/mini/${artwork}/${cardId}.webp`;
 }
 
 /** Le DÉCOR seul d'une Abyssale (pour qui empile lui-même le débord par-dessus). */
