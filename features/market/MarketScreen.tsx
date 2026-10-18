@@ -124,6 +124,7 @@ export function MarketScreen({ inventory, catalog, collectables, sandbox = false
   /** Booster dont on consulte le contenu. */
   const [contentsOf, setContentsOf] = useState<BoosterInventoryEntry | null>(null);
   const ownedSet = useMemo(() => new Set(inventory.ownedCardIds), [inventory.ownedCardIds]);
+  const ownedArtworkSet = useMemo(() => new Set(inventory.ownedArtworks ?? []), [inventory.ownedArtworks]);
 
   // Un booster non achetable (le Mini Booster de Bienvenue, offert) n'a rien
   // à faire dans une boutique : il s'obtient, il ne se vend pas.
@@ -571,7 +572,7 @@ export function MarketScreen({ inventory, catalog, collectables, sandbox = false
       </div>
 
       <ScreenToast message={toast} onDismiss={() => setToast(null)} />
-      {contentsOf && <BoosterContentsDialog booster={contentsOf} owned={ownedSet} onClose={() => setContentsOf(null)} />}
+      {contentsOf && <BoosterContentsDialog booster={contentsOf} owned={ownedSet} ownedArtworks={ownedArtworkSet} onClose={() => setContentsOf(null)} />}
     </GameScreen>
   );
 }

@@ -67,6 +67,11 @@ export interface BoosterInventory {
   boosters: BoosterInventoryEntry[];
   /** Cartes possédées (quantité > 0) — le Market dit, carte par carte, ce qu'on a déjà. */
   ownedCardIds: string[];
+  /**
+   * Illustrations alternatives possédées, `<cardId>/<illustration>` (toutes
+   * finitions confondues) : le contenu d'un booster dit lesquelles manquent.
+   */
+  ownedArtworks?: string[];
 }
 
 export interface OpenedCard {
@@ -157,7 +162,7 @@ export async function fetchBoosterInventory(): Promise<BoosterInventory> {
     if (!session) return empty;
     const { supabase, userId } = session;
 
-    const [definitions, owned, pity, currency, pools, ownedCards] = await Promise.all([
+    const [definitions, owned, pity, currency, pools, ownedCards, ownedEditions] = await Promise.all([
       supabase.from("booster_definitions").select("*").eq("is_enabled", true).order("id"),
       supabase.from("player_boosters").select("booster_definition_id, quantity, updated_at").eq("user_id", userId),
       supabase.from("player_pity").select("booster_definition_id, packs_since_abyssal").eq("user_id", userId),
@@ -171,6 +176,7 @@ export async function fetchBoosterInventory(): Promise<BoosterInventory> {
         .eq("cards.is_collectible", true)
         .eq("cards.is_enabled", true),
       supabase.from("player_cards").select("card_id").eq("user_id", userId).gt("quantity", 0),
+      readOwnedEditions(userId),
     ]);
 
     if (pools.error) console.error("[fetchBoosterInventory] Pools illisibles :", pools.error.message);
@@ -203,6 +209,13 @@ export async function fetchBoosterInventory(): Promise<BoosterInventory> {
         pool: poolByBooster.get(def.id) ?? [],
       })),
       ownedCardIds: (ownedCards.data ?? []).map((row) => row.card_id),
+      ownedArtworks: Array.from(
+        new Set(
+          Object.entries(ownedEditions).flatMap(([cardId, editions]) =>
+            editions.filter((edition) => edition.artwork !== "classique").map((edition) => `${cardId}/${edition.artwork}`)
+          )
+        )
+      ),
     };
   } catch (error) {
     console.error("[fetchBoosterInventory] Lecture impossible :", error);

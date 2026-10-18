@@ -21,6 +21,8 @@ import { StatusTag } from "@/features/shell/StatusTag";
 interface BoosterContentsDialogProps {
   booster: BoosterInventoryEntry;
   owned: ReadonlySet<string>;
+  /** Illustrations possédées, `<cardId>/<illustration>` ; absent : aucune. */
+  ownedArtworks?: ReadonlySet<string>;
   onClose: () => void;
 }
 
@@ -47,7 +49,7 @@ function safeName(cardId: string): string {
  * ferment. Même panneau au Market (« Contenu ») et aux Boosters
  * (« Cartes de l'extension »).
  */
-export function BoosterContentsDialog({ booster, owned, onClose }: BoosterContentsDialogProps) {
+export function BoosterContentsDialog({ booster, owned, ownedArtworks, onClose }: BoosterContentsDialogProps) {
   // Mémorisés sur l'appareil : d'un booster à l'autre, on cherche la même chose.
   const [rarity, setRarity] = usePersistedState<CardRarity | null>("contenu-booster:rarete", null, {
     decode: (raw) => oneOf<CardRarity | null>([null, ...RARITY_ORDER], raw),
@@ -77,12 +79,18 @@ export function BoosterContentsDialog({ booster, owned, onClose }: BoosterConten
   const illustrations = useMemo(
     () =>
       boosterArtworkEntries(booster.boosterId)
-        .map((entry) => ({ ...entry, name: safeName(entry.cardId), rarity: unique.find((card) => card.cardId === entry.cardId)?.rarity }))
+        .map((entry) => ({
+          ...entry,
+          name: safeName(entry.cardId),
+          rarity: unique.find((card) => card.cardId === entry.cardId)?.rarity,
+          owned: ownedArtworks?.has(`${entry.cardId}/${entry.artwork}`) ?? false,
+        }))
         .filter((entry) => entry.rarity !== undefined)
         .sort((a, b) => (a.artwork === b.artwork ? a.name.localeCompare(b.name, "fr") : a.artwork === "styled" ? -1 : 1)),
-    [booster.boosterId, unique]
+    [booster.boosterId, unique, ownedArtworks]
   );
-  const shownIllustrations = missingOnly ? [] : illustrations.filter((entry) => !rarity || entry.rarity === rarity);
+  // « Manquantes seulement » vaut aussi pour elles : une illustration jamais tirée est à chercher.
+  const shownIllustrations = illustrations.filter((entry) => (!rarity || entry.rarity === rarity) && (!missingOnly || !entry.owned));
 
   const ownedCount = unique.filter((card) => card.owned).length;
   const rarities = RARITY_ORDER.filter((entry) => unique.some((card) => card.rarity === entry));
@@ -171,6 +179,7 @@ export function BoosterContentsDialog({ booster, owned, onClose }: BoosterConten
                   className={styles.card}
                   data-rarity={entry.rarity}
                   data-artwork={entry.artwork}
+                  data-owned={entry.owned ? "true" : "false"}
                   onClick={() => {
                     playButtonClick();
                     setDetail({ cardId: entry.cardId, edition: { artwork: entry.artwork, finish: "classique" } });
@@ -182,7 +191,7 @@ export function BoosterContentsDialog({ booster, owned, onClose }: BoosterConten
                   <span className={styles.rarity}>{CARD_ARTWORK_LABELS[entry.artwork]}</span>
                 </button>
                 <span className={styles.status}>
-                  <span className={styles.artworkTag}>1 / {Math.round(1 / CARD_ARTWORK_ODDS[entry.artwork])}</span>
+                  {entry.owned ? <StatusTag tone="owned">Possédée</StatusTag> : <span className={styles.artworkTag}>1 / {Math.round(1 / CARD_ARTWORK_ODDS[entry.artwork])}</span>}
                 </span>
               </li>
             ))}

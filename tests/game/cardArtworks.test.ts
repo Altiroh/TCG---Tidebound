@@ -58,6 +58,10 @@ describe("illustrations Styled / Styled Full-Art", () => {
         // Repeinte et juste : retirer le drapeau pour la rendre obtenable.
         expect(juste, `${cardId} : texte désormais juste, retirer « aRepeindre »`).toBe(false);
         expect(artworksOf(cardId)).not.toContain("styled-fa");
+      } else if (fullArt.ecartMineur) {
+        // Écart de ponctuation assumé : motif obligatoire, et il doit rester un écart.
+        expect(fullArt.ecartMineur.length, cardId).toBeGreaterThan(10);
+        expect(juste, `${cardId} : texte désormais exact, retirer « ecartMineur »`).toBe(false);
       } else {
         expect(juste, `${cardId} : le texte de la carte a changé, la Full-Art est à repeindre`).toBe(true);
       }
@@ -88,7 +92,7 @@ describe("illustrations Styled / Styled Full-Art", () => {
   it("la tuile de plateau, qui écrit nom et stats, n'affiche jamais une Full-Art", () => {
     expect(boardTileArtwork("aberration-vorace", "styled-fa")).toBe("styled");
     expect(boardTileArtwork("aberration-vorace", "styled")).toBe("styled");
-    expect(boardTileArtwork("mousse-des-quarts", "styled-fa")).toBe("classique");
+    expect(boardTileArtwork("mousse-des-quarts", "styled-fa")).toBe("styled");
     expect(boardTileArtwork("marin-des-jetees", "styled")).toBe("classique");
     expect(boardTileArtwork("aberration-vorace", undefined)).toBe("classique");
   });

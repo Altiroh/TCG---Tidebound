@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { CardDefinition } from "@/game";
 import { RARE_CARD_FINISHES } from "@/game/cosmetics/finishes";
 import { RARE_CARD_ARTWORKS } from "@/game/cosmetics/artworks";
+import { obtainableArtworksOf } from "@/game/boosters/boosterArtworks";
+import type { GridEdition } from "@/features/collection/CardGrid";
 import { CLASSIC_EDITION, editionRank, type CardEdition, type OwnedEdition } from "@/game/cosmetics/editions";
 import type { EditionFilter } from "@/features/collection/CollectionSidebar";
 import { CardShelfProvider, type ShelfBackend } from "@/features/collection/shelf/CardShelfProvider";
@@ -58,6 +60,17 @@ const AUCUN_AFFICHAGE: Record<string, CardEdition> = {};
 /** Éditions rares possédées d'une carte, de la moins à la plus rare. */
 function editionsPossedees(liste: OwnedEdition[] | undefined): OwnedEdition[] {
   return (liste ?? []).filter((e) => e.quantity > 0).sort((a, b) => editionRank(a) - editionRank(b));
+}
+
+/**
+ * Illustrations qu'un booster propose pour cette carte et que le joueur n'a
+ * dans AUCUNE finition : elles s'affichent estompées, comme une carte
+ * manquante — la collection montre aussi ce qui reste à trouver.
+ */
+function illustrationsManquantes(cardId: string, possedees: OwnedEdition[]): GridEdition[] {
+  return obtainableArtworksOf(cardId)
+    .filter((artwork) => !possedees.some((e) => e.artwork === artwork))
+    .map((artwork) => ({ artwork, finish: "classique" as const, missing: true }));
 }
 
 /** L'édition répond-elle au filtre « Édition » (une illustration, ou une finition) ? */
@@ -126,7 +139,10 @@ function CollectionScreenBody({
   const shownCards = useMemo(
     () =>
       editionFilter
-        ? browser.cards.filter((def) => editionsPossedees(ownedEditions[def.id]).some((e) => matchesFilter(e, editionFilter)))
+        ? browser.cards.filter((def) => {
+            const possedees = editionsPossedees(ownedEditions[def.id]);
+            return [...possedees, ...illustrationsManquantes(def.id, possedees)].some((e) => matchesFilter(e, editionFilter));
+          })
         : browser.cards,
     [browser.cards, editionFilter, ownedEditions]
   );
@@ -152,13 +168,15 @@ function CollectionScreenBody({
   // ensemble. Une carte possédée seulement en édition rare n'a pas de cellule
   // Classique ; le filtre « Édition » ne montre que les siennes.
   const editionsFor = useCallback(
-    (def: CardDefinition): CardEdition[] => {
+    (def: CardDefinition): GridEdition[] => {
       const rares = editionsPossedees(ownedEditions[def.id]);
-      if (editionFilter) return rares.filter((e) => matchesFilter(e, editionFilter));
-      if (rares.length === 0) return [CLASSIC_EDITION];
-      return classicCount(def.id) > 0 ? [CLASSIC_EDITION, ...rares] : rares;
+      // « Possédées » : rien d'estompé. Sinon, les illustrations manquantes suivent la carte.
+      const manquantes = browser.filters.ownership === "owned" ? [] : illustrationsManquantes(def.id, rares);
+      if (editionFilter) return [...rares, ...manquantes].filter((e) => matchesFilter(e, editionFilter));
+      const base = rares.length === 0 || classicCount(def.id) > 0 ? [CLASSIC_EDITION, ...rares] : rares;
+      return [...base, ...manquantes];
     },
-    [editionFilter, ownedEditions, classicCount]
+    [editionFilter, ownedEditions, classicCount, browser.filters.ownership]
   );
   const [detailCardId, setDetailCardId] = useState<string | null>(null);
   // L'édition de la cellule touchée : la fiche s'ouvre sur CET exemplaire.

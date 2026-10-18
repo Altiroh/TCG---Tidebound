@@ -16,7 +16,10 @@ const STAGGER_COUNT = 12;
 /** Délai cosmétique avant d'ajouter le lot suivant — juste assez pour que l'indicateur de chargement soit perceptible. */
 const LOAD_DELAY_MS = 180;
 
-const CLASSIQUE_SEULE: readonly CardEdition[] = [CLASSIC_EDITION];
+/** Une cellule de la grille : une édition, `missing` quand elle n'est pas possédée (estompée). */
+export type GridEdition = CardEdition & { missing?: boolean };
+
+const CLASSIQUE_SEULE: readonly GridEdition[] = [CLASSIC_EDITION];
 
 /** Instance factice, pour afficher une carte hors de toute partie (stats de base, aucun état vivant). */
 function displayInstance(cardId: string): CardInstance {
@@ -133,7 +136,7 @@ interface CardGridProps {
    * juste après elle. Une liste vide ne montre rien de la carte. Absent :
    * une cellule Classique.
    */
-  editionsFor?: (def: CardDefinition) => readonly CardEdition[];
+  editionsFor?: (def: CardDefinition) => readonly GridEdition[];
 }
 
 /**
@@ -232,7 +235,8 @@ export function CardGrid({ cards, onCardClick, hasAnyCards, owned, emptyLabel, c
                   key={`${generation}:${def.id}:${editionKey(edition)}`}
                   def={def}
                   index={index}
-                  missing={Boolean(owned && !owned.has(def.id))}
+                  // Une illustration jamais tirée s'estompe comme une carte manquante.
+                  missing={edition.missing ?? Boolean(owned && !owned.has(def.id))}
                   onCardClick={onCardClick}
                   cellExtras={cellExtras}
                   onCardDragStart={onCardDragStart}

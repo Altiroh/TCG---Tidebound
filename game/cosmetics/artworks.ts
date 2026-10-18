@@ -56,9 +56,11 @@ interface CardAlternateArt {
    * `textePeint` : le texte d'effet tel qu'il est PEINT sur la Full-Art
    * (relu sur l'image le 18/10/2026). `aRepeindre` : le texte peint ne dit
    * pas ce que dit la carte — la Full-Art reste hors collection et hors
-   * booster tant qu'elle n'est pas repeinte.
+   * booster tant qu'elle n'est pas repeinte. `ecartMineur` : une différence
+   * de ponctuation qui ne change pas le sens, assumée avec son motif (comme
+   * les `EXCEPTIONS` de la conformité des cartes).
    */
-  fullArt?: { textePeint: string; aRepeindre?: string };
+  fullArt?: { textePeint: string; aRepeindre?: string; ecartMineur?: string };
 }
 
 /** Cartes qui ont une illustration alternative. Ordre alphabétique des ids. */
@@ -100,9 +102,10 @@ const ALTERNATE_ARTS: Record<string, CardAlternateArt> = {
   "la-taverne-avant-le-donjon": { styled: true, fullArt: { textePeint: "Première unité alliée renvoyée en main pendant votre tour : récupérez 1 Ancrage." } },
   "le-brise-ligne": {
     styled: true,
+    // Repeinte le 18/10/2026 : « au moins » rétabli.
     fullArt: {
-      textePeint: "À l'arrivée : si l'adversaire contrôle moins 4 unités, infligez 1 dégât à toutes ses unités.",
-      aRepeindre: "« au » manque devant « moins 4 unités » : le sens s'inverse.",
+      textePeint: "À l'arrivée : si l'adversaire contrôle au moins 4 unités, infligez 1 dégât, à toutes ses unités.",
+      ecartMineur: "Une virgule après « 1 dégât » : le sens est le même.",
     },
   },
   "le-nain-qui-connait-un-raccourci": {
@@ -110,8 +113,36 @@ const ALTERNATE_ARTS: Record<string, CardAlternateArt> = {
     fullArt: { textePeint: "À l'arrivée : sur 3-4, votre prochaine carte coûte 1 de moins ce tour. Réussite critique : elle coûte 2 de moins à la place." },
   },
   "le-naufrage-impossible": { styled: true, fullArt: { textePeint: "La première fois qu'il devrait être détruit, il reste en jeu avec 1 Résistance." } },
-  // Full-Art livrée le 18/10/2026 sans Styled.
+  "le-gardien-des-jouets": {
+    styled: true,
+    fullArt: {
+      textePeint: "Garde — Chaque autre Mort-vivant allié détruit ou Sabordé lui donne +1/+1.",
+      ecartMineur: "« Garde — » au lieu de « Garde. » : le mot-clé reste en tête, le sens est le même.",
+    },
+  },
+  "le-geant-qui-croyait-etre-discret": {
+    styled: true,
+    fullArt: {
+      textePeint:
+        "À l'arrivée : sur 4+, gagne Pied marin ce tour. Réussite critique : lorsqu'il attaque ce tour, inflige aussi 2 dégâts au Navire adverse.",
+      aRepeindre: "« inflige » au lieu de « infligez » : le texte peint ne dit pas les mots de la carte.",
+    },
+  },
+  lentendant: {
+    styled: true,
+    fullArt: { textePeint: "Éveil — piochez 1. Si c'est son deuxième Éveil ce tour, piochez-en 2 à la place." },
+  },
+  "reine-des-charognes": {
+    styled: true,
+    fullArt: { textePeint: "Quand une autre unité alliée meurt, mettez +1 / +1 sur une autre unité." },
+  },
+  "signal-de-detresse": {
+    styled: true,
+    fullArt: { textePeint: "Chaîne — Lorsque votre Navire devrait subir des dégâts directs pendant le tour adverse : réduisez-les de 3." },
+  },
+  // Full-Art livrée le 18/10/2026, Styled le même soir.
   "mousse-des-quarts": {
+    styled: true,
     fullArt: { textePeint: "A son arrivée, piochez 1 carte puis défaussez 1 carte.", aRepeindre: "« À » peint sans accent." },
   },
   "relance-j-te-jure": { styled: true, fullArt: { textePeint: "Chaîne — Relancez le dé en cours et gardez le nouveau résultat." } },
@@ -136,7 +167,7 @@ export function cardIdsWithAlternateArt(): string[] {
 }
 
 /** La Full-Art livrée d'une carte (même à repeindre), `undefined` si elle n'en a pas. */
-export function paintedFullArt(cardId: string): { textePeint: string; aRepeindre?: string } | undefined {
+export function paintedFullArt(cardId: string): { textePeint: string; aRepeindre?: string; ecartMineur?: string } | undefined {
   return ALTERNATE_ARTS[cardId]?.fullArt;
 }
 

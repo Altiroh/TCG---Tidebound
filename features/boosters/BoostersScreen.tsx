@@ -583,6 +583,7 @@ export function BoostersScreen({ inventory, sandbox = false }: BoostersScreenPro
         <BoosterContentsDialog
           booster={contentsOf}
           owned={new Set(inventory.ownedCardIds)}
+          ownedArtworks={new Set(inventory.ownedArtworks ?? [])}
           onClose={() => setContentsOf(null)}
         />
       )}
