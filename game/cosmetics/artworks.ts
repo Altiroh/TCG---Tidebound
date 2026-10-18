@@ -122,10 +122,10 @@ const ALTERNATE_ARTS: Record<string, CardAlternateArt> = {
   },
   "le-geant-qui-croyait-etre-discret": {
     styled: true,
+    // Repeinte le 18/10/2026 : « infligez » rétabli.
     fullArt: {
       textePeint:
-        "À l'arrivée : sur 4+, gagne Pied marin ce tour. Réussite critique : lorsqu'il attaque ce tour, inflige aussi 2 dégâts au Navire adverse.",
-      aRepeindre: "« inflige » au lieu de « infligez » : le texte peint ne dit pas les mots de la carte.",
+        "À l'arrivée : sur 4+, gagne Pied marin ce tour. Réussite critique : lorsqu'il attaque ce tour, infligez aussi 2 dégâts au Navire adverse.",
     },
   },
   lentendant: {
@@ -143,7 +143,8 @@ const ALTERNATE_ARTS: Record<string, CardAlternateArt> = {
   // Full-Art livrée le 18/10/2026, Styled le même soir.
   "mousse-des-quarts": {
     styled: true,
-    fullArt: { textePeint: "A son arrivée, piochez 1 carte puis défaussez 1 carte.", aRepeindre: "« À » peint sans accent." },
+    // Repeinte le 18/10/2026 : « À » accentué.
+    fullArt: { textePeint: "À son arrivée, piochez 1 carte puis défaussez 1 carte." },
   },
   "relance-j-te-jure": { styled: true, fullArt: { textePeint: "Chaîne — Relancez le dé en cours et gardez le nouveau résultat." } },
 };

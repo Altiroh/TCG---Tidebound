@@ -32,8 +32,7 @@ describe("éditions de carte", () => {
     expect(boosterArtworksFor("la-mutation-mondiale", "aberration-vorace")).toEqual(["styled", "styled-fa"]);
     expect(boosterArtworksFor("standard", "aberration-vorace")).toEqual([]);
     expect(boosterArtworksFor("standard", "marin-des-jetees")).toEqual([]);
-    // Full-Art à repeindre : jamais proposée, même répartie.
-    expect(boosterArtworksFor("dungeon-et-ladalle", "le-geant-qui-croyait-etre-discret")).toEqual(["styled"]);
+    expect(boosterArtworksFor("dungeon-et-ladalle", "le-geant-qui-croyait-etre-discret")).toEqual(["styled", "styled-fa"]);
   });
 
   it("le tirage d'illustration respecte ses chances, sans reporter une illustration absente sur l'autre", () => {
