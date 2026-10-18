@@ -85,7 +85,7 @@ const GridCell = memo(function GridCell({
          * sert aussi l'Éditeur de deck, avait été oubliée.
          */
         showStatusBadges={false}
-        finish={finish}
+        finish={finish === "classique" ? undefined : finish}
         onClick={() => onCardClick(def.id, finish)}
         draggable={Boolean(onCardDragStart)}
         onDragStart={onCardDragStart ? (event) => onCardDragStart(def, event) : undefined}
@@ -234,7 +234,10 @@ export function CardGrid({ cards, onCardClick, hasAnyCards, owned, emptyLabel, c
                   onCardClick={onCardClick}
                   cellExtras={cellExtras}
                   onCardDragStart={onCardDragStart}
-                  finish={finish === "classique" ? undefined : finish}
+                  // « classique » transmis tel quel quand la grille montre les
+                  // finitions : sans lui, la fiche ouverte depuis la cellule
+                  // Classique retombait sur la plus rare possédée.
+                  finish={finishesFor ? finish : undefined}
                 />
               ))
             )}

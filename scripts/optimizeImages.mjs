@@ -96,6 +96,10 @@ console.log(`${composed.made} vignettes d'Abyssales composées (${composed.skipp
  * fins et leurs bords transparents sont ce qui se dégrade en premier.
  */
 const RULES = [
+  // Styled Full-Art (Collection visuelle V2, 16/10/2026) : nom, coût et
+  // texte sont PEINTS dans l'illustration ; à 768 px ils deviennent
+  // illisibles en gros plan (fiche, ouverture de booster).
+  { match: /\/cards\/illustrations\/styled-fa\//, maxSize: 1400, quality: 88 },
   { match: /\/cards\/illustrations\//, maxSize: 768, quality: 85 },
   { match: /\/token\//, maxSize: 768, quality: 85 },
   { match: /\/cards\/(frames|card-back)\//, maxSize: 1200, quality: 90 },
