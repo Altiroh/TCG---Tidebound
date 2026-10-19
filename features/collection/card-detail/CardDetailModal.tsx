@@ -110,7 +110,10 @@ export function CardDetailModal({
     openerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     closeRef.current?.focus();
     const opener = openerRef.current;
-    return () => opener?.focus();
+    // Le focus revient à la carte, SANS anneau : sinon la carte cliquée
+    // gardait un contour blanc après la fermeture. Au clavier, Tab le
+    // rallume comme d'habitude.
+    return () => opener?.focus({ preventScroll: true, focusVisible: false } as FocusOptions);
   }, []);
 
   // Verrouille le défilement de l'arrière-plan. La grille de la Collection

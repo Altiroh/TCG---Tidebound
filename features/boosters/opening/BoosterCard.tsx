@@ -291,8 +291,11 @@ export const BoosterCard = memo(function BoosterCard({
         {revealed && card.rarity === "legendary" && <BoosterParticles variant="sparks" />}
         {/* Édition rare (illustration, finition) : son nom, en ruban au pied de la carte. */}
         {revealed && exceptionnelle && (
-          <span className={styles.finishRibbon} data-finish={edition.finish} data-artwork={edition.artwork}>
-            {editionLabel(edition)}
+          // Dans le même cadre que « Nouveau » : centré sur la FACE de la carte, pas sur sa boîte.
+          <span className={styles.statusFrame}>
+            <span className={styles.finishRibbon} data-finish={edition.finish} data-artwork={edition.artwork}>
+              {editionLabel(edition)}
+            </span>
           </span>
         )}
       </span>

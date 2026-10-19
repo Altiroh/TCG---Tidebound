@@ -278,6 +278,13 @@ export function BoosterOpeningScene({ cards: tirage, visual, origin = null, clos
   const showcaseIndex = Number(Object.entries(showcases).find(([, value]) => value === "in" || value === "out")?.[0] ?? -1);
   const showcaseActive = showcaseIndex >= 0;
   const detailOpen = detailCardId !== null;
+  /** Édition de l'exemplaire tiré dont la fiche est ouverte (la plus rare, si la carte sort deux fois). */
+  const detailEdition = useMemo(() => {
+    if (!detailCardId) return undefined;
+    const tirees = cards.filter((card) => card.cardId === detailCardId);
+    const rare = tirees.find((card) => card.artwork && card.artwork !== "classique") ?? tirees.find((card) => card.finish);
+    return rare ? { artwork: rare.artwork ?? ("classique" as const), finish: rare.finish ?? ("classique" as const) } : undefined;
+  }, [detailCardId, cards]);
   const detailOpenRef = useRef(detailOpen);
   detailOpenRef.current = detailOpen;
   // Le dos équipé est celui qu'on voit pendant toute la sortie du sachet :
@@ -347,7 +354,9 @@ export function BoosterOpeningScene({ cards: tirage, visual, origin = null, clos
    * sont posées, en cascade rapide : il n'y a rien à attendre d'elles. Les
    * raretés hautes (rare, épique, légendaire, abyssale) restent de dos dans
    * le halo de leur rareté, et c'est au joueur de les retourner (retour du
-   * 13/10/2026).
+   * 13/10/2026). Une édition rare (finition, illustration secrète) aussi,
+   * quelle que soit sa rareté : un reflet doré annonce qu'elle cache
+   * quelque chose (19/10/2026).
    */
   const autoRevealDone = useRef(false);
   useEffect(() => {
@@ -356,7 +365,10 @@ export function BoosterOpeningScene({ cards: tirage, visual, origin = null, clos
     const step = isGrid ? 45 : 90;
     let order = 0;
     cards.forEach((card, index) => {
-      if (!AUTO_REVEAL_RARITIES.includes(card.rarity)) return;
+      // Une édition rare (finition, illustration alternative) ne se retourne
+      // JAMAIS d'elle-même, même Commune : noyée dans la cascade, une
+      // Monochrome passait inaperçue. Elle attend le joueur, comme une Rare.
+      if (!AUTO_REVEAL_RARITIES.includes(card.rarity) || card.finish || isSecretArtwork(card)) return;
       const position = order;
       order += 1;
       // Un retournement sur trois s'entend : une cascade, pas une rafale.
@@ -371,7 +383,29 @@ export function BoosterOpeningScene({ cards: tirage, visual, origin = null, clos
     dispatch({ type: "openRequested" });
   }, []);
 
-  // --- Gros plan d'une Abyssale. -------------------------------------------
+  // --- Gros plan d'une Abyssale ou d'une illustration secrète. ---------------
+  /**
+   * FILE des gros plans : deux cartes retournées ensemble (« Tout
+   * retourner », deux Full-Art) s'empilaient au centre. Un seul gros plan à
+   * la fois ; le suivant attend que le précédent soit rangé.
+   */
+  const showcaseQueue = useRef<number[]>([]);
+  const showcasesRef = useRef(showcases);
+  const pumpShowcase = useCallback(() => {
+    if (Object.values(showcasesRef.current).some((value) => value === "in" || value === "out")) return;
+    const next = showcaseQueue.current.shift();
+    if (next === undefined) return;
+    showcasesRef.current = { ...showcasesRef.current, [next]: "in" };
+    setShowcases((current) => ({ ...current, [next]: "in" }));
+    // La fanfare d'une illustration secrète part avec SON gros plan, pas à son retournement.
+    const card = cards[next];
+    if (card && isSecretArtwork(card)) playSecretRevealSound();
+  }, [cards]);
+  useEffect(() => {
+    showcasesRef.current = showcases;
+    pumpShowcase();
+  }, [showcases, pumpShowcase]);
+
   const dismissShowcase = useCallback(() => {
     setShowcases((current) => {
       const entry = Object.entries(current).find(([, value]) => value === "in");
@@ -400,9 +434,9 @@ export function BoosterOpeningScene({ cards: tirage, visual, origin = null, clos
       schedule(() => {
         dispatch({ type: "cardRevealed", index });
         const secrete = isSecretArtwork(card);
-        if (secrete) playSecretRevealSound();
+        if (secrete) playRareRevealSound();
         else if (card.rarity === "abyssal") playAbyssalRevealSound();
-        else if (isHighRarity(card.rarity)) playRareRevealSound();
+        else if (isHighRarity(card.rarity) || card.finish) playRareRevealSound();
         if (secrete || IMPACT_RARITIES.includes(card.rarity)) {
           setImpact((current) => ({ key: (current?.key ?? 0) + 1, rarity: secrete ? "legendary" : card.rarity }));
         }
@@ -411,11 +445,14 @@ export function BoosterOpeningScene({ cards: tirage, visual, origin = null, clos
         // SECRÈTE aussi, toujours (même en mouvement réduit) : c'est une
         // fête, elle ne passe pas inaperçue.
         if (secrete || (card.rarity === "abyssal" && !reducedMotion)) {
-          schedule(() => setShowcases((current) => ({ ...current, [index]: "in" })), 260);
+          schedule(() => {
+            showcaseQueue.current.push(index);
+            pumpShowcase();
+          }, 260);
         }
       }, pause + timings.flip[card.rarity]);
     },
-    [cards, schedule, timings, reducedMotion],
+    [cards, schedule, timings, reducedMotion, pumpShowcase],
   );
 
   /** « Tout retourner » : les cartes encore de dos se retournent en cascade. */
@@ -711,7 +748,15 @@ export function BoosterOpeningScene({ cards: tirage, visual, origin = null, clos
 
       <div className={styles.grain} aria-hidden />
 
-      {detailCardId && <CardDetailModal cardId={detailCardId} onClose={() => setDetailCardId(null)} />}
+      {detailCardId && (
+        <CardDetailModal
+          cardId={detailCardId}
+          // La fiche montre l'exemplaire TIRÉ, variante comprise (illustration, finition) — et nette : il vient d'être obtenu.
+          initialEdition={detailEdition}
+          artworkOwned
+          onClose={() => setDetailCardId(null)}
+        />
+      )}
     </div>,
     document.body,
   );
