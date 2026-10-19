@@ -1,6 +1,7 @@
 import type { CardDefinition, TriggeredAbility } from "@/game/cards/types";
 import type { EffectDefinition } from "@/game/effects/types";
 import type { DieOutcomeBranch } from "@/game/state/types";
+import { chaineLibre } from "@/game/cards/chaineLibre";
 
 /**
  * LOT 17 — DUNGEON ET LADALLE / OPALINS (Notion « Catalogue de cartes » ›
@@ -1250,10 +1251,13 @@ const OPALINS: CardDefinition[] = [
     type: "objet",
     cost: 2,
     maxCopies: 3,
+    // Chaîne INSTANTANÉE (décision du 19/10/2026) : en Phase principale, ou en
+    // réaction depuis la main quand une unité attaque ou que l'adversaire joue
+    // un Objet — une protection qui se sort au moment du coup.
     text:
-      "Une unité Opaline gagne +0/+2 jusqu'à votre prochain tour. Si elle est LV, elle ne peut pas être renvoyée " +
-      "en main ce tour.",
-    onBreakEffects: [
+      "Chaîne — Une unité Opaline gagne +0/+2 jusqu'à votre prochain tour. Si elle est LV, elle ne peut pas être " +
+      "renvoyée en main ce tour.",
+    ...chaineLibre("Sommeil de Pierre : une unité Opaline gagne +0/+2 jusqu'à votre prochain tour (LV : ne peut pas être renvoyée en main ce tour).", [
       {
         type: "buff",
         target: { kind: "chosenUnit", among: { archetype: OPALIN, unitsOnly: true } },
@@ -1270,7 +1274,7 @@ const OPALINS: CardDefinition[] = [
         preventsReturnToHand: true,
         conditionChosenTargetTag: "lv",
       },
-    ],
+    ]),
   }),
   // --- Ajoutées au nettoyage du 06/10/2026 : outils de régularité du deck Opalin.
   opalin({

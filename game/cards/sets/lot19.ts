@@ -1,5 +1,6 @@
 import type { CardDefinition, TriggeredAbility } from "@/game/cards/types";
 import type { EffectDefinition } from "@/game/effects/types";
+import { chaineLibre } from "@/game/cards/chaineLibre";
 
 /**
  * LOT 19 — Les Chairs Dévoyées (Notion « Lot 19 — Les Chairs Dévoyées »,
@@ -40,30 +41,6 @@ function chair(def: Omit<CardDefinition, "setCode">): CardDefinition {
 /** « À sa mort — … » : la carte elle-même meurt (détruite OU Sabordée : le texte ne distingue pas). */
 function aSaMort(description: string, effects: EffectDefinition[], extra: Partial<TriggeredAbility> = {}): TriggeredAbility {
   return { trigger: "onDeath", description, effects, ...extra };
-}
-
-/**
- * « Chaîne — <effet> », sans situation dans le texte : un Objet Chaîne
- * INSTANTANÉ (`CardDefinition.chaineLibre`). Il se joue en Phase principale
- * (ses `onBreakEffects`), ou en réaction depuis la main quand une unité
- * attaque — adverse ou l'une des vôtres — ou quand l'adversaire joue un
- * Objet. Mêmes effets dans toutes les voies.
- */
-function chaineLibre(
-  description: string,
-  effects: EffectDefinition[]
-): Pick<CardDefinition, "chaine" | "chaineLibre" | "onBreakEffects" | "abilities"> {
-  return {
-    chaine: true,
-    chaineLibre: true,
-    onBreakEffects: effects,
-    abilities: [
-      { trigger: "onUnitAttackDeclared", mode: "optional", description, effects },
-      // Pendant VOTRE attaque aussi : un instantané n'attend pas le tour adverse.
-      { trigger: "onOwnAttackDeclared", mode: "optional", description, effects },
-      { trigger: "onObjectPlayed", triggeredBy: { opponentOnly: true }, mode: "optional", description, effects },
-    ],
-  };
 }
 
 /** « Une Créature alliée » : une Créature de votre plateau. */
