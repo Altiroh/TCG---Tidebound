@@ -1,6 +1,7 @@
 import { RARITY_ORDER, type CardRarity } from "@/game/boosters";
-import { CARD_ARTWORKS } from "@/game/cosmetics/artworks";
-import { CARD_FINISHES } from "@/game/cosmetics/finishes";
+import { RECYCLE_VALUE } from "@/game/boosters/constants";
+import { editionRank } from "@/game/cosmetics/editions";
+import { ARTWORK_RESALE_MULTIPLIER, FINISH_RESALE_MULTIPLIER } from "@/features/collection/recycleValue";
 
 /**
  * Palier VISUEL d'une carte pendant l'ouverture : les six raretés de la
@@ -51,22 +52,27 @@ export function isHighRarity(rarity: BoosterOpeningRarity): boolean {
 }
 
 /**
- * Rang d'une ÉDITION à rareté égale : la finition compte d'abord (la plus
- * rare, Star Foil, en dernier), puis l'illustration (Classique, Styled,
- * Styled Full-Art). Une édition classique vaut 0.
+ * VALEUR FINALE d'un exemplaire : base de sa rareté × multiplicateur
+ * d'illustration × multiplicateur de finition — le barème de revente
+ * (`editionRecycleValueOf`), non arrondi. C'est elle qui dit ce qu'on a
+ * vraiment tiré : une Rare Star Foil vaut bien plus qu'une Épique classique.
  */
-function editionRank(card: BoosterOpeningCard): number {
-  return CARD_FINISHES.indexOf(card.finish ?? "classique") * CARD_ARTWORKS.length + CARD_ARTWORKS.indexOf(card.artwork ?? "classique");
+function finalValue(card: BoosterOpeningCard): number {
+  return RECYCLE_VALUE[card.rarity] * ARTWORK_RESALE_MULTIPLIER[card.artwork ?? "classique"] * FINISH_RESALE_MULTIPLIER[card.finish ?? "classique"];
 }
 
 /**
- * ORDRE DE RÉVÉLATION des cartes d'une ouverture : de la plus commune à la
- * plus rare, pour qu'on les retourne PETIT À PETIT et que la tension monte —
- * les communes ouvrent la rangée (elles se retournent d'elles-mêmes), la
- * meilleure carte la ferme. À rareté égale, une édition exceptionnelle
- * (finition, illustration alternative) passe après l'édition classique.
- * Tri stable : à égalité complète, l'ordre du tirage est gardé.
+ * ORDRE DE RÉVÉLATION des cartes d'une ouverture : de la moins précieuse à
+ * la plus précieuse, selon la VALEUR FINALE de l'exemplaire (rareté ET
+ * variante), pour qu'on les retourne petit à petit et que la tension monte.
+ * Une classique Star Foil passe après la même carte classique, et après
+ * une rareté supérieure qui ne vaut pas autant qu'elle. À valeur égale, la
+ * rareté de la carte, puis l'édition (`editionRank`) départagent ; tri
+ * stable au-delà : l'ordre du tirage est gardé.
  */
 export function sortForReveal(cards: readonly BoosterOpeningCard[]): BoosterOpeningCard[] {
-  return [...cards].sort((a, b) => RARITY_ORDER.indexOf(a.rarity) - RARITY_ORDER.indexOf(b.rarity) || editionRank(a) - editionRank(b));
+  const edition = (card: BoosterOpeningCard) => editionRank({ artwork: card.artwork ?? "classique", finish: card.finish ?? "classique" });
+  return [...cards].sort(
+    (a, b) => finalValue(a) - finalValue(b) || RARITY_ORDER.indexOf(a.rarity) - RARITY_ORDER.indexOf(b.rarity) || edition(a) - edition(b),
+  );
 }
