@@ -2269,3 +2269,171 @@
     opacity: 0;
   }
 }
+
+/*
+ * ILLUSTRATION SECRÈTE (Styled, Full-Art) — une vraie fête : la carte au
+ * centre, un éclair, une couronne dorée qui pulse, des rais dorés au lieu
+ * des rais froids, une pluie de confettis (et des feux d'artifice pour une
+ * Full-Art), « Félicitations ! » sous la carte.
+ */
+.showcase[data-celebration] {
+  background: radial-gradient(60% 60% at 50% 48%, rgba(40, 28, 6, 0.55) 0%, rgba(4, 3, 2, 0.9) 70%);
+}
+
+.showcase[data-celebration] .showcaseRays {
+  background: repeating-conic-gradient(from 0deg, rgba(255, 214, 110, 0.22) 0deg 5deg, transparent 5deg 15deg);
+  animation-duration: 10s;
+}
+
+.showcase[data-celebration="styled-fa"] .showcaseRays {
+  background: repeating-conic-gradient(
+    from 0deg,
+    rgba(255, 214, 110, 0.24) 0deg 5deg,
+    transparent 5deg 12deg,
+    rgba(150, 220, 255, 0.18) 12deg 17deg,
+    transparent 17deg 24deg
+  );
+}
+
+.celebration {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.celebrationFlash {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 48%, rgba(255, 248, 220, 0.95) 0%, rgba(255, 220, 130, 0.5) 30%, transparent 70%);
+  animation: celebrationFlash 900ms ease-out both;
+}
+
+@keyframes celebrationFlash {
+  0% { opacity: 0; }
+  12% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.celebrationHalo {
+  position: absolute;
+  left: 50%;
+  top: 48%;
+  width: calc(var(--card-w) * 3.4);
+  height: calc(var(--card-w) * 3.4);
+  margin: calc(var(--card-w) * -1.7) 0 0 calc(var(--card-w) * -1.7);
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255, 210, 110, 0.55), rgba(255, 170, 60, 0.18) 55%, transparent 75%);
+  animation: celebrationHalo 2400ms ease-in-out 400ms infinite;
+}
+
+@keyframes celebrationHalo {
+  0%, 100% { transform: scale(0.92); opacity: 0.75; }
+  50% { transform: scale(1.06); opacity: 1; }
+}
+
+.confetti {
+  position: absolute;
+  top: -4%;
+  width: clamp(8px, 1.2vmin, 14px);
+  height: clamp(12px, 1.9vmin, 22px);
+  border-radius: 2px;
+  opacity: 0;
+  animation-name: confettiFall;
+  animation-timing-function: cubic-bezier(0.25, 0.4, 0.5, 1);
+  animation-iteration-count: 2;
+  animation-fill-mode: both;
+}
+.confetti[data-shape="1"] {
+  border-radius: 50%;
+  height: clamp(6px, 0.9vmin, 11px);
+}
+.confetti[data-shape="2"] {
+  width: clamp(4px, 0.5vmin, 6px);
+  height: clamp(14px, 2.2vmin, 24px);
+}
+
+@keyframes confettiFall {
+  0% { opacity: 0; transform: translate3d(0, 0, 0) rotate(0deg); }
+  8% { opacity: 1; }
+  85% { opacity: 1; }
+  100% { opacity: 0; transform: translate3d(var(--drift), 108vh, 0) rotate(var(--spin)); }
+}
+
+.firework {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  color: var(--fw-color);
+  opacity: 0;
+  animation: firework 1400ms ease-out both;
+  animation-iteration-count: 2;
+}
+
+/* Une gerbe : douze points posés en couronne par des ombres, qui s'écartent. */
+@keyframes firework {
+  0% {
+    opacity: 1;
+    box-shadow:
+      0 0 0 0 currentColor, 0 0 0 0 currentColor, 0 0 0 0 currentColor, 0 0 0 0 currentColor,
+      0 0 0 0 currentColor, 0 0 0 0 currentColor, 0 0 0 0 currentColor, 0 0 0 0 currentColor,
+      0 0 0 0 currentColor, 0 0 0 0 currentColor, 0 0 0 0 currentColor, 0 0 0 0 currentColor;
+  }
+  70% { opacity: 1; }
+  100% {
+    opacity: 0;
+    box-shadow:
+      0 -9vmin 2px 1px currentColor, 4.5vmin -7.8vmin 2px 1px currentColor, 7.8vmin -4.5vmin 2px 1px currentColor,
+      9vmin 0 2px 1px currentColor, 7.8vmin 4.5vmin 2px 1px currentColor, 4.5vmin 7.8vmin 2px 1px currentColor,
+      0 9vmin 2px 1px currentColor, -4.5vmin 7.8vmin 2px 1px currentColor, -7.8vmin 4.5vmin 2px 1px currentColor,
+      -9vmin 0 2px 1px currentColor, -7.8vmin -4.5vmin 2px 1px currentColor, -4.5vmin -7.8vmin 2px 1px currentColor;
+  }
+}
+
+.celebrationTitle {
+  font-family: var(--font-card-title, Georgia, "Times New Roman", serif);
+  font-size: calc(clamp(26px, calc(var(--u) * 4.6), 56px) * var(--tb-text-scale));
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  line-height: 1;
+  background: linear-gradient(180deg, #fff6d0 0%, #ffd56b 45%, #e59a2a 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 2px 10px rgba(0, 0, 0, 0.85)) drop-shadow(0 0 18px rgba(255, 190, 80, 0.55));
+  animation: celebrationTitle 900ms cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+
+@keyframes celebrationTitle {
+  from { opacity: 0; transform: scale(0.6); }
+  to { opacity: 1; transform: none; }
+}
+
+.showcase[data-celebration] .showcaseRarity {
+  color: #ffe08a;
+  text-shadow: 0 0 calc(var(--u) * 1.4) rgba(255, 170, 40, 0.85);
+}
+
+/* La carte secrète garde sa taille de retournement jusqu'au gros plan, comme l'Abyssale. */
+.card[data-edition-artwork="styled"][data-state="revealed"] .cardLift,
+.card[data-edition-artwork="styled-fa"][data-state="revealed"] .cardLift {
+  animation: none;
+  transform: scale(var(--reveal-scale-flip));
+}
+.card[data-edition-artwork="styled"][data-state="revealed"][data-showcase="done"] .cardLift,
+.card[data-edition-artwork="styled-fa"][data-state="revealed"][data-showcase="done"] .cardLift,
+.scene[data-reduced-motion] .card[data-edition-artwork][data-state="revealed"] .cardLift {
+  transform: none;
+}
+
+/* Mouvement réduit : la fête reste (titre, couronne, couleurs), sans pluie ni éclair. */
+.scene[data-reduced-motion] .confetti,
+.scene[data-reduced-motion] .firework,
+.scene[data-reduced-motion] .celebrationFlash {
+  display: none;
+}
+.scene[data-reduced-motion] .celebrationHalo,
+.scene[data-reduced-motion] .celebrationTitle {
+  animation: none;
+}

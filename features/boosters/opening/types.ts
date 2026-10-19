@@ -32,6 +32,15 @@ export interface BoosterOpeningCard {
   editionNew?: boolean;
 }
 
+/**
+ * Illustration SECRÈTE : Styled ou Styled Full-Art, les éditions qu'aucun
+ * joueur ne voit avant de les avoir tirées (floutées ailleurs). La tirer est
+ * une fête : gros plan, confettis, félicitations.
+ */
+export function isSecretArtwork(card: Pick<BoosterOpeningCard, "artwork">): boolean {
+  return card.artwork === "styled" || card.artwork === "styled-fa";
+}
+
 /** Traduction d'une rareté de collection vers un palier de mise en scène — un pour un. */
 export function toOpeningRarity(rarity: CardRarity): BoosterOpeningRarity {
   return rarity;

@@ -49,3 +49,9 @@ export function playRareRevealSound(): void {
 export function playAbyssalRevealSound(): void {
   playBoosterSound("abyssalReveal");
 }
+
+/** Illustration SECRÈTE tirée (Styled, Full-Art) : l'impact, puis la fanfare. */
+export function playSecretRevealSound(): void {
+  playBoosterSound("abyssalReveal");
+  playBoosterSound("secretReveal");
+}

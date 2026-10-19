@@ -564,6 +564,8 @@ const BOOSTER_SOUNDS = {
   cardFlip: "boosterCardFlip",
   rareReveal: "boosterRareReveal",
   abyssalReveal: "boosterAbyssalReveal",
+  // Illustration secrète (Styled, Full-Art) : la fanfare des récompenses.
+  secretReveal: "rewardObtained",
 } as const satisfies Record<string, SoundId>;
 
 export type BoosterSoundKind = keyof typeof BOOSTER_SOUNDS;

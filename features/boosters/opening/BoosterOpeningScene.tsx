@@ -24,6 +24,7 @@ import {
   playPackOpenSound,
   playPackTearSound,
   playRareRevealSound,
+  playSecretRevealSound,
 } from "@/features/boosters/opening/boosterOpeningSound";
 import {
   BOOSTER_OPENING_TIMINGS,
@@ -40,7 +41,8 @@ import { BoosterCards } from "@/features/boosters/opening/BoosterCards";
 import { BoosterPack } from "@/features/boosters/opening/BoosterPack";
 import { BoosterParticles } from "@/features/boosters/opening/BoosterParticles";
 import { packVisualVariables, type BoosterPackVisual } from "@/features/boosters/opening/boosterPackVisuals";
-import { isHighRarity, OPENING_RARITY_LABEL, sortForReveal, type BoosterOpeningCard, type BoosterOpeningRarity } from "@/features/boosters/opening/types";
+import { CARD_ARTWORK_LABELS } from "@/game/cosmetics/artworks";
+import { isHighRarity, isSecretArtwork, OPENING_RARITY_LABEL, sortForReveal, type BoosterOpeningCard, type BoosterOpeningRarity } from "@/features/boosters/opening/types";
 
 /** Rectangle à l'écran d'où part le sachet (celui du plan d'ouverture), en pixels. */
 export interface BoosterOpeningOrigin {
@@ -91,6 +93,64 @@ function gridColumns(): number {
 
 /** Les raretés qui se révèlent d'elles-mêmes à la sortie du sachet ; les autres attendent, de dos, dans leur halo. */
 const AUTO_REVEAL_RARITIES: readonly BoosterOpeningRarity[] = ["common", "uncommon"];
+
+/**
+ * Confettis d'une illustration secrète : position de départ, couleur,
+ * dérive, rotation et décalage FIXES (pas de hasard au rendu — la scène ne
+ * change pas d'un rendu à l'autre). Une Full-Art en reçoit deux fois plus,
+ * avec des gerbes d'étincelles.
+ */
+const CONFETTI_COLORS = ["#ffd86b", "#ff7aa8", "#7ee0ff", "#b98bff", "#8dffb0", "#ffffff", "#ffb347"];
+const CONFETTI = Array.from({ length: 110 }, (_, i) => ({
+  left: (i * 37 + 11) % 100,
+  color: CONFETTI_COLORS[i % CONFETTI_COLORS.length]!,
+  drift: ((i * 53) % 21) - 10,
+  spin: 360 + ((i * 97) % 5) * 180,
+  delay: ((i * 29) % 40) * 45,
+  duration: 2600 + ((i * 71) % 9) * 220,
+  shape: i % 3,
+}));
+const FIREWORKS = [
+  { left: 18, top: 22, delay: 200, color: "#ffd86b" },
+  { left: 82, top: 18, delay: 700, color: "#7ee0ff" },
+  { left: 30, top: 70, delay: 1200, color: "#ff7aa8" },
+  { left: 74, top: 66, delay: 1650, color: "#b98bff" },
+  { left: 50, top: 12, delay: 2200, color: "#ffffff" },
+];
+
+/** La fête d'une illustration secrète : éclair, couronne dorée, confettis (et feux d'artifice pour une Full-Art). */
+function SecretCelebration({ fullArt }: { fullArt: boolean }) {
+  const confetti = fullArt ? CONFETTI : CONFETTI.filter((_, i) => i % 3 !== 2);
+  return (
+    <span className={styles.celebration} aria-hidden>
+      <span className={styles.celebrationFlash} />
+      <span className={styles.celebrationHalo} />
+      {fullArt &&
+        FIREWORKS.map((firework, i) => (
+          <span
+            key={`f${i}`}
+            className={styles.firework}
+            style={{ left: `${firework.left}%`, top: `${firework.top}%`, animationDelay: `${firework.delay}ms`, ["--fw-color" as string]: firework.color }}
+          />
+        ))}
+      {confetti.map((piece, i) => (
+        <span
+          key={i}
+          className={styles.confetti}
+          data-shape={piece.shape}
+          style={{
+            left: `${piece.left}%`,
+            background: piece.color,
+            animationDelay: `${piece.delay}ms`,
+            animationDuration: `${piece.duration}ms`,
+            ["--drift" as string]: `${piece.drift}vw`,
+            ["--spin" as string]: `${piece.spin}deg`,
+          }}
+        />
+      ))}
+    </span>
+  );
+}
 
 /** Raretés dont la révélation secoue la scène d'un éclair. */
 const IMPACT_RARITIES: readonly BoosterOpeningRarity[] = ["legendary", "abyssal"];
@@ -339,12 +399,18 @@ export function BoosterOpeningScene({ cards: tirage, visual, origin = null, clos
 
       schedule(() => {
         dispatch({ type: "cardRevealed", index });
-        if (card.rarity === "abyssal") playAbyssalRevealSound();
+        const secrete = isSecretArtwork(card);
+        if (secrete) playSecretRevealSound();
+        else if (card.rarity === "abyssal") playAbyssalRevealSound();
         else if (isHighRarity(card.rarity)) playRareRevealSound();
-        if (IMPACT_RARITIES.includes(card.rarity)) setImpact((current) => ({ key: (current?.key ?? 0) + 1, rarity: card.rarity }));
+        if (secrete || IMPACT_RARITIES.includes(card.rarity)) {
+          setImpact((current) => ({ key: (current?.key ?? 0) + 1, rarity: secrete ? "legendary" : card.rarity }));
+        }
         // L'Abyssale quitte la rangée pour le centre de l'écran : on la
-        // regarde, puis un clic la renvoie à sa place.
-        if (card.rarity === "abyssal" && !reducedMotion) {
+        // regarde, puis un clic la renvoie à sa place. Une illustration
+        // SECRÈTE aussi, toujours (même en mouvement réduit) : c'est une
+        // fête, elle ne passe pas inaperçue.
+        if (secrete || (card.rarity === "abyssal" && !reducedMotion)) {
           schedule(() => setShowcases((current) => ({ ...current, [index]: "in" })), 260);
         }
       }, pause + timings.flip[card.rarity]);
@@ -581,12 +647,22 @@ export function BoosterOpeningScene({ cards: tirage, visual, origin = null, clos
           <div
             className={styles.showcase}
             data-leaving={showcases[showcaseIndex] === "out" || undefined}
+            data-celebration={showcaseCard && isSecretArtwork(showcaseCard) ? showcaseCard.artwork : undefined}
             onClick={dismissShowcase}
-            aria-hidden
           >
-            <span className={styles.showcaseRays} />
-            <span className={styles.showcaseCaption}>
-              <span className={styles.showcaseRarity}>{showcaseCard ? OPENING_RARITY_LABEL[showcaseCard.rarity] : ""}</span>
+            <span className={styles.showcaseRays} aria-hidden />
+            {showcaseCard && isSecretArtwork(showcaseCard) && <SecretCelebration fullArt={showcaseCard.artwork === "styled-fa"} />}
+            <span className={styles.showcaseCaption} role="status">
+              {showcaseCard && isSecretArtwork(showcaseCard) ? (
+                <>
+                  <span className={styles.celebrationTitle}>Félicitations&nbsp;!</span>
+                  <span className={styles.showcaseRarity}>
+                    Illustration secrète · {CARD_ARTWORK_LABELS[showcaseCard.artwork!]}
+                  </span>
+                </>
+              ) : (
+                <span className={styles.showcaseRarity}>{showcaseCard ? OPENING_RARITY_LABEL[showcaseCard.rarity] : ""}</span>
+              )}
               <span className={styles.showcaseName}>{showcaseCard?.cardId ? getCardDefinition(showcaseCard.cardId).name : "Carte test"}</span>
               <span className={styles.showcaseHint}>Clique pour la ranger · clic droit pour sa fiche</span>
             </span>
