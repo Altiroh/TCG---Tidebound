@@ -142,6 +142,14 @@ describe("sigle de collection (bas gauche de la carte)", () => {
     expect(cardSetMark("devoreur-de-moelle")).toBe("R-ESM");
   });
 
+  it("une illustration alternative remplace la rareté : « S-MM » pour une Styled, « FA-MM » pour une Full-Art", () => {
+    const rarete = cardSetMark("la-revenante")!;
+    const extension = rarete.slice(rarete.indexOf("-"));
+    expect(cardSetMark("la-revenante", "classique")).toBe(rarete);
+    expect(cardSetMark("la-revenante", "styled")).toBe(`S${extension}`);
+    expect(cardSetMark("la-revenante", "styled-fa")).toBe(`FA${extension}`);
+  });
+
   it("une carte de plusieurs sachets porte celui de son extension d'origine (le premier du rayon)", () => {
     // Pulcinella Gonflé est une passerelle B1 / B3 : il vient du Booster Défaut.
     expect(cardSetMark("pulcinella-gonfle")).toMatch(/-BD$/);

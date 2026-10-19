@@ -40,6 +40,16 @@ export function rememberedProgression(): ProgressionSummary | null {
 
 export function rememberProgression(summary: ProgressionSummary): void {
   lastProgression = summary.isSignedIn ? summary : null;
+  readListeners.forEach((listener) => listener(lastProgression));
+}
+
+/** Abonnés à CHAQUE lecture réussie (`useDevMode`) : ils suivent le bandeau sans relire eux-mêmes. */
+const readListeners = new Set<(summary: ProgressionSummary | null) => void>();
+
+/** Abonnement aux lectures ; renvoie la fonction de désabonnement. */
+export function onProgressionRead(listener: (summary: ProgressionSummary | null) => void): () => void {
+  readListeners.add(listener);
+  return () => readListeners.delete(listener);
 }
 
 /** À la déconnexion : le prochain bandeau ne doit pas afficher, même un instant, le compte précédent. */

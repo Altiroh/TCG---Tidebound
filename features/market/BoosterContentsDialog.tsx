@@ -7,6 +7,8 @@ import { boosterArtworkEntries } from "@/game/boosters/boosterArtworks";
 import { CARD_ARTWORK_LABELS } from "@/game/cosmetics/artworks";
 import { CARD_ARTWORK_ODDS, type CardEdition } from "@/game/cosmetics/editions";
 import { cardArtworkThumbUrl } from "@/features/decks/cardArtUrl";
+import { useDevMode } from "@/features/admin/useDevMode";
+import { HIDDEN_ARTWORK_FILTER, isArtworkHidden } from "@/features/collection/hiddenArtwork";
 import { oneOf } from "@/lib/persistCodecs";
 import { usePersistedState } from "@/lib/persistedState";
 import type { BoosterInventoryEntry } from "@/features/boosters/actions";
@@ -50,6 +52,8 @@ function safeName(cardId: string): string {
  * (« Cartes de l'extension »).
  */
 export function BoosterContentsDialog({ booster, owned, ownedArtworks, onClose }: BoosterContentsDialogProps) {
+  // Styled et Full-Art pas encore sorties : floutées hors mode Dev.
+  const devMode = useDevMode();
   // Mémorisés sur l'appareil : d'un booster à l'autre, on cherche la même chose.
   const [rarity, setRarity] = usePersistedState<CardRarity | null>("contenu-booster:rarete", null, {
     decode: (raw) => oneOf<CardRarity | null>([null, ...RARITY_ORDER], raw),
@@ -186,7 +190,14 @@ export function BoosterContentsDialog({ booster, owned, ownedArtworks, onClose }
                   }}
                   title={`${entry.name} — ${CARD_ARTWORK_LABELS[entry.artwork]} : 1 tirage de cette carte sur ${Math.round(1 / CARD_ARTWORK_ODDS[entry.artwork])}`}
                 >
-                  <span className={styles.art} style={{ backgroundImage: `url("${cardArtworkThumbUrl(entry.cardId, entry.artwork)}")` }} aria-hidden />
+                  <span
+                    className={styles.art}
+                    style={{
+                      backgroundImage: `url("${cardArtworkThumbUrl(entry.cardId, entry.artwork)}")`,
+                      filter: isArtworkHidden(entry.artwork, devMode) ? HIDDEN_ARTWORK_FILTER : undefined,
+                    }}
+                    aria-hidden
+                  />
                   <span className={styles.name}>{entry.name}</span>
                   <span className={styles.rarity}>{CARD_ARTWORK_LABELS[entry.artwork]}</span>
                 </button>

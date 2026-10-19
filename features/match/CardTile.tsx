@@ -39,6 +39,8 @@ import { rarityForCardId } from "@/game/boosters";
 import type { CardFinish } from "@/game/cosmetics/finishes";
 import { boardTileArtwork, type CardArtwork } from "@/game/cosmetics/artworks";
 import { cardArtworkUrl } from "@/features/decks/cardArtUrl";
+import { useDevMode } from "@/features/admin/useDevMode";
+import { HIDDEN_ARTWORK_FILTER, isArtworkHidden } from "@/features/collection/hiddenArtwork";
 
 interface CardTileProps {
   instance: CardInstance;
@@ -700,6 +702,8 @@ function CardTileView({
   // telle quelle ; la tuile de plateau écarte la Full-Art (texte peint).
   const shownArtwork = isBoardTile ? boardTileArtwork(def.id, artwork) : (artwork ?? "classique");
   const illustrationUrl = getIllustrationUrl(def, instance, shownArtwork);
+  // Styled et Full-Art pas encore sorties : floutées hors mode Dev (`hiddenArtwork`).
+  const illustrationStyle = isArtworkHidden(def.token ? undefined : shownArtwork, useDevMode()) ? { filter: HIDDEN_ARTWORK_FILTER } : undefined;
   // Le débord n'existe que pour les Abyssales (`public/assets/cards/README.md`) :
   // inutile d'aller le chercher pour toutes les autres cartes.
   const debordUrl = isAbyssal && shownArtwork === "classique" ? getDebordUrl(instance.cardId) : null;
@@ -808,6 +812,7 @@ function CardTileView({
                   alt=""
                   onError={() => setIllustrationFailed(illustrationUrl)}
                   className="h-full w-full object-cover"
+                  style={illustrationStyle}
                 />
               )}
               {/* Couche 1.5 : le débord Abyssal. Pour une Abyssale, l'illustration n'est que le DÉCOR ;
@@ -1016,6 +1021,7 @@ function CardTileView({
                 alt=""
                 onError={() => setIllustrationFailed(illustrationUrl)}
                 className="h-full w-full object-cover"
+                style={illustrationStyle}
               />
             )}
           </div>

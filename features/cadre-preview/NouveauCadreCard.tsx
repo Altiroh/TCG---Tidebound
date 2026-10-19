@@ -6,6 +6,8 @@ import { cardSetMark } from "@/game/boosters";
 import type { CardFinish } from "@/game/cosmetics/finishes";
 import { isFullArt, type CardArtwork } from "@/game/cosmetics/artworks";
 import { cardArtworkUrl } from "@/features/decks/cardArtUrl";
+import { useDevMode } from "@/features/admin/useDevMode";
+import { HIDDEN_ARTWORK_FILTER, isArtworkHidden } from "@/features/collection/hiddenArtwork";
 import { useLayoutEffect, useRef } from "react";
 import { useDebordPleinCadre } from "@/features/match/useDebordPleinCadre";
 import { useImageOk } from "@/features/match/useImageOk";
@@ -94,6 +96,8 @@ export function NouveauCadreFace({
   // Le texte d'une Full-Art est dans l'image : le réécrire le doublerait.
   const textesPeints = isFullArt(oeuvre);
   const illustrationOk = useImageOk(illustration);
+  // Styled et Full-Art pas encore sorties : floutées hors mode Dev.
+  const illustrationCachee = isArtworkHidden(oeuvre, useDevMode());
   const hasPower = def.attack !== undefined;
   const hasResistance = def.health !== undefined;
   const abyssale = isAbyssalVariant(def);
@@ -113,8 +117,8 @@ export function NouveauCadreFace({
 
   const cadre = frameName(def, legendaire);
   const calage = CALAGES[cadre];
-  // Rareté et extension d'origine, « L-BD » (16/10/2026) : le sigle de collection.
-  const sigle = cardSetMark(def.id);
+  // Rareté et extension d'origine, « L-BD » (16/10/2026) : le sigle de collection ; « S-MM » pour une Styled.
+  const sigle = cardSetMark(def.id, oeuvre);
 
   return (
     <div
@@ -131,7 +135,11 @@ export function NouveauCadreFace({
       }}
     >
       {/* Couche 1 : l'illustration, plein cadre, coupée à l'arrondi du liseré. */}
-      <div className="absolute overflow-hidden bg-slate-900" style={{ inset: "var(--illus-inset)", borderRadius: "var(--illus-radius)" }}>
+      <div
+        className="absolute overflow-hidden bg-slate-900"
+        style={{ inset: "var(--illus-inset)", borderRadius: "var(--illus-radius)", filter: illustrationCachee ? HIDDEN_ARTWORK_FILTER : undefined }}
+        data-illustration-cachee={illustrationCachee || undefined}
+      >
         {illustrationOk ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={illustration} alt="" className={`h-full w-full object-cover ${FILTRE_FINITION[finition]}`} draggable={false} />

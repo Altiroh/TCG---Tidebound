@@ -1,6 +1,7 @@
 import { ARCHETYPE_LABELS, type ArchetypeId } from "@/game/cards/archetypes";
 import { rarityForCardId } from "@/game/boosters/cardRarity";
 import type { CardRarity } from "@/game/boosters/types";
+import type { CardArtwork } from "@/game/cosmetics/artworks";
 import {
   boostersContaining,
   BOOSTER_BIENVENUE,
@@ -290,16 +291,28 @@ export const RARITY_INITIALS: Record<CardRarity, string> = {
  * l'EXTENSION d'où elle provient — « L-BD » pour une Légendaire du Booster
  * Défaut, « PC-MM » pour une Peu commune de La mutation mondiale.
  *
+ * Une Styled imprime « S » à la place de la rareté (« S-MM »), une Styled
+ * Full-Art « FA » (« FA-MM », peint dans l'image).
+ *
  * Une carte que plusieurs sachets donnent (passerelles, rééditions) porte le
  * sigle du PREMIER dans l'ordre du rayon — son extension d'origine. Le Mini
  * Booster de Bienvenue ne compte pas : ce n'est pas une extension. Une carte
  * hors de tout sachet n'imprime que sa rareté. `null` pour ce qui n'a pas de
  * rareté (jetons).
  */
-export function cardSetMark(cardId: string): string | null {
+export function cardSetMark(cardId: string, artwork: CardArtwork = "classique"): string | null {
   const rarity = rarityForCardId(cardId);
   if (!rarity) return null;
+  // Une illustration alternative remplace la rareté par son sigle : « S-MM »
+  // pour une Styled de La mutation mondiale, « FA-MM » pour sa Full-Art.
+  const prefix = ARTWORK_INITIALS[artwork] ?? RARITY_INITIALS[rarity];
   const sachets = boostersContaining(cardId);
   const origine = EXTENSIONS.find((entry) => sachets.includes(entry.boosterId));
-  return origine ? `${RARITY_INITIALS[rarity]}-${origine.code}` : RARITY_INITIALS[rarity];
+  return origine ? `${prefix}-${origine.code}` : prefix;
 }
+
+/** Sigle d'une illustration alternative, à la place de la rareté : S (Styled), FA (Styled Full-Art). */
+export const ARTWORK_INITIALS: Partial<Record<CardArtwork, string>> = {
+  styled: "S",
+  "styled-fa": "FA",
+};
