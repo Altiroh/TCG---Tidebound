@@ -53,6 +53,13 @@ export function isFullArt(artwork: CardArtwork | undefined): boolean {
 interface CardAlternateArt {
   styled?: true;
   /**
+   * Illustrations livrées mais PAS ENCORE DISTRIBUÉES, avec leur motif (un
+   * arbitrage d'économie en attente, par exemple) : fichiers en place, mais
+   * ni Styled ni Full-Art n'existent pour la collection et les boosters tant
+   * que le drapeau reste posé.
+   */
+  enAttente?: string;
+  /**
    * `textePeint` : le texte d'effet tel qu'il est PEINT sur la Full-Art
    * (relu sur l'image le 18/10/2026). `aRepeindre` : le texte peint ne dit
    * pas ce que dit la carte — la Full-Art reste hors collection et hors
@@ -71,9 +78,36 @@ const ALTERNATE_ARTS: Record<string, CardAlternateArt> = {
     fullArt: { textePeint: "Après qu'elle attaque, elle subit 1 dégât. La première fois à chaque tour qu'elle survit à des dégâts, elle gagne +1 Puissance." },
   },
   "chirurgien-du-bord": { styled: true, fullArt: { textePeint: "À l'arrivée : restaurez jusqu'à 3 Résistance répartie entre vos unités." } },
+  "cylindre-flottant": {
+    styled: true,
+    enAttente:
+      "Sa seule source est le Standard, dont la revente moyenne passerait au-dessus de 95 % du prix avec sa Styled (`obtentionCartes.test.ts`) : arbitrage d'économie en attente (19/10/2026).",
+    fullArt: {
+      textePeint:
+        "Durée : 3 tours de table, visible pendant Houle et Tempête. La première fois à chaque tour que votre Navire devrait subir des dégâts directs d'une attaque, vous pouvez annuler ces dégâts et les rediriger sur un autre Cylindre flottant, puis détruire cette carte. Réaction cachée : lorsqu'un effet adverse ou des dégâts directs ciblent votre Navire, vous pouvez révéler Cylindre flottant : un autre Cylindre flottant que vous contrôlez gagne en puissance.",
+      aRepeindre:
+        "Texte périmé : la carte annule les dégâts pour les infliger à un permanent adverse (et au Navire adverse en Réaction cachée), pas à un « autre Cylindre flottant ».",
+    },
+  },
   "eclaireur-ebreche": {
     styled: true,
     fullArt: { textePeint: "Au début de votre Main Phase, il subit 1 dégât. La première fois à chaque tour qu'il survit à des dégâts, il gagne +2 Puissance." },
+  },
+  "eidolon-opalin-lv1": {
+    styled: true,
+    fullArt: {
+      textePeint:
+        "À la fin de votre tour, si Éidolon Opalin LV1 est toujours en jeu, placez 1 marqueur Niveau sur lui. À 2 marqueurs Niveau, remplacez-le par Éidolon Opalin LV5 depuis votre main ou votre pioche.",
+      ecartMineur: "« Éidolon » peint avec un accent : le nom reste reconnaissable, le sens est le même.",
+    },
+  },
+  "eidolon-opalin-lvx": {
+    styled: true,
+    fullArt: {
+      textePeint:
+        "Ne peut entrer en jeu que par l'effet d'Éidolon Opalin LV5. À l'arrivée, choisissez 2 effets différents : infligez 4 dégâts à une unité ; détruisez un Équipement ; infligez 5 dégâts à une Structure ; infligez 2 Raison ; gagnez 3 Armure ; jouez une carte de votre Cimetière à votre main. Une fois par tour, lorsqu'un autre Opalin que vous contrôlez déclenche un effet, gagnez 1 Armure.",
+      aRepeindre: "« 5 dégâts à une Structure » (la carte : 3), « infligez 2 Raison » (la carte : récupérez), « jouez une carte de votre Cimetière » (la carte : ajoutez).",
+    },
   },
   "elyor-opalin-du-retour": {
     styled: true,
@@ -100,6 +134,7 @@ const ALTERNATE_ARTS: Record<string, CardAlternateArt> = {
     fullArt: { textePeint: "ÉVEIL : RÉCUPÉREZ EN MAIN UN ALTÉRÉ DE COÛT ≤3 DU CIMETIÈRE. S'IL COÛTE ≤2, VOUS POUVEZ LE JOUER POUR -1 CE TOUR." },
   },
   "la-taverne-avant-le-donjon": { styled: true, fullArt: { textePeint: "Première unité alliée renvoyée en main pendant votre tour : récupérez 1 Ancrage." } },
+  "lampe-de-pont-rouge": { styled: true, fullArt: { textePeint: "Équipez un Marin. Tant que vous êtes en Houle ou Tempête, il gagne +1 Puissance." } },
   "le-brise-ligne": {
     styled: true,
     // Repeinte le 18/10/2026 : « au moins » rétabli.
@@ -108,11 +143,6 @@ const ALTERNATE_ARTS: Record<string, CardAlternateArt> = {
       ecartMineur: "Une virgule après « 1 dégât » : le sens est le même.",
     },
   },
-  "le-nain-qui-connait-un-raccourci": {
-    styled: true,
-    fullArt: { textePeint: "À l'arrivée : sur 3-4, votre prochaine carte coûte 1 de moins ce tour. Réussite critique : elle coûte 2 de moins à la place." },
-  },
-  "le-naufrage-impossible": { styled: true, fullArt: { textePeint: "La première fois qu'il devrait être détruit, il reste en jeu avec 1 Résistance." } },
   "le-gardien-des-jouets": {
     styled: true,
     fullArt: {
@@ -128,31 +158,79 @@ const ALTERNATE_ARTS: Record<string, CardAlternateArt> = {
         "À l'arrivée : sur 4+, gagne Pied marin ce tour. Réussite critique : lorsqu'il attaque ce tour, infligez aussi 2 dégâts au Navire adverse.",
     },
   },
+  "le-nain-qui-connait-un-raccourci": {
+    styled: true,
+    fullArt: { textePeint: "À l'arrivée : sur 3-4, votre prochaine carte coûte 1 de moins ce tour. Réussite critique : elle coûte 2 de moins à la place." },
+  },
+  "le-naufrage-impossible": { styled: true, fullArt: { textePeint: "La première fois qu'il devrait être détruit, il reste en jeu avec 1 Résistance." } },
   lentendant: {
     styled: true,
     fullArt: { textePeint: "Éveil — piochez 1. Si c'est son deuxième Éveil ce tour, piochez-en 2 à la place." },
   },
-  "reine-des-charognes": {
+  "merai-opalin-des-profondeurs": {
     styled: true,
-    fullArt: { textePeint: "Quand une autre unité alliée meurt, mettez +1 / +1 sur une autre unité." },
+    fullArt: {
+      textePeint:
+        "À l'arrivée : regardez les 4 cartes du dessus de votre pioche. Ajoutez-en une à votre main puis mélangez les autres dans votre pioche. Une fois par tour, lorsqu'une carte est placée sous votre pioche, récupérez 1 Raison.",
+      aRepeindre: "« du dessus » de la pioche : la carte regarde les 4 cartes du DESSOUS.",
+    },
   },
-  "signal-de-detresse": {
-    styled: true,
-    fullArt: { textePeint: "Chaîne — Lorsque votre Navire devrait subir des dégâts directs pendant le tour adverse : réduisez-les de 3." },
-  },
+  "moucheron-sanguin": { styled: true, fullArt: { textePeint: "Sangsue", ecartMineur: "Sans le point final : le mot-clé seul, le sens est le même." } },
   // Full-Art livrée le 18/10/2026, Styled le même soir.
   "mousse-des-quarts": {
     styled: true,
     // Repeinte le 18/10/2026 : « À » accentué.
     fullArt: { textePeint: "À son arrivée, piochez 1 carte puis défaussez 1 carte." },
   },
+  "on-avait-dit-tous-ensemble": {
+    styled: true,
+    fullArt: {
+      textePeint:
+        "Une fois par tour, lorsqu'un autre Mort-vivant allié est détruit ou qu'une autre Mort-vivant rejoint votre Cimetière depuis votre main ou votre pioche : infligez 1 dégât au Navire adverse.",
+      aRepeindre: "« qu'une autre Mort-vivant rejoint » : la carte dit « qu'une carte Mort-vivant rejoint » (aucune restriction « autre »).",
+    },
+  },
+  "ptite-fesse-grand-reve": {
+    styled: true,
+    fullArt: {
+      textePeint:
+        "La première fois à chaque tour qu'une autre unité Cra-Poiscail que vous contrôlez gagne de la Puissance, P'tite Fesse, Grand Rêve gagne +1 Puissance.",
+    },
+  },
+  "reine-des-charognes": {
+    styled: true,
+    fullArt: { textePeint: "Quand une autre unité alliée meurt, mettez +1 / +1 sur une autre unité." },
+  },
   "relance-j-te-jure": { styled: true, fullArt: { textePeint: "Chaîne — Relancez le dé en cours et gardez le nouveau résultat." } },
+  "rita-sorciere-sous-contrat": {
+    styled: true,
+    fullArt: { textePeint: "À l'arrivée : une unité adverse perd -1/-1. Sur 5+ : -2/-2 à la place. Réussite critique : -3/-3 à la place." },
+  },
+  "seren-opalin-du-silence": {
+    styled: true,
+    fullArt: {
+      textePeint:
+        "À l'arrivée : choisissez une Structure adverse. Son texte est ignoré jusqu'au début de votre prochain tour. Le premier Objet adverse joué chaque tour coûte 1 Raison supplémentaire. Si l'adversaire ne peut pas payer, il ne peut pas le jouer.",
+    },
+  },
+  "signal-de-detresse": {
+    styled: true,
+    fullArt: { textePeint: "Chaîne — Lorsque votre Navire devrait subir des dégâts directs pendant le tour adverse : réduisez-les de 3." },
+  },
+  "vigie-aux-fissures": {
+    styled: true,
+    fullArt: {
+      textePeint: "La première fois à chaque tour qu'une autre unité que vous contrôlez subit des dégâts, piochez 1 carte puis défaussez-en 1.",
+      aRepeindre: "« subit des dégâts » : la carte dit « survit à des dégâts ».",
+    },
+  },
 };
 
 /** Les illustrations d'une carte, Classique en tête (toujours présente). */
 export function artworksOf(cardId: string): CardArtwork[] {
   const alt = ALTERNATE_ARTS[cardId];
   const result: CardArtwork[] = ["classique"];
+  if (alt?.enAttente) return result;
   if (alt?.styled) result.push("styled");
   if (alt?.fullArt && !alt.fullArt.aRepeindre) result.push("styled-fa");
   return result;
@@ -221,4 +299,9 @@ export function shownChosenArtwork(cardId: string, stored: unknown, styledUnlock
 
 export function isCardArtwork(value: unknown): value is CardArtwork {
   return typeof value === "string" && (CARD_ARTWORKS as readonly string[]).includes(value);
+}
+
+/** Motif d'une illustration livrée mais pas encore distribuée (`enAttente`), `undefined` sinon. */
+export function alternateArtOnHold(cardId: string): string | undefined {
+  return ALTERNATE_ARTS[cardId]?.enAttente;
 }

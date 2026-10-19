@@ -5,6 +5,7 @@ import { CARD_DATABASE } from "@/game/cards/sets/core";
 import { BOOSTER_POOLS } from "@/game/boosters/pools";
 import { BOOSTER_ARTWORKS, boosterArtworkEntries } from "@/game/boosters/boosterArtworks";
 import {
+  alternateArtOnHold,
   artworksOf,
   boardTileArtwork,
   cardIdsWithAlternateArt,
@@ -43,7 +44,8 @@ describe("illustrations Styled / Styled Full-Art", () => {
       for (const file of readdirSync(path.join(ILLUSTRATIONS, artwork))) {
         const cardId = file.replace(/\.webp$/, "");
         expect(listed.has(cardId), `${artwork}/${file}`).toBe(true);
-        if (artwork === "styled") expect(artworksOf(cardId), `${artwork}/${file}`).toContain("styled");
+        // Livrée mais en attente de distribution (`enAttente`) : inscrite, pas encore obtenable.
+        if (artwork === "styled" && !alternateArtOnHold(cardId)) expect(artworksOf(cardId), `${artwork}/${file}`).toContain("styled");
         else expect(paintedFullArt(cardId), `${artwork}/${file}`).toBeDefined();
       }
     }
@@ -95,5 +97,13 @@ describe("illustrations Styled / Styled Full-Art", () => {
     expect(boardTileArtwork("mousse-des-quarts", "styled-fa")).toBe("styled");
     expect(boardTileArtwork("marin-des-jetees", "styled")).toBe("classique");
     expect(boardTileArtwork("aberration-vorace", undefined)).toBe("classique");
+  });
+});
+
+describe("illustrations livrées en attente de distribution", () => {
+  it("une carte « en attente » n'a encore ni Styled ni Full-Art, et son motif est écrit", () => {
+    expect(alternateArtOnHold("cylindre-flottant")).toBeTruthy();
+    expect(artworksOf("cylindre-flottant")).toEqual(["classique"]);
+    expect(alternateArtOnHold("mousse-des-quarts")).toBeUndefined();
   });
 });

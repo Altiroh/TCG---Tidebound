@@ -6,6 +6,7 @@ import {
   BOOSTER_ETRANGETE_SOUS_MARINE,
   BOOSTER_LA_MUTATION_MONDIALE,
   BOOSTER_NECESSAIRE_DU_MARIN,
+  BOOSTER_POISSONS_PAS_FRAIS,
   BOOSTER_VEILLEE_DES_DISPARUS,
 } from "@/game/boosters/pools";
 
@@ -22,15 +23,21 @@ import {
  * APRÈS la carte.
  *
  * Répartition de départ : chaque illustration dans le(s) booster(s) d'où sa
- * carte sort déjà. Poissons pas frais n'en a aucune tant qu'une de ses
- * cartes n'a pas été illustrée.
+ * carte sort déjà — jamais le Mini Booster de Bienvenue, qui reste une
+ * découverte du jeu. Lot du 19/10/2026 : Poissons pas frais reçoit ses
+ * premières illustrations.
  * Une Full-Art à repeindre (`aRepeindre`) reste écartée même listée.
  */
 const STYLED_ET_FULL_ART: readonly RareCardArtwork[] = ["styled", "styled-fa"];
 
 export const BOOSTER_ARTWORKS: Readonly<Record<string, Readonly<Record<string, readonly RareCardArtwork[]>>>> = {
   [BOOSTER_DEFAUT]: {
+    // Pas encore la Styled du Cylindre flottant : voir `game/cosmetics/artworks.ts`.
     "mousse-des-quarts": STYLED_ET_FULL_ART,
+  },
+  [BOOSTER_POISSONS_PAS_FRAIS]: {
+    "lampe-de-pont-rouge": STYLED_ET_FULL_ART,
+    "moucheron-sanguin": STYLED_ET_FULL_ART,
   },
   [BOOSTER_NECESSAIRE_DU_MARIN]: {
     "chirurgien-du-bord": STYLED_ET_FULL_ART,
@@ -42,14 +49,17 @@ export const BOOSTER_ARTWORKS: Readonly<Record<string, Readonly<Record<string, r
   [BOOSTER_VEILLEE_DES_DISPARUS]: {
     "le-gardien-des-jouets": STYLED_ET_FULL_ART,
     "mousse-des-quarts": STYLED_ET_FULL_ART,
+    "on-avait-dit-tous-ensemble": STYLED_ET_FULL_ART,
   },
   [BOOSTER_ETRANGETE_SOUS_MARINE]: {
     "il-capitano-naufrage": STYLED_ET_FULL_ART,
+    "ptite-fesse-grand-reve": STYLED_ET_FULL_ART,
   },
   [BOOSTER_ECLATS_EN_SELLE]: {
     "bretteuse-au-bord": STYLED_ET_FULL_ART,
     "eclaireur-ebreche": STYLED_ET_FULL_ART,
     "le-brise-ligne": STYLED_ET_FULL_ART,
+    "vigie-aux-fissures": STYLED_ET_FULL_ART,
   },
   [BOOSTER_LA_MUTATION_MONDIALE]: {
     "aberration-vorace": STYLED_ET_FULL_ART,
@@ -58,12 +68,17 @@ export const BOOSTER_ARTWORKS: Readonly<Record<string, Readonly<Record<string, r
     "reine-des-charognes": STYLED_ET_FULL_ART,
   },
   [BOOSTER_DUNGEON_ET_LADALLE]: {
+    "eidolon-opalin-lv1": STYLED_ET_FULL_ART,
+    "eidolon-opalin-lvx": STYLED_ET_FULL_ART,
     "elyor-opalin-du-retour": STYLED_ET_FULL_ART,
     "gaston-aventurier-de-ladalle": STYLED_ET_FULL_ART,
     "la-taverne-avant-le-donjon": STYLED_ET_FULL_ART,
     "le-geant-qui-croyait-etre-discret": STYLED_ET_FULL_ART,
     "le-nain-qui-connait-un-raccourci": STYLED_ET_FULL_ART,
+    "merai-opalin-des-profondeurs": STYLED_ET_FULL_ART,
     "relance-j-te-jure": STYLED_ET_FULL_ART,
+    "rita-sorciere-sous-contrat": STYLED_ET_FULL_ART,
+    "seren-opalin-du-silence": STYLED_ET_FULL_ART,
   },
 };
 
