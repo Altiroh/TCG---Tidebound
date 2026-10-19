@@ -388,7 +388,6 @@ function DeckEditorScreenBody({ ownedCardIds, ownedCounts, styledCardIds = [], o
       // la collection : « 2 » pour le Gardien, même si on n'en a qu'un — ce
       // manque se dit à part (« 1 possédée »).
       const limite = getMaxCopies(def);
-      const possedees = isClassicEdition(edition) ? (ownedCounts[def.id] ?? 0) : ownedOfEdition(ownedEditions, def.id, edition);
       const locked = owned ? !owned.has(def.id) : false;
 
       if (locked) return <span className={styles.cellLocked}>Non possédée</span>;
@@ -411,11 +410,13 @@ function DeckEditorScreenBody({ ownedCardIds, ownedCounts, styledCardIds = [], o
                 <path d="M6 12h12" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" />
               </svg>
             </button>
+            {/* UN compteur par CARTE, partagé par toutes ses variantes : la limite
+                porte sur l'ensemble (2/2 pour deux Gardiens, Classique et Full-Art). */}
             <span
               className={`${styles.cellQty} ${total >= limite ? styles.cellQtyFull : ""}`}
-              title={`${ici} de cette édition · ${total} sur ${limite} au plus pour cette carte`}
+              title={`${total} sur ${limite} au plus pour cette carte, toutes variantes confondues — dont ${ici} de cette édition`}
             >
-              {ici}
+              {total}
               <span className={styles.cellQtyMax}>/{limite}</span>
             </span>
             <button
@@ -448,15 +449,25 @@ function DeckEditorScreenBody({ ownedCardIds, ownedCounts, styledCardIds = [], o
               </svg>
             </button>
           </span>
-          {owned && possedees < limite && (
-            <span className={styles.cellOwned}>
-              {possedees} possédée{possedees > 1 ? "s" : ""}
-            </span>
-          )}
         </span>
       );
     },
-    [cardIds, rareCopies, owned, ownedCounts, ownedEditions, addCard, removeCard, canAdd]
+    [cardIds, rareCopies, owned, addCard, removeCard, canAdd]
+  );
+
+  /**
+   * POSSESSION, en badge discret en haut de la carte : « ×3 ». La Classique
+   * compte tous les exemplaires (une variante peut toujours jouer en
+   * Classique) ; une variante, ses seuls exemplaires.
+   */
+  const renderCellBadge = useCallback(
+    (def: CardDefinition, cellEdition?: CardEdition) => {
+      if (!owned || !owned.has(def.id)) return null;
+      const edition = cellEdition ?? CLASSIC_EDITION;
+      const possedees = isClassicEdition(edition) ? (ownedCounts[def.id] ?? 0) : ownedOfEdition(ownedEditions, def.id, edition);
+      return <span title={`${possedees} exemplaire${possedees > 1 ? "s" : ""} possédé${possedees > 1 ? "s" : ""}`}>×{possedees}</span>;
+    },
+    [owned, ownedCounts, ownedEditions]
   );
 
   return (
@@ -513,9 +524,12 @@ function DeckEditorScreenBody({ ownedCardIds, ownedCounts, styledCardIds = [], o
             cards={shownCards}
             onCardClick={addCard}
             editionsFor={isSignedIn ? editionsFor : undefined}
+            // Ajouter ou retirer une copie ne fait pas remonter la grille : seuls filtres, recherche et tri.
+            resetKey={JSON.stringify([cardBrowser.filters, cardBrowser.sort, inDeckOnly])}
             hasAnyCards={!isSignedIn || ownedCardIds.length > 0}
             owned={owned}
             cellExtras={renderCellExtras}
+            cellBadge={isSignedIn ? renderCellBadge : undefined}
             onCardDragStart={handleCardDragStart}
           />
         </main>

@@ -115,8 +115,14 @@ export const RULES = {
    * (`useDeraisonWarning`, `TableBoard`).
    *
    * Se remesure avec `npm run replay -- --variante deraison`.
+   *
+   * RETIRÉE le 19/10/2026 (retour de jeu) : le doublement ne se voyait pas
+   * — une dette de 14 a coûté 24 Ancrage au lieu des 14 attendus — et le
+   * risque de la Déraison est jugé assez élevé sans lui. Chaque point coûte
+   * de nouveau `DERAISON_ANCHOR_DAMAGE_PER_POINT`. Le mécanisme de paliers
+   * reste en place, vide, pour pouvoir le remesurer.
    */
-  DERAISON_ANCHOR_DAMAGE_TIERS: [{ from: 5, perPoint: 2 }] as ReadonlyArray<{ from: number; perPoint: number }>,
+  DERAISON_ANCHOR_DAMAGE_TIERS: [] as ReadonlyArray<{ from: number; perPoint: number }>,
   /**
    * Échelle de coûts en Raison verrouillée par le cadrage : 1-5 = standard,
    * 6 = exceptionnel, 7 = extrême. Le moteur ne plafonne pas le coût d'une

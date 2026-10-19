@@ -49,6 +49,7 @@ const GridCell = memo(function GridCell({
   owned,
   onCardClick,
   cellExtras,
+  cellBadge,
   onCardDragStart,
   edition,
 }: {
@@ -60,6 +61,7 @@ const GridCell = memo(function GridCell({
   edition?: CardEdition;
   onCardClick: CardGridProps["onCardClick"];
   cellExtras: CardGridProps["cellExtras"];
+  cellBadge: CardGridProps["cellBadge"];
   onCardDragStart: CardGridProps["onCardDragStart"];
 }) {
   const instance = useMemo(() => displayInstance(def.id), [def.id]);
@@ -103,6 +105,8 @@ const GridCell = memo(function GridCell({
       <SaveToNotebook cardId={def.id} variant="overlay" />
       {/* Le cœur des favoris, posé SUR la carte : il se soulève avec elle. */}
       <FavoriteToggle cardId={def.id} cardName={def.name} />
+      {/* Badge discret EN HAUT de la carte (possession de l'éditeur de deck). */}
+      {cellBadge && <span className={styles.cellBadge}>{cellBadge(def, edition)}</span>}
       </div>
       {cellExtras && <div className={styles.cellExtras}>{cellExtras(def, edition)}</div>}
     </div>
@@ -142,6 +146,15 @@ interface CardGridProps {
    * une cellule Classique.
    */
   editionsFor?: (def: CardDefinition) => readonly GridEdition[];
+  /**
+   * Ce qui REMET la grille en haut : filtres, recherche, tri. Absent : tout
+   * changement de `cards`. L'éditeur de deck le fournit — ajouter ou retirer
+   * une copie recalcule sa liste (« Déjà dans le deck »), et la grille
+   * revenait au début, perdant l'endroit où le joueur avait défilé.
+   */
+  resetKey?: string;
+  /** Petit badge posé EN HAUT de la carte (l'éditeur de deck y dit combien on en possède) ; `null` pour rien. */
+  cellBadge?: (def: CardDefinition, edition?: CardEdition) => ReactNode;
 }
 
 /**
@@ -156,7 +169,7 @@ interface CardGridProps {
  * référence qui déclenche le retour en haut + la réinitialisation du lot,
  * sans plomberie supplémentaire côté parent.
  */
-export function CardGrid({ cards, onCardClick, hasAnyCards, owned, emptyLabel, cellExtras, onCardDragStart, editionsFor }: CardGridProps) {
+export function CardGrid({ cards, onCardClick, hasAnyCards, owned, emptyLabel, cellExtras, cellBadge, onCardDragStart, editionsFor, resetKey }: CardGridProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const loadTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -176,7 +189,8 @@ export function CardGrid({ cards, onCardClick, hasAnyCards, owned, emptyLabel, c
       loadTimeoutRef.current = null;
     }
     scrollRef.current?.scrollTo({ top: 0 });
-  }, [cards]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- avec `resetKey`, seul lui remet la grille en haut.
+  }, [resetKey ?? cards]);
 
   useEffect(() => () => {
     if (loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current);
@@ -245,6 +259,7 @@ export function CardGrid({ cards, onCardClick, hasAnyCards, owned, emptyLabel, c
                   owned={owned !== null}
                   onCardClick={onCardClick}
                   cellExtras={cellExtras}
+                  cellBadge={cellBadge}
                   onCardDragStart={onCardDragStart}
                   // La Classique transmise telle quelle quand la grille montre les
                   // éditions : sans elle, la fiche ouverte depuis la cellule

@@ -486,16 +486,6 @@
   gap: 3px;
 }
 
-/* « 1 possédée » : on en a moins que la limite de la carte. */
-.cellOwned {
-  padding: 1px 8px;
-  border-radius: var(--tb-radius-pill);
-  background: var(--panel-solid);
-  font-size: calc(max(10px, var(--tb-fs-floor, 0px)) * var(--tb-text-scale));
-  color: var(--ink-dim);
-  white-space: nowrap;
-}
-
 /* Carte qu'on ne peut pas ajouter (non possédée) : la superposition le dit sans crier. */
 .cellLocked {
   padding: 2px 9px;

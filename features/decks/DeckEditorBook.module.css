@@ -172,11 +172,18 @@
   display: none;
 }
 
+/* Au survol, l'IMAGE du bouton est redéclarée : la règle de base
+   (`.cellButton:hover`, un `background` raccourci) l'effaçait, et le bouton
+   peint disparaissait sous la souris. */
 .workspace [class*="_cellButton__"][aria-label^="Retirer"]:hover:not(:disabled),
 .workspace [class*="_cellButton__"][aria-label^="Ajouter"]:hover:not(:disabled) {
-  background-color: transparent;
+  background: url("/assets/ui/boutons/rond-moins.webp") center / contain no-repeat;
   transform: scale(1.08);
   filter: brightness(1.11) saturate(1.14) drop-shadow(0 0 5px rgba(255, 214, 140, 0.85)) drop-shadow(0 2px 3px rgba(0, 0, 0, 0.6));
+}
+
+.workspace [class*="_cellButton__"][aria-label^="Ajouter"]:hover:not(:disabled) {
+  background-image: url("/assets/ui/boutons/rond-plus.webp");
 }
 
 .workspace [class*="_cellButton__"][aria-label^="Retirer"]:disabled,

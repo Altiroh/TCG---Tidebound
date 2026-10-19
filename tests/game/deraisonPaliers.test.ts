@@ -5,9 +5,9 @@ import { RULES } from "@/game/rules/constants";
 /**
  * LE BARÈME DE LA DETTE.
  *
- * Depuis le 22/09/2026, un point de dette ne coûte plus toujours pareil :
- * les quatre premiers sont à 1 Ancrage, les suivants à 2
- * (`RULES.DERAISON_ANCHOR_DAMAGE_TIERS`). Ces tests tiennent les deux bouts
+ * Du 22/09 au 19/10/2026, les points au-delà du 4e coûtaient 2 Ancrage ;
+ * ce doublement est RETIRÉ (il ne se voyait pas à l'écran) : chaque point
+ * coûte de nouveau 1 (`RULES.DERAISON_ANCHOR_DAMAGE_TIERS` vide). Ces tests tiennent les deux bouts
  * — que la règle EN VIGUEUR est bien celle-là, et que le barème compte
  * point par point quelle que soit sa forme, pour que la remesurer
  * (`npm run replay -- --variante deraison`) reste honnête.
@@ -21,17 +21,12 @@ afterEach(() => {
 });
 
 describe("barème de la Déraison", () => {
-  it("la règle en vigueur : plate jusqu'au 4e point, double ensuite", () => {
-    expect(RULES.DERAISON_ANCHOR_DAMAGE_TIERS).toEqual([{ from: 5, perPoint: 2 }]);
-    // Les petits emprunts — 78 % des tours — ne sont pas touchés.
+  it("la règle en vigueur : 1 Ancrage par point de dette, sans doublement", () => {
+    expect(RULES.DERAISON_ANCHOR_DAMAGE_TIERS).toEqual([]);
     expect(deraisonAnchorCost(0)).toBe(0);
-    expect(deraisonAnchorCost(1)).toBe(1);
     expect(deraisonAnchorCost(4)).toBe(4);
-    // Au-delà, c'est le burst qu'on fait payer.
-    expect(deraisonAnchorCost(5)).toBe(6);
-    expect(deraisonAnchorCost(7)).toBe(10);
-    // La dette de 11 observée au banc coûtait 11 ; elle en coûte 18.
-    expect(deraisonAnchorCost(11)).toBe(18);
+    // La dette de 14 du retour du 19/10/2026 : 14, plus 24.
+    expect(deraisonAnchorCost(14)).toBe(14);
   });
 
   it("sans palier, la somme revaut la multiplication d'avant", () => {

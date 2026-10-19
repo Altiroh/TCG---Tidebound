@@ -310,8 +310,10 @@ function playerValue(state: GameState, player: PlayerState): number {
   const boardValue = player.board.reduce((sum, unit) => sum + permanentValue(state, unit, player), 0);
 
   // Déraison : la dette sera payée en Ancrage en fin de tour — comptée comme
-  // de l'Ancrage déjà perdu, un peu plus lourd pour que le bot ne plonge en
-  // dette que si le plateau le justifie clairement.
+  // de l'Ancrage déjà perdu, au même poids. Elle pesait ×1,2 tant que les
+  // points au-delà du 4e coûtaient double ; le doublement retiré (19/10/2026),
+  // ce surpoids faisait trop craindre la dette au bot : sur 360 parties,
+  // « moyen » contre « facile » passe de 58,8 % (×1,2) à 64,4 % (×1).
   //
   // Le montant est demandé au MOTEUR (`deraisonAnchorDamage`) plutôt que
   // recalculé à plat ici : c'est la seule façon pour le bot de voir la
@@ -323,7 +325,7 @@ function playerValue(state: GameState, player: PlayerState): number {
 
   return (
     anchorValue(player) -
-    dette * ANCHOR_VITAL_VALUE * 1.2 +
+    dette * ANCHOR_VITAL_VALUE +
     Math.max(0, player.reason) * 0.5 +
     boardValue +
     armedShotValue(state, player) +
