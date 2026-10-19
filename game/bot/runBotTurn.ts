@@ -23,44 +23,17 @@ export function botHasSomethingToDo(state: GameState, playerId: PlayerId): boole
   return state.activePlayerId === playerId;
 }
 
-export interface BotTurnStep {
-  state: GameState;
-  /** `true` si le bot n'a plus rien à faire (tour terminé, ou fin de partie en cours de tour) — plus la peine d'appeler `stepBotTurn` à nouveau. */
-  done: boolean;
-}
-
 /**
- * Exécute UNE SEULE action du bot, plutôt que tout son tour d'un coup —
- * pensé pour être rappelé par l'UI avec un délai entre chaque appel
- * (`MatchBoard`), pour que le tour du bot se joue visiblement carte par
- * carte plutôt que de "téléporter" instantanément vers son état final.
- * Même logique de secours que l'ancien `runBotTurn` (une action censée
- * être valide mais refusée force `endTurn`/`passReaction`).
+ * L'action de REPLI d'un joueur : toujours légale, jamais bonne — passer une
+ * fenêtre de réaction, répondre au plus simple à un choix, avancer la phase.
+ * Sert quand l'action choisie a été refusée, et au déblocage automatique de
+ * l'écran de partie (une partie figée depuis 30 s).
  */
-export function stepBotTurn(state: GameState, playerId: PlayerId, difficulty: BotDifficulty): BotTurnStep {
-  if (state.status !== "active" || !botHasSomethingToDo(state, playerId)) return { state, done: true };
-  return applyBotAction(state, playerId, chooseBotAction(state, playerId, difficulty));
-}
-
-/**
- * Seconde moitié de `stepBotTurn` : applique une action DÉJÀ choisie (avec
- * le même repli si elle est refusée).
- *
- * Séparée pour que l'interface puisse faire réfléchir le bot ailleurs que
- * sur le fil principal (`features/match/bot/botWorker.ts`) : la recherche
- * du bot « difficile » prend plusieurs centaines de millisecondes, pendant
- * lesquelles l'écran gelait. Le choix revient du worker, l'application —
- * un `dispatch`, instantané — reste ici.
- */
-export function applyBotAction(state: GameState, playerId: PlayerId, action: PlayerAction): BotTurnStep {
-  if (state.status !== "active" || !botHasSomethingToDo(state, playerId)) return { state, done: true };
-
-  const result = dispatch(state, action);
-  if (!result.ok) {
-    // L'Ancrage pèse bien plus lourd que la Raison dans `evaluateState` :
-    // "perdre de la Raison" est le repli le plus sûr par défaut si le choix
-    // normalement évalué par `chooseBotAction` a, contre toute attente, échoué.
-    const fallbackAction = state.pendingReaction
+export function unstickAction(state: GameState, playerId: PlayerId): PlayerAction {
+  // L'Ancrage pèse bien plus lourd que la Raison dans `evaluateState` :
+  // "perdre de la Raison" est le repli le plus sûr par défaut si le choix
+  // normalement évalué par `chooseBotAction` a, contre toute attente, échoué.
+  return state.pendingReaction
       ? { type: "passReaction" as const, playerId }
       : state.pendingChoice
         ? {
@@ -110,10 +83,53 @@ export function applyBotAction(state: GameState, playerId: PlayerId, action: Pla
           ? // Pas de fin de tour en Phase principale 1 : le repli passe au combat.
             { type: "advancePhase" as const, playerId }
           : { type: "endTurn" as const, playerId };
-    const fallback = dispatch(state, fallbackAction);
-    return { state: fallback.ok ? fallback.state : state, done: true };
-  }
+}
 
+export interface BotTurnStep {
+  state: GameState;
+  /** `true` si le bot n'a plus rien à faire (tour terminé, ou fin de partie en cours de tour) — plus la peine d'appeler `stepBotTurn` à nouveau. */
+  done: boolean;
+}
+
+/**
+ * Exécute UNE SEULE action du bot, plutôt que tout son tour d'un coup —
+ * pensé pour être rappelé par l'UI avec un délai entre chaque appel
+ * (`MatchBoard`), pour que le tour du bot se joue visiblement carte par
+ * carte plutôt que de "téléporter" instantanément vers son état final.
+ * Même logique de secours que l'ancien `runBotTurn` (une action censée
+ * être valide mais refusée force `endTurn`/`passReaction`).
+ */
+export function stepBotTurn(state: GameState, playerId: PlayerId, difficulty: BotDifficulty): BotTurnStep {
+  if (state.status !== "active" || !botHasSomethingToDo(state, playerId)) return { state, done: true };
+  return applyBotAction(state, playerId, chooseBotAction(state, playerId, difficulty));
+}
+
+/**
+ * Seconde moitié de `stepBotTurn` : applique une action DÉJÀ choisie (avec
+ * le même repli si elle est refusée).
+ *
+ * Séparée pour que l'interface puisse faire réfléchir le bot ailleurs que
+ * sur le fil principal (`features/match/bot/botWorker.ts`) : la recherche
+ * du bot « difficile » prend plusieurs centaines de millisecondes, pendant
+ * lesquelles l'écran gelait. Le choix revient du worker, l'application —
+ * un `dispatch`, instantané — reste ici.
+ */
+export function applyBotAction(state: GameState, playerId: PlayerId, action: PlayerAction): BotTurnStep {
+  if (state.status !== "active" || !botHasSomethingToDo(state, playerId)) return { state, done: true };
+
+  const result = dispatch(state, action);
+  if (!result.ok) {
+    // L'Ancrage pèse bien plus lourd que la Raison dans `evaluateState` :
+    // "perdre de la Raison" est le repli le plus sûr par défaut si le choix
+    // normalement évalué par `chooseBotAction` a, contre toute attente, échoué.
+    const fallback = dispatch(state, unstickAction(state, playerId));
+    // Même règle que ci-dessous : « terminé » seulement si ce joueur n'a
+    // plus rien à décider. Un repli qui rend la main au bot lui-même (une
+    // fenêtre passée pendant SON tour) le laissait sinon figé : la boucle
+    // de l'écran ne se relance que sur une bascule qui n'arrivait jamais.
+    const after = fallback.ok ? fallback.state : state;
+    return { state: after, done: !fallback.ok || after.status !== "active" || !botHasSomethingToDo(after, playerId) };
+  }
   const nextState = result.state;
   // Ce qui décide, c'est « ce joueur a-t-il encore quelque chose à
   // décider », jamais le TYPE de la dernière action. Rendre la main peut

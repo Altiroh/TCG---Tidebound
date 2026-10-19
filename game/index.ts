@@ -222,7 +222,7 @@ export {
   graveyardChoicesForPlay,
 } from "@/game/effects/graveyardChoices";
 
-export { applyBotAction, botHasSomethingToDo, runBotTurn, runBotUntilIdle, stepBotTurn, type BotTurnStep } from "@/game/bot/runBotTurn";
+export { applyBotAction, botHasSomethingToDo, runBotTurn, runBotUntilIdle, stepBotTurn, unstickAction, type BotTurnStep } from "@/game/bot/runBotTurn";
 export { chooseBotAction } from "@/game/bot/chooseAction";
 export type { BotDifficulty } from "@/game/bot/types";
 

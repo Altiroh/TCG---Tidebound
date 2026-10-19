@@ -13,6 +13,7 @@ import {
   isMainPhase,
   applyBotAction,
   botHasSomethingToDo,
+  unstickAction,
   type BotDifficulty,
   type CardInstance,
   type GameState,
@@ -206,10 +207,6 @@ export function MatchBoard({
   // plateau (bandeau en haut, « Ne rien faire », une minute).
   const directTarget = myReactionCandidates.length === 1 && myReactionCandidates[0]!.needsTarget ? myReactionCandidates[0]! : null;
   const directTargetKey = directTarget ? `${directTarget.sourceInstanceId}:${directTarget.abilityIndex}:${state.pendingReaction?.usedCandidateKeys.length ?? 0}` : null;
-  useEffect(() => {
-    if (directTarget && !(pending?.kind === "reaction" && pending.needsTarget)) board.beginReactionTargeting([directTarget]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [directTargetKey]);
 
   const auraContextFor = (player: typeof viewerPlayer) => ({
     controllerBoard: player.board,
@@ -233,6 +230,15 @@ export function MatchBoard({
     onGestureStart: () => setError(null),
   });
   const { selection: pending } = board;
+  // Réarmé tant que la désignation n'est pas en cours : si elle n'a pas pris
+  // (fenêtre ouverte pendant la mise en scène d'un combat, sélection effacée
+  // par un autre geste), la fenêtre restait ouverte sans RIEN à l'écran —
+  // ni cible à toucher, ni « Ne rien faire » — et la partie se figeait.
+  const reactionTargeting = pending?.kind === "reaction" && pending.needsTarget;
+  useEffect(() => {
+    if (directTarget && !reactionTargeting) board.beginReactionTargeting([directTarget]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [directTargetKey, reactionTargeting]);
   const deraison = useDeraisonWarning(state, viewerPlayer, board.draggingId);
   const shipAbility = useShipAbility({
     liveState,
@@ -346,6 +352,75 @@ export function MatchBoard({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- ne doit réagir qu'aux transitions "c'est au bot d'agir".
   }, [botToAct, botPlayerId, botDifficulty]);
+
+  // FENÊTRE SANS RÉPONSE POSSIBLE : elle attend ce joueur, mais plus aucune
+  // capacité n'y est éligible (sa cible a disparu entre-temps) et le Navire
+  // n'a rien à y faire. Il n'y a rien à décider : on passe, sans rien
+  // montrer — sinon l'écran restait vide et la partie figée.
+  const nothingToAnswer =
+    liveState.status === "active" &&
+    liveState.pendingReaction?.awaitingPlayerId === viewerPlayerId &&
+    viewerPlayerId !== botPlayerId &&
+    myReactionCandidates.length === 0 &&
+    !shipAbility.windowEntry &&
+    !holding;
+  useEffect(() => {
+    if (!nothingToAnswer) return;
+    const timer = setTimeout(() => {
+      const current = liveRef.current;
+      if (current.pendingReaction?.awaitingPlayerId !== viewerPlayerId) return;
+      const result = dispatch(current, { type: "passReaction", playerId: viewerPlayerId });
+      if (result.ok) setState(result.state);
+    }, 600);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nothingToAnswer]);
+
+  // DÉBLOCAGE AUTOMATIQUE (retour du 19/10/2026) : rien n'a bougé depuis
+  // 30 s alors que quelqu'un doit agir. Le bot reçoit son action de repli
+  // (toujours légale : passer, répondre au plus simple, avancer) ; le joueur,
+  // lui, n'est jamais remplacé — un bandeau lui propose de débloquer.
+  const STALL_MS = 30_000;
+  const [stalled, setStalled] = useState(false);
+  useEffect(() => {
+    setStalled(false);
+    if (liveState.status !== "active") return;
+    const timer = setTimeout(() => {
+      const current = liveRef.current;
+      if (current.status !== "active") return;
+      console.warn("[MatchBoard] Partie immobile depuis 30 s — déblocage.", {
+        phase: current.phase,
+        actif: current.activePlayerId,
+        reaction: current.pendingReaction,
+        choix: current.pendingChoice,
+      });
+      if (botPlayerId && botHasSomethingToDo(current, botPlayerId)) {
+        const result = dispatch(current, unstickAction(current, botPlayerId));
+        if (result.ok) {
+          liveRef.current = result.state;
+          setState(result.state);
+          return;
+        }
+      }
+      setStalled(true);
+    }, STALL_MS);
+    return () => clearTimeout(timer);
+  }, [liveState, botPlayerId]);
+  const stuckPlayerId = liveState.pendingReaction?.awaitingPlayerId ?? liveState.pendingChoice?.playerId ?? null;
+  // La désignation d'une cible a déjà son propre bandeau, avec son délai : pas de second bandeau par-dessus.
+  const canUnstick = stalled && stuckPlayerId !== null && stuckPlayerId === viewerPlayerId && stuckPlayerId !== botPlayerId && !reactionTargeting;
+  function unstick() {
+    const current = liveRef.current;
+    const result = dispatch(current, unstickAction(current, viewerPlayerId));
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+    board.clearSelection();
+    setError(null);
+    setStalled(false);
+    setState(result.state);
+  }
 
   /** Abandon depuis le menu de pause : la partie se termine proprement, sur l'écran de victoire de l'adversaire. */
   function concedeMatch() {
@@ -620,6 +695,19 @@ export function MatchBoard({
       />
 
 
+      {/* Déblocage : 30 s sans que rien ne bouge sur une question qui attend ce joueur. */}
+      {canUnstick && (
+        <ChoiceBanner
+          choiceKey={`blocage:${liveState.turnNumber}:${liveState.phase}`}
+          source={null}
+          title="La partie semble bloquée"
+          detail="Rien n'a bougé depuis 30 secondes. Débloquer passe la question en cours sans rien appliquer — sinon, elle se débloque d'elle-même."
+          actions={[{ label: "Débloquer", onClick: unstick }]}
+          // Sans geste dans les 15 s, la partie se débloque d'elle-même.
+          onExpire={unstick}
+          timeoutMs={15_000}
+        />
+      )}
       {/* Invitation à réagir — priorité sur tout le reste tant qu'elle reste ouverte ; repliée dès qu'une
           capacité ciblée est choisie, remplacée par un petit rappel non bloquant. */}
       {state.pendingReaction?.awaitingPlayerId === viewerPlayerId &&
