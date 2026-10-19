@@ -80,8 +80,13 @@ export function isSuspendedDeclaration(events: GameEvent[], index: number, after
  * (jamais recalculés côté client). Une déclaration suspendue par une fenêtre
  * de réaction ne compte pas (`isSuspendedDeclaration`).
  */
+/** Rang du premier `ATTACK` RÉSOLU du lot (`-1` sans attaque résolue). */
+export function resolvedAttackIndex(events: GameEvent[], after: GameState): number {
+  return events.findIndex((event, at) => event.type === "ATTACK" && !isSuspendedDeclaration(events, at, after));
+}
+
 export function deriveAttack(events: GameEvent[], after: GameState, id: number): AttackAnimation | null {
-  const index = events.findIndex((event, at) => event.type === "ATTACK" && !isSuspendedDeclaration(events, at, after));
+  const index = resolvedAttackIndex(events, after);
   const event = events[index];
   if (!event || event.type !== "ATTACK") return null;
 
@@ -151,19 +156,24 @@ interface Presentation {
 }
 
 /** Mise en scène d'un lot d'événements : l'attaque, sinon les effets, et l'état à afficher en attendant. */
-function stage(previous: GameState, live: GameState, events: GameEvent[], nextId: { current: number }): Omit<Presentation, "dice"> {
+export function stage(previous: GameState, live: GameState, events: GameEvent[], nextId: { current: number }): Omit<Presentation, "dice"> {
   const derived = deriveAttack(events, live, nextId.current);
   // Attaquer une Garde ne la montre pas : le coup part. Elle se montre quand on attaque À CÔTÉ d'elle (`showGuard`).
   const attack = derived;
   if (attack) nextId.current += 1;
   // Les effets des qualifications se jouent APRÈS l'attaque, en sorts de leur porteur : pas avec le coup.
-  const volley = deriveEffectVolley(
-    events.filter((event) => !event.byQualification),
-    previous,
-    live,
-    nextId.current
-  );
+  const effectEvents = (from: number, to?: number) => events.slice(from, to).filter((event) => !event.byQualification);
+  // Avec une attaque, le lot se coupe en deux : ce qui la PRÉCÈDE (une
+  // réaction qui l'a précédée) se joue avec elle, comme avant ; ce qui la
+  // SUIT — les effets que l'attaque ou son résultat déclenchent (bonus à
+  // l'attaque, gain, pioche, survie aux dégâts…) — attend qu'elle soit
+  // jouée (retour du 19/10/2026). Joués ensemble, le réveil de l'attaquant
+  // pour son propre effet écrasait son élan : l'attaque ne se voyait pas.
+  const attackAt = attack ? resolvedAttackIndex(events, live) : -1;
+  const volley = deriveEffectVolley(attack ? effectEvents(0, attackAt) : effectEvents(0), previous, live, nextId.current);
   if (volley) nextId.current += 1;
+  const afterVolley = attack ? deriveEffectVolley(effectEvents(attackAt + 1), previous, live, nextId.current) : null;
+  if (afterVolley) nextId.current += 1;
   let post: Presentation["post"] = null;
   let staging = attack;
   const fx = attack?.qualifications ?? [];
@@ -180,6 +190,22 @@ function stage(previous: GameState, live: GameState, events: GameEvent[], nextId
         ],
       };
     }
+  }
+  // Les effets d'APRÈS l'attaque partent quand elle est jouée, retour compris
+  // (et après les spé. s'il y en a) ; le plateau montre d'ici là l'issue du
+  // coup sans eux, puis l'état réel quand ils ont touché.
+  if (attack && afterVolley) {
+    const lead = attack.leadMs ?? 0;
+    const startMs = post?.endMs ?? lead + ATTACK_TOTAL_MS;
+    // Le coup s'affiche au choc (ou au retour si une carte en meurt), comme sans effet.
+    const shownAtMs = post ? post.endMs : lead + (attack.defenderDies || attack.attackerDies ? ATTACK_TOTAL_MS : ATTACK_IMPACT_AT_MS);
+    const delayed: EffectVolley = { ...afterVolley, delayMs: afterVolley.delayMs + startMs };
+    post = {
+      volleys: [...(post?.volleys ?? []), delayed],
+      displays: [...(post?.displays ?? []), { atMs: shownAtMs, held: patchedDisplay(previous, live, afterVolley) }],
+      endMs: Math.max(post?.endMs ?? 0, volleyLandingMs(delayed)),
+    };
+    staging = staging ?? attack;
   }
   const staged = staging !== null || volley !== null;
   return {

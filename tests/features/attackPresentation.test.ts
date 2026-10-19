@@ -183,3 +183,31 @@ describe("animation d'attaque : une seule quand une fenêtre de réaction s'ouvr
     expect(deriveAttack(nouveaux(state, result.state), result.state, 1)).toMatchObject({ defenderPlayerId: "p2", amount: 5 });
   });
 });
+
+import { ATTACK_TOTAL_MS, resolvedAttackIndex, stage } from "@/features/match/useAttackPresentation";
+
+describe("d'abord l'attaque, PUIS les effets qu'elle déclenche", () => {
+  it("un bonus « lorsqu'elle attaque » part après l'animation d'attaque, pas avec elle", () => {
+    const sterne = instance("sterne-des-embruns", "p1", { summoningSick: false });
+    const victim = instance("poisson-lanterne", "p2");
+    const base = testGameState();
+    const before: GameState = {
+      ...base,
+      phase: "combatPhase",
+      players: [testPlayer("p1", { board: [sterne] }), testPlayer("p2", { shipId: "lerrant", board: [victim] })] as typeof base.players,
+    };
+    const result = dispatch(before, { type: "attack", playerId: "p1", attackerInstanceId: sterne.instanceId, defenderInstanceId: victim.instanceId });
+    if (!result.ok) throw new Error(result.error);
+    const events = result.state.eventLog.slice(before.eventLog.length);
+    expect(resolvedAttackIndex(events, result.state)).toBeGreaterThanOrEqual(0);
+
+    const staged = stage(before, result.state, events, { current: 0 });
+    // L'attaque est mise en scène, et rien ne part avec elle.
+    expect(staged.attack).not.toBeNull();
+    expect(staged.volley).toBeNull();
+    // Le bonus part une fois l'attaque jouée, retour compris.
+    const apres = staged.post?.volleys ?? [];
+    expect(apres.length).toBeGreaterThan(0);
+    expect(Math.min(...apres.map((volley) => volley.delayMs))).toBeGreaterThanOrEqual(ATTACK_TOTAL_MS);
+  });
+});
