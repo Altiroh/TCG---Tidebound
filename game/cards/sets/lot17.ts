@@ -1046,7 +1046,8 @@ const OPALINS: CardDefinition[] = [
     abilities: [
       {
         trigger: "onCardPlayed",
-        triggeredBy: { cardTypes: [...UNITES], minCost: 5, onlyPlayed: true },
+        // Le texte ne dit pas « une AUTRE unité » : Sila, jouée (coût 6), compte elle-même.
+        triggeredBy: { cardTypes: [...UNITES], minCost: 5, onlyPlayed: true, excludeSelf: false },
         oncePerTurnKey: "silaGrande",
         description: "Première unité coûtant 5 ou plus du tour : elle gagne +1 Puissance et +1 Résistance.",
         effects: [{ type: "buff", target: { kind: "triggerSource" }, attackAmount: flat(1), healthAmount: flat(1), permanent: true }],

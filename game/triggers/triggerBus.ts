@@ -640,12 +640,18 @@ function collectTriggeredWorkRaw(
         (def.abilities ?? []).forEach((ability, abilityIndex) => {
           if (ability.trigger !== "onCardPlayed" || !matchesMode(ability)) return;
           if (blocqueParMasquage(state, unit, ability)) return;
+          // « Quand vous jouez une unité de coût 5+ » : le filtre de la carte
+          // jouée (`triggeredBy` — coût, type, « jouée ») était ignoré ici, et
+          // la capacité partait pour n'importe quelle carte.
+          if (ability.triggeredBy && !matchesTriggerSource(ability.triggeredBy, event, unit, player.id)) return;
           // « La première fois à chaque tour » : indispensable en mode
         // `optional`, où le marquage n'a lieu qu'à l'ACTIVATION
         // (`resolveReaction`) et non au recensement — sans elle, la
         // capacité est reproposée à chaque fenêtre du tour.
         if (ability.oncePerTurnKey && !oncePerTurnAvailable(unit, ability.oncePerTurnKey, turnNumber)) return;
-          result.push(work(ability, abilityIndex, def.id, player.id, unit.instanceId, turnNumber));
+          // La carte JOUÉE est la source du déclencheur : « elle gagne +1/+1 »
+          // la vise (`triggerSource`). Sans elle, l'effet tombait dans le vide.
+          result.push(work(ability, abilityIndex, def.id, player.id, unit.instanceId, turnNumber, event.sourceInstanceId));
         });
       }
     }
