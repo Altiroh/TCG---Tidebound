@@ -96,7 +96,13 @@ export function BoosterContentsDialog({ booster, owned, ownedArtworks, onClose }
   // « Manquantes seulement » vaut aussi pour elles : une illustration jamais tirée est à chercher.
   const shownIllustrations = illustrations.filter((entry) => (!rarity || entry.rarity === rarity) && (!missingOnly || !entry.owned));
 
-  const ownedCount = unique.filter((card) => card.owned).length;
+  // Les VALEURS du contenu comptent en PIÈCES, comme le statut de la
+  // Collection : chaque carte, plus chaque illustration secrète obtenable.
+  // Sans elles, un booster dont on avait toutes les cartes s'affichait fini.
+  const ownedCount = unique.filter((card) => card.owned).length + illustrations.filter((entry) => entry.owned).length;
+  const totalCount = unique.length + illustrations.length;
+  const countOf = (entry: CardRarity) =>
+    unique.filter((card) => card.rarity === entry).length + illustrations.filter((illustration) => illustration.rarity === entry).length;
   const rarities = RARITY_ORDER.filter((entry) => unique.some((card) => card.rarity === entry));
   const shown = unique
     .filter((card) => (!rarity || card.rarity === rarity) && (!missingOnly || !card.owned))
@@ -110,7 +116,7 @@ export function BoosterContentsDialog({ booster, owned, ownedArtworks, onClose }
             <p className={`${game.cabinEyebrow} ${styles.eyebrow}`}>Contenu du booster</p>
             <h2 className={`${game.cabinTitle} ${styles.title}`}>{booster.name}</h2>
             <p className={styles.sub}>
-              {booster.cardCount} cartes par booster · <b>{ownedCount}</b> / {unique.length} déjà possédées
+              {booster.cardCount} cartes par booster · <b>{ownedCount}</b> / {totalCount} déjà possédées
               {illustrations.length > 0 && ` · ${illustrations.length} illustration${illustrations.length > 1 ? "s" : ""} Styled / Full-Art`}
             </p>
           </div>
@@ -122,12 +128,12 @@ export function BoosterContentsDialog({ booster, owned, ownedArtworks, onClose }
         </header>
 
         <div className={styles.progress} aria-hidden>
-          <span className={styles.progressFill} style={{ width: `${unique.length ? (ownedCount / unique.length) * 100 : 0}%` }} />
+          <span className={styles.progressFill} style={{ width: `${totalCount ? (ownedCount / totalCount) * 100 : 0}%` }} />
         </div>
 
         <div className={styles.filters}>
           <button type="button" className={styles.chip} aria-pressed={rarity === null} onClick={() => setRarity(null)}>
-            Toutes <span>{unique.length}</span>
+            Toutes <span>{totalCount}</span>
           </button>
           {rarities.map((entry) => (
             <button
@@ -138,7 +144,7 @@ export function BoosterContentsDialog({ booster, owned, ownedArtworks, onClose }
               aria-pressed={rarity === entry}
               onClick={() => setRarity(rarity === entry ? null : entry)}
             >
-              {CARD_RARITY_LABELS[entry]} <span>{unique.filter((card) => card.rarity === entry).length}</span>
+              {CARD_RARITY_LABELS[entry]} <span>{countOf(entry)}</span>
             </button>
           ))}
           {/* La case du design system, pas celle du navigateur. */}
