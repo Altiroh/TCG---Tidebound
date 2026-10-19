@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { createPortal } from "react-dom";
 import { getCardDefinition } from "@/game";
-import { RARITY_ORDER } from "@/game/boosters";
 import styles from "@/features/boosters/opening/BoosterOpening.module.css";
 import { useCardBackSrc } from "@/features/cosmetics/CardBackProvider";
 import { CardDetailModal } from "@/features/collection/card-detail/CardDetailModal";
@@ -41,7 +40,7 @@ import { BoosterCards } from "@/features/boosters/opening/BoosterCards";
 import { BoosterPack } from "@/features/boosters/opening/BoosterPack";
 import { BoosterParticles } from "@/features/boosters/opening/BoosterParticles";
 import { packVisualVariables, type BoosterPackVisual } from "@/features/boosters/opening/boosterPackVisuals";
-import { isHighRarity, OPENING_RARITY_LABEL, type BoosterOpeningCard, type BoosterOpeningRarity } from "@/features/boosters/opening/types";
+import { isHighRarity, OPENING_RARITY_LABEL, sortForReveal, type BoosterOpeningCard, type BoosterOpeningRarity } from "@/features/boosters/opening/types";
 
 /** Rectangle à l'écran d'où part le sachet (celui du plan d'ouverture), en pixels. */
 export interface BoosterOpeningOrigin {
@@ -169,10 +168,10 @@ function timingVariables(timings: BoosterOpeningTimings, cardCount: number): CSS
  *   - `BoosterOpening.module.css` : COMMENT ça bouge (transform/opacity)
  */
 export function BoosterOpeningScene({ cards: tirage, visual, origin = null, closeLabel = "Fermer", packCount = 1, onClose }: BoosterOpeningSceneProps) {
-  // Les MEILLEURES raretés d'abord (retour du 13/10/2026) : la plus rare
-  // ouvre la rangée — et, en lot, la première page —, les communes ferment
-  // la marche. Tri stable : à rareté égale, l'ordre du tirage est gardé.
-  const cards = useMemo(() => [...tirage].sort((a, b) => RARITY_ORDER.indexOf(b.rarity) - RARITY_ORDER.indexOf(a.rarity)), [tirage]);
+  // De la plus commune à la plus rare (19/10/2026, à la place de « la
+  // meilleure d'abord » du 13/10) : on retourne petit à petit, la meilleure
+  // carte — et, en lot, la dernière page — ferme la marche (`sortForReveal`).
+  const cards = useMemo(() => sortForReveal(tirage), [tirage]);
   const [reducedMotion] = useState(prefersReducedMotion);
   const [coarsePointer] = useState(hasCoarsePointer);
   const baseTimings = reducedMotion ? BOOSTER_OPENING_TIMINGS_REDUCED : BOOSTER_OPENING_TIMINGS;
