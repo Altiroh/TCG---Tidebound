@@ -101,7 +101,7 @@ export function OnlineBoard({
   // L'écran reste allumé pendant la partie, pas sur l'écran de fin.
   useScreenWakeLock(liveState.status !== "finished");
   // `state` = état AFFICHÉ, retenu avant le choc pendant une attaque (cf. `useAttackPresentation`).
-  const { displayState: state, attacks, volleys } = useAttackPresentation(liveState);
+  const { displayState: state, attacks, volleys, diceState } = useAttackPresentation(liveState);
   const coin = useCoinToss(liveState, myUserId);
   const me = state.players.find((p) => p.id === myUserId)!;
   const opponent = state.players.find((p) => p.id !== myUserId)!;
@@ -436,7 +436,8 @@ export function OnlineBoard({
       )}
       {/* Les dés se lancent SUR la table, pour les deux joueurs ; le jet ouvert y garde ses gestes. */}
       {/* L'état RÉEL : le dé part dès le tirage, pendant que le plateau retient son issue. */}
-      <TableDice state={liveState} viewerId={myUserId} onAction={act} />
+      {/* Un dé qui suit une attaque attend que le coup soit joué (`diceState`). */}
+      <TableDice state={diceState} viewerId={myUserId} onAction={act} />
       {!state.pendingReaction && state.pendingChoice?.kind === "deckLook" && state.pendingChoice.playerId === myUserId && (
         <DeckLookPrompt
           choice={state.pendingChoice}

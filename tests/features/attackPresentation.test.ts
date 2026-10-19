@@ -211,3 +211,61 @@ describe("d'abord l'attaque, PUIS les effets qu'elle déclenche", () => {
     expect(Math.min(...apres.map((volley) => volley.delayMs))).toBeGreaterThanOrEqual(ATTACK_TOTAL_MS);
   });
 });
+
+import { withAttackOutcome } from "@/features/match/useAttackPresentation";
+import { CHARGE_MS } from "@/features/match/impactTier";
+
+describe("plus le coup est fort, plus l'élan se charge", () => {
+  const base = { turnNumber: 3, timestamp: 0 };
+  const attacker = instance("requin-balafre", "p1");
+  const defender = instance("murene-aveugle", "p2");
+  const after = testGameState({
+    players: [testPlayer("p1", { board: [attacker] }), testPlayer("p2", { board: [defender] })],
+  });
+  const hit = (amount: number): GameEvent[] => [
+    { ...base, type: "ATTACK", playerId: "p1", attackerInstanceId: attacker.instanceId, defenderInstanceId: defender.instanceId },
+    { ...base, type: "DAMAGE", targetInstanceId: defender.instanceId, amount, combat: "strike" },
+  ];
+
+  it("un coup léger part tout de suite, sans charge", () => {
+    const attack = deriveAttack(hit(3), after, 1)!;
+    expect(attack.chargeMs).toBeUndefined();
+    expect(attack.leadMs).toBeUndefined();
+  });
+
+  it("un coup lourd, puis massif, charge de plus en plus longtemps avant de partir", () => {
+    const lourd = deriveAttack(hit(5), after, 1)!;
+    const massif = deriveAttack(hit(7), after, 1)!;
+    expect(lourd.chargeMs).toBe(CHARGE_MS.heavy);
+    expect(lourd.leadMs).toBe(CHARGE_MS.heavy);
+    expect(massif.chargeMs).toBe(CHARGE_MS.massive);
+    expect(massif.chargeMs!).toBeGreaterThan(lourd.chargeMs!);
+  });
+});
+
+describe("un jet de dé qui suit l'attaque : le coup, PUIS le dé", () => {
+  it("pendant que le dé roule, le plateau montre l'issue du coup et pas celle du jet", () => {
+    const attacker = instance("requin-balafre", "p1");
+    const defender = instance("murene-aveugle", "p2");
+    const bystander = instance("poisson-lanterne", "p2");
+    const shown = testGameState({
+      players: [testPlayer("p1", { board: [attacker] }), testPlayer("p2", { board: [defender, bystander] })],
+    });
+    // Après le lot : le défenseur est mort, l'attaquant blessé, et le jet a encore blessé le spectateur.
+    const live = testGameState({
+      players: [
+        testPlayer("p1", { board: [{ ...attacker, damageMarked: 1 }] }),
+        testPlayer("p2", { board: [{ ...bystander, damageMarked: 1 }] }),
+      ],
+    });
+    const attack = deriveAttack(
+      [{ turnNumber: 3, timestamp: 0, type: "ATTACK", playerId: "p1", attackerInstanceId: attacker.instanceId, defenderInstanceId: defender.instanceId }],
+      live,
+      1
+    )!;
+    const display = withAttackOutcome(shown, live, attack);
+    expect(display.players[0].board).toEqual([{ ...attacker, damageMarked: 1 }]);
+    // Le défenseur est parti ; le spectateur garde l'état d'avant le jet.
+    expect(display.players[1].board).toEqual([bystander]);
+  });
+});

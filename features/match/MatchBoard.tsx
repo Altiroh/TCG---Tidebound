@@ -148,7 +148,7 @@ export function MatchBoard({
   useScreenWakeLock(liveState.status !== "finished");
   // `state` = état AFFICHÉ (retenu avant le choc pendant une attaque, cf. `useAttackPresentation`) ; toute
   // action se valide et s'applique sur `liveState`, l'état de jeu réel.
-  const { displayState: state, attacks, volleys, holding: presenting } = useAttackPresentation(liveState);
+  const { displayState: state, attacks, volleys, holding: presenting, diceState } = useAttackPresentation(liveState);
   // Observateur externe (tutoriel) : notifié de l'état RÉEL, pas de l'état
   // affiché — une étape ne doit pas attendre la fin d'une animation.
   useEffect(() => {
@@ -791,7 +791,8 @@ export function MatchBoard({
       )}
       {/* Les dés se lancent SUR la table, pour les deux joueurs ; le jet ouvert y garde ses gestes. */}
       {/* L'état RÉEL : le dé part dès le tirage, pendant que le plateau retient son issue. */}
-      <TableDice state={liveState} viewerId={viewerPlayerId} onAction={runReactionAction} />
+      {/* Un dé qui suit une attaque attend que le coup soit joué (`diceState`). */}
+      <TableDice state={diceState} viewerId={viewerPlayerId} onAction={runReactionAction} />
       {!state.pendingReaction && state.pendingChoice?.kind === "deckLook" && state.pendingChoice.playerId === viewerPlayerId && (
         <DeckLookPrompt
           choice={state.pendingChoice}

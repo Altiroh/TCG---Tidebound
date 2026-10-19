@@ -7,7 +7,7 @@ import { playAttackImpact, playCardAwake, playShipHit } from "@/lib/sound";
 import { FxCanvas, reducedMotion } from "@/features/match/FxCanvas";
 import { silhouetteOf, type Silhouette } from "@/features/match/silhouette";
 import { orbAura } from "@/features/match/cardFx";
-import { IMPACT_SCALE, impactTier, type ImpactTier } from "@/features/match/impactTier";
+import { IMPACT_SCALE, impactTier, screenQuake, type ImpactTier } from "@/features/match/impactTier";
 import {
   createDustPainter,
   createSicknessPainter,
@@ -103,11 +103,15 @@ export function ImpactDust({ plan }: { plan: DustPlan }) {
 /**
  * Anime la VRAIE carte attaquante (Web Animations API sur son conteneur de
  * plateau), sans passer par un rendu React à chaque frame : soulèvement →
- * prise d'élan à l'opposé de la cible → frappe → retour. Les distances sont
+ * prise d'élan à l'opposé de la cible → frappe → retour. Un coup fort
+ * (`impactTier`) CHARGE : l'élan dure `chargeMs` de plus, recule plus loin,
+ * la carte se ramasse et tremble de la force qu'elle accumule, puis la frappe
+ * part d'autant plus sèche. Le choc tombe toujours `ATTACK_IMPACT_AT_MS`
+ * après la fin de la charge. Les distances sont
  * mesurées en coordonnées viewport puis ramenées dans le repère de
  * `BoardStage` (mis à l'échelle via `transform: scale`), où vit la carte.
  */
-function animateAttacker(attackerEl: HTMLElement, targetRect: DOMRect): Animation {
+function animateAttacker(attackerEl: HTMLElement, targetRect: DOMRect, tier: ImpactTier, chargeMs: number): Animation {
   const attackerRect = attackerEl.getBoundingClientRect();
   const scale = attackerEl.offsetWidth ? attackerRect.width / attackerEl.offsetWidth : 1;
   const from = centerOf(attackerRect);
@@ -120,13 +124,31 @@ function animateAttacker(attackerEl: HTMLElement, targetRect: DOMRect): Animatio
   // S'arrête quand la carte "touche" sa cible (légère interpénétration), pas en plein centre.
   const contact = ((attackerRect.height + targetRect.height) / 2 / scale) * 0.7;
   const reach = Math.max(distance * 0.4, distance - contact);
-  const windup = 26;
-  const tilt = ux >= 0 ? -4 : 4;
+  // Plus le coup est fort, plus le recul est profond et la carte penchée.
+  const k = IMPACT_SCALE[tier];
+  const windup = 26 * k;
+  const tilt = (ux >= 0 ? -4 : 4) * Math.sqrt(k);
+  const windupScale = 1.1 + (k - 1) * 0.05;
 
-  const t = ATTACK_TOTAL_MS;
+  const t = ATTACK_TOTAL_MS + chargeMs;
   const liftAt = ATTACK_TIMINGS.lift / t;
-  const windupAt = (ATTACK_TIMINGS.lift + ATTACK_TIMINGS.windup) / t;
-  const impactAt = ATTACK_IMPACT_AT_MS / t;
+  const windupAt = (ATTACK_TIMINGS.lift + ATTACK_TIMINGS.windup + chargeMs) / t;
+  const impactAt = (ATTACK_IMPACT_AT_MS + chargeMs) / t;
+  const back = (extra: number, x = 0) =>
+    `translate(${-ux * (windup + extra) + x}px, ${-uy * (windup + extra) - 10}px) scale(${windupScale}) rotate(${tilt}deg)`;
+  const windupFilter = `drop-shadow(0 20px 16px rgba(0,0,0,.55)) brightness(${1 + (k - 1) * 0.15})`;
+  // La charge : arrivée au fond du recul, la carte tremble de plus en plus vite et fort, en reculant encore un peu.
+  const charge: Keyframe[] = [];
+  if (chargeMs > 0) {
+    const reachedAt = (ATTACK_TIMINGS.lift + ATTACK_TIMINGS.windup) / t;
+    const steps = Math.max(4, Math.round(chargeMs / 45));
+    charge.push({ offset: reachedAt, transform: back(0), filter: windupFilter, easing: "linear" });
+    for (let i = 1; i < steps; i++) {
+      const p = i / steps;
+      const jitter = (i % 2 === 0 ? 1 : -1) * (1 + p * 2.5) * Math.sqrt(k);
+      charge.push({ offset: reachedAt + (windupAt - reachedAt) * p, transform: back(8 * k * p, jitter), filter: windupFilter, easing: "linear" });
+    }
+  }
 
   const previousZ = attackerEl.style.zIndex;
   const previousPosition = attackerEl.style.position;
@@ -139,7 +161,8 @@ function animateAttacker(attackerEl: HTMLElement, targetRect: DOMRect): Animatio
     [
       { transform: "translate(0px, 0px) scale(1) rotate(0deg)", filter: "drop-shadow(0 0 0 rgba(0,0,0,0))", easing: "cubic-bezier(.2,.8,.3,1)" },
       { offset: liftAt, transform: "translate(0px, -10px) scale(1.08) rotate(0deg)", filter: "drop-shadow(0 16px 14px rgba(0,0,0,.55))", easing: "cubic-bezier(.4,0,.6,1)" },
-      { offset: windupAt, transform: `translate(${-ux * windup}px, ${-uy * windup - 10}px) scale(1.1) rotate(${tilt}deg)`, filter: "drop-shadow(0 20px 16px rgba(0,0,0,.55))", easing: "cubic-bezier(.55,0,1,.45)" },
+      ...charge,
+      { offset: windupAt, transform: back(chargeMs > 0 ? 8 * k : 0), filter: windupFilter, easing: chargeMs > 0 ? "cubic-bezier(.7,0,1,.3)" : "cubic-bezier(.55,0,1,.45)" },
       { offset: impactAt, transform: `translate(${ux * reach}px, ${uy * reach}px) scale(1.04) rotate(0deg)`, filter: "drop-shadow(0 8px 8px rgba(0,0,0,.5))", easing: "cubic-bezier(.2,.8,.25,1)" },
       { transform: "translate(0px, 0px) scale(1) rotate(0deg)", filter: "drop-shadow(0 0 0 rgba(0,0,0,0))" },
     ],
@@ -385,13 +408,16 @@ function SingleAttack({ attack }: { attack: AttackAnimation }) {
     setGeometry({ from: centerOf(attackerEl.getBoundingClientRect()), to: centerOf(targetRect), size: Math.min(targetRect.height, 220), rect: targetRect, shape: silhouetteOf(targetEl) });
     // Le coup part tout de suite, Garde ou non : une Garde se montre quand on attaque À CÔTÉ d'elle (`showGuard`).
     // Une spé. de déclaration (Rafale, Déluge, Contournement) s'active d'abord : l'attaquant part ensuite.
+    // Un coup fort charge son élan : l'attaquant part `chargeMs` plus tôt, le choc reste à `lead + ATTACK_IMPACT_AT_MS`.
     const lead = attack.leadMs ?? 0;
+    const chargeMs = attack.chargeMs ?? 0;
+    const tier = impactTier(attack.amount);
     let attackerAnimation: Animation | null = null;
     const startTimer = setTimeout(() => {
       // La carte se soulève pour frapper : elle se réveille, à l'oreille aussi.
       playCardAwake();
-      attackerAnimation = animateAttacker(attackerEl, targetRect);
-    }, lead);
+      attackerAnimation = animateAttacker(attackerEl, targetRect, tier, chargeMs);
+    }, Math.max(0, lead - chargeMs));
     // Les qualifications de cette attaque : leur glyphe à la déclaration, au choc ou après le retour (`qualificationFx.ts`).
     // Les spé. : à la déclaration sur l'attaquant ; les autres une fois l'attaque classique jouée, retour compris,
     // sur la carte qui les porte (l'attaquant, ou le défenseur pour sa riposte). Leurs sorts suivent (`EffectFxLayer`).
@@ -412,11 +438,12 @@ function SingleAttack({ attack }: { attack: AttackAnimation }) {
       // Une cible qui survit et perd de la Résistance joue déjà `animate-card-impact` (CardTile) au moment où
       // l'état réel s'affiche : on ne double le tremblement que pour un Navire, une cible détruite ou un coup à 0.
       const target = attack.defenderInstanceId ? findElement("unit", attack.defenderInstanceId) : findElement("ship", attack.defenderPlayerId!);
-      const tier = impactTier(attack.amount);
       // Un coup massif secoue toujours sa cible, même si elle survit.
       if (target && (!attack.defenderInstanceId || attack.defenderDies || attack.amount === 0 || tier === "massive")) shake(target, tier);
       // Et toujours, un coup physique fait trembler ce qu'il touche — selon sa force (`impactTier`).
       if (target) tremble(target, tier);
+      // Tout l'écran encaisse, d'autant plus fort que le coup est puissant (rien pour un coup à 0).
+      if (attack.amount > 0) screenQuake(tier);
     }, lead + ATTACK_IMPACT_AT_MS);
     return () => {
       clearTimeout(startTimer);

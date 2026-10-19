@@ -10,6 +10,7 @@ import { applyLabEffect, applyLabPatch, LAB_EFFECTS, type LabEffect } from "@/fe
 import { PhaseBanner } from "@/features/match/PhaseBanner";
 import { silhouetteOf } from "@/features/match/silhouette";
 import { ATTACK_TOTAL_MS, type AttackAnimation } from "@/features/match/useAttackPresentation";
+import { CHARGE_MS, impactTier } from "@/features/match/impactTier";
 import {
   activateQualifications,
   declareCues,
@@ -257,7 +258,8 @@ export function FxLabPanel({ cardEffects = false }: { cardEffects?: boolean } = 
     window.setTimeout(() => setVolleys((current) => current.filter((it) => it.id !== volley.id)), castMs + SHOT_FLIGHT_MS + 2200);
   }
 
-  function attack() {
+  /** Un coup de `amount` dégâts : 2 (léger), 5 (lourd, chargé), 8 (massif, longue charge). */
+  function attack(amount = 2) {
     const { from, to } = resolve();
     const target = to[0];
     if (!from || from.kind !== "unit" || !target) return;
@@ -265,12 +267,13 @@ export function FxLabPanel({ cardEffects = false }: { cardEffects?: boolean } = 
       id: nextId.current++,
       attackerInstanceId: from.id,
       ...(target.kind === "unit" ? { defenderInstanceId: target.id } : { defenderPlayerId: target.id }),
-      amount: 2,
+      amount,
       defenderDies: false,
       attackerDies: false,
+      ...(CHARGE_MS[impactTier(amount)] > 0 ? { leadMs: CHARGE_MS[impactTier(amount)], chargeMs: CHARGE_MS[impactTier(amount)] } : {}),
     };
     setAttacks((current) => [...current, animation]);
-    window.setTimeout(() => setAttacks((current) => current.filter((it) => it.id !== animation.id)), ATTACK_TOTAL_MS + 900);
+    window.setTimeout(() => setAttacks((current) => current.filter((it) => it.id !== animation.id)), (animation.leadMs ?? 0) + ATTACK_TOTAL_MS + 900);
   }
 
   /**
@@ -443,6 +446,12 @@ export function FxLabPanel({ cardEffects = false }: { cardEffects?: boolean } = 
             </button>
             <button type="button" style={button} onClick={() => attack()}>
               Attaque (source → 1re cible)
+            </button>
+            <button type="button" style={button} onClick={() => attack(5)}>
+              Attaque lourde (5 dégâts)
+            </button>
+            <button type="button" style={button} onClick={() => attack(8)}>
+              Attaque massive (8 dégâts)
             </button>
             {/* La Garde qui refuse une attaque visée à côté d'elle : la carte se lève, son badge scintille, elle se repose. */}
             <button type="button" style={button} onClick={() => to.forEach((t) => { const el = elementOf(t); if (el) showGuard(el); })}>

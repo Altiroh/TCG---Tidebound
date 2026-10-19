@@ -12,6 +12,7 @@ import {
   type QualificationFx,
 } from "@/features/match/qualificationFxData";
 import { withoutSettledPrompts } from "@/features/match/settledPrompts";
+import { CHARGE_MS, impactTier } from "@/features/match/impactTier";
 import { beforeDieDisplay, dieHoldMs, freshDieRoll, type DieHold } from "@/features/match/dicePresentation";
 
 export interface AttackAnimation {
@@ -31,8 +32,13 @@ export interface AttackAnimation {
   attackerDies: boolean;
   /** Qualifications qui ont joué pendant cette attaque (`QUALIFICATION_TRIGGERED`) : elles s'activent au bon moment. */
   qualifications?: QualificationFx[];
-  /** Attente avant que l'attaquant ne parte : ses spé. de déclaration s'activent d'abord. */
+  /**
+   * Attente avant que l'attaquant ne frappe : ses spé. de déclaration
+   * s'activent d'abord, puis il charge son coup (`chargeMs`, compris dedans).
+   */
   leadMs?: number;
+  /** Prise d'élan chargée d'un coup fort (`CHARGE_MS`), jouée à la fin de `leadMs` : l'attaquant part `chargeMs` plus tôt. */
+  chargeMs?: number;
   /** Quand chaque spé. s'active (déclaration, puis après l'attaque) — une à la fois, jamais ensemble. */
   qualificationCues?: QualificationCue[];
 }
@@ -109,6 +115,9 @@ export function deriveAttack(events: GameEvent[], after: GameState, id: number):
     }
   }
 
+  // Un coup fort se charge : l'attaquant recule et accumule sa force avant de partir (`CHARGE_MS`).
+  const chargeMs = CHARGE_MS[impactTier(amount)];
+  const declareMs = qualifications.length > 0 ? declareLeadMs(qualifications) : 0;
   return {
     id,
     attackerInstanceId: event.attackerInstanceId,
@@ -121,8 +130,32 @@ export function deriveAttack(events: GameEvent[], after: GameState, id: number):
     retaliation,
     defenderDies: Boolean(event.defenderInstanceId) && !onAnyBoard(after, event.defenderInstanceId!),
     attackerDies: !onAnyBoard(after, event.attackerInstanceId),
-    ...(qualifications.length > 0 ? { qualifications, leadMs: declareLeadMs(qualifications), qualificationCues: declareCues(qualifications) } : {}),
+    ...(qualifications.length > 0 ? { qualifications, qualificationCues: declareCues(qualifications) } : {}),
+    ...(declareMs + chargeMs > 0 ? { leadMs: declareMs + chargeMs } : {}),
+    ...(chargeMs > 0 ? { chargeMs } : {}),
   };
+}
+
+/**
+ * L'état d'avant le jet (`beforeDieDisplay`) avec l'ISSUE DU COUP qui l'a
+ * précédé dans le lot : attaquant et défenseur tels qu'après le combat (ou
+ * retirés du plateau s'ils en sont morts), le Navire visé tel qu'après une
+ * attaque directe. Ce que le plateau montre une fois l'attaque jouée,
+ * pendant que le dé roule. Affichage seulement.
+ */
+export function withAttackOutcome(shown: GameState, live: GameState, attack: AttackAnimation): GameState {
+  const fighters = [attack.attackerInstanceId, attack.defenderInstanceId].filter((id): id is string => Boolean(id));
+  const liveUnit = (id: string) => live.players.flatMap((player) => player.board).find((unit) => unit.instanceId === id);
+  const players = shown.players.map((player) => {
+    const board = player.board.flatMap((unit) => {
+      if (!fighters.includes(unit.instanceId)) return [unit];
+      const after = liveUnit(unit.instanceId);
+      return after ? [after] : [];
+    });
+    const ship = attack.defenderPlayerId === player.id ? live.players.find((p) => p.id === player.id) : undefined;
+    return ship ? { ...player, board, anchor: ship.anchor, armor: ship.armor } : { ...player, board };
+  }) as GameState["players"];
+  return { ...shown, players };
 }
 
 function prefersReducedMotion(): boolean {
@@ -146,7 +179,13 @@ interface Presentation {
    * sur l'état d'avant l'issue (`shown`) le temps que le dé se pose et qu'on
    * lise sa face ; la suite du lot (`after`) se met en scène ensuite.
    */
-  dice: { hold: DieHold; shown: GameState; after: GameEvent[] } | null;
+  dice: DiceStage | null;
+  /**
+   * Un jet de dé qui SUIT l'attaque dans le même lot : l'attaque se joue
+   * d'abord (sur l'état d'avant le jet), le dé ne part qu'une fois le coup
+   * joué, retour compris.
+   */
+  diceAfter?: DiceStage | null;
   /**
    * Après l'attaque classique, les spé. s'activent et lancent leurs sorts
    * (`qualificationFxData.ts`) : le plateau affiche `interim` — l'attaque
@@ -155,8 +194,14 @@ interface Presentation {
   post?: { volleys: EffectVolley[]; displays: Array<{ atMs: number; held: GameState }>; endMs: number } | null;
 }
 
+interface DiceStage {
+  hold: DieHold;
+  shown: GameState;
+  after: GameEvent[];
+}
+
 /** Mise en scène d'un lot d'événements : l'attaque, sinon les effets, et l'état à afficher en attendant. */
-export function stage(previous: GameState, live: GameState, events: GameEvent[], nextId: { current: number }): Omit<Presentation, "dice"> {
+export function stage(previous: GameState, live: GameState, events: GameEvent[], nextId: { current: number }): Omit<Presentation, "dice" | "diceAfter"> {
   const derived = deriveAttack(events, live, nextId.current);
   // Attaquer une Garde ne la montre pas : le coup part. Elle se montre quand on attaque À CÔTÉ d'elle (`showGuard`).
   const attack = derived;
@@ -256,6 +301,11 @@ export function useAttackPresentation(live: GameState): {
   /** Un dé roule encore et retient l'issue de son jet : le bot attend avant de rejouer. */
   diceHolding: boolean;
   /**
+   * L'état que les DÉS lisent (`TableDice`) : le réel, sauf quand un jet suit
+   * une attaque du même lot — le dé attend alors que le coup soit joué.
+   */
+  diceState: GameState;
+  /**
    * Une mise en scène retient l'affichage (attaque, sort, dé) : le bot attend
    * qu'elle ait touché avant de rejouer — sinon son action suivante la coupe.
    */
@@ -271,7 +321,15 @@ export function useAttackPresentation(live: GameState): {
     const newEvents = live.eventLog.length > previous.eventLog.length ? live.eventLog.slice(previous.eventLog.length) : [];
     const animate = newEvents.length > 0 && !prefersReducedMotion();
     const hold = animate ? freshDieRoll(newEvents, previous) : null;
-    if (hold) {
+    const attackAt = hold ? resolvedAttackIndex(newEvents, live) : -1;
+    const attackFirst = hold && attackAt >= 0 && attackAt < hold.index ? deriveAttack(newEvents, live, -1) : null;
+    if (hold && attackFirst) {
+      // Le coup PUIS le dé : l'attaque se joue sur l'état d'avant le jet, son
+      // issue reste affichée pendant que le dé roule, puis vient la suite.
+      const shown = withAttackOutcome(beforeDieDisplay(previous, live, newEvents, hold), live, attackFirst);
+      const before = stage(previous, shown, newEvents.slice(0, hold.index), nextId);
+      setPresentation({ ...before, live, finalBlow: false, dice: null, diceAfter: { hold, shown, after: newEvents.slice(hold.index + 1) } });
+    } else if (hold) {
       const shown = beforeDieDisplay(previous, live, newEvents, hold);
       setPresentation({ live, held: shown, attack: null, volley: null, finalBlow: false, dice: { hold, shown, after: newEvents.slice(hold.index + 1) } });
     } else {
@@ -299,6 +357,7 @@ export function useAttackPresentation(live: GameState): {
   const volley = presentation.volley;
   const finalBlow = presentation.finalBlow;
   const post = presentation.post ?? null;
+  const diceAfter = presentation.diceAfter ?? null;
   useEffect(() => {
     if (!staged && !volley) return;
     const lead = staged?.leadMs ?? 0;
@@ -319,17 +378,34 @@ export function useAttackPresentation(live: GameState): {
     const holdMs = finalBlow ? Math.max(endHold, staged ? lead + ATTACK_TOTAL_MS : 0) + FINAL_BLOW_LINGER_MS : endHold;
     const mine = (current: Presentation) => current.attack === staged && current.volley === volley;
     const timers: ReturnType<typeof setTimeout>[] = [];
+    // Un dé suit le coup : au lieu de l'état réel, le plateau montre l'issue
+    // du coup sans celle du jet ; le coup joué, le dé part (`dice`).
+    const released = (current: Presentation): Presentation => ({ ...current, held: current.diceAfter ? current.diceAfter.shown : null });
     // Le plateau suit les spé. : au début aucune n'a agi, puis chacune a agi quand son étape est finie.
     for (const display of post?.displays ?? []) {
       timers.push(setTimeout(() => setPresentation((current) => (mine(current) ? { ...current, held: display.held } : current)), Math.max(baseHold, display.atMs)));
     }
-    timers.push(setTimeout(() => setPresentation((current) => (mine(current) ? { ...current, held: null } : current)), holdMs));
+    timers.push(setTimeout(() => setPresentation((current) => (mine(current) ? released(current) : current)), holdMs));
+    if (diceAfter) {
+      const playedMs = Math.max(holdMs, staged ? lead + ATTACK_TOTAL_MS : 0);
+      timers.push(
+        setTimeout(
+          () =>
+            setPresentation((current) =>
+              mine(current) && current.diceAfter === diceAfter
+                ? { ...current, held: diceAfter.shown, attack: null, volley: null, post: null, finalBlow: false, dice: diceAfter, diceAfter: null }
+                : current
+            ),
+          playedMs
+        )
+      );
+    }
     if (staged) setTimeout(() => setAttacks((current) => current.filter((it) => it.id !== staged.id)), Math.max(lead + ATTACK_TOTAL_MS, post?.endMs ?? 0) + 900);
     for (const v of [volley, ...spells]) {
       if (v) setTimeout(() => setVolleys((current) => current.filter((it) => it.id !== v.id)), volleyLandingMs(v) + 1400);
     }
     return () => timers.forEach((timer) => clearTimeout(timer));
-  }, [staged, volley, finalBlow, post]);
+  }, [staged, volley, finalBlow, post, diceAfter]);
 
   // Mémorisé : un nouvel objet à chaque rendu ferait croire au plateau que la partie a changé.
   const displayState = useMemo(
@@ -341,7 +417,8 @@ export function useAttackPresentation(live: GameState): {
     displayState,
     attacks,
     volleys,
-    diceHolding: presentation.dice !== null,
-    holding: presentation.held !== null || presentation.dice !== null,
+    diceHolding: presentation.dice !== null || Boolean(presentation.diceAfter),
+    diceState: presentation.diceAfter ? presentation.diceAfter.shown : presentation.live,
+    holding: presentation.held !== null || presentation.dice !== null || Boolean(presentation.diceAfter),
   };
 }

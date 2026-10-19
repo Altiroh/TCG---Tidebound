@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { centerOf, findElement, FloatingDamage, ImpactDust, ImpactExplosion, ImpactFlash, shake, SicknessBubbles, tremble, type Point } from "@/features/match/AttackImpactLayer";
-import { impactTier } from "@/features/match/impactTier";
+import { IMPACT_SCALE, impactTier, screenQuake, type ImpactTier } from "@/features/match/impactTier";
 import { FxCanvas } from "@/features/match/FxCanvas";
 import { faceOf, silhouetteMask, silhouetteOf, type Silhouette } from "@/features/match/silhouette";
 import { awakenCard, breakObject, orbAura } from "@/features/match/cardFx";
@@ -796,6 +796,12 @@ function Volley({ volley }: { volley: EffectVolley }) {
             // Un Navire ne joue pas d'animation de choc à lui : on le secoue.
             // Une unité qui encaisse joue déjà `animate-card-impact` quand
             // l'état réel s'affiche, au même instant.
+            // L'écran tremble une fois, selon le coup le plus fort de la volée (4+ : un projectile lourd se sent).
+            const strongest = volley.shots.reduce<ImpactTier>((best, shot) => {
+              const tier = shot.look === "drain" ? "light" : impactTier(shot.amount);
+              return IMPACT_SCALE[tier] > IMPACT_SCALE[best] ? tier : best;
+            }, "light");
+            if (strongest !== "light") screenQuake(strongest);
             for (const shot of volley.shots) {
               const el = elementOf(shot.to);
               if (!el) continue;

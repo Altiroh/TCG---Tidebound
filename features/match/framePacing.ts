@@ -46,7 +46,7 @@ export function framePaceMs(previous: GameState, next: GameState): number {
   if (dieMs > 0) holds.push(dieMs + READ_AFTER_MS);
 
   const attack = deriveAttack(events, next, 0);
-  if (attack) holds.push(dieMs + ATTACK_TOTAL_MS + READ_AFTER_MS);
+  if (attack) holds.push(dieMs + (attack.leadMs ?? 0) + ATTACK_TOTAL_MS + READ_AFTER_MS);
 
   const volley = deriveEffectVolley(events, previous, next, 0);
   if (volley) holds.push(dieMs + volleyLandingMs(volley) + READ_AFTER_MS);
