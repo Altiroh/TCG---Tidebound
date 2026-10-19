@@ -11,7 +11,7 @@ import {
   type DeckList,
 } from "@/game";
 import Link from "next/link";
-import { nameplateArtUrl } from "@/features/decks/nameplateArt";
+import { deckArtUrl } from "@/features/decks/nameplateArt";
 import { BotSetup } from "@/features/match/BotSetup";
 import { ModeTable, PlayTable } from "@/features/match/ModeTable";
 import { GameScreen } from "@/features/shell/GameScreen";
@@ -756,7 +756,7 @@ export function NewMatchScreen({
                         const issue = activeTab.issueFor(deck);
                         const selected = current?.id === deck.id;
                         const meta = deckMeta(deck);
-                        const art = nameplateArtUrl(deck.cardIds, deck.shipId);
+                        const art = deckArtUrl(deck);
                         return (
                           <li key={deck.id}>
                             <button
@@ -1004,7 +1004,7 @@ function DeckSheet({ deck, family, issue }: { deck: DeckList | null; family: str
   }
 
   const meta = deckMeta(deck);
-  const art = nameplateArtUrl(deck.cardIds, deck.shipId);
+  const art = deckArtUrl(deck);
   const size = deck.cardIds.length;
   const complete = size >= RULES.DECK_SIZE_MIN && size <= RULES.DECK_SIZE_MAX;
 

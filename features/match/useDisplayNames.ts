@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 // Catalogue seul : le point d'entrée des titres n'apporte rien de plus ici.
 import { titleById } from "@/game/titles/catalog";
+import { shownChosenArtwork, type ChosenArtwork } from "@/game/cosmetics/artworks";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -111,10 +112,13 @@ export function useEquippedTitle(id: string | null): string | null {
  * de son avatar) — posée dans la photo de l'écran de fin de partie. `"me"`
  * désigne le compte connecté ; `null` (hot-seat, bot) ne lit rien. Colonne
  * absente (migration pas encore passée), erreur ou aucun choix : `null`, et
- * la photo retombe sur l'illustration du Navire.
+ * la photo retombe sur l'illustration du Navire. Son illustration
+ * (`profiles.avatar_artwork`, Classique ou Styled) vient avec ; colonne
+ * absente (migration `20261110120000` pas passée) : Classique.
  */
-export function useAvatarCardId(id: string | null): string | null {
+export function useAvatar(id: string | null): { cardId: string | null; artwork: ChosenArtwork } {
   const [cardId, setCardId] = useState<string | null>(null);
+  const [artwork, setArtwork] = useState<ChosenArtwork>("classique");
 
   useEffect(() => {
     if (!id) return;
@@ -132,8 +136,14 @@ export function useAvatarCardId(id: string | null): string | null {
         }
         if (!userId || !UUID_PATTERN.test(userId)) return;
 
-        const { data, error } = await supabase.from("profiles").select("avatar_card_id").eq("id", userId).maybeSingle();
-        if (!cancelled && !error) setCardId(data?.avatar_card_id ?? null);
+        const [{ data, error }, styled] = await Promise.all([
+          supabase.from("profiles").select("avatar_card_id").eq("id", userId).maybeSingle(),
+          supabase.from("profiles").select("avatar_artwork").eq("id", userId).maybeSingle(),
+        ]);
+        if (cancelled || error) return;
+        const avatar = data?.avatar_card_id ?? null;
+        setCardId(avatar);
+        setArtwork(avatar ? shownChosenArtwork(avatar, styled.error ? null : styled.data?.avatar_artwork, null) : "classique");
       } catch {
         // Pas d'illustration : la photo montre le Navire.
       }
@@ -145,5 +155,5 @@ export function useAvatarCardId(id: string | null): string | null {
     };
   }, [id]);
 
-  return cardId;
+  return { cardId, artwork };
 }

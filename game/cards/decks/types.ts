@@ -1,4 +1,5 @@
 import type { CardId } from "@/game/cards/types";
+import type { ChosenArtwork } from "@/game/cosmetics/artworks";
 
 /**
  * UNE LISTE DE DECK — la forme commune à tout ce qui se joue : les decks
@@ -22,6 +23,13 @@ export interface DeckList {
    * l'écran Jouer. Jamais posé sur une liste du catalogue.
    */
   isDefault?: boolean;
+  /**
+   * Deck PERSONNEL : la carte que le joueur a choisie pour l'illustrer et son
+   * illustration (Classique ou Styled débloquée). Absente : la règle par
+   * défaut (`signatureCardId`). Affichage seulement — le moteur n'en lit rien.
+   */
+  artCardId?: CardId | null;
+  artArtwork?: ChosenArtwork;
 }
 
 /** N exemplaires d'une carte, pour écrire une liste comme on la lit. */

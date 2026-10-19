@@ -3,24 +3,37 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { getCardDefinition } from "@/game";
-import { cardIllustrationThumbUrl } from "@/features/decks/cardArtUrl";
+import { cardArtworkThumbUrl } from "@/features/decks/cardArtUrl";
+import type { ChosenArtwork } from "@/game/cosmetics/artworks";
 import { fetchCardShelf } from "@/features/collection/shelf/shelfActions";
 import { updateProfileIdentity } from "@/features/progression/profileActions";
 import { notifyProgressionChanged } from "@/features/progression/progressionSync";
 import styles from "@/features/progression/IllustrationPicker.module.css";
 import { playButtonClick } from "@/lib/sound";
 
+/** Une illustration de profil : la carte (`null` : aucune) et son illustration, Classique ou Styled. */
+export interface AvatarChoice {
+  cardId: string | null;
+  artwork: ChosenArtwork;
+}
+
+export function sameAvatar(a: AvatarChoice, b: AvatarChoice): boolean {
+  return a.cardId === b.cardId && (a.cardId === null || a.artwork === b.artwork);
+}
+
 interface IllustrationPickerProps {
   /** L'illustration enregistrée. */
-  avatarCardId: string | null;
+  saved: AvatarChoice;
   ownedCardIds: readonly string[];
-  /** L'illustration essayée (montrée en direct par le profil, à gauche) ; `null` : aucune. */
-  selectedId: string | null;
-  onSelect: (cardId: string | null) => void;
+  /** Cartes dont la Styled est débloquée (Styled ou Full-Art obtenue) : proposées EN PLUS de leur Classique. */
+  styledCardIds: readonly string[];
+  /** L'illustration essayée (montrée en direct par le profil, à gauche). */
+  selected: AvatarChoice;
+  onSelect: (choice: AvatarChoice) => void;
   /** Fermeture sans enregistrer : le profil revient à l'illustration enregistrée. */
   onClose: () => void;
-  /** Enregistrement réussi de `cardId`. */
-  onSaved: (cardId: string | null) => void;
+  /** Enregistrement réussi. */
+  onSaved: (choice: AvatarChoice) => void;
 }
 
 /** Insensible aux accents et à la casse. */
@@ -43,11 +56,13 @@ function cardName(cardId: string): string {
  * l'illustration enregistrée. Une recherche va droit à la carte voulue.
  *
  * Seules les cartes POSSÉDÉES sont proposées ; le serveur revérifie la
- * possession (`set_profile_identity`). Le filtre « Favoris » restreint aux
+ * possession (`set_profile_identity`). Une carte dont la Styled est
+ * débloquée — obtenue, ou sa Full-Art obtenue — est proposée DEUX fois :
+ * Classique et Styled, côte à côte. Le filtre « Favoris » restreint aux
  * cartes mises en favori (le cœur de la Collection) ; il n'apparaît que si
  * le joueur a une étagère (`fetchCardShelf`).
  */
-export function IllustrationPicker({ avatarCardId, ownedCardIds, selectedId, onSelect, onClose, onSaved }: IllustrationPickerProps) {
+export function IllustrationPicker({ saved, ownedCardIds, styledCardIds, selected, onSelect, onClose, onSaved }: IllustrationPickerProps) {
   const [query, setQuery] = useState("");
   // `null` : pas d'étagère (hors connexion, lecture refusée) — ni filtre ni cœurs.
   const [favorites, setFavorites] = useState<ReadonlySet<string> | null>(null);
@@ -55,10 +70,16 @@ export function IllustrationPicker({ avatarCardId, ownedCardIds, selectedId, onS
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  const options = useMemo(
-    () => [...new Set(ownedCardIds)].map((cardId) => ({ cardId, name: cardName(cardId) })).sort((a, b) => a.name.localeCompare(b.name, "fr")),
-    [ownedCardIds]
-  );
+  const options = useMemo(() => {
+    const styled = new Set(styledCardIds);
+    return [...new Set(ownedCardIds)]
+      .map((cardId) => ({ cardId, name: cardName(cardId) }))
+      .sort((a, b) => a.name.localeCompare(b.name, "fr"))
+      .flatMap(({ cardId, name }) => [
+        { cardId, name, artwork: "classique" as ChosenArtwork },
+        ...(styled.has(cardId) ? [{ cardId, name, artwork: "styled" as ChosenArtwork }] : []),
+      ]);
+  }, [ownedCardIds, styledCardIds]);
   const favoriteCount = useMemo(() => (favorites ? options.filter((option) => favorites.has(option.cardId)).length : 0), [options, favorites]);
   const filtering = onlyFavorites && favorites !== null;
   const shown = useMemo(() => {
@@ -76,7 +97,8 @@ export function IllustrationPicker({ avatarCardId, ownedCardIds, selectedId, onS
     };
   }, []);
 
-  const changed = selectedId !== avatarCardId;
+  const changed = !sameAvatar(selected, saved);
+  const selectedId = selected.cardId;
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => event.key === "Escape" && onClose();
@@ -84,7 +106,7 @@ export function IllustrationPicker({ avatarCardId, ownedCardIds, selectedId, onS
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  function select(next: string | null) {
+  function select(next: AvatarChoice) {
     playButtonClick();
     setError(null);
     onSelect(next);
@@ -93,9 +115,9 @@ export function IllustrationPicker({ avatarCardId, ownedCardIds, selectedId, onS
   function save() {
     playButtonClick();
     setError(null);
-    const next = selectedId;
+    const next = selected;
     startTransition(async () => {
-      const result = await updateProfileIdentity({ avatarCardId: next });
+      const result = await updateProfileIdentity({ avatarCardId: next.cardId, avatarArtwork: next.artwork });
       if (!result.ok) {
         setError(result.error ?? "Modification impossible.");
         return;
@@ -114,7 +136,7 @@ export function IllustrationPicker({ avatarCardId, ownedCardIds, selectedId, onS
         </button>
         <h2 className={styles.title}>Ton illustration de profil</h2>
         {selectedId && (
-          <button type="button" className={styles.remove} onClick={() => select(null)} disabled={isPending}>
+          <button type="button" className={styles.remove} onClick={() => select({ cardId: null, artwork: "classique" })} disabled={isPending}>
             Retirer l&apos;illustration
           </button>
         )}
@@ -172,19 +194,20 @@ export function IllustrationPicker({ avatarCardId, ownedCardIds, selectedId, onS
         </p>
       ) : (
         <ul className={styles.grid}>
-          {shown.map(({ cardId, name }) => (
-            <li key={cardId}>
+          {shown.map(({ cardId, name, artwork }) => (
+            <li key={`${cardId}/${artwork}`}>
               <button
                 type="button"
                 className={styles.option}
-                data-active={cardId === selectedId ? "true" : undefined}
-                data-saved={cardId === avatarCardId || undefined}
-                aria-pressed={cardId === selectedId}
-                onClick={() => select(cardId)}
+                data-active={sameAvatar(selected, { cardId, artwork }) ? "true" : undefined}
+                data-saved={sameAvatar(saved, { cardId, artwork }) || undefined}
+                aria-pressed={sameAvatar(selected, { cardId, artwork })}
+                onClick={() => select({ cardId, artwork })}
                 disabled={isPending}
-                title={name}
+                title={artwork === "styled" ? `${name} — Styled` : name}
               >
-                <span className={styles.art} style={{ backgroundImage: `url("${cardIllustrationThumbUrl(cardId)}")` }} aria-hidden>
+                <span className={styles.art} style={{ backgroundImage: `url("${cardArtworkThumbUrl(cardId, artwork)}")` }} aria-hidden>
+                  {artwork === "styled" && <span className={styles.styledMark}>S</span>}
                   {favorites?.has(cardId) && (
                     <span className={styles.favoriteMark}>
                       <HeartGlyph />
@@ -200,7 +223,11 @@ export function IllustrationPicker({ avatarCardId, ownedCardIds, selectedId, onS
 
       <footer className={styles.foot}>
         <span className={styles.footNote}>
-          {changed ? (selectedId ? `Essai : ${cardName(selectedId)}` : "Essai : sans illustration") : "Touche une carte pour l'essayer sur ton profil."}
+          {changed
+            ? selectedId
+              ? `Essai : ${cardName(selectedId)}${selected.artwork === "styled" ? " (Styled)" : ""}`
+              : "Essai : sans illustration"
+            : "Touche une carte pour l'essayer sur ton profil."}
         </span>
         <button type="button" className={styles.cancel} onClick={onClose} disabled={isPending}>
           Annuler

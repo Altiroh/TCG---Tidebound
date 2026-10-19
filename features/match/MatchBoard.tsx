@@ -58,7 +58,7 @@ import { useActionToasts } from "@/features/match/useActionToasts";
 import { useCoinToss } from "@/features/match/CoinToss";
 import { useAttackPresentation } from "@/features/match/useAttackPresentation";
 import { useDeraisonWarning } from "@/features/match/useDeraisonWarning";
-import { useAvatarCardId, useDisplayNames, useEquippedTitle } from "@/features/match/useDisplayNames";
+import { useAvatar, useDisplayNames, useEquippedTitle } from "@/features/match/useDisplayNames";
 import { usePhaseBannerEvent } from "@/features/match/usePhaseBannerEvent";
 import { tableTargetingFor, useBoardInteraction } from "@/features/match/useBoardInteraction";
 import { interceptBlockedAttack } from "@/features/match/guardBlock";
@@ -159,7 +159,7 @@ export function MatchBoard({
   const displayNames = useDisplayNames(botPlayerId ? ["me"] : []);
   // Contre le bot, la plaque de fin est celle du compte connecté : son titre y figure. En hot-seat, personne.
   const myTitle = useEquippedTitle(botPlayerId ? "me" : null);
-  const myAvatar = useAvatarCardId(botPlayerId ? "me" : null);
+  const myAvatar = useAvatar(botPlayerId ? "me" : null);
 
   const activePlayerId = state.activePlayerId;
   const humanPlayerId = botPlayerId ? state.players.find((p) => p.id !== botPlayerId)!.id : null;
@@ -487,7 +487,7 @@ export function MatchBoard({
       // Partie LOCALE (hot-seat, ou bot hors connexion) : jouée entièrement dans le navigateur, elle ne rapporte jamais rien.
       <MatchEndScreen
         outcome={!state.winnerId ? "draw" : isDefeat ? "defeat" : "victory"}
-        player={{ name: subjectName, ship: subjectShip, title: humanPlayerId ? myTitle : null, avatarCardId: humanPlayerId ? myAvatar : null }}
+        player={{ name: subjectName, ship: subjectShip, title: humanPlayerId ? myTitle : null, avatarCardId: humanPlayerId ? myAvatar.cardId : null, avatarArtwork: myAvatar.artwork }}
         onExit={onExit}
         audience={matchAudienceVerdict(state, subjectId)}
       />

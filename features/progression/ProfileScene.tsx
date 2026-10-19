@@ -3,7 +3,7 @@
 import { useState, useTransition, type ReactNode } from "react";
 import { getCardDefinition } from "@/game";
 import { LOGIN_STREAK_MILESTONE, MAX_REWARDED_LEVEL, levelRewardItems } from "@/game/progression";
-import { cardIllustrationThumbUrl } from "@/features/decks/cardArtUrl";
+import { cardArtworkThumbUrl } from "@/features/decks/cardArtUrl";
 import { updateProfileIdentity, type ProfileSummary } from "@/features/progression/profileActions";
 import { notifyProgressionChanged } from "@/features/progression/progressionSync";
 import { RewardIcon } from "@/features/progression/RewardIcon";
@@ -229,7 +229,7 @@ function Polaroid({
       <button
         type="button"
         className={styles.photoWindow}
-        style={profile.avatarCardId ? { backgroundImage: `url("${cardIllustrationThumbUrl(profile.avatarCardId)}")` } : undefined}
+        style={profile.avatarCardId ? { backgroundImage: `url("${cardArtworkThumbUrl(profile.avatarCardId, profile.avatarArtwork)}")` } : undefined}
         data-empty={profile.avatarCardId ? undefined : ""}
         onClick={() => {
           playButtonClick();

@@ -32,7 +32,7 @@ import { QuestJournal, QuestJournalError, QuestJournalSkeleton } from "@/feature
 import { QuestScene } from "@/features/quests/QuestScene";
 import { forgetQuestBoards, preloadVoyageBoard, questBoardCache, voyageBoardCache } from "@/features/quests/questBoardCache";
 import { questPeriodEndsAt } from "@/game/quests";
-import { IllustrationPicker } from "@/features/progression/IllustrationPicker";
+import { IllustrationPicker, sameAvatar, type AvatarChoice } from "@/features/progression/IllustrationPicker";
 import { TitlePicker } from "@/features/progression/TitlePicker";
 import type { RewardItem } from "@/features/progression/RewardIcon";
 import { useCardBack } from "@/features/cosmetics/CardBackProvider";
@@ -160,33 +160,37 @@ export function ProfileView({
    * dans le panneau, puis, une fois validée, jusqu'à ce que le profil relu
    * la porte (pas de retour fugace à l'ancienne).
    */
-  const [avatarOverride, setAvatarOverride] = useState<{ cardId: string | null } | null>(null);
-  const shownProfile = avatarOverride ? { ...profile, avatarCardId: avatarOverride.cardId } : profile;
+  const [avatarOverride, setAvatarOverride] = useState<AvatarChoice | null>(null);
+  const savedAvatar: AvatarChoice = { cardId: profile.avatarCardId, artwork: profile.avatarArtwork };
+  const shownProfile = avatarOverride ? { ...profile, avatarCardId: avatarOverride.cardId, avatarArtwork: avatarOverride.artwork } : profile;
   useEffect(() => {
-    if (picker !== "illustration" && avatarOverride && profile.avatarCardId === avatarOverride.cardId) setAvatarOverride(null);
-  }, [picker, avatarOverride, profile.avatarCardId]);
+    if (picker !== "illustration" && avatarOverride && sameAvatar(avatarOverride, { cardId: profile.avatarCardId, artwork: profile.avatarArtwork })) {
+      setAvatarOverride(null);
+    }
+  }, [picker, avatarOverride, profile.avatarCardId, profile.avatarArtwork]);
   // Changer d'onglet (bandeau de l'écran) abandonne l'essai en cours.
   useEffect(() => {
     setPicker((current) => (current === "illustration" ? null : current));
-    setAvatarOverride((current) => (current && current.cardId !== profile.avatarCardId ? null : current));
+    setAvatarOverride((current) => (current && !sameAvatar(current, { cardId: profile.avatarCardId, artwork: profile.avatarArtwork }) ? null : current));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- seulement au changement d'onglet
   }, [tab]);
   const openIllustrationPicker = () => {
-    setAvatarOverride({ cardId: profile.avatarCardId });
+    setAvatarOverride(savedAvatar);
     setPicker("illustration");
   };
   const illustrationPicker = picker === "illustration" && (
     <IllustrationPicker
-      avatarCardId={profile.avatarCardId}
+      saved={savedAvatar}
       ownedCardIds={profile.ownedCardIds}
-      selectedId={avatarOverride ? avatarOverride.cardId : profile.avatarCardId}
-      onSelect={(cardId) => setAvatarOverride({ cardId })}
+      styledCardIds={profile.styledCardIds}
+      selected={avatarOverride ?? savedAvatar}
+      onSelect={(choice) => setAvatarOverride(choice)}
       onClose={() => {
         setAvatarOverride(null);
         setPicker(null);
       }}
-      onSaved={(cardId) => {
-        setAvatarOverride({ cardId });
+      onSaved={(choice) => {
+        setAvatarOverride(choice);
         setPicker(null);
         onRefresh();
       }}
@@ -444,6 +448,7 @@ export function ProfileView({
         <ProfileIdentity
           displayName={profile.displayName}
           avatarCardId={shownProfile.avatarCardId}
+          avatarArtwork={shownProfile.avatarArtwork}
           onChanged={onRefresh}
           onPickIllustration={openIllustrationPicker}
           titleName={equippedTitleName}

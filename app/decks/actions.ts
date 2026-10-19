@@ -10,6 +10,8 @@ import { ownedPartOf } from "@/features/decks/deckComposition";
 import { trashPurgeCutoff } from "@/features/decks/deckTrash";
 import { signatureCardId } from "@/features/decks/nameplateArt";
 import { getSessionUser } from "@/lib/supabase/sessionUser";
+import { readStyledUnlockedCardIds } from "@/lib/supabase/cardEditions";
+import { shownChosenArtwork, type ChosenArtwork } from "@/game/cosmetics/artworks";
 
 export interface PlayerDeckSummary {
   id: string;
@@ -42,6 +44,8 @@ export interface PlayerDeckSummary {
    * automatique » comme l'option retenue.
    */
   artCardChosen: string | null;
+  /** Illustration de la carte choisie (`player_decks.art_artwork`) : Classique, ou Styled débloquée. */
+  artArtwork: ChosenArtwork;
   /**
    * Le CONTENU du deck, un exemplaire compté par carte. L'écran Decks en a
    * besoin pour trois choses que l'effectif seul ne donne pas : le début de
@@ -119,7 +123,7 @@ export async function listPlayerDecks(): Promise<PlayerDeckSummary[]> {
    * la purge passait d'abord.
    */
   const cutoff = trashPurgeCutoff();
-  const [purge, read, profilesRead] = await Promise.all([
+  const [purge, read, profilesRead, artworksRead] = await Promise.all([
     supabase.from("player_decks").delete().eq("user_id", userId).lt("deleted_at", cutoff.toISOString()),
     supabase
       .from("player_decks")
@@ -135,6 +139,8 @@ export async function listPlayerDecks(): Promise<PlayerDeckSummary[]> {
      * les concerne pas.
      */
     supabase.from("player_decks").select("id, style, difficulty, mechanics").eq("user_id", userId),
+    // Illustration Styled de la plaque : lue à part, même raison (migration `20261110120000`).
+    readArtArtworks(supabase, userId),
   ]);
   if (purge.error) console.error("[listPlayerDecks] Échec du vidage de la corbeille :", purge.error.message);
 
@@ -209,6 +215,7 @@ export async function listPlayerDecks(): Promise<PlayerDeckSummary[]> {
       // la plus chère (`signatureCardId` ignore les exemplaires).
       artCardId: deck.art_card_id ?? signatureCardId(deckCards.map((card) => card.card_id)),
       artCardChosen: deck.art_card_id ?? null,
+      artArtwork: deck.art_card_id ? shownChosenArtwork(deck.art_card_id, artworksRead.get(deck.id), null) : "classique",
     };
   });
 }
@@ -225,12 +232,15 @@ export async function listPlayerDeckLists(): Promise<DeckList[]> {
     if (!userId) return [];
 
     // Un deck à la corbeille ne se joue pas : il ne figure pas dans Jouer.
-    const { data: decks, error: decksError } = await supabase
+    const [{ data: decks, error: decksError }, artworks] = await Promise.all([
+      supabase
       .from("player_decks")
-      .select("id, name, ship_id, is_default, description")
+      .select("id, name, ship_id, is_default, description, art_card_id")
       .eq("user_id", userId)
       .is("deleted_at", null)
-      .order("created_at", { ascending: true });
+      .order("created_at", { ascending: true }),
+      readArtArtworks(supabase, userId),
+    ]);
     if (decksError) console.error("[listPlayerDeckLists] Échec de la lecture de player_decks :", decksError.message);
     if (!decks || decks.length === 0) return [];
 
@@ -259,6 +269,9 @@ export async function listPlayerDeckLists(): Promise<DeckList[]> {
       description: deck.description?.trim() || "Deck personnel",
       cardIds: cardsByDeck.get(deck.id) ?? [],
       isDefault: Boolean(deck.is_default),
+      // L'illustration CHOISIE suit le deck jusqu'à l'écran Jouer.
+      artCardId: deck.art_card_id ?? null,
+      artArtwork: deck.art_card_id ? shownChosenArtwork(deck.art_card_id, artworks.get(deck.id), null) : "classique",
     }));
   } catch (error) {
     console.error("[listPlayerDeckLists] Échec inattendu :", error);
@@ -279,6 +292,8 @@ export interface SaveDeckInput {
    * permet à un appelant qui ignore ce champ de ne pas l'effacer.
    */
   artCardId?: string | null;
+  /** Illustration de cette carte : Styled seulement si le joueur l'a débloquée (revérifié ici). */
+  artArtwork?: ChosenArtwork;
   /**
    * Résumé libre, affiché sur la fiche de deck. Vide ou absent : la fiche
    * retombe sur sa phrase générique. Le RESTE de la fiche — rôle,
@@ -295,6 +310,34 @@ export interface SaveDeckInput {
  * un deck hors de `RULES.DECK_SIZE_MIN`/`MAX` se sauvegarde quand même,
  * juste marqué non jouable.
  */
+/**
+ * Illustration de la plaque par deck (`player_decks.art_artwork`). Colonne
+ * absente (migration `20261110120000` pas passée) : carte vide, tout est
+ * Classique. Module `"use server"` : helpers NON exportés.
+ */
+async function readArtArtworks(supabase: ReturnType<typeof createSupabaseServerClient>, userId: string): Promise<Map<string, string>> {
+  const { data, error } = await supabase.from("player_decks").select("id, art_artwork").eq("user_id", userId);
+  if (error) return new Map();
+  return new Map((data ?? []).map((row) => [row.id, row.art_artwork]));
+}
+
+/** Écrit l'illustration de la plaque : Styled seulement si la carte choisie l'a débloquée, Classique sinon. */
+async function writeArtArtwork(
+  supabase: ReturnType<typeof createSupabaseServerClient>,
+  userId: string,
+  deckId: string,
+  artCardId: string | null,
+  wanted: ChosenArtwork | undefined
+): Promise<void> {
+  let artwork: ChosenArtwork = "classique";
+  if (artCardId && wanted === "styled") {
+    const unlocked = await readStyledUnlockedCardIds(userId).catch(() => [] as string[]);
+    if (unlocked.includes(artCardId)) artwork = "styled";
+  }
+  const { error } = await supabase.from("player_decks").update({ art_artwork: artwork }).eq("id", deckId);
+  if (error) console.warn("[saveDeck] Illustration de la plaque non enregistrée (migration 20261110120000 appliquée ?) :", error.message);
+}
+
 export async function saveDeck(input: SaveDeckInput): Promise<DeckActionResult> {
   return guarded("saveDeck", () => saveDeckUnguarded(input));
 }
@@ -446,6 +489,8 @@ async function saveDeckUnguarded(input: SaveDeckInput): Promise<DeckActionResult
       .insert(Array.from(quantities.entries()).map(([card_id, quantity]) => ({ deck_id: finalDeckId, card_id, quantity })));
     if (insertError) return dbFailure("decks", insertError);
   }
+
+  if (input.artCardId !== undefined) await writeArtArtwork(supabase, userId, deckId, artCardId, input.artArtwork);
 
   revalidatePath("/decks");
   revalidatePath(`/decks/${deckId}`);
@@ -604,6 +649,15 @@ async function duplicateDeckUnguarded(deckId: string): Promise<DeckActionResult>
       .from("player_deck_cards")
       .insert(cards.map((card) => ({ deck_id: created.id, card_id: card.card_id, quantity: card.quantity })));
     if (cardsError) return dbFailure("decks", cardsError);
+  }
+
+  // L'illustration Styled de la plaque suit la copie (colonne lue et écrite
+  // à part : sans la migration `20261110120000`, la copie reste Classique).
+  const artworks = await readArtArtworks(supabase, userId);
+  const artArtwork = artworks.get(deckId);
+  if (artArtwork && artArtwork !== "classique") {
+    const { error: artworkError } = await supabase.from("player_decks").update({ art_artwork: artArtwork }).eq("id", created.id);
+    if (artworkError) console.warn("[duplicateDeck] Illustration de la plaque non recopiée :", artworkError.message);
   }
 
   revalidatePath("/decks");

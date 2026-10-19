@@ -9,7 +9,8 @@ import type { MatchAudienceSummary } from "@/features/audience/actions";
 import { RollingNumber } from "@/features/audience/RollingNumber";
 import { useMatchAudience } from "@/features/audience/useMatchAudience";
 import { weightiestSignals, type MatchAudienceVerdict } from "@/features/audience/verdict";
-import { cardDecorUrl, cardIllustrationUrl } from "@/features/decks/cardArtUrl";
+import { cardArtworkUrl, cardDecorUrl, cardIllustrationUrl } from "@/features/decks/cardArtUrl";
+import type { ChosenArtwork } from "@/game/cosmetics/artworks";
 import type { MatchRewardSummary } from "@/features/progression/actions";
 import { useMatchReward } from "@/features/progression/useMatchReward";
 import type { QuestRecapEntry } from "@/features/quests/actions";
@@ -97,7 +98,7 @@ export interface MatchEpilogue {
 interface MatchResultScreenProps {
   epilogue?: MatchEpilogue;
   outcome: "victory" | "defeat" | "draw";
-  player: { name: string; ship: ShipDefinition; title?: string | null; avatarCardId?: string | null };
+  player: { name: string; ship: ShipDefinition; title?: string | null; avatarCardId?: string | null; avatarArtwork?: ChosenArtwork };
   matchId?: string;
   preview?: { reward: MatchRewardSummary; quests: QuestRecapEntry[]; voyage?: VoyageRecap | null; audience?: MatchAudienceSummary };
   audience?: MatchAudienceVerdict;
@@ -119,6 +120,8 @@ interface QuestSlot {
 
 /** L'illustration de la photo : l'avatar du joueur (et son débord s'il est Abyssal), sinon le Navire. */
 function photoLayers(player: MatchResultScreenProps["player"]): { src: string | null; debord: string | null } {
+  // Styled choisie au profil : son illustration, seule (elle n'a pas de débord).
+  if (player.avatarCardId && player.avatarArtwork === "styled") return { src: cardArtworkUrl(player.avatarCardId, "styled"), debord: null };
   if (player.avatarCardId) {
     let abyssal = false;
     try {

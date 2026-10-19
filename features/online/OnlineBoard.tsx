@@ -54,7 +54,7 @@ import { useActionToasts } from "@/features/match/useActionToasts";
 import { useAttackPresentation } from "@/features/match/useAttackPresentation";
 import { useCoinToss } from "@/features/match/CoinToss";
 import { useDeraisonWarning } from "@/features/match/useDeraisonWarning";
-import { useAvatarCardId, useDisplayNames, useEquippedTitle } from "@/features/match/useDisplayNames";
+import { useAvatar, useDisplayNames, useEquippedTitle } from "@/features/match/useDisplayNames";
 import { usePhaseBannerEvent } from "@/features/match/usePhaseBannerEvent";
 import { tableTargetingFor, useBoardInteraction } from "@/features/match/useBoardInteraction";
 import { useShipAbility } from "@/features/match/useShipAbility";
@@ -107,7 +107,7 @@ export function OnlineBoard({
   const opponent = state.players.find((p) => p.id !== myUserId)!;
   const displayNames = useDisplayNames([me.id, opponent.id]);
   const myTitle = useEquippedTitle(me.id);
-  const myAvatar = useAvatarCardId(me.id);
+  const myAvatar = useAvatar(me.id);
   // Défausse depuis la main (limite de main comme effet) : les cartes se glissent au Cimetière.
   const handLimit = useHandLimitDiscard(state, myUserId, (answer) =>
     act({ type: "resolveChoice", playerId: myUserId, choice: answer })
@@ -243,7 +243,7 @@ export function OnlineBoard({
       <MatchEndScreen
         outcome={iWon ? "victory" : state.winnerId ? "defeat" : "draw"}
         // Toujours le joueur qui regarde, jamais le vainqueur : il se reconnaît sur la photo, avec son propre Navire — match nul compris.
-        player={{ name: displayNames[myUserId] ?? "Toi", ship: myShip, title: myTitle, avatarCardId: myAvatar }}
+        player={{ name: displayNames[myUserId] ?? "Toi", ship: myShip, title: myTitle, avatarCardId: myAvatar.cardId, avatarArtwork: myAvatar.artwork }}
         exitHref={exitHref}
         matchId={matchId}
         audience={matchAudienceVerdict(state, myUserId)}

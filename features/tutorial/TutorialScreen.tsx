@@ -9,7 +9,7 @@ import { MatchBoard } from "@/features/match/MatchBoard";
 import { MatchEndScreen } from "@/features/match/MatchEndScreen";
 import type { MatchEpilogue } from "@/features/match/MatchResultScreen";
 import { matchAudienceVerdict } from "@/features/audience/verdict";
-import { useAvatarCardId, useDisplayNames, useEquippedTitle } from "@/features/match/useDisplayNames";
+import { useAvatar, useDisplayNames, useEquippedTitle } from "@/features/match/useDisplayNames";
 import { GameScreen } from "@/features/shell/GameScreen";
 import { TutorialCoach } from "@/features/tutorial/TutorialCoach";
 import game from "@/features/shell/GameScreen.module.css";
@@ -61,7 +61,7 @@ export function TutorialScreen({ autoStart = false }: { autoStart?: boolean } = 
   const [ending, setEnding] = useState<TutorialEnding | null>(null);
   const names = useDisplayNames(ME);
   const myTitle = useEquippedTitle("me");
-  const myAvatar = useAvatarCardId("me");
+  const myAvatar = useAvatar("me");
   const [boosterGranted, setBoosterGranted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   /** Ticket signé délivré au lancement de la partie guidée : sa complétion récompensée l'exige. */
@@ -145,7 +145,7 @@ export function TutorialScreen({ autoStart = false }: { autoStart?: boolean } = 
     return (
       <MatchEndScreen
         outcome={won ? "victory" : "defeat"}
-        player={{ name: names.me ?? "Toi", ship: getShipDefinition(me.shipId), title: myTitle, avatarCardId: myAvatar }}
+        player={{ name: names.me ?? "Toi", ship: getShipDefinition(me.shipId), title: myTitle, avatarCardId: myAvatar.cardId, avatarArtwork: myAvatar.artwork }}
         audience={matchAudienceVerdict(table, "p1")}
         epilogue={tutorialEpilogue(ending.kind, won, boosterGranted, error, (href) => router.push(href))}
       />

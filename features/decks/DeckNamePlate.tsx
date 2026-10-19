@@ -1,5 +1,6 @@
 "use client";
 
+import type { ChosenArtwork } from "@/game/cosmetics/artworks";
 import { useMemo, useState } from "react";
 import { deckProfile, getCardDefinition, isAbyssalVariant, RULES, type DeckStyleId } from "@/game";
 import { DeckStyleIcon } from "@/features/decks/DeckStyleIcon";
@@ -26,6 +27,8 @@ interface DeckNamePlateProps {
   cardIds: readonly string[];
   /** Carte choisie explicitement, ou `null` pour laisser le deck décider. */
   artCardId: string | null;
+  /** Illustration de la carte choisie : Classique ou Styled (débloquée). */
+  artArtwork?: ChosenArtwork;
   onPickArt: () => void;
   /**
    * Style choisi par le joueur (« Ma fiche de deck »), ou `null` : le style
@@ -69,10 +72,11 @@ export function DeckNamePlate({
   shipId,
   cardIds,
   artCardId,
+  artArtwork = "classique",
   onPickArt,
   chosenStyleId = null,
 }: DeckNamePlateProps) {
-  const artUrl = artCardId ? plateArtUrl(artCardId, shipId) : nameplateArtUrl(cardIds, shipId);
+  const artUrl = artCardId ? plateArtUrl(artCardId, shipId, artArtwork) : nameplateArtUrl(cardIds, shipId);
   const variants = useMemo(() => deckVariants(cardIds), [cardIds]);
   // Un deck vide n'a pas de style lu : on n'en invente pas (cf. `deckProfile`).
   const styleId = useMemo(() => chosenStyleId ?? deckProfile(cardIds)?.styleId ?? null, [chosenStyleId, cardIds]);

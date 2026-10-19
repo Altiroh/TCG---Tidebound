@@ -3,7 +3,8 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { getCardDefinition } from "@/game";
-import { cardIllustrationThumbUrl } from "@/features/decks/cardArtUrl";
+import { cardArtworkThumbUrl } from "@/features/decks/cardArtUrl";
+import type { ChosenArtwork } from "@/game/cosmetics/artworks";
 import { updateProfileIdentity } from "@/features/progression/profileActions";
 import { notifyProgressionChanged } from "@/features/progression/progressionSync";
 import game from "@/features/shell/GameScreen.module.css";
@@ -13,6 +14,8 @@ import { playButtonClick } from "@/lib/sound";
 interface ProfileIdentityProps {
   displayName: string | null;
   avatarCardId: string | null;
+  /** Illustration de l'avatar : Classique ou Styled (débloquée). */
+  avatarArtwork?: ChosenArtwork;
   /** Après une modification acceptée. Par défaut : relecture de la page. */
   onChanged?: () => void;
   /** Ouvre le choix d'illustration, dans la partie droite du profil (`IllustrationPicker`). */
@@ -43,7 +46,7 @@ function cardName(cardId: string): string {
  * (`set_profile_identity`) : le navigateur ne peut pas s'attribuer une
  * carte qu'il n'a pas.
  */
-export function ProfileIdentity({ displayName, avatarCardId, onChanged, onPickIllustration, titleName = null, onPickTitle }: ProfileIdentityProps) {
+export function ProfileIdentity({ displayName, avatarCardId, avatarArtwork = "classique", onChanged, onPickIllustration, titleName = null, onPickTitle }: ProfileIdentityProps) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [draftName, setDraftName] = useState(displayName ?? "");
@@ -86,7 +89,7 @@ export function ProfileIdentity({ displayName, avatarCardId, onChanged, onPickIl
         <button
           type="button"
           className={styles.avatar}
-          style={avatarCardId ? { backgroundImage: `url("${cardIllustrationThumbUrl(avatarCardId)}")` } : undefined}
+          style={avatarCardId ? { backgroundImage: `url("${cardArtworkThumbUrl(avatarCardId, avatarArtwork)}")` } : undefined}
           onClick={() => {
             playButtonClick();
             setError(null);

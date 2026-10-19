@@ -77,7 +77,7 @@ export function mineEntries(decks: readonly PlayerDeckSummary[]): BrowserDeck[] 
       description: deck.description,
       cardCount: deck.cardCount,
       cards: deck.cards,
-      artUrl: plateArtUrl(deck.artCardId, deck.shipId),
+      artUrl: plateArtUrl(deck.artCardId, deck.shipId, deck.artArtwork),
       createdAt: deck.createdAt,
       updatedAt: deck.updatedAt,
       mine: deck,

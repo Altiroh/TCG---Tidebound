@@ -193,6 +193,32 @@ export function boardTileArtwork(cardId: string, artwork: CardArtwork | undefine
   return hasArtwork(cardId, "styled") ? "styled" : "classique";
 }
 
+/**
+ * Illustration choisie pour un AVATAR ou une PLAQUE DE DECK : Classique ou
+ * Styled. La Full-Art n'y va pas — son texte peint serait illisible en
+ * vignette — mais l'avoir obtenue DÉBLOQUE la Styled de la carte, même
+ * sans l'avoir tirée elle-même.
+ */
+export type ChosenArtwork = "classique" | "styled";
+
+export function isChosenArtwork(value: unknown): value is ChosenArtwork {
+  return value === "classique" || value === "styled";
+}
+
+/** La Styled de cette carte est-elle débloquée par ces illustrations possédées (Styled ou Full-Art) ? */
+export function unlocksStyled(cardId: string, ownedArtworks: Iterable<CardArtwork>): boolean {
+  if (!hasArtwork(cardId, "styled")) return false;
+  for (const artwork of ownedArtworks) if (artwork === "styled" || artwork === "styled-fa") return true;
+  return false;
+}
+
+/** L'illustration à MONTRER pour un choix lu en base : Styled seulement si elle est débloquée. */
+export function shownChosenArtwork(cardId: string, stored: unknown, styledUnlocked: ReadonlySet<string> | null): ChosenArtwork {
+  if (stored !== "styled") return "classique";
+  if (styledUnlocked && !styledUnlocked.has(cardId)) return "classique";
+  return hasArtwork(cardId, "styled") ? "styled" : "classique";
+}
+
 export function isCardArtwork(value: unknown): value is CardArtwork {
   return typeof value === "string" && (CARD_ARTWORKS as readonly string[]).includes(value);
 }

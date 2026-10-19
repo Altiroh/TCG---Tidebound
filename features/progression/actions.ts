@@ -19,6 +19,7 @@ import { claimableLevelsFor, reachedLevel } from "@/features/progression/levelRe
 import { countClaimableMasteryLevels } from "@/features/progression/hubService";
 import { getSessionUser } from "@/lib/supabase/sessionUser";
 import { isAdmin, vueJoueurActive } from "@/features/admin/roles";
+import { shownChosenArtwork, type ChosenArtwork } from "@/game/cosmetics/artworks";
 import { countUnreadMail } from "@/features/mail/mailService";
 
 /**
@@ -43,6 +44,8 @@ export interface ProgressionSummary {
   displayName: string | null;
   /** Carte choisie comme illustration de profil (`profiles.avatar_card_id`) — l'avatar du bandeau. */
   avatarCardId: string | null;
+  /** Illustration de l'avatar (`profiles.avatar_artwork`) : Classique, ou Styled débloquée. */
+  avatarArtwork: ChosenArtwork;
   /**
    * Quêtes terminées mais pas encore réclamées — la pastille du bandeau.
    *
@@ -97,6 +100,7 @@ const SIGNED_OUT: ProgressionSummary = {
   pvpWins: 0,
   displayName: null,
   avatarCardId: null,
+  avatarArtwork: "classique",
   claimableQuests: 0,
   claimableRewards: 0,
   claimableBreakdown: { levels: 0, cardChoices: 0, login: 0, quests: 0, achievements: 0, sponsorGifts: 0, masteries: 0 },
@@ -121,11 +125,24 @@ const SIGNED_OUT: ProgressionSummary = {
 async function readProfileHeader(
   supabase: ReturnType<typeof createSupabaseServerClient>,
   userId: string
-): Promise<{ displayName: string | null; avatarCardId: string | null }> {
-  const full = await supabase.from("profiles").select("display_name, avatar_card_id").eq("id", userId).maybeSingle();
-  if (!full.error) return { displayName: full.data?.display_name ?? null, avatarCardId: full.data?.avatar_card_id ?? null };
+): Promise<{ displayName: string | null; avatarCardId: string | null; avatarArtwork: ChosenArtwork }> {
+  // L'illustration Styled est lue à part : sans la migration `20261110120000`,
+  // sa colonne manque, et l'avatar reste simplement Classique.
+  const [full, artwork] = await Promise.all([
+    supabase.from("profiles").select("display_name, avatar_card_id").eq("id", userId).maybeSingle(),
+    supabase.from("profiles").select("avatar_artwork").eq("id", userId).maybeSingle(),
+  ]);
+  if (!full.error) {
+    const avatarCardId = full.data?.avatar_card_id ?? null;
+    return {
+      displayName: full.data?.display_name ?? null,
+      avatarCardId,
+      // Vérifiée à l'écriture (`updateProfileIdentity`) : on n'y relit que la carte qui l'accepte.
+      avatarArtwork: avatarCardId ? shownChosenArtwork(avatarCardId, artwork.error ? null : artwork.data?.avatar_artwork, null) : "classique",
+    };
+  }
   const basic = await supabase.from("profiles").select("display_name").eq("id", userId).maybeSingle();
-  return { displayName: basic.data?.display_name ?? null, avatarCardId: null };
+  return { displayName: basic.data?.display_name ?? null, avatarCardId: null, avatarArtwork: "classique" };
 }
 
 /**
@@ -217,6 +234,7 @@ export async function fetchProgression(): Promise<ProgressionSummary> {
       // qu'un vide à côté du niveau.
       displayName: profile.displayName ?? user.email ?? null,
       avatarCardId: profile.avatarCardId,
+      avatarArtwork: profile.avatarArtwork,
       claimableQuests: claimable.count ?? 0,
       // Tout ce qui se réclame au profil — quêtes comprises, elles y ont leur onglet.
       claimableRewards:

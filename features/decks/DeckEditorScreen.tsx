@@ -13,6 +13,7 @@ import { useCardBrowser } from "@/features/collection/useCardBrowser";
 import { DEFAULT_SHIP_ID } from "@/features/decks/constants";
 import { countInDeck, deckRuleIssue, missingCopiesMessage, ownedPartOf } from "@/features/decks/deckComposition";
 import { DeckArtPicker } from "@/features/decks/DeckArtPicker";
+import type { ChosenArtwork } from "@/game/cosmetics/artworks";
 import { DeckIdentity } from "@/features/decks/DeckIdentity";
 import { DeckNamePlate } from "@/features/decks/DeckNamePlate";
 import { DeckListPanel } from "@/features/decks/DeckListPanel";
@@ -41,9 +42,10 @@ function serializeState(
   shipId: string,
   cardIds: string[],
   artCardId: string | null,
-  description: string
+  description: string,
+  artArtwork: ChosenArtwork = "classique"
 ): string {
-  return `${name}|${shipId}|${artCardId ?? ""}|${description}|${[...cardIds].sort().join(",")}`;
+  return `${name}|${shipId}|${artCardId ?? ""}:${artArtwork}|${description}|${[...cardIds].sort().join(",")}`;
 }
 
 export interface DeckEditorInitialData {
@@ -53,6 +55,8 @@ export interface DeckEditorInitialData {
   cardIds: string[];
   /** Illustration choisie, ou `null` : la règle par défaut reprend alors la main. */
   artCardId: string | null;
+  /** Illustration de la carte choisie (Classique ou Styled débloquée). */
+  artArtwork?: ChosenArtwork;
   /** Résumé libre affiché sur la fiche du deck ; vide = phrase générique. */
   description?: string;
   /** Style choisi par le joueur, ou `null`/absent : l'en-tête le déduit alors des cartes. */
@@ -63,6 +67,8 @@ interface DeckEditorScreenProps {
   ownedCardIds: string[];
   /** Exemplaires possédés par carte : un deck n'en embarque jamais plus (`resolveMatchDeck` le vérifie à l'entrée en partie). */
   ownedCounts: Record<string, number>;
+  /** Cartes dont la Styled est débloquée (Styled ou Full-Art obtenue) : choisissables comme illustration du deck. */
+  styledCardIds?: string[];
   /** `null` = création d'un nouveau deck (pas encore persisté). */
   initialDeck: DeckEditorInitialData | null;
 }
@@ -104,7 +110,7 @@ export function DeckEditorScreen(props: DeckEditorScreenProps) {
   );
 }
 
-function DeckEditorScreenBody({ ownedCardIds, ownedCounts, initialDeck }: DeckEditorScreenProps) {
+function DeckEditorScreenBody({ ownedCardIds, ownedCounts, styledCardIds = [], initialDeck }: DeckEditorScreenProps) {
   const router = useRouter();
   const [deckId, setDeckId] = useState<string | null>(initialDeck?.id ?? null);
   const [name, setName] = useState(initialDeck?.name ?? "Nouveau deck");
@@ -113,13 +119,14 @@ function DeckEditorScreenBody({ ownedCardIds, ownedCounts, initialDeck }: DeckEd
   const [cardIds, setCardIds] = useState<string[]>(initialDeck?.cardIds ?? []);
   /** Illustration choisie, ou `null` : la carte la plus chère du deck sert alors. */
   const [artCardId, setArtCardId] = useState<string | null>(initialDeck?.artCardId ?? null);
+  const [artArtwork, setArtArtwork] = useState<ChosenArtwork>(initialDeck?.artArtwork ?? "classique");
   // Vide par défaut : la fiche retombe alors sur sa phrase générique, et le
   // reste de ce qu'elle montre se déduit des cartes.
   const [description, setDescription] = useState(initialDeck?.description ?? "");
   const [artPickerOpen, setArtPickerOpen] = useState(false);
   /** Filtre « déjà dans le deck » (retour du 12/10/2026) : la grille ne montre que les cartes du deck en cours. */
   const [inDeckOnly, setInDeckOnly] = useState(false);
-  const [savedSnapshot, setSavedSnapshot] = useState(() => serializeState(name, shipId, cardIds, artCardId, description));
+  const [savedSnapshot, setSavedSnapshot] = useState(() => serializeState(name, shipId, cardIds, artCardId, description, artArtwork));
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [savedFlash, setSavedFlash] = useState(false);
@@ -142,7 +149,7 @@ function DeckEditorScreenBody({ ownedCardIds, ownedCounts, initialDeck }: DeckEd
     [inDeckOnly, cardBrowser.cards, inDeck]
   );
 
-  const isDirty = serializeState(name, shipId, cardIds, artCardId, description) !== savedSnapshot;
+  const isDirty = serializeState(name, shipId, cardIds, artCardId, description, artArtwork) !== savedSnapshot;
   const issue = useMemo(() => {
     const rule = deckRuleIssue(cardIds, shipId, name);
     if (rule || !isSignedIn) return rule;
@@ -207,13 +214,13 @@ function DeckEditorScreenBody({ ownedCardIds, ownedCounts, initialDeck }: DeckEd
   async function handleSave(): Promise<boolean> {
     setIsSaving(true);
     setSaveError(null);
-    const result = await saveDeck({ id: deckId, name, shipId, cardIds, artCardId, description });
+    const result = await saveDeck({ id: deckId, name, shipId, cardIds, artCardId, artArtwork, description });
     setIsSaving(false);
     if (!result.ok || !result.id) {
       setSaveError(result.error ?? "Échec de la sauvegarde.");
       return false;
     }
-    setSavedSnapshot(serializeState(name, shipId, cardIds, artCardId, description));
+    setSavedSnapshot(serializeState(name, shipId, cardIds, artCardId, description, artArtwork));
     if (!deckId) {
       setDeckId(result.id);
       router.replace(`/decks/${result.id}`);
@@ -444,6 +451,7 @@ function DeckEditorScreenBody({ ownedCardIds, ownedCounts, initialDeck }: DeckEd
                 shipId={shipId}
                 cardIds={cardIds}
                 artCardId={artCardId}
+                artArtwork={artArtwork}
                 onPickArt={() => setArtPickerOpen(true)}
                 chosenStyleId={initialDeck?.styleId ?? null}
               />
@@ -493,8 +501,11 @@ function DeckEditorScreenBody({ ownedCardIds, ownedCounts, initialDeck }: DeckEd
         <DeckArtPicker
           cardIds={cardIds}
           artCardId={artCardId}
-          onChoose={(cardId) => {
+          artArtwork={artArtwork}
+          styledCardIds={styledCardIds}
+          onChoose={(cardId, artwork) => {
             setArtCardId(cardId);
+            setArtArtwork(cardId ? artwork : "classique");
             setArtPickerOpen(false);
           }}
           onClose={() => setArtPickerOpen(false)}

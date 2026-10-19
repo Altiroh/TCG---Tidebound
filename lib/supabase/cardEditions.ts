@@ -1,5 +1,5 @@
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
-import { hasArtwork, isCardArtwork } from "@/game/cosmetics/artworks";
+import { hasArtwork, isCardArtwork, unlocksStyled } from "@/game/cosmetics/artworks";
 import { isCardFinish } from "@/game/cosmetics/finishes";
 import { editionKey, isClassicEdition, type CardEdition, type OwnedEdition } from "@/game/cosmetics/editions";
 
@@ -112,4 +112,20 @@ export async function readDisplayedEditions(userIds: readonly string[], service:
     console.warn("[readDisplayedEditions] Lecture impossible :", error);
   }
   return result;
+}
+
+/**
+ * Cartes dont la STYLED est débloquée pour ce joueur : il en possède la
+ * Styled ou la Full-Art (`unlocksStyled`). Sert aux choix d'illustration du
+ * profil et des decks, et à la vérification serveur de ces choix.
+ */
+export async function readStyledUnlockedCardIds(userId: string, service: Service = createSupabaseServiceRoleClient()): Promise<string[]> {
+  return styledUnlockedFrom(await readOwnedEditions(userId, service));
+}
+
+/** Même chose, à partir d'éditions déjà lues. */
+export function styledUnlockedFrom(editions: OwnedEditionsByCard): string[] {
+  return Object.entries(editions)
+    .filter(([cardId, owned]) => unlocksStyled(cardId, owned.map((edition) => edition.artwork)))
+    .map(([cardId]) => cardId);
 }

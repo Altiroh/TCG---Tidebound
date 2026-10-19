@@ -31,6 +31,8 @@ export default function ProfilPreviewRoute({ searchParams }: { searchParams: { s
     isSignedIn: true,
     displayName: "Alti",
     avatarCardId: null,
+    avatarArtwork: "classique",
+    styledCardIds: [],
     ownedCardIds: [],
     view,
     balance: 66_241,

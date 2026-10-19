@@ -10,7 +10,7 @@ import { getPreference, hydratePreferences, setPreference } from "@/lib/preferen
 import { fetchProgression, type ProgressionSummary } from "@/features/progression/actions";
 import { audienceMood } from "@/game/audience/mood";
 import { onProgressionChanged, readProgression, rememberedProgression } from "@/features/progression/progressionSync";
-import { cardIllustrationThumbUrl } from "@/features/decks/cardArtUrl";
+import { cardArtworkThumbUrl } from "@/features/decks/cardArtUrl";
 import { profileHref, requestProfileOpen, type PROFILE_PANELS } from "@/features/progression/profileTabs";
 import type { ProfileTab } from "@/features/progression/ProfileView";
 import { PreconToken, TideCoin } from "@/features/shell/GameIcons";
@@ -384,7 +384,7 @@ export function HeaderPlayer() {
             {summary.avatarCardId ? (
               <span
                 className={`${styles.accountAvatar} ${styles.accountAvatarArt}`}
-                style={{ backgroundImage: `url("${cardIllustrationThumbUrl(summary.avatarCardId)}")` }}
+                style={{ backgroundImage: `url("${cardArtworkThumbUrl(summary.avatarCardId, summary.avatarArtwork)}")` }}
               />
             ) : (
               <span className={styles.accountAvatar}>{avatarInitial(summary.displayName)}</span>

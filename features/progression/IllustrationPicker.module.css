@@ -330,3 +330,20 @@
     font-size: calc(13px * var(--tb-text-scale));
   }
 }
+
+/* Illustration Styled (débloquée) : un sigle discret en haut à gauche. */
+.styledMark {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  padding: 3px 7px 3px 8px;
+  border: 1px solid rgba(255, 224, 138, 0.6);
+  border-radius: 999px;
+  background: rgba(10, 11, 12, 0.72);
+  color: #ffe08a;
+  font-family: var(--font-card-title);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  line-height: 1;
+}

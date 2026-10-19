@@ -29,6 +29,7 @@ export interface Database {
           display_name: string;
           /** Carte servant d'illustration de profil — toujours une carte possédée (`set_profile_identity`). */
           avatar_card_id: string | null;
+          avatar_artwork: string;
           created_at: string;
           /** Code ami, unique : on s'ajoute par lui, jamais par pseudo (migration 20261018120000). */
           friend_code: string;
@@ -37,6 +38,7 @@ export interface Database {
           id: string;
           display_name: string;
           avatar_card_id?: string | null;
+          avatar_artwork?: string;
           created_at?: string;
           friend_code?: string;
         };
@@ -44,6 +46,7 @@ export interface Database {
           id?: string;
           display_name?: string;
           avatar_card_id?: string | null;
+          avatar_artwork?: string;
           created_at?: string;
         };
         Relationships: [];
@@ -324,6 +327,7 @@ export interface Database {
       player_decks: {
         Row: {
           art_card_id: string | null;
+          art_artwork: string;
           id: string;
           user_id: string;
           ship_id: string;
@@ -348,6 +352,7 @@ export interface Database {
         };
         Insert: {
           art_card_id?: string | null;
+          art_artwork?: string;
           id?: string;
           user_id: string;
           ship_id: string;
@@ -364,6 +369,7 @@ export interface Database {
         };
         Update: {
           art_card_id?: string | null;
+          art_artwork?: string;
           id?: string;
           user_id?: string;
           ship_id?: string;

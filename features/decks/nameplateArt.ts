@@ -1,5 +1,6 @@
 import { getCardDefinition, SHIP_DATABASE } from "@/game";
-import { cardIllustrationUrl } from "@/features/decks/cardArtUrl";
+import { cardArtworkUrl, cardIllustrationUrl } from "@/features/decks/cardArtUrl";
+import type { ChosenArtwork } from "@/game/cosmetics/artworks";
 import { shipIllustrationUrl } from "@/features/ships/shipFrame";
 
 /**
@@ -27,8 +28,8 @@ export function nameplateArtUrl(cardIds: readonly string[], shipId: string): str
  * serveur (`PlayerDeckSummary.artCardId`) et qu'on ne dispose pas de la
  * liste complète à l'écran.
  */
-export function plateArtUrl(cardId: string | null, shipId: string): string | null {
-  if (cardId) return cardIllustrationUrl(cardId);
+export function plateArtUrl(cardId: string | null, shipId: string, artwork: ChosenArtwork = "classique"): string | null {
+  if (cardId) return artwork === "styled" ? cardArtworkUrl(cardId, "styled") : cardIllustrationUrl(cardId);
 
   const ship = SHIP_DATABASE.get(shipId);
   return ship?.illustration ? shipIllustrationUrl(ship.illustration) : null;
@@ -37,6 +38,15 @@ export function plateArtUrl(cardId: string | null, shipId: string): string | nul
 // Les URLs vivent dans `cardArtUrl.ts`, sans dépendance au moteur ; elles
 // restent exportées d'ici pour les appelants existants.
 export { cardIllustrationThumbUrl, cardIllustrationUrl } from "@/features/decks/cardArtUrl";
+
+/**
+ * L'illustration d'un deck PERSONNEL telle que le joueur l'a choisie (carte
+ * et illustration), sinon la règle par défaut. Partout où un deck se montre
+ * — Decks, Jouer, partie contre le bot —, c'est la même image.
+ */
+export function deckArtUrl(deck: { cardIds: readonly string[]; shipId: string; artCardId?: string | null; artArtwork?: ChosenArtwork }): string | null {
+  return deck.artCardId ? plateArtUrl(deck.artCardId, deck.shipId, deck.artArtwork) : nameplateArtUrl(deck.cardIds, deck.shipId);
+}
 
 /** La carte qui résume le deck : coût le plus élevé, puis nom, puis identifiant. */
 export function signatureCardId(cardIds: readonly string[]): string | null {

@@ -27,6 +27,7 @@ function fakeDeck(index: number): PlayerDeckSummary {
     isDefault: index === 0,
     headerCardIds: source.cardIds.slice(0, 5),
     artCardId: source.cardIds[0] ?? null,
+    artArtwork: "classique",
     artCardChosen: null,
     cards: [...counts].map(([cardId, quantity]) => ({ cardId, quantity })),
     description: source.description,

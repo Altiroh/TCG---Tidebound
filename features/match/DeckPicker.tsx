@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { ARCHETYPE_LABELS, DECK_STYLES, getCardDefinition, type DeckList, type DeckStyleId } from "@/game";
-import { nameplateArtUrl } from "@/features/decks/nameplateArt";
+import { deckArtUrl } from "@/features/decks/nameplateArt";
 import { deckFacts, type DeckSource } from "@/features/match/deckFacts";
 import { DifficultyStars } from "@/features/shell/GameIcons";
 import styles from "@/features/match/DeckPicker.module.css";
@@ -99,7 +99,7 @@ export function DeckPicker({
     }
     return null;
   }, [sources, chosenId]);
-  const chosenArt = chosen ? nameplateArtUrl(chosen.deck.cardIds, chosen.deck.shipId) : null;
+  const chosenArt = chosen ? deckArtUrl(chosen.deck) : null;
   const chosenArchetype = chosen ? dominantArchetype(chosen.deck.cardIds) : null;
 
   function equip(deck: DeckList, issue: string | null) {
@@ -175,7 +175,7 @@ export function DeckPicker({
         ) : (
           <ul className={styles.grid}>
             {shown.map(({ deck, facts, issue }, index) => {
-              const art = nameplateArtUrl(deck.cardIds, deck.shipId);
+              const art = deckArtUrl(deck);
               return (
                 <li
                   key={deck.id}

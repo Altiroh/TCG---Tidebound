@@ -5,7 +5,7 @@ import type { BotDifficulty, DeckList } from "@/game";
 import { DeckBox } from "@/features/decks/DeckBox";
 import { DeckPicker } from "@/features/match/DeckPicker";
 import { deckFacts, type DeckSource } from "@/features/match/deckFacts";
-import { nameplateArtUrl } from "@/features/decks/nameplateArt";
+import { deckArtUrl } from "@/features/decks/nameplateArt";
 import { LEAVE_MS, prefersReducedMotion } from "@/features/match/ModeTable";
 import styles from "@/features/match/BotSetup.module.css";
 import { useImagesReady } from "@/features/shell/useImagesReady";
@@ -77,7 +77,7 @@ export function BotSetup({
   const level = foe.kind === "bot" ? (levels.find((entry) => entry.id === foe.difficulty) ?? levels[0]!) : null;
   const levelIndex = level ? Math.max(0, levels.indexOf(level)) : 0;
   const facts = deck ? deckFacts(deck) : null;
-  const deckArt = deck ? nameplateArtUrl(deck.cardIds, deck.shipId) : null;
+  const deckArt = deck ? deckArtUrl(deck) : null;
   // La boîte du deck attend son illustration décodée avant de se poser (`deckPose`).
   const deckArtReady = useImagesReady([deckArt]);
   const deckIssue = deck ? (sources.map((source) => (source.decks.includes(deck) ? source.issueFor(deck) : null)).find(Boolean) ?? null) : null;

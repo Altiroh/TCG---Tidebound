@@ -1,6 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { readStyledUnlockedCardIds } from "@/lib/supabase/cardEditions";
+import { isChosenArtwork, shownChosenArtwork, type ChosenArtwork } from "@/game/cosmetics/artworks";
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import {
   LOGIN_STREAK_MILESTONE,
@@ -101,6 +103,10 @@ export interface ProfileSummary {
    * POSSÉDÉE : c'est `set_profile_identity` qui le garantit, pas l'écran.
    */
   avatarCardId: string | null;
+  /** Illustration de l'avatar : Classique, ou Styled si le joueur l'a débloquée. */
+  avatarArtwork: ChosenArtwork;
+  /** Cartes dont la Styled est débloquée (Styled ou Full-Art obtenue) : proposées en plus au choix. */
+  styledCardIds: string[];
   /**
    * Cartes que le joueur possède, pour le choix de l'illustration. Les
    * identifiants seuls : le nom et l'image viennent du catalogue côté
@@ -151,6 +157,8 @@ const SIGNED_OUT: ProfileSummary = {
   isSignedIn: false,
   displayName: null,
   avatarCardId: null,
+  avatarArtwork: "classique",
+  styledCardIds: [],
   ownedCardIds: [],
   view: progressionView(0),
   balance: 0,
@@ -244,7 +252,11 @@ export async function fetchProfile(): Promise<ProfileSummary> {
     const progressionPromise = Promise.resolve(
       service.from("player_progression").select("xp_total, level, matches_played, pvp_wins, precon_tokens, play_streak, best_play_streak, play_streak_day").eq("user_id", user.id).maybeSingle()
     );
-    const [stats, progression, currency, profile, claimed, unlocked, login, cardBacks, ownedCards, choices, questBoard, titles, hub] = await Promise.all([
+    // Illustration Styled de l'avatar : lue À PART (migration `20261110120000`
+    // appliquée à la main — sans elle, la colonne manque et l'avatar reste Classique).
+    const avatarArtworkPromise = Promise.resolve(service.from("profiles").select("avatar_artwork").eq("id", user.id).maybeSingle());
+    const styledPromise = readStyledUnlockedCardIds(user.id, service).catch(() => [] as string[]);
+    const [stats, progression, currency, profile, claimed, unlocked, login, cardBacks, ownedCards, choices, questBoard, titles, hub, , avatarArtworkRow, styledCardIds] = await Promise.all([
       statsPromise,
       progressionPromise,
       service.from("player_currency").select("balance").eq("user_id", user.id).maybeSingle(),
@@ -265,6 +277,8 @@ export async function fetchProfile(): Promise<ProfileSummary> {
       // L'octroi n'a rien à rendre à l'écran (il est déjà dans `unlocked`) :
       // attendu ici seulement pour qu'il soit terminé avant de répondre.
       grantedPromise,
+      avatarArtworkPromise,
+      styledPromise,
     ]);
 
     const view = progressionView(progression.data?.xp_total ?? 0);
@@ -275,6 +289,10 @@ export async function fetchProfile(): Promise<ProfileSummary> {
       isSignedIn: true,
       displayName: profile.data?.display_name ?? user.email ?? null,
       avatarCardId: profile.data?.avatar_card_id ?? null,
+      avatarArtwork: profile.data?.avatar_card_id
+        ? shownChosenArtwork(profile.data.avatar_card_id, avatarArtworkRow.error ? null : avatarArtworkRow.data?.avatar_artwork, new Set(styledCardIds))
+        : "classique",
+      styledCardIds,
       ownedCardIds: (ownedCards.data ?? []).map((row) => row.card_id),
       view,
       balance: currency.data?.balance ?? 0,
@@ -504,6 +522,8 @@ export interface UpdateIdentityInput {
    * ne pas la changer se confondraient.
    */
   avatarCardId?: string | null;
+  /** Illustration de l'avatar choisi : Styled seulement si elle est débloquée (revérifié ici). */
+  avatarArtwork?: ChosenArtwork;
 }
 
 /**
@@ -515,7 +535,23 @@ export interface UpdateIdentityInput {
  * navigateur qui appellerait l'action avec n'importe quel `card_id`
  * n'obtiendrait rien.
  */
-export async function updateProfileIdentity({ displayName, avatarCardId }: UpdateIdentityInput): Promise<UpdateIdentityActionResult> {
+/**
+ * Écrit `profiles.avatar_artwork`. Une Styled non débloquée retombe sur la
+ * Classique ; colonne absente (migration pas passée) : rien, on le journalise.
+ * Module `"use server"` : fonction NON exportée, joignable du seul serveur.
+ */
+async function writeAvatarArtwork(userId: string, cardId: string | null, wanted: unknown): Promise<void> {
+  const service = createSupabaseServiceRoleClient();
+  let artwork: ChosenArtwork = "classique";
+  if (cardId && isChosenArtwork(wanted) && wanted === "styled") {
+    const unlocked = await readStyledUnlockedCardIds(userId, service).catch(() => [] as string[]);
+    if (unlocked.includes(cardId)) artwork = "styled";
+  }
+  const { error } = await service.from("profiles").update({ avatar_artwork: artwork }).eq("id", userId);
+  if (error) console.warn("[updateProfileIdentity] Illustration de l'avatar non enregistrée (migration 20261110120000 appliquée ?) :", error.message);
+}
+
+export async function updateProfileIdentity({ displayName, avatarCardId, avatarArtwork }: UpdateIdentityInput): Promise<UpdateIdentityActionResult> {
   const user = await getSessionUser();
   if (!user) return { ok: false, error: "Connecte-toi pour modifier ton profil." };
 
@@ -531,6 +567,10 @@ export async function updateProfileIdentity({ displayName, avatarCardId }: Updat
       return { ok: false, error: "Modification impossible pour l'instant — réessaie dans un instant." };
     }
     if (!data?.ok) return { ok: false, error: data?.error ?? "Modification impossible." };
+
+    // L'illustration de l'avatar suit sa carte : Styled seulement si le
+    // joueur l'a débloquée, Classique sinon (et à chaque retrait).
+    if (avatarCardId !== undefined) await writeAvatarArtwork(user.id, avatarCardId, avatarArtwork);
 
     // Le pseudo s'affiche dans le bandeau de TOUS les écrans, pas seulement
     // au profil : la racine est revalidée avec lui.

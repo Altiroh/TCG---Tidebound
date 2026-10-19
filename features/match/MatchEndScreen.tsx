@@ -40,6 +40,8 @@ interface MatchEndScreenProps {
     title?: string | null;
     /** Carte de l'avatar du joueur : son illustration remplit la photo. Absente : le Navire. */
     avatarCardId?: string | null;
+    /** Illustration de l'avatar : Classique ou Styled. */
+    avatarArtwork?: import("@/game/cosmetics/artworks").ChosenArtwork;
   };
   /** Local (hot-seat/bot) : relance une partie sans navigation. Fournir soit `onExit`, soit `exitHref`. */
   onExit?: () => void;
