@@ -18,7 +18,7 @@ describe("Sommeil de Pierre, Chaîne", () => {
     const def = getCardDefinition("sommeil-de-pierre");
     expect(def.chaine).toBe(true);
     expect(def.chaineLibre).toBe(true);
-    expect(def.text.startsWith("Chaîne — ")).toBe(true);
+    expect(def.text?.startsWith("Chaîne — ")).toBe(true);
   });
 
   it("se joue depuis la main quand l'adversaire attaque : l'unité Opaline gagne +0/+2", () => {
