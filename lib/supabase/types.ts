@@ -405,6 +405,32 @@ export interface Database {
         Relationships: [];
       };
 
+      /** Éditions RARES des exemplaires d'un deck (migration `20261111120000`). */
+      player_deck_card_editions: {
+        Row: {
+          deck_id: string;
+          card_id: string;
+          artwork: string;
+          finish: string;
+          quantity: number;
+        };
+        Insert: {
+          deck_id: string;
+          card_id: string;
+          artwork: string;
+          finish: string;
+          quantity: number;
+        };
+        Update: {
+          deck_id?: string;
+          card_id?: string;
+          artwork?: string;
+          finish?: string;
+          quantity?: number;
+        };
+        Relationships: [];
+      };
+
       /**
        * Miroir serveur du catalogue (`scripts/seedCards.ts`). Seules les
        * colonnes réellement lues par les systèmes de collection/boosters

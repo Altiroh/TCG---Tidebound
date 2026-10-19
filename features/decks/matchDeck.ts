@@ -1,4 +1,7 @@
 import { PLAYABLE_DECKS, RULES, validateDeckList, type DeckList } from "@/game";
+import { readDeckRareCopies } from "@/lib/supabase/deckEditions";
+import { readOwnedEditions } from "@/lib/supabase/cardEditions";
+import { alignCardEditions, clampRareCopies } from "@/features/decks/deckEditions";
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import { missingCopiesMessage, ownedPartOf } from "@/features/decks/deckComposition";
 
@@ -145,6 +148,14 @@ export async function resolveMatchDeck(userId: string, deckId: string): Promise<
     for (const row of owned ?? []) ownedCounts[row.card_id] = row.quantity;
     const { missing } = ownedPartOf(cardIds, ownedCounts);
     if (missing.length > 0) return { ok: false, reason: "invalid", detail: missingCopiesMessage(missing) };
+
+    // Une variante PAR EXEMPLAIRE : revérifiée ici contre ce que le joueur
+    // possède ENCORE (une édition revendue depuis redevient Classique).
+    const rareCopies = (await readDeckRareCopies(service, [deckId]))[deckId] ?? {};
+    if (Object.keys(rareCopies).length > 0) {
+      const kept = clampRareCopies(cardIds, rareCopies, await readOwnedEditions(userId, service));
+      if (Object.keys(kept).length > 0) deck.cardEditions = alignCardEditions(cardIds, kept);
+    }
 
     return { ok: true, deck };
   } catch (cause) {

@@ -15,11 +15,14 @@ import book from "@/features/decks/DeckEditorBook.module.css";
 import game from "@/features/shell/GameScreen.module.css";
 import { playButtonClick } from "@/lib/sound";
 import { cardIllustrationThumbUrl } from "@/features/decks/cardArtUrl";
+import { editionLabel, type CardEdition } from "@/game/cosmetics/editions";
 
 const DRAG_MIME = "text/tidebound-card-id";
 
 interface DeckListPanelProps {
   cardIds: string[];
+  /** Éditions RARES des exemplaires, par carte : la ligne dit combien de copies sont des variantes. */
+  rareCopies?: Readonly<Record<string, readonly CardEdition[]>>;
   /** Plaque du nom du deck (`DeckNamePlate`), posée en tête de ce panneau : elle porte aussi l'effectif et le statut. */
   namePlate: ReactNode;
   onRemove: (cardId: string) => void;
@@ -63,6 +66,7 @@ const TYPE_PLURALS: Record<CardType, string> = {
  */
 export function DeckListPanel({
   cardIds,
+  rareCopies,
   namePlate,
   onRemove,
   onAdd,
@@ -177,7 +181,17 @@ export function DeckListPanel({
                 {/* eslint-disable-next-line @next/next/no-img-element -- vignette de liste */}
                 <img src={cardIllustrationThumbUrl(entry.cardId)} alt="" loading="lazy" decoding="async" />
               </span>
-              <span className={styles.rowQty}>×{entry.count}</span>
+              <span className={styles.rowQty}>
+                ×{entry.count}
+                {(rareCopies?.[entry.cardId]?.length ?? 0) > 0 && (
+                  <span
+                    className={styles.rowVariants}
+                    title={(rareCopies?.[entry.cardId] ?? []).map((edition) => editionLabel(edition)).join(" · ")}
+                  >
+                    ✦{rareCopies?.[entry.cardId]?.length}
+                  </span>
+                )}
+              </span>
               <button
                 type="button"
                 className={styles.rowRemove}

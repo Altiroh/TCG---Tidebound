@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { catalogDeckById, getCardDefinition, isDeckStyleId, type DeckList, type DeckStyleId } from "@/game";
+import { catalogDeckById, getCardDefinition, isDeckStyleId, RULES, type DeckList, type DeckStyleId } from "@/game";
 import { validateDeckList } from "@/game/rules/deckValidation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { DECK_DESCRIPTION_MAX, DECK_NAME_MAX } from "@/features/decks/constants";
@@ -10,7 +10,11 @@ import { ownedPartOf } from "@/features/decks/deckComposition";
 import { trashPurgeCutoff } from "@/features/decks/deckTrash";
 import { signatureCardId } from "@/features/decks/nameplateArt";
 import { getSessionUser } from "@/lib/supabase/sessionUser";
-import { readStyledUnlockedCardIds } from "@/lib/supabase/cardEditions";
+import { readOwnedEditions, readStyledUnlockedCardIds } from "@/lib/supabase/cardEditions";
+import { readDeckRareCopies, writeDeckEditions } from "@/lib/supabase/deckEditions";
+import { alignCardEditions, clampRareCopies, countsFromRareCopies, rareCopiesFrom, type DeckEditionCount } from "@/features/decks/deckEditions";
+import { isCardArtwork } from "@/game/cosmetics/artworks";
+import { isCardFinish } from "@/game/cosmetics/finishes";
 import { shownChosenArtwork, type ChosenArtwork } from "@/game/cosmetics/artworks";
 
 export interface PlayerDeckSummary {
@@ -241,6 +245,9 @@ export async function listPlayerDeckLists(): Promise<DeckList[]> {
       .order("created_at", { ascending: true }),
       readArtArtworks(supabase, userId),
     ]);
+    // Variante de chaque exemplaire : pour l'affichage (fiche, aperçus). L'entrée
+    // en partie relit et revérifie tout côté serveur (`resolveMatchDeck`).
+    const rareCopiesByDeck = await readDeckRareCopies(supabase, (decks ?? []).map((deck) => deck.id));
     if (decksError) console.error("[listPlayerDeckLists] Échec de la lecture de player_decks :", decksError.message);
     if (!decks || decks.length === 0) return [];
 
@@ -272,6 +279,7 @@ export async function listPlayerDeckLists(): Promise<DeckList[]> {
       // L'illustration CHOISIE suit le deck jusqu'à l'écran Jouer.
       artCardId: deck.art_card_id ?? null,
       artArtwork: deck.art_card_id ? shownChosenArtwork(deck.art_card_id, artworks.get(deck.id), null) : "classique",
+      ...(rareCopiesByDeck[deck.id] ? { cardEditions: alignCardEditions(cardsByDeck.get(deck.id) ?? [], rareCopiesByDeck[deck.id]!) } : {}),
     }));
   } catch (error) {
     console.error("[listPlayerDeckLists] Échec inattendu :", error);
@@ -294,6 +302,12 @@ export interface SaveDeckInput {
   artCardId?: string | null;
   /** Illustration de cette carte : Styled seulement si le joueur l'a débloquée (revérifié ici). */
   artArtwork?: ChosenArtwork;
+  /**
+   * Éditions RARES des exemplaires (une variante par copie). `undefined` ne
+   * touche à rien. Bridées ici à ce que le joueur possède et aux copies du
+   * deck (`clampRareCopies`) : le surplus redevient Classique.
+   */
+  editions?: DeckEditionCount[];
   /**
    * Résumé libre, affiché sur la fiche de deck. Vide ou absent : la fiche
    * retombe sur sa phrase générique. Le RESTE de la fiche — rôle,
@@ -319,6 +333,31 @@ async function readArtArtworks(supabase: ReturnType<typeof createSupabaseServerC
   const { data, error } = await supabase.from("player_decks").select("id, art_artwork").eq("user_id", userId);
   if (error) return new Map();
   return new Map((data ?? []).map((row) => [row.id, row.art_artwork]));
+}
+
+/** Écrit les éditions rares d'un deck, bridées à la possession et aux copies du deck. */
+async function writeCheckedEditions(
+  supabase: ReturnType<typeof createSupabaseServerClient>,
+  userId: string,
+  deckId: string,
+  cardIds: readonly string[],
+  editions: readonly DeckEditionCount[]
+): Promise<void> {
+  const lisibles = editions
+    .slice(0, 400)
+    .filter(
+      (entry) =>
+        entry &&
+        typeof entry.cardId === "string" &&
+        isCardArtwork(entry.artwork) &&
+        isCardFinish(entry.finish) &&
+        Number.isInteger(entry.quantity) &&
+        entry.quantity > 0 &&
+        entry.quantity <= RULES.DECK_SIZE_MAX
+    );
+  const owned = lisibles.length > 0 ? await readOwnedEditions(userId) : {};
+  const kept = clampRareCopies(cardIds, rareCopiesFrom(lisibles), owned);
+  await writeDeckEditions(supabase, deckId, countsFromRareCopies(kept));
 }
 
 /** Écrit l'illustration de la plaque : Styled seulement si la carte choisie l'a débloquée, Classique sinon. */
@@ -491,6 +530,7 @@ async function saveDeckUnguarded(input: SaveDeckInput): Promise<DeckActionResult
   }
 
   if (input.artCardId !== undefined) await writeArtArtwork(supabase, userId, deckId, artCardId, input.artArtwork);
+  if (Array.isArray(input.editions)) await writeCheckedEditions(supabase, userId, deckId, input.cardIds, input.editions);
 
   revalidatePath("/decks");
   revalidatePath(`/decks/${deckId}`);
@@ -650,6 +690,11 @@ async function duplicateDeckUnguarded(deckId: string): Promise<DeckActionResult>
       .insert(cards.map((card) => ({ deck_id: created.id, card_id: card.card_id, quantity: card.quantity })));
     if (cardsError) return dbFailure("decks", cardsError);
   }
+
+  // Les éditions des exemplaires suivent la copie (même tolérance).
+  const editionsByDeck = await readDeckRareCopies(supabase, [deckId]);
+  const copiedEditions = countsFromRareCopies(editionsByDeck[deckId] ?? {});
+  if (copiedEditions.length > 0) await writeDeckEditions(supabase, created.id, copiedEditions);
 
   // L'illustration Styled de la plaque suit la copie (colonne lue et écrite
   // à part : sans la migration `20261110120000`, la copie reste Classique).

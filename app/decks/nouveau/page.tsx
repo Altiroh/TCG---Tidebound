@@ -6,5 +6,5 @@ import { styledUnlockedFrom } from "@/lib/supabase/cardEditions";
 export default async function NouveauDeckPage() {
   const { ownedCardIds, ownedCounts, ownedEditions } = await getOwnedCardIds({ withEditions: true });
 
-  return <DeckEditorScreen ownedCardIds={ownedCardIds} ownedCounts={ownedCounts} styledCardIds={styledUnlockedFrom(ownedEditions)} initialDeck={null} />;
+  return <DeckEditorScreen ownedCardIds={ownedCardIds} ownedCounts={ownedCounts} ownedEditions={ownedEditions} styledCardIds={styledUnlockedFrom(ownedEditions)} initialDeck={null} />;
 }

@@ -638,7 +638,10 @@ function CardTileView({
 }: CardTileProps) {
   // En partie, l'édition que le PROPRIÉTAIRE de la carte a choisie de montrer
   // (`MatchCosmeticsProvider`) ; ailleurs, celle que l'écran passe.
-  const editionEnJeu = useCardEditionFor(instance.ownerId, instance.cardId);
+  // L'édition de CET exemplaire, quand son deck la précise ; sinon celle que
+  // son propriétaire montre pour la carte.
+  const editionMontree = useCardEditionFor(instance.ownerId, instance.cardId);
+  const editionEnJeu = instance.edition ?? editionMontree;
   const finish = finishProp ?? (editionEnJeu?.finish === "classique" ? undefined : editionEnJeu?.finish);
   const artwork = artworkProp ?? (editionEnJeu?.artwork === "classique" ? undefined : editionEnJeu?.artwork);
   // Face cachée : le dos est celui du PROPRIÉTAIRE de la carte (hors partie,

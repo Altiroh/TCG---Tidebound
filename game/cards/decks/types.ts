@@ -1,5 +1,6 @@
 import type { CardId } from "@/game/cards/types";
 import type { ChosenArtwork } from "@/game/cosmetics/artworks";
+import type { CardEdition } from "@/game/cosmetics/editions";
 
 /**
  * UNE LISTE DE DECK — la forme commune à tout ce qui se joue : les decks
@@ -30,6 +31,13 @@ export interface DeckList {
    */
   artCardId?: CardId | null;
   artArtwork?: ChosenArtwork;
+  /**
+   * Deck PERSONNEL : l'édition de chaque exemplaire, ALIGNÉE sur `cardIds`
+   * (même longueur, même ordre). Absente (decks fournis, decks anciens) :
+   * aucune édition imposée. Affichage seulement — le moteur la recopie sur
+   * l'instance (`CardInstance.edition`) sans jamais la lire.
+   */
+  cardEditions?: CardEdition[];
 }
 
 /** N exemplaires d'une carte, pour écrire une liste comme on la lit. */

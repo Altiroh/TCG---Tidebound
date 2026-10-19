@@ -14,8 +14,10 @@ function createInstanceId(): string {
 }
 
 function buildDeckInstances(deck: DeckList, ownerId: PlayerId): CardInstance[] {
-  return deck.cardIds.map((cardId) => {
+  return deck.cardIds.map((cardId, index) => {
     getCardDefinition(cardId); // valide que la carte existe
+    // Édition de CET exemplaire (deck personnel) : cosmétique, recopiée telle quelle.
+    const edition = deck.cardEditions?.[index];
     return {
       instanceId: createInstanceId(),
       cardId,
@@ -24,6 +26,7 @@ function buildDeckInstances(deck: DeckList, ownerId: PlayerId): CardInstance[] {
       modifiers: [],
       summoningSick: false,
       hasAttackedThisTurn: false,
+      ...(edition ? { edition } : {}),
     };
   });
 }

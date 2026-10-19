@@ -1,4 +1,5 @@
 import type { ArchetypeId } from "@/game/cards/archetypes";
+import type { CardEdition } from "@/game/cosmetics/editions";
 import type { EffectDefinition } from "@/game/effects/types";
 import type { TideAffinity, TideStateName } from "@/game/environment/types";
 import type { TriggerType } from "@/game/triggers/types";
@@ -1746,6 +1747,15 @@ export interface CardInstance {
    * jetons différents de chaque côté de la table.
    */
   illustrationVariant?: number;
+
+  /**
+   * ÉDITION de cet exemplaire (illustration × finition), quand son deck la
+   * précise (`DeckList.cardEditions`) : chaque copie d'un deck personnel se
+   * montre dans la variante que le joueur y a mise. Cosmétique pure — le
+   * moteur ne la lit jamais. Absente : l'écran retombe sur l'édition que le
+   * joueur montre pour la carte (`player_card_display`), sinon la Classique.
+   */
+  edition?: CardEdition;
 
   /**
    * Pour Structure/Objet avec `durationTurns` : tours restants avant

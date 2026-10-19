@@ -478,6 +478,24 @@
 .cellButton:disabled { opacity: 0.35; cursor: var(--tb-cursor); }
 .cellButton:focus-visible { outline: 2px solid var(--cb-cyan); }
 
+/* Contrôleur + mention de possession, l'un sous l'autre, centrés sous la carte. */
+.cellControls {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+/* « 1 possédée » : on en a moins que la limite de la carte. */
+.cellOwned {
+  padding: 1px 8px;
+  border-radius: var(--tb-radius-pill);
+  background: var(--panel-solid);
+  font-size: calc(max(10px, var(--tb-fs-floor, 0px)) * var(--tb-text-scale));
+  color: var(--ink-dim);
+  white-space: nowrap;
+}
+
 /* Carte qu'on ne peut pas ajouter (non possédée) : la superposition le dit sans crier. */
 .cellLocked {
   padding: 2px 9px;
@@ -640,4 +658,11 @@
   line-height: 1.25;
   color: var(--ink);
   text-align: left;
+}
+
+/* Liste du deck : combien de copies de la carte sont des variantes (✦2). */
+.rowVariants {
+  margin-left: 4px;
+  color: #e7b94a;
+  font-size: 0.85em;
 }

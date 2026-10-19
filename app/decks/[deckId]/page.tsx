@@ -3,6 +3,7 @@ import { isDeckStyleId, type DeckStyleId } from "@/game";
 import { DeckEditorScreen } from "@/features/decks/DeckEditorScreen";
 import { getOwnedCardIds } from "@/lib/supabase/ownedCards";
 import { styledUnlockedFrom } from "@/lib/supabase/cardEditions";
+import { readDeckRareCopies } from "@/lib/supabase/deckEditions";
 import { shownChosenArtwork, type ChosenArtwork } from "@/game/cosmetics/artworks";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getSessionUser } from "@/lib/supabase/sessionUser";
@@ -15,7 +16,7 @@ async function loadDeck(deckId: string) {
   // Deck, cartes et style se lisent par le même identifiant : un seul étage.
   // Les cartes et le style d'un deck introuvable (ou à la corbeille) sont
   // simplement ignorés — la RLS ne rend de toute façon que ceux du joueur.
-  const [{ data: deck }, { data: cards }, styleId, artArtwork] = await Promise.all([
+  const [{ data: deck }, { data: cards }, styleId, artArtwork, rareCopiesByDeck] = await Promise.all([
     supabase
       .from("player_decks")
       .select("id, name, ship_id, art_card_id, description")
@@ -26,6 +27,7 @@ async function loadDeck(deckId: string) {
     supabase.from("player_deck_cards").select("card_id, quantity").eq("deck_id", deckId),
     loadChosenStyle(supabase, deckId),
     loadArtArtwork(supabase, deckId),
+    readDeckRareCopies(supabase, [deckId]),
   ]);
   if (!deck) return null;
 
@@ -40,6 +42,7 @@ async function loadDeck(deckId: string) {
     artArtwork: deck.art_card_id ? shownChosenArtwork(deck.art_card_id, artArtwork, null) : ("classique" as ChosenArtwork),
     description: deck.description ?? "",
     styleId,
+    rareCopies: rareCopiesByDeck[deckId] ?? {},
   };
 }
 
@@ -65,5 +68,13 @@ export default async function DeckDetailPage({ params }: { params: { deckId: str
   const [deck, { ownedCardIds, ownedCounts, ownedEditions }] = await Promise.all([loadDeck(params.deckId), getOwnedCardIds({ withEditions: true })]);
   if (!deck) notFound();
 
-  return <DeckEditorScreen ownedCardIds={ownedCardIds} ownedCounts={ownedCounts} styledCardIds={styledUnlockedFrom(ownedEditions)} initialDeck={deck} />;
+  return (
+    <DeckEditorScreen
+      ownedCardIds={ownedCardIds}
+      ownedCounts={ownedCounts}
+      ownedEditions={ownedEditions}
+      styledCardIds={styledUnlockedFrom(ownedEditions)}
+      initialDeck={deck}
+    />
+  );
 }

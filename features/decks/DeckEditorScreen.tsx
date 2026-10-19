@@ -14,6 +14,9 @@ import { DEFAULT_SHIP_ID } from "@/features/decks/constants";
 import { countInDeck, deckRuleIssue, missingCopiesMessage, ownedPartOf } from "@/features/decks/deckComposition";
 import { DeckArtPicker } from "@/features/decks/DeckArtPicker";
 import type { ChosenArtwork } from "@/game/cosmetics/artworks";
+import { CLASSIC_EDITION, editionKey, editionLabel, editionRank, isClassicEdition, type CardEdition, type OwnedEdition } from "@/game/cosmetics/editions";
+import { copiesOfEdition, countsFromRareCopies, ownedOfEdition, type DeckRareCopies } from "@/features/decks/deckEditions";
+import type { GridEdition } from "@/features/collection/CardGrid";
 import { DeckIdentity } from "@/features/decks/DeckIdentity";
 import { DeckNamePlate } from "@/features/decks/DeckNamePlate";
 import { DeckListPanel } from "@/features/decks/DeckListPanel";
@@ -43,9 +46,14 @@ function serializeState(
   cardIds: string[],
   artCardId: string | null,
   description: string,
-  artArtwork: ChosenArtwork = "classique"
+  artArtwork: ChosenArtwork = "classique",
+  rareCopies: DeckRareCopies = {}
 ): string {
-  return `${name}|${shipId}|${artCardId ?? ""}:${artArtwork}|${description}|${[...cardIds].sort().join(",")}`;
+  const editions = countsFromRareCopies(rareCopies)
+    .map((count) => `${count.cardId}/${count.artwork}/${count.finish}×${count.quantity}`)
+    .sort()
+    .join(",");
+  return `${name}|${shipId}|${artCardId ?? ""}:${artArtwork}|${description}|${[...cardIds].sort().join(",")}|${editions}`;
 }
 
 export interface DeckEditorInitialData {
@@ -61,6 +69,8 @@ export interface DeckEditorInitialData {
   description?: string;
   /** Style choisi par le joueur, ou `null`/absent : l'en-tête le déduit alors des cartes. */
   styleId?: DeckStyleId | null;
+  /** Éditions RARES des exemplaires, par carte (une entrée par copie) ; le reste est Classique. */
+  rareCopies?: DeckRareCopies;
 }
 
 interface DeckEditorScreenProps {
@@ -69,6 +79,8 @@ interface DeckEditorScreenProps {
   ownedCounts: Record<string, number>;
   /** Cartes dont la Styled est débloquée (Styled ou Full-Art obtenue) : choisissables comme illustration du deck. */
   styledCardIds?: string[];
+  /** Éditions rares possédées, par carte : chacune a sa cellule dans la grille, ajoutable au deck. */
+  ownedEditions?: Readonly<Record<string, OwnedEdition[]>>;
   /** `null` = création d'un nouveau deck (pas encore persisté). */
   initialDeck: DeckEditorInitialData | null;
 }
@@ -110,7 +122,10 @@ export function DeckEditorScreen(props: DeckEditorScreenProps) {
   );
 }
 
-function DeckEditorScreenBody({ ownedCardIds, ownedCounts, styledCardIds = [], initialDeck }: DeckEditorScreenProps) {
+/** Référence stable : un `{}` neuf à chaque rendu relancerait les mémos des éditions. */
+const AUCUNE_EDITION: Readonly<Record<string, OwnedEdition[]>> = {};
+
+function DeckEditorScreenBody({ ownedCardIds, ownedCounts, styledCardIds = [], ownedEditions = AUCUNE_EDITION, initialDeck }: DeckEditorScreenProps) {
   const router = useRouter();
   const [deckId, setDeckId] = useState<string | null>(initialDeck?.id ?? null);
   const [name, setName] = useState(initialDeck?.name ?? "Nouveau deck");
@@ -120,19 +135,23 @@ function DeckEditorScreenBody({ ownedCardIds, ownedCounts, styledCardIds = [], i
   /** Illustration choisie, ou `null` : la carte la plus chère du deck sert alors. */
   const [artCardId, setArtCardId] = useState<string | null>(initialDeck?.artCardId ?? null);
   const [artArtwork, setArtArtwork] = useState<ChosenArtwork>(initialDeck?.artArtwork ?? "classique");
+  /** Éditions RARES des exemplaires du deck (une variante par copie) ; les autres copies sont Classiques. */
+  const [rareCopies, setRareCopies] = useState<Record<string, CardEdition[]>>(() => ({ ...(initialDeck?.rareCopies ?? {}) }) as Record<string, CardEdition[]>);
   // Vide par défaut : la fiche retombe alors sur sa phrase générique, et le
   // reste de ce qu'elle montre se déduit des cartes.
   const [description, setDescription] = useState(initialDeck?.description ?? "");
   const [artPickerOpen, setArtPickerOpen] = useState(false);
   /** Filtre « déjà dans le deck » (retour du 12/10/2026) : la grille ne montre que les cartes du deck en cours. */
   const [inDeckOnly, setInDeckOnly] = useState(false);
-  const [savedSnapshot, setSavedSnapshot] = useState(() => serializeState(name, shipId, cardIds, artCardId, description, artArtwork));
+  const [savedSnapshot, setSavedSnapshot] = useState(() => serializeState(name, shipId, cardIds, artCardId, description, artArtwork, rareCopies));
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [savedFlash, setSavedFlash] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [pendingLeave, setPendingLeave] = useState<PendingLeave>(null);
   const [detailCardId, setDetailCardId] = useState<string | null>(null);
+  /** L'édition de la cellule dont la fiche est ouverte : la fiche montre CETTE variante. */
+  const [detailEdition, setDetailEdition] = useState<CardEdition | undefined>(undefined);
   const [deckOpen, setDeckOpen] = useState(false);
   const savedFlashTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -149,7 +168,7 @@ function DeckEditorScreenBody({ ownedCardIds, ownedCounts, styledCardIds = [], i
     [inDeckOnly, cardBrowser.cards, inDeck]
   );
 
-  const isDirty = serializeState(name, shipId, cardIds, artCardId, description, artArtwork) !== savedSnapshot;
+  const isDirty = serializeState(name, shipId, cardIds, artCardId, description, artArtwork, rareCopies) !== savedSnapshot;
   const issue = useMemo(() => {
     const rule = deckRuleIssue(cardIds, shipId, name);
     if (rule || !isSignedIn) return rule;
@@ -167,60 +186,102 @@ function DeckEditorScreenBody({ ownedCardIds, ownedCounts, styledCardIds = [], i
     [owned, ownedCounts]
   );
 
-  // Trois garde-fous, tous tirés des règles du projet : l'exemplaire est
-  // possédé, la limite de la carte n'est pas atteinte, et le deck n'a pas
-  // déjà sa taille maximale — au-delà, un exemplaire de plus ne pourrait
-  // que rendre le deck injouable.
+  // Garde-fous, tous tirés des règles du projet : l'exemplaire est possédé,
+  // la limite de la carte (toutes éditions confondues) n'est pas atteinte, le
+  // deck n'a pas déjà sa taille maximale — et une édition rare n'entre pas
+  // plus de fois qu'on n'en possède (`deckEditions`).
   const canAdd = useCallback(
-    (def: CardDefinition) =>
+    (def: CardDefinition, edition: CardEdition = CLASSIC_EDITION) =>
       (owned ? owned.has(def.id) : true) &&
       countInDeck(cardIds, def.id) < playableCopies(def) &&
-      cardIds.length < RULES.DECK_SIZE_MAX,
-    [owned, cardIds, playableCopies]
+      cardIds.length < RULES.DECK_SIZE_MAX &&
+      copiesOfEdition(cardIds, rareCopies, def.id, edition) < ownedOfEdition(ownedEditions, def.id, edition),
+    [owned, cardIds, playableCopies, rareCopies, ownedEditions]
   );
 
   const addCard = useCallback(
-    (cardId: string) => {
+    (cardId: string, edition: CardEdition = CLASSIC_EDITION) => {
       let def: CardDefinition;
       try {
         def = getCardDefinition(cardId);
       } catch {
         return;
       }
-      if (!canAdd(def)) return;
+      if (!canAdd(def, edition)) return;
       // Le son du deck vit ICI, au seul point où une carte entre (clic de la
       // grille, bouton +, glisser-déposer) : il remplace le clic de bouton,
       // et un ajout refusé (deck plein, exemplaires épuisés) reste muet.
       playDeckAddCard();
       setCardIds((current) => [...current, cardId]);
+      if (!isClassicEdition(edition)) setRareCopies((current) => ({ ...current, [cardId]: [...(current[cardId] ?? []), edition] }));
     },
     [canAdd]
   );
 
+  /**
+   * Retire un exemplaire. Avec une édition (bouton − d'une cellule) : une
+   * copie de CETTE édition. Sans (croix de la liste) : une Classique d'abord,
+   * sinon l'édition rare la moins rare.
+   */
   const removeCard = useCallback(
-    (cardId: string) => {
-      // Même règle que `addCard` : le son au point unique de sortie (bouton −
-      // de la grille, croix de la liste), et seulement si la carte y était.
+    (cardId: string, edition?: CardEdition) => {
+      // Même règle que `addCard` : le son au point unique de sortie, et
+      // seulement si un exemplaire de cette édition était dans le deck.
       if (!cardIds.includes(cardId)) return;
+      const rares = rareCopies[cardId] ?? [];
+      const classiques = countInDeck(cardIds, cardId) - rares.length;
+      let rareToRemove: CardEdition | null = null;
+      if (edition && !isClassicEdition(edition)) {
+        rareToRemove = rares.find((rare) => editionKey(rare) === editionKey(edition)) ?? null;
+        if (!rareToRemove) return;
+      } else if (edition && classiques <= 0) {
+        return;
+      } else if (!edition && classiques <= 0) {
+        rareToRemove = [...rares].sort((a, b) => editionRank(a) - editionRank(b))[0] ?? null;
+      }
       playDeckRemoveCard();
       setCardIds((current) => {
         const index = current.lastIndexOf(cardId);
         return index === -1 ? current : current.filter((_, i) => i !== index);
       });
+      if (rareToRemove) {
+        const key = editionKey(rareToRemove);
+        setRareCopies((current) => {
+          const list = [...(current[cardId] ?? [])];
+          const index = list.findIndex((rare) => editionKey(rare) === key);
+          if (index !== -1) list.splice(index, 1);
+          const next = { ...current };
+          if (list.length > 0) next[cardId] = list;
+          else delete next[cardId];
+          return next;
+        });
+      }
     },
-    [cardIds]
+    [cardIds, rareCopies]
+  );
+
+  /**
+   * Une cellule par édition possédée : la Classique, puis chaque variante
+   * rare, de la moins à la plus rare — chacune ajoutable au deck.
+   */
+  const editionsFor = useCallback(
+    (def: CardDefinition): GridEdition[] => {
+      const rares = (ownedEditions[def.id] ?? []).filter((edition) => edition.quantity > 0).sort((a, b) => editionRank(a) - editionRank(b));
+      return [CLASSIC_EDITION, ...rares.map((edition) => ({ artwork: edition.artwork, finish: edition.finish }))];
+    },
+    [ownedEditions]
   );
 
   async function handleSave(): Promise<boolean> {
     setIsSaving(true);
     setSaveError(null);
-    const result = await saveDeck({ id: deckId, name, shipId, cardIds, artCardId, artArtwork, description });
+    const result = await saveDeck({ id: deckId, name, shipId, cardIds, artCardId, artArtwork, description, editions: countsFromRareCopies(rareCopies) });
     setIsSaving(false);
     if (!result.ok || !result.id) {
       setSaveError(result.error ?? "Échec de la sauvegarde.");
       return false;
     }
-    setSavedSnapshot(serializeState(name, shipId, cardIds, artCardId, description, artArtwork));
+    setSavedSnapshot(serializeState(name, shipId, cardIds, artCardId, description, artArtwork, rareCopies));
     if (!deckId) {
       setDeckId(result.id);
       router.replace(`/decks/${result.id}`);
@@ -236,6 +297,7 @@ function DeckEditorScreenBody({ ownedCardIds, ownedCounts, styledCardIds = [], i
     setName("Nouveau deck");
     setShipId(DEFAULT_SHIP_ID);
     setCardIds([]);
+    setRareCopies({});
     setArtCardId(null);
     setDescription("");
     setSavedSnapshot(serializeState("Nouveau deck", DEFAULT_SHIP_ID, [], null, ""));
@@ -318,65 +380,83 @@ function DeckEditorScreenBody({ ownedCardIds, ownedCounts, styledCardIds = [], i
   }, [isDirty]);
 
   const renderCellExtras = useCallback(
-    (def: CardDefinition) => {
-      const inDeck = countInDeck(cardIds, def.id);
-      const max = playableCopies(def);
+    (def: CardDefinition, cellEdition?: CardEdition) => {
+      const edition = cellEdition ?? CLASSIC_EDITION;
+      const total = countInDeck(cardIds, def.id);
+      const ici = copiesOfEdition(cardIds, rareCopies, def.id, edition);
+      // La LIMITE DE LA CARTE (toutes éditions confondues), jamais rabotée par
+      // la collection : « 2 » pour le Gardien, même si on n'en a qu'un — ce
+      // manque se dit à part (« 1 possédée »).
+      const limite = getMaxCopies(def);
+      const possedees = isClassicEdition(edition) ? (ownedCounts[def.id] ?? 0) : ownedOfEdition(ownedEditions, def.id, edition);
       const locked = owned ? !owned.has(def.id) : false;
 
       if (locked) return <span className={styles.cellLocked}>Non possédée</span>;
 
+      const variante = isClassicEdition(edition) ? "" : ` (${editionLabel(edition)})`;
       return (
-        <span className={styles.cellBar}>
-          <button
-            type="button"
-            className={styles.cellButton}
-            disabled={inDeck === 0}
-            onClick={(event) => {
-              event.stopPropagation();
-              removeCard(def.id);
-            }}
-            aria-label={`Retirer un exemplaire de ${def.name}`}
-          >
-            <svg viewBox="0 0 24 24" fill="none" width="12" height="12" aria-hidden>
-              <path d="M6 12h12" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" />
-            </svg>
-          </button>
-          <span className={`${styles.cellQty} ${inDeck >= max ? styles.cellQtyFull : ""}`}>
-            {inDeck}
-            <span className={styles.cellQtyMax}>/{max}</span>
+        <span className={styles.cellControls}>
+          <span className={styles.cellBar}>
+            <button
+              type="button"
+              className={styles.cellButton}
+              disabled={ici === 0}
+              onClick={(event) => {
+                event.stopPropagation();
+                removeCard(def.id, edition);
+              }}
+              aria-label={`Retirer un exemplaire de ${def.name}${variante}`}
+            >
+              <svg viewBox="0 0 24 24" fill="none" width="12" height="12" aria-hidden>
+                <path d="M6 12h12" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" />
+              </svg>
+            </button>
+            <span
+              className={`${styles.cellQty} ${total >= limite ? styles.cellQtyFull : ""}`}
+              title={`${ici} de cette édition · ${total} sur ${limite} au plus pour cette carte`}
+            >
+              {ici}
+              <span className={styles.cellQtyMax}>/{limite}</span>
+            </span>
+            <button
+              type="button"
+              className={styles.cellButton}
+              disabled={!canAdd(def, edition)}
+              onClick={(event) => {
+                event.stopPropagation();
+                addCard(def.id, edition);
+              }}
+              aria-label={`Ajouter un exemplaire de ${def.name}${variante}`}
+            >
+              <svg viewBox="0 0 24 24" fill="none" width="12" height="12" aria-hidden>
+                <path d="M12 6v12M6 12h12" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              className={styles.cellButton}
+              onClick={(event) => {
+                event.stopPropagation();
+                setDetailCardId(def.id);
+                setDetailEdition(isClassicEdition(edition) ? undefined : edition);
+              }}
+              aria-label={`Voir ${def.name}${variante}`}
+            >
+              <svg viewBox="0 0 24 24" fill="none" width="12" height="12" aria-hidden>
+                <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth={1.8} />
+                <path d="M12 11v5M12 8h.01" stroke="currentColor" strokeWidth={2} strokeLinecap="round" />
+              </svg>
+            </button>
           </span>
-          <button
-            type="button"
-            className={styles.cellButton}
-            disabled={inDeck >= max || cardIds.length >= RULES.DECK_SIZE_MAX}
-            onClick={(event) => {
-              event.stopPropagation();
-              addCard(def.id);
-            }}
-            aria-label={`Ajouter un exemplaire de ${def.name}`}
-          >
-            <svg viewBox="0 0 24 24" fill="none" width="12" height="12" aria-hidden>
-              <path d="M12 6v12M6 12h12" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" />
-            </svg>
-          </button>
-          <button
-            type="button"
-            className={styles.cellButton}
-            onClick={(event) => {
-              event.stopPropagation();
-              setDetailCardId(def.id);
-            }}
-            aria-label={`Voir ${def.name}`}
-          >
-            <svg viewBox="0 0 24 24" fill="none" width="12" height="12" aria-hidden>
-              <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth={1.8} />
-              <path d="M12 11v5M12 8h.01" stroke="currentColor" strokeWidth={2} strokeLinecap="round" />
-            </svg>
-          </button>
+          {owned && possedees < limite && (
+            <span className={styles.cellOwned}>
+              {possedees} possédée{possedees > 1 ? "s" : ""}
+            </span>
+          )}
         </span>
       );
     },
-    [cardIds, owned, addCard, removeCard, playableCopies]
+    [cardIds, rareCopies, owned, ownedCounts, ownedEditions, addCard, removeCard, canAdd]
   );
 
   return (
@@ -432,6 +512,7 @@ function DeckEditorScreenBody({ ownedCardIds, ownedCounts, styledCardIds = [], i
           <CardGrid
             cards={shownCards}
             onCardClick={addCard}
+            editionsFor={isSignedIn ? editionsFor : undefined}
             hasAnyCards={!isSignedIn || ownedCardIds.length > 0}
             owned={owned}
             cellExtras={renderCellExtras}
@@ -442,6 +523,7 @@ function DeckEditorScreenBody({ ownedCardIds, ownedCounts, styledCardIds = [], i
         <aside className={`${game.panel} ${styles.deckPanel} ${book.frame} ${book.right}`} aria-label="Deck en construction">
           <DeckListPanel
             cardIds={cardIds}
+            rareCopies={rareCopies}
             namePlate={
               <DeckNamePlate
                 name={name}
@@ -487,7 +569,13 @@ function DeckEditorScreenBody({ ownedCardIds, ownedCounts, styledCardIds = [], i
       {detailCardId && (
         <CardDetailModal
           cardId={detailCardId}
-          onClose={() => setDetailCardId(null)}
+          // Ouverte depuis une cellule de variante : la fiche montre CETTE variante (possédée, donc nette).
+          initialEdition={detailEdition}
+          artworkOwned={detailEdition !== undefined}
+          onClose={() => {
+            setDetailCardId(null);
+            setDetailEdition(undefined);
+          }}
           onPrevious={cardBrowser.cards.length > 1 ? () => setDetailCardId((id) => (id ? cardBrowser.relativeCardId(id, -1) : id)) : undefined}
           onNext={cardBrowser.cards.length > 1 ? () => setDetailCardId((id) => (id ? cardBrowser.relativeCardId(id, 1) : id)) : undefined}
           onShowCard={setDetailCardId}
