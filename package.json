@@ -5,6 +5,7 @@
   "description": "Tidebound - TCG multijoueur en ligne (Next.js / Supabase)",
   "scripts": {
     "dev": "next dev",
+    "prebuild": "node scripts/assetVersions.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",

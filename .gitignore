@@ -39,3 +39,6 @@ supabase/.temp/
 
 # Maquettes de référence déposées pour le travail (PNG lourds) : jamais commitées ni déployées
 public/references/
+
+# empreintes des assets, refaites à chaque build (scripts/assetVersions.mjs)
+/public/asset-versions.json
