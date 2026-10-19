@@ -1,4 +1,4 @@
-import { hasAnyValidEquipTarget, type CardDefinition, type CardInstance } from "@/game";
+import { hasAnyValidEquipTarget, withDieBranchEffects, type CardDefinition, type CardInstance } from "@/game";
 
 /**
  * Une carte jouée demande-t-elle une DÉSIGNATION de cible ? Cas général :
@@ -13,7 +13,8 @@ import { hasAnyValidEquipTarget, type CardDefinition, type CardInstance } from "
  */
 export function needsPlayTarget(def: CardDefinition, board: CardInstance[]): boolean {
   // L'effet d'un Objet joué est son effet de Bris (`onBreakEffects`).
-  const effects = (def.type === "objet" ? def.onBreakEffects : def.onPlayEffects) ?? [];
+  // Branches de dé comprises : la cible de Rita n'existe que dans les paliers de son jet.
+  const effects = withDieBranchEffects((def.type === "objet" ? def.onBreakEffects : def.onPlayEffects) ?? []);
   if (!effects.some((e) => e.target.kind === "chosenUnit")) return false;
   const attachEffect = effects.some((e) => e.type === "attachEquipment");
   if (attachEffect) return hasAnyValidEquipTarget(def, board);

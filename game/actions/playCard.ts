@@ -8,7 +8,7 @@ import { canBeEquipTarget, getCardDefinition, hasAnyValidEquipTarget } from "@/g
 import { isLandeCard, isPermanentCard, isVisibleDuringTide, UNIT_CARD_TYPES, type CardDefinition } from "@/game/cards/types";
 import { placeLande, recordUnitArrivals, unitArrivalRefusal } from "@/game/rules/lande";
 import { validateGraveyardChoice, withSingleGraveyardChoice } from "@/game/effects/graveyardChoices";
-import { isEligibleChosenUnit } from "@/game/effects/chosenTargets";
+import { isEligibleChosenUnit, withDieBranchEffects } from "@/game/effects/chosenTargets";
 import type { EffectContext } from "@/game/effects/resolveEffect";
 import { discountApplies, resolveEffect } from "@/game/effects/resolveEffect";
 import { resolveEffectSequence } from "@/game/effects/resolveSequence";
@@ -320,7 +320,8 @@ function validate(state: GameState, action: PlayCardAction) {
 
   const player = state.players.find((p) => p.id === action.playerId);
   const def = getCardDefinition(player!.hand.find((c) => c.instanceId === action.instanceId)!.cardId);
-  const effets = playedEffects(def);
+  // Branches de dé comprises : une cible désignée peut ne vivre que là (`withDieBranchEffects`).
+  const effets = withDieBranchEffects(playedEffects(def));
   const attachEffect = effets.find((e) => e.type === "attachEquipment");
   const needsTarget = effets.some((e) => e.target.kind === "chosenUnit");
 

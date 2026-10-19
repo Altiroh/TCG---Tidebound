@@ -3,6 +3,7 @@ import {
   eligibleChosenUnits,
   getCardDefinition,
   hasResistance,
+  withDieBranchEffects,
   type EffectDefinition,
   type GameState,
   type PlayerId,
@@ -36,7 +37,7 @@ function chosenAmong(
   sourceInstanceId: string,
   triggerSourceInstanceId?: string
 ): Set<string> | null {
-  const chosen = effects.filter((e) => e.target.kind === "chosenUnit");
+  const chosen = withDieBranchEffects(effects).filter((e) => e.target.kind === "chosenUnit");
   if (chosen.length === 0) return null;
   const sets = chosen.map(
     (e) => new Set(eligibleChosenUnits(state, e.target, controllerId, sourceInstanceId, triggerSourceInstanceId).map((c) => c.unit.instanceId))

@@ -153,6 +153,17 @@ export function isEligibleChosenUnit(
 }
 
 /**
+ * Les effets d'une liste ET ceux de ses branches de dé (`rollDie.dieBranches`),
+ * à toute profondeur. Une unité DÉSIGNÉE peut ne vivre que dans une branche
+ * (Rita, Sorcière sous contrat : « une unité adverse perd -1/-1, -2/-2 sur 5+… »,
+ * chaque palier est une branche) : la détection de cible doit la voir, sinon
+ * la carte se pose sans qu'on demande la cible et l'effet tombe dans le vide.
+ */
+export function withDieBranchEffects(effects: readonly EffectDefinition[]): EffectDefinition[] {
+  return effects.flatMap((effect) => [effect, ...withDieBranchEffects((effect.dieBranches ?? []).flatMap((branch) => branch.effects))]);
+}
+
+/**
  * Cette liste d'effets réclame-t-elle une cible désignée, et existe-t-il
  * au moins un choix légal pour CHAQUE effet qui en demande une ? Répond
  * `needsTarget: false` quand aucun effet ne cible `chosenUnit`, et
@@ -166,7 +177,7 @@ export function chosenTargetRequirement(
   sourceInstanceId?: string,
   triggerSourceInstanceId?: string
 ): { needsTarget: boolean; hasEligibleTarget: boolean } {
-  const targeting = effects.filter((e) => e.target.kind === "chosenUnit");
+  const targeting = withDieBranchEffects(effects).filter((e) => e.target.kind === "chosenUnit");
   if (targeting.length === 0) return { needsTarget: false, hasEligibleTarget: true };
   return {
     needsTarget: true,
@@ -178,7 +189,7 @@ export function chosenTargetRequirement(
 
 /** Filtre commun aux effets ciblés d'une capacité — pour l'UI, qui n'affiche qu'une consigne. `undefined` si aucun effet n'est filtré. */
 export function chosenTargetFilter(effects: readonly EffectDefinition[]): ChosenUnitFilter | undefined {
-  for (const effect of effects) {
+  for (const effect of withDieBranchEffects(effects)) {
     const filter = filterOf(effect.target);
     if (filter) return filter;
   }

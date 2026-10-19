@@ -159,7 +159,7 @@ export type { EffectOrigin, GameEvent, GameEventType } from "@/game/events/types
 export { deckLookRefusal, deckLookSelectionFits, deckLookTakeLimit, isDeckLookTakeable, type DeckLookRefusal } from "@/game/rules/deckLook";
 
 export type { ChosenUnitFilter, EffectDefinition, EffectType, TargetSelector } from "@/game/effects/types";
-export { chosenTargetFilter, eligibleBreakTargets, eligibleChosenUnits } from "@/game/effects/chosenTargets";
+export { chosenTargetFilter, eligibleBreakTargets, eligibleChosenUnits, withDieBranchEffects } from "@/game/effects/chosenTargets";
 export { canActivateAbility } from "@/game/actions/activateAbility";
 export { ARCHETYPE_LABELS } from "@/game/cards/archetypes";
 export { MAX_SUBTYPES, SUBTYPE_FAMILIES, SUBTYPE_LABELS, hasSubtype, displayedSubtypes, subtypeLabel, subtypesOf } from "@/game/cards/subtypes";

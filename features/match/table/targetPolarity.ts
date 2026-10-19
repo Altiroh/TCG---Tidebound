@@ -1,4 +1,4 @@
-import { getCardDefinition, type EffectDefinition } from "@/game";
+import { getCardDefinition, withDieBranchEffects, type EffectDefinition } from "@/game";
 
 /**
  * SENS d'un ciblage, pour sa couleur (décision du 05/10/2026) : ROUGE pour
@@ -35,8 +35,9 @@ function isHostile(effect: EffectDefinition): boolean {
  * trop qu'un bleu trompeur.
  */
 export function effectsPolarity(effects: readonly EffectDefinition[]): TargetPolarity {
-  const chosen = effects.filter((effect) => effect.target.kind === "chosenUnit");
-  return (chosen.length > 0 ? chosen : effects).some(isHostile) ? "hostile" : "friendly";
+  const all = withDieBranchEffects(effects);
+  const chosen = all.filter((effect) => effect.target.kind === "chosenUnit");
+  return (chosen.length > 0 ? chosen : all).some(isHostile) ? "hostile" : "friendly";
 }
 
 /**

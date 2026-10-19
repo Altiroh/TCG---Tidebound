@@ -60,6 +60,11 @@ export function isArrivalCost(effect: EffectDefinition): boolean {
  */
 export function asksDecision(effect: EffectDefinition): boolean {
   if (effect.target.kind === "chosenUnit") return true;
+  // Une décision peut ne vivre que dans une BRANCHE de dé (Rita, Sorcière sous
+  // contrat : chaque palier vise l'unité désignée). Sans cette lecture, la
+  // carte restait en `onPlayEffects` imposé, se posait sans qu'on demande la
+  // cible, et son effet tombait dans le vide.
+  if ((effect.dieBranches ?? []).some((branch) => branch.effects.some(asksDecision))) return true;
   return effect.type === "moveGraveyardCardToHand" || (effect.type === "summon" && effect.cardIdFrom === "chosenGraveyardCard");
 }
 

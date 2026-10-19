@@ -19,6 +19,7 @@ import {
   type PlayerAction,
   type PlayerId,
   type PlayerState,
+  withDieBranchEffects,
 } from "@/game";
 import { needsPlayTarget } from "@/features/match/needsPlayTarget";
 import { arrivalModeFor, type TableTargeting } from "@/features/match/table/legalTargets";
@@ -514,7 +515,7 @@ export function useBoardInteraction({
       return;
     }
     const spec = getCardDefinition(card.cardId).activatableOncePerTurn;
-    if (spec?.effects.some((effect) => effect.target.kind === "chosenUnit")) {
+    if (spec && withDieBranchEffects(spec.effects).some((effect) => effect.target.kind === "chosenUnit")) {
       setSelection({ kind: "ability", instanceId });
       return;
     }
