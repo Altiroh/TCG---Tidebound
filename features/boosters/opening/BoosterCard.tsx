@@ -99,9 +99,14 @@ export const BoosterCard = memo(function BoosterCard({
     else if (card.cardId) onInspect(card.cardId);
   }
 
-  /** Survol à la souris : la carte se retourne d'elle-même. Au doigt, c'est le toucher qui le fait. */
+  /**
+   * Survol à la souris : la carte se retourne d'elle-même. Au doigt, c'est le
+   * toucher qui le fait. Une ÉDITION RARE (finition, illustration secrète)
+   * ne se retourne qu'au clic : la souris qui traversait la rangée la
+   * retournait avant que le joueur y arrive.
+   */
   function handlePointerEnter(event: PointerEvent<HTMLDivElement>) {
-    if (interactive && event.pointerType === "mouse") onReveal(index);
+    if (interactive && event.pointerType === "mouse" && !exceptionnelle) onReveal(index);
   }
 
   /**

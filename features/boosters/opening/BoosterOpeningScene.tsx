@@ -505,9 +505,12 @@ export function BoosterOpeningScene({ cards: tirage, visual, origin = null, clos
       if (!target) return;
       const index = Number(target.dataset.cardIndex);
       if (Number.isNaN(index)) return;
+      // Le doigt qui GLISSE ne retourne pas une édition rare : il faut la toucher (comme le clic à la souris).
+      const card = cards[index];
+      if (event.type === "pointermove" && card && (card.finish || isSecretArtwork(card))) return;
       handleReveal(index);
     },
-    [handleReveal],
+    [handleReveal, cards],
   );
 
   /**
