@@ -6,8 +6,7 @@ import { cardSetMark } from "@/game/boosters";
 import type { CardFinish } from "@/game/cosmetics/finishes";
 import { isFullArt, type CardArtwork } from "@/game/cosmetics/artworks";
 import { cardArtworkUrl } from "@/features/decks/cardArtUrl";
-import { useDevMode } from "@/features/admin/useDevMode";
-import { HIDDEN_ARTWORK_FILTER, isArtworkHidden } from "@/features/collection/hiddenArtwork";
+import { HIDDEN_ARTWORK_FILTER } from "@/features/collection/hiddenArtwork";
 import { useLayoutEffect, useRef } from "react";
 import { useDebordPleinCadre } from "@/features/match/useDebordPleinCadre";
 import { useImageOk } from "@/features/match/useImageOk";
@@ -69,6 +68,8 @@ export interface NouveauCadreFaceProps {
    * ne pose plus que Puissance et Résistance. Défaut : Classique.
    */
   illustration?: CardArtwork;
+  /** Illustration pas encore sortie, ni obtenue ni vue en mode Dev (`isArtworkHidden`) : floutée, sans stats. */
+  illustrationCachee?: boolean;
 }
 
 /** Enveloppe à largeur fixe de la page de test : la face y compose tout en `cqw`. */
@@ -91,13 +92,15 @@ export function NouveauCadreFace({
   qualifications,
   finition = "classique",
   illustration: oeuvre = "classique",
+  illustrationCachee = false,
 }: NouveauCadreFaceProps) {
   const illustration = cardArtworkUrl(def.id, oeuvre);
   // Le texte d'une Full-Art est dans l'image : le réécrire le doublerait.
   const textesPeints = isFullArt(oeuvre);
+  // Cachée (pas encore sortie) : l'image floutée SEULE, sans liseré, textes ni
+  // stats — sinon une Styled se lisait en entier sous son flou.
+  const imageSeule = textesPeints || illustrationCachee;
   const illustrationOk = useImageOk(illustration);
-  // Styled et Full-Art pas encore sorties : floutées hors mode Dev.
-  const illustrationCachee = isArtworkHidden(oeuvre, useDevMode());
   const hasPower = def.attack !== undefined;
   const hasResistance = def.health !== undefined;
   const abyssale = isAbyssalVariant(def);
@@ -130,16 +133,18 @@ export function NouveauCadreFace({
         containerType: "inline-size",
         // Full-Art : PAS de liseré (retour du 18/10/2026) — l'image occupe toute
         // la silhouette de la carte, celle que dessinerait le liseré.
-        ["--illus-inset" as string]: textesPeints ? calage.silhouette : calage.illustration,
-        ["--illus-radius" as string]: textesPeints ? calage.rayonSilhouette : calage.rayon,
+        ["--illus-inset" as string]: imageSeule ? calage.silhouette : calage.illustration,
+        ["--illus-radius" as string]: imageSeule ? calage.rayonSilhouette : calage.rayon,
       }}
     >
       {/* Couche 1 : l'illustration, plein cadre, coupée à l'arrondi du liseré. */}
       <div
         className="absolute overflow-hidden bg-slate-900"
-        style={{ inset: "var(--illus-inset)", borderRadius: "var(--illus-radius)", filter: illustrationCachee ? HIDDEN_ARTWORK_FILTER : undefined }}
+        style={{ inset: "var(--illus-inset)", borderRadius: "var(--illus-radius)" }}
         data-illustration-cachee={illustrationCachee || undefined}
       >
+        {/* Le flou d'une illustration cachée est posé ICI, sous la découpe : il ne bave pas hors de la carte. */}
+        <div className="absolute inset-0" style={illustrationCachee ? { filter: HIDDEN_ARTWORK_FILTER, transform: "scale(1.08)" } : undefined}>
         {illustrationOk ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={illustration} alt="" className={`h-full w-full object-cover ${FILTRE_FINITION[finition]}`} draggable={false} />
@@ -150,12 +155,13 @@ export function NouveauCadreFace({
         {finition === "foil" && <div className={styles.foilReflet} aria-hidden />}
         {finition === "star-foil" && <EffetStarFoil />}
         {finition === "prismatic" && <EffetPrismatic />}
+        </div>
         {/* Pas de voile continu (maquette du 04/10/2026) : chaque texte porte sa
             propre ombre floue (`HALO`), l'illustration reste lisible partout ailleurs. */}
       </div>
 
       {/* Couche 2 : le liseré — jamais sur une Full-Art, dont l'image est le cadre. */}
-      {!textesPeints && (
+      {!imageSeule && (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={`${ASSETS}/${cadre}.webp`}
@@ -190,9 +196,28 @@ export function NouveauCadreFace({
       )}
 
       {/* Couche 4 : l'effet de rareté, sous les textes. */}
-      {abyssale ? <EffetAbyssal /> : legendaire ? <EffetLegendaire /> : null}
+      {illustrationCachee ? null : abyssale ? <EffetAbyssal /> : legendaire ? <EffetLegendaire /> : null}
 
-      {!textesPeints && (
+      {/* Cachée : son sigle, discret, au milieu du flou — « S » (Styled), « FA » (Full-Art). */}
+      {illustrationCachee && (
+        <span
+          data-illustration-sigle
+          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 select-none rounded-full font-semibold uppercase leading-none text-white/85 [font-family:var(--font-card-title)]"
+          style={{
+            fontSize: "9cqw",
+            letterSpacing: "0.12em",
+            padding: "3.5cqw 5cqw 3.5cqw 6.2cqw",
+            border: "0.5cqw solid rgba(255,255,255,0.45)",
+            background: "rgba(8,12,20,0.35)",
+            textShadow: HALO_TEXTE,
+          }}
+          aria-label={textesPeints ? "Full-Art pas encore sortie" : "Styled pas encore sortie"}
+        >
+          {textesPeints ? "FA" : "S"}
+        </span>
+      )}
+
+      {!imageSeule && (
       <>
       {/* Coût + Raison. */}
       <div
@@ -325,7 +350,7 @@ export function NouveauCadreFace({
       )}
 
       {/* Stats : une ligne en bas à droite, la Puissance à gauche de la Résistance. */}
-      {(hasPower || hasResistance) && (
+      {(hasPower || hasResistance) && !illustrationCachee && (
         <div
           className="absolute flex items-center font-bold leading-none text-white [font-family:var(--font-card-title)]"
           style={{

@@ -123,6 +123,12 @@ interface CardTileProps {
    * stats elle-même, remplace une Full-Art par la Styled (`boardTileArtwork`).
    */
   artwork?: CardArtwork;
+  /**
+   * Le joueur POSSÈDE cette illustration : Styled et Full-Art, floutées tant
+   * qu'elles ne sont pas sorties (`isArtworkHidden`), s'affichent alors
+   * nettes. En partie, l'édition choisie par son propriétaire l'est toujours.
+   */
+  artworkOwned?: boolean;
 }
 
 /**
@@ -628,6 +634,7 @@ function CardTileView({
   attacksLeft,
   finish: finishProp,
   artwork: artworkProp,
+  artworkOwned = false,
 }: CardTileProps) {
   // En partie, l'édition que le PROPRIÉTAIRE de la carte a choisie de montrer
   // (`MatchCosmeticsProvider`) ; ailleurs, celle que l'écran passe.
@@ -702,8 +709,11 @@ function CardTileView({
   // telle quelle ; la tuile de plateau écarte la Full-Art (texte peint).
   const shownArtwork = isBoardTile ? boardTileArtwork(def.id, artwork) : (artwork ?? "classique");
   const illustrationUrl = getIllustrationUrl(def, instance, shownArtwork);
-  // Styled et Full-Art pas encore sorties : floutées hors mode Dev (`hiddenArtwork`).
-  const illustrationStyle = isArtworkHidden(def.token ? undefined : shownArtwork, useDevMode()) ? { filter: HIDDEN_ARTWORK_FILTER } : undefined;
+  // Styled et Full-Art pas encore sorties : floutées, sans stats, hors mode Dev
+  // et tant qu'on ne les possède pas (`hiddenArtwork`). En partie, l'édition
+  // vient de l'exemplaire du propriétaire : obtenue, donc nette.
+  const illustrationCachee = isArtworkHidden(def.token ? undefined : shownArtwork, useDevMode(), artworkOwned || artworkProp === undefined);
+  const illustrationStyle = illustrationCachee ? { filter: HIDDEN_ARTWORK_FILTER, transform: "scale(1.08)" } : undefined;
   // Le débord n'existe que pour les Abyssales (`public/assets/cards/README.md`) :
   // inutile d'aller le chercher pour toutes les autres cartes.
   const debordUrl = isAbyssal && shownArtwork === "classique" ? getDebordUrl(instance.cardId) : null;
@@ -921,7 +931,7 @@ function CardTileView({
                 </div>
               )}
 
-              {(isUnit || hasResistance) && (
+              {(isUnit || hasResistance) && !illustrationCachee && (
                 <div
                   data-tile={isToken ? "token-stats" : "stats"}
                   className="flex items-center justify-evenly font-bold leading-none [font-family:var(--font-card-title)]"
@@ -980,6 +990,7 @@ function CardTileView({
             qualifications={qualifications}
             finition={finish}
             illustration={artwork}
+            illustrationCachee={illustrationCachee}
           />
         ) : (
         <>
@@ -1148,7 +1159,7 @@ function CardTileView({
             </div>
           )}
 
-          {isUnit && (
+          {isUnit && !illustrationCachee && (
             <div
               // Repère des pastilles de gain (`EffectFxLayer`) : elles viennent se ranger ICI.
               data-stat="attack"
@@ -1160,7 +1171,7 @@ function CardTileView({
               {stats.attack}
             </div>
           )}
-          {hasResistance && (
+          {hasResistance && !illustrationCachee && (
             <div
               data-stat="resistance"
               className={`flex items-center font-bold [font-family:var(--font-card-title)] ${

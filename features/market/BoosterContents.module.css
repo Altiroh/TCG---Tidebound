@@ -249,6 +249,39 @@
   border-bottom: 2px solid var(--rarity-color);
 }
 
+/* Illustration pas encore sortie : floutée DANS sa vignette, son sigle (S, FA) au milieu. */
+.artHidden {
+  position: relative;
+  overflow: hidden;
+}
+
+.artBlur {
+  position: absolute;
+  inset: 0;
+  background-color: #0a0b0c;
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center 30%;
+  transform: scale(1.12);
+}
+
+.artSigle {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  padding: 0.3em 0.55em 0.3em 0.7em;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: 999px;
+  background: rgba(8, 12, 20, 0.35);
+  color: rgba(255, 255, 255, 0.85);
+  font-family: var(--font-card-title);
+  font-weight: 600;
+  font-size: 0.85rem;
+  letter-spacing: 0.12em;
+  line-height: 1;
+}
+
 /* Pas encore possédée : l'illustration s'éteint un peu. */
 .card[data-owned="false"] .art {
   filter: grayscale(0.55) brightness(0.7);

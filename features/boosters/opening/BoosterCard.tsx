@@ -243,6 +243,8 @@ export const BoosterCard = memo(function BoosterCard({
                     scaleOnHover={false}
                     finish={card.finish}
                     artwork={card.artwork}
+                    // Elle vient d'être tirée : obtenue, donc nette.
+                    artworkOwned
                   />
                 </span>
               ) : (

@@ -34,12 +34,15 @@ export function CardDetailArtwork({
   cardId,
   finish,
   artwork,
+  artworkOwned = false,
 }: {
   cardId: string;
   /** Finition montrée (aperçu de la fiche). */
   finish?: CardFinish;
   /** Illustration montrée (aperçu de la fiche). */
   artwork?: CardArtwork;
+  /** L'illustration montrée est obtenue : nette même pas encore sortie. */
+  artworkOwned?: boolean;
 }) {
   return (
     <div className={styles.artwork} key={cardId}>
@@ -53,6 +56,7 @@ export function CardDetailArtwork({
         showStatusBadges={false}
         finish={finish}
         artwork={artwork}
+        artworkOwned={artworkOwned}
       />
     </div>
   );

@@ -41,6 +41,8 @@ interface CardDetailModalProps {
    * consultables en aperçu, sans choix d'affichage en partie.
    */
   ownedEditions?: readonly OwnedEdition[];
+  /** Illustration de départ obtenue, quand l'écran le sait sans `ownedEditions` (contenu du booster). */
+  artworkOwned?: boolean;
   /** Édition de l'exemplaire touché dans la grille : la fiche s'ouvre dessus. Absente : la plus rare possédée. */
   initialEdition?: CardEdition;
   /** Édition que le joueur montre aujourd'hui en partie. Absente : pas de choix d'affichage (hors Collection). */
@@ -79,6 +81,7 @@ export function CardDetailModal({
   onShowCard,
   ownedCount,
   ownedEditions,
+  artworkOwned,
   initialEdition,
   displayedEdition,
   showEditionControls = false,
@@ -202,7 +205,12 @@ export function CardDetailModal({
 
         {onPrevious && onNext && <CardDetailNavigation onPrevious={onPrevious} onNext={onNext} />}
 
-        <CardDetailArtwork cardId={cardId} finish={finition} artwork={illustration} />
+        <CardDetailArtwork
+          cardId={cardId}
+          finish={finition}
+          artwork={illustration}
+          artworkOwned={artworkOwned ?? Boolean(ownedEditions?.some((edition) => edition.artwork === illustration))}
+        />
 
         <div className={styles.info}>
           <CardDetailHeader model={model} titleId={titleId} />

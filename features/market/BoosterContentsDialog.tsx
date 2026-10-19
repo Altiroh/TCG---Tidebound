@@ -61,7 +61,7 @@ export function BoosterContentsDialog({ booster, owned, ownedArtworks, onClose }
   const [missingOnly, setMissingOnly] = usePersistedState<boolean>("contenu-booster:manquantes", false, {
     decode: (raw) => (typeof raw === "boolean" ? raw : undefined),
   });
-  const [detail, setDetail] = useState<{ cardId: string; edition?: CardEdition } | null>(null);
+  const [detail, setDetail] = useState<{ cardId: string; edition?: CardEdition; owned?: boolean } | null>(null);
 
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
@@ -186,18 +186,19 @@ export function BoosterContentsDialog({ booster, owned, ownedArtworks, onClose }
                   data-owned={entry.owned ? "true" : "false"}
                   onClick={() => {
                     playButtonClick();
-                    setDetail({ cardId: entry.cardId, edition: { artwork: entry.artwork, finish: "classique" } });
+                    setDetail({ cardId: entry.cardId, edition: { artwork: entry.artwork, finish: "classique" }, owned: entry.owned });
                   }}
                   title={`${entry.name} — ${CARD_ARTWORK_LABELS[entry.artwork]} : 1 tirage de cette carte sur ${Math.round(1 / CARD_ARTWORK_ODDS[entry.artwork])}`}
                 >
-                  <span
-                    className={styles.art}
-                    style={{
-                      backgroundImage: `url("${cardArtworkThumbUrl(entry.cardId, entry.artwork)}")`,
-                      filter: isArtworkHidden(entry.artwork, devMode) ? HIDDEN_ARTWORK_FILTER : undefined,
-                    }}
-                    aria-hidden
-                  />
+                  {isArtworkHidden(entry.artwork, devMode, entry.owned) ? (
+                    // Pas encore sortie ni obtenue : vignette floutée (le flou reste dedans), son sigle par-dessus.
+                    <span className={`${styles.art} ${styles.artHidden}`} aria-hidden>
+                      <span className={styles.artBlur} style={{ backgroundImage: `url("${cardArtworkThumbUrl(entry.cardId, entry.artwork)}")`, filter: HIDDEN_ARTWORK_FILTER }} />
+                      <span className={styles.artSigle}>{entry.artwork === "styled-fa" ? "FA" : "S"}</span>
+                    </span>
+                  ) : (
+                    <span className={styles.art} style={{ backgroundImage: `url("${cardArtworkThumbUrl(entry.cardId, entry.artwork)}")` }} aria-hidden />
+                  )}
                   <span className={styles.name}>{entry.name}</span>
                   <span className={styles.rarity}>{CARD_ARTWORK_LABELS[entry.artwork]}</span>
                 </button>
@@ -212,7 +213,7 @@ export function BoosterContentsDialog({ booster, owned, ownedArtworks, onClose }
 
       {detail && (
         <div onClick={(event) => event.stopPropagation()}>
-          <CardDetailModal cardId={detail.cardId} initialEdition={detail.edition} onClose={() => setDetail(null)} />
+          <CardDetailModal cardId={detail.cardId} initialEdition={detail.edition} artworkOwned={detail.owned} onClose={() => setDetail(null)} />
         </div>
       )}
     </div>

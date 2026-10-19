@@ -46,6 +46,7 @@ const GridCell = memo(function GridCell({
   def,
   index,
   missing,
+  owned,
   onCardClick,
   cellExtras,
   onCardDragStart,
@@ -54,6 +55,8 @@ const GridCell = memo(function GridCell({
   def: CardDefinition;
   index: number;
   missing: boolean;
+  /** Possession connue (joueur connecté) : sans elle, `missing` ne dit rien d'une illustration. */
+  owned: boolean;
   edition?: CardEdition;
   onCardClick: CardGridProps["onCardClick"];
   cellExtras: CardGridProps["cellExtras"];
@@ -90,6 +93,8 @@ const GridCell = memo(function GridCell({
         showStatusBadges={false}
         finish={edition && edition.finish !== "classique" ? edition.finish : undefined}
         artwork={edition && edition.artwork !== "classique" ? edition.artwork : undefined}
+        // Illustration obtenue : nette, même pas encore sortie. Visiteur (possession inconnue) : floutée.
+        artworkOwned={!missing && owned}
         onClick={() => onCardClick(def.id, edition)}
         draggable={Boolean(onCardDragStart)}
         onDragStart={onCardDragStart ? (event) => onCardDragStart(def, event) : undefined}
@@ -237,6 +242,7 @@ export function CardGrid({ cards, onCardClick, hasAnyCards, owned, emptyLabel, c
                   index={index}
                   // Une illustration jamais tirée s'estompe comme une carte manquante.
                   missing={edition.missing ?? Boolean(owned && !owned.has(def.id))}
+                  owned={owned !== null}
                   onCardClick={onCardClick}
                   cellExtras={cellExtras}
                   onCardDragStart={onCardDragStart}
