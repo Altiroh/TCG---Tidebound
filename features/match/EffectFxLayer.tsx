@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { centerOf, findElement, FloatingDamage, ImpactDust, ImpactFlash, shake, SicknessBubbles, tremble, type Point } from "@/features/match/AttackImpactLayer";
+import { centerOf, findElement, FloatingDamage, ImpactDust, ImpactExplosion, ImpactFlash, shake, SicknessBubbles, tremble, type Point } from "@/features/match/AttackImpactLayer";
+import { impactTier } from "@/features/match/impactTier";
 import { FxCanvas } from "@/features/match/FxCanvas";
 import { faceOf, silhouetteMask, silhouetteOf, type Silhouette } from "@/features/match/silhouette";
 import { awakenCard, breakObject, orbAura } from "@/features/match/cardFx";
@@ -162,7 +163,8 @@ const CANNON_LOOK = {
 function CannonBall({ geometry }: { geometry: ShotGeometry }) {
   const host = useRef<HTMLDivElement>(null);
   const { shot, from, to, size } = geometry;
-  const orb = Math.max(18, Math.min(44, size * 0.22));
+  // Plafond assez haut pour qu'un boulet LOURD (`PROJECTILE_SCALE`) reste plus gros.
+  const orb = Math.max(18, Math.min(80, size * 0.22));
 
   useLayoutEffect(() => {
     const el = host.current;
@@ -208,10 +210,17 @@ function CannonBall({ geometry }: { geometry: ShotGeometry }) {
   );
 }
 
+/** Taille du projectile selon le palier du coup (`impactTier`) : le choc, lui, suit `IMPACT_SCALE`. */
+const PROJECTILE_SCALE = { light: 1, heavy: 1.35, massive: 1.8 } as const;
+
 function ShotImpact({ geometry }: { geometry: ShotGeometry }) {
+  const tint = geometry.shot.look === "glow" ? "magic" : geometry.shot.look === "drain" ? "tide" : geometry.shot.look;
+  // Un malus ne blesse pas : il garde son éclat ordinaire.
+  const tier = geometry.shot.look === "drain" ? "light" : impactTier(geometry.shot.amount);
   return (
     <>
-      <ImpactFlash point={geometry.to} tint={geometry.shot.look === "glow" ? "magic" : geometry.shot.look === "drain" ? "tide" : geometry.shot.look} />
+      <ImpactFlash point={geometry.to} tint={tint} tier={tier} />
+      {tier === "massive" && <ImpactExplosion point={geometry.to} tint={tint} />}
       {geometry.shot.look === "cannon" && geometry.rect && <ImpactDust plan={{ rect: geometry.rect, from: geometry.from, shape: geometry.shape }} />}
       {/* Un malus ne blesse pas : pas de plaque de dégâts (la Raison perdue tombe sur sa jauge). */}
       {geometry.shot.look !== "drain" && <FloatingDamage point={geometry.to} amount={geometry.shot.amount} />}
@@ -662,7 +671,8 @@ function Volley({ volley }: { volley: EffectVolley }) {
           const toEl = elementOf(shot.to);
           if (!toEl) continue;
           const toRect = toEl.getBoundingClientRect();
-          const size = Math.min(toRect.height, 220);
+          // Un projectile qui porte plus de dégâts est plus GROS (`impactTier` : 4-5, puis 6+).
+          const size = Math.min(toRect.height, 220) * PROJECTILE_SCALE[impactTier(shot.amount)];
           if (shot.look === "magic" || shot.look === "drain") {
             const kind: SpellKind = shot.look === "drain" ? "malus" : "attack";
             const orb = orbFor(shot, kind);
@@ -789,12 +799,14 @@ function Volley({ volley }: { volley: EffectVolley }) {
             for (const shot of volley.shots) {
               const el = elementOf(shot.to);
               if (!el) continue;
-              // Un boulet est un coup physique : ce qu'il touche tremble, comme au combat.
-              if (shot.look === "cannon") tremble(el);
+              const tier = shot.look === "drain" ? "light" : impactTier(shot.amount);
+              // Un boulet est un coup physique : ce qu'il touche tremble, comme au combat — selon sa force.
+              // Un sort lourd (4+) fait trembler sa cible lui aussi.
+              if (shot.look === "cannon" || tier !== "light") tremble(el, tier);
               // La comète d'un sort éclate en halo d'orbe sur sa cible.
               if (shot.look === "magic" || shot.look === "drain") orbAura(el, shot.look === "drain" ? "malus" : "attack", { durationMs: 650, burst: true });
-              if (shot.to.kind !== "ship") continue;
-              shake(el);
+              if (shot.to.kind !== "ship" && tier !== "massive") continue;
+              shake(el, tier);
             }
           }, volley.castMs + SHOT_FLIGHT_MS)
         );

@@ -7,6 +7,7 @@ import { playAttackImpact, playCardAwake, playShipHit } from "@/lib/sound";
 import { FxCanvas, reducedMotion } from "@/features/match/FxCanvas";
 import { silhouetteOf, type Silhouette } from "@/features/match/silhouette";
 import { orbAura } from "@/features/match/cardFx";
+import { IMPACT_SCALE, impactTier, type ImpactTier } from "@/features/match/impactTier";
 import {
   createDustPainter,
   createSicknessPainter,
@@ -45,18 +46,19 @@ export function findElement(kind: "unit" | "ship", id: string): HTMLElement | nu
   return cell?.querySelector<HTMLElement>("[data-ship-frame]") ?? cell;
 }
 
-/** Léger tremblement + flash, joué au choc sur la cible (et sur l'attaquant en cas de riposte). */
-export function shake(el: HTMLElement) {
+/** Léger tremblement + flash, joué au choc sur la cible (et sur l'attaquant en cas de riposte) ; plus ample selon le palier du coup. */
+export function shake(el: HTMLElement, tier: ImpactTier = "light") {
+  const k = IMPACT_SCALE[tier];
   el.animate(
     [
       { transform: "translateX(0)", filter: "brightness(1)" },
-      { transform: "translateX(-6px)", filter: "brightness(1.9)", offset: 0.15 },
-      { transform: "translateX(5px)", filter: "brightness(1.5)", offset: 0.35 },
-      { transform: "translateX(-3px)", offset: 0.55 },
-      { transform: "translateX(2px)", offset: 0.75 },
+      { transform: `translateX(${-6 * k}px)`, filter: "brightness(1.9)", offset: 0.15 },
+      { transform: `translateX(${5 * k}px)`, filter: "brightness(1.5)", offset: 0.35 },
+      { transform: `translateX(${-3 * k}px)`, offset: 0.55 },
+      { transform: `translateX(${2 * k}px)`, offset: 0.75 },
       { transform: "translateX(0)", filter: "brightness(1)" },
     ],
-    { duration: 320, easing: "ease-out" }
+    { duration: 320 + (k - 1) * 160, easing: "ease-out" }
   );
 }
 
@@ -67,19 +69,22 @@ export function shake(el: HTMLElement) {
  * carte, sans l'écraser — il se cumule aussi au balancement rouge d'une
  * carte qui perd de la Résistance (`animate-card-impact`).
  */
-export function tremble(el: HTMLElement) {
+export function tremble(el: HTMLElement, tier: ImpactTier = "light") {
   if (reducedMotion()) return;
+  // Le palier du coup (`impactTier`) : 4-5 dégâts tremblent plus fort, 6+ beaucoup plus, et plus longtemps.
+  const k = IMPACT_SCALE[tier];
+  const at = (x: number, y: number, deg: number) => `translate(${x * k}px, ${y * k}px) rotate(${deg * k}deg)`;
   el.animate(
     [
       { transform: "translate(0, 0) rotate(0deg)" },
-      { transform: "translate(-3px, 1.5px) rotate(-0.8deg)", offset: 0.12 },
-      { transform: "translate(3px, -1px) rotate(0.7deg)", offset: 0.26 },
-      { transform: "translate(-2px, -1.5px) rotate(-0.5deg)", offset: 0.42 },
-      { transform: "translate(1.5px, 1px) rotate(0.35deg)", offset: 0.6 },
-      { transform: "translate(-0.8px, 0.5px) rotate(-0.15deg)", offset: 0.8 },
+      { transform: at(-3, 1.5, -0.8), offset: 0.12 },
+      { transform: at(3, -1, 0.7), offset: 0.26 },
+      { transform: at(-2, -1.5, -0.5), offset: 0.42 },
+      { transform: at(1.5, 1, 0.35), offset: 0.6 },
+      { transform: at(-0.8, 0.5, -0.15), offset: 0.8 },
       { transform: "translate(0, 0) rotate(0deg)" },
     ],
-    { duration: 340, easing: "ease-out", composite: "add" }
+    { duration: 340 + (k - 1) * 220, easing: "ease-out", composite: "add" }
   );
 }
 
@@ -290,7 +295,8 @@ const FLASH_TINTS = {
   sickness: "radial-gradient(circle, rgba(240,253,244,0.9) 0%, rgba(134,239,172,0.75) 30%, rgba(22,163,74,0.35) 55%, rgba(22,163,74,0) 74%)",
 } as const;
 
-export function ImpactFlash({ point, tint = "strike" }: { point: Point; tint?: keyof typeof FLASH_TINTS }) {
+export function ImpactFlash({ point, tint = "strike", tier = "light" }: { point: Point; tint?: keyof typeof FLASH_TINTS; tier?: ImpactTier }) {
+  const k = IMPACT_SCALE[tier];
   const [done, setDone] = useState(false);
   useEffect(() => {
     const raf = requestAnimationFrame(() => setDone(true));
@@ -303,14 +309,61 @@ export function ImpactFlash({ point, tint = "strike" }: { point: Point; tint?: k
       style={{
         left: point.x,
         top: point.y,
-        width: 110,
-        height: 110,
+        width: 110 * k,
+        height: 110 * k,
         transform: `translate(-50%, -50%) scale(${done ? 1.3 : 0.3})`,
         opacity: done ? 0 : 0.95,
         background: FLASH_TINTS[tint],
-        transition: "transform 320ms ease-out, opacity 380ms ease-in",
+        transition: `transform ${Math.round(320 * Math.sqrt(k))}ms ease-out, opacity ${Math.round(380 * Math.sqrt(k))}ms ease-in`,
       }}
     />
+  );
+}
+
+/**
+ * EXPLOSION d'un coup massif (6 dégâts et plus, `impactTier`) : un anneau de
+ * souffle qui s'élargit et une gerbe incandescente, par-dessus l'éclair du choc.
+ */
+export function ImpactExplosion({ point, tint = "strike" }: { point: Point; tint?: keyof typeof FLASH_TINTS }) {
+  const [go, setGo] = useState(false);
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => setGo(true));
+    return () => cancelAnimationFrame(raf);
+  }, []);
+  if (reducedMotion()) return null;
+  const glow = tint === "strike" || tint === "cannon" ? "rgba(251,146,60,0.9)" : "rgba(196,181,253,0.9)";
+  return (
+    <>
+      <div
+        aria-hidden
+        className="pointer-events-none absolute z-30 rounded-full"
+        style={{
+          left: point.x,
+          top: point.y,
+          width: 260,
+          height: 260,
+          transform: `translate(-50%, -50%) scale(${go ? 1.6 : 0.15})`,
+          opacity: go ? 0 : 1,
+          border: `6px solid ${glow}`,
+          boxShadow: `0 0 40px ${glow}, inset 0 0 30px ${glow}`,
+          transition: "transform 560ms cubic-bezier(.15,.8,.3,1), opacity 620ms ease-in",
+        }}
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute z-30 rounded-full"
+        style={{
+          left: point.x,
+          top: point.y,
+          width: 200,
+          height: 200,
+          transform: `translate(-50%, -50%) scale(${go ? 1.4 : 0.2})`,
+          opacity: go ? 0 : 1,
+          background: `radial-gradient(circle, rgba(255,255,255,1) 0%, rgba(254,215,170,0.95) 22%, ${glow} 45%, rgba(234,88,12,0) 72%)`,
+          transition: "transform 420ms ease-out, opacity 520ms ease-in 80ms",
+        }}
+      />
+    </>
   );
 }
 
@@ -359,9 +412,11 @@ function SingleAttack({ attack }: { attack: AttackAnimation }) {
       // Une cible qui survit et perd de la Résistance joue déjà `animate-card-impact` (CardTile) au moment où
       // l'état réel s'affiche : on ne double le tremblement que pour un Navire, une cible détruite ou un coup à 0.
       const target = attack.defenderInstanceId ? findElement("unit", attack.defenderInstanceId) : findElement("ship", attack.defenderPlayerId!);
-      if (target && (!attack.defenderInstanceId || attack.defenderDies || attack.amount === 0)) shake(target);
-      // Et toujours, un coup physique fait trembler ce qu'il touche — légèrement.
-      if (target) tremble(target);
+      const tier = impactTier(attack.amount);
+      // Un coup massif secoue toujours sa cible, même si elle survit.
+      if (target && (!attack.defenderInstanceId || attack.defenderDies || attack.amount === 0 || tier === "massive")) shake(target, tier);
+      // Et toujours, un coup physique fait trembler ce qu'il touche — selon sa force (`impactTier`).
+      if (target) tremble(target, tier);
     }, lead + ATTACK_IMPACT_AT_MS);
     return () => {
       clearTimeout(startTimer);
@@ -378,8 +433,11 @@ function SingleAttack({ attack }: { attack: AttackAnimation }) {
     <>
       {impacted && (
         <>
-          <ImpactFlash point={geometry.to} />
+          <ImpactFlash point={geometry.to} tier={impactTier(attack.amount)} />
+          {impactTier(attack.amount) === "massive" && <ImpactExplosion point={geometry.to} />}
           <ImpactDust plan={{ rect: geometry.rect, from: geometry.from, shape: geometry.shape }} />
+          {/* Un coup lourd soulève plus de poussière. */}
+          {impactTier(attack.amount) !== "light" && <ImpactDust plan={{ rect: geometry.rect, from: geometry.from, shape: geometry.shape }} />}
           <FloatingDamage point={geometry.to} amount={attack.amount} />
           {attack.retaliation !== undefined && <FloatingDamage point={geometry.from} amount={attack.retaliation} />}
         </>
