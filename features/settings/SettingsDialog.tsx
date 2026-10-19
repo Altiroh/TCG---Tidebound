@@ -7,6 +7,7 @@ import { AudioSettingsSection } from "@/features/settings/AudioSettingsSection";
 import { InterfaceSettingsSection } from "@/features/settings/InterfaceSettingsSection";
 import { ChangePasswordSection } from "@/features/settings/ChangePasswordSection";
 import { DeleteAccountSection } from "@/features/settings/DeleteAccountSection";
+import { DevModeSection } from "@/features/settings/DevModeSection";
 import { SidePanel } from "@/features/shell/SidePanel";
 import styles from "@/features/settings/Settings.module.css";
 import { playButtonClick } from "@/lib/sound";
@@ -15,6 +16,8 @@ interface SettingsDialogProps {
   isSignedIn: boolean;
   /** Rôle Admin : l'Atelier et le diagnostic d'écran (labos) ne s'affichent qu'à lui. */
   isAdmin?: boolean;
+  /** Admin en vue joueur (mode Dev coupé) : ses labos sont masqués, l'interrupteur reste. */
+  vueJoueur?: boolean;
   onClose: () => void;
 }
 
@@ -26,10 +29,11 @@ interface SettingsDialogProps {
  * droite (`SidePanel`), l'écran reste deviné à gauche ; mêmes sorties
  * qu'avant (Échap, voile, croix).
  *
- * Sections (Audio, Interface, raccourcis Tutoriel / Atelier, Compte) séparées par un filet : tout ce
+ * Sections (Audio, Interface, Développement pour les Admins, raccourcis Tutoriel / Atelier, Compte) séparées par un filet : tout ce
  * qui se règle aujourd'hui tient sur un écran, sans onglets ni page dédiée.
  */
-export function SettingsDialog({ isSignedIn, isAdmin = false, onClose }: SettingsDialogProps) {
+export function SettingsDialog({ isSignedIn, isAdmin = false, vueJoueur = false, onClose }: SettingsDialogProps) {
+  const adminTools = isAdmin && !vueJoueur;
   return (
     <SidePanel title="Options" onClose={onClose}>
       <div className={styles.settings}>
@@ -47,11 +51,22 @@ export function SettingsDialog({ isSignedIn, isAdmin = false, onClose }: Setting
 
         <hr className={styles.divider} />
 
+        {isAdmin && (
+          <>
+            <section className={styles.section}>
+              <h3 className={styles.sectionTitle}>Développement</h3>
+              <DevModeSection vueJoueur={vueJoueur} />
+            </section>
+
+            <hr className={styles.divider} />
+          </>
+        )}
+
         {/* Tutoriel et Atelier (labo réservé aux Admins, 14/10/2026) : deux
             ICÔNES cliquables sur une ligne (16/10/2026) plutôt que deux
             sections de texte — la place va aux réglages. Leur libellé reste
             lisible au survol (`title`) et pour les lecteurs d'écran. */}
-        {(isSignedIn || isAdmin) && (
+        {(isSignedIn || adminTools) && (
           <>
             <nav className={styles.shortcuts} aria-label="Raccourcis">
               {isSignedIn && (
@@ -66,7 +81,7 @@ export function SettingsDialog({ isSignedIn, isAdmin = false, onClose }: Setting
                   <path d="M21.5 8v5.5" />
                 </ShortcutIcon>
               )}
-              {isAdmin && (
+              {adminTools && (
                 <ShortcutIcon
                   href="/game/board-preview"
                   label="Atelier"

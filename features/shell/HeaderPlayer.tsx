@@ -509,8 +509,16 @@ export function HeaderPlayer() {
           progression. */}
       <ScreenToast message={toast} onDismiss={() => setToast(null)} />
 
-      {optionsOpen && <SettingsDialog isSignedIn={signedIn} isAdmin={summary?.isAdmin ?? false} onClose={() => setOptionsOpen(false)} />}
-      {mailOpen && <MailPanel isAdmin={summary?.isAdmin ?? false} onClose={() => setMailOpen(false)} />}
+      {optionsOpen && (
+        <SettingsDialog
+          isSignedIn={signedIn}
+          isAdmin={summary?.isAdmin ?? false}
+          vueJoueur={summary?.vueJoueur ?? false}
+          onClose={() => setOptionsOpen(false)}
+        />
+      )}
+      {/* En vue joueur, l'Admin voit le courrier comme un joueur : pas d'onglet d'écriture. */}
+      {mailOpen && <MailPanel isAdmin={(summary?.isAdmin ?? false) && !summary?.vueJoueur} onClose={() => setMailOpen(false)} />}
       {streakOpen && <DailyStreakPopup onClose={() => setStreakOpen(false)} />}
     </>
   );

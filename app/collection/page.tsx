@@ -3,13 +3,14 @@ import { fetchOnboarding } from "@/features/onboarding/actions";
 import { decodeShelfFilter, FAVORITES_FILTER, notebookFilter, type ShelfFilter } from "@/features/collection/shelf/shelf";
 import { getOwnedCardIds } from "@/lib/supabase/ownedCards";
 import { getSessionUser } from "@/lib/supabase/sessionUser";
-import { isAdmin } from "@/features/admin/roles";
+import { adminToolsVisible, vueJoueurActive } from "@/features/admin/roles";
 
-/** Illustrations, finitions et édition en partie dans la fiche : Admins, et développement local. */
+/** Illustrations, finitions et édition en partie dans la fiche : Admins, et développement local — sauf en vue joueur. */
 async function canSeeEditionControls(): Promise<boolean> {
+  if (vueJoueurActive()) return false;
   if (process.env.NODE_ENV === "development") return true;
   const user = await getSessionUser();
-  return user ? isAdmin(user.id) : false;
+  return user ? adminToolsVisible(user.id) : false;
 }
 
 /** `?carnet=<id>` ouvre un carnet, `?favoris` les favoris — les liens du mur des carnets. */

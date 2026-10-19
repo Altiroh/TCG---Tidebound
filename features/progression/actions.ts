@@ -18,7 +18,7 @@ import {
 import { claimableLevelsFor, reachedLevel } from "@/features/progression/levelRewardService";
 import { countClaimableMasteryLevels } from "@/features/progression/hubService";
 import { getSessionUser } from "@/lib/supabase/sessionUser";
-import { isAdmin } from "@/features/admin/roles";
+import { isAdmin, vueJoueurActive } from "@/features/admin/roles";
 import { countUnreadMail } from "@/features/mail/mailService";
 
 /**
@@ -79,6 +79,8 @@ export interface ProgressionSummary {
   sponsorsRevealed: number;
   /** Rôle Admin (`player_roles`) : écriture du courrier, labos dans les Options. */
   isAdmin: boolean;
+  /** Admin en VUE JOUEUR (mode Dev coupé dans les Options) : ses outils sont masqués. */
+  vueJoueur: boolean;
   /** Courriers pas encore ouverts — la pastille de l'enveloppe. */
   unreadMail: number;
 }
@@ -107,6 +109,7 @@ const SIGNED_OUT: ProgressionSummary = {
   sponsorsWatching: 0,
   sponsorsRevealed: 0,
   isAdmin: false,
+  vueJoueur: false,
   unreadMail: 0,
 };
 
@@ -242,6 +245,7 @@ export async function fetchProgression(): Promise<ProgressionSummary> {
       sponsorsWatching: heldInterest.filter((row) => row.points > 0).length,
       sponsorsRevealed: heldInterest.filter((row) => sponsorRevealed(row.points)).length,
       isAdmin: admin,
+      vueJoueur: admin && vueJoueurActive(),
       unreadMail,
     };
   } catch (error) {
