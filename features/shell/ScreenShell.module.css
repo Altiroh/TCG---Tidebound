@@ -301,9 +301,17 @@
   transform: translateY(-1px) rotate(-6deg);
 }
 
-/* Amis : deux silhouettes au gabarit de l'engrenage, à droite de l'enveloppe. */
+/* Amis : l'équipage peint, au gabarit de l'enveloppe, à sa droite. */
 .friendsButton {
   composes: optionsButton;
+}
+
+.friendsButton img {
+  width: 118%;
+  height: 118%;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.6));
+  pointer-events: none;
 }
 
 .friendsButton:hover {

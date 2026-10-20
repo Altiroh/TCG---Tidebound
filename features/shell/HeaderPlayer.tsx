@@ -99,18 +99,6 @@ function QuestIcon() {
   );
 }
 
-/** Deux silhouettes : l'équipage, les amis. Au gabarit de l'engrenage. */
-function FriendsIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" width="19" height="19" aria-hidden>
-      <circle cx="9" cy="8" r="3.2" stroke="currentColor" strokeWidth={1.6} />
-      <path d="M3 19.5c0-3.3 2.7-5.6 6-5.6s6 2.3 6 5.6" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" />
-      <circle cx="16.6" cy="8.6" r="2.6" stroke="currentColor" strokeWidth={1.5} />
-      <path d="M16.2 13.9c2.8.1 4.8 2.2 4.8 5" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" />
-    </svg>
-  );
-}
-
 function GearIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" width="18" height="18" aria-hidden>
@@ -537,7 +525,8 @@ export function HeaderPlayer() {
             setFriendsOpen(true);
           }}
         >
-          <FriendsIcon />
+          {/* eslint-disable-next-line @next/next/no-img-element -- icône locale */}
+          <img src="/assets/ui/icons/amis.webp" alt="" draggable={false} />
           {friendsBadge > 0 && (
             <span className={styles.rewardBadge} aria-hidden>
               {friendsBadge}
