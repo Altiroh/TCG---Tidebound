@@ -82,11 +82,12 @@ const ALTERNATE_ARTS: Record<string, CardAlternateArt> = {
     styled: true,
     enAttente:
       "Sa seule source est le Standard, dont la revente moyenne passerait au-dessus de 95 % du prix avec sa Styled (`obtentionCartes.test.ts`) : arbitrage d'économie en attente (19/10/2026).",
+    // Repeinte le 20/10/2026 sur la forme courte validée par le propriétaire.
     fullArt: {
       textePeint:
-        "Durée : 3 tours de table, visible pendant Houle et Tempête. La première fois à chaque tour que votre Navire devrait subir des dégâts directs d'une attaque, vous pouvez annuler ces dégâts et les rediriger sur un autre Cylindre flottant, puis détruire cette carte. Réaction cachée : lorsqu'un effet adverse ou des dégâts directs ciblent votre Navire, vous pouvez révéler Cylindre flottant : un autre Cylindre flottant que vous contrôlez gagne en puissance.",
-      aRepeindre:
-        "Texte périmé : la carte annule les dégâts pour les infliger à un permanent adverse (et au Navire adverse en Réaction cachée), pas à un « autre Cylindre flottant ».",
+        "4 tours • Houle/Tempête. À la première attaque directe au navire, vous pouvez annuler ses dégâts et les infliger au navire adverse. Détruisez ensuite ce Cylindre.",
+      ecartMineur:
+        "Forme courte validée par le propriétaire le 20/10/2026 pour cette Full-Art : même effet que le texte complet (« 4 tours » = 4 tours de table, première attaque directe, dégâts au Navire adverse, puis destruction).",
     },
   },
   "eclaireur-ebreche": {
@@ -103,10 +104,11 @@ const ALTERNATE_ARTS: Record<string, CardAlternateArt> = {
   },
   "eidolon-opalin-lvx": {
     styled: true,
+    // Repeinte le 20/10/2026 : « 3 dégâts à une Structure », « récupérez », « ajoutez » rétablis.
     fullArt: {
       textePeint:
-        "Ne peut entrer en jeu que par l'effet d'Éidolon Opalin LV5. À l'arrivée, choisissez 2 effets différents : infligez 4 dégâts à une unité ; détruisez un Équipement ; infligez 5 dégâts à une Structure ; infligez 2 Raison ; gagnez 3 Armure ; jouez une carte de votre Cimetière à votre main. Une fois par tour, lorsqu'un autre Opalin que vous contrôlez déclenche un effet, gagnez 1 Armure.",
-      aRepeindre: "« 5 dégâts à une Structure » (la carte : 3), « infligez 2 Raison » (la carte : récupérez), « jouez une carte de votre Cimetière » (la carte : ajoutez).",
+        "Ne peut entrer en jeu que par l'effet d'Éidolon Opalin LV5. À l'arrivée, choisissez 2 effets différents : infligez 4 dégâts à une unité ; détruisez un Équipement ; infligez 3 dégâts à une Structure ; récupérez 2 Raison ; gagnez 3 Armure ; ajoutez une carte de votre Cimetière à votre main. Une fois par tour, lorsqu'un autre Opalin que vous contrôlez déclenche un effet, gagnez 1 Armure.",
+      ecartMineur: "« Éidolon » peint avec un accent : le nom reste reconnaissable, le sens est le même.",
     },
   },
   "elyor-opalin-du-retour": {
@@ -169,10 +171,10 @@ const ALTERNATE_ARTS: Record<string, CardAlternateArt> = {
   },
   "merai-opalin-des-profondeurs": {
     styled: true,
+    // Repeinte le 20/10/2026 : « du dessous » rétabli.
     fullArt: {
       textePeint:
-        "À l'arrivée : regardez les 4 cartes du dessus de votre pioche. Ajoutez-en une à votre main puis mélangez les autres dans votre pioche. Une fois par tour, lorsqu'une carte est placée sous votre pioche, récupérez 1 Raison.",
-      aRepeindre: "« du dessus » de la pioche : la carte regarde les 4 cartes du DESSOUS.",
+        "À l'arrivée : regardez les 4 cartes du dessous de votre pioche. Ajoutez-en une à votre main puis mélangez les autres dans votre pioche. Une fois par tour, lorsqu'une carte est placée sous votre pioche, récupérez 1 Raison.",
     },
   },
   "moucheron-sanguin": { styled: true, fullArt: { textePeint: "Sangsue", ecartMineur: "Sans le point final : le mot-clé seul, le sens est le même." } },
@@ -184,10 +186,10 @@ const ALTERNATE_ARTS: Record<string, CardAlternateArt> = {
   },
   "on-avait-dit-tous-ensemble": {
     styled: true,
+    // Repeinte le 20/10/2026 : « qu'une carte Mort-vivant » rétabli.
     fullArt: {
       textePeint:
-        "Une fois par tour, lorsqu'un autre Mort-vivant allié est détruit ou qu'une autre Mort-vivant rejoint votre Cimetière depuis votre main ou votre pioche : infligez 1 dégât au Navire adverse.",
-      aRepeindre: "« qu'une autre Mort-vivant rejoint » : la carte dit « qu'une carte Mort-vivant rejoint » (aucune restriction « autre »).",
+        "Une fois par tour, lorsqu'un autre Mort-vivant allié est détruit ou qu'une carte Mort-vivant rejoint votre Cimetière depuis votre main ou votre pioche : infligez 1 dégât au Navire adverse.",
     },
   },
   "ptite-fesse-grand-reve": {
@@ -219,9 +221,9 @@ const ALTERNATE_ARTS: Record<string, CardAlternateArt> = {
   },
   "vigie-aux-fissures": {
     styled: true,
+    // Repeinte le 20/10/2026 : « survit à des dégâts » rétabli.
     fullArt: {
-      textePeint: "La première fois à chaque tour qu'une autre unité que vous contrôlez subit des dégâts, piochez 1 carte puis défaussez-en 1.",
-      aRepeindre: "« subit des dégâts » : la carte dit « survit à des dégâts ».",
+      textePeint: "La première fois à chaque tour qu'une autre unité que vous contrôlez survit à des dégâts, piochez 1 carte puis défaussez-en 1.",
     },
   },
 };
