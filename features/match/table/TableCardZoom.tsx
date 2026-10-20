@@ -3,6 +3,14 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { CardRulesPanel } from "@/features/match/table/CardRulesPanel";
 import styles from "@/features/match/table/Table.module.css";
+import game from "@/features/shell/GameScreen.module.css";
+
+/** Le bouton du design system selon le ton de l'action : engager, perdre la carte, le reste. */
+const TONE_CLASSES: Record<NonNullable<ZoomAction["tone"]>, string | undefined> = {
+  primary: game.primary,
+  danger: game.danger,
+  neutral: game.secondary,
+};
 
 /** Une action proposée à côté de la carte agrandie. */
 export interface ZoomAction {
@@ -140,8 +148,7 @@ export function TableCardZoom({ children, onDetail, onClose, actions = [], legen
           <div key={action.label} className={styles.cardZoomActionItem}>
             <button
               type="button"
-              className={styles.cardZoomPlay}
-              data-tone={action.tone ?? "primary"}
+              className={`${TONE_CLASSES[action.tone ?? "primary"]} ${styles.cardZoomPlay}`}
               disabled={action.disabled}
               onClick={(event) => {
                 event.stopPropagation();
@@ -172,19 +179,19 @@ export function TableCardZoom({ children, onDetail, onClose, actions = [], legen
         <div className={styles.cardZoomFooter}>
           {position && position.count > 1 && (
             <div className={styles.cardZoomNav}>
-              <button type="button" className={styles.cardZoomArrow} aria-label="Carte précédente" disabled={!onPrev} onClick={onPrev}>
+              <button type="button" className={`${game.iconButton} ${styles.cardZoomArrow}`} aria-label="Carte précédente" disabled={!onPrev} onClick={onPrev}>
                 ‹
               </button>
               <span aria-live="polite">
                 {position.index + 1} / {position.count}
               </span>
-              <button type="button" className={styles.cardZoomArrow} aria-label="Carte suivante" disabled={!onNext} onClick={onNext}>
+              <button type="button" className={`${game.iconButton} ${styles.cardZoomArrow}`} aria-label="Carte suivante" disabled={!onNext} onClick={onNext}>
                 ›
               </button>
             </div>
           )}
           {onDetail && (
-            <button type="button" className={styles.cardZoomDetail} onClick={onDetail}>
+            <button type="button" className={`${game.secondary} ${styles.cardZoomDetail}`} onClick={onDetail}>
               Fiche détaillée
             </button>
           )}

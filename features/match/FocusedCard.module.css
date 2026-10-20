@@ -260,7 +260,10 @@
 }
 
 /* Téléphone couché, cible à désigner : le panneau se réduit à « Annuler » —
-   il ne doit couvrir aucune des cartes qu'on vient toucher. */
+   il ne doit couvrir aucune des cartes qu'on vient toucher. Le rappel de
+   l'effet (`detail`) aussi s'efface : resté seul, il élargissait le panneau
+   (`width: auto`) à toute sa phrase, posée en travers du plateau (Reine des
+   Charognes, 20/10/2026). Il se lit sur la carte, juste à côté. */
 @media (max-height: 520px) {
   .panel[data-waiting] {
     width: auto;
@@ -268,6 +271,7 @@
     border-radius: 999px;
   }
   .panel[data-waiting] .eyebrow,
+  .panel[data-waiting] .detail,
   .panel[data-waiting] .hint {
     display: none;
   }

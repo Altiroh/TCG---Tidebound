@@ -512,11 +512,15 @@
   .header[data-nav="collection"] .headerBrand { display: none; }
 }
 
-/* Même chose pour un écran qui porte SES onglets (Profil : quatre onglets)
+/* Même chose pour un écran qui porte SES onglets (Profil : cinq onglets)
    sur un bandeau `minimal` : sur un téléphone couché, le logo passait
-   par-dessus « Quêtes » et « Exploits ». */
-@media (max-width: 780px) {
+   par-dessus « Quêtes » et « Exploits ». Seuil commun du téléphone couché
+   (plus bas) et non plus 780 px : à 852 px (iPhone 15), le logo couvrait
+   encore « Stats » (20/10/2026). Sans logo, les onglets prennent ce qu'il
+   leur faut et le compte le reste, comme sur `collection`. */
+@media (max-width: 1000px), (max-height: 620px) {
   .header[data-tabs] .headerBrand { display: none; }
+  .header[data-tabs] { grid-template-columns: auto auto minmax(0, 1fr); }
 }
 
 /* Retour au menu : une flèche seule, à la même encre que les onglets. */

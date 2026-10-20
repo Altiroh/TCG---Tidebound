@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { QUEST_CATEGORY_META, type QuestCategory } from "@/game/quests";
 import styles from "@/features/quests/Quests.module.css";
+import game from "@/features/shell/GameScreen.module.css";
 import { claimQuestReward, rerollQuest, type QuestBoard, type QuestEntry } from "@/features/quests/actions";
 import { QUEST_SCREEN_ASSETS, SceneToast, type SceneNotice } from "@/features/quests/QuestScene";
 import { VoyagePanel, VoyageSkeleton } from "@/features/quests/VoyagePanel";
@@ -231,6 +232,10 @@ type MobileView = "quetes" | "traversee";
  * et ce sélecteur passe de l'une à l'autre ; une pastille signale ce qui
  * attend d'être réclamé dans la vue cachée. Masqué au-delà du seuil (560 px
  * de haut), où tout se lit d'un coup.
+ *
+ * Ce sont les ONGLETS SECONDAIRES du design system (`game.tabs`, « basculer
+ * entre des vues d'un même écran »), pas des boutons propres à l'écran
+ * (retour du 20/10/2026).
  */
 function MobileSwitch({ view, onChange, questAlert, voyageAlert }: { view: MobileView; onChange: (view: MobileView) => void; questAlert: boolean; voyageAlert: boolean }) {
   const entries: readonly { id: MobileView; label: string; alert: boolean }[] = [
@@ -238,13 +243,14 @@ function MobileSwitch({ view, onChange, questAlert, voyageAlert }: { view: Mobil
     { id: "traversee", label: "Traversée", alert: voyageAlert },
   ];
   return (
-    <div className={styles.mobileSwitch} role="group" aria-label="Afficher">
+    <div className={`${game.tabs} ${styles.mobileSwitch}`} role="tablist" aria-label="Afficher">
       {entries.map((entry) => (
         <button
           key={entry.id}
           type="button"
-          className={styles.mobileSwitchButton}
-          aria-pressed={view === entry.id}
+          role="tab"
+          className={`${view === entry.id ? game.tabActive : game.tab} ${styles.mobileSwitchButton}`}
+          aria-selected={view === entry.id}
           data-alert={(entry.alert && view !== entry.id) || undefined}
           onClick={() => {
             if (view === entry.id) return;

@@ -302,17 +302,31 @@ button.tab:not([data-active]):hover {
 .sheet {
   --sheet-left: 10.8%;
   --sheet-right: 8.2%;
+  /* Hauteur / largeur de l'image de la feuille. */
+  --sheet-ratio: calc(683 / 1057);
   position: relative;
   min-width: 0;
-  aspect-ratio: 1057 / 683;
   background: url("/assets/quests/ecran/feuille-quotidiennes.webp") center / 100% 100% no-repeat;
   filter: drop-shadow(0 calc(4 * var(--u)) calc(6 * var(--u)) rgba(0, 0, 0, 0.45));
+}
+
+/*
+ * La hauteur de la feuille vient d'une cale en `padding-top` (un % de la
+ * LARGEUR), et non d'`aspect-ratio` : sur un élément de grille étiré, un
+ * navigateur mobile l'ignorait et la feuille, dont tout le contenu est
+ * positionné, tombait à 0 px — la planche restait vide (retour du
+ * 20/10/2026, téléphone couché).
+ */
+.sheet::before {
+  content: "";
+  display: block;
+  padding-top: calc(var(--sheet-ratio) * 100%);
 }
 
 .sheet[data-sheet="hebdomadaires"] {
   --sheet-left: 8.4%;
   --sheet-right: 10.8%;
-  aspect-ratio: 1052 / 683;
+  --sheet-ratio: calc(683 / 1052);
   background-image: url("/assets/quests/ecran/feuille-hebdomadaires.webp");
 }
 
@@ -839,50 +853,31 @@ button.row:disabled {
     display: none;
   }
 
+  /* Les onglets secondaires du design system (`game.tabs`) : seulement le placement ici. */
   .mobileSwitch {
     position: relative;
     z-index: 3;
-    display: flex;
-    justify-content: center;
-    gap: 8px;
-    margin-bottom: 10px;
+    width: fit-content;
+    margin: 0 auto 8px;
+    padding: 0 10px;
+    border-radius: 12px 12px 0 0;
+    /* Sur le bois, le texte des onglets a besoin d'un fond pour se lire. */
+    background: rgba(10, 7, 4, 0.62);
+    backdrop-filter: blur(3px);
   }
 
+  /* Au doigt : 44 px de haut au moins. */
   .mobileSwitchButton {
-    position: relative;
-    min-width: 112px;
-    min-height: 40px;
-    padding: 0 18px;
-    border: 1px solid rgba(217, 181, 106, 0.55);
-    border-radius: 999px;
-    background: rgba(28, 17, 8, 0.82);
-    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.45);
-    font-family: var(--tb-font-display);
-    font-size: 13px;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: #f0e3c6;
-    cursor: var(--tb-cursor-pointer);
+    min-height: 44px;
     -webkit-tap-highlight-color: transparent;
   }
 
-  .mobileSwitchButton[aria-pressed="true"] {
-    border-color: #d9b56a;
-    background: linear-gradient(180deg, #a02a1d, #6f1811);
-  }
-
-  .mobileSwitchButton:focus-visible {
-    outline: 2px solid rgba(255, 200, 120, 0.85);
-    outline-offset: 2px;
-  }
-
   /* Quelque chose à réclamer dans l'autre vue : la pastille du jeu. */
-  .mobileSwitchButton[data-alert]::after {
+  .mobileSwitchButton[data-alert]::before {
     content: "";
     position: absolute;
-    top: -5px;
-    right: -3px;
+    top: 4px;
+    right: -4px;
     width: 14px;
     height: 14px;
     background: var(--tb-notif-bg);
@@ -930,7 +925,7 @@ button.row:disabled {
    */
   .sheet,
   .sheet[data-sheet="hebdomadaires"] {
-    aspect-ratio: 1057 / 540;
+    --sheet-ratio: calc(540 / 1057);
   }
 
   .row {

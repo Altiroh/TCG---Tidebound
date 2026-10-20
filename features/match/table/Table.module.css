@@ -3448,6 +3448,23 @@
   background: rgba(2, 6, 23, 0.86);
   touch-action: none;
   animation: cardZoomFade 140ms ease-out;
+
+  /*
+   * Les boutons du calque sont ceux du design system (`GameScreen.module.css`
+   * §3-4 : `primary`, `danger`, `secondary`, `iconButton` — retour du
+   * 20/10/2026). Ils lisent les alias courts que pose `.screen` hors
+   * plateau ; la partie n'est pas dans un `.screen`, le calque les pose
+   * donc lui-même, sur les mêmes jetons globaux.
+   */
+  --cb-cyan: var(--tb-accent);
+  --line: var(--tb-border);
+  --line-strong: var(--tb-border-strong);
+  --ink: var(--tb-text);
+  --ink-strong: var(--tb-text-strong);
+  --ink-dim: var(--tb-text-muted);
+  --danger: var(--tb-danger);
+  --cb-font-ui: var(--tb-font-ui);
+  --radius-sm: var(--tb-radius-sm);
 }
 
 .cardZoomCard {
@@ -3516,47 +3533,11 @@
   gap: 4px;
 }
 
-/* L'action, en laiton plein quand elle engage la partie (Jouer). */
+/* L'action (Jouer, Saborder…) : un bouton du design system, à la taille du doigt. */
 .cardZoomPlay {
+  width: 100%;
   min-height: 44px;
-  padding: 6px 18px;
-  border: 1px solid #f0d79a;
-  border-radius: 999px;
-  background: linear-gradient(180deg, #c79a4b, #8a6326);
-  box-shadow: inset 0 1px 0 rgba(255, 240, 200, 0.45), 0 6px 18px rgba(0, 0, 0, 0.55);
-  color: #1c1208;
-  font: inherit;
-  font-size: clamp(13px, 2dvh, 16px);
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  line-height: 1.2;
-  cursor: var(--tb-cursor-pointer);
-}
-
-/* Perdre la carte (Saborder) : rouge sombre, jamais la couleur de « Jouer ». */
-.cardZoomPlay[data-tone="danger"] {
-  border-color: #f2a3a3;
-  background: linear-gradient(180deg, #9b2c2c, #5f1717);
-  color: #fde8e8;
-}
-
-.cardZoomPlay[data-tone="neutral"] {
-  border-color: rgba(199, 154, 78, 0.7);
-  background: rgba(20, 34, 48, 0.95);
-  color: #f1dfb6;
-}
-
-.cardZoomPlay:disabled {
-  border-color: rgba(148, 163, 184, 0.45);
-  background: rgba(30, 41, 59, 0.9);
-  box-shadow: none;
-  color: #94a3b8;
-  cursor: default;
-}
-
-.cardZoomPlay:focus-visible {
-  outline: 2px solid var(--cb-cyan, #58c8d8);
-  outline-offset: 2px;
+  white-space: normal;
 }
 
 /* Motif d'un refus, prix d'un geste. */
@@ -3615,54 +3596,17 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Flèches et fiche : `iconButton` et `secondary` du design system, au doigt. */
 .cardZoomArrow {
   width: 44px;
   height: 44px;
-  border: 1px solid rgba(199, 154, 78, 0.55);
-  border-radius: 999px;
-  background: rgba(6, 16, 26, 0.9);
-  color: #f1dfb6;
-  font: inherit;
   font-size: 22px;
   line-height: 1;
-  cursor: var(--tb-cursor-pointer);
 }
 
-.cardZoomArrow:disabled {
-  opacity: 0.35;
-  cursor: default;
-}
-
-.cardZoomArrow:focus-visible {
-  outline: 2px solid var(--cb-cyan, #58c8d8);
-  outline-offset: 2px;
-}
-
-/* Sortie vers la fiche détaillée. */
 .cardZoomDetail {
   flex: 0 0 auto;
   min-height: 44px;
-  padding: 6px 16px;
-  border: 1px solid rgba(199, 154, 78, 0.55);
-  border-radius: 999px;
-  background: rgba(6, 16, 26, 0.9);
-  color: #e5cf9e;
-  font: inherit;
-  font-size: clamp(11px, 1.6dvh, 14px);
-  letter-spacing: 0.06em;
-  cursor: var(--tb-cursor-pointer);
-}
-
-@media (hover: hover) {
-  .cardZoomDetail:hover {
-    border-color: #e5cf9e;
-    color: #f7ecd4;
-  }
-}
-
-.cardZoomDetail:focus-visible {
-  outline: 2px solid var(--cb-cyan, #58c8d8);
-  outline-offset: 2px;
 }
 
 @keyframes cardZoomFade {
@@ -4240,6 +4184,19 @@
     font-size: 12px;
   }
 
+  /*
+   * L'EMPLACEMENT DE LANDE, entre les deux navires, n'avait que la hauteur
+   * de la bande centrale (~32 px) : on l'atteignait mal au doigt, pour y
+   * lâcher une Lande comme pour lire celle en jeu (20/10/2026). Il grandit
+   * par-dessus ses voisins, sans changer la grille : ~54 px, une cible au
+   * doigt. Le rectangle mesuré pour le lâcher suit la transformation.
+   */
+  .stage.stagePont .pontLandeSlot {
+    z-index: 4;
+    transform: scale(1.7);
+    transform-origin: 50% 50%;
+  }
+
   /* Consigne et piste superposées : la bande ne fait que 36 px. */
   .centerStack {
     display: grid;
@@ -4250,10 +4207,26 @@
     grid-area: 1 / 1;
   }
 
+  /*
+   * UNE LIGNE, jamais plus (retour du 20/10/2026) : une consigne longue
+   * (« Une autre unité alliée meurt : mettez +1/+1 sur une autre unité »)
+   * passait à la ligne, et la bulle devenait un bloc posé sur les deux
+   * rangées — les unités à viser étaient dessous. Le texte entier se lit
+   * dans le bandeau de la fenêtre et sur la carte ; ici, il s'abrège.
+   */
   .centerHint {
     position: relative;
     z-index: 3;
     min-height: 32px;
+    max-height: 36px;
+    padding-block: 0;
+    white-space: nowrap;
+  }
+
+  .centerHint > span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .centerHintButton {
