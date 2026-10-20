@@ -47,6 +47,12 @@ export interface AuraContext {
   controllerIsActive?: boolean;
   /** Une Lande est-elle en jeu ? (« Tant qu'une Lande est active », Lot 17.) Absent : non. */
   landeActive?: boolean;
+  /**
+   * Mots-clés que la Lande en jeu retire à tous les permanents (Pluie
+   * corrosive : « les permanents perdent Garde »). Lu par l'affichage des
+   * mots-clés (`hasKeywordInContext`) ; le moteur les relit sur l'état.
+   */
+  removedKeywords?: readonly string[];
 }
 
 /**
@@ -65,6 +71,7 @@ export function auraContextOf(state: Pick<GameState, "players" | "activePlayerId
     tideOrientation: state.environment.tideOrientation,
     controllerIsActive: state.activePlayerId === controllerId,
     landeActive: state.environment.lande !== undefined,
+    removedKeywords: state.environment.lande ? (getCardDefinition(state.environment.lande.cardId).lande?.removesKeywords ?? []) : [],
   };
 }
 

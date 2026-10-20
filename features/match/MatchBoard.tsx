@@ -7,6 +7,7 @@ import { useScreenWakeLock } from "@/features/match/useScreenWakeLock";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   dispatch,
+  auraContextOf,
   eligibleCandidatesFor,
   getCardDefinition,
   getShipDefinition,
@@ -208,13 +209,10 @@ export function MatchBoard({
   const directTarget = myReactionCandidates.length === 1 && myReactionCandidates[0]!.needsTarget ? myReactionCandidates[0]! : null;
   const directTargetKey = directTarget ? `${directTarget.sourceInstanceId}:${directTarget.abilityIndex}:${state.pendingReaction?.usedCandidateKeys.length ?? 0}` : null;
 
-  const auraContextFor = (player: typeof viewerPlayer) => ({
-    controllerBoard: player.board,
-    controllerReason: player.reason,
-    tideOrientation: state.environment.tideOrientation,
-    // Signal Rouge (Lot 15) : un bonus « pendant votre tour ».
-    controllerIsActive: state.activePlayerId === player.id,
-  });
+  // Le contexte COMPLET du moteur (`auraContextOf`) : Marée, joueur actif,
+  // Lande en jeu et mots-clés qu'elle retire (Pluie corrosive ôte Garde).
+  // Construit à la main, il oubliait les champs ajoutés depuis.
+  const auraContextFor = (player: typeof viewerPlayer) => auraContextOf(state, player.id);
   const bannerEvent = usePhaseBannerEvent(state, viewerPlayerId);
   const actionToasts = useActionToasts(state);
   const board = useBoardInteraction({

@@ -9,7 +9,8 @@
 import { describe, expect, it } from "vitest";
 // Effets d'arrivée facultatifs (12/10/2026) : jouer une carte accepte son effet d'arrivée, comme « Appliquer ».
 import { dispatch } from "@/tests/game/arrivalDispatch";
-import { hasEffectiveKeyword, assertValidDefender } from "@/game/rules/validation";
+import { hasEffectiveKeyword, hasKeywordInContext, assertValidDefender } from "@/game/rules/validation";
+import { auraContextOf } from "@/game/cards/stats";
 import { landeRemainingTableTurns } from "@/game/rules/lande";
 import { activateReactionFor, instance, testEnvironment, testGameState, testPlayer, enFinDeTour, jouerObjet } from "./testHelpers";
 import type { GameState } from "@/game/state/types";
@@ -300,5 +301,19 @@ describe("Réponses aux Landes", () => {
     ok(abri);
     const p2 = player(abri.state, "p2");
     expect(hasEffectiveKeyword(abri.state, p2, p2.board.find((u) => u.instanceId === crabe.instanceId)!, "garde")).toBe(true);
+  });
+});
+
+describe("Pluie corrosive — l'affichage suit le moteur", () => {
+  it("le contexte d'aura porte les mots-clés retirés : Garde ne s'affiche plus", () => {
+    const crabe = instance("crabe-de-fer", "p2");
+    const base = partie([], {}, { p2: [crabe] });
+    const sansLande = auraContextOf(base, "p2");
+    expect(hasKeywordInContext(crabe, "garde", { tideState: "houle", ...sansLande })).toBe(true);
+
+    const pluie = { ...base, environment: { ...base.environment, lande: { cardId: PLUIE, instanceId: "lande_1", ownerId: "p1", remainingPlayerTurns: 6 } } };
+    const avecLande = auraContextOf(pluie, "p2");
+    expect(avecLande.removedKeywords).toEqual(["garde"]);
+    expect(hasKeywordInContext(crabe, "garde", { tideState: "houle", ...avecLande })).toBe(false);
   });
 });

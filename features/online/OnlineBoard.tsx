@@ -16,6 +16,7 @@ import {
   type PlayerAction,
   type PlayerId,
   hasCombatToPlay,
+  auraContextOf,
 } from "@/game";
 import { GlassAlert } from "@/components/ui/GlassAlert";
 import { ActionToastStack } from "@/features/match/ActionToastStack";
@@ -142,13 +143,9 @@ export function OnlineBoard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [directTargetKey]);
 
-  const auraContextFor = (player: typeof me) => ({
-    controllerBoard: player.board,
-    controllerReason: player.reason,
-    tideOrientation: state.environment.tideOrientation,
-    // Signal Rouge (Lot 15) : un bonus « pendant votre tour ».
-    controllerIsActive: state.activePlayerId === player.id,
-  });
+  // Le contexte COMPLET du moteur (`auraContextOf`) : Marée, joueur actif,
+  // Lande en jeu et mots-clés qu'elle retire (Pluie corrosive ôte Garde).
+  const auraContextFor = (player: typeof me) => auraContextOf(state, player.id);
   const bannerEvent = usePhaseBannerEvent(state, myUserId);
   const actionToasts = useActionToasts(state);
   const board = useBoardInteraction({

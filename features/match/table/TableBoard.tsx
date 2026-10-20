@@ -17,6 +17,7 @@ import {
   attacksRemaining,
   canAttackShipDirectly,
   canUnitAttack,
+  auraContextOf,
   deraisonAnchorDamage,
   getCardDefinition,
   getShipDefinition,
@@ -383,13 +384,10 @@ export function TableBoard(props: TableBoardProps) {
     },
   });
 
-  const auraContextFor = (player: PlayerState) => ({
-    controllerBoard: player.board,
-    controllerReason: player.reason,
-    tideOrientation: state.environment.tideOrientation,
-    // Signal Rouge (Lot 15) : un bonus « pendant votre tour ».
-    controllerIsActive: state.activePlayerId === player.id,
-  });
+  // Le contexte COMPLET du moteur (`auraContextOf`) : Marée, joueur actif,
+  // Lande en jeu et mots-clés qu'elle retire (Pluie corrosive ôte Garde).
+  // Construit à la main, il oubliait les champs ajoutés depuis.
+  const auraContextFor = (player: PlayerState) => auraContextOf(state, player.id);
 
   const byId = new Map<string, { instance: CardInstance; owner: PlayerState }>();
   for (const player of state.players) {

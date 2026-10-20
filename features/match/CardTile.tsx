@@ -186,7 +186,7 @@ export function cardStatusLegend(
 ): Array<{ label: string; description: string }> {
   const def = getCardDefinition(instance.cardId);
   const context = auraContext
-    ? { tideState, controllerBoard: auraContext.controllerBoard, controllerReason: auraContext.controllerReason }
+    ? { tideState, controllerBoard: auraContext.controllerBoard, controllerReason: auraContext.controllerReason, removedKeywords: auraContext.removedKeywords }
     : null;
   const has = (keyword: "garde" | "pied-marin" | "voile") => (context ? hasKeywordInContext(instance, keyword, context) : hasKeyword(def, keyword));
   const isUnit = (UNIT_CARD_TYPES as readonly string[]).includes(def.type);
@@ -664,6 +664,8 @@ function CardTileView({
         tideState,
         controllerBoard: auraContext.controllerBoard,
         controllerReason: auraContext.controllerReason,
+        // Pluie corrosive : la Lande retire Garde à tous les permanents.
+        removedKeywords: auraContext.removedKeywords,
       })
     : hasKeyword(def, "garde");
   // Voile : seulement en jeu, conféré par un Équipement attaché.
@@ -672,6 +674,8 @@ function CardTileView({
         tideState,
         controllerBoard: auraContext.controllerBoard,
         controllerReason: auraContext.controllerReason,
+        // Pluie corrosive : la Lande retire Garde à tous les permanents.
+        removedKeywords: auraContext.removedKeywords,
       })
     : false;
   // Garde tout juste gagnée : son badge arrive en surgissant, pas en apparaissant.
@@ -683,6 +687,8 @@ function CardTileView({
         tideState,
         controllerBoard: auraContext.controllerBoard,
         controllerReason: auraContext.controllerReason,
+        // Pluie corrosive : la Lande retire Garde à tous les permanents.
+        removedKeywords: auraContext.removedKeywords,
       })
     : hasKeyword(def, "pied-marin");
   const engourdi = instance.summoningSick && isUnit && !hasPiedMarin;
