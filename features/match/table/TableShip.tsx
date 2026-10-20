@@ -215,6 +215,7 @@ function ShipAbilityPanel(view: ShipAbilityPanelView) {
     return (
       <span
         className={className}
+        data-ship-ability-panel=""
         title=""
         role="img"
         aria-label={ariaLabel}
@@ -240,6 +241,7 @@ function ShipAbilityPanel(view: ShipAbilityPanelView) {
       <button
         type="button"
         className={className}
+        data-ship-ability-panel=""
         title=""
         aria-label={ariaLabel}
         {...hoverProps}

@@ -329,15 +329,45 @@ export function TableBoard(props: TableBoardProps) {
    */
   const [shipInfoHover, setShipInfoHover] = useState(false);
   const shipPointer = useRef<string>("mouse");
+  /**
+   * Le pointeur est passé du Navire à son hublot de capacité, qui a refermé
+   * la fiche : elle revient quand il repasse sur le reste du Navire.
+   */
+  const shipInfoYielded = useRef(false);
+  /**
+   * Le hublot de capacité (`data-ship-ability-panel`) a SA carte de survol :
+   * la fiche du Navire s'ouvrait par-dessus et la cachait (20/10/2026).
+   */
+  const overShipAbility = (event: React.PointerEvent<HTMLElement>) =>
+    Boolean((event.target as Element | null)?.closest?.("[data-ship-ability-panel]"));
   /** Survol, toucher et clic d'un Navire : ce qui ouvre ou referme sa fiche. */
   const shipInfoHandlers = (id: PlayerId, targetNow: () => boolean) => ({
     onPointerEnter: (event: React.PointerEvent<HTMLElement>) => {
       shipPointer.current = event.pointerType;
       if (event.pointerType !== "mouse" || targetNow()) return;
+      if (overShipAbility(event)) {
+        shipInfoYielded.current = true;
+        return;
+      }
       setShipInfoFor(id);
       setShipInfoHover(true);
     },
+    /** D'un enfant à l'autre : le hublot cache la fiche, le reste du Navire la rend. */
+    onPointerOver: (event: React.PointerEvent<HTMLElement>) => {
+      if (event.pointerType !== "mouse" || targetNow()) return;
+      if (overShipAbility(event)) {
+        if (!shipInfoHover) return;
+        shipInfoYielded.current = true;
+        setShipInfoFor((current) => (current === id ? null : current));
+        setShipInfoHover(false);
+      } else if (shipInfoYielded.current) {
+        shipInfoYielded.current = false;
+        setShipInfoFor(id);
+        setShipInfoHover(true);
+      }
+    },
     onPointerLeave: () => {
+      shipInfoYielded.current = false;
       if (!shipInfoHover) return;
       setShipInfoFor((current) => (current === id ? null : current));
       setShipInfoHover(false);
@@ -1229,7 +1259,7 @@ export function TableBoard(props: TableBoardProps) {
                 data-ship-target={opponent.id}
                 {...(() => {
                   const info = shipInfoHandlers(opponent.id, () => Boolean(targeting?.kind === "attack" || targeting?.kind === "shipShot" || anyTargeting || attackTargeting));
-                  return { onPointerEnter: info.onPointerEnter, onPointerLeave: info.onPointerLeave, onPointerDown: info.onPointerDown, onClick: () => {
+                  return { onPointerEnter: info.onPointerEnter, onPointerOver: info.onPointerOver, onPointerLeave: info.onPointerLeave, onPointerDown: info.onPointerDown, onClick: () => {
                     // Pendant un ciblage d'attaque, le Navire est une CIBLE ; sinon, au doigt, on consulte sa fiche.
                     if (targeting?.kind === "attack" || targeting?.kind === "shipShot" || anyTargeting) props.onShipClick(opponent.id);
                     else info.openOnTap();
@@ -1359,7 +1389,7 @@ export function TableBoard(props: TableBoardProps) {
                 className={`${styles.shipTarget} ${anyTargeting || shipAllocation?.eligible ? `${styles.targetable} ${styles.effectTone}` : `${styles.shipInspectable} ${ciblageActif ? styles.targetDim : ""}`}`}
                 {...(() => {
                   const info = shipInfoHandlers(viewer.id, () => anyTargeting || Boolean(shipAllocation));
-                  return { onPointerEnter: info.onPointerEnter, onPointerLeave: info.onPointerLeave, onPointerDown: info.onPointerDown, onClick: () => {
+                  return { onPointerEnter: info.onPointerEnter, onPointerOver: info.onPointerOver, onPointerLeave: info.onPointerLeave, onPointerDown: info.onPointerDown, onClick: () => {
                     // Répartition de soins qui inclut le Navire : un toucher lui verse un point.
                     if (shipAllocation) shipAllocation.onAdd();
                     // Seule une capacité ciblée vise son propre Navire ; sinon, au doigt, on consulte sa fiche.
