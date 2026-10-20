@@ -265,6 +265,11 @@
    (`width: auto`) à toute sa phrase, posée en travers du plateau (Reine des
    Charognes, 20/10/2026). Il se lit sur la carte, juste à côté. */
 @media (max-height: 520px) {
+  /* Réduit à « Annuler », il passe SOUS la carte, au lieu de s'avancer vers
+     le plateau à sa gauche (20/10/2026). */
+  .column[data-waiting] {
+    flex-direction: column;
+  }
   .panel[data-waiting] {
     width: auto;
     padding: 4px;

@@ -163,7 +163,7 @@ export function FocusedCard({ card, tideState, eyebrow, detail, hint, actions, o
 
   return (
     <div className={styles.stage} data-leaving={leaving || undefined} aria-live="polite">
-      <div className={styles.column}>
+      <div className={styles.column} data-waiting={waiting || undefined}>
         <div ref={flyer} className={styles.card} data-focus-card={card.instanceId} data-arrived={arrived || undefined} data-waiting={waiting || undefined}>
           <CardTile instance={card} tideState={tideState} widthClassName="w-full" scaleOnHover={false} badgeSize={44} />
         </div>
