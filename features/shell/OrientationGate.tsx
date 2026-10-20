@@ -1,3 +1,4 @@
+import { InstallGuide } from "@/components/InstallGuide";
 import { OrientationLock } from "@/features/shell/OrientationLock";
 import styles from "@/features/shell/OrientationGate.module.css";
 
@@ -29,6 +30,8 @@ export function OrientationGate() {
       <p className={styles.hint}>
         Si l&apos;écran ne pivote pas, désactivez le verrouillage de rotation de votre téléphone.
       </p>
+      {/* Dans un navigateur seulement : comment installer l'app, selon le système du joueur. */}
+      <InstallGuide />
     </div>
   );
 }

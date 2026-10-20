@@ -74,21 +74,49 @@ export function InstallPromptCapture() {
 
 type InstallContext = "none" | "android" | "ios";
 
+/** L'app tourne-t-elle INSTALLÉE (écran d'accueil, PWA) plutôt que dans un onglet ? */
+export function isInstalledApp(): boolean {
+  const media = (query: string) => window.matchMedia?.(query).matches ?? false;
+  return (
+    media("(display-mode: standalone)") ||
+    media("(display-mode: fullscreen)") ||
+    (navigator as Navigator & { standalone?: boolean }).standalone === true
+  );
+}
+
+/** iOS / iPadOS (iPadOS se présente comme un Mac : on le reconnaît à son écran tactile). */
+export function isIosDevice(): boolean {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+}
+
+/** L'invite d'installation native captée (Chromium), ou `null`. */
+export function useInstallEvent(): BeforeInstallPromptEvent | null {
+  useEffect(startCapture, []);
+  return useSyncExternalStore(
+    subscribe,
+    () => deferredPrompt,
+    () => null
+  );
+}
+
+/** Lance l'invite native ; `true` si le joueur a accepté. Une invite ne sert qu'une fois. */
+export async function promptInstall(event: BeforeInstallPromptEvent): Promise<boolean> {
+  setDeferredPrompt(null);
+  try {
+    await event.prompt();
+    return (await event.userChoice).outcome === "accepted";
+  } catch {
+    return false;
+  }
+}
+
 /** Lu après montage seulement (le serveur ne connaît ni l'écran ni le mode d'affichage). */
 function detectContext(): InstallContext {
   const media = (query: string) => window.matchMedia?.(query).matches ?? false;
-  const standalone =
-    media("(display-mode: standalone)") ||
-    media("(display-mode: fullscreen)") ||
-    (navigator as Navigator & { standalone?: boolean }).standalone === true;
-  if (standalone) return "none";
+  if (isInstalledApp()) return "none";
   // Souris : un ordinateur, où l'onglet ne gêne pas. Rien à proposer.
   if (!media("(pointer: coarse)")) return "none";
-  // iPadOS se présente comme un Mac : on le reconnaît à son écran tactile.
-  const ios =
-    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-  return ios ? "ios" : "android";
+  return isIosDevice() ? "ios" : "android";
 }
 
 function readDismissed(): boolean {
@@ -110,11 +138,7 @@ function writeDismissed() {
 export function InstallPrompt() {
   const [context, setContext] = useState<InstallContext>("none");
   const [dismissed, setDismissed] = useState(true);
-  const installEvent = useSyncExternalStore(
-    subscribe,
-    () => deferredPrompt,
-    () => null
-  );
+  const installEvent = useInstallEvent();
   const fullscreen = useFullscreen();
 
   useEffect(() => {
@@ -133,15 +157,7 @@ export function InstallPrompt() {
   async function install() {
     const event = installEvent;
     if (!event) return;
-    // Une invite ne sert qu'une fois, acceptée ou non.
-    setDeferredPrompt(null);
-    try {
-      await event.prompt();
-      const choice = await event.userChoice;
-      if (choice.outcome === "accepted") dismiss();
-    } catch {
-      // Invite déjà consommée ou refusée par le navigateur : rien à signaler.
-    }
+    if (await promptInstall(event)) dismiss();
   }
 
   const offerFullscreen = context === "android" && fullscreen.supported && !fullscreen.active;

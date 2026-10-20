@@ -1,0 +1,67 @@
+/*
+ * Guide d'installation, sous le message de rotation (`OrientationGate`) :
+ * une carte discrète, mêmes jetons que le voile.
+ */
+.guide {
+  width: min(100%, 34ch);
+  margin-top: clamp(4px, 1vh, 10px);
+  padding: 14px 16px;
+  border: 1px solid var(--tb-border);
+  border-radius: var(--tb-radius-lg, 14px);
+  background: var(--tb-surface-inset);
+  text-align: left;
+  /* Le voile bloque les gestes (`touch-action: none`) : le guide, lui, se touche. */
+  touch-action: manipulation;
+}
+
+.title {
+  margin: 0 0 4px;
+  font-family: var(--tb-font-display);
+  font-size: calc(clamp(15px, 4.2vw, 18px) * var(--tb-text-scale));
+  color: var(--tb-text-strong);
+}
+
+.lead {
+  margin: 0 0 10px;
+  color: var(--tb-text-muted);
+  font-size: calc(clamp(12px, 3.3vw, 14px) * var(--tb-text-scale));
+  line-height: 1.4;
+}
+
+.system {
+  margin: 0 0 6px;
+  color: var(--tb-accent);
+  font-size: calc(11px * var(--tb-text-scale));
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.steps {
+  margin: 0;
+  padding-left: 1.3em;
+  list-style: decimal;
+  color: var(--tb-text);
+  font-size: calc(clamp(12px, 3.3vw, 14px) * var(--tb-text-scale));
+  line-height: 1.45;
+}
+
+.steps li + li {
+  margin-top: 4px;
+}
+
+.install {
+  width: 100%;
+  min-height: 44px;
+  padding: 0.55em 1.25em;
+  border: 1px solid var(--tb-btn-border);
+  border-radius: var(--tb-radius-sm);
+  background: var(--tb-btn-bg);
+  box-shadow: var(--tb-btn-glow);
+  color: var(--tb-btn-text);
+  font-family: var(--tb-font-ui);
+  font-size: var(--tb-fs-button);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  cursor: var(--tb-cursor-pointer);
+}
