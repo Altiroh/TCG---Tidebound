@@ -30,6 +30,9 @@ const PRIMARY_KEYS: Record<string, string[]> = {
   friendships: ["user_a", "user_b"],
   player_presence: ["user_id"],
   friend_challenges: ["id"],
+  player_showcase: ["user_id", "slot"],
+  card_trades: ["id"],
+  player_card_editions: ["user_id", "card_id", "artwork", "finish"],
   profiles: ["id"],
   match_rewards: ["match_id", "user_id"],
   match_quest_progress: ["match_id", "user_id"],
@@ -1070,6 +1073,50 @@ function runRpc(db: FakeDatabase, fn: string, args: Row): any {
         booster_id: args.p_booster_id ?? null,
         balance: db.one("player_currency", { user_id: args.p_user_id })?.balance ?? 0,
       };
+    }
+
+    case "accept_card_trade": {
+      // `20261112120000_social_vitrine_echanges.sql` : tout se vérifie avant le premier mouvement.
+      const trade = db.one("card_trades", { id: args.p_trade_id });
+      if (!trade || trade.to_user !== args.p_user_id || trade.status !== "pending") return { ok: false, error: "Cet échange n'existe plus." };
+      if (Date.now() - Date.parse(trade.created_at) > 72 * 3600 * 1000) return { ok: false, error: "Cette offre a expiré." };
+      const [userA, userB] = [trade.from_user, trade.to_user].sort();
+      if (db.one("friendships", { user_a: userA, user_b: userB })?.status !== "accepted") {
+        return { ok: false, error: "Vous n'êtes plus amis : l'échange est impossible." };
+      }
+      const since = Date.now() - 24 * 3600 * 1000;
+      const parties = [trade.from_user, trade.to_user];
+      const done = db
+        .table("card_trades")
+        .filter((row) => row.status === "accepted" && Date.parse(row.resolved_at) >= since && (parties.includes(row.from_user) || parties.includes(row.to_user))).length;
+      if (done >= 5) return { ok: false, error: "Plafond atteint : 5 échanges par jour. Réessaie demain." };
+
+      const classic = (userId: string, cardId: string) => {
+        const owned = db.one("player_cards", { user_id: userId, card_id: cardId })?.quantity ?? 0;
+        const rares = db.where("player_card_editions", { user_id: userId, card_id: cardId }).reduce((sum, row) => sum + row.quantity, 0);
+        return Math.max(owned - rares, 0);
+      };
+      const moves = [
+        ...trade.offered.map((line: Row) => ({ giver: trade.from_user, receiver: trade.to_user, cardId: line.card_id, quantity: line.quantity })),
+        ...trade.requested.map((line: Row) => ({ giver: trade.to_user, receiver: trade.from_user, cardId: line.card_id, quantity: line.quantity })),
+      ];
+      for (const move of moves) {
+        if (classic(move.giver, move.cardId) < move.quantity) {
+          return {
+            ok: false,
+            error: move.giver === args.p_user_id ? "Tu ne possèdes plus assez d'exemplaires des cartes demandées." : "Ton ami ne possède plus les cartes proposées.",
+          };
+        }
+      }
+      for (const move of moves) {
+        db.one("player_cards", { user_id: move.giver, card_id: move.cardId })!.quantity -= move.quantity;
+        db.upsert("player_cards", { user_id: move.receiver, card_id: move.cardId, quantity: move.quantity }, (existing) => {
+          existing.quantity += move.quantity;
+        });
+      }
+      trade.status = "accepted";
+      trade.resolved_at = nowIso();
+      return { ok: true };
     }
 
     default:

@@ -663,6 +663,19 @@ function LogbookTab({ profile, onRefresh, onShowRewards }: { profile: ProfileSum
         )}
       </section>
 
+      <section className={`${game.panel} ${styles.block}`} aria-label="Vitrine">
+        <div className={styles.blockHead}>
+          <h2 className={game.sectionTitle}>Vitrine</h2>
+          <Link href="/amis" className={game.link} onClick={() => playButtonClick()}>
+            Mes amis →
+          </Link>
+        </div>
+        <p className={game.muted}>Six cartes de ta collection, dans l&apos;édition de ton choix : tes amis les voient sur ta fiche, ton adversaire avant chaque partie en ligne.</p>
+        <Link href="/vitrine" className={game.secondary} onClick={() => playButtonClick()}>
+          Composer ma vitrine →
+        </Link>
+      </section>
+
       <section className={`${game.panel} ${styles.block}`} aria-label="Prochains paliers">
         <div className={styles.blockHead}>
           <h2 className={game.sectionTitle}>Prochaines escales</h2>

@@ -9,11 +9,14 @@ import {
   removeFriend as removeFriendFor,
   respondToFriendRequest as respondFor,
   sendFriendRequest as sendFor,
+  sendFriendRequestToOpponent,
   touchPresence,
   type FriendResult,
   type IncomingChallenge,
   type SocialView,
 } from "@/features/friends/friendService";
+import { readPlayerCard, readRecentOpponents, type PlayerCardView, type RecentOpponent } from "@/features/friends/playerCardService";
+import { readIncomingTradeIds } from "@/features/friends/tradeService";
 import { getSessionUser } from "@/lib/supabase/sessionUser";
 import { devModeActive } from "@/features/admin/roles";
 import { friendlyMatchLocked, MATCH_AMICAL_INDISPONIBLE } from "@/features/online/friendlyMatchLock";
@@ -53,6 +56,37 @@ export async function addFriendByCode(code: string): Promise<FriendResult> {
   return done(await sendFor(user.id, code).catch(() => ({ ok: false as const, error: "Demande impossible pour l'instant." })));
 }
 
+/** Demande d'ami à un adversaire déjà affronté en ligne (sans son code). */
+export async function addFriendFromMatch(otherId: string): Promise<FriendResult> {
+  const user = await getSessionUser();
+  if (!user) return SIGNED_OUT;
+  if (!isUuid(otherId)) return { ok: false, error: "Joueur introuvable." };
+  return done(await sendFriendRequestToOpponent(user.id, otherId).catch(() => ({ ok: false as const, error: "Demande impossible pour l'instant." })));
+}
+
+/** Fiche d'un joueur lié (ami, demande, ancien adversaire) — `null` sinon. */
+export async function fetchPlayerCard(otherId: string): Promise<PlayerCardView | null> {
+  try {
+    const user = await getSessionUser();
+    if (!user || !isUuid(otherId)) return null;
+    return await readPlayerCard(user.id, otherId);
+  } catch (error) {
+    console.error("[fetchPlayerCard] Lecture impossible :", error);
+    return null;
+  }
+}
+
+export async function fetchRecentOpponents(): Promise<RecentOpponent[]> {
+  try {
+    const user = await getSessionUser();
+    if (!user) return [];
+    return await readRecentOpponents(user.id);
+  } catch (error) {
+    console.error("[fetchRecentOpponents] Lecture impossible :", error);
+    return [];
+  }
+}
+
 export async function answerFriendRequest(otherId: string, accept: boolean): Promise<FriendResult> {
   const user = await getSessionUser();
   if (!user) return SIGNED_OUT;
@@ -85,17 +119,18 @@ export async function declineChallenge(challengeId: string): Promise<FriendResul
 
 /**
  * Signe de vie de l'appli ouverte (`SocialPulse`, toutes les 45 s) : note
- * la présence du joueur et rend ses défis en attente, pour l'alerter où
- * qu'il soit. `null` hors connexion — ni erreur, ni redirection.
+ * la présence du joueur et rend ses défis et offres d'échange en attente,
+ * pour l'alerter où qu'il soit. `null` hors connexion — ni erreur, ni redirection.
  */
-export async function pollSocial(): Promise<{ challenges: IncomingChallenge[] } | null> {
+export async function pollSocial(): Promise<{ challenges: IncomingChallenge[]; trades: { id: string; fromName: string }[] } | null> {
   try {
     // Dans le `try` : appelé sur TOUS les écrans, il ne doit jamais faire
     // tomber une requête — configuration Supabase absente comprise.
     const user = await getSessionUser();
     if (!user) return null;
     await touchPresence(user.id);
-    return { challenges: await readIncomingChallenges(user.id) };
+    const [challenges, trades] = await Promise.all([readIncomingChallenges(user.id), readIncomingTradeIds(user.id).catch(() => [])]);
+    return { challenges, trades };
   } catch (error) {
     console.error("[pollSocial] Échec :", error);
     return null;

@@ -82,6 +82,38 @@ export interface Database {
         Update: { last_seen_at?: string };
         Relationships: [];
       };
+      /** Vitrine : six emplacements (0 à 5), une carte possédée dans l'édition choisie. Serveur seul (aucune policy). */
+      player_showcase: {
+        Row: { user_id: string; slot: number; card_id: string; artwork: string; finish: string; updated_at: string };
+        Insert: { user_id: string; slot: number; card_id: string; artwork?: string; finish?: string; updated_at?: string };
+        Update: { card_id?: string; artwork?: string; finish?: string; updated_at?: string };
+        Relationships: [];
+      };
+      /** Proposition d'échange entre amis (Classiques seulement), conclue par `accept_card_trade`. Serveur seul. */
+      card_trades: {
+        Row: {
+          id: string;
+          from_user: string;
+          to_user: string;
+          offered: { card_id: string; quantity: number }[];
+          requested: { card_id: string; quantity: number }[];
+          status: "pending" | "accepted" | "declined" | "cancelled";
+          created_at: string;
+          resolved_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          from_user: string;
+          to_user: string;
+          offered: { card_id: string; quantity: number }[];
+          requested: { card_id: string; quantity: number }[];
+          status?: "pending" | "accepted" | "declined" | "cancelled";
+          created_at?: string;
+          resolved_at?: string | null;
+        };
+        Update: { status?: "pending" | "accepted" | "declined" | "cancelled"; resolved_at?: string | null };
+        Relationships: [];
+      };
       /** Défi en match amical : `match_id` est une partie `private_invite` en attente, créée par `from_user`. */
       friend_challenges: {
         Row: {
@@ -928,6 +960,11 @@ export interface Database {
       forget_sponsor_interest: {
         Args: { p_user_id: string; p_sponsor_ids: string[] };
         Returns: { ok: boolean; forgotten?: number };
+      };
+      /** Réservée au serveur (clé service_role) : `p_user_id` (le destinataire) vient de la session. Atomique. */
+      accept_card_trade: {
+        Args: { p_trade_id: string; p_user_id: string };
+        Returns: { ok: boolean; error?: string };
       };
       /** Réservée au serveur (clé service_role) : `p_user_id` vient de la session, et doit être en file. */
       claim_matchmaking_opponent: {

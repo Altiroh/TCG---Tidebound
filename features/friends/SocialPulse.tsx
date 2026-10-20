@@ -16,15 +16,17 @@ const PULSE_MS = 45_000;
  * Pouls social de l'appli — monté une fois dans la mise en page.
  *
  * Tant que l'onglet est visible, il signale la présence du joueur à ses amis
- * et relève ses défis en attente : un défi reçu s'annonce où qu'il soit,
- * sauf en pleine partie (le plateau ne doit pas être recouvert) et sur
- * l'écran Partie, qui les affiche déjà. Hors connexion, le serveur ne rend
- * rien et il n'y a rien à montrer.
+ * et relève ses défis et offres d'échange en attente : ils s'annoncent où
+ * qu'il soit, sauf en pleine partie (le plateau ne doit pas être recouvert)
+ * et sur l'écran qui les affiche déjà (Partie pour un défi, Amis pour un
+ * échange). Hors connexion, le serveur ne rend rien et il n'y a rien à
+ * montrer.
  */
 export function SocialPulse() {
   const pathname = usePathname();
   const [challenge, setChallenge] = useState<IncomingChallenge | null>(null);
-  /** Défis déjà annoncés : un défi ne s'annonce qu'une fois. */
+  const [trade, setTrade] = useState<{ id: string; fromName: string } | null>(null);
+  /** Défis et offres déjà annoncés : chacun ne s'annonce qu'une fois. */
   const announced = useRef(new Set<string>());
 
   useEffect(() => {
@@ -38,6 +40,11 @@ export function SocialPulse() {
       if (fresh) {
         announced.current.add(fresh.id);
         setChallenge(fresh);
+      }
+      const freshTrade = result.trades.find((entry) => !announced.current.has(entry.id));
+      if (freshTrade) {
+        announced.current.add(freshTrade.id);
+        setTrade(freshTrade);
       }
     }
 
@@ -54,18 +61,35 @@ export function SocialPulse() {
 
   // Match amical fermé hors mode Dev (`friendlyMatchLock.ts`) : aucun défi à annoncer.
   const amicalLocked = friendlyMatchLocked(useDevMode());
-  const hidden = amicalLocked || pathname?.startsWith("/en-ligne/") || pathname === "/partie";
-  if (!challenge || hidden) return null;
+  const inMatch = pathname?.startsWith("/en-ligne/");
+  const showChallenge = challenge && !amicalLocked && !inMatch && pathname !== "/partie";
+  const showTrade = trade && !inMatch && pathname !== "/amis";
 
+  if (showChallenge) {
+    return (
+      <div className={styles.toast} role="alert">
+        <span className={styles.text}>
+          <strong>{challenge.fromName}</strong> te défie en match amical.
+        </span>
+        <Link href={`/partie?mode=en-ligne&code=${challenge.inviteCode}`} className={styles.accept} onClick={() => setChallenge(null)}>
+          Relever le défi
+        </Link>
+        <button type="button" className={styles.close} aria-label="Fermer" onClick={() => setChallenge(null)}>
+          ×
+        </button>
+      </div>
+    );
+  }
+  if (!showTrade) return null;
   return (
     <div className={styles.toast} role="alert">
       <span className={styles.text}>
-        <strong>{challenge.fromName}</strong> te défie en match amical.
+        <strong>{trade.fromName}</strong> te propose un échange de cartes.
       </span>
-      <Link href={`/partie?mode=en-ligne&code=${challenge.inviteCode}`} className={styles.accept} onClick={() => setChallenge(null)}>
-        Relever le défi
+      <Link href="/amis" className={styles.accept} onClick={() => setTrade(null)}>
+        Voir l&apos;offre
       </Link>
-      <button type="button" className={styles.close} aria-label="Fermer" onClick={() => setChallenge(null)}>
+      <button type="button" className={styles.close} aria-label="Fermer" onClick={() => setTrade(null)}>
         ×
       </button>
     </div>

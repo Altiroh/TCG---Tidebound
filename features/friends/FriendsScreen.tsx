@@ -3,8 +3,12 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { addFriendByCode, answerFriendRequest, declineChallenge, removeFriend } from "@/features/friends/actions";
+import { addFriendByCode, addFriendFromMatch, answerFriendRequest, declineChallenge, removeFriend } from "@/features/friends/actions";
+import { acceptTrade, cancelTrade, declineTrade } from "@/features/friends/tradeActions";
 import type { SocialView } from "@/features/friends/friendService";
+import type { RecentOpponent } from "@/features/friends/playerCardService";
+import type { TradesView } from "@/features/friends/tradeService";
+import { TradeSummary } from "@/features/friends/TradeSummary";
 import { normalizeFriendCode, PRESENCE_LABEL, type FriendPresence } from "@/features/friends/presence";
 import { GameScreen } from "@/features/shell/GameScreen";
 import game from "@/features/shell/GameScreen.module.css";
@@ -19,14 +23,29 @@ const PRESENCE_TAG: Record<FriendPresence, string | undefined> = {
   offline: game.tag,
 };
 
+/** Temps restant avant l'expiration d'une offre d'échange. */
+function remaining(expiresAt: string): string {
+  const hours = Math.max(0, Math.round((Date.parse(expiresAt) - Date.now()) / 3_600_000));
+  return hours >= 1 ? `encore ${hours} h` : "expire bientôt";
+}
+
 /**
- * Amis : son code ami, l'ajout par code, les demandes reçues et envoyées,
- * les défis reçus, et la liste — présence et bouton « Défier ».
+ * Amis : son code ami, l'ajout par code (ou parmi les adversaires récents),
+ * les demandes reçues et envoyées, les défis et offres d'échange reçus, et
+ * la liste — présence, fiche (vitrine), « Défier » et « Échanger ».
  *
  * Défier ouvre l'écran Partie en mode « En ligne », ami présélectionné : le
  * joueur y choisit son deck comme pour n'importe quelle partie.
  */
-export function FriendsScreen({ social }: { social: SocialView }) {
+export function FriendsScreen({
+  social,
+  trades = { incoming: [], outgoing: [] },
+  recentOpponents = [],
+}: {
+  social: SocialView;
+  trades?: TradesView;
+  recentOpponents?: RecentOpponent[];
+}) {
   const router = useRouter();
   const [code, setCode] = useState("");
   const [message, setMessage] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
@@ -68,10 +87,37 @@ export function FriendsScreen({ social }: { social: SocialView }) {
               <p className={game.eyebrow}>Équipage</p>
               <h1 className={game.title}>Mes amis</h1>
             </div>
-            <Link href="/partie?mode=en-ligne" className={game.secondary} onClick={() => playButtonClick()}>
-              ← Jouer en ligne
-            </Link>
+            <span className={game.bannerActions}>
+              <Link href="/vitrine" className={game.secondary} onClick={() => playButtonClick()}>
+                Ma vitrine
+              </Link>
+              <Link href="/partie?mode=en-ligne" className={game.secondary} onClick={() => playButtonClick()}>
+                ← Jouer en ligne
+              </Link>
+            </span>
           </div>
+
+          {trades.incoming.length > 0 && (
+            <section className={`${game.panel} ${styles.section}`} aria-label="Échanges proposés">
+              <h2 className={game.sectionTitle}>Échanges proposés</h2>
+              {trades.incoming.map((trade) => (
+                <div key={trade.id} className={game.banner}>
+                  <p className={game.bannerTitle}>
+                    {trade.otherName} te propose un échange <span className={game.caption}>({remaining(trade.expiresAt)})</span>
+                  </p>
+                  <TradeSummary offered={trade.offered} requested={trade.requested} giverLabel="Tu reçois" receiverLabel="Tu donnes" />
+                  <div className={game.bannerActions}>
+                    <button type="button" className={game.primary} disabled={pending} onClick={() => run(() => acceptTrade(trade.id))}>
+                      Accepter l&apos;échange
+                    </button>
+                    <button type="button" className={game.ghost} disabled={pending} onClick={() => run(() => declineTrade(trade.id))}>
+                      Refuser
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </section>
+          )}
 
           {!amicalLocked && social.challenges.length > 0 && (
             <section className={`${game.panel} ${styles.section}`} aria-label="Défis reçus">
@@ -165,9 +211,15 @@ export function FriendsScreen({ social }: { social: SocialView }) {
               social.friends.map((friend) => (
                 <div key={friend.userId} className={`${game.listRow} ${styles.row}`}>
                   <span>
-                    {friend.name} <span className={PRESENCE_TAG[friend.presence]}>{PRESENCE_LABEL[friend.presence]}</span>
+                    <Link href={`/amis/${friend.userId}`} className={game.link} onClick={() => playButtonClick()}>
+                      {friend.name}
+                    </Link>{" "}
+                    <span className={PRESENCE_TAG[friend.presence]}>{PRESENCE_LABEL[friend.presence]}</span>
                   </span>
                   <span className={game.bannerActions}>
+                    <Link href={`/amis/${friend.userId}/echange`} className={game.secondary} onClick={() => playButtonClick()}>
+                      Échanger
+                    </Link>
                     {!amicalLocked && (
                       <Link
                         href={`/partie?mode=en-ligne&ami=${friend.userId}`}
@@ -192,6 +244,42 @@ export function FriendsScreen({ social }: { social: SocialView }) {
               ))
             )}
           </section>
+
+          {trades.outgoing.length > 0 && (
+            <section className={`${game.panel} ${styles.section}`} aria-label="Échanges envoyés">
+              <h2 className={game.sectionTitle}>Échanges envoyés</h2>
+              {trades.outgoing.map((trade) => (
+                <div key={trade.id} className={game.banner}>
+                  <p className={game.bannerTitle}>
+                    À {trade.otherName} <span className={game.caption}>({remaining(trade.expiresAt)})</span>
+                  </p>
+                  <TradeSummary offered={trade.offered} requested={trade.requested} giverLabel="Tu donnes" receiverLabel="Tu reçois" />
+                  <div className={game.bannerActions}>
+                    <button type="button" className={game.ghost} disabled={pending} onClick={() => run(() => cancelTrade(trade.id))}>
+                      Annuler l&apos;offre
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </section>
+          )}
+
+          {recentOpponents.length > 0 && (
+            <section className={`${game.panel} ${styles.section}`} aria-label="Adversaires récents">
+              <h2 className={game.sectionTitle}>Adversaires récents</h2>
+              <p className={game.caption}>Croisés en ligne : ajoute-les sans connaître leur code ami.</p>
+              {recentOpponents.map((opponent) => (
+                <div key={opponent.userId} className={`${game.listRow} ${styles.row}`}>
+                  <Link href={`/amis/${opponent.userId}`} className={game.link} onClick={() => playButtonClick()}>
+                    {opponent.name}
+                  </Link>
+                  <button type="button" className={game.secondary} disabled={pending} onClick={() => run(() => addFriendFromMatch(opponent.userId))}>
+                    Ajouter en ami
+                  </button>
+                </div>
+              ))}
+            </section>
+          )}
 
           {social.outgoing.length > 0 && (
             <section className={`${game.panel} ${styles.section}`} aria-label="Demandes envoyées">

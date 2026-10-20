@@ -13,6 +13,7 @@ import { MAX_ACTIONS_PER_BATCH } from "@/features/matches/actionShape";
 import { predictView } from "@/features/online/predictView";
 import { BASE_FRAME_MS, framePaceMs } from "@/features/match/framePacing";
 import { WaitingRoom } from "@/features/online/WaitingRoom";
+import { VersusIntro } from "@/features/online/VersusIntro";
 import { MicroLoader } from "@/features/shell/MicroLoader";
 import { createChannelRecoveryTracker, useResyncOnReturn } from "@/features/online/resync";
 import { isOffline, presentUserIds, useOffline, useOpponentPresence, waitUntilOnline } from "@/features/online/connection";
@@ -163,6 +164,33 @@ export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: On
       cancelled = true;
     };
   }, [matchId, isBotMatch, opponentUserId]);
+
+  /**
+   * PRÉSENTATION des deux capitaines avant une partie entre joueurs
+   * (`VersusIntro`) : au premier tour seulement, une fois par partie et par
+   * navigateur — recharger la page ne la rejoue pas. Le plateau (et sa pièce
+   * de pile ou face) n'est monté qu'après.
+   */
+  const [versus, setVersus] = useState<"pending" | "showing" | "done">("pending");
+  const versusEligible = !isBotMatch && match.status === "active" && view?.turnNumber === 1;
+  useEffect(() => {
+    if (versus !== "pending" || !view) return;
+    let seen = false;
+    try {
+      seen = window.sessionStorage.getItem(`tb-versus:${matchId}`) === "1";
+    } catch {
+      // Stockage refusé (navigation privée) : la présentation se montre, c'est tout.
+    }
+    setVersus(versusEligible && !seen ? "showing" : "done");
+  }, [versus, view, versusEligible, matchId]);
+  const finishVersus = useCallback(() => {
+    try {
+      window.sessionStorage.setItem(`tb-versus:${matchId}`, "1");
+    } catch {
+      // Sans stockage, rien à retenir.
+    }
+    setVersus("done");
+  }, [matchId]);
 
   /** Vue affichée, lisible sans attendre un rendu : les prédictions s'enchaînent sur la dernière. */
   const viewRef = useRef<GameState | null>(initialView);
@@ -650,6 +678,10 @@ export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: On
         Chargement de la partie...
       </main>
     );
+  }
+
+  if (versusEligible && versus !== "done") {
+    return <VersusIntro matchId={matchId} onDone={finishVersus} />;
   }
 
   return (

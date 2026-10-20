@@ -18,6 +18,7 @@ import { resolveMatchDeck } from "@/features/decks/matchDeck";
 import { resumeVerdict } from "@/features/online/resumable";
 import { loadEquippedCosmetics } from "@/features/cosmetics/equippedCosmeticsService";
 import type { PlayerCosmetics } from "@/features/cosmetics/MatchCosmeticsProvider";
+import { readPlayerCards, relationOf, type PlayerCardView } from "@/features/friends/playerCardService";
 import { getSessionUser } from "@/lib/supabase/sessionUser";
 import { devModeActive } from "@/features/admin/roles";
 import { friendlyMatchLocked, MATCH_AMICAL_INDISPONIBLE } from "@/features/online/friendlyMatchLock";
@@ -159,6 +160,33 @@ export async function fetchMatchCosmetics(matchId: string): Promise<ActionResult
   const { player1_id, player2_id } = snapshot.match;
   const cosmetics = await loadEquippedCosmetics([player1_id, player2_id].filter((id): id is string => Boolean(id)), { withEditions: true });
   return { ok: true, data: cosmetics };
+}
+
+/**
+ * Écran de PRÉSENTATION d'une partie en ligne entre deux joueurs : la fiche
+ * de chacun (pseudo, niveau, titre, illustration, vitrine), et le lien du
+ * lecteur avec son adversaire — de quoi proposer « Ajouter en ami ».
+ * Réservé aux participants ; rien contre le bot.
+ */
+export async function fetchMatchVersus(matchId: string): Promise<ActionResult<{ me: PlayerCardView; opponent: PlayerCardView }>> {
+  const user = await requireUser();
+  try {
+    const snapshot = await loadSnapshot(matchId, user.id);
+    if (!snapshot || snapshot.match.mode === "bot") return { ok: false, error: "Partie introuvable." };
+    const { player1_id, player2_id } = snapshot.match;
+    const opponentId = player1_id === user.id ? player2_id : player1_id;
+    if (!opponentId) return { ok: false, error: "Adversaire pas encore arrivé." };
+    // Assis à la même table : le lien existe forcément (`opponent` au moins).
+    const relation = (await relationOf(user.id, opponentId)) ?? "opponent";
+    const cards = await readPlayerCards([user.id, opponentId], { [user.id]: "self", [opponentId]: relation });
+    const me = cards[user.id];
+    const opponent = cards[opponentId];
+    if (!me || !opponent) return { ok: false, error: "Fiches illisibles." };
+    return { ok: true, data: { me, opponent } };
+  } catch (error) {
+    console.error("[fetchMatchVersus] Lecture impossible :", error);
+    return { ok: false, error: "Fiches illisibles." };
+  }
 }
 
 /**

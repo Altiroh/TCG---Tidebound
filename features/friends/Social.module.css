@@ -1,0 +1,256 @@
+/* Écrans sociaux : fiche d'un joueur, vitrine, échanges. Charte : `features/shell/GameScreen.module.css`. */
+
+.column {
+  display: grid;
+  gap: var(--tb-space-4);
+}
+
+.section {
+  display: grid;
+  gap: var(--tb-space-3);
+  padding: var(--tb-space-4);
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--tb-space-2);
+}
+
+/* --- Identité ------------------------------------------------------------ */
+
+.identity {
+  display: flex;
+  align-items: center;
+  gap: var(--tb-space-4);
+  min-width: 0;
+}
+
+.avatar {
+  flex: none;
+  width: 72px;
+  height: 72px;
+  overflow: hidden;
+  border: 2px solid var(--tb-gold-line);
+  border-radius: 50%;
+  background: var(--tb-surface-inset);
+  box-shadow: var(--tb-glow-gold);
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatarEmpty {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  color: var(--tb-gold);
+  font-family: var(--tb-font-display);
+  font-size: 1.8rem;
+}
+
+.identityText {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.name {
+  overflow: hidden;
+  color: var(--tb-text-strong);
+  font-family: var(--tb-font-display);
+  font-size: var(--tb-fs-section-title);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.subtitle {
+  color: var(--tb-text-muted);
+  font-size: var(--tb-fs-caption);
+}
+
+/* --- Vitrine ------------------------------------------------------------- */
+
+.shelf {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: var(--tb-space-3);
+}
+
+.shelfCompact {
+  gap: var(--tb-space-2);
+}
+
+@media (max-width: 720px) {
+  .shelf:not(.shelfCompact) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.slot {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--tb-space-1);
+}
+
+.slotEmpty {
+  display: flex;
+  aspect-ratio: 5 / 7;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed var(--tb-border-strong);
+  border-radius: var(--tb-radius-md);
+  background: var(--tb-surface-inset);
+  color: var(--tb-text-soft);
+  font-size: var(--tb-fs-caption);
+  text-align: center;
+}
+
+.slotButton {
+  width: 100%;
+  font: inherit;
+  cursor: var(--tb-cursor-pointer);
+}
+
+.slotSelected .slotEmpty,
+.slotSelected > :first-child {
+  outline: 2px solid var(--tb-gold);
+  outline-offset: 3px;
+  border-radius: var(--tb-radius-md);
+}
+
+.slotLabel {
+  overflow: hidden;
+  color: var(--tb-text-muted);
+  font-size: var(--tb-fs-caption);
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* --- Listes de cartes (échanges, choix de la vitrine) -------------------- */
+
+.search {
+  width: 100%;
+}
+
+.cardList {
+  display: grid;
+  max-height: min(52dvh, 460px);
+  overflow-y: auto;
+  gap: var(--tb-space-1);
+  padding-right: var(--tb-space-1);
+}
+
+.cardLine {
+  display: flex;
+  align-items: center;
+  gap: var(--tb-space-2);
+  min-width: 0;
+  padding: var(--tb-space-1) var(--tb-space-2);
+  border: 1px solid transparent;
+  border-radius: var(--tb-radius-sm);
+  background: var(--tb-surface-inset);
+}
+
+.cardLineActive {
+  border-color: var(--tb-gold-line);
+  background: var(--tb-gold-soft);
+}
+
+.cardLineName {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cardLineMeta {
+  flex: none;
+  color: var(--tb-text-muted);
+  font-size: var(--tb-fs-caption);
+}
+
+.stepper {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--tb-space-1);
+}
+
+.stepper output {
+  min-width: 1.6em;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.tradeColumns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--tb-space-4);
+}
+
+@media (max-width: 720px) {
+  .tradeColumns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.tradeSides {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: start;
+  gap: var(--tb-space-3);
+}
+
+.tradeArrow {
+  align-self: center;
+  color: var(--tb-gold);
+  font-size: 1.4rem;
+}
+
+.tradeSide {
+  display: grid;
+  gap: var(--tb-space-1);
+  min-width: 0;
+}
+
+.tradeSideTitle {
+  color: var(--tb-text-muted);
+  font-size: var(--tb-fs-caption);
+  letter-spacing: var(--tb-track-label);
+  text-transform: uppercase;
+}
+
+.tradeCard {
+  display: flex;
+  align-items: center;
+  gap: var(--tb-space-2);
+  min-width: 0;
+}
+
+.tradeCard span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.editionGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  max-height: min(56dvh, 520px);
+  overflow-y: auto;
+  gap: var(--tb-space-3);
+  padding: var(--tb-space-1);
+}

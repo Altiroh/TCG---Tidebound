@@ -1,6 +1,7 @@
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import { createWaitingMatch } from "@/features/online/waitingMatch";
 import { normalizeFriendCode, presenceOf, type FriendPresence } from "@/features/friends/presence";
+import { haveFaced } from "@/features/friends/playerCardService";
 
 /**
  * Amis — module SERVEUR, volontairement sans directive `"use server"`.
@@ -76,7 +77,23 @@ export async function sendFriendRequest(userId: string, rawCode: string): Promis
   if (error) return { ok: false, error: "Recherche impossible pour l'instant." };
   if (!target) return { ok: false, error: "Aucun capitaine ne porte ce code." };
   if (target.id === userId) return { ok: false, error: "C'est ton propre code." };
+  return requestFriendship(userId, target);
+}
 
+/**
+ * Demande d'ami à un joueur DÉJÀ AFFRONTÉ en ligne (adversaires récents,
+ * écran de présentation d'une partie) : sans code ami, mais jamais vers un
+ * inconnu — la partie commune vaut présentation.
+ */
+export async function sendFriendRequestToOpponent(userId: string, targetId: string): Promise<FriendResult> {
+  if (targetId === userId) return { ok: false, error: "C'est toi." };
+  if (!(await haveFaced(userId, targetId))) return { ok: false, error: "Ajoute ce joueur avec son code ami." };
+  const { data: target } = await service().from("profiles").select("id, display_name").eq("id", targetId).maybeSingle();
+  if (!target) return { ok: false, error: "Ce capitaine n'existe plus." };
+  return requestFriendship(userId, target);
+}
+
+async function requestFriendship(userId: string, target: { id: string; display_name: string }): Promise<FriendResult> {
   const existing = await readFriendship(userId, target.id);
   if (existing?.status === "accepted") return { ok: false, error: `${target.display_name} est déjà dans tes amis.` };
   if (existing?.requested_by === userId) return { ok: false, error: `Demande déjà envoyée à ${target.display_name}.` };
