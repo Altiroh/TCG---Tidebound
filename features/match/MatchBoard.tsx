@@ -107,6 +107,12 @@ interface MatchBoardProps {
   /** Masque l'écran de fin de partie : le tutoriel a le sien. */
   hideEndScreen?: boolean;
   /**
+   * Le bandeau « La partie semble bloquée » passe la question tout seul au
+   * bout de 15 s (`true` par défaut). Le tutoriel le coupe : un joueur parti
+   * faire autre chose ne doit pas retrouver une leçon sautée en son absence.
+   */
+  autoUnstick?: boolean;
+  /**
    * Labo seulement : le panneau « Animations » peut écrire l'état de cette
    * partie (états, mots-clés, statistiques d'une carte — `labEffects.ts`).
    * Absent partout ailleurs : seul le moteur écrit l'état d'une partie.
@@ -139,6 +145,7 @@ export function MatchBoard({
   onStateChange,
   playableHandCards,
   hideEndScreen = false,
+  autoUnstick = true,
   labPatchable = false,
 }: MatchBoardProps) {
   // En partie, la musique du menu se tait.
@@ -699,11 +706,15 @@ export function MatchBoard({
           choiceKey={`blocage:${liveState.turnNumber}:${liveState.phase}`}
           source={null}
           title="La partie semble bloquée"
-          detail="Rien n'a bougé depuis 30 secondes. Débloquer passe la question en cours sans rien appliquer — sinon, elle se débloque d'elle-même."
+          detail={
+            autoUnstick
+              ? "Rien n'a bougé depuis 30 secondes. Débloquer passe la question en cours sans rien appliquer — sinon, elle se débloque d'elle-même."
+              : "Rien n'a bougé depuis 30 secondes. Débloquer passe la question en cours sans rien appliquer."
+          }
           actions={[{ label: "Débloquer", onClick: unstick }]}
-          // Sans geste dans les 15 s, la partie se débloque d'elle-même.
-          onExpire={unstick}
-          timeoutMs={15_000}
+          // Sans geste dans les 15 s, la partie se débloque d'elle-même (sauf au tutoriel).
+          onExpire={autoUnstick ? unstick : undefined}
+          timeoutMs={autoUnstick ? 15_000 : undefined}
         />
       )}
       {/* Invitation à réagir — priorité sur tout le reste tant qu'elle reste ouverte ; repliée dès qu'une

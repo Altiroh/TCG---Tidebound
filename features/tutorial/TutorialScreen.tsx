@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { PRECON_DECKS, TUTORIAL_STEPS, getShipDefinition, tutorialProgress, type GameState } from "@/game";
-import { beginTutorial, completeTutorial } from "@/features/onboarding/actions";
+import { beginTutorial, completeTutorial, keepTutorialSessionAlive } from "@/features/onboarding/actions";
 import { createTutorialMatch } from "@/features/match/createLocalMatch";
 import { MatchBoard } from "@/features/match/MatchBoard";
 import { MatchEndScreen } from "@/features/match/MatchEndScreen";
@@ -43,6 +43,9 @@ import { playButtonClick, playGameStart } from "@/lib/sound";
  * La fin reprend l'écran de victoire ou de défaite, avec un mot propre au
  * tutoriel et des boutons qui mènent au booster et aux starters.
  */
+/** Intervalle du signe de vie de la session pendant la partie guidée. */
+const SESSION_KEEPALIVE_MS = 4 * 60 * 1000;
+
 /** D'où vient la fin : la partie s'est terminée, ou le joueur a quitté la table une fois les leçons vues. */
 type TutorialEnding = { kind: "finished"; state: GameState } | { kind: "left"; state: GameState };
 export function TutorialScreen({ autoStart = false }: { autoStart?: boolean } = {}) {
@@ -92,6 +95,25 @@ export function TutorialScreen({ autoStart = false }: { autoStart?: boolean } = 
     },
     [startTransition, ticket]
   );
+
+  // Pendant la partie guidée, la session reste en vie (`keepTutorialSessionAlive`) :
+  // un signe toutes les quatre minutes, même onglet caché, et dès qu'on y revient.
+  const playing = match !== null && outcome === null;
+  useEffect(() => {
+    if (!playing) return;
+    const ping = () => void keepTutorialSessionAlive().catch(() => undefined);
+    const id = window.setInterval(ping, SESSION_KEEPALIVE_MS);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") ping();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", ping);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", ping);
+    };
+  }, [playing]);
 
   const handleSkip = useCallback(() => finish(false), [finish]);
   /** « Terminer le tutoriel » depuis le bandeau discret : la table telle qu'elle est. */
@@ -190,6 +212,8 @@ export function TutorialScreen({ autoStart = false }: { autoStart?: boolean } = 
           onStateChange={setLiveState}
           playableHandCards={playableHandCards}
           hideEndScreen
+          // Un joueur absent ne voit pas ses questions passées sans lui.
+          autoUnstick={false}
         />
         <TutorialCoach
           state={liveState}

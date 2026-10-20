@@ -68,6 +68,18 @@ export async function beginTutorial(): Promise<{ ok: boolean; ticket?: string }>
 }
 
 /**
+ * SIGNE DE VIE pendant la partie guidée (retour du 20/10/2026). La partie
+ * est locale : de son lancement à sa fin, rien ne passait par le serveur,
+ * donc rien ne rafraîchissait la session — un joueur parti faire autre
+ * chose revenait déconnecté, et la fin du tutoriel (`completeTutorial`)
+ * lui répondait « Connecte-toi ». Chaque appel traverse le middleware, qui
+ * rafraîchit les cookies de session ; il ne fait rien d'autre.
+ */
+export async function keepTutorialSessionAlive(): Promise<{ ok: boolean }> {
+  return { ok: (await getSessionUser()) !== null };
+}
+
+/**
  * Clôt le tutoriel. `completed: true` crédite le booster de récompense (une
  * seule fois) ; `completed: false` (« Passer ») n'accorde rien — c'est la
  * règle verrouillée de la spec, et elle vit côté serveur.

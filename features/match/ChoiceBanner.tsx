@@ -40,14 +40,17 @@ export function ChoiceBanner({
   title: ReactNode;
   detail?: ReactNode;
   actions?: ChoiceBannerAction[];
-  onExpire: () => void;
+  /** Absent : bandeau SANS minuteur — rien ne tranche à la place du joueur. */
+  onExpire?: () => void;
   timeoutMs?: number;
 }) {
   const [left, setLeft] = useState(timeoutMs);
   const expire = useRef(onExpire);
   expire.current = onExpire;
 
+  const timed = onExpire !== undefined;
   useEffect(() => {
+    if (!timed) return;
     const startedAt = Date.now();
     setLeft(timeoutMs);
     let done = false;
@@ -57,20 +60,22 @@ export function ChoiceBanner({
       if (remaining === 0 && !done) {
         done = true;
         clearInterval(timer);
-        expire.current();
+        expire.current?.();
       }
     }, 250);
     return () => clearInterval(timer);
-  }, [choiceKey, timeoutMs]);
+  }, [choiceKey, timeoutMs, timed]);
 
   const seconds = Math.ceil(left / 1000);
   const ratio = left / timeoutMs;
 
   return (
-    <div className={styles.banner} role="status" aria-live="polite" data-urgent={seconds <= 10 || undefined}>
-      <span className={styles.timer} style={{ ["--ratio" as string]: `${ratio}` }} aria-label={`${seconds} secondes restantes`}>
-        {seconds}
-      </span>
+    <div className={styles.banner} role="status" aria-live="polite" data-urgent={(timed && seconds <= 10) || undefined}>
+      {timed && (
+        <span className={styles.timer} style={{ ["--ratio" as string]: `${ratio}` }} aria-label={`${seconds} secondes restantes`}>
+          {seconds}
+        </span>
+      )}
       <span className={styles.text}>
         {source && <span className={styles.source}>{source}</span>}
         <span className={styles.title}>{title}</span>
