@@ -12,7 +12,6 @@ import { normalizeFriendCode, PRESENCE_LABEL, type FriendPresence } from "@/feat
 import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/friends/FriendsScreen.module.css";
 import { playButtonClick } from "@/lib/sound";
-import { profileHref } from "@/features/progression/profileTabs";
 import { useDevMode } from "@/features/admin/useDevMode";
 import { friendlyMatchLocked } from "@/features/online/friendlyMatchLock";
 
@@ -40,18 +39,22 @@ export interface FriendsBoardProps {
   onOpenPlayer: (userId: string) => void;
   /** Ouvre la proposition d'échange avec un ami, dans le panneau. */
   onOpenTrade: (userId: string) => void;
+  /** Ouvre sa propre fiche (vitrine éditable). */
+  onOpenMe: () => void;
+  /** Propose un combat à un ami : invitation, puis le salon. */
+  onChallenge: (userId: string) => void;
 }
 
 /**
  * Le tableau des AMIS, première vue du panneau du bandeau (`FriendsPanel`) :
- * offres d'échange et défis reçus, code ami et ajout,
- * demandes, la liste — présence, fiche (vitrine), « Échanger », « Défier » —,
+ * sa propre fiche, offres d'échange et défis reçus, code ami et ajout,
+ * demandes, la liste — présence, fiche (vitrine), « Échanger », « Combat » —,
  * offres envoyées et adversaires récents.
  *
- * Défier ouvre l'écran Partie en mode « En ligne », ami présélectionné : le
- * joueur y choisit son deck comme pour n'importe quelle partie.
+ * « Combat » invite l'ami dans un salon (`BattleLobby`) : l'invitation
+ * arrive dans son Courrier.
  */
-export function FriendsBoard({ social, trades, recentOpponents, onChanged, onLeave, onOpenPlayer, onOpenTrade }: FriendsBoardProps) {
+export function FriendsBoard({ social, trades, recentOpponents, onChanged, onLeave, onOpenPlayer, onOpenTrade, onOpenMe, onChallenge }: FriendsBoardProps) {
   const [code, setCode] = useState("");
   const [message, setMessage] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
   const [copied, setCopied] = useState(false);
@@ -96,9 +99,9 @@ export function FriendsBoard({ social, trades, recentOpponents, onChanged, onLea
   return (
     <div className={styles.column}>
       <span className={game.bannerActions}>
-        <Link href={profileHref("carnet")} className={game.secondary} onClick={leave}>
-          Ma vitrine (profil) →
-        </Link>
+        <button type="button" className={game.secondary} onClick={() => open(onOpenMe)}>
+          Mon profil et ma vitrine →
+        </button>
       </span>
 
       {trades.incoming.length > 0 && (
@@ -226,15 +229,9 @@ export function FriendsBoard({ social, trades, recentOpponents, onChanged, onLea
                 <button type="button" className={game.secondary} onClick={() => open(() => onOpenTrade(friend.userId))}>
                   Échanger
                 </button>
-                {!amicalLocked && (
-                  <Link
-                    href={`/partie?mode=en-ligne&ami=${friend.userId}`}
-                    className={game.primary}
-                    onClick={leave}
-                  >
-                    Défier
-                  </Link>
-                )}
+                <button type="button" className={game.primary} disabled={pending} onClick={() => open(() => onChallenge(friend.userId))}>
+                  Combat
+                </button>
                 <button
                   type="button"
                   className={game.dangerGhost}

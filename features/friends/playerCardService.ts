@@ -25,6 +25,20 @@ export interface PlayerCardView {
   avatarArtwork: ChosenArtwork;
   showcase: Showcase;
   relation: PlayerRelation;
+  /** Ce que la fiche affiche en chiffres. */
+  stats: PlayerCardStats;
+  /** Son propre code ami, sur SA fiche seulement (« #CODE ») ; `null` pour les autres. */
+  friendCode: string | null;
+}
+
+export interface PlayerCardStats {
+  matchesPlayed: number;
+  /** Victoires en ligne (`pvp_wins`), comme le profil. */
+  wins: number;
+  /** Préconstruits débloqués. */
+  preconsOwned: number;
+  /** Cartes différentes possédées. */
+  cardsCollected: number;
 }
 
 function service() {
@@ -64,16 +78,25 @@ export async function readPlayerCards(userIds: string[], relations: Record<strin
   const ids = [...new Set(userIds)];
   if (ids.length === 0) return {};
   const db = service();
-  const [profiles, artworks, progression, titles, showcases] = await Promise.all([
-    db.from("profiles").select("id, display_name, avatar_card_id").in("id", ids),
+  const [profiles, artworks, progression, titles, showcases, unlocks, cards] = await Promise.all([
+    db.from("profiles").select("id, display_name, avatar_card_id, friend_code").in("id", ids),
     // À part : colonne de la migration `20261110120000`, peut-être absente (l'avatar reste alors Classique).
     Promise.resolve(db.from("profiles").select("id, avatar_artwork").in("id", ids)),
-    db.from("player_progression").select("user_id, level").in("user_id", ids),
+    db.from("player_progression").select("user_id, level, matches_played, pvp_wins").in("user_id", ids),
     db.from("player_titles").select("user_id, title_id").in("user_id", ids),
     readShowcases(ids),
+    db.from("player_deck_unlocks").select("user_id").in("user_id", ids),
+    db.from("player_cards").select("user_id").in("user_id", ids).gt("quantity", 0),
   ]);
+  const countBy = (rows: { user_id: string }[] | null) => {
+    const counts = new Map<string, number>();
+    for (const row of rows ?? []) counts.set(row.user_id, (counts.get(row.user_id) ?? 0) + 1);
+    return counts;
+  };
+  const preconsOf = countBy(unlocks.data);
+  const cardsOf = countBy(cards.data);
   const artworkOf = new Map((artworks.error ? [] : (artworks.data ?? [])).map((row) => [row.id, row.avatar_artwork]));
-  const levelOf = new Map((progression.data ?? []).map((row) => [row.user_id, row.level]));
+  const progressionOf = new Map((progression.data ?? []).map((row) => [row.user_id, row]));
   const titleOf = new Map((titles.data ?? []).map((row) => [row.user_id, row.title_id]));
 
   const result: Record<string, PlayerCardView> = {};
@@ -82,12 +105,19 @@ export async function readPlayerCards(userIds: string[], relations: Record<strin
     result[profile.id] = {
       userId: profile.id,
       name: profile.display_name ?? "Capitaine",
-      level: levelOf.get(profile.id) ?? 1,
+      level: progressionOf.get(profile.id)?.level ?? 1,
       titleName: titleById(titleOf.get(profile.id))?.name ?? null,
       avatarCardId: avatar,
       avatarArtwork: avatar ? shownChosenArtwork(avatar, artworkOf.get(profile.id), null) : "classique",
       showcase: showcases[profile.id]!,
       relation: relations[profile.id] ?? "opponent",
+      stats: {
+        matchesPlayed: progressionOf.get(profile.id)?.matches_played ?? 0,
+        wins: progressionOf.get(profile.id)?.pvp_wins ?? 0,
+        preconsOwned: preconsOf.get(profile.id) ?? 0,
+        cardsCollected: cardsOf.get(profile.id) ?? 0,
+      },
+      friendCode: relations[profile.id] === "self" ? (profile.friend_code ?? null) : null,
     };
   }
   return result;

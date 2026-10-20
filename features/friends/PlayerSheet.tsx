@@ -1,23 +1,27 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { addFriendFromMatch, answerFriendRequest } from "@/features/friends/actions";
+import { inviteToBattle } from "@/features/friends/lobbyActions";
 import type { PlayerCardView } from "@/features/friends/playerCardService";
-import { PlayerIdentity } from "@/features/friends/PlayerIdentity";
-import { ShowcaseShelf } from "@/features/friends/ShowcaseShelf";
+import { PlayerProfileCard } from "@/features/friends/PlayerProfileCard";
 import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/friends/Social.module.css";
 import { playButtonClick } from "@/lib/sound";
-import { useDevMode } from "@/features/admin/useDevMode";
-import { friendlyMatchLocked } from "@/features/online/friendlyMatchLock";
 
 const RELATION_LABEL: Record<PlayerCardView["relation"], string> = {
-  self: "C'est toi",
+  self: "Mon profil",
   friend: "Ami",
   request_sent: "Demande envoyée",
   request_received: "Te demande en ami",
   opponent: "Adversaire croisé",
+};
+
+/** Pastille près du nom : le lien déjà noué. */
+const RELATION_BADGE: Partial<Record<PlayerCardView["relation"], string>> = {
+  friend: "Ami",
+  request_sent: "Demande envoyée",
 };
 
 interface PlayerSheetProps {
@@ -27,19 +31,22 @@ interface PlayerSheetProps {
   onTrade: () => void;
   /** Une action a changé le lien : la fiche et le tableau se relisent. */
   onChanged: () => void;
-  /** Un lien quitte le panneau (défi). */
+  /** On quitte le panneau (vers le salon de combat). */
   onLeave: () => void;
+  /** Sa propre fiche : choisir la carte d'un emplacement de vitrine. */
+  onEditSlot?: (slot: number) => void;
 }
 
 /**
- * FICHE d'un joueur lié, dans le panneau Amis : identité, vitrine, et ce
- * qu'on peut faire avec lui — défier et échanger (ami), répondre (demande
- * reçue), ajouter (adversaire croisé en ligne).
+ * FICHE d'un joueur dans le panneau Amis (`PlayerProfileCard`), avec ce
+ * qu'on peut faire avec lui : l'ajouter (adversaire croisé), accepter sa
+ * demande, ou — ami — lui proposer un combat ou un échange. Sur sa propre
+ * fiche, la vitrine se compose d'un toucher sur un emplacement.
  */
-export function PlayerSheet({ player, onBack, onTrade, onChanged, onLeave }: PlayerSheetProps) {
+export function PlayerSheet({ player, onBack, onTrade, onChanged, onLeave, onEditSlot }: PlayerSheetProps) {
+  const router = useRouter();
   const [message, setMessage] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
   const [pending, startTransition] = useTransition();
-  const amicalLocked = friendlyMatchLocked(useDevMode());
 
   function run(action: () => Promise<{ ok: boolean; error?: string; message?: string }>) {
     playButtonClick();
@@ -51,7 +58,46 @@ export function PlayerSheet({ player, onBack, onTrade, onChanged, onLeave }: Pla
     });
   }
 
-  const showcaseEmpty = player.showcase.every((card) => card === null);
+  function challenge() {
+    playButtonClick();
+    setMessage(null);
+    startTransition(async () => {
+      const result = await inviteToBattle(player.userId).catch(() => ({ ok: false as const, error: "Le serveur est injoignable." }));
+      if (!result.ok) {
+        setMessage({ tone: "error", text: result.error });
+        return;
+      }
+      onLeave();
+      router.push(`/en-ligne/salon/${result.lobbyId}`);
+    });
+  }
+
+  const actions =
+    player.relation === "friend" ? (
+      <>
+        <button type="button" className={game.primary} disabled={pending} onClick={challenge}>
+          Proposer un combat
+        </button>
+        <button
+          type="button"
+          className={game.secondary}
+          onClick={() => {
+            playButtonClick();
+            onTrade();
+          }}
+        >
+          Proposer un échange
+        </button>
+      </>
+    ) : player.relation === "request_received" ? (
+      <button type="button" className={game.primary} disabled={pending} onClick={() => run(() => answerFriendRequest(player.userId, true))}>
+        Accepter sa demande
+      </button>
+    ) : player.relation === "opponent" ? (
+      <button type="button" className={game.primary} disabled={pending} onClick={() => run(() => addFriendFromMatch(player.userId))}>
+        Ajouter en ami
+      </button>
+    ) : null;
 
   return (
     <div className={styles.column}>
@@ -61,58 +107,8 @@ export function PlayerSheet({ player, onBack, onTrade, onChanged, onLeave }: Pla
           ← Mes amis
         </button>
       </div>
-
-      <section className={`${game.panel} ${styles.section}`} aria-label="Identité">
-        <PlayerIdentity player={player} />
-        <span className={game.bannerActions}>
-          {player.relation === "friend" && (
-            <>
-              <button
-                type="button"
-                className={game.secondary}
-                onClick={() => {
-                  playButtonClick();
-                  onTrade();
-                }}
-              >
-                Proposer un échange
-              </button>
-              {!amicalLocked && (
-                <Link
-                  href={`/partie?mode=en-ligne&ami=${player.userId}`}
-                  className={game.primary}
-                  onClick={() => {
-                    playButtonClick();
-                    onLeave();
-                  }}
-                >
-                  Défier
-                </Link>
-              )}
-            </>
-          )}
-          {player.relation === "request_received" && (
-            <button type="button" className={game.primary} disabled={pending} onClick={() => run(() => answerFriendRequest(player.userId, true))}>
-              Accepter sa demande
-            </button>
-          )}
-          {player.relation === "opponent" && (
-            <button type="button" className={game.primary} disabled={pending} onClick={() => run(() => addFriendFromMatch(player.userId))}>
-              Ajouter en ami
-            </button>
-          )}
-        </span>
-        {message && <p className={message.tone === "ok" ? game.success : game.error}>{message.text}</p>}
-      </section>
-
-      <section className={`${game.panel} ${styles.section}`} aria-label="Vitrine">
-        <h3 className={game.sectionTitle}>Vitrine</h3>
-        {showcaseEmpty ? (
-          <p className={game.muted}>{player.name} n&apos;expose encore aucune carte.</p>
-        ) : (
-          <ShowcaseShelf showcase={player.showcase} emptyLabel="" narrow />
-        )}
-      </section>
+      <PlayerProfileCard player={player} actions={actions} badge={RELATION_BADGE[player.relation] ?? null} onEditSlot={player.relation === "self" ? onEditSlot : undefined} />
+      {message && <p className={message.tone === "ok" ? game.success : game.error}>{message.text}</p>}
     </div>
   );
 }

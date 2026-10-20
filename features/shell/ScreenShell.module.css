@@ -301,6 +301,23 @@
   transform: translateY(-1px) rotate(-6deg);
 }
 
+/* Récompenses : le coffre peint, au gabarit de l'enveloppe, à sa gauche. */
+.rewardsButton {
+  composes: optionsButton;
+}
+
+.rewardsButton img {
+  width: 118%;
+  height: 118%;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.6));
+  pointer-events: none;
+}
+
+.rewardsButton:hover {
+  transform: translateY(-1px) rotate(-6deg);
+}
+
 /* Amis : l'équipage peint, au gabarit de l'enveloppe, à sa droite. */
 .friendsButton {
   composes: optionsButton;
@@ -326,6 +343,7 @@
 @media (prefers-reduced-motion: reduce) {
   .mailButton:hover { transform: none; }
   .friendsButton:hover { transform: none; }
+  .rewardsButton:hover { transform: none; }
   .mailWaiting { animation: none; }
 }
 

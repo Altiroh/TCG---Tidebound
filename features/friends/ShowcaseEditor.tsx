@@ -20,6 +20,10 @@ interface ShowcaseEditorProps {
   initialShowcase: Showcase;
   ownedCounts: Record<string, number>;
   ownedEditions: Record<string, OwnedEdition[]>;
+  /** Emplacement sélectionné à l'ouverture (le « + » touché sur la fiche). */
+  initialSlot?: number;
+  /** Vitrine enregistrée (le panneau Amis revient à la fiche). */
+  onSaved?: () => void;
 }
 
 const sameCard = (a: ShowcaseCard | null, b: ShowcaseCard) => a !== null && a.cardId === b.cardId && editionKey(a) === editionKey(b);
@@ -29,9 +33,9 @@ const sameCard = (a: ShowcaseCard | null, b: ShowcaseCard) => a !== null && a.ca
  * dans l'une de ses éditions possédées. Les éditions les plus rares
  * viennent en tête du choix — c'est pour frimer.
  */
-export function ShowcaseEditor({ initialShowcase, ownedCounts, ownedEditions }: ShowcaseEditorProps) {
+export function ShowcaseEditor({ initialShowcase, ownedCounts, ownedEditions, initialSlot, onSaved }: ShowcaseEditorProps) {
   const [showcase, setShowcase] = useState<Showcase>(initialShowcase);
-  const [selected, setSelected] = useState<number>(() => Math.max(0, initialShowcase.findIndex((card) => card === null)));
+  const [selected, setSelected] = useState<number>(() => initialSlot ?? Math.max(0, initialShowcase.findIndex((card) => card === null)));
   const [query, setQuery] = useState("");
   const [message, setMessage] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
   const [saving, startSaving] = useTransition();
@@ -90,7 +94,10 @@ export function ShowcaseEditor({ initialShowcase, ownedCounts, ownedEditions }: 
     startSaving(async () => {
       const result = await updateShowcase(showcase).catch(() => ({ ok: false, error: "Le serveur est injoignable." }));
       setMessage(result.ok ? { tone: "ok", text: "Vitrine enregistrée : tes amis et tes adversaires la verront." } : { tone: "error", text: result.error ?? "Échec." });
-      if (result.ok) setSaved(showcase);
+      if (result.ok) {
+        setSaved(showcase);
+        onSaved?.();
+      }
     });
   }
 
@@ -101,7 +108,7 @@ export function ShowcaseEditor({ initialShowcase, ownedCounts, ownedEditions }: 
           Six cartes de ta collection, dans l&apos;édition de ton choix. Tes amis les voient sur ta fiche, et ton adversaire les découvre avant chaque
           partie en ligne.
         </p>
-        <ShowcaseShelf showcase={showcase} selectedSlot={selected} onSelectSlot={setSelected} emptyLabel="Choisir" />
+        <ShowcaseShelf showcase={showcase} selectedSlot={selected} onSelectSlot={setSelected} emptyLabel="Choisir" narrow />
         <div className={styles.row}>
           <span className={game.caption}>
             Emplacement {selected + 1} sur {SHOWCASE_SIZE} sélectionné : choisis une carte ci-dessous.

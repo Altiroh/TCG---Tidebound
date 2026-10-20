@@ -254,13 +254,13 @@ describe("icône Amis du bandeau", () => {
     befriend(ALICE, BOB);
     owns(ALICE, X!, 1);
     owns(BOB, Y!, 1);
-    expect(await friends.fetchFriendsBadge()).toEqual({ waiting: 0 });
+    expect(await friends.fetchFriendsBadge()).toEqual({ waiting: 0, invitations: 0 });
 
     await trades.proposeTrade(BOB, [{ cardId: X, quantity: 1 }], [{ cardId: Y, quantity: 1 }]);
     as(CAROL);
     await friends.addFriendByCode("BOBBY234");
     as(BOB);
-    expect(await friends.fetchFriendsBadge()).toEqual({ waiting: 2 });
+    expect(await friends.fetchFriendsBadge()).toEqual({ waiting: 2, invitations: 0 });
     const board = await friends.fetchFriendsBoard();
     expect(board!.social.friends.map((friend) => friend.name)).toEqual(["Alice"]);
     expect(board!.social.incoming).toEqual([{ userId: CAROL, name: "Carol" }]);

@@ -152,11 +152,20 @@ export function HeaderPlayer() {
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [mailOpen, setMailOpen] = useState(false);
   const [friendsOpen, setFriendsOpen] = useState(false);
-  /** Pastille de l'icône Amis : demandes d'ami et offres d'échange qui attendent une réponse. */
+  /**
+   * Pastilles du volet social : demandes d'ami et offres d'échange qui
+   * attendent une réponse (icône Amis), plus les invitations au combat — le
+   * tout s'ajoute aux courriers non lus sur l'enveloppe, puisque le Courrier
+   * les présente en tête de la boîte.
+   */
   const [friendsBadge, setFriendsBadge] = useState(0);
+  const [socialMail, setSocialMail] = useState(0);
   const refreshFriendsBadge = useCallback(() => {
     fetchFriendsBadge()
-      .then((badge) => setFriendsBadge(badge?.waiting ?? 0))
+      .then((badge) => {
+        setFriendsBadge(badge?.waiting ?? 0);
+        setSocialMail(badge ? badge.waiting + badge.invitations : 0);
+      })
       .catch(() => undefined);
   }, []);
   /** Profil ouvert en panneau, et sur quel onglet (`null` : fermé). */
@@ -376,9 +385,18 @@ export function HeaderPlayer() {
   // l'icône Amis s'affiche avec le bloc du compte, sans attendre une autre lecture.
   const devMode = process.env.NODE_ENV === "development" ? !summary?.vueJoueur : Boolean(summary?.isAdmin && !summary?.vueJoueur);
   const socialOpen = !socialLocked(devMode);
+  // Relu à l'arrivée, à chaque changement signalé (réponse donnée au Courrier…) et régulièrement : une invitation arrive sans prévenir.
   useEffect(() => {
-    if (signedIn && socialOpen) refreshFriendsBadge();
+    if (!signedIn || !socialOpen) return;
+    refreshFriendsBadge();
+    const unsubscribe = onProgressionChanged(refreshFriendsBadge);
+    const id = window.setInterval(() => document.visibilityState === "visible" && refreshFriendsBadge(), 30_000);
+    return () => {
+      unsubscribe();
+      window.clearInterval(id);
+    };
   }, [signedIn, socialOpen, refreshFriendsBadge]);
+  const mailWaiting = (summary?.unreadMail ?? 0) + (socialOpen ? socialMail : 0);
   // Ouverture demandée d'ailleurs (alerte d'échange, profil, écran Partie).
   useEffect(() => onFriendsPanelRequest(() => setFriendsOpen(true)), []);
 
@@ -396,12 +414,8 @@ export function HeaderPlayer() {
               pseudo dans un jeton de laiton — jamais un rond vide, qui dirait
               qu'il manque quelque chose. Le jeton mène au profil, comme le
               pseudo. */}
-          <Link
-            href={profileHref(summary.claimableRewards > 0 ? "recompenses" : "carnet")}
-            className={styles.accountAvatarLink}
-            aria-label={summary.claimableRewards > 0 ? `Profil — ${summary.claimableRewards} récompense${summary.claimableRewards > 1 ? "s" : ""} à réclamer` : "Profil"}
-            onClick={openProfile}
-          >
+          {/* Le profil, rien que le profil : les récompenses ont leur icône (à gauche de l'enveloppe). */}
+          <Link href={profileHref("carnet")} className={styles.accountAvatarLink} aria-label="Profil" onClick={openProfile}>
             {summary.avatarCardId ? (
               <span
                 className={`${styles.accountAvatar} ${styles.accountAvatarArt}`}
@@ -409,12 +423,6 @@ export function HeaderPlayer() {
               />
             ) : (
               <span className={styles.accountAvatar}>{avatarInitial(summary.displayName)}</span>
-            )}
-            {/* Pastille : quelque chose attend au profil. Elle pulse — c'est fait pour donner envie d'y aller. */}
-            {summary.claimableRewards > 0 && (
-              <span className={styles.rewardBadge} aria-hidden>
-                {summary.claimableRewards}
-              </span>
             )}
           </Link>
 
@@ -487,13 +495,39 @@ export function HeaderPlayer() {
         </Link>
       )}
 
+      {/* Les récompenses, séparées du profil (20/10/2026) : le coffre, à gauche de
+          l'enveloppe, pastillé de ce qui attend d'être réclamé. Il ouvre l'onglet
+          Récompenses du profil. */}
+      {signedIn && summary && (
+        <Link
+          href={profileHref("recompenses")}
+          className={`${styles.rewardsButton} ${summary.claimableRewards > 0 ? styles.mailWaiting : ""}`}
+          aria-label={summary.claimableRewards > 0 ? `Récompenses — ${summary.claimableRewards} à réclamer` : "Récompenses"}
+          title="Récompenses"
+          onClick={(event) => {
+            if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
+            event.preventDefault();
+            playButtonClick();
+            goToProfile("recompenses");
+          }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element -- icône locale */}
+          <img src="/assets/rewards/coffre/coffre-ferme.webp" alt="" draggable={false} />
+          {summary.claimableRewards > 0 && (
+            <span className={styles.rewardBadge} aria-hidden>
+              {summary.claimableRewards}
+            </span>
+          )}
+        </Link>
+      )}
+
       {/* Le courrier de bord, à gauche de l'engrenage : fermée et pastillée
           quand un courrier attend, ouverte sinon. */}
       {signedIn && summary && (
         <button
           type="button"
-          className={`${styles.mailButton} ${summary.unreadMail > 0 ? styles.mailWaiting : ""}`}
-          aria-label={summary.unreadMail > 0 ? `Courrier — ${summary.unreadMail} non lu${summary.unreadMail > 1 ? "s" : ""}` : "Courrier"}
+          className={`${styles.mailButton} ${mailWaiting > 0 ? styles.mailWaiting : ""}`}
+          aria-label={mailWaiting > 0 ? `Courrier — ${mailWaiting} en attente` : "Courrier"}
           title="Courrier"
           aria-haspopup="dialog"
           onClick={() => {
@@ -502,10 +536,10 @@ export function HeaderPlayer() {
           }}
         >
           {/* eslint-disable-next-line @next/next/no-img-element -- icône locale */}
-          <img src={summary.unreadMail > 0 ? "/assets/ui/icons/enveloppe-fermee.webp" : "/assets/ui/icons/enveloppe-ouverte.webp"} alt="" draggable={false} />
-          {summary.unreadMail > 0 && (
+          <img src={mailWaiting > 0 ? "/assets/ui/icons/enveloppe-fermee.webp" : "/assets/ui/icons/enveloppe-ouverte.webp"} alt="" draggable={false} />
+          {mailWaiting > 0 && (
             <span className={styles.rewardBadge} aria-hidden>
-              {summary.unreadMail}
+              {mailWaiting}
             </span>
           )}
         </button>

@@ -24,9 +24,13 @@ interface ProfileScreenProps {
  * y mènent sur le bon onglet (`profileHref`).
  */
 /** Onglets de la page, dans le bandeau commun (à gauche, le logo reste au centre). */
+/*
+ * « Récompenses » n'est plus un onglet du profil (20/10/2026) : elles ont leur
+ * icône dans le bandeau, à gauche de l'enveloppe (`HeaderPlayer`), qui ouvre
+ * cette page sur `?onglet=recompenses`.
+ */
 const PAGE_TABS: Array<{ id: ProfileTab; label: string }> = [
   { id: "carnet", label: "Profil" },
-  { id: "recompenses", label: "Récompenses" },
   { id: "quetes", label: "Quêtes" },
   { id: "exploits", label: "Exploits" },
   { id: "stats", label: "Stats" },

@@ -18,6 +18,7 @@ import {
 } from "@/features/friends/friendService";
 import { readPlayerCard, readRecentOpponents, type PlayerCardView, type RecentOpponent } from "@/features/friends/playerCardService";
 import { readIncomingTradeIds, readTrades, type TradesView } from "@/features/friends/tradeService";
+import { readBattleInvitations, type BattleInvitation } from "@/features/friends/lobbyService";
 import { getSessionUser } from "@/lib/supabase/sessionUser";
 import { socialClosedFor } from "@/features/friends/socialGate";
 import { SOCIAL_INDISPONIBLE } from "@/features/friends/socialLock";
@@ -79,16 +80,45 @@ export async function fetchFriendsBoard(): Promise<{ social: SocialView; trades:
 }
 
 /**
- * Pastille de l'icône Amis du bandeau : demandes d'ami et offres d'échange
- * qui attendent une réponse. `null` quand l'icône n'a pas à s'afficher
- * (hors connexion, volet social fermé).
+ * Le volet social du COURRIER : invitations au combat, demandes d'ami et
+ * offres d'échange reçues, en tête de la boîte. `null` hors connexion, ou
+ * volet social fermé.
  */
-export async function fetchFriendsBadge(): Promise<{ waiting: number } | null> {
+export async function fetchSocialMail(): Promise<{
+  invitations: BattleInvitation[];
+  requests: { userId: string; name: string }[];
+  trades: { id: string; fromName: string }[];
+} | null> {
   try {
     const user = await getSessionUser();
     if (!user || (await socialClosedFor(user.id))) return null;
-    const [requests, trades] = await Promise.all([countIncomingRequests(user.id), readIncomingTradeIds(user.id).catch(() => [])]);
-    return { waiting: requests + trades.length };
+    const [invitations, social, trades] = await Promise.all([
+      readBattleInvitations(user.id).catch(() => []),
+      readSocial(user.id),
+      readIncomingTradeIds(user.id).catch(() => []),
+    ]);
+    return { invitations, requests: social.incoming, trades };
+  } catch (error) {
+    console.error("[fetchSocialMail] Lecture impossible :", error);
+    return null;
+  }
+}
+
+/**
+ * Pastilles du bandeau : demandes d'ami et offres d'échange qui attendent
+ * une réponse (icône Amis), invitations au combat (en plus, sur l'enveloppe). `null` quand l'icône n'a pas à s'afficher
+ * (hors connexion, volet social fermé).
+ */
+export async function fetchFriendsBadge(): Promise<{ waiting: number; invitations: number } | null> {
+  try {
+    const user = await getSessionUser();
+    if (!user || (await socialClosedFor(user.id))) return null;
+    const [requests, trades, invitations] = await Promise.all([
+      countIncomingRequests(user.id),
+      readIncomingTradeIds(user.id).catch(() => []),
+      readBattleInvitations(user.id).catch(() => []),
+    ]);
+    return { waiting: requests + trades.length, invitations: invitations.length };
   } catch (error) {
     console.error("[fetchFriendsBadge] Lecture impossible :", error);
     return null;
@@ -112,6 +142,18 @@ export async function fetchPlayerCard(otherId: string): Promise<PlayerCardView |
     return await readPlayerCard(user.id, otherId);
   } catch (error) {
     console.error("[fetchPlayerCard] Lecture impossible :", error);
+    return null;
+  }
+}
+
+/** Sa propre fiche (vitrine éditable dans le panneau Amis). */
+export async function fetchMyPlayerCard(): Promise<PlayerCardView | null> {
+  try {
+    const user = await getSessionUser();
+    if (!user || (await socialClosedFor(user.id))) return null;
+    return await readPlayerCard(user.id, user.id);
+  } catch (error) {
+    console.error("[fetchMyPlayerCard] Lecture impossible :", error);
     return null;
   }
 }
@@ -164,7 +206,11 @@ export async function declineChallenge(challengeId: string): Promise<FriendResul
  * la présence du joueur et rend ses défis et offres d'échange en attente,
  * pour l'alerter où qu'il soit. `null` hors connexion — ni erreur, ni redirection.
  */
-export async function pollSocial(): Promise<{ challenges: IncomingChallenge[]; trades: { id: string; fromName: string }[] } | null> {
+export async function pollSocial(): Promise<{
+  challenges: IncomingChallenge[];
+  trades: { id: string; fromName: string }[];
+  invitations: BattleInvitation[];
+} | null> {
   try {
     // Dans le `try` : appelé sur TOUS les écrans, il ne doit jamais faire
     // tomber une requête — configuration Supabase absente comprise.
@@ -172,8 +218,10 @@ export async function pollSocial(): Promise<{ challenges: IncomingChallenge[]; t
     if (!user) return null;
     await touchPresence(user.id);
     const [challenges, closed] = await Promise.all([readIncomingChallenges(user.id), socialClosedFor(user.id)]);
-    const trades = closed ? [] : await readIncomingTradeIds(user.id).catch(() => []);
-    return { challenges, trades };
+    const [trades, invitations] = closed
+      ? [[], []]
+      : await Promise.all([readIncomingTradeIds(user.id).catch(() => []), readBattleInvitations(user.id).catch(() => [])]);
+    return { challenges, trades, invitations };
   } catch (error) {
     console.error("[pollSocial] Échec :", error);
     return null;

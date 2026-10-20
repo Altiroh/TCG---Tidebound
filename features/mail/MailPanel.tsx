@@ -7,6 +7,7 @@ import { claimMailGift, fetchInbox, openMail } from "@/features/mail/actions";
 import { hasGifts, mailGiftItems, thumbnailCardId, type InboxMail } from "@/features/mail/mailDraft";
 import { cardIllustrationThumbUrl, cardIllustrationUrl } from "@/features/decks/cardArtUrl";
 import { MailComposer } from "@/features/mail/MailComposer";
+import { SocialMail } from "@/features/friends/SocialMail";
 import { RewardIcon } from "@/features/progression/RewardIcon";
 import { RewardReveal } from "@/features/progression/RewardReveal";
 import { notifyProgressionChanged } from "@/features/progression/progressionSync";
@@ -131,6 +132,8 @@ export function MailPanel({ isAdmin, onClose }: { isAdmin: boolean; onClose: () 
         )}
 
         <ScrollArea className={styles.scroll} contentClassName={styles.scrollContent}>
+          {/* Invitations au combat, demandes d'ami, offres d'échange : le volet social, en tête de la boîte. */}
+          {tab === "inbox" && <SocialMail onLeave={onClose} />}
           {tab === "write" && isAdmin ? (
             <MailComposer onSent={load} />
           ) : loadError ? (

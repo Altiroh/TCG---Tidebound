@@ -114,6 +114,47 @@ export interface Database {
         Update: { status?: "pending" | "accepted" | "declined" | "cancelled"; resolved_at?: string | null };
         Relationships: [];
       };
+      /** Salon de combat entre amis (migration 20261113120000) : invitation, decks, « prêt », compte à rebours. Serveur seul. */
+      battle_lobbies: {
+        Row: {
+          id: string;
+          host_id: string;
+          guest_id: string;
+          status: "invited" | "open" | "starting" | "started" | "declined" | "cancelled";
+          host_deck_id: string | null;
+          guest_deck_id: string | null;
+          host_ready: boolean;
+          guest_ready: boolean;
+          host_seen_at: string | null;
+          guest_seen_at: string | null;
+          countdown_at: string | null;
+          match_id: string | null;
+          last_error: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          host_id: string;
+          guest_id: string;
+          status?: "invited" | "open" | "starting" | "started" | "declined" | "cancelled";
+          host_seen_at?: string;
+        };
+        Update: {
+          status?: "invited" | "open" | "starting" | "started" | "declined" | "cancelled";
+          host_deck_id?: string | null;
+          guest_deck_id?: string | null;
+          host_ready?: boolean;
+          guest_ready?: boolean;
+          host_seen_at?: string | null;
+          guest_seen_at?: string | null;
+          countdown_at?: string | null;
+          match_id?: string | null;
+          last_error?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       /** Défi en match amical : `match_id` est une partie `private_invite` en attente, créée par `from_user`. */
       friend_challenges: {
         Row: {
@@ -1103,7 +1144,8 @@ export interface Database {
         Args: {
           p_match_id: string;
           p_invite_code: string;
-          p_mode: "matchmaking" | "bot";
+          /** `private_invite` : un salon de combat entre amis (match amical, sans récompense). */
+          p_mode: "matchmaking" | "bot" | "private_invite";
           p_player1_id: string;
           p_player1_deck_id: string;
           p_player2_id: string | null;

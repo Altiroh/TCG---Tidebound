@@ -246,3 +246,44 @@
   gap: var(--tb-space-3);
   padding: var(--tb-space-1);
 }
+
+/* --- Courrier : le volet social en tête de la boîte (`SocialMail`) -------- */
+
+.mailSocial {
+  display: grid;
+  gap: var(--tb-space-2);
+  margin-bottom: var(--tb-space-3);
+  padding-bottom: var(--tb-space-3);
+  border-bottom: 1px solid var(--tb-border);
+}
+
+.mailSocialTitle {
+  margin: 0;
+  color: var(--tb-gold);
+  font-size: var(--tb-fs-caption);
+  letter-spacing: var(--tb-track-caps, 0.12em);
+  text-transform: uppercase;
+}
+
+.mailSocialItem {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--tb-space-2);
+  padding: var(--tb-space-2) var(--tb-space-3);
+  border: 1px solid var(--tb-border-strong);
+  border-radius: var(--tb-radius-md);
+  background: var(--tb-surface-inset);
+}
+
+/* Une invitation au combat se remarque : liseré d'or. */
+.mailSocialItem[data-kind="combat"] {
+  border-color: var(--tb-gold-line);
+  box-shadow: var(--tb-glow-gold);
+}
+
+.mailSocialText {
+  min-width: 0;
+  color: var(--tb-text);
+}

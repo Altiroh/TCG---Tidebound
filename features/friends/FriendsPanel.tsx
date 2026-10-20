@@ -1,34 +1,49 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { fetchFriendsBoard, fetchPlayerCard } from "@/features/friends/actions";
+import { useRouter } from "next/navigation";
+import { fetchFriendsBoard, fetchMyPlayerCard, fetchPlayerCard } from "@/features/friends/actions";
+import { inviteToBattle } from "@/features/friends/lobbyActions";
 import { fetchTradeTable } from "@/features/friends/tradeActions";
 import { FriendsBoard, type FriendsBoardProps } from "@/features/friends/FriendsBoard";
 import type { PlayerCardView } from "@/features/friends/playerCardService";
 import type { TradeableCard } from "@/features/friends/tradeService";
 import { PlayerSheet } from "@/features/friends/PlayerSheet";
+import { ShowcaseSection } from "@/features/friends/ShowcaseSection";
 import { TradeComposer } from "@/features/friends/TradeComposer";
 import { SidePanel } from "@/features/shell/SidePanel";
 import game from "@/features/shell/GameScreen.module.css";
+import styles from "@/features/friends/Social.module.css";
 
 type BoardData = Pick<FriendsBoardProps, "social" | "trades" | "recentOpponents">;
 
-/** Ce que montre le panneau : le tableau, la fiche d'un joueur, ou un échange en préparation. */
-type View = { kind: "board" } | { kind: "player"; userId: string } | { kind: "trade"; userId: string };
+/**
+ * Ce que montre le panneau : le tableau, une fiche (la sienne ou celle d'un
+ * autre), un échange en préparation, ou le choix d'une carte de sa vitrine.
+ */
+type View =
+  | { kind: "board" }
+  | { kind: "player"; userId: string }
+  | { kind: "me" }
+  | { kind: "trade"; userId: string }
+  | { kind: "showcase"; slot: number };
 
 /**
  * AMIS — tout le volet social tient dans ce panneau, ouvert par l'icône du
  * bandeau à droite de l'enveloppe (comme le Courrier et les Options), ou par
- * le signal `requestFriendsPanel`. Il n'y a pas de page Amis : le tableau,
- * la fiche d'un joueur (vitrine comprise) et la proposition d'échange s'y
- * succèdent. Sa propre vitrine se compose au profil.
+ * le signal `requestFriendsPanel`. Pas de page : le tableau, les fiches de
+ * capitaine (`PlayerProfileCard`, vitrine comprise), la proposition
+ * d'échange et le choix des cartes de sa vitrine s'y succèdent. « Combat »
+ * invite l'ami dans un salon, et y mène.
  */
 export function FriendsPanel({ onClose, onChanged }: { onClose: () => void; onChanged?: () => void }) {
+  const router = useRouter();
   const [view, setView] = useState<View>({ kind: "board" });
   const [board, setBoard] = useState<BoardData | null>(null);
   const [player, setPlayer] = useState<PlayerCardView | null>(null);
   const [table, setTable] = useState<{ mine: TradeableCard[]; theirs: TradeableCard[] } | null>(null);
   const [failed, setFailed] = useState(false);
+  const [challengeError, setChallengeError] = useState<string | null>(null);
 
   const loadBoard = useCallback(() => {
     fetchFriendsBoard()
@@ -42,47 +57,59 @@ export function FriendsPanel({ onClose, onChanged }: { onClose: () => void; onCh
   useEffect(loadBoard, [loadBoard]);
 
   // La fiche (et la table d'échange) se lisent à l'ouverture de leur vue.
-  const userId = view.kind === "board" ? null : view.userId;
+  const target = view.kind === "player" || view.kind === "trade" ? view.userId : view.kind === "me" ? "me" : null;
   const loadPlayer = useCallback(() => {
-    if (!userId) return;
-    fetchPlayerCard(userId)
+    if (!target) return;
+    (target === "me" ? fetchMyPlayerCard() : fetchPlayerCard(target))
       .then((card) => {
         setPlayer(card);
         setFailed(card === null);
       })
       .catch(() => setFailed(true));
-  }, [userId]);
+  }, [target]);
 
   useEffect(() => {
     setPlayer(null);
     setTable(null);
     setFailed(false);
-    if (!userId) return;
+    if (!target) return;
     loadPlayer();
     if (view.kind === "trade") {
-      fetchTradeTable(userId)
+      fetchTradeTable(view.userId)
         .then((data) => {
           setTable(data);
           setFailed(data === null);
         })
         .catch(() => setFailed(true));
     }
-  }, [userId, view.kind, loadPlayer]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- la vue d'échange se relit avec sa cible
+  }, [target, view.kind, loadPlayer]);
 
   function changed() {
     loadBoard();
     onChanged?.();
   }
 
+  /** Combat : l'invitation part dans le Courrier de l'ami, et le salon s'ouvre ici. */
+  async function challenge(friendId: string) {
+    setChallengeError(null);
+    const result = await inviteToBattle(friendId).catch(() => ({ ok: false as const, error: "Le serveur est injoignable." }));
+    if (!result.ok) {
+      setChallengeError(result.error);
+      return;
+    }
+    onClose();
+    router.push(`/en-ligne/salon/${result.lobbyId}`);
+  }
+
   const loading = <p className={game.muted}>Chargement de l&apos;équipage…</p>;
-  const error = <p className={game.error}>Amis indisponibles pour le moment.</p>;
   const backToBoard = () => setView({ kind: "board" });
 
   let content;
   if (failed) {
     content = (
       <>
-        {error}
+        <p className={game.error}>Amis indisponibles pour le moment.</p>
         {view.kind !== "board" && (
           <button type="button" className={game.secondary} onClick={backToBoard}>
             ← Mes amis
@@ -92,17 +119,22 @@ export function FriendsPanel({ onClose, onChanged }: { onClose: () => void; onCh
     );
   } else if (view.kind === "board") {
     content = board ? (
-      <FriendsBoard
-        {...board}
-        onChanged={changed}
-        onLeave={onClose}
-        onOpenPlayer={(id) => setView({ kind: "player", userId: id })}
-        onOpenTrade={(id) => setView({ kind: "trade", userId: id })}
-      />
+      <>
+        {challengeError && <p className={game.error}>{challengeError}</p>}
+        <FriendsBoard
+          {...board}
+          onChanged={changed}
+          onLeave={onClose}
+          onOpenPlayer={(id) => setView({ kind: "player", userId: id })}
+          onOpenTrade={(id) => setView({ kind: "trade", userId: id })}
+          onOpenMe={() => setView({ kind: "me" })}
+          onChallenge={(id) => void challenge(id)}
+        />
+      </>
     ) : (
       loading
     );
-  } else if (view.kind === "player") {
+  } else if (view.kind === "player" || view.kind === "me") {
     content = player ? (
       <PlayerSheet
         player={player}
@@ -113,9 +145,22 @@ export function FriendsPanel({ onClose, onChanged }: { onClose: () => void; onCh
           changed();
         }}
         onLeave={onClose}
+        onEditSlot={(slot) => setView({ kind: "showcase", slot })}
       />
     ) : (
       loading
+    );
+  } else if (view.kind === "showcase") {
+    content = (
+      <div className={styles.column}>
+        <div className={styles.row}>
+          <p className={game.eyebrow}>Ma vitrine</p>
+          <button type="button" className={game.secondary} onClick={() => setView({ kind: "me" })}>
+            ← Mon profil
+          </button>
+        </div>
+        <ShowcaseSection initialSlot={view.slot} onSaved={() => setView({ kind: "me" })} />
+      </div>
     );
   } else {
     content =
@@ -136,7 +181,7 @@ export function FriendsPanel({ onClose, onChanged }: { onClose: () => void; onCh
   }
 
   return (
-    <SidePanel title="Amis" onClose={onClose}>
+    <SidePanel title="Amis" iconSrc="/assets/ui/icons/amis.webp" onClose={onClose}>
       {content}
     </SidePanel>
   );

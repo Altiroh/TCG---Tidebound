@@ -32,6 +32,7 @@ const PRIMARY_KEYS: Record<string, string[]> = {
   friend_challenges: ["id"],
   player_showcase: ["user_id", "slot"],
   card_trades: ["id"],
+  battle_lobbies: ["id"],
   player_card_editions: ["user_id", "card_id", "artwork", "finish"],
   profiles: ["id"],
   match_rewards: ["match_id", "user_id"],
@@ -206,6 +207,13 @@ class QueryBuilder implements PromiseLike<QueryResponse> {
     // Une date ISO se compare comme une chaîne, comme Postgres le fait d'un timestamptz bien formé.
     this.filters.push((row) =>
       typeof value === "string" ? row[column] != null && String(row[column]) >= value : Number(row[column] ?? 0) >= value
+    );
+    return this;
+  }
+
+  lte(column: string, value: number | string) {
+    this.filters.push((row) =>
+      typeof value === "string" ? row[column] != null && String(row[column]) <= value : Number(row[column] ?? 0) <= value
     );
     return this;
   }

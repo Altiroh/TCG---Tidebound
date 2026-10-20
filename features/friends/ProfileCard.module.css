@@ -1,0 +1,319 @@
+/*
+ * FICHE DE CAPITAINE (maquette du 20/10/2026) — dans la DA du profil :
+ * laiton (`--tb-gold`), encre marine, police d'affiche pour le nom et les
+ * chiffres, panneaux sombres à liseré doré et coins ouvragés.
+ */
+
+.card {
+  display: grid;
+  gap: var(--tb-space-4);
+  min-width: 0;
+}
+
+/* --- Tête : portrait, médaillon de niveau, pseudo ------------------------- */
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: var(--tb-space-4);
+  min-width: 0;
+}
+
+.portrait {
+  position: relative;
+  isolation: isolate;
+  flex: none;
+  width: 112px;
+  height: 112px;
+  padding: 7px;
+  border-radius: 50%;
+  background:
+    conic-gradient(from 0deg, var(--tb-gold-bright), var(--tb-gold-deep), var(--tb-gold), var(--tb-gold-deep), var(--tb-gold-bright));
+  box-shadow: 0 0 0 2px rgba(4, 10, 16, 0.9), 0 10px 26px rgba(0, 0, 0, 0.6), var(--tb-glow-gold);
+}
+
+/* Les quatre pointes de la rose des vents, autour de l'anneau. */
+.portrait::before,
+.portrait::after {
+  content: "";
+  position: absolute;
+  inset: -9px;
+  z-index: -1;
+  background:
+    linear-gradient(var(--tb-gold), var(--tb-gold)) center top / 3px 12px no-repeat,
+    linear-gradient(var(--tb-gold), var(--tb-gold)) center bottom / 3px 12px no-repeat,
+    linear-gradient(var(--tb-gold), var(--tb-gold)) left center / 12px 3px no-repeat,
+    linear-gradient(var(--tb-gold), var(--tb-gold)) right center / 12px 3px no-repeat;
+}
+
+.portrait::after {
+  transform: rotate(45deg);
+  opacity: 0.55;
+}
+
+.portraitFrame {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  place-items: center;
+  border: 2px solid rgba(4, 10, 16, 0.85);
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 35%, #1b3a4c, #0a1620);
+}
+
+.portraitFrame img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 28%;
+}
+
+.portraitInitial {
+  color: var(--tb-gold-bright);
+  font-family: var(--tb-font-display);
+  font-size: 2.6rem;
+}
+
+.level {
+  position: absolute;
+  right: -4px;
+  bottom: 2px;
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border: 2px solid var(--tb-gold);
+  border-radius: 50%;
+  background: #0a141c;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.6);
+  color: var(--tb-gold-bright);
+  font-family: var(--tb-font-display);
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.identity {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.name {
+  margin: 0;
+  overflow: hidden;
+  color: var(--tb-text-strong);
+  font-family: var(--tb-font-display);
+  font-size: clamp(1.5rem, 4.6vw, 2rem);
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.code {
+  margin: 0;
+  color: var(--tb-text-muted);
+  font-family: var(--tb-font-display);
+  letter-spacing: 0.08em;
+}
+
+.motto {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--tb-space-2);
+  margin: var(--tb-space-1) 0 0;
+  padding-top: var(--tb-space-2);
+  border-top: 1px solid var(--tb-gold-line);
+  color: var(--tb-text);
+}
+
+.badge {
+  padding: 1px 10px;
+  border: 1px solid var(--tb-success-line);
+  border-radius: var(--tb-radius-pill);
+  background: var(--tb-success-soft);
+  color: var(--tb-success-ink);
+  font-size: var(--tb-fs-caption);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--tb-space-2);
+}
+
+/* --- Les quatre chiffres --------------------------------------------------- */
+
+.stats,
+.showcase {
+  position: relative;
+  margin: 0;
+  border: 1px solid var(--tb-gold-line);
+  border-radius: var(--tb-radius-md);
+  background: linear-gradient(180deg, rgba(14, 30, 42, 0.92), rgba(7, 15, 22, 0.94));
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.5), var(--tb-shadow-md);
+}
+
+/* Coins ouvragés : un angle de laiton à chaque coin du panneau. */
+.stats::before,
+.showcase::before {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  pointer-events: none;
+  background:
+    linear-gradient(var(--tb-gold), var(--tb-gold)) left top / 10px 1px no-repeat,
+    linear-gradient(var(--tb-gold), var(--tb-gold)) left top / 1px 10px no-repeat,
+    linear-gradient(var(--tb-gold), var(--tb-gold)) right top / 10px 1px no-repeat,
+    linear-gradient(var(--tb-gold), var(--tb-gold)) right top / 1px 10px no-repeat,
+    linear-gradient(var(--tb-gold), var(--tb-gold)) left bottom / 10px 1px no-repeat,
+    linear-gradient(var(--tb-gold), var(--tb-gold)) left bottom / 1px 10px no-repeat,
+    linear-gradient(var(--tb-gold), var(--tb-gold)) right bottom / 10px 1px no-repeat,
+    linear-gradient(var(--tb-gold), var(--tb-gold)) right bottom / 1px 10px no-repeat;
+  opacity: 0.8;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  padding: var(--tb-space-3) var(--tb-space-1);
+}
+
+.stat {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 0 var(--tb-space-1);
+  text-align: center;
+}
+
+.stat + .stat {
+  border-left: 1px solid rgba(214, 178, 106, 0.25);
+}
+
+.statIcon {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  color: var(--tb-gold);
+  object-fit: contain;
+}
+
+.statIcon svg {
+  width: 26px;
+  height: 26px;
+}
+
+.statValue {
+  margin: 0;
+  color: var(--tb-text-strong);
+  font-family: var(--tb-font-display);
+  font-size: 1.35rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.statLabel {
+  color: var(--tb-text-muted);
+  font-size: var(--tb-fs-caption);
+  line-height: 1.2;
+}
+
+/* --- Vitrine --------------------------------------------------------------- */
+
+.showcase {
+  display: grid;
+  gap: var(--tb-space-3);
+  padding: var(--tb-space-4);
+}
+
+.showcaseHead {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--tb-space-3);
+}
+
+.showcaseIcon {
+  flex: none;
+  color: var(--tb-gold);
+}
+
+.showcaseIcon svg {
+  width: 30px;
+  height: 30px;
+}
+
+.showcaseTitle {
+  margin: 0;
+  color: var(--tb-text-strong);
+  font-family: var(--tb-font-display);
+  font-size: 1.4rem;
+}
+
+.showcaseText {
+  margin: 2px 0 0;
+  color: var(--tb-text-muted);
+  font-size: var(--tb-fs-caption);
+}
+
+.slots {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--tb-space-3);
+}
+
+.slot {
+  position: relative;
+  min-width: 0;
+}
+
+.emptySlot {
+  position: relative;
+  display: block;
+  aspect-ratio: 5 / 7;
+  overflow: hidden;
+  border: 1px solid var(--tb-gold-line);
+  border-radius: var(--tb-radius-md);
+  background: var(--tb-surface-inset);
+}
+
+.emptySlot img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.8;
+}
+
+.plus {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 1px solid var(--tb-gold);
+  border-radius: 50%;
+  background: rgba(8, 18, 26, 0.92);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.55);
+  color: var(--tb-gold-bright);
+  font-size: 1.4rem;
+  line-height: 1;
+  transform: translateX(-50%);
+  cursor: var(--tb-cursor-pointer);
+  transition: transform 160ms ease-out, box-shadow 160ms ease-out;
+}
+
+.plus:hover {
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.55), var(--tb-glow-gold);
+  transform: translateX(-50%) scale(1.08);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .plus:hover {
+    transform: translateX(-50%);
+  }
+}
