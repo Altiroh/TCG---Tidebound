@@ -18,6 +18,7 @@ import { CardDetailStats } from "@/features/collection/card-detail/CardDetailSta
 import { CardDetailQualifications } from "@/features/collection/card-detail/CardDetailQualifications";
 import { effectLead, qualificationChips } from "@/features/match/qualificationDisplay";
 import { CardShelfControls } from "@/features/collection/shelf/CardShelfControls";
+import { CardDetailShowcase } from "@/features/collection/card-detail/CardDetailShowcase";
 import styles from "@/features/collection/card-detail/CardDetail.module.css";
 
 interface CardDetailModalProps {
@@ -53,6 +54,8 @@ interface CardDetailModalProps {
    * l'édition qu'ils ont touchée, sans en choisir d'autre.
    */
   showEditionControls?: boolean;
+  /** « Ma vitrine » : exposer l'édition montrée (Collection du joueur connecté seulement). */
+  showcase?: boolean;
 }
 
 /** La plus rare des éditions possédées, la Classique sinon. */
@@ -85,6 +88,7 @@ export function CardDetailModal({
   initialEdition,
   displayedEdition,
   showEditionControls = false,
+  showcase = false,
 }: CardDetailModalProps) {
   const model = buildCardDetailModel(cardId);
   // La fiche s'ouvre sur l'édition touchée, sinon la plus rare possédée ;
@@ -236,6 +240,18 @@ export function CardDetailModal({
               shown={{ artwork: illustration, finish: finition }}
               owned={ownedEditions}
               displayed={displayedEdition}
+            />
+          )}
+          {showcase && ownedCount !== undefined && (
+            <CardDetailShowcase
+              key={`vitrine:${cardId}:${illustration}/${finition}`}
+              cardId={cardId}
+              edition={{ artwork: illustration, finish: finition }}
+              owned={
+                isClassicEdition({ artwork: illustration, finish: finition })
+                  ? ownedCount
+                  : ((ownedEditions ?? []).find((e) => e.artwork === illustration && e.finish === finition)?.quantity ?? 0)
+              }
             />
           )}
           {ownedCount !== undefined && (

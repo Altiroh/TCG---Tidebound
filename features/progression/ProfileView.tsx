@@ -49,10 +49,6 @@ import sceneStyles from "@/features/progression/ProfileScene.module.css";
 import { ProfileScene } from "@/features/progression/ProfileScene";
 import { RewardsHub } from "@/features/progression/RewardsHub";
 import { playButtonClick, playStreakClaimed, playTabClick } from "@/lib/sound";
-import { useDevMode } from "@/features/admin/useDevMode";
-import { socialLocked } from "@/features/friends/socialLock";
-import { requestFriendsPanel } from "@/features/friends/friendsPanelBus";
-import { ShowcaseSection } from "@/features/friends/ShowcaseSection";
 import type { ProfileTab } from "@/features/progression/profileTabs";
 
 export type { ProfileTab };
@@ -581,7 +577,6 @@ function LogbookTab({ profile, onRefresh, onShowRewards }: { profile: ProfileSum
   useEffect(() => setIsPending(false), [profile]);
   const { view } = profile;
   const unlockedAchievements = profile.achievements.filter((achievement) => achievement.unlocked).length;
-  const socialOpen = !socialLocked(useDevMode());
 
   function claimLogin() {
     playButtonClick();
@@ -667,26 +662,6 @@ function LogbookTab({ profile, onRefresh, onShowRewards }: { profile: ProfileSum
           </Link>
         )}
       </section>
-
-      {/* Ma vitrine, et l'accès aux amis : volet social réservé au mode Dev (`socialLock.ts`). */}
-      {socialOpen && (
-        <section className={`${game.panel} ${styles.blockWide}`} aria-label="Ma vitrine">
-          <div className={styles.blockHead}>
-            <h2 className={game.sectionTitle}>Ma vitrine</h2>
-            <button
-              type="button"
-              className={game.link}
-              onClick={() => {
-                playButtonClick();
-                requestFriendsPanel();
-              }}
-            >
-              Mes amis →
-            </button>
-          </div>
-          <ShowcaseSection />
-        </section>
-      )}
 
       <section className={`${game.panel} ${styles.block}`} aria-label="Prochains paliers">
         <div className={styles.blockHead}>

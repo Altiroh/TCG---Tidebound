@@ -629,6 +629,16 @@
  * En bas du panneau d'information, après tout ce qui décrit la carte :
  * c'est une action sur sa collection, pas une donnée de la carte.
  * ────────────────────────────────────────────────────────────── */
+/* « Ma vitrine » (`CardDetailShowcase`) : même filet que la revente, six emplacements en petit. */
+.showcaseSection {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: clamp(8px, 1.4vh, 14px);
+  padding-top: clamp(8px, 1.4vh, 14px);
+  border-top: 1px solid var(--line);
+}
+
 .resale {
   display: flex;
   flex-direction: column;

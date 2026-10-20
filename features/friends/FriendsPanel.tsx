@@ -9,31 +9,28 @@ import { FriendsBoard, type FriendsBoardProps } from "@/features/friends/Friends
 import type { PlayerCardView } from "@/features/friends/playerCardService";
 import type { TradeableCard } from "@/features/friends/tradeService";
 import { PlayerSheet } from "@/features/friends/PlayerSheet";
-import { ShowcaseSection } from "@/features/friends/ShowcaseSection";
 import { TradeComposer } from "@/features/friends/TradeComposer";
 import { SidePanel } from "@/features/shell/SidePanel";
 import game from "@/features/shell/GameScreen.module.css";
-import styles from "@/features/friends/Social.module.css";
 
 type BoardData = Pick<FriendsBoardProps, "social" | "trades" | "recentOpponents">;
 
 /**
  * Ce que montre le panneau : le tableau, une fiche (la sienne ou celle d'un
- * autre), un échange en préparation, ou le choix d'une carte de sa vitrine.
+ * autre), ou un échange en préparation.
  */
 type View =
   | { kind: "board" }
   | { kind: "player"; userId: string }
   | { kind: "me" }
-  | { kind: "trade"; userId: string }
-  | { kind: "showcase"; slot: number };
+  | { kind: "trade"; userId: string };
 
 /**
  * AMIS — tout le volet social tient dans ce panneau, ouvert par l'icône du
  * bandeau à droite de l'enveloppe (comme le Courrier et les Options), ou par
  * le signal `requestFriendsPanel`. Pas de page : le tableau, les fiches de
- * capitaine (`PlayerProfileCard`, vitrine comprise), la proposition
- * d'échange et le choix des cartes de sa vitrine s'y succèdent. « Combat »
+ * capitaine (`PlayerProfileCard`, vitrine comprise) et la proposition
+ * d'échange s'y succèdent ; sa vitrine se compose depuis la Collection. « Combat »
  * invite l'ami dans un salon, et y mène.
  */
 export function FriendsPanel({ onClose, onChanged }: { onClose: () => void; onChanged?: () => void }) {
@@ -145,22 +142,9 @@ export function FriendsPanel({ onClose, onChanged }: { onClose: () => void; onCh
           changed();
         }}
         onLeave={onClose}
-        onEditSlot={(slot) => setView({ kind: "showcase", slot })}
       />
     ) : (
       loading
-    );
-  } else if (view.kind === "showcase") {
-    content = (
-      <div className={styles.column}>
-        <div className={styles.row}>
-          <p className={game.eyebrow}>Ma vitrine</p>
-          <button type="button" className={game.secondary} onClick={() => setView({ kind: "me" })}>
-            ← Mon profil
-          </button>
-        </div>
-        <ShowcaseSection initialSlot={view.slot} onSaved={() => setView({ kind: "me" })} />
-      </div>
     );
   } else {
     content =

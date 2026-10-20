@@ -32,6 +32,9 @@ export function ShowcaseTile({ card, onClick }: { card: ShowcaseCard; onClick?: 
       showStatusBadges={false}
       finish={card.finish !== "classique" ? card.finish : undefined}
       artwork={card.artwork !== "classique" ? card.artwork : undefined}
+      // Exposée, elle est POSSÉDÉE par son propriétaire : une illustration
+      // secrète (Styled, Full-Art) se montre nette à qui la regarde, jamais
+      // floutée comme dans une Collection où on ne l'a pas (`isArtworkHidden`).
       artworkOwned
       onClick={onClick}
     />

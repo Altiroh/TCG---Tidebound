@@ -19,66 +19,90 @@
   min-width: 0;
 }
 
-.portrait {
+/*
+ * La PHOTO du profil, reprise de `ProfileScene` : cadre `photo-frame.webp`
+ * (419 × 454), fenêtre mesurée sur lui — centre à 48,7 % / 43,3 %, 71,2 % ×
+ * 59,5 %, inclinée de −11,3° —, légende sur le papier du bas. Les textes en
+ * `cqw` de la photo.
+ */
+.photo {
   position: relative;
-  isolation: isolate;
   flex: none;
-  width: 112px;
-  height: 112px;
-  padding: 7px;
-  border-radius: 50%;
-  background:
-    conic-gradient(from 0deg, var(--tb-gold-bright), var(--tb-gold-deep), var(--tb-gold), var(--tb-gold-deep), var(--tb-gold-bright));
-  box-shadow: 0 0 0 2px rgba(4, 10, 16, 0.9), 0 10px 26px rgba(0, 0, 0, 0.6), var(--tb-glow-gold);
+  width: 148px;
+  aspect-ratio: 419 / 454;
+  container-type: inline-size;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.55));
 }
 
-/* Les quatre pointes de la rose des vents, autour de l'anneau. */
-.portrait::before,
-.portrait::after {
-  content: "";
+.photoFrame {
   position: absolute;
-  inset: -9px;
-  z-index: -1;
-  background:
-    linear-gradient(var(--tb-gold), var(--tb-gold)) center top / 3px 12px no-repeat,
-    linear-gradient(var(--tb-gold), var(--tb-gold)) center bottom / 3px 12px no-repeat,
-    linear-gradient(var(--tb-gold), var(--tb-gold)) left center / 12px 3px no-repeat,
-    linear-gradient(var(--tb-gold), var(--tb-gold)) right center / 12px 3px no-repeat;
-}
-
-.portrait::after {
-  transform: rotate(45deg);
-  opacity: 0.55;
-}
-
-.portraitFrame {
-  display: grid;
+  inset: 0;
   width: 100%;
   height: 100%;
+  pointer-events: none;
+  user-select: none;
+}
+
+.photoWindow {
+  position: absolute;
+  left: calc(48.66% - 71.2% / 2);
+  top: calc(43.31% - 59.5% / 2);
+  width: 71.2%;
+  height: 59.5%;
+  transform: rotate(-11.3deg);
+  background-size: cover;
+  background-position: center 25%;
+  box-shadow: inset 0 0 3cqw rgba(0, 0, 0, 0.55);
+}
+
+/* Sans illustration choisie : le portrait peint du cadre reste visible. */
+.photoWindow[data-empty] {
+  box-shadow: none;
+}
+
+.photoCaption {
+  position: absolute;
+  left: calc(56% - 64% / 2);
+  top: calc(86.5% - 13% / 2);
+  display: flex;
+  width: 64%;
+  height: 13%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6cqw;
+  color: #2b1c10;
+  transform: rotate(-11.3deg);
+}
+
+.photoName {
+  max-width: 100%;
   overflow: hidden;
-  place-items: center;
-  border: 2px solid rgba(4, 10, 16, 0.85);
-  border-radius: 50%;
-  background: radial-gradient(circle at 50% 35%, #1b3a4c, #0a1620);
-}
-
-.portraitFrame img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center 28%;
-}
-
-.portraitInitial {
-  color: var(--tb-gold-bright);
   font-family: var(--tb-font-display);
-  font-size: 2.6rem;
+  font-size: 9.5cqw;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.photoTitle {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 5.6cqw;
+  font-style: italic;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.85;
 }
 
 .level {
   position: absolute;
-  right: -4px;
-  bottom: 2px;
+  right: 0;
+  top: 2%;
   display: grid;
   width: 36px;
   height: 36px;
@@ -270,10 +294,12 @@
   min-width: 0;
 }
 
+/* Le cadre d'une carte (`CardTile`) laisse une marge dans sa tuile : le dos s'y aligne. */
 .emptySlot {
   position: relative;
   display: block;
   aspect-ratio: 5 / 7;
+  transform: scale(0.93);
   overflow: hidden;
   border: 1px solid var(--tb-gold-line);
   border-radius: var(--tb-radius-md);
@@ -315,5 +341,46 @@
 @media (prefers-reduced-motion: reduce) {
   .plus:hover {
     transform: translateX(-50%);
+  }
+}
+
+/* --- Une carte de vitrine en grand (`ShowcaseCardView`) ----------------- */
+
+.viewer {
+  position: fixed;
+  inset: 0;
+  z-index: calc(var(--tb-z-dialog, 100) + 10);
+  display: grid;
+  place-items: center;
+  padding: calc(var(--tb-safe-top, 0px) + 16px) calc(var(--tb-safe-right, 0px) + 16px) calc(var(--tb-safe-bottom, 0px) + 16px)
+    calc(var(--tb-safe-left, 0px) + 16px);
+  background: rgba(3, 6, 9, 0.82);
+  cursor: var(--tb-cursor-pointer);
+  animation: viewerIn 180ms ease-out both;
+}
+
+.viewerCard {
+  width: min(380px, 80vw, calc((100dvh - 48px) * 5 / 7));
+  filter: drop-shadow(0 18px 40px rgba(0, 0, 0, 0.7));
+  animation: viewerCardIn 240ms var(--tb-ease) both;
+}
+
+@keyframes viewerIn {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes viewerCardIn {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .viewer,
+  .viewerCard {
+    animation: none;
   }
 }

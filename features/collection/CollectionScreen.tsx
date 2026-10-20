@@ -364,6 +364,7 @@ function CollectionScreenBody({
           onNext={browser.cards.length > 1 ? () => stepDetail(1) : undefined}
           onShowCard={(id) => openDetail(id)}
           ownedCount={isSignedIn ? (ownedCounts[detailCardId] ?? 0) : undefined}
+          showcase={isSignedIn}
         />
       )}
     </GameScreen>

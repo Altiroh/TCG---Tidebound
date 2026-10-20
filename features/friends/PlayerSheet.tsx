@@ -33,17 +33,15 @@ interface PlayerSheetProps {
   onChanged: () => void;
   /** On quitte le panneau (vers le salon de combat). */
   onLeave: () => void;
-  /** Sa propre fiche : choisir la carte d'un emplacement de vitrine. */
-  onEditSlot?: (slot: number) => void;
 }
 
 /**
  * FICHE d'un joueur dans le panneau Amis (`PlayerProfileCard`), avec ce
  * qu'on peut faire avec lui : l'ajouter (adversaire croisé), accepter sa
  * demande, ou — ami — lui proposer un combat ou un échange. Sur sa propre
- * fiche, la vitrine se compose d'un toucher sur un emplacement.
+ * fiche, le « + » d'un emplacement vide mène à la Collection, où l'on expose.
  */
-export function PlayerSheet({ player, onBack, onTrade, onChanged, onLeave, onEditSlot }: PlayerSheetProps) {
+export function PlayerSheet({ player, onBack, onTrade, onChanged, onLeave }: PlayerSheetProps) {
   const router = useRouter();
   const [message, setMessage] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
   const [pending, startTransition] = useTransition();
@@ -56,6 +54,12 @@ export function PlayerSheet({ player, onBack, onTrade, onChanged, onLeave, onEdi
       setMessage(result.ok ? (result.message ? { tone: "ok", text: result.message } : null) : { tone: "error", text: result.error ?? "Échec." });
       onChanged();
     });
+  }
+
+  /** On expose ses cartes depuis la Collection : le « + » d'un emplacement vide y mène. */
+  function openCollection() {
+    onLeave();
+    router.push("/collection");
   }
 
   function challenge() {
@@ -107,7 +111,7 @@ export function PlayerSheet({ player, onBack, onTrade, onChanged, onLeave, onEdi
           ← Mes amis
         </button>
       </div>
-      <PlayerProfileCard player={player} actions={actions} badge={RELATION_BADGE[player.relation] ?? null} onEditSlot={player.relation === "self" ? onEditSlot : undefined} />
+      <PlayerProfileCard player={player} actions={actions} badge={RELATION_BADGE[player.relation] ?? null} onAddCard={player.relation === "self" ? openCollection : undefined} />
       {message && <p className={message.tone === "ok" ? game.success : game.error}>{message.text}</p>}
     </div>
   );
