@@ -164,7 +164,7 @@ export { canActivateAbility } from "@/game/actions/activateAbility";
 export { ARCHETYPE_LABELS } from "@/game/cards/archetypes";
 export { MAX_SUBTYPES, SUBTYPE_FAMILIES, SUBTYPE_LABELS, hasSubtype, displayedSubtypes, subtypeLabel, subtypesOf } from "@/game/cards/subtypes";
 export type { SubtypeId } from "@/game/cards/subtypes";
-export { MARKER_RULES, hasMarker, markerCount, unitHasSubtype } from "@/game/cards/markers";
+export { MARKER_RULES, hasMarker, markerCount, markerGrantedSubtypes, unitHasSubtype } from "@/game/cards/markers";
 export type { CardMarkers, MarkerId } from "@/game/cards/markers";
 export type { ArchetypeId } from "@/game/cards/archetypes";
 export type { PendingReactionCandidate, TriggerEvent, TriggerType } from "@/game/triggers/types";

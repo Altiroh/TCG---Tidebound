@@ -43,6 +43,10 @@ const ASSETS = "/assets/cards/frames/nouveau";
  */
 const ICONES_REV = 3;
 
+/** Vert Mort-vivant : un sous-type venu d'un marqueur (lisible sur le cadre clair comme sur l'illustration). */
+export const MARKER_SUBTYPE_COLOR = "#5fd86a";
+const MARKER_SUBTYPE_GLOW = "0 0 0.6cqw rgba(20, 60, 25, 0.9), 0 0 1.4cqw rgba(95, 216, 106, 0.45)";
+
 export interface NouveauCadreFaceProps {
   def: CardDefinition;
   /** Cadre doré et scintillement (rareté `legendary`). Sans effet sur une Abyssale, qui a le sien. */
@@ -68,6 +72,12 @@ export interface NouveauCadreFaceProps {
    * ne pose plus que Puissance et Résistance. Défaut : Classique.
    */
   illustration?: CardArtwork;
+  /**
+   * Sous-types que l'exemplaire EN JEU tient de ses marqueurs
+   * (`markerGrantedSubtypes`) : écrits à la suite des imprimés, en vert —
+   * un mort ramené avec un marqueur Mort devient « Mort-vivant ».
+   */
+  markerSubtypes?: readonly string[];
   /** Illustration pas encore sortie, ni obtenue ni vue en mode Dev (`isArtworkHidden`) : floutée, sans stats. */
   illustrationCachee?: boolean;
 }
@@ -93,6 +103,7 @@ export function NouveauCadreFace({
   finition = "classique",
   illustration: oeuvre = "classique",
   illustrationCachee = false,
+  markerSubtypes = [],
 }: NouveauCadreFaceProps) {
   const illustration = cardArtworkUrl(def.id, oeuvre);
   // Le texte d'une Full-Art est dans l'image : le réécrire le doublerait.
@@ -260,12 +271,19 @@ export function NouveauCadreFace({
         </span>
         {/* Les SOUS-TYPES, juste sous le type (décision du 09/10/2026) : ce
             que les effets visent (« vos Chevaliers »), deux ou trois au plus. */}
-        {shownSubtypes.length > 0 && (
+        {(shownSubtypes.length > 0 || markerSubtypes.length > 0) && (
           <span
             className="whitespace-nowrap italic leading-none [font-family:var(--font-card-title)]"
-            style={{ fontSize: "2.6cqw", letterSpacing: "0.03em", opacity: 0.85, marginTop: "-0.2cqw" }}
+            style={{ fontSize: "2.6cqw", letterSpacing: "0.03em", marginTop: "-0.2cqw" }}
           >
-            {shownSubtypes.map(subtypeLabel).join(" · ")}
+            {shownSubtypes.length > 0 && <span style={{ opacity: 0.85 }}>{shownSubtypes.map(subtypeLabel).join(" · ")}</span>}
+            {/* Ce que lui donnent ses marqueurs, à la suite, en vert Mort-vivant. */}
+            {markerSubtypes.map((subtype, index) => (
+              <span key={subtype} style={{ color: MARKER_SUBTYPE_COLOR, textShadow: MARKER_SUBTYPE_GLOW, fontWeight: 700 }}>
+                {shownSubtypes.length > 0 || index > 0 ? " · " : ""}
+                {subtypeLabel(subtype)}
+              </span>
+            ))}
           </span>
         )}
       </div>

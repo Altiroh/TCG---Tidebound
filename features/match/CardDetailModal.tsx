@@ -89,7 +89,7 @@ export function CardDetailModal({ instance, tideState, boardUnits = [], auraCont
         className="hidden max-h-full min-h-0 overflow-y-auto overscroll-contain sm:block"
         onClick={(e) => e.stopPropagation()}
       >
-        <CardInfoPanel cardId={instance.cardId} />
+        <CardInfoPanel cardId={instance.cardId} markers={instance.markers} />
       </div>
     </div>
   );

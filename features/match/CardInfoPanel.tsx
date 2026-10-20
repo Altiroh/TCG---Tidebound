@@ -1,4 +1,5 @@
-import { displayedSubtypes, getCardDefinition, getMaxCopies, isAbyssalVariant, subtypeLabel, UNIT_CARD_TYPES } from "@/game";
+import { displayedSubtypes, getCardDefinition, getMaxCopies, isAbyssalVariant, markerGrantedSubtypes, subtypeLabel, UNIT_CARD_TYPES, type CardInstance } from "@/game";
+import { MARKER_SUBTYPE_COLOR } from "@/features/cadre-preview/NouveauCadreCard";
 import { CARD_TYPE_LABELS } from "@/features/match/cardDisplay";
 import { QualificationDescription } from "@/features/match/QualificationBadge";
 import { effectLead, qualificationChips } from "@/features/match/qualificationDisplay";
@@ -26,6 +27,8 @@ function Stat({ value, label, accentClassName }: { value: number; label: string;
 
 interface CardInfoPanelProps {
   cardId: string;
+  /** Marqueurs de l'exemplaire en jeu : un marqueur Mort ajoute « Mort-vivant », en vert. */
+  markers?: CardInstance["markers"];
 }
 
 /**
@@ -45,11 +48,12 @@ interface CardInfoPanelProps {
  * définition de catalogue. Ce panneau-ci accompagne une carte EN JEU et
  * reste donc au plus près du plateau.
  */
-export function CardInfoPanel({ cardId }: CardInfoPanelProps) {
+export function CardInfoPanel({ cardId, markers }: CardInfoPanelProps) {
   const def = getCardDefinition(cardId);
   const isAbyssal = isAbyssalVariant(def);
   const isUnit = (UNIT_CARD_TYPES as readonly string[]).includes(def.type);
   const shownSubtypes = displayedSubtypes(def);
+  const markerSubtypes = markerGrantedSubtypes(def, { markers });
   const showAttack = isUnit || def.attack !== undefined;
   const showHealth = def.health !== undefined;
   const maxCopies = getMaxCopies(def);
@@ -62,6 +66,11 @@ export function CardInfoPanel({ cardId }: CardInfoPanelProps) {
         <span className="text-slate-300">{CARD_TYPE_LABELS[def.type]}</span>
         {isAbyssal && <span className="text-fuchsia-300">· Abyssal</span>}
         {shownSubtypes.length > 0 && <span className="text-slate-500">· {shownSubtypes.map(subtypeLabel).join(" · ")}</span>}
+        {markerSubtypes.map((subtype) => (
+          <span key={subtype} style={{ color: MARKER_SUBTYPE_COLOR }}>
+            · {subtypeLabel(subtype)}
+          </span>
+        ))}
       </div>
 
       <h2

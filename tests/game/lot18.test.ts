@@ -4,7 +4,7 @@ import { dispatch } from "@/tests/game/arrivalDispatch";
 import { auraContextOf, computeEffectiveStats } from "@/game/cards/stats";
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { canBeEquipTarget } from "@/game/cards/sets/core";
-import { markerCount, unitHasSubtype } from "@/game/cards/markers";
+import { markerCount, markerGrantedSubtypes, unitHasSubtype } from "@/game/cards/markers";
 import { boardCapacity } from "@/game/rules/slotEffects";
 import type { CardInstance } from "@/game/cards/types";
 import type { GameState } from "@/game/state/types";
@@ -67,6 +67,9 @@ describe("le marqueur Mort", () => {
     const marquee = unite(r.state, matelot.instanceId)!;
     expect(markerCount(marquee, "mort")).toBe(1);
     expect(unitHasSubtype(getCardDefinition(marquee.cardId), marquee, "mort-vivant")).toBe(true);
+    // Le cadre l'écrit à la suite de ses sous-types imprimés (en vert, `NouveauCadreFace`).
+    expect(markerGrantedSubtypes(getCardDefinition(marquee.cardId), marquee)).toEqual(["mort-vivant"]);
+    expect(markerGrantedSubtypes(getCardDefinition(matelot.cardId), matelot)).toEqual([]);
     // L'Anomalie part au Cimetière après résolution.
     expect(joueur(r.state).graveyard.some((c) => c.instanceId === chut.instanceId)).toBe(true);
   });

@@ -23,6 +23,7 @@ import {
   type TideStateName,
   isAbyssalVariant,
   MARKER_RULES,
+  markerGrantedSubtypes,
   type MarkerId,
 } from "@/game";
 import { CARD_TYPE_LABELS, THICK_TEXT_OUTLINE } from "@/features/match/cardDisplay";
@@ -1000,6 +1001,7 @@ function CardTileView({
             finition={finish}
             illustration={artwork}
             illustrationCachee={illustrationCachee}
+            markerSubtypes={markerGrantedSubtypes(def, instance)}
           />
         ) : (
         <>

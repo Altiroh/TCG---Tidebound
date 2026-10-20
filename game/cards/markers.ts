@@ -99,6 +99,20 @@ export function graveyardReplacementOf(card: Pick<CardInstance, "markers">): "de
 }
 
 /**
+ * Les sous-types qu'une carte EN JEU tient de ses marqueurs, sans ceux
+ * qu'elle porte déjà imprimés — ce que le cadre ajoute à sa ligne de
+ * sous-types (un mort ramené « avec un marqueur Mort » devient Mort-vivant).
+ */
+export function markerGrantedSubtypes(def: Pick<CardDefinition, "subtype" | "subtypes">, card: Pick<CardInstance, "markers">): SubtypeId[] {
+  const granted: SubtypeId[] = [];
+  for (const [marker, count] of Object.entries(card.markers ?? {}) as Array<[MarkerId, number]>) {
+    const subtype = MARKER_RULES[marker].grantsSubtype;
+    if (count > 0 && subtype && !hasSubtype(def, subtype) && !granted.includes(subtype)) granted.push(subtype);
+  }
+  return granted;
+}
+
+/**
  * Le sous-type d'une carte EN JEU : ceux de sa définition (`hasSubtype`),
  * plus ceux que lui donnent ses marqueurs. C'est la question que pose tout
  * effet qui vise un sous-type sur le plateau ; hors du plateau, une carte
