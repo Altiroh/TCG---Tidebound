@@ -13,6 +13,8 @@ import {
 } from "@/features/friends/tradeService";
 import { normalizeTradeLines } from "@/features/friends/tradeRules";
 import { getSessionUser } from "@/lib/supabase/sessionUser";
+import { socialClosedFor } from "@/features/friends/socialGate";
+import { SOCIAL_INDISPONIBLE } from "@/features/friends/socialLock";
 
 /**
  * Échanges de cartes — Server Actions exposées au navigateur. Le joueur est
@@ -21,6 +23,8 @@ import { getSessionUser } from "@/lib/supabase/sessionUser";
  */
 
 const SIGNED_OUT: TradeResult = { ok: false, error: "Connecte-toi pour échanger des cartes." };
+/** Volet social réservé au mode Dev (`socialLock.ts`). */
+const CLOSED: TradeResult = { ok: false, error: SOCIAL_INDISPONIBLE };
 
 function isUuid(value: unknown): value is string {
   return typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
@@ -37,7 +41,7 @@ function done(result: TradeResult): TradeResult {
 export async function fetchTrades(): Promise<TradesView | null> {
   try {
     const user = await getSessionUser();
-    if (!user) return null;
+    if (!user || (await socialClosedFor(user.id))) return null;
     return await readTrades(user.id);
   } catch (error) {
     console.error("[fetchTrades] Lecture impossible :", error);
@@ -49,7 +53,7 @@ export async function fetchTrades(): Promise<TradesView | null> {
 export async function fetchTradeTable(friendId: string): Promise<{ mine: TradeableCard[]; theirs: TradeableCard[] } | null> {
   try {
     const user = await getSessionUser();
-    if (!user || !isUuid(friendId) || friendId === user.id) return null;
+    if (!user || !isUuid(friendId) || friendId === user.id || (await socialClosedFor(user.id))) return null;
     const theirs = await readTradeableCards(user.id, friendId);
     if (!theirs) return null;
     const mine = (await readTradeableCards(user.id, user.id)) ?? [];
@@ -63,6 +67,7 @@ export async function fetchTradeTable(friendId: string): Promise<{ mine: Tradeab
 export async function proposeTrade(friendId: string, offered: unknown, requested: unknown): Promise<TradeResult> {
   const user = await getSessionUser();
   if (!user) return SIGNED_OUT;
+  if (await socialClosedFor(user.id)) return CLOSED;
   if (!isUuid(friendId)) return { ok: false, error: "Ami introuvable." };
   const give = normalizeTradeLines(offered);
   const take = normalizeTradeLines(requested);
@@ -73,6 +78,7 @@ export async function proposeTrade(friendId: string, offered: unknown, requested
 export async function acceptTrade(tradeId: string): Promise<TradeResult> {
   const user = await getSessionUser();
   if (!user) return SIGNED_OUT;
+  if (await socialClosedFor(user.id)) return CLOSED;
   if (!isUuid(tradeId)) return { ok: false, error: "Échange introuvable." };
   return done(await acceptFor(user.id, tradeId).catch(() => ({ ok: false as const, error: "Échange impossible pour l'instant." })));
 }
@@ -80,6 +86,7 @@ export async function acceptTrade(tradeId: string): Promise<TradeResult> {
 export async function declineTrade(tradeId: string): Promise<TradeResult> {
   const user = await getSessionUser();
   if (!user) return SIGNED_OUT;
+  if (await socialClosedFor(user.id)) return CLOSED;
   if (!isUuid(tradeId)) return { ok: false, error: "Échange introuvable." };
   return done(await closeTrade(user.id, tradeId, "declined"));
 }
@@ -87,6 +94,7 @@ export async function declineTrade(tradeId: string): Promise<TradeResult> {
 export async function cancelTrade(tradeId: string): Promise<TradeResult> {
   const user = await getSessionUser();
   if (!user) return SIGNED_OUT;
+  if (await socialClosedFor(user.id)) return CLOSED;
   if (!isUuid(tradeId)) return { ok: false, error: "Échange introuvable." };
   return done(await closeTrade(user.id, tradeId, "cancelled"));
 }

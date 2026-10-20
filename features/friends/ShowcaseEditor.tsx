@@ -97,7 +97,7 @@ export function ShowcaseEditor({ initialShowcase, ownedCounts, ownedEditions }: 
   }
 
   return (
-    <GameScreen active="collection" nav="minimal">
+    <GameScreen active="amis">
       <div className={game.content}>
         <div className={`${game.contentInner} ${styles.column}`}>
           <div className={game.pageHead}>

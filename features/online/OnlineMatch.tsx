@@ -14,6 +14,8 @@ import { predictView } from "@/features/online/predictView";
 import { BASE_FRAME_MS, framePaceMs } from "@/features/match/framePacing";
 import { WaitingRoom } from "@/features/online/WaitingRoom";
 import { VersusIntro } from "@/features/online/VersusIntro";
+import { useDevMode } from "@/features/admin/useDevMode";
+import { socialLocked } from "@/features/friends/socialLock";
 import { MicroLoader } from "@/features/shell/MicroLoader";
 import { createChannelRecoveryTracker, useResyncOnReturn } from "@/features/online/resync";
 import { isOffline, presentUserIds, useOffline, useOpponentPresence, waitUntilOnline } from "@/features/online/connection";
@@ -172,7 +174,9 @@ export function OnlineMatch({ matchId, initialMatch, initialView, myUserId }: On
    * de pile ou face) n'est monté qu'après.
    */
   const [versus, setVersus] = useState<"pending" | "showing" | "done">("pending");
-  const versusEligible = !isBotMatch && match.status === "active" && view?.turnNumber === 1;
+  // Volet social réservé au mode Dev (`socialLock.ts`).
+  const socialOpen = !socialLocked(useDevMode());
+  const versusEligible = socialOpen && !isBotMatch && match.status === "active" && view?.turnNumber === 1;
   useEffect(() => {
     if (versus !== "pending" || !view) return;
     let seen = false;

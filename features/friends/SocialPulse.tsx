@@ -8,6 +8,7 @@ import type { IncomingChallenge } from "@/features/friends/friendService";
 import styles from "@/features/friends/SocialPulse.module.css";
 import { useDevMode } from "@/features/admin/useDevMode";
 import { friendlyMatchLocked } from "@/features/online/friendlyMatchLock";
+import { socialLocked } from "@/features/friends/socialLock";
 
 /** Signe de vie : assez fréquent pour que « En ligne » dise vrai (fenêtre de 2 min), assez rare pour ne rien coûter. */
 const PULSE_MS = 45_000;
@@ -60,10 +61,12 @@ export function SocialPulse() {
   }, []);
 
   // Match amical fermé hors mode Dev (`friendlyMatchLock.ts`) : aucun défi à annoncer.
-  const amicalLocked = friendlyMatchLocked(useDevMode());
+  const devMode = useDevMode();
+  const amicalLocked = friendlyMatchLocked(devMode);
   const inMatch = pathname?.startsWith("/en-ligne/");
   const showChallenge = challenge && !amicalLocked && !inMatch && pathname !== "/partie";
-  const showTrade = trade && !inMatch && pathname !== "/amis";
+  // Volet social réservé au mode Dev (`socialLock.ts`) : le serveur ne rend alors aucune offre, l'écran non plus.
+  const showTrade = trade && !socialLocked(devMode) && !inMatch && pathname !== "/amis";
 
   if (showChallenge) {
     return (

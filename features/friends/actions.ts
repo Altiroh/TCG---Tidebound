@@ -18,6 +18,8 @@ import {
 import { readPlayerCard, readRecentOpponents, type PlayerCardView, type RecentOpponent } from "@/features/friends/playerCardService";
 import { readIncomingTradeIds } from "@/features/friends/tradeService";
 import { getSessionUser } from "@/lib/supabase/sessionUser";
+import { socialClosedFor } from "@/features/friends/socialGate";
+import { SOCIAL_INDISPONIBLE } from "@/features/friends/socialLock";
 import { devModeActive } from "@/features/admin/roles";
 import { friendlyMatchLocked, MATCH_AMICAL_INDISPONIBLE } from "@/features/online/friendlyMatchLock";
 
@@ -28,6 +30,8 @@ import { friendlyMatchLocked, MATCH_AMICAL_INDISPONIBLE } from "@/features/onlin
  */
 
 const SIGNED_OUT: FriendResult = { ok: false, error: "Connecte-toi pour gérer tes amis." };
+/** Volet social réservé au mode Dev (`socialLock.ts`). */
+const CLOSED: FriendResult = { ok: false, error: SOCIAL_INDISPONIBLE };
 
 function isUuid(value: unknown): value is string {
   return typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
@@ -52,6 +56,7 @@ export async function fetchSocial(): Promise<SocialView | null> {
 export async function addFriendByCode(code: string): Promise<FriendResult> {
   const user = await getSessionUser();
   if (!user) return SIGNED_OUT;
+  if (await socialClosedFor(user.id)) return CLOSED;
   if (typeof code !== "string") return { ok: false, error: "Code invalide." };
   return done(await sendFor(user.id, code).catch(() => ({ ok: false as const, error: "Demande impossible pour l'instant." })));
 }
@@ -60,6 +65,7 @@ export async function addFriendByCode(code: string): Promise<FriendResult> {
 export async function addFriendFromMatch(otherId: string): Promise<FriendResult> {
   const user = await getSessionUser();
   if (!user) return SIGNED_OUT;
+  if (await socialClosedFor(user.id)) return CLOSED;
   if (!isUuid(otherId)) return { ok: false, error: "Joueur introuvable." };
   return done(await sendFriendRequestToOpponent(user.id, otherId).catch(() => ({ ok: false as const, error: "Demande impossible pour l'instant." })));
 }
@@ -68,7 +74,7 @@ export async function addFriendFromMatch(otherId: string): Promise<FriendResult>
 export async function fetchPlayerCard(otherId: string): Promise<PlayerCardView | null> {
   try {
     const user = await getSessionUser();
-    if (!user || !isUuid(otherId)) return null;
+    if (!user || !isUuid(otherId) || (await socialClosedFor(user.id))) return null;
     return await readPlayerCard(user.id, otherId);
   } catch (error) {
     console.error("[fetchPlayerCard] Lecture impossible :", error);
@@ -79,7 +85,7 @@ export async function fetchPlayerCard(otherId: string): Promise<PlayerCardView |
 export async function fetchRecentOpponents(): Promise<RecentOpponent[]> {
   try {
     const user = await getSessionUser();
-    if (!user) return [];
+    if (!user || (await socialClosedFor(user.id))) return [];
     return await readRecentOpponents(user.id);
   } catch (error) {
     console.error("[fetchRecentOpponents] Lecture impossible :", error);
@@ -90,6 +96,7 @@ export async function fetchRecentOpponents(): Promise<RecentOpponent[]> {
 export async function answerFriendRequest(otherId: string, accept: boolean): Promise<FriendResult> {
   const user = await getSessionUser();
   if (!user) return SIGNED_OUT;
+  if (await socialClosedFor(user.id)) return CLOSED;
   if (!isUuid(otherId)) return { ok: false, error: "Demande introuvable." };
   return done(await respondFor(user.id, otherId, accept === true).catch(() => ({ ok: false as const, error: "Réponse impossible pour l'instant." })));
 }
@@ -97,6 +104,7 @@ export async function answerFriendRequest(otherId: string, accept: boolean): Pro
 export async function removeFriend(otherId: string): Promise<FriendResult> {
   const user = await getSessionUser();
   if (!user) return SIGNED_OUT;
+  if (await socialClosedFor(user.id)) return CLOSED;
   if (!isUuid(otherId)) return { ok: false, error: "Ami introuvable." };
   return done(await removeFriendFor(user.id, otherId));
 }
@@ -129,7 +137,8 @@ export async function pollSocial(): Promise<{ challenges: IncomingChallenge[]; t
     const user = await getSessionUser();
     if (!user) return null;
     await touchPresence(user.id);
-    const [challenges, trades] = await Promise.all([readIncomingChallenges(user.id), readIncomingTradeIds(user.id).catch(() => [])]);
+    const [challenges, closed] = await Promise.all([readIncomingChallenges(user.id), socialClosedFor(user.id)]);
+    const trades = closed ? [] : await readIncomingTradeIds(user.id).catch(() => []);
     return { challenges, trades };
   } catch (error) {
     console.error("[pollSocial] Échec :", error);

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { fetchRecentOpponents, fetchSocial } from "@/features/friends/actions";
 import { fetchTrades } from "@/features/friends/tradeActions";
 import { FriendsScreen } from "@/features/friends/FriendsScreen";
+import { guardSocialPage } from "@/features/friends/socialGate";
 
 export const metadata = { title: "Mes amis · Tidebound" };
 
@@ -10,6 +11,8 @@ export const metadata = { title: "Mes amis · Tidebound" };
  * échanges de cartes et adversaires récents (`20261112120000_social_vitrine_echanges.sql`).
  */
 export default async function AmisPage() {
+  // Volet social réservé au mode Dev (`socialLock.ts`).
+  await guardSocialPage();
   const [social, trades, recentOpponents] = await Promise.all([fetchSocial(), fetchTrades(), fetchRecentOpponents()]);
   if (!social) redirect("/connexion");
   return <FriendsScreen social={social} trades={trades ?? undefined} recentOpponents={recentOpponents} />;

@@ -19,6 +19,7 @@ import { resumeVerdict } from "@/features/online/resumable";
 import { loadEquippedCosmetics } from "@/features/cosmetics/equippedCosmeticsService";
 import type { PlayerCosmetics } from "@/features/cosmetics/MatchCosmeticsProvider";
 import { readPlayerCards, relationOf, type PlayerCardView } from "@/features/friends/playerCardService";
+import { socialClosedFor } from "@/features/friends/socialGate";
 import { getSessionUser } from "@/lib/supabase/sessionUser";
 import { devModeActive } from "@/features/admin/roles";
 import { friendlyMatchLocked, MATCH_AMICAL_INDISPONIBLE } from "@/features/online/friendlyMatchLock";
@@ -171,6 +172,8 @@ export async function fetchMatchCosmetics(matchId: string): Promise<ActionResult
 export async function fetchMatchVersus(matchId: string): Promise<ActionResult<{ me: PlayerCardView; opponent: PlayerCardView }>> {
   const user = await requireUser();
   try {
+    // Volet social réservé au mode Dev (`socialLock.ts`) : pas de présentation pour un joueur.
+    if (await socialClosedFor(user.id)) return { ok: false, error: "Présentation indisponible." };
     const snapshot = await loadSnapshot(matchId, user.id);
     if (!snapshot || snapshot.match.mode === "bot") return { ok: false, error: "Partie introuvable." };
     const { player1_id, player2_id } = snapshot.match;

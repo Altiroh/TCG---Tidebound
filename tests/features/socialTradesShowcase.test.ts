@@ -22,7 +22,9 @@ vi.mock("@/lib/supabase/sessionUser", () => ({
   getSessionUser: async () => (sessionUserId ? { id: sessionUserId, email: "joueur@tidebound.test" } : null),
 }));
 vi.mock("next/cache", () => ({ revalidatePath: () => {} }));
-vi.mock("@/features/admin/roles", () => ({ devModeActive: async () => true, isAdmin: async () => false, vueJoueurActive: () => false, adminToolsVisible: async () => false }));
+// Volet social réservé au mode Dev (`socialLock.ts`) : testé ouvert, sauf le dernier bloc.
+let devMode = true;
+vi.mock("@/features/admin/roles", () => ({ devModeActive: async () => devMode, isAdmin: async () => false, vueJoueurActive: () => false, adminToolsVisible: async () => false }));
 vi.mock("next/navigation", () => ({
   redirect: () => {
     throw new Error("redirection vers /connexion");
@@ -59,6 +61,7 @@ function befriend(a: string, b: string) {
 beforeEach(() => {
   for (const key of Object.keys(db.tables)) delete db.tables[key];
   as(ALICE);
+  devMode = true;
   db.table("profiles").push(
     { id: ALICE, display_name: "Alice", friend_code: "ALICE234", avatar_card_id: null },
     { id: BOB, display_name: "Bob", friend_code: "BOBBY234", avatar_card_id: null },
@@ -243,5 +246,21 @@ describe("fiche d'un joueur et adversaires croisés", () => {
 
     as(CAROL);
     expect((await fetchMatchVersus("aaaaaaaa-0000-4000-8000-000000000001")).ok).toBe(false);
+  });
+});
+
+describe("hors mode Dev", () => {
+  it("le volet social est fermé : rien ne se lit ni ne s'écrit", async () => {
+    befriend(ALICE, BOB);
+    owns(ALICE, X!, 1);
+    owns(BOB, Y!, 1);
+    devMode = false;
+    expect(await trades.proposeTrade(BOB, [{ cardId: X, quantity: 1 }], [{ cardId: Y, quantity: 1 }])).toMatchObject({ ok: false });
+    expect(await trades.fetchTrades()).toBeNull();
+    expect(await showcaseActions.updateShowcase([{ cardId: X, artwork: "classique", finish: "classique" }])).toMatchObject({ ok: false });
+    expect(await friends.fetchPlayerCard(BOB)).toBeNull();
+    expect(await friends.addFriendByCode("CAROL234")).toMatchObject({ ok: false });
+    expect(db.table("card_trades")).toHaveLength(0);
+    expect(db.table("player_showcase")).toHaveLength(0);
   });
 });

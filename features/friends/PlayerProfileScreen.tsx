@@ -46,7 +46,7 @@ export function PlayerProfileScreen({ player }: { player: PlayerCardView }) {
   const showcaseEmpty = player.showcase.every((card) => card === null);
 
   return (
-    <GameScreen active="partie" nav="minimal">
+    <GameScreen active="amis">
       <div className={game.content}>
         <div className={`${game.contentInner} ${styles.column}`}>
           <div className={game.pageHead}>
