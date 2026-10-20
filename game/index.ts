@@ -76,7 +76,7 @@ export { CARD_DATABASE, CORE_SET, getCardDefinition, canBeEquipTarget, equipment
 export { isAbyssalVariant } from "@/game/cards/types";
 export { isLandeCard, type LandeRules } from "@/game/cards/types";
 export { landeRemainingTableTurns, unitArrivalsLeft } from "@/game/rules/lande";
-export { boardPermanents, isOngoingEffect, slotsUsed } from "@/game/rules/ongoing";
+export { boardPermanents, isOngoingEffect, needsFreeSlot, slotsUsed, takesBoardSlot } from "@/game/rules/ongoing";
 export { MAX_BOARD_SLOTS, boardCapacity, condemnedSlots, extraSlots } from "@/game/rules/slotEffects";
 export type { SlotEffect } from "@/game/rules/slotEffects";
 export { boardSlotLayout, chooseBoardSlot } from "@/game/rules/boardSlots";

@@ -4,6 +4,9 @@ import { canActivateAbility } from "@/game/actions/activateAbility";
 import { auraContextOf, computeEffectiveStats } from "@/game/cards/stats";
 import { chromaticColorsOf, emittedSignalsOf, findAssemblage } from "@/game/rules/chromatic";
 import { hasEffectiveKeyword } from "@/game/rules/validation";
+import { boardCapacity } from "@/game/rules/slotEffects";
+import { needsFreeSlot, slotsUsed } from "@/game/rules/ongoing";
+import { getCardDefinition } from "@/game/cards/sets/core";
 import type { CardInstance, ChromaticColor } from "@/game/cards/types";
 import type { GameState } from "@/game/state/types";
 import { activateReactionFor, instance, pendingCandidates, testEnvironment, testGameState, testPlayer, enFinDeTour, jouerObjet } from "./testHelpers";
@@ -362,6 +365,23 @@ describe("jouer les couleurs ensemble", () => {
     // son propre Rouge, la Gardienne son propre Jaune.
     expect(stats(joue.state, heros.instanceId).attack).toBe(4);
     expect(stats(joue.state, gardienne.instanceId).health).toBe(5);
+  });
+
+  it("Formation Prismatique se joue plateau PLEIN : elle se résout, elle n'occupe aucun emplacement", () => {
+    const formation = instance("formation-prismatique", "p1");
+    const couleurs = [instance("heros-de-la-flamme", "p1"), instance("gardienne-de-leclat", "p1"), instance("tacticien-de-lecume", "p1")];
+    const base = table({ hand: [formation], board: couleurs });
+    const capacite = boardCapacity(base, base.players[0]);
+    const remplissage = Array.from({ length: Math.max(0, capacite - couleurs.length) }, () => instance("mange-fer", "p1"));
+    const plein = table({ hand: [formation], board: [...couleurs, ...remplissage] });
+    expect(slotsUsed(plein.players[0].board)).toBe(capacite);
+    expect(needsFreeSlot(getCardDefinition("formation-prismatique"))).toBe(false);
+    // Une unité, elle, attend une place.
+    expect(needsFreeSlot(getCardDefinition("mange-fer"))).toBe(true);
+
+    const joue = dispatch(plein, { type: "playCard", playerId: "p1", instanceId: formation.instanceId });
+    ok(joue);
+    expect(joue.state.players[0].graveyard.some((card) => card.instanceId === formation.instanceId)).toBe(true);
   });
 
   it("Les Couleurs Répondent refuse deux Sentinelles de la même couleur", () => {

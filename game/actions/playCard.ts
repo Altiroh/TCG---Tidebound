@@ -2,7 +2,7 @@ import { boardCapacity } from "@/game/rules/slotEffects";
 import { stripMarkers } from "@/game/cards/markers";
 import { activeLandeRules } from "@/game/rules/lande";
 import { markTurnDiscountsUsed, turnDiscounts } from "@/game/rules/costReductions";
-import { boardPermanents, isAttachedCard, isOngoingEffect } from "@/game/rules/ongoing";
+import { boardPermanents, isAttachedCard, isOngoingEffect, takesBoardSlot } from "@/game/rules/ongoing";
 import { boardSlotLayout, chooseBoardSlot } from "@/game/rules/boardSlots";
 import { canBeEquipTarget, getCardDefinition, hasAnyValidEquipTarget } from "@/game/cards/sets/core";
 import { isLandeCard, isPermanentCard, isVisibleDuringTide, UNIT_CARD_TYPES, type CardDefinition } from "@/game/cards/types";
@@ -294,7 +294,7 @@ function validatePlayability(state: GameState, action: PlayCardAction) {
   // Un effet en cours (Anomalie) ne prend pas de Slot : plateau plein ou non,
   // il se joue. Un Équipement non plus : il s'attache à son porteur
   // (refonte du 13/10/2026).
-  if (isPermanentCard(def) && !isOngoingEffect(def) && !isAttachedCard(def) && !action.assemblage) {
+  if (takesBoardSlot(def) && !action.assemblage) {
     // Slots universels : tout permanent (unité, Structure) occupe un Slot,
     // pas seulement les unités.
     const boardCheck = assertBoardNotFull(state, action.playerId);

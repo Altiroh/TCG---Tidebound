@@ -27,6 +27,7 @@ import {
   hasResistance,
   isVisibleDuringTide,
   landeRemainingTableTurns,
+  needsFreeSlot,
   reasonCeiling,
   RULES,
   STATUS_SILENCE,
@@ -637,7 +638,10 @@ export function TableBoard(props: TableBoardProps) {
         // Sur une Sentinelle d'un Assemblage possible : même plateau plein,
         // l'Assemblage libère ses places.
         if (drop.startsWith("own:") && assemblageSentinels(sourceId)?.has(dropId(drop))) return true;
-        if (isBoardDrop(drop)) return slotsFree;
+        // Plateau plein : seule une carte qui en a besoin est refusée — une
+        // Anomalie qui se résout (Formation Prismatique), un Sort ou un
+        // Objet Chaîne n'occupe aucun emplacement (même règle que le moteur).
+        if (isBoardDrop(drop)) return slotsFree || !needsFreeSlot(getCardDefinition(instance.cardId));
         return drop === "graveyard" && getCardDefinition(instance.cardId).type === "objet";
       }
       if (kind === "cast") {
@@ -784,6 +788,7 @@ export function TableBoard(props: TableBoardProps) {
 
   const placing = gesture?.kind === "place" ? gesture : null;
   const placingLande = placing ? getCardDefinition(byId.get(placing.sourceId)?.instance.cardId ?? "").type === "lande" : false;
+  const placingNeedsSlot = placing ? needsFreeSlot(getCardDefinition(byId.get(placing.sourceId)?.instance.cardId ?? "")) : true;
   const abilityDrag = gesture?.kind === "ability" ? gesture : null;
   const casting = gesture?.kind === "cast" ? gesture : null;
   const aiming = gesture?.kind === "aim" ? gesture : null;
@@ -1424,7 +1429,7 @@ export function TableBoard(props: TableBoardProps) {
                   : "ready"
                 : "idle"
             }
-            dropState={placing && slotsFree && !placingLande ? (hover !== null && isBoardDrop(hover) ? "over" : "ready") : "idle"}
+            dropState={placing && (slotsFree || !placingNeedsSlot) && !placingLande ? (hover !== null && isBoardDrop(hover) ? "over" : "ready") : "idle"}
             dropSlot={placing && hover !== null && isBoardDrop(hover) ? slotOf(hover) : undefined}
             renderCard={(card) => renderBoardCard(card, viewer)}
           />
