@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import {
   challengeFriend as challengeFriendFor,
+  countIncomingRequests,
   declineChallenge as declineChallengeFor,
   readIncomingChallenges,
   readSocial,
@@ -16,7 +17,7 @@ import {
   type SocialView,
 } from "@/features/friends/friendService";
 import { readPlayerCard, readRecentOpponents, type PlayerCardView, type RecentOpponent } from "@/features/friends/playerCardService";
-import { readIncomingTradeIds } from "@/features/friends/tradeService";
+import { readIncomingTradeIds, readTrades, type TradesView } from "@/features/friends/tradeService";
 import { getSessionUser } from "@/lib/supabase/sessionUser";
 import { socialClosedFor } from "@/features/friends/socialGate";
 import { SOCIAL_INDISPONIBLE } from "@/features/friends/socialLock";
@@ -59,6 +60,39 @@ export async function addFriendByCode(code: string): Promise<FriendResult> {
   if (await socialClosedFor(user.id)) return CLOSED;
   if (typeof code !== "string") return { ok: false, error: "Code invalide." };
   return done(await sendFor(user.id, code).catch(() => ({ ok: false as const, error: "Demande impossible pour l'instant." })));
+}
+
+/**
+ * Tout le tableau des amis d'un coup, pour le PANNEAU du bandeau
+ * (`FriendsPanel`). `null` hors connexion, ou volet social fermé.
+ */
+export async function fetchFriendsBoard(): Promise<{ social: SocialView; trades: TradesView; recentOpponents: RecentOpponent[] } | null> {
+  try {
+    const user = await getSessionUser();
+    if (!user || (await socialClosedFor(user.id))) return null;
+    const [social, trades, recentOpponents] = await Promise.all([readSocial(user.id), readTrades(user.id), readRecentOpponents(user.id)]);
+    return { social, trades, recentOpponents };
+  } catch (error) {
+    console.error("[fetchFriendsBoard] Lecture impossible :", error);
+    return null;
+  }
+}
+
+/**
+ * Pastille de l'icône Amis du bandeau : demandes d'ami et offres d'échange
+ * qui attendent une réponse. `null` quand l'icône n'a pas à s'afficher
+ * (hors connexion, volet social fermé).
+ */
+export async function fetchFriendsBadge(): Promise<{ waiting: number } | null> {
+  try {
+    const user = await getSessionUser();
+    if (!user || (await socialClosedFor(user.id))) return null;
+    const [requests, trades] = await Promise.all([countIncomingRequests(user.id), readIncomingTradeIds(user.id).catch(() => [])]);
+    return { waiting: requests + trades.length };
+  } catch (error) {
+    console.error("[fetchFriendsBadge] Lecture impossible :", error);
+    return null;
+  }
 }
 
 /** Demande d'ami à un adversaire déjà affronté en ligne (sans son code). */

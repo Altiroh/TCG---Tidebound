@@ -10,8 +10,6 @@ import { NavigationTab } from "@/features/shell/NavigationTab";
 import { HeaderPlayer } from "@/features/shell/HeaderPlayer";
 import { navigateWithTransition } from "@/features/shell/pageTransitionBus";
 import { playButtonClick } from "@/lib/sound";
-import { useDevMode } from "@/features/admin/useDevMode";
-import { socialLocked } from "@/features/friends/socialLock";
 
 export type ScreenSection = "collection" | "collectables" | "decks" | "market" | "boosters" | "partie" | "amis";
 
@@ -47,9 +45,6 @@ const TABS: Array<{ section: ScreenSection; label: string; href: string }> = [
   { section: "decks", label: "Decks", href: "/decks" },
   { section: "boosters", label: "Mes boosters", href: "/boosters" },
 ];
-
-/** Onglet « Amis » (amis, vitrine, échanges) : en mode Dev seulement tant que le volet social est fermé (`socialLock.ts`). */
-const SOCIAL_TAB = { section: "amis" as const, label: "Amis", href: "/amis" };
 
 /** Onglet propre à un écran (le profil), posé à la place de ceux de la collection. */
 export interface ScreenHeaderTab {
@@ -106,8 +101,7 @@ export interface ScreenHeaderProps {
  */
 export function ScreenHeader({ active, actions, onNavigate, nav = "collection", tabs: screenTabs }: ScreenHeaderProps) {
   const router = useRouter();
-  const socialOpen = !socialLocked(useDevMode());
-  const tabs = nav === "collection" || nav === "home" ? (socialOpen ? [...TABS, SOCIAL_TAB] : TABS) : [];
+  const tabs = nav === "collection" || nav === "home" ? TABS : [];
 
   // Onglets et retour au menu passent par `router.push`, que Next ne
   // précharge pas : chaque clic attendait alors le rendu serveur complet de

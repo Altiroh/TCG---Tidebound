@@ -139,6 +139,17 @@ export async function removeFriend(userId: string, otherId: string): Promise<Fri
   return { ok: true };
 }
 
+/** Demandes d'ami reçues en attente — lecture légère, pour la pastille du bandeau. */
+export async function countIncomingRequests(userId: string): Promise<number> {
+  const { data, error } = await service()
+    .from("friendships")
+    .select("requested_by")
+    .eq("status", "pending")
+    .or(`user_a.eq.${userId},user_b.eq.${userId}`);
+  if (error) throw new Error(error.message);
+  return (data ?? []).filter((row) => row.requested_by !== userId).length;
+}
+
 export async function touchPresence(userId: string): Promise<void> {
   const { error } = await service().from("player_presence").upsert({ user_id: userId, last_seen_at: new Date().toISOString() });
   if (error) console.error("[touchPresence] Présence non notée :", error.message);

@@ -249,6 +249,29 @@ describe("fiche d'un joueur et adversaires croisés", () => {
   });
 });
 
+describe("icône Amis du bandeau", () => {
+  it("la pastille compte demandes d'ami et offres d'échange reçues ; le panneau lit tout le tableau", async () => {
+    befriend(ALICE, BOB);
+    owns(ALICE, X!, 1);
+    owns(BOB, Y!, 1);
+    expect(await friends.fetchFriendsBadge()).toEqual({ waiting: 0 });
+
+    await trades.proposeTrade(BOB, [{ cardId: X, quantity: 1 }], [{ cardId: Y, quantity: 1 }]);
+    as(CAROL);
+    await friends.addFriendByCode("BOBBY234");
+    as(BOB);
+    expect(await friends.fetchFriendsBadge()).toEqual({ waiting: 2 });
+    const board = await friends.fetchFriendsBoard();
+    expect(board!.social.friends.map((friend) => friend.name)).toEqual(["Alice"]);
+    expect(board!.social.incoming).toEqual([{ userId: CAROL, name: "Carol" }]);
+    expect(board!.trades.incoming).toHaveLength(1);
+
+    devMode = false;
+    expect(await friends.fetchFriendsBadge()).toBeNull();
+    expect(await friends.fetchFriendsBoard()).toBeNull();
+  });
+});
+
 describe("hors mode Dev", () => {
   it("le volet social est fermé : rien ne se lit ni ne s'écrit", async () => {
     befriend(ALICE, BOB);

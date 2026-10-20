@@ -301,6 +301,15 @@
   transform: translateY(-1px) rotate(-6deg);
 }
 
+/* Amis : deux silhouettes au gabarit de l'engrenage, à droite de l'enveloppe. */
+.friendsButton {
+  composes: optionsButton;
+}
+
+.friendsButton:hover {
+  transform: translateY(-1px);
+}
+
 /* Un courrier attend : la même pulsation d'or que les quêtes. */
 .mailWaiting {
   animation: questsWaitingPulse 2.6s ease-in-out infinite;
@@ -308,6 +317,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .mailButton:hover { transform: none; }
+  .friendsButton:hover { transform: none; }
   .mailWaiting { animation: none; }
 }
 

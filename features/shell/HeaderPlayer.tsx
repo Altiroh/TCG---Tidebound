@@ -18,6 +18,9 @@ import { ScreenToast, type ScreenToastMessage } from "@/features/shell/ScreenToa
 import { SettingsDialog } from "@/features/settings/SettingsDialog";
 import styles from "@/features/shell/ScreenShell.module.css";
 import { playButtonClick } from "@/lib/sound";
+import { fetchFriendsBadge } from "@/features/friends/actions";
+import { socialLocked } from "@/features/friends/socialLock";
+import { useDevMode } from "@/features/admin/useDevMode";
 
 /*
  * Tiroir de profil CHARGÉ À L'OUVERTURE (audit du 24/09) :
@@ -34,6 +37,7 @@ const DailyStreakPopup = dynamic(() => import("@/features/progression/DailyStrea
 
 /** Courrier de bord (boîte, écriture Admin) — chargé seulement quand il s'ouvre. */
 const MailPanel = dynamic(() => import("@/features/mail/MailPanel").then((m) => m.MailPanel), { ssr: false });
+const FriendsPanel = dynamic(() => import("@/features/friends/FriendsPanel").then((m) => m.FriendsPanel), { ssr: false });
 
 /**
  * Clé du jour (UTC, celui des escales) où le popup de série a déjà été montré.
@@ -95,6 +99,18 @@ function QuestIcon() {
   );
 }
 
+/** Deux silhouettes : l'équipage, les amis. Au gabarit de l'engrenage. */
+function FriendsIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" width="19" height="19" aria-hidden>
+      <circle cx="9" cy="8" r="3.2" stroke="currentColor" strokeWidth={1.6} />
+      <path d="M3 19.5c0-3.3 2.7-5.6 6-5.6s6 2.3 6 5.6" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" />
+      <circle cx="16.6" cy="8.6" r="2.6" stroke="currentColor" strokeWidth={1.5} />
+      <path d="M16.2 13.9c2.8.1 4.8 2.2 4.8 5" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" />
+    </svg>
+  );
+}
+
 function GearIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" width="18" height="18" aria-hidden>
@@ -147,6 +163,19 @@ export function HeaderPlayer() {
   const [summary, setSummary] = useState<ProgressionSummary | null>(rememberedProgression);
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [mailOpen, setMailOpen] = useState(false);
+  const [friendsOpen, setFriendsOpen] = useState(false);
+  const devMode = useDevMode();
+  /**
+   * Icône Amis : `null` tant qu'elle n'a pas à s'afficher (volet social fermé
+   * hors mode Dev — `socialLock.ts` —, ou lecture pas encore revenue) ;
+   * sinon les demandes d'ami et offres d'échange qui attendent une réponse.
+   */
+  const [friendsBadge, setFriendsBadge] = useState<number | null>(null);
+  const refreshFriendsBadge = useCallback(() => {
+    fetchFriendsBadge()
+      .then((badge) => setFriendsBadge(badge ? badge.waiting : null))
+      .catch(() => undefined);
+  }, []);
   /** Profil ouvert en panneau, et sur quel onglet (`null` : fermé). */
   const router = useRouter();
   /** Le profil n'est plus un panneau : on va sur la page, au bon onglet (et la bonne fenêtre). */
@@ -360,6 +389,10 @@ export function HeaderPlayer() {
   // Joueur non connecté : la progression n'existe pas encore, on n'affiche
   // rien du tout plutôt qu'un niveau 1 trompeur.
   const signedIn = summary?.isSignedIn ?? false;
+  const socialOpen = !socialLocked(devMode);
+  useEffect(() => {
+    if (signedIn && socialOpen) refreshFriendsBadge();
+  }, [signedIn, socialOpen, refreshFriendsBadge]);
 
   /** Le profil est une PAGE : le lien y mène sur le bon onglet ; un clic molette ou Ctrl+clic l'ouvre ailleurs. */
   function openProfile(event: React.MouseEvent) {
@@ -490,6 +523,29 @@ export function HeaderPlayer() {
         </button>
       )}
 
+      {/* Les amis, à droite de l'enveloppe : un panneau ouvrable de partout,
+          comme le Courrier et les Options. Mode Dev seulement (`socialLock.ts`). */}
+      {signedIn && socialOpen && friendsBadge !== null && (
+        <button
+          type="button"
+          className={`${styles.friendsButton} ${friendsBadge > 0 ? styles.mailWaiting : ""}`}
+          aria-label={friendsBadge > 0 ? `Amis — ${friendsBadge} en attente de réponse` : "Amis"}
+          title="Amis"
+          aria-haspopup="dialog"
+          onClick={() => {
+            playButtonClick();
+            setFriendsOpen(true);
+          }}
+        >
+          <FriendsIcon />
+          {friendsBadge > 0 && (
+            <span className={styles.rewardBadge} aria-hidden>
+              {friendsBadge}
+            </span>
+          )}
+        </button>
+      )}
+
       <button
         type="button"
         className={styles.optionsButton}
@@ -519,6 +575,15 @@ export function HeaderPlayer() {
       )}
       {/* En vue joueur, l'Admin voit le courrier comme un joueur : pas d'onglet d'écriture. */}
       {mailOpen && <MailPanel isAdmin={(summary?.isAdmin ?? false) && !summary?.vueJoueur} onClose={() => setMailOpen(false)} />}
+      {friendsOpen && (
+        <FriendsPanel
+          onClose={() => {
+            setFriendsOpen(false);
+            refreshFriendsBadge();
+          }}
+          onChanged={refreshFriendsBadge}
+        />
+      )}
       {streakOpen && <DailyStreakPopup onClose={() => setStreakOpen(false)} />}
     </>
   );
