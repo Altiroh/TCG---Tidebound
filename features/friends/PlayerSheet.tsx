@@ -6,6 +6,7 @@ import { addFriendFromMatch, answerFriendRequest } from "@/features/friends/acti
 import { inviteToBattle } from "@/features/friends/lobbyActions";
 import type { PlayerCardView } from "@/features/friends/playerCardService";
 import { PlayerProfileCard } from "@/features/friends/PlayerProfileCard";
+import { useShowcaseEditing } from "@/features/friends/useShowcaseEditing";
 import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/friends/Social.module.css";
 import { playButtonClick } from "@/lib/sound";
@@ -45,6 +46,9 @@ export function PlayerSheet({ player, onBack, onTrade, onChanged, onLeave }: Pla
   const router = useRouter();
   const [message, setMessage] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
   const [pending, startTransition] = useTransition();
+  const self = player.relation === "self";
+  // Sa vitrine s'arrange sur place : chaque geste s'affiche tout de suite et s'enregistre derrière.
+  const editing = useShowcaseEditing(self ? player.showcase : null);
 
   function run(action: () => Promise<{ ok: boolean; error?: string; message?: string }>) {
     playButtonClick();
@@ -111,7 +115,15 @@ export function PlayerSheet({ player, onBack, onTrade, onChanged, onLeave }: Pla
           ← Mes amis
         </button>
       </div>
-      <PlayerProfileCard player={player} actions={actions} badge={RELATION_BADGE[player.relation] ?? null} onAddCard={player.relation === "self" ? openCollection : undefined} />
+      <PlayerProfileCard
+        player={self && editing.showcase ? { ...player, showcase: editing.showcase } : player}
+        actions={actions}
+        badge={RELATION_BADGE[player.relation] ?? null}
+        onAddCard={self ? openCollection : undefined}
+        onShowcaseChange={self ? (next) => void editing.commit(next) : undefined}
+        saveStatus={editing.status}
+        saveError={editing.error}
+      />
       {message && <p className={message.tone === "ok" ? game.success : game.error}>{message.text}</p>}
     </div>
   );

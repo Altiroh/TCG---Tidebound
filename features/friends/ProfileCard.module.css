@@ -256,7 +256,7 @@
 
 .showcaseHead {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: var(--tb-space-3);
 }
 
@@ -275,12 +275,6 @@
   color: var(--tb-text-strong);
   font-family: var(--tb-font-display);
   font-size: 1.4rem;
-}
-
-.showcaseText {
-  margin: 2px 0 0;
-  color: var(--tb-text-muted);
-  font-size: var(--tb-fs-caption);
 }
 
 .slots {
@@ -383,4 +377,133 @@
   .viewerCard {
     animation: none;
   }
+}
+
+/* --- Arranger sa vitrine ------------------------------------------------- */
+
+/* La carte touchée attend sa nouvelle place : liseré d'or. */
+.slot[data-selected] {
+  border-radius: var(--tb-radius-md);
+  outline: 2px solid var(--tb-gold-bright);
+  outline-offset: 3px;
+  box-shadow: var(--tb-glow-gold);
+}
+
+/* La place survolée pendant un glisser-déposer. */
+.slot[data-drop] {
+  border-radius: var(--tb-radius-md);
+  outline: 2px dashed var(--tb-gold);
+  outline-offset: 3px;
+}
+
+.showcaseTools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--tb-space-2);
+  min-height: 28px;
+}
+
+.showcaseHint {
+  color: var(--tb-text-muted);
+  font-size: var(--tb-fs-caption);
+}
+
+.showcaseButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--tb-space-1);
+}
+
+.toolButton {
+  padding: 4px 10px;
+  border: 1px solid var(--tb-gold-line);
+  border-radius: var(--tb-radius-pill);
+  background: rgba(8, 18, 26, 0.85);
+  color: var(--tb-text-strong);
+  font: inherit;
+  font-size: var(--tb-fs-caption);
+  cursor: var(--tb-cursor-pointer);
+}
+
+.toolButton:hover {
+  border-color: var(--tb-gold);
+}
+
+.saveStatus {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--tb-text-muted);
+  font-size: var(--tb-fs-caption);
+}
+
+.saveStatus[data-status="saved"] {
+  color: var(--tb-success-ink);
+}
+
+.saveStatus[data-status="error"] {
+  color: var(--tb-danger-ink, var(--tb-danger));
+}
+
+.spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(214, 178, 106, 0.3);
+  border-top-color: var(--tb-gold);
+  border-radius: 50%;
+  animation: spin 700ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation-duration: 2s;
+  }
+}
+
+/* --- Valeur des cartes exposées ------------------------------------------ */
+
+.slotValue {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin-top: var(--tb-space-1);
+  color: var(--tb-gold-bright);
+  font-family: var(--tb-font-display);
+  font-size: 0.95rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.showcaseTotal {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--tb-space-2);
+  margin: 0;
+  padding-top: var(--tb-space-2);
+  border-top: 1px solid rgba(214, 178, 106, 0.3);
+  color: var(--tb-text-muted);
+  font-size: var(--tb-fs-caption);
+  letter-spacing: var(--tb-track-label, 0.06em);
+  text-transform: uppercase;
+}
+
+.showcaseTotalValue {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--tb-gold-bright);
+  font-family: var(--tb-font-display);
+  font-size: 1.35rem;
+  letter-spacing: 0;
+  text-shadow: var(--tb-glow-gold);
+  text-transform: none;
 }

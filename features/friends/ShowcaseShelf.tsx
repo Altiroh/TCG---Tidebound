@@ -20,8 +20,16 @@ function displayInstance(cardId: string): CardInstance {
   };
 }
 
-/** Une carte exposée, dans son édition ; cliquable avec `onClick`. */
-export function ShowcaseTile({ card, onClick }: { card: ShowcaseCard; onClick?: () => void }) {
+/** Une carte exposée, dans son édition ; cliquable avec `onClick`, glissable avec `onDragStart`. */
+export function ShowcaseTile({
+  card,
+  onClick,
+  onDragStart,
+}: {
+  card: ShowcaseCard;
+  onClick?: () => void;
+  onDragStart?: (event: React.DragEvent<HTMLButtonElement>) => void;
+}) {
   const instance = useMemo(() => displayInstance(card.cardId), [card.cardId]);
   return (
     <CardTile
@@ -37,6 +45,8 @@ export function ShowcaseTile({ card, onClick }: { card: ShowcaseCard; onClick?: 
       // floutée comme dans une Collection où on ne l'a pas (`isArtworkHidden`).
       artworkOwned
       onClick={onClick}
+      draggable={Boolean(onDragStart)}
+      onDragStart={onDragStart}
     />
   );
 }

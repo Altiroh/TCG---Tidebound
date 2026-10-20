@@ -2,14 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { editionKey, editionLabel, isClassicEdition, type CardEdition } from "@/game/cosmetics/editions";
-import { fetchMyShowcase, updateShowcase } from "@/features/friends/showcaseActions";
-import { emptyShowcase, type Showcase } from "@/features/friends/showcaseRules";
+import { fetchMyShowcase } from "@/features/friends/showcaseActions";
+import { clearShowcaseSlot, emptyShowcase, placeShowcaseCard, type Showcase } from "@/features/friends/showcaseRules";
 import { ShowcaseShelf } from "@/features/friends/ShowcaseShelf";
 import { socialLocked } from "@/features/friends/socialLock";
+import { useShowcaseEditing } from "@/features/friends/useShowcaseEditing";
 import { useDevMode } from "@/features/admin/useDevMode";
-import { notifyProgressionChanged } from "@/features/progression/progressionSync";
 import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/collection/card-detail/CardDetail.module.css";
+import social from "@/features/friends/ProfileCard.module.css";
 import { playButtonClick } from "@/lib/sound";
 
 interface CardDetailShowcaseProps {
@@ -24,61 +25,41 @@ interface CardDetailShowcaseProps {
  * « MA VITRINE » dans la fiche d'une carte de la Collection : c'est d'ici
  * qu'on expose une carte (le « + » de sa fiche de capitaine y mène). Les six
  * emplacements, en petit : un toucher pose l'édition montrée dans
- * l'emplacement (une même édition ne s'expose qu'une fois — elle y change de
- * place) ; « Retirer » l'en sort. Volet social réservé au mode Dev.
+ * l'emplacement — À L'INSTANT, l'enregistrement suit (`useShowcaseEditing`).
+ * Une même édition ne s'expose qu'une fois : elle change de place.
+ * « Retirer » l'en sort. Volet social réservé au mode Dev.
  */
 export function CardDetailShowcase({ cardId, edition, owned }: CardDetailShowcaseProps) {
   const locked = socialLocked(useDevMode());
-  const [showcase, setShowcase] = useState<Showcase | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
+  const [loaded, setLoaded] = useState<Showcase | null>(null);
+  const { showcase, status, error, commit } = useShowcaseEditing(loaded);
 
   useEffect(() => {
     if (locked) return;
     let cancelled = false;
     fetchMyShowcase()
-      .then((current) => !cancelled && setShowcase(current ?? emptyShowcase()))
-      .catch(() => !cancelled && setShowcase(emptyShowcase()));
+      .then((current) => !cancelled && setLoaded(current ?? emptyShowcase()))
+      .catch(() => !cancelled && setLoaded(emptyShowcase()));
     return () => {
       cancelled = true;
     };
   }, [locked]);
 
-  if (locked || owned < 1 || !showcase) return null;
+  if (locked || owned < 1) return null;
 
-  const key = editionKey(edition);
-  const isThis = (entry: Showcase[number]) => entry !== null && entry.cardId === cardId && editionKey(entry) === key;
-  const exposedAt = showcase.findIndex(isThis);
-
-  async function save(next: Showcase, done: string) {
-    setSaving(true);
-    setMessage(null);
-    const result = await updateShowcase(next).catch(() => ({ ok: false, error: "Le serveur est injoignable." }));
-    setSaving(false);
-    if (!result.ok) {
-      setMessage({ tone: "error", text: result.error ?? "Échec." });
-      return;
-    }
-    setShowcase(next);
-    setMessage({ tone: "ok", text: done });
-    notifyProgressionChanged();
-  }
-
-  function place(slot: number) {
-    if (saving) return;
-    playButtonClick();
-    const next = showcase!.map((entry) => (isThis(entry) ? null : entry));
-    next[slot] = { cardId, ...edition };
-    void save(next, "Exposée dans ta vitrine.");
-  }
-
-  function remove() {
-    playButtonClick();
-    void save(
-      showcase!.map((entry) => (isThis(entry) ? null : entry)),
-      "Retirée de ta vitrine."
+  if (!showcase) {
+    return (
+      <section className={styles.showcaseSection} aria-label="Ma vitrine" aria-busy>
+        <h3 className={styles.sectionLabel}>Ma vitrine</h3>
+        <span className={social.saveStatus}>
+          <span className={social.spinner} aria-hidden /> Ouverture de ta vitrine…
+        </span>
+      </section>
     );
   }
+
+  const key = editionKey(edition);
+  const exposedAt = showcase.findIndex((entry) => entry !== null && entry.cardId === cardId && editionKey(entry) === key);
 
   return (
     <section className={styles.showcaseSection} aria-label="Ma vitrine">
@@ -88,13 +69,47 @@ export function CardDetailShowcase({ cardId, edition, owned }: CardDetailShowcas
           ? `Exposée à l'emplacement ${exposedAt + 1}. Touche un autre emplacement pour l'y déplacer.`
           : `Touche un emplacement pour y exposer ${isClassicEdition(edition) ? "cette carte" : `l'édition ${editionLabel(edition)}`}.`}
       </p>
-      <ShowcaseShelf showcase={showcase} compact selectedSlot={exposedAt >= 0 ? exposedAt : null} onSelectSlot={place} emptyLabel="+" />
-      {exposedAt >= 0 && (
-        <button type="button" className={game.ghost} disabled={saving} onClick={remove}>
-          Retirer de ma vitrine
-        </button>
-      )}
-      {message && <p className={message.tone === "ok" ? game.success : game.error}>{message.text}</p>}
+      <ShowcaseShelf
+        showcase={showcase}
+        compact
+        selectedSlot={exposedAt >= 0 ? exposedAt : null}
+        onSelectSlot={(slot) => {
+          playButtonClick();
+          void commit(placeShowcaseCard(showcase, { cardId, ...edition }, slot));
+        }}
+        emptyLabel="+"
+      />
+      <div className={social.showcaseTools} aria-live="polite">
+        {exposedAt >= 0 ? (
+          <button
+            type="button"
+            className={game.ghost}
+            onClick={() => {
+              playButtonClick();
+              void commit(clearShowcaseSlot(showcase, exposedAt));
+            }}
+          >
+            Retirer de ma vitrine
+          </button>
+        ) : (
+          <span />
+        )}
+        {status === "saving" && (
+          <span className={social.saveStatus} data-status="saving">
+            <span className={social.spinner} aria-hidden /> Enregistrement…
+          </span>
+        )}
+        {status === "saved" && (
+          <span className={social.saveStatus} data-status="saved">
+            Vitrine enregistrée ✓
+          </span>
+        )}
+        {status === "error" && error && (
+          <span className={social.saveStatus} data-status="error">
+            {error}
+          </span>
+        )}
+      </div>
     </section>
   );
 }

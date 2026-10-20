@@ -287,3 +287,18 @@ describe("hors mode Dev", () => {
     expect(db.table("player_showcase")).toHaveLength(0);
   });
 });
+
+describe("gestes sur la vitrine (purs)", () => {
+  it("déplacer échange deux places ; poser retire la même édition d'ailleurs ; retirer vide la place", async () => {
+    const { moveShowcaseCard, placeShowcaseCard, clearShowcaseSlot, emptyShowcase } = await import("@/features/friends/showcaseRules");
+    const a = { cardId: X!, artwork: "classique" as const, finish: "classique" as const };
+    const b = { cardId: Y!, artwork: "classique" as const, finish: "foil" as const };
+    const start = [a, null, b, null, null, null];
+    expect(moveShowcaseCard(start, 0, 2)).toEqual([b, null, a, null, null, null]);
+    expect(moveShowcaseCard(start, 0, 1)).toEqual([null, a, b, null, null, null]);
+    expect(moveShowcaseCard(start, 0, 9)).toBe(start);
+    expect(placeShowcaseCard(start, a, 4)).toEqual([null, null, b, null, a, null]);
+    expect(placeShowcaseCard(emptyShowcase(), a, 0)[0]).toEqual(a);
+    expect(clearShowcaseSlot(start, 2)).toEqual([a, null, null, null, null, null]);
+  });
+});

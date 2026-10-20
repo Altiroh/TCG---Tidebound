@@ -54,3 +54,31 @@ export function ownsShowcaseCard(card: ShowcaseCard, ownedCounts: Readonly<Recor
   if (isClassicEdition(card)) return true;
   return (editions[card.cardId] ?? []).some((owned) => owned.artwork === card.artwork && owned.finish === card.finish && owned.quantity > 0);
 }
+
+/*
+ * Gestes sur la vitrine — purs, appliqués tout de suite à l'écran
+ * (`useShowcaseEditing`) avant que le serveur ne confirme.
+ */
+
+const sameShowcaseCard = (a: ShowcaseCard | null, b: ShowcaseCard) =>
+  a !== null && a.cardId === b.cardId && editionKey(a) === editionKey(b);
+
+/** Déplace la carte de `from` vers `to` ; celle qui s'y trouvait prend sa place (échange). */
+export function moveShowcaseCard(showcase: Showcase, from: number, to: number): Showcase {
+  if (from === to || from < 0 || to < 0 || from >= showcase.length || to >= showcase.length) return showcase;
+  const next = [...showcase];
+  [next[from], next[to]] = [next[to] ?? null, next[from] ?? null];
+  return next;
+}
+
+/** Expose `card` à l'emplacement `slot` ; déjà exposée ailleurs, elle en part (une édition ne s'expose qu'une fois). */
+export function placeShowcaseCard(showcase: Showcase, card: ShowcaseCard, slot: number): Showcase {
+  const next = showcase.map((entry) => (sameShowcaseCard(entry, card) ? null : entry));
+  next[slot] = card;
+  return next;
+}
+
+/** Vide l'emplacement `slot`. */
+export function clearShowcaseSlot(showcase: Showcase, slot: number): Showcase {
+  return showcase.map((entry, index) => (index === slot ? null : entry));
+}

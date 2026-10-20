@@ -7,8 +7,10 @@ import { cardArtworkThumbUrl } from "@/features/decks/cardArtUrl";
 import { useCardBackSrc } from "@/features/cosmetics/CardBackProvider";
 import type { PlayerCardView } from "@/features/friends/playerCardService";
 import { ShowcaseTile } from "@/features/friends/ShowcaseShelf";
-import type { ShowcaseCard } from "@/features/friends/showcaseRules";
-import { PreconToken } from "@/features/shell/GameIcons";
+import { clearShowcaseSlot, moveShowcaseCard, type Showcase, type ShowcaseCard } from "@/features/friends/showcaseRules";
+import type { ShowcaseSaveStatus } from "@/features/friends/useShowcaseEditing";
+import { PreconToken, TideCoin } from "@/features/shell/GameIcons";
+import { editionRecycleValueOf } from "@/features/collection/recycleValue";
 import styles from "@/features/friends/ProfileCard.module.css";
 import { playButtonClick } from "@/lib/sound";
 
@@ -42,20 +44,61 @@ interface PlayerProfileCardProps {
   actions?: ReactNode;
   /** Pastille posée près du nom (« Ami », « Demande envoyée »). */
   badge?: string | null;
+  /**
+   * Sa propre vitrine, à arranger sur place : déplacer (glisser-déposer, ou
+   * toucher puis toucher la nouvelle place), retirer. Le parent l'applique
+   * tout de suite et l'enregistre (`useShowcaseEditing`).
+   */
+  onShowcaseChange?: (next: Showcase) => void;
+  /** Où en est l'enregistrement du dernier geste. */
+  saveStatus?: ShowcaseSaveStatus;
+  saveError?: string | null;
 }
 
 /**
  * FICHE DE CAPITAINE (maquette du 20/10/2026) : le portrait dans son anneau
  * de laiton, le niveau en médaillon, le pseudo, quatre chiffres (parties,
  * victoires, préconstruits, cartes) et la VITRINE — six cartes possédées,
- * dans l'édition choisie. Une place vide montre le dos de carte ; sur sa
- * propre fiche, elle porte un « + » qui ouvre le choix.
+ * dans l'édition choisie. Une place vide montre le dos de carte. Une carte
+ * se touche pour la voir en grand ; sur SA fiche, elle s'arrange sur place
+ * (déplacer, retirer) et le « + » d'une place vide mène à la Collection.
  */
-export function PlayerProfileCard({ player, onAddCard, actions, badge }: PlayerProfileCardProps) {
+export function PlayerProfileCard({ player, onAddCard, actions, badge, onShowcaseChange, saveStatus = "idle", saveError = null }: PlayerProfileCardProps) {
   /** La carte de vitrine regardée en grand (un toucher), ou `null`. */
   const [viewed, setViewed] = useState<ShowcaseCard | null>(null);
+  const editable = Boolean(onShowcaseChange);
+  const showcase = player.showcase;
+  /** Arrangement : la carte touchée (elle attend sa nouvelle place), celle qu'on glisse, la place survolée. */
+  const [selected, setSelected] = useState<number | null>(null);
+  const [dragFrom, setDragFrom] = useState<number | null>(null);
+  const [dropOver, setDropOver] = useState<number | null>(null);
+  const selectedCard = selected !== null ? (showcase[selected] ?? null) : null;
+  /** Valeur de revente cumulée des cartes exposées, édition comprise. */
+  const showcaseValue = showcase.reduce((sum, card) => sum + (card ? (editionRecycleValueOf(card.cardId, card) ?? 0) : 0), 0);
+
+  function view(card: ShowcaseCard) {
+    playButtonClick();
+    setViewed(card);
+  }
+
+  function move(from: number, to: number) {
+    if (from === to) return;
+    playButtonClick();
+    onShowcaseChange?.(moveShowcaseCard(showcase, from, to));
+  }
+
+  /** Toucher un emplacement de sa vitrine : choisir une carte, puis sa nouvelle place. */
+  function touch(slot: number) {
+    if (selected === null) {
+      if (!showcase[slot]) return;
+      playButtonClick();
+      setSelected(slot);
+      return;
+    }
+    if (selected !== slot) move(selected, slot);
+    setSelected(null);
+  }
   const cardBack = useCardBackSrc();
-  const self = player.relation === "self";
   const { stats } = player;
 
   return (
@@ -128,41 +171,77 @@ export function PlayerProfileCard({ player, onAddCard, actions, badge }: PlayerP
           <span className={styles.showcaseIcon}>
             <CardsIcon />
           </span>
-          <div>
-            <h4 className={styles.showcaseTitle}>Vitrine</h4>
-            <p className={styles.showcaseText}>
-              {self
-                ? "Six cartes de ta collection, dans l'édition de ton choix — on les expose depuis la Collection. Tes amis et tes adversaires les voient."
-                : `Les cartes que ${player.name} met en avant.`}
-            </p>
-          </div>
+          <h4 className={styles.showcaseTitle}>Vitrine</h4>
         </div>
         <div className={styles.slots}>
-          {player.showcase.map((card, slot) => (
-            <div key={slot} className={styles.slot}>
+          {showcase.map((card, slot) => (
+            <div
+              key={slot}
+              className={styles.slot}
+              data-selected={selected === slot || undefined}
+              data-drop={editable && dropOver === slot && dragFrom !== slot ? "" : undefined}
+              onDragOver={
+                editable && dragFrom !== null
+                  ? (event) => {
+                      event.preventDefault();
+                      event.dataTransfer.dropEffect = "move";
+                      if (dropOver !== slot) setDropOver(slot);
+                    }
+                  : undefined
+              }
+              onDragLeave={editable ? () => setDropOver((current) => (current === slot ? null : current)) : undefined}
+              onDrop={
+                editable
+                  ? (event) => {
+                      event.preventDefault();
+                      if (dragFrom !== null) move(dragFrom, slot);
+                      setDragFrom(null);
+                      setDropOver(null);
+                    }
+                  : undefined
+              }
+            >
               {card ? (
-                <ShowcaseTile
-                  card={card}
-                  onClick={() => {
-                    playButtonClick();
-                    setViewed(card);
-                  }}
-                />
+                <>
+                  <ShowcaseTile
+                    card={card}
+                    onClick={() => (editable ? touch(slot) : view(card))}
+                    onDragStart={
+                      editable
+                        ? (event) => {
+                            event.dataTransfer.effectAllowed = "move";
+                            event.dataTransfer.setData("text/plain", String(slot));
+                            setSelected(null);
+                            setDragFrom(slot);
+                          }
+                        : undefined
+                    }
+                  />
+                  {/* Ce qu'elle vaut — c'est fait pour frimer. */}
+                  <span className={styles.slotValue} title="Valeur de revente de cette édition">
+                    <TideCoin size={14} />
+                    {formatCount(editionRecycleValueOf(card.cardId, card) ?? 0)}
+                  </span>
+                </>
               ) : (
-                <span className={styles.emptySlot}>
+                <span className={styles.emptySlot} onClick={editable && selected !== null ? () => touch(slot) : undefined}>
                   {/* eslint-disable-next-line @next/next/no-img-element -- dos de carte équipé */}
                   <img src={cardBack} alt="" draggable={false} />
-                  {onAddCard && (
+                  {editable && (
                     <button
                       type="button"
                       className={styles.plus}
-                      aria-label={`Exposer une carte à l'emplacement ${slot + 1} — depuis la Collection`}
-                      onClick={() => {
-                        playButtonClick();
-                        onAddCard();
+                      aria-label={selected !== null ? `Déplacer la carte à l'emplacement ${slot + 1}` : `Exposer une carte à l'emplacement ${slot + 1} — depuis la Collection`}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        if (selected !== null) touch(slot);
+                        else {
+                          playButtonClick();
+                          onAddCard?.();
+                        }
                       }}
                     >
-                      +
+                      {selected !== null ? "↓" : "+"}
                     </button>
                   )}
                 </span>
@@ -170,6 +249,60 @@ export function PlayerProfileCard({ player, onAddCard, actions, badge }: PlayerP
             </div>
           ))}
         </div>
+        {showcaseValue > 0 && (
+          <p className={styles.showcaseTotal}>
+            <span>Valeur de la vitrine</span>
+            <span className={styles.showcaseTotalValue}>
+              <TideCoin size={20} />
+              {formatCount(showcaseValue)}
+            </span>
+          </p>
+        )}
+        {editable && (
+          <div className={styles.showcaseTools} aria-live="polite">
+            {selectedCard ? (
+              <>
+                <span className={styles.showcaseHint}>Touche un autre emplacement pour l&apos;y déplacer.</span>
+                <span className={styles.showcaseButtons}>
+                  <button type="button" className={styles.toolButton} onClick={() => view(selectedCard)}>
+                    Voir en grand
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.toolButton}
+                    onClick={() => {
+                      playButtonClick();
+                      onShowcaseChange!(clearShowcaseSlot(showcase, selected!));
+                      setSelected(null);
+                    }}
+                  >
+                    Retirer
+                  </button>
+                  <button type="button" className={styles.toolButton} onClick={() => setSelected(null)}>
+                    Annuler
+                  </button>
+                </span>
+              </>
+            ) : (
+              <span className={styles.showcaseHint}>Glisse une carte, ou touche-la puis touche sa nouvelle place.</span>
+            )}
+            {saveStatus === "saving" && (
+              <span className={styles.saveStatus} data-status="saving">
+                <span className={styles.spinner} aria-hidden /> Enregistrement…
+              </span>
+            )}
+            {saveStatus === "saved" && (
+              <span className={styles.saveStatus} data-status="saved">
+                Vitrine enregistrée ✓
+              </span>
+            )}
+            {saveStatus === "error" && saveError && (
+              <span className={styles.saveStatus} data-status="error">
+                {saveError}
+              </span>
+            )}
+          </div>
+        )}
       </section>
       {viewed && <ShowcaseCardView card={viewed} onClose={() => setViewed(null)} />}
     </div>
