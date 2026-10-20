@@ -1,4 +1,4 @@
-/* Écrans sociaux : fiche d'un joueur, vitrine, échanges. Charte : `features/shell/GameScreen.module.css`. */
+/* Volet social : panneau Amis (fiche d'un joueur, échanges), vitrine du profil. Charte : `features/shell/GameScreen.module.css`. */
 
 .column {
   display: grid;
@@ -82,6 +82,10 @@
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: var(--tb-space-3);
+}
+
+.shelfNarrow {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .shelfCompact {
@@ -193,18 +197,6 @@
   min-width: 1.6em;
   text-align: center;
   font-variant-numeric: tabular-nums;
-}
-
-.tradeColumns {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--tb-space-4);
-}
-
-@media (max-width: 720px) {
-  .tradeColumns {
-    grid-template-columns: minmax(0, 1fr);
-  }
 }
 
 .tradeSides {

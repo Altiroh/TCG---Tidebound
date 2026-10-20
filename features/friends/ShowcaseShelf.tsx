@@ -42,6 +42,8 @@ interface ShowcaseShelfProps {
   showcase: Showcase;
   /** Format serré (écran de présentation) : six cartes sur une ligne, sans légende. */
   compact?: boolean;
+  /** Colonne étroite (panneau Amis) : trois cartes par ligne. */
+  narrow?: boolean;
   /** Emplacement choisi dans l'éditeur, cliquable. */
   selectedSlot?: number | null;
   onSelectSlot?: (slot: number) => void;
@@ -54,9 +56,9 @@ interface ShowcaseShelfProps {
  * Full-Art Star Foil se voit comme telle). Lecture seule, ou cliquable dans
  * l'éditeur (`onSelectSlot`).
  */
-export function ShowcaseShelf({ showcase, compact = false, selectedSlot = null, onSelectSlot, emptyLabel = "Vide" }: ShowcaseShelfProps) {
+export function ShowcaseShelf({ showcase, compact = false, narrow = false, selectedSlot = null, onSelectSlot, emptyLabel = "Vide" }: ShowcaseShelfProps) {
   return (
-    <div className={`${styles.shelf} ${compact ? styles.shelfCompact : ""}`}>
+    <div className={`${styles.shelf} ${compact ? styles.shelfCompact : ""} ${narrow ? styles.shelfNarrow : ""}`}>
       {showcase.map((card, slot) => {
         const label = card ? `${getCardDefinition(card.cardId).name}${isClassicEdition(card) ? "" : ` · ${editionLabel(card)}`}` : emptyLabel;
         const select = onSelectSlot ? () => onSelectSlot(slot) : undefined;

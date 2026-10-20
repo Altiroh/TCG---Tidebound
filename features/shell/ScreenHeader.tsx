@@ -11,7 +11,7 @@ import { HeaderPlayer } from "@/features/shell/HeaderPlayer";
 import { navigateWithTransition } from "@/features/shell/pageTransitionBus";
 import { playButtonClick } from "@/lib/sound";
 
-export type ScreenSection = "collection" | "collectables" | "decks" | "market" | "boosters" | "partie" | "amis";
+export type ScreenSection = "collection" | "collectables" | "decks" | "market" | "boosters" | "partie";
 
 /**
  * Les onglets de la COLLECTION, dans l'ordre de lecture.

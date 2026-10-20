@@ -1,15 +1,12 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { getCardDefinition } from "@/game";
 import { rarityForCardId } from "@/game/boosters";
 import { CLASSIC_EDITION, editionKey, editionLabel, editionRank, type OwnedEdition } from "@/game/cosmetics/editions";
 import { updateShowcase } from "@/features/friends/showcaseActions";
 import { SHOWCASE_SIZE, type Showcase, type ShowcaseCard } from "@/features/friends/showcaseRules";
 import { ShowcaseShelf, ShowcaseTile } from "@/features/friends/ShowcaseShelf";
-import { GameScreen } from "@/features/shell/GameScreen";
 import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/friends/Social.module.css";
 import { playButtonClick } from "@/lib/sound";
@@ -28,18 +25,19 @@ interface ShowcaseEditorProps {
 const sameCard = (a: ShowcaseCard | null, b: ShowcaseCard) => a !== null && a.cardId === b.cardId && editionKey(a) === editionKey(b);
 
 /**
- * Composer sa VITRINE : six emplacements, chacun reçoit une carte possédée
+ * Composer sa VITRINE, au profil (onglet Carnet de bord) : six emplacements, chacun reçoit une carte possédée
  * dans l'une de ses éditions possédées. Les éditions les plus rares
  * viennent en tête du choix — c'est pour frimer.
  */
 export function ShowcaseEditor({ initialShowcase, ownedCounts, ownedEditions }: ShowcaseEditorProps) {
-  const router = useRouter();
   const [showcase, setShowcase] = useState<Showcase>(initialShowcase);
   const [selected, setSelected] = useState<number>(() => Math.max(0, initialShowcase.findIndex((card) => card === null)));
   const [query, setQuery] = useState("");
   const [message, setMessage] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
   const [saving, startSaving] = useTransition();
-  const dirty = JSON.stringify(showcase) !== JSON.stringify(initialShowcase);
+  /** Dernière vitrine enregistrée : ce qui diffère d'elle reste à enregistrer. */
+  const [saved, setSaved] = useState<Showcase>(initialShowcase);
+  const dirty = JSON.stringify(showcase) !== JSON.stringify(saved);
 
   /** Toutes les éditions possédées, la plus rare d'abord. */
   const choices = useMemo(() => {
@@ -92,74 +90,60 @@ export function ShowcaseEditor({ initialShowcase, ownedCounts, ownedEditions }: 
     startSaving(async () => {
       const result = await updateShowcase(showcase).catch(() => ({ ok: false, error: "Le serveur est injoignable." }));
       setMessage(result.ok ? { tone: "ok", text: "Vitrine enregistrée : tes amis et tes adversaires la verront." } : { tone: "error", text: result.error ?? "Échec." });
-      if (result.ok) router.refresh();
+      if (result.ok) setSaved(showcase);
     });
   }
 
   return (
-    <GameScreen active="amis">
-      <div className={game.content}>
-        <div className={`${game.contentInner} ${styles.column}`}>
-          <div className={game.pageHead}>
-            <div>
-              <p className={game.eyebrow}>Pour frimer</p>
-              <h1 className={game.title}>Ma vitrine</h1>
-            </div>
-            <Link href="/amis" className={game.secondary} onClick={() => playButtonClick()}>
-              ← Mes amis
-            </Link>
-          </div>
-
-          <section className={`${game.panel} ${styles.section}`} aria-label="Vitrine">
-            <p className={game.muted}>
-              Six cartes de ta collection, dans l&apos;édition de ton choix. Tes amis les voient sur ta fiche, et ton adversaire les découvre avant chaque
-              partie en ligne.
-            </p>
-            <ShowcaseShelf showcase={showcase} selectedSlot={selected} onSelectSlot={setSelected} emptyLabel="Choisir" />
-            <div className={styles.row}>
-              <span className={game.caption}>
-                Emplacement {selected + 1} sur {SHOWCASE_SIZE} sélectionné : choisis une carte ci-dessous.
-              </span>
-              <span className={game.bannerActions}>
-                <button type="button" className={game.ghost} disabled={!showcase[selected]} onClick={clearSlot}>
-                  Retirer
-                </button>
-                <button type="button" className={game.primary} disabled={!dirty || saving} onClick={save}>
-                  {saving ? "Enregistrement…" : "Enregistrer"}
-                </button>
-              </span>
-            </div>
-            {message && <p className={message.tone === "ok" ? game.success : game.error}>{message.text}</p>}
-          </section>
-
-          <section className={`${game.panel} ${styles.section}`} aria-label="Ta collection">
-            <div className={styles.row}>
-              <h2 className={game.sectionTitle}>Ta collection</h2>
-              <input
-                className={`${game.input} ${styles.search}`}
-                style={{ maxWidth: 280 }}
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Rechercher une carte"
-                aria-label="Rechercher une carte"
-              />
-            </div>
-            {shown.length === 0 ? (
-              <p className={game.muted}>{choices.length === 0 ? "Ta collection est vide pour l'instant." : "Aucune carte ne correspond."}</p>
-            ) : (
-              <div className={styles.editionGrid}>
-                {shown.map((card) => (
-                  <div key={`${card.cardId}|${editionKey(card)}`} className={styles.slot}>
-                    <ShowcaseTile card={card} onClick={() => place(card)} />
-                    <span className={styles.slotLabel}>{editionLabel(card)}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-            {choices.length > shown.length && !needle && <p className={game.caption}>Les {MAX_CHOICES} plus rares sont affichées : cherche une carte par son nom pour les autres.</p>}
-          </section>
+    <div className={styles.column}>
+      <section className={`${game.panel} ${styles.section}`} aria-label="Vitrine">
+        <p className={game.muted}>
+          Six cartes de ta collection, dans l&apos;édition de ton choix. Tes amis les voient sur ta fiche, et ton adversaire les découvre avant chaque
+          partie en ligne.
+        </p>
+        <ShowcaseShelf showcase={showcase} selectedSlot={selected} onSelectSlot={setSelected} emptyLabel="Choisir" />
+        <div className={styles.row}>
+          <span className={game.caption}>
+            Emplacement {selected + 1} sur {SHOWCASE_SIZE} sélectionné : choisis une carte ci-dessous.
+          </span>
+          <span className={game.bannerActions}>
+            <button type="button" className={game.ghost} disabled={!showcase[selected]} onClick={clearSlot}>
+              Retirer
+            </button>
+            <button type="button" className={game.primary} disabled={!dirty || saving} onClick={save}>
+              {saving ? "Enregistrement…" : "Enregistrer"}
+            </button>
+          </span>
         </div>
-      </div>
-    </GameScreen>
+        {message && <p className={message.tone === "ok" ? game.success : game.error}>{message.text}</p>}
+      </section>
+
+      <section className={`${game.panel} ${styles.section}`} aria-label="Ta collection">
+        <div className={styles.row}>
+          <h2 className={game.sectionTitle}>Ta collection</h2>
+          <input
+            className={`${game.input} ${styles.search}`}
+            style={{ maxWidth: 280 }}
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Rechercher une carte"
+            aria-label="Rechercher une carte"
+          />
+        </div>
+        {shown.length === 0 ? (
+          <p className={game.muted}>{choices.length === 0 ? "Ta collection est vide pour l'instant." : "Aucune carte ne correspond."}</p>
+        ) : (
+          <div className={styles.editionGrid}>
+            {shown.map((card) => (
+              <div key={`${card.cardId}|${editionKey(card)}`} className={styles.slot}>
+                <ShowcaseTile card={card} onClick={() => place(card)} />
+                <span className={styles.slotLabel}>{editionLabel(card)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+        {choices.length > shown.length && !needle && <p className={game.caption}>Les {MAX_CHOICES} plus rares sont affichées : cherche une carte par son nom pour les autres.</p>}
+      </section>
+    </div>
   );
 }

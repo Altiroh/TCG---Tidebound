@@ -51,6 +51,8 @@ import { RewardsHub } from "@/features/progression/RewardsHub";
 import { playButtonClick, playStreakClaimed, playTabClick } from "@/lib/sound";
 import { useDevMode } from "@/features/admin/useDevMode";
 import { socialLocked } from "@/features/friends/socialLock";
+import { requestFriendsPanel } from "@/features/friends/friendsPanelBus";
+import { ShowcaseSection } from "@/features/friends/ShowcaseSection";
 import type { ProfileTab } from "@/features/progression/profileTabs";
 
 export type { ProfileTab };
@@ -666,19 +668,23 @@ function LogbookTab({ profile, onRefresh, onShowRewards }: { profile: ProfileSum
         )}
       </section>
 
-      {/* Volet social réservé au mode Dev (`socialLock.ts`). */}
+      {/* Ma vitrine, et l'accès aux amis : volet social réservé au mode Dev (`socialLock.ts`). */}
       {socialOpen && (
-        <section className={`${game.panel} ${styles.block}`} aria-label="Vitrine">
+        <section className={`${game.panel} ${styles.blockWide}`} aria-label="Ma vitrine">
           <div className={styles.blockHead}>
-            <h2 className={game.sectionTitle}>Vitrine</h2>
-            <Link href="/amis" className={game.link} onClick={() => playButtonClick()}>
+            <h2 className={game.sectionTitle}>Ma vitrine</h2>
+            <button
+              type="button"
+              className={game.link}
+              onClick={() => {
+                playButtonClick();
+                requestFriendsPanel();
+              }}
+            >
               Mes amis →
-            </Link>
+            </button>
           </div>
-          <p className={game.muted}>Six cartes de ta collection, dans l&apos;édition de ton choix : tes amis les voient sur ta fiche, ton adversaire avant chaque partie en ligne.</p>
-          <Link href="/vitrine" className={game.secondary} onClick={() => playButtonClick()}>
-            Composer ma vitrine →
-          </Link>
+          <ShowcaseSection />
         </section>
       )}
 

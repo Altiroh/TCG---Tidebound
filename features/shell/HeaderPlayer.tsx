@@ -20,7 +20,7 @@ import styles from "@/features/shell/ScreenShell.module.css";
 import { playButtonClick } from "@/lib/sound";
 import { fetchFriendsBadge } from "@/features/friends/actions";
 import { socialLocked } from "@/features/friends/socialLock";
-import { useDevMode } from "@/features/admin/useDevMode";
+import { onFriendsPanelRequest } from "@/features/friends/friendsPanelBus";
 
 /*
  * Tiroir de profil CHARGÉ À L'OUVERTURE (audit du 24/09) :
@@ -164,16 +164,11 @@ export function HeaderPlayer() {
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [mailOpen, setMailOpen] = useState(false);
   const [friendsOpen, setFriendsOpen] = useState(false);
-  const devMode = useDevMode();
-  /**
-   * Icône Amis : `null` tant qu'elle n'a pas à s'afficher (volet social fermé
-   * hors mode Dev — `socialLock.ts` —, ou lecture pas encore revenue) ;
-   * sinon les demandes d'ami et offres d'échange qui attendent une réponse.
-   */
-  const [friendsBadge, setFriendsBadge] = useState<number | null>(null);
+  /** Pastille de l'icône Amis : demandes d'ami et offres d'échange qui attendent une réponse. */
+  const [friendsBadge, setFriendsBadge] = useState(0);
   const refreshFriendsBadge = useCallback(() => {
     fetchFriendsBadge()
-      .then((badge) => setFriendsBadge(badge ? badge.waiting : null))
+      .then((badge) => setFriendsBadge(badge?.waiting ?? 0))
       .catch(() => undefined);
   }, []);
   /** Profil ouvert en panneau, et sur quel onglet (`null` : fermé). */
@@ -389,10 +384,15 @@ export function HeaderPlayer() {
   // Joueur non connecté : la progression n'existe pas encore, on n'affiche
   // rien du tout plutôt qu'un niveau 1 trompeur.
   const signedIn = summary?.isSignedIn ?? false;
+  // Mode Dev lu sur la progression déjà là (même règle que `useDevMode`) :
+  // l'icône Amis s'affiche avec le bloc du compte, sans attendre une autre lecture.
+  const devMode = process.env.NODE_ENV === "development" ? !summary?.vueJoueur : Boolean(summary?.isAdmin && !summary?.vueJoueur);
   const socialOpen = !socialLocked(devMode);
   useEffect(() => {
     if (signedIn && socialOpen) refreshFriendsBadge();
   }, [signedIn, socialOpen, refreshFriendsBadge]);
+  // Ouverture demandée d'ailleurs (alerte d'échange, profil, écran Partie).
+  useEffect(() => onFriendsPanelRequest(() => setFriendsOpen(true)), []);
 
   /** Le profil est une PAGE : le lien y mène sur le bon onglet ; un clic molette ou Ctrl+clic l'ouvre ailleurs. */
   function openProfile(event: React.MouseEvent) {
@@ -525,7 +525,7 @@ export function HeaderPlayer() {
 
       {/* Les amis, à droite de l'enveloppe : un panneau ouvrable de partout,
           comme le Courrier et les Options. Mode Dev seulement (`socialLock.ts`). */}
-      {signedIn && socialOpen && friendsBadge !== null && (
+      {signedIn && socialOpen && (
         <button
           type="button"
           className={`${styles.friendsButton} ${friendsBadge > 0 ? styles.mailWaiting : ""}`}
@@ -575,7 +575,7 @@ export function HeaderPlayer() {
       )}
       {/* En vue joueur, l'Admin voit le courrier comme un joueur : pas d'onglet d'écriture. */}
       {mailOpen && <MailPanel isAdmin={(summary?.isAdmin ?? false) && !summary?.vueJoueur} onClose={() => setMailOpen(false)} />}
-      {friendsOpen && (
+      {friendsOpen && socialOpen && (
         <FriendsPanel
           onClose={() => {
             setFriendsOpen(false);

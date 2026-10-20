@@ -24,6 +24,7 @@ import { usePersistedState } from "@/lib/persistedState";
 import { useDevMode } from "@/features/admin/useDevMode";
 import { friendlyMatchLocked, MATCH_AMICAL_INDISPONIBLE } from "@/features/online/friendlyMatchLock";
 import { flushPreferences, getPreference, setPreference, subscribePreferences } from "@/lib/preferences";
+import { requestFriendsPanel } from "@/features/friends/friendsPanelBus";
 
 /**
  * Partie en ligne : recherche rapide (matchmaking au premier arrivé), ou
@@ -632,17 +633,31 @@ export function NewMatchScreen({
                     (friends.length === 0 ? (
                       <p className={game.muted}>
                         Pas encore d&apos;ami à défier.{" "}
-                        <Link href="/amis" className={game.link} onClick={() => playButtonClick()}>
+                        <button
+                          type="button"
+                          className={game.link}
+                          onClick={() => {
+                            playButtonClick();
+                            requestFriendsPanel();
+                          }}
+                        >
                           Ajouter des amis →
-                        </Link>
+                        </button>
                       </p>
                     ) : (
                       <label className={game.field}>
                         <span className={game.fieldLabel}>
                           Ami à défier ·{" "}
-                          <Link href="/amis" className={game.link} onClick={() => playButtonClick()}>
+                          <button
+                            type="button"
+                            className={game.link}
+                            onClick={() => {
+                              playButtonClick();
+                              requestFriendsPanel();
+                            }}
+                          >
                             Gérer mes amis
-                          </Link>
+                          </button>
                         </span>
                         <select className={game.select} value={friendId ?? ""} onChange={(event) => setFriendId(event.target.value)}>
                           {friends.map((friend) => (

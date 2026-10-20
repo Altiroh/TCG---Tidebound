@@ -1,8 +1,6 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { getCardDefinition } from "@/game";
 import { rarityForCardId } from "@/game/boosters";
 import { CARD_RARITY_LABELS } from "@/features/match/cardDisplay";
@@ -11,7 +9,6 @@ import { proposeTrade } from "@/features/friends/tradeActions";
 import type { TradeableCard } from "@/features/friends/tradeService";
 import { TRADE_DAILY_CAP, TRADE_MAX_COPIES, TRADE_MAX_LINES, tradeProposalError, type TradeLine } from "@/features/friends/tradeRules";
 import { TradeSummary } from "@/features/friends/TradeSummary";
-import { GameScreen } from "@/features/shell/GameScreen";
 import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/friends/Social.module.css";
 import { playButtonClick } from "@/lib/sound";
@@ -24,6 +21,9 @@ interface TradeComposerProps {
   mine: TradeableCard[];
   /** Ceux de l'ami. */
   theirs: TradeableCard[];
+  onBack: () => void;
+  /** Proposition envoyée : le panneau revient au tableau des amis. */
+  onSent: () => void;
 }
 
 type Picks = Record<string, number>;
@@ -35,13 +35,13 @@ function linesOf(picks: Picks): TradeLine[] {
 }
 
 /**
- * Proposer un ÉCHANGE à un ami : à gauche ce qu'on donne (sa collection), à
- * droite ce qu'on demande (la sienne). Exemplaires Classiques seulement —
- * une édition rare reste à celui qui l'a tirée. L'ami accepte ou refuse
- * depuis sa page Amis ; tout est revérifié à ce moment-là.
+ * Proposer un ÉCHANGE à un ami, dans le panneau Amis : d'abord ce qu'on
+ * donne (sa collection), puis ce qu'on demande (la sienne). Exemplaires
+ * Classiques seulement — une édition rare reste à celui qui l'a tirée.
+ * L'ami accepte ou refuse depuis son panneau ; tout est revérifié à ce
+ * moment-là.
  */
-export function TradeComposer({ friend, mine, theirs }: TradeComposerProps) {
-  const router = useRouter();
+export function TradeComposer({ friend, mine, theirs, onBack, onSent }: TradeComposerProps) {
   const [give, setGive] = useState<Picks>({});
   const [take, setTake] = useState<Picks>({});
   const [message, setMessage] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
@@ -57,9 +57,7 @@ export function TradeComposer({ friend, mine, theirs }: TradeComposerProps) {
     startSending(async () => {
       const result = await proposeTrade(friend.userId, offered, requested).catch(() => ({ ok: false as const, error: "Le serveur est injoignable." }));
       if (result.ok) {
-        setGive({});
-        setTake({});
-        router.push("/amis");
+        onSent();
         return;
       }
       setMessage({ tone: "error", text: result.error });
@@ -67,41 +65,35 @@ export function TradeComposer({ friend, mine, theirs }: TradeComposerProps) {
   }
 
   return (
-    <GameScreen active="amis">
-      <div className={game.content}>
-        <div className={`${game.contentInner} ${styles.column}`}>
-          <div className={game.pageHead}>
-            <div>
-              <p className={game.eyebrow}>Échange avec {friend.name}</p>
-              <h1 className={game.title}>Proposer un échange</h1>
-            </div>
-            <Link href={`/amis/${friend.userId}`} className={game.secondary} onClick={() => playButtonClick()}>
-              ← Sa fiche
-            </Link>
-          </div>
-
-          <section className={`${game.panel} ${styles.section}`} aria-label="Proposition">
-            <TradeSummary offered={offered} requested={requested} giverLabel="Tu donnes" receiverLabel="Tu reçois" />
-            <p className={game.caption}>
-              Exemplaires Classiques seulement, {TRADE_MAX_LINES} cartes différentes et {TRADE_MAX_COPIES} exemplaires d&apos;une carte au plus de chaque
-              côté. {TRADE_DAILY_CAP} échanges conclus par jour. Un deck qui utilisait une carte cédée devra être complété.
-            </p>
-            <div className={styles.row}>
-              <span className={game.muted}>{problem ?? `${friend.name} aura 72 h pour accepter.`}</span>
-              <button type="button" className={game.primary} disabled={Boolean(problem) || sending} onClick={submit}>
-                {sending ? "Envoi…" : "Envoyer la proposition"}
-              </button>
-            </div>
-            {message && <p className={message.tone === "ok" ? game.success : game.error}>{message.text}</p>}
-          </section>
-
-          <div className={styles.tradeColumns}>
-            <CardPicker title="Ta collection — tu donnes" cards={mine} picks={give} onChange={setGive} emptyText="Aucun exemplaire Classique à céder." />
-            <CardPicker title={`Collection de ${friend.name} — tu demandes`} cards={theirs} picks={take} onChange={setTake} emptyText={`${friend.name} n'a aucun exemplaire Classique à céder.`} />
-          </div>
+    <div className={styles.column}>
+      <div className={styles.row}>
+        <div>
+          <p className={game.eyebrow}>Échange avec {friend.name}</p>
+          <h3 className={game.sectionTitle}>Proposer un échange</h3>
         </div>
+        <button type="button" className={game.secondary} onClick={onBack}>
+          ← Sa fiche
+        </button>
       </div>
-    </GameScreen>
+
+      <section className={`${game.panel} ${styles.section}`} aria-label="Proposition">
+        <TradeSummary offered={offered} requested={requested} giverLabel="Tu donnes" receiverLabel="Tu reçois" />
+        <p className={game.caption}>
+          Exemplaires Classiques seulement, {TRADE_MAX_LINES} cartes différentes et {TRADE_MAX_COPIES} exemplaires d&apos;une carte au plus de chaque côté.{" "}
+          {TRADE_DAILY_CAP} échanges conclus par jour. Un deck qui utilisait une carte cédée devra être complété.
+        </p>
+        <div className={styles.row}>
+          <span className={game.muted}>{problem ?? `${friend.name} aura 72 h pour accepter.`}</span>
+          <button type="button" className={game.primary} disabled={Boolean(problem) || sending} onClick={submit}>
+            {sending ? "Envoi…" : "Envoyer la proposition"}
+          </button>
+        </div>
+        {message && <p className={message.tone === "ok" ? game.success : game.error}>{message.text}</p>}
+      </section>
+
+      <CardPicker title="Ta collection — tu donnes" cards={mine} picks={give} onChange={setGive} emptyText="Aucun exemplaire Classique à céder." />
+      <CardPicker title={`Collection de ${friend.name} — tu demandes`} cards={theirs} picks={take} onChange={setTake} emptyText={`${friend.name} n'a aucun exemplaire Classique à céder.`} />
+    </div>
   );
 }
 

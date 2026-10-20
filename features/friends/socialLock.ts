@@ -1,12 +1,12 @@
 /**
- * VOLET SOCIAL RÉSERVÉ AU MODE DEV (décision du 20/10/2026) : page Amis,
- * fiches de joueur, vitrine, échanges de cartes et présentation de
- * l'adversaire avant une partie en ligne.
+ * VOLET SOCIAL RÉSERVÉ AU MODE DEV (décision du 20/10/2026) : panneau Amis
+ * (fiches de joueur, échanges de cartes), vitrine du profil et présentation
+ * de l'adversaire avant une partie en ligne.
  *
  * Un seul interrupteur pour l'ouvrir à tous : passer `SOCIAL_BLOQUE_HORS_DEV`
- * à `false`. Le serveur refuse pages et actions (`socialGate.ts`) ;
- * l'interface masque les accès (onglet « Amis » du bandeau, bloc Vitrine du
- * profil, alerte d'échange, présentation `VersusIntro`). Même modèle que
+ * à `false`. Le serveur refuse les actions (`socialGate.ts`) ;
+ * l'interface masque les accès (icône Amis du bandeau, vitrine du profil,
+ * alerte d'échange, présentation `VersusIntro`). Même modèle que
  * `features/online/friendlyMatchLock.ts`.
  */
 export const SOCIAL_BLOQUE_HORS_DEV = true;

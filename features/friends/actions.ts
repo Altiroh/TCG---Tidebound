@@ -39,7 +39,7 @@ function isUuid(value: unknown): value is string {
 }
 
 function done(result: FriendResult): FriendResult {
-  if (result.ok) revalidatePath("/amis");
+  if (result.ok) revalidatePath("/partie");
   return result;
 }
 

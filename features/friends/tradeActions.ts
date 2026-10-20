@@ -32,7 +32,6 @@ function isUuid(value: unknown): value is string {
 
 function done(result: TradeResult): TradeResult {
   if (result.ok) {
-    revalidatePath("/amis");
     revalidatePath("/collection");
   }
   return result;
