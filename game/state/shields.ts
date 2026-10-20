@@ -33,7 +33,9 @@ function findAvailableShield<T>(
     // boucliers-là, qui sont des champs de données : Cage de Flottaison et
     // Brise-Vague de Fortune protégeaient donc leur Navire alors qu'elles
     // étaient invisibles, ce que leur texte ne promet nulle part.
-    if (!isVisibleDuringTide(def, state.environment.tideState)) continue;
+    // Sauf « actif même masqué » (`activeWhileHidden`, refonte des Structures
+    // du 13/10/2026) : la Marée ne la cache alors qu'à l'adversaire.
+    if (!def.activeWhileHidden && !isVisibleDuringTide(def, state.environment.tideState)) continue;
     // « Son texte est ignoré » (Lot 17) : son bouclier aussi.
     if (isTextIgnored(unit)) continue;
     if (!oncePerTurnAvailable(unit, key, turnNumber)) continue;

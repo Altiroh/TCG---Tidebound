@@ -152,7 +152,7 @@ describe("animation d'attaque : une seule quand une fenêtre de réaction s'ouvr
     });
   });
 
-  it("une réaction qui détruit l'attaquant : pas de coup à mettre en scène", () => {
+  it("un coup intercepté (Cylindre flottant) : une seule mise en scène, à 0 dégât", () => {
     const attaquant = instance("murene-aveugle", "p1", { summoningSick: false }); // 3/1
     const cylindre = instance("cylindre-flottant", "p2", { turnsRemaining: 3 });
     const state = testGameState({
@@ -164,11 +164,12 @@ describe("animation d'attaque : une seule quand une fenêtre de réaction s'ouvr
     expect(declaree.ok).toBe(true);
     if (!declaree.ok) return;
     expect(deriveAttack(nouveaux(state, declaree.state), declaree.state, 1)).toBeNull();
-    const active = activateReactionFor(declaree.state, "cylindre-flottant", attaquant.instanceId);
+    const active = activateReactionFor(declaree.state, "cylindre-flottant");
     expect(active.ok).toBe(true);
     if (!active.ok) return;
     expect(active.state.pendingAttack).toBeUndefined();
-    expect(deriveAttack(nouveaux(declaree.state, active.state), active.state, 2)).toBeNull();
+    // Le Cylindre a annulé les dégâts : le coup se joue, pour rien.
+    expect(deriveAttack(nouveaux(declaree.state, active.state), active.state, 2)).toMatchObject({ amount: 0 });
   });
 
   it("sans fenêtre, l'attaque se met en scène dès la déclaration", () => {

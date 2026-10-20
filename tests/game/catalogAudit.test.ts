@@ -275,7 +275,7 @@ describe("Filet à la Dérive, Carcasse Renversée, Il Capitano Naufragé", () =
     expect(player(result.state, "p2").anchor).toBe(17); // 20 - (4 - 1)
   });
 
-  it("Filet à la Dérive : MASQUÉ (Tempête), il propose sa Réaction cachée à −2", () => {
+  it("Filet à la Dérive : MASQUÉ (Tempête), il affaiblit quand même l'attaque de 1 (actif même masqué, 13/10/2026)", () => {
     const filet = instance("filet-a-la-derive", "p2", { turnsRemaining: 3 });
     const attaquant = instance("requin-balafre", "p1"); // 4 Puissance
     const state = testGameState({
@@ -287,13 +287,11 @@ describe("Filet à la Dérive, Carcasse Renversée, Il Capitano Naufragé", () =
       ],
     });
 
-    const declaree = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: attaquant.instanceId });
-    ok(declaree);
-    const active = activateReactionFor(declaree.state, "filet-a-la-derive");
-    ok(active);
-    expect(player(active.state, "p2").anchor).toBe(18); // 20 - (4 - 2)
-    // Révélé avant résolution, et il RESTE en jeu : son texte ne dit pas qu'il part.
-    expect(board(active.state, "p2").find((u) => u.cardId === "filet-a-la-derive")?.revealed).toBe(true);
+    const result = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: attaquant.instanceId });
+    ok(result);
+    // Plus de Réaction cachée : aucune fenêtre, la défense s'applique d'elle-même.
+    expect(result.state.pendingReaction).toBeUndefined();
+    expect(player(result.state, "p2").anchor).toBe(17); // 20 - (4 - 1)
   });
 
   // Carcasse Renversée ne plafonne plus les dégâts d'une attaque : depuis le

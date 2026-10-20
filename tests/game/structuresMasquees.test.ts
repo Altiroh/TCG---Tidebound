@@ -128,46 +128,9 @@ describe("Fenêtre d'interception — le bot sait y répondre", () => {
 });
 
 describe("Pièges simultanés et cibles devenues invalides", () => {
-  it("deux pièges éligibles sur la même attaque s'enchaînent sans casser la fenêtre", () => {
-    // Cage de Flottaison (−3 cachée) et Caisses Arrimées (−2 cachée) sont
-    // toutes deux masquées en Abysses. Les deux doivent pouvoir répondre, et
-    // leurs réductions s'additionner.
-    const attaquant = instance("la-chose-qui-remonte", "p1"); // 5 Puissance
-    const cage = instance("cage-de-flottaison", "p2", { turnsRemaining: 4 });
-    const caisses = instance("caisses-arrimees", "p2", { turnsRemaining: 4 });
-    const state = testGameState({
-      phase: "combatPhase",
-      environment: testEnvironment({ tideState: "abysses", tideRemainingTurns: 3 }),
-      players: [
-        testPlayer("p1", { board: [attaquant], anchor: 20 }),
-        testPlayer("p2", { board: [cage, caisses], anchor: 20 }),
-      ],
-    });
-
-    const declaree = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: attaquant.instanceId });
-    ok(declaree);
-    const noms = pendingCandidates(declaree.state).map((c) => c.cardId);
-    expect(noms).toContain("cage-de-flottaison");
-    expect(noms).toContain("caisses-arrimees");
-
-    const premier = activateReactionFor(declaree.state, "cage-de-flottaison");
-    ok(premier);
-    // La fenêtre reste ouverte pour le second piège.
-    expect(premier.state.pendingReaction).toBeDefined();
-    expect(premier.state.pendingAttack).toBeDefined();
-
-    const second = activateReactionFor(premier.state, "caisses-arrimees");
-    ok(second);
-    // 5 − 3 (Cage) − 2 (Caisses) = 0 : la coque ne prend rien. Et les Caisses
-    // rendent 2 Ancrage en se Sabordant — leur texte le dit, et le Sabordage
-    // d'une Réaction cachée est un Sabordage comme un autre.
-    expect(player(second.state, "p2").anchor).toBe(22);
-    expect(second.state.pendingAttack).toBeUndefined();
-  });
-
-  it("un piège qui détruit l'attaquant n'empêche pas l'attaque de se terminer proprement", () => {
-    // Le Cylindre renvoie 5 dégâts sur une Murène à 1 de Résistance : elle
-    // meurt AVANT que l'attaque ne reprenne. La reprise doit rester saine.
+  it("un piège qui annule le coup laisse l'attaque se terminer proprement", () => {
+    // Le Cylindre annule le coup et le renvoie au Navire adverse (texte du
+    // 20/10/2026) : l'attaque doit se terminer proprement.
     const attaquant = instance("murene-aveugle", "p1"); // 3/1
     const cylindre = instance("cylindre-flottant", "p2", { turnsRemaining: 3 });
     const state = testGameState({
@@ -181,82 +144,83 @@ describe("Pièges simultanés et cibles devenues invalides", () => {
 
     const declaree = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: attaquant.instanceId });
     ok(declaree);
-    const active = activateReactionFor(declaree.state, "cylindre-flottant", attaquant.instanceId);
+    const active = activateReactionFor(declaree.state, "cylindre-flottant");
     ok(active);
 
     expect(active.state.pendingAttack).toBeUndefined();
     expect(active.state.status).toBe("active");
     expect(player(active.state, "p2").anchor).toBe(20); // dégâts annulés
+    expect(player(active.state, "p1").anchor).toBe(17); // renvoyés au Navire adverse (3 de la Murène)
+    expect(board(active.state, "p2").some((u) => u.cardId === "cylindre-flottant")).toBe(false);
   });
 });
 
-describe("Une Réaction cachée déjà révélée ne se repropose pas", () => {
-  /**
-   * Révélée = plus un secret (21/09/2026). Le Filet à la Dérive et Le Filet
-   * qui Respire RESTENT en jeu après s'être révélés — les autres pièges se
-   * détruisent ou se Sabordent, ce qui masquait le défaut. Sans garde, leur
-   * Réaction cachée était reproposée à CHAQUE attaque, indéfiniment : la
-   * mesure donnait 43 fenêtres de réaction par partie contre 6 après
-   * correction.
-   */
-  function deuxAttaquantsEnAbysses() {
-    // Le Filet est visible en Calme et Houle : en Abysses il est masqué,
-    // donc sa Réaction cachée est proposable et sa défense visible se tait.
+/**
+ * STRUCTURES SIMPLIFIÉES (Notion, 13/10/2026) : un effet unique, sans
+ * Réaction cachée, actif même lorsque la Marée masque la carte
+ * (`activeWhileHidden`) — la Marée ne la cache qu'à l'adversaire.
+ */
+describe("Structures simplifiées — actives même masquées", () => {
+  it("Cage de Flottaison masquée (Abysses) réduit de 2 l'attaque directe, sans rien demander", () => {
+    const attaquant = instance("la-chose-qui-remonte", "p1"); // 5 Puissance
+    const cage = instance("cage-de-flottaison", "p2", { turnsRemaining: 4 });
+    const state = testGameState({
+      phase: "combatPhase",
+      environment: testEnvironment({ tideState: "abysses", tideRemainingTurns: 3 }),
+      players: [testPlayer("p1", { board: [attaquant], anchor: 20 }), testPlayer("p2", { board: [cage], anchor: 20 })],
+    });
+    const attaque = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: attaquant.instanceId });
+    ok(attaque);
+    expect(attaque.state.pendingReaction).toBeUndefined();
+    expect(player(attaque.state, "p2").anchor).toBe(17); // 5 − 2
+  });
+
+  it("Filet à la Dérive masqué (Abysses) affaiblit la première attaque du tour, pas la seconde", () => {
     const premier = instance("murene-aveugle", "p1");
     const second = instance("marin-des-jetees", "p1");
     const filet = instance("filet-a-la-derive", "p2", { turnsRemaining: 3 });
-    return {
-      premier,
-      second,
-      filet,
-      state: testGameState({
-        phase: "combatPhase",
-        environment: testEnvironment({ tideState: "abysses", tideRemainingTurns: 4 }),
-        players: [
-          testPlayer("p1", { board: [premier, second], anchor: 20 }),
-          testPlayer("p2", { board: [filet], anchor: 20 }),
-        ],
-      }),
-    };
-  }
-
-  it("le Filet à la Dérive n'est proposé qu'une seule fois, même s'il reste en jeu", () => {
-    const { premier, second, filet, state } = deuxAttaquantsEnAbysses();
-
+    const state = testGameState({
+      phase: "combatPhase",
+      environment: testEnvironment({ tideState: "abysses", tideRemainingTurns: 4 }),
+      players: [testPlayer("p1", { board: [premier, second], anchor: 20 }), testPlayer("p2", { board: [filet], anchor: 20 })],
+    });
     const attaque1 = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: premier.instanceId });
     ok(attaque1);
-    expect(pendingCandidates(attaque1.state).map((c) => c.cardId)).toContain("filet-a-la-derive");
+    expect(attaque1.state.pendingReaction).toBeUndefined();
+    const murene = getCardDefinition("murene-aveugle").attack ?? 0;
+    expect(20 - player(attaque1.state, "p2").anchor).toBe(murene - 1);
 
-    const revele = activateReactionFor(attaque1.state, "filet-a-la-derive");
-    ok(revele);
-    const enJeu = board(revele.state, "p2").find((u) => u.instanceId === filet.instanceId);
-    expect(enJeu).toBeDefined(); // il ne se détruit pas : c'est là qu'était le piège
-    expect(enJeu!.revealed).toBe(true);
-
-    // Seconde attaque, même tour : plus aucune fenêtre à ouvrir.
-    const attaque2 = dispatch(revele.state, { type: "attack", playerId: "p1", attackerInstanceId: second.instanceId });
+    const avant = player(attaque1.state, "p2").anchor;
+    const attaque2 = dispatch(attaque1.state, { type: "attack", playerId: "p1", attackerInstanceId: second.instanceId });
     ok(attaque2);
-    expect(attaque2.state.pendingReaction).toBeUndefined();
-    expect(attaque2.state.pendingAttack).toBeUndefined();
+    expect(avant - player(attaque2.state, "p2").anchor).toBe(getCardDefinition("marin-des-jetees").attack ?? 0);
   });
 
-  it("révéler retire la dissimulation, pas le masquage : la défense visible reste muette", () => {
-    // Une carte révélée que la Marée cache toujours n'est pas « visible »
-    // pour autant — elle reste inactive, `selfVisible` la refuse.
-    const { premier, second, state } = deuxAttaquantsEnAbysses();
+  it("Cylindre flottant masqué (Abysses) se propose quand même, et renvoie le coup au Navire adverse", () => {
+    const attaquant = instance("la-chose-qui-remonte", "p1"); // 5 Puissance
+    const cylindre = instance("cylindre-flottant", "p2", { turnsRemaining: 4 });
+    const state = testGameState({
+      phase: "combatPhase",
+      environment: testEnvironment({ tideState: "abysses", tideRemainingTurns: 3 }),
+      players: [testPlayer("p1", { board: [attaquant], anchor: 20 }), testPlayer("p2", { board: [cylindre], anchor: 20 })],
+    });
+    const declaree = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: attaquant.instanceId });
+    ok(declaree);
+    expect(pendingCandidates(declaree.state).map((c) => c.cardId)).toContain("cylindre-flottant");
+    const active = activateReactionFor(declaree.state, "cylindre-flottant");
+    ok(active);
+    expect(player(active.state, "p2").anchor).toBe(20);
+    expect(player(active.state, "p1").anchor).toBe(15);
+    expect(board(active.state, "p2").some((u) => u.cardId === "cylindre-flottant")).toBe(false);
+  });
 
-    const attaque1 = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: premier.instanceId });
-    ok(attaque1);
-    const revele = activateReactionFor(attaque1.state, "filet-a-la-derive");
-    ok(revele);
-
-    // Le Marin des Jetées frappe à pleine Puissance : ni les 2 de la Réaction
-    // (dépensés sur la Murène), ni le 1 de la défense visible, qui dort.
-    const avant = player(revele.state, "p2").anchor;
-    const attaque2 = dispatch(revele.state, { type: "attack", playerId: "p1", attackerInstanceId: second.instanceId });
-    ok(attaque2);
-    const puissance = getCardDefinition("marin-des-jetees").attack ?? 0;
-    expect(avant - player(attaque2.state, "p2").anchor).toBe(puissance);
+  it("aucune de ces Structures n'a plus de Réaction cachée", () => {
+    for (const id of ["caisses-arrimees", "cylindre-flottant", "filet-a-la-derive", "cage-de-flottaison"]) {
+      const def = getCardDefinition(id);
+      expect(def.activeWhileHidden, id).toBe(true);
+      expect((def.abilities ?? []).some((a) => a.hiddenReaction), id).toBe(false);
+      expect(def.text, id).not.toMatch(/Réaction cachée/);
+    }
   });
 });
 
@@ -265,22 +229,20 @@ describe("Le Canon du Navire passe par la fenêtre d'interception", () => {
   function goliathArme(defenseurs: ReturnType<typeof instance>[]) {
     return testGameState({
       phase: "combatPhase",
-      // ABYSSES : la Cage y est MASQUÉE (visible en Houle et Tempête), donc
-      // sa Réaction cachée est proposable. Visible, elle n'aurait que sa
-      // réduction automatique et rien à demander au joueur.
       environment: testEnvironment({ tideState: "abysses", tideRemainingTurns: 3 }),
       players: [
         testPlayer("p1", { shipId: "le-goliath", anchor: 20, shipAbility: { armedOnTurn: 1, activations: { turnNumber: 1, count: 1 } } }),
-        testPlayer("p2", { board: defenseurs, anchor: 20 }),
+        // Signal de Détresse en main : une Chaîne qui répond aux dégâts directs
+        // pendant le tour adverse — de quoi ouvrir la fenêtre d'interception.
+        testPlayer("p2", { board: defenseurs, hand: [instance("signal-de-detresse", "p2")], anchor: 20, reason: 6 }),
       ],
       turnNumber: 1,
       activePlayerId: "p1",
     });
   }
 
-  it("un tir sur le Navire adverse ouvre la fenêtre, et la Cage peut le réduire", () => {
-    const cage = instance("cage-de-flottaison", "p2", { turnsRemaining: 4 });
-    const state = goliathArme([cage]);
+  it("un tir sur le Navire adverse ouvre la fenêtre, et une Chaîne peut le réduire", () => {
+    const state = goliathArme([]);
 
     const tir = dispatch(state, { type: "fireShipAbility", playerId: "p1" });
     ok(tir);
@@ -288,24 +250,21 @@ describe("Le Canon du Navire passe par la fenêtre d'interception", () => {
     expect(tir.state.pendingAttack?.kind).toBe("tirDeNavire");
     expect(tir.state.pendingReaction?.awaitingPlayerId).toBe("p2");
 
-    // Activer : la Cage se révèle, réduit de 3, et se Saborde. Le tir de 2
-    // n'atteint donc jamais la coque.
-    const active = activateReactionFor(tir.state, "cage-de-flottaison");
+    // Activer : le Signal réduit de 3. Le tir de 2 n'atteint donc jamais la coque.
+    const active = activateReactionFor(tir.state, "signal-de-detresse");
     ok(active);
     expect(active.state.pendingAttack).toBeUndefined();
     expect(player(active.state, "p2").anchor).toBe(20);
-    expect(board(active.state, "p2").some((u) => u.cardId === "cage-de-flottaison")).toBe(false);
   });
 
   it("passer laisse le tir porter normalement", () => {
-    const cage = instance("cage-de-flottaison", "p2", { turnsRemaining: 4 });
-    const state = goliathArme([cage]);
+    const state = goliathArme([]);
     const tir = dispatch(state, { type: "fireShipAbility", playerId: "p1" });
     ok(tir);
     const passe = dispatch(tir.state, { type: "passReaction", playerId: "p2" });
     ok(passe);
     expect(passe.state.pendingAttack).toBeUndefined();
-    expect(player(passe.state, "p2").anchor).toBe(18); // 20 - 2, la Cage masquée ne réduit rien
+    expect(player(passe.state, "p2").anchor).toBe(18); // 20 - 2
   });
 
   it("un tir sur un PERMANENT n'ouvre aucune fenêtre — ce n'est pas la coque qui est visée", () => {

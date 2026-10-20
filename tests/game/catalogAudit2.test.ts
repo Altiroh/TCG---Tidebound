@@ -60,7 +60,7 @@ describe("Cylindre flottant — Contrecoup", () => {
     expect(board(declaree.state, "p2")).toHaveLength(1);
   });
 
-  it("activé, il annule les dégâts, frappe le permanent désigné, et se détruit", () => {
+  it("activé, il annule les dégâts, les inflige au Navire adverse, et se détruit (texte du 20/10/2026)", () => {
     const attacker = instance("la-chose-qui-remonte", "p1"); // 5 Puissance
     const cylindre = instance("cylindre-flottant", "p2");
     const cible = instance("murene-aveugle", "p1");
@@ -75,16 +75,17 @@ describe("Cylindre flottant — Contrecoup", () => {
 
     const declaree = dispatch(state, { type: "attack", playerId: "p1", attackerInstanceId: attacker.instanceId });
     ok(declaree);
-    const active = activateReactionFor(declaree.state, "cylindre-flottant", cible.instanceId);
+    const active = activateReactionFor(declaree.state, "cylindre-flottant");
     ok(active);
 
     expect(player(active.state, "p2").anchor).toBe(20); // coque intacte
+    expect(player(active.state, "p1").anchor).toBe(15); // les 5 dégâts reviennent au Navire adverse
     expect(active.events.some((e) => e.type === "ATTACK_INTERCEPTED")).toBe(true);
     // L'attaque reprend et se termine : plus rien en suspens.
     expect(active.state.pendingAttack).toBeUndefined();
-    // Le Cylindre s'est détruit, et la cible a pris les 5 Puissance.
+    // Le Cylindre s'est détruit ; aucun permanent n'est touché.
     expect(board(active.state, "p2")).toHaveLength(0);
-    expect(board(active.state, "p1").some((u) => u.instanceId === cible.instanceId)).toBe(false);
+    expect(board(active.state, "p1").some((u) => u.instanceId === cible.instanceId)).toBe(true);
   });
 
   it("passé, l'attaque reprend et porte normalement", () => {
