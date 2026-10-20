@@ -42,6 +42,8 @@ Jamais de PNG commité : déposer, ranger en kebab-case par famille, puis `node 
 
 Seule exception : les icônes d'application et favicons de `public/icons/` (+ `public/favicon.ico`), refabriqués par `npm run icons` depuis `public/assets/menu/logo/icon-tidebound.webp` — la SOURCE, elle, suit la règle. iOS n'accepte pas le WebP pour `apple-touch-icon`, une icône de manifeste en WebP reste refusée par certains vérificateurs d'installabilité, et un `.ico` n'existe qu'en PNG/BMP.
 
+Autre exception : les illustrations des mails Supabase (`public/mail/`, JPG — Outlook n'affiche pas le WebP), hors de `public/assets/` ; leurs modèles HTML vivent dans `supabase/templates/` et se recopient à la main dans le tableau de bord.
+
 ## PWA
 
 - Manifeste : `public/manifest.webmanifest` (icônes 192/512 + maskable, raccourcis, `orientation: landscape`). Métadonnées, favicons, icône iOS et `viewport-fit: cover` : `app/layout.tsx`.
