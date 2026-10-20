@@ -6,6 +6,8 @@ import { usePathname } from "next/navigation";
 import { pollSocial } from "@/features/friends/actions";
 import type { IncomingChallenge } from "@/features/friends/friendService";
 import styles from "@/features/friends/SocialPulse.module.css";
+import { useDevMode } from "@/features/admin/useDevMode";
+import { friendlyMatchLocked } from "@/features/online/friendlyMatchLock";
 
 /** Signe de vie : assez fréquent pour que « En ligne » dise vrai (fenêtre de 2 min), assez rare pour ne rien coûter. */
 const PULSE_MS = 45_000;
@@ -50,7 +52,9 @@ export function SocialPulse() {
     };
   }, []);
 
-  const hidden = pathname?.startsWith("/en-ligne/") || pathname === "/partie";
+  // Match amical fermé hors mode Dev (`friendlyMatchLock.ts`) : aucun défi à annoncer.
+  const amicalLocked = friendlyMatchLocked(useDevMode());
+  const hidden = amicalLocked || pathname?.startsWith("/en-ligne/") || pathname === "/partie";
   if (!challenge || hidden) return null;
 
   return (

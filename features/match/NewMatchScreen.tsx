@@ -21,6 +21,8 @@ import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/match/NewMatch.module.css";
 import { playButtonClick, playGameStart, playTabClick } from "@/lib/sound";
 import { usePersistedState } from "@/lib/persistedState";
+import { useDevMode } from "@/features/admin/useDevMode";
+import { friendlyMatchLocked, MATCH_AMICAL_INDISPONIBLE } from "@/features/online/friendlyMatchLock";
 import { flushPreferences, getPreference, setPreference, subscribePreferences } from "@/lib/preferences";
 
 /**
@@ -237,6 +239,12 @@ export function NewMatchScreen({
     () => friends.find((friend) => friend.userId === initialFriendId)?.userId ?? friends[0]?.userId ?? null
   );
   const [inviteCode, setInviteCode] = useState(() => normalizeInviteCode(initialInviteCode ?? ""));
+  // Match amical fermé hors mode Dev (`friendlyMatchLock.ts`) : seule la recherche rapide reste.
+  const amicalLocked = friendlyMatchLocked(useDevMode());
+  const onlineKinds = amicalLocked ? ONLINE_KINDS.filter((kind) => kind.id === "quick") : ONLINE_KINDS;
+  useEffect(() => {
+    if (amicalLocked && onlineKind !== "quick") setOnlineKind("quick");
+  }, [amicalLocked, onlineKind]);
   const [botDifficulty, setBotDifficulty] = useState<BotDifficulty>("moyen");
   // Le niveau retenu remplace « moyen » après le montage (le rendu serveur ne le relit pas),
   // puis suit le compte s'il est relu après coup (premier écran de la session).
@@ -436,10 +444,21 @@ export function NewMatchScreen({
           : "Lancer la partie";
 
   // Défi d'un ami, partie laissée ouverte : posés sur la table du choix du mode.
+  // Lien d'invitation ou défi suivi alors que le match amical est fermé : on le dit.
+  const amicalRefused = amicalLocked && Boolean(initialInviteCode || initialFriendId);
+  const shownChallenges = amicalLocked ? [] : challenges;
   const notices =
-    challenges.length > 0 || resumable ? (
+    shownChallenges.length > 0 || resumable || amicalRefused ? (
       <>
-        {challenges.map((challenge) => (
+        {amicalRefused && (
+          <div className={game.banner} role="status">
+            <div className={game.bannerText}>
+              <p className={game.bannerTitle}>{MATCH_AMICAL_INDISPONIBLE}</p>
+              <p className={game.muted}>La recherche rapide et les parties contre un bot restent ouvertes.</p>
+            </div>
+          </div>
+        )}
+        {shownChallenges.map((challenge) => (
           <div key={challenge.id} className={game.banner} role="status">
             <div className={game.bannerText}>
               <p className={game.bannerTitle}>{challenge.fromName} te défie en match amical</p>
@@ -493,6 +512,7 @@ export function NewMatchScreen({
         <PlayTable fill={step !== 1}>
           {step === 1 ? (
             <ModeTable
+              locked={amicalLocked ? ["amical"] : []}
               onChoose={(choice) => {
                 // En ligne : la recherche rapide ; Match amical : défier un ami (le reste se choisit ensuite).
                 if (choice !== "bot") setOnlineKind(choice === "amical" ? "friend" : "quick");
@@ -584,8 +604,9 @@ export function NewMatchScreen({
               {mode === "online" && step === 2 && (
                 <section className={`${game.panel} ${styles.group} ${styles.botPanel}`}>
                   <h2 className={game.sectionTitle}>Type de partie</h2>
+                  {amicalRefused && <p className={game.muted}>{MATCH_AMICAL_INDISPONIBLE}</p>}
                   <div className={styles.difficulty} role="radiogroup" aria-label="Type de partie en ligne">
-                    {ONLINE_KINDS.map((kind) => (
+                    {onlineKinds.map((kind) => (
                       <button
                         key={kind.id}
                         type="button"

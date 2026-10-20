@@ -34,6 +34,15 @@ export function vueJoueurActive(): boolean {
   return cookies().get(VUE_JOUEUR_COOKIE)?.value === "1";
 }
 
+/**
+ * Mode Dev côté SERVEUR — même règle que `useDevMode` (navigateur) : hors
+ * vue joueur, un Admin, ou le développement local.
+ */
+export async function devModeActive(userId: string): Promise<boolean> {
+  if (vueJoueurActive()) return false;
+  return process.env.NODE_ENV === "development" || (await isAdmin(userId));
+}
+
 /** Les outils Admin s'affichent-ils ? Rôle Admin ET mode Dev allumé. */
 export async function adminToolsVisible(userId: string): Promise<boolean> {
   return !vueJoueurActive() && (await isAdmin(userId));

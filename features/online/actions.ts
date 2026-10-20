@@ -19,6 +19,8 @@ import { resumeVerdict } from "@/features/online/resumable";
 import { loadEquippedCosmetics } from "@/features/cosmetics/equippedCosmeticsService";
 import type { PlayerCosmetics } from "@/features/cosmetics/MatchCosmeticsProvider";
 import { getSessionUser } from "@/lib/supabase/sessionUser";
+import { devModeActive } from "@/features/admin/roles";
+import { friendlyMatchLocked, MATCH_AMICAL_INDISPONIBLE } from "@/features/online/friendlyMatchLock";
 
 /**
  * Parties en ligne — Server Actions exposées au navigateur.
@@ -43,6 +45,8 @@ async function requireUser() {
 /** Crée une partie en attente d'un second joueur, avec un code d'invitation. */
 export async function createOnlineMatch(deckId: string): Promise<ActionResult<{ matchId: string; inviteCode: string }>> {
   const user = await requireUser();
+  // Match amical fermé hors mode Dev (`friendlyMatchLock.ts`).
+  if (friendlyMatchLocked(await devModeActive(user.id))) return { ok: false, error: MATCH_AMICAL_INDISPONIBLE };
   const created = await createWaitingMatch(user.id, deckId);
   if (!created.ok) return { ok: false, error: created.error };
   return { ok: true, data: { matchId: created.matchId, inviteCode: created.inviteCode } };
@@ -51,6 +55,8 @@ export async function createOnlineMatch(deckId: string): Promise<ActionResult<{ 
 /** Rejoint une partie en attente via son code d'invitation et démarre la partie. */
 export async function joinOnlineMatch(inviteCode: string, deckId: string): Promise<ActionResult<{ matchId: string }>> {
   const user = await requireUser();
+  // Un code d'invitation ne mène qu'à un match amical : fermé hors mode Dev.
+  if (friendlyMatchLocked(await devModeActive(user.id))) return { ok: false, error: MATCH_AMICAL_INDISPONIBLE };
   if (typeof inviteCode !== "string" || typeof deckId !== "string" || inviteCode.length > 32) {
     return { ok: false, error: "Aucune partie en attente avec ce code." };
   }

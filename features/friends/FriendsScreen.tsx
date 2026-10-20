@@ -10,6 +10,8 @@ import { GameScreen } from "@/features/shell/GameScreen";
 import game from "@/features/shell/GameScreen.module.css";
 import styles from "@/features/friends/FriendsScreen.module.css";
 import { playButtonClick } from "@/lib/sound";
+import { useDevMode } from "@/features/admin/useDevMode";
+import { friendlyMatchLocked } from "@/features/online/friendlyMatchLock";
 
 const PRESENCE_TAG: Record<FriendPresence, string | undefined> = {
   online: game.tagSuccess,
@@ -30,6 +32,8 @@ export function FriendsScreen({ social }: { social: SocialView }) {
   const [message, setMessage] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
   const [copied, setCopied] = useState(false);
   const [pending, startTransition] = useTransition();
+  // Match amical fermé hors mode Dev (`friendlyMatchLock.ts`) : ni défi à lancer, ni défi reçu à relever.
+  const amicalLocked = friendlyMatchLocked(useDevMode());
 
   function run(action: () => Promise<{ ok: boolean; error?: string; message?: string }>) {
     playButtonClick();
@@ -69,7 +73,7 @@ export function FriendsScreen({ social }: { social: SocialView }) {
             </Link>
           </div>
 
-          {social.challenges.length > 0 && (
+          {!amicalLocked && social.challenges.length > 0 && (
             <section className={`${game.panel} ${styles.section}`} aria-label="Défis reçus">
               <h2 className={game.sectionTitle}>Défis reçus</h2>
               {social.challenges.map((challenge) => (
@@ -164,13 +168,15 @@ export function FriendsScreen({ social }: { social: SocialView }) {
                     {friend.name} <span className={PRESENCE_TAG[friend.presence]}>{PRESENCE_LABEL[friend.presence]}</span>
                   </span>
                   <span className={game.bannerActions}>
-                    <Link
-                      href={`/partie?mode=en-ligne&ami=${friend.userId}`}
-                      className={game.primary}
-                      onClick={() => playButtonClick()}
-                    >
-                      Défier
-                    </Link>
+                    {!amicalLocked && (
+                      <Link
+                        href={`/partie?mode=en-ligne&ami=${friend.userId}`}
+                        className={game.primary}
+                        onClick={() => playButtonClick()}
+                      >
+                        Défier
+                      </Link>
+                    )}
                     <button
                       type="button"
                       className={game.dangerGhost}

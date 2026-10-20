@@ -35,6 +35,10 @@ vi.mock("@/lib/supabase/sessionUser", () => ({
 }));
 
 vi.mock("next/cache", () => ({ revalidatePath: () => {} }));
+// Le match amical est fermé hors mode Dev (`friendlyMatchLock.ts`) : ces
+// parcours le testent tel qu'il s'ouvrira, en mode Dev.
+let devMode = true;
+vi.mock("@/features/admin/roles", () => ({ devModeActive: async () => devMode, isAdmin: async () => false, vueJoueurActive: () => false, adminToolsVisible: async () => false }));
 // Le règlement de fin de partie part APRÈS la réponse du coup (`waitUntil`) : on le recueille pour l'attendre.
 const backgroundWork: Promise<unknown>[] = [];
 vi.mock("@vercel/functions", () => ({ waitUntil: (work: Promise<unknown>) => void backgroundWork.push(work) }));

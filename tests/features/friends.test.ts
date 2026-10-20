@@ -21,6 +21,10 @@ vi.mock("@/lib/supabase/sessionUser", () => ({
   getSessionUser: async () => (sessionUserId ? { id: sessionUserId, email: "joueur@tidebound.test" } : null),
 }));
 vi.mock("next/cache", () => ({ revalidatePath: () => {} }));
+// Le match amical est fermé hors mode Dev (`friendlyMatchLock.ts`) : ces
+// parcours le testent tel qu'il s'ouvrira, en mode Dev.
+let devMode = true;
+vi.mock("@/features/admin/roles", () => ({ devModeActive: async () => devMode, isAdmin: async () => false, vueJoueurActive: () => false, adminToolsVisible: async () => false }));
 vi.mock("next/navigation", () => ({
   redirect: () => {
     throw new Error("redirection vers /connexion");
@@ -123,6 +127,19 @@ describe("présence", () => {
 });
 
 describe("défis", () => {
+  it("hors mode Dev, le match amical est fermé : ni défi, ni code d'invitation", async () => {
+    await befriend(ALICE, BOB, "BOBBY234");
+    as(ALICE);
+    devMode = false;
+    try {
+      expect(await friends.challengeFriend(BOB, DECK.id)).toMatchObject({ ok: false, error: "Le match amical est temporairement indisponible." });
+      expect((await joinOnlineMatch("ABC123", DECK.id)).ok).toBe(false);
+      expect(db.table("matches")).toHaveLength(0);
+    } finally {
+      devMode = true;
+    }
+  });
+
   it("on ne défie que ses amis", async () => {
     expect(await friends.challengeFriend(CAROL, DECK.id)).toMatchObject({ ok: false });
     expect(db.table("matches")).toHaveLength(0);

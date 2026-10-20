@@ -15,6 +15,8 @@ import {
   type SocialView,
 } from "@/features/friends/friendService";
 import { getSessionUser } from "@/lib/supabase/sessionUser";
+import { devModeActive } from "@/features/admin/roles";
+import { friendlyMatchLocked, MATCH_AMICAL_INDISPONIBLE } from "@/features/online/friendlyMatchLock";
 
 /**
  * Amis — Server Actions exposées au navigateur. Le joueur est TOUJOURS tiré
@@ -69,6 +71,8 @@ export async function challengeFriend(friendId: string, deckId: string): Promise
   const user = await getSessionUser();
   if (!user) return SIGNED_OUT;
   if (!isUuid(friendId) || typeof deckId !== "string") return { ok: false, error: "Défi impossible." };
+  // Match amical fermé hors mode Dev (`friendlyMatchLock.ts`).
+  if (friendlyMatchLocked(await devModeActive(user.id))) return { ok: false, error: MATCH_AMICAL_INDISPONIBLE };
   return challengeFriendFor(user.id, friendId, deckId);
 }
 

@@ -46,7 +46,16 @@ const MODES: readonly { id: TableMode; image: string; label: string; description
  * La description des cartes (peinte sur l'image) s'affiche aussi SOUS
  * chacune, lisible et traduisible.
  */
-export function ModeTable({ onChoose, notices }: { onChoose: (mode: TableMode) => void; notices?: ReactNode }) {
+export function ModeTable({
+  onChoose,
+  notices,
+  locked = [],
+}: {
+  onChoose: (mode: TableMode) => void;
+  notices?: ReactNode;
+  /** Modes fermés pour l'instant (match amical hors mode Dev) : carte grisée, non cliquable. */
+  locked?: readonly TableMode[];
+}) {
   // Les cartes s'en vont avant que l'écran suivant n'arrive sur la même table.
   const [leaving, setLeaving] = useState<TableMode | null>(null);
   function choose(mode: TableMode) {
@@ -68,12 +77,20 @@ export function ModeTable({ onChoose, notices }: { onChoose: (mode: TableMode) =
             key={mode.id}
             className={styles.card}
             data-chosen={leaving === mode.id || undefined}
+            data-locked={locked.includes(mode.id) || undefined}
             style={{ "--index": index, "--card-art": `url("${ASSETS}/${mode.image}.webp")` } as React.CSSProperties}
           >
-            <button type="button" className={styles.cardButton} onClick={() => choose(mode.id)} aria-label={`${mode.label} — ${mode.description}`}>
+            <button
+              type="button"
+              className={styles.cardButton}
+              disabled={locked.includes(mode.id)}
+              onClick={() => choose(mode.id)}
+              aria-label={locked.includes(mode.id) ? `${mode.label} — temporairement indisponible` : `${mode.label} — ${mode.description}`}
+            >
               {/* eslint-disable-next-line @next/next/no-img-element -- carte peinte */}
               <img src={`${ASSETS}/${mode.image}.webp`} alt="" draggable={false} />
             </button>
+            {locked.includes(mode.id) && <span className={styles.cardLocked}>Temporairement indisponible</span>}
           </li>
         ))}
       </ul>

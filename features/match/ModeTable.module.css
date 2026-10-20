@@ -212,9 +212,33 @@
   user-select: none;
 }
 
+/* Mode fermé pour l'instant (match amical hors mode Dev) : carte éteinte, rien ne réagit. */
+.card[data-locked] .cardButton {
+  cursor: var(--tb-cursor);
+  filter: grayscale(0.85) brightness(0.55) drop-shadow(0 1.4cqh 1.6cqh rgba(0, 0, 0, 0.55));
+}
+
+.cardLocked {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%) rotate(-6deg);
+  padding: 0.5em 0.9em;
+  border: 1px solid var(--tb-border-strong);
+  border-radius: var(--tb-radius-sm);
+  background: rgba(10, 7, 4, 0.82);
+  color: var(--tb-text-strong);
+  font-family: var(--tb-font-display);
+  font-size: clamp(10px, 1.8cqh, 15px);
+  letter-spacing: 0.04em;
+  text-align: center;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
 /* Survol : la carte se soulève et s'éclaire, sa lueur chaude déborde sur la table. */
-.cardButton:hover,
-.cardButton:focus-visible {
+.cardButton:not(:disabled):hover,
+.cardButton:not(:disabled):focus-visible {
   transform: translateY(-2.2%) scale(1.035);
   filter: brightness(1.07) drop-shadow(0 2.4cqh 2.4cqh rgba(0, 0, 0, 0.45)) drop-shadow(0 0 2.6cqh rgba(255, 196, 110, 0.75))
     drop-shadow(0 0 0.6cqh rgba(255, 226, 160, 0.9));
@@ -247,8 +271,8 @@
   transition: opacity 260ms ease-out;
 }
 
-.cardButton:hover::after,
-.cardButton:focus-visible::after {
+.cardButton:not(:disabled):hover::after,
+.cardButton:not(:disabled):focus-visible::after {
   opacity: 1;
   animation: cardSheen 1.6s cubic-bezier(0.3, 0.6, 0.3, 1) both, cardGlow 2.8s ease-in-out 1.6s infinite;
 }
@@ -264,7 +288,7 @@
   50% { opacity: 0.72; background-position: center, -30% 0; }
 }
 
-.cardButton:active {
+.cardButton:not(:disabled):active {
   transform: translateY(-1%) scale(1.01);
 }
 
