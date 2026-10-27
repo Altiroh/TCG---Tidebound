@@ -61,3 +61,29 @@ describe("la Marée qui vient, vue par le bot", () => {
     expect(chooseBotAction(state, "p1", "moyen", () => 0.99)).toMatchObject({ type: "activateAbility", sourceInstanceId: sondeur.instanceId });
   });
 });
+
+describe("la renverse, anticipée par le bot", () => {
+  const avecRenverse = (tideRemainingTurns: number, tideRenverseChancePercent: number) =>
+    testGameState({
+      phase: "mainPhase",
+      environment: testEnvironment({ tideState: "tempete", tideRemainingTurns, tideOrientation: "montante", tideRenverseChancePercent }),
+      players: [
+        testPlayer("p1", { board: [instance("masse-sombre", "p1")], deck: pioche(20, "p1") }),
+        testPlayer("p2", { shipId: "le-goliath", deck: pioche(20, "p2") }),
+      ],
+    });
+
+  // Masse-Sombre gagne aux Abysses, rien en Houle : une renverse possible
+  // avant la transition rend la montée moins sûre, donc vaut moins.
+  it("une Tempête montante qui peut encore se renverser promet moins qu'une montée certaine", () => {
+    expect(evaluateState(avecRenverse(3, 15), "p1")).toBeLessThan(evaluateState(avecRenverse(3, 0), "p1"));
+  });
+
+  it("plus la chance de renverse est forte, moins le bot compte sur la montée", () => {
+    expect(evaluateState(avecRenverse(3, 40), "p1")).toBeLessThan(evaluateState(avecRenverse(3, 15), "p1"));
+  });
+
+  it("au dernier tour de l'état, la transition passe avant toute renverse : rien ne change", () => {
+    expect(evaluateState(avecRenverse(1, 40), "p1")).toBe(evaluateState(avecRenverse(1, 0), "p1"));
+  });
+});

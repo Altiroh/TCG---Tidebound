@@ -1,5 +1,6 @@
 import { getShipDefinition } from "@/game/environment/shipData";
 import { advanceTideState } from "@/game/environment/types";
+import { canRenverse } from "@/game/environment/tide";
 import { computeEffectiveStats } from "@/game/cards/stats";
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { hasResistance, isPermanentCard, UNIT_CARD_TYPES, type CardInstance } from "@/game/cards/types";
@@ -352,8 +353,26 @@ function playerValue(state: GameState, player: PlayerState): number {
  * que le changement est proche : `TIDE_LOOKAHEAD / tours restants`. Une
  * Marée maintenue (« maintain ») ne change pas au prochain décompte : son
  * écart ne pèse qu'à moitié.
+ *
+ * RENVERSE (27/10/2026) : en Houle ou en Tempête, chaque tour de table qui
+ * précède la transition peut inverser le sens (`tideRenverseChancePercent`).
+ * Le prochain état n'est donc plus certain : l'écart est la moyenne des deux
+ * issues, pondérée par `chanceSensConserve`.
  */
 const TIDE_LOOKAHEAD = 0.5;
+
+/**
+ * Probabilité que le sens soit le même au moment de la transition : chacun
+ * des `tours restants − 1` ticks qui n'achèvent pas l'état peut le renverser
+ * (chance `p`), et deux renverses s'annulent — d'où (1 + (1 − 2p)^n) / 2.
+ * Le tick qui achève l'état fait la transition AVANT toute renverse.
+ */
+function chanceSensConserve(env: GameState["environment"]): number {
+  const p = (env.tideRenverseChancePercent ?? 0) / 100;
+  if (p <= 0 || !canRenverse(env.tideState)) return 1;
+  const ticks = Math.max(0, env.tideRemainingTurns - 1);
+  return (1 + Math.pow(1 - 2 * p, ticks)) / 2;
+}
 
 function boardValue(state: GameState, player: PlayerState): number {
   return player.board.reduce((sum, unit) => sum + permanentValue(state, unit, player), 0);
@@ -361,15 +380,21 @@ function boardValue(state: GameState, player: PlayerState): number {
 
 function tideOutlook(state: GameState, me: PlayerState, opponent: PlayerState): number {
   const env = state.environment;
-  const next = advanceTideState(env.tideState, env.tideOrientation);
-  if (next === env.tideState) return 0;
+  const reversed = env.tideOrientation === "montante" ? "descendante" : "montante";
+  const ecartVers = (orientation: typeof env.tideOrientation) => {
+    const next = advanceTideState(env.tideState, orientation);
+    if (next === env.tideState) return 0;
+    const future: GameState = { ...state, environment: { ...env, tideState: next } };
+    const shift = (player: PlayerState) => boardValue(future, player) - boardValue(state, player);
+    return shift(me) - shift(opponent);
+  };
 
-  const future: GameState = { ...state, environment: { ...env, tideState: next } };
-  const shift = (player: PlayerState) => boardValue(future, player) - boardValue(state, player);
+  const conserve = chanceSensConserve(env);
+  const ecart = conserve * ecartVers(env.tideOrientation) + (conserve < 1 ? (1 - conserve) * ecartVers(reversed) : 0);
 
   const maintained = env.pendingTideModifiers.some((m) => m.kind === "maintain" && m.remainingTriggers > 0);
   const weight = (TIDE_LOOKAHEAD / Math.max(1, env.tideRemainingTurns)) * (maintained ? 0.5 : 1);
-  return weight * (shift(me) - shift(opponent));
+  return weight * ecart;
 }
 
 /**
