@@ -96,7 +96,7 @@ describe("survivre à des dégâts", () => {
     expect(puissance(r.state, eclaireur.instanceId)).toBe(3);
   });
 
-  it("Vigie aux Fissures : une AUTRE unité qui survit fait piocher puis défausser", () => {
+  it("Vigie aux Fissures : une AUTRE unité qui survit fait piocher, sans défausse", () => {
     const vigie = instance("vigie-aux-fissures", "p1");
     const matelot = instance("matelot-fele", "p1");
     const eclat = instance("eclat-de-bouteille", "p1");
@@ -104,7 +104,8 @@ describe("survivre à des dégâts", () => {
     const r = briser(table({ board: [vigie, matelot, eclat], deck: [pioche], hand: [instance("duelliste-de-verre", "p1")] }), eclat, matelot.instanceId);
     ok(r);
     expect(joueur(r.state, "p1").hand.some((c) => c.instanceId === pioche.instanceId)).toBe(true);
-    expect(r.state.pendingChoice?.kind).toBe("handDiscard");
+    expect(joueur(r.state, "p1").hand).toHaveLength(2);
+    expect(r.state.pendingChoice).toBeUndefined();
   });
 
   it("Duelliste de Verre a +1 Puissance tant qu'il est blessé", () => {

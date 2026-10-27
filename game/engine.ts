@@ -369,7 +369,7 @@ export function dispatch(state: GameState, action: PlayerAction): ActionResult {
   }
 
   // Table OCCUPÉE — un choix attend sa réponse (le soin du Verrier de Pont,
-  // la défausse de la Vigie aux Fissures), une fenêtre est déjà ouverte
+  // la défausse d'un « piochez puis défaussez »), une fenêtre est déjà ouverte
   // (interception, annonce de Marée, sauvetage, chaîne en cours), un
   // Jugement de l'Océan est en cours : on n'ouvre rien par-dessus, ce qui
   // écraserait la question posée. Mais on ne JETTE rien non plus : les

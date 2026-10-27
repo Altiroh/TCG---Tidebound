@@ -3,7 +3,7 @@ import { dispatch } from "@/game/engine";
 import { auraContextOf, computeEffectiveStats } from "@/game/cards/stats";
 import type { CardInstance } from "@/game/cards/types";
 import type { GameState } from "@/game/state/types";
-import { activateReactionFor, answerHandDiscard, instance, pendingCandidates, testEnvironment, testGameState, testPlayer, enFinDeTour, jouerObjet } from "./testHelpers";
+import { activateReactionFor, instance, pendingCandidates, testEnvironment, testGameState, testPlayer, enFinDeTour, jouerObjet } from "./testHelpers";
 
 /**
  * PONT DE VERRE — « La première fois pendant chacun de vos tours qu'une unité
@@ -114,7 +114,7 @@ describe("Pont de Verre : la survie est bien repérée", () => {
 });
 
 describe("Pont de Verre face à un autre déclenchement simultané", () => {
-  it("la défausse de la Vigie aux Fissures, sur la même survie, ne fait pas perdre le Pont", () => {
+  it("la pioche de la Vigie aux Fissures, sur la même survie, ne fait pas perdre le Pont", () => {
     const pont = instance("pont-de-verre", "p1", { turnsRemaining: 4 });
     const vigie = instance("vigie-aux-fissures", "p1");
     const matelot = instance("matelot-fele", "p1");
@@ -123,12 +123,11 @@ describe("Pont de Verre face à un autre déclenchement simultané", () => {
     const r = jouerObjet(
       table({ board: [pont, vigie, matelot, blesse, eclat], deck: [instance("matelot-fele", "p1")], hand: [instance("matelot-fele", "p1")] }), { playerId: "p1", instanceId: eclat.instanceId, targetInstanceId: matelot.instanceId });
     ok(r);
-    // La Vigie (automatique) a pioché : elle attend sa défausse.
-    expect(r.state.pendingChoice?.kind).toBe("handDiscard");
-    const defausse = answerHandDiscard(r.state);
-    ok(defausse);
-    expect(proposees(defausse.state)).toEqual(["pont-de-verre"]);
-    const soin = activateReactionFor(defausse.state, "pont-de-verre", blesse.instanceId);
+    // La Vigie (automatique) a pioché, sans rien demander : le Pont reste proposé.
+    expect(r.state.players[0].hand).toHaveLength(2);
+    expect(r.state.pendingChoice).toBeUndefined();
+    expect(proposees(r.state)).toEqual(["pont-de-verre"]);
+    const soin = activateReactionFor(r.state, "pont-de-verre", blesse.instanceId);
     ok(soin);
     expect(unite(soin.state, blesse.instanceId)!.damageMarked).toBe(1);
     expect(soin.state.pendingReaction).toBeUndefined();

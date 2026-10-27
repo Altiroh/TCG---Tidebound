@@ -113,18 +113,14 @@ const EQUIPAGE_DE_VERRE: CardDefinition[] = [
     attack: 1,
     health: 4,
     text:
-      "La première fois à chaque tour qu'une autre unité que vous contrôlez survit à des dégâts, piochez 1 carte " +
-      "puis défaussez-en 1.",
+      "La première fois à chaque tour qu'une autre unité que vous contrôlez survit à des dégâts, piochez 1 carte.",
     abilities: [
       {
         trigger: "onSurvivedDamage",
         triggeredBy: { cardTypes: [...UNITES] },
         oncePerTurnKey: "vigieAuxFissures",
-        description: "Une fêlure de plus : piochez 1 carte puis défaussez-en 1.",
-        effects: [
-          { type: "draw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
-          { type: "discard", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
-        ],
+        description: "Une fêlure de plus : piochez 1 carte.",
+        effects: [{ type: "draw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } }],
       },
     ],
   },
@@ -1144,7 +1140,7 @@ const SENTINELLES: CardDefinition[] = [
       {
         trigger: "onCardDiscardedFromHand",
         // « piochez PUIS défaussez par un effet de carte » : une défausse
-        // d'effet qui suit une pioche du même effet (Vigie, Signal Violet…),
+        // d'effet qui suit une pioche du même effet (Signal Violet, Rations…),
         // jamais la limite de main ni une défausse seule.
         triggeredBy: { discardByEffect: true, discardAfterDraw: true },
         condition: { duringOwnTurn: true },

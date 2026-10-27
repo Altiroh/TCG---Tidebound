@@ -442,13 +442,11 @@ describe("jouer les couleurs ensemble", () => {
 
   it("Oracle d'Améthyste : une défausse d'effet pendant votre tour lui donne +2 Puissance", () => {
     const oracle = instance("oracle-damethyste", "p1");
-    const vigie = instance("vigie-aux-fissures", "p1");
-    const matelot = instance("matelot-fele", "p1");
-    const eclat = instance("eclat-de-bouteille", "p1");
-    const r = jouerObjet(table({ board: [oracle, vigie, matelot, eclat], deck: [instance("matelot-fele", "p1")], hand: [instance("mange-fer", "p1")] }), {
+    // « Piochez 1 carte puis défaussez 1 carte » : une défausse d'effet qui suit sa pioche.
+    const rations = instance("rations-du-matin-gris", "p1");
+    const r = jouerObjet(table({ board: [oracle], deck: [instance("matelot-fele", "p1")], hand: [rations, instance("mange-fer", "p1")] }), {
       playerId: "p1",
-      instanceId: eclat.instanceId,
-      targetInstanceId: matelot.instanceId,
+      instanceId: rations.instanceId,
     }, dispatch);
     ok(r);
     const defausse = dispatch(r.state, {

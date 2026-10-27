@@ -419,8 +419,8 @@ export interface GameState {
    * Jugement de l'Océan — et qui n'ont donc pas encore pu être proposés.
    *
    * Une action ne se résout pas toujours d'une traite : le Verrier de Pont
-   * demande à qui restaurer sa Résistance, la Vigie aux Fissures quelle
-   * carte défausser. Les déclencheurs que l'action a produits AVANT cette
+   * demande à qui restaurer sa Résistance, un « piochez puis défaussez »
+   * quelle carte défausser. Les déclencheurs que l'action a produits AVANT cette
    * question (une unité a survécu au coup du Verrier) attendent ici, et
    * `dispatch` les propose dès que la table se libère, avec ceux de l'action
    * qui la libère. Avant ce champ, ils étaient perdus : la fenêtre ne
@@ -693,8 +693,8 @@ export interface HandDiscardChoice {
   playerId: PlayerId;
   /**
    * Ce même joueur vient de PIOCHER par un effet de la même suite :
-   * « piochez 1 carte puis défaussez-en 1 » (Vigie aux Fissures, Signal
-   * Violet). Posé par `resolveEffectSequence`, relayé jusqu'aux
+   * « piochez 1 carte puis défaussez-en 1 » (Signal Violet, Rations du
+   * Matin Gris). Posé par `resolveEffectSequence`, relayé jusqu'aux
    * déclencheurs de défausse (`TriggerSourceFilter.discardAfterDraw`).
    */
   afterDraw?: boolean;
