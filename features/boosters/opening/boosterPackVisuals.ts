@@ -108,19 +108,23 @@ export const DEFAULT_PACK_VISUAL: BoosterPackVisual = {
   cardBacks: PACK_CARD_BACKS,
 };
 
-/**
- * La Marée Bénie — SACHET PROVISOIRE (27/10/2026) : les planches du Défaut
- * reteintées en vert d'eau, même calage. Les vraies planches se déposeront
- * sous les mêmes noms, sans toucher au code tant que leur gabarit est celui-ci.
- */
+/** La Marée Bénie — planches du 27/10/2026 (sachet ouvert livré d'une pièce, découpé en bande + corps). */
 export const LA_MAREE_BENIE_PACK_VISUAL: BoosterPackVisual = {
-  ...DEFAULT_PACK_VISUAL,
   id: "la-maree-benie",
   assets: {
     closed: "/assets/boosters/la-maree-benie/la-maree-benie.webp",
     openTop: "/assets/boosters/la-maree-benie/la-maree-benie-open-top.webp",
     openBottom: "/assets/boosters/la-maree-benie/la-maree-benie-open-bottom.webp",
   },
+  // Corps 853 × 1353 px, bande 767 × 161 px (même échelle, 41 px du bord gauche), fermé 895 × 1498 px.
+  aspectRatio: 853 / 1353,
+  closedRect: { left: -0.39, top: -6.34, width: 100.78, height: 106.34 },
+  // La bande rejoint la déchirure du corps, comme sur le Défaut.
+  topRect: { left: 4.81, top: -4.4, width: 89.92, height: 11.9 },
+  topHinge: { x: 96, y: 84 },
+  tearLineTop: 6,
+  mouth: PACK_MOUTH,
+  cardBacks: PACK_CARD_BACKS,
 };
 
 export const WELCOME_PACK_VISUAL: BoosterPackVisual = {
