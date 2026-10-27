@@ -1,6 +1,6 @@
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import { claimLevelRewardFor, claimableLevelsFor, type ClaimLevelRewardResult } from "@/features/progression/levelRewardService";
-import { claimAllMasteryRewards } from "@/features/progression/hubService";
+import { claimAllHubRewards, claimAllMasteryRewards } from "@/features/progression/hubService";
 import type { LoginRewardItem } from "@/game/progression";
 
 /**
@@ -69,11 +69,14 @@ export interface ClaimEverythingResult {
   achievements: { count: number; tides: number };
   /** Paliers de Maîtrise versés, et ce qu'ils ont rapporté (cartes tirées comprises). */
   masteries: { count: number; items: LoginRewardItem[] };
+  /** Coffre de la semaine, paliers d'audience, colis des mécènes. */
+  hub: { count: number; items: LoginRewardItem[] };
 }
 
 /**
  * Réclame TOUT ce qui attend : paliers, quêtes terminées, exploits,
- * paliers de Maîtrise. Chaque
+ * paliers de Maîtrise, coffre hebdomadaire, paliers d'audience et colis
+ * des mécènes. (L'escale du jour se réclame à part, côté écran.) Chaque
  * réclamation est une transaction à part en base ; un refus n'annule pas ce
  * qui a déjà été versé, et n'empêche pas les autres familles d'être tentées.
  */
@@ -85,6 +88,7 @@ export async function claimEverythingFor(userId: string): Promise<ClaimEverythin
     quests: { count: 0, tides: 0, xp: 0, boosterIds: [] },
     achievements: { count: 0, tides: 0 },
     masteries: { count: 0, items: [] },
+    hub: { count: 0, items: [] },
   };
   const fail = (message?: string) => {
     result.ok = false;
@@ -139,6 +143,11 @@ export async function claimEverythingFor(userId: string): Promise<ClaimEverythin
   const masteries = await claimAllMasteryRewards(userId, accountLevel);
   result.masteries = { count: masteries.count, items: masteries.items ?? [] };
   if (!masteries.ok) fail(masteries.error);
+
+  // --- Coffre, audience, mécènes ------------------------------------------
+  const hub = await claimAllHubRewards(userId, accountLevel);
+  result.hub = { count: hub.count, items: hub.items ?? [] };
+  if (!hub.ok) fail(hub.error);
 
   return result;
 }

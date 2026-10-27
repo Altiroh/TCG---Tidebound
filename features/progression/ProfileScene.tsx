@@ -166,8 +166,25 @@ export function ProfileScene({
             endroit, le geste qui réclame tout ce qui attend. */}
         {waitingTotal > 0 && (
           <div className={styles.claimAllDock}>
-            <button type="button" className={styles.claimAll} onClick={onClaimAll} disabled={claimingAll}>
-              {claimingAll ? "…" : `Tout réclamer (${waitingTotal})`}
+            <button
+              type="button"
+              className={styles.claimAll}
+              onClick={onClaimAll}
+              disabled={claimingAll}
+              aria-busy={claimingAll || undefined}
+              aria-label={`Tout réclamer : ${waitingTotal} récompense${waitingTotal > 1 ? "s" : ""} en attente`}
+            >
+              {/* Un coffre entrouvert, d'où l'or déborde. */}
+              <svg className={styles.claimAllIcon} viewBox="0 0 24 24" fill="none" aria-hidden>
+                <path d="M3.5 10.5h17v8.2a1.3 1.3 0 0 1-1.3 1.3H4.8a1.3 1.3 0 0 1-1.3-1.3v-8.2Z" fill="currentColor" fillOpacity={0.22} stroke="currentColor" strokeWidth={1.6} strokeLinejoin="round" />
+                <path d="M3.5 10.5 5 6.2A1.6 1.6 0 0 1 6.5 5h11a1.6 1.6 0 0 1 1.5 1.2l1.5 4.3" stroke="currentColor" strokeWidth={1.6} strokeLinejoin="round" />
+                <path d="M10.3 10.5v2.6h3.4v-2.6" stroke="currentColor" strokeWidth={1.6} strokeLinejoin="round" />
+                <circle cx="8" cy="3.6" r="1.3" fill="currentColor" />
+                <circle cx="12.5" cy="2.8" r="1.1" fill="currentColor" />
+                <circle cx="16.4" cy="3.8" r="1.2" fill="currentColor" />
+              </svg>
+              <span className={styles.claimAllLabel}>{claimingAll ? "Ouverture…" : "Tout réclamer"}</span>
+              {!claimingAll && <span className={styles.claimAllSeal}>{waitingTotal}</span>}
             </button>
           </div>
         )}

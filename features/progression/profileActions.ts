@@ -661,7 +661,7 @@ export async function claimAchievement(code: string): Promise<ClaimAchievementRe
 export async function claimEverything(): Promise<ClaimEverythingResult> {
   const user = await getSessionUser();
   if (!user) {
-    return { ok: false, error: "Connecte-toi pour réclamer tes récompenses.", levels: [], quests: { count: 0, tides: 0, xp: 0, boosterIds: [] }, achievements: { count: 0, tides: 0 }, masteries: { count: 0, items: [] } };
+    return { ok: false, error: "Connecte-toi pour réclamer tes récompenses.", levels: [], quests: { count: 0, tides: 0, xp: 0, boosterIds: [] }, achievements: { count: 0, tides: 0 }, masteries: { count: 0, items: [] }, hub: { count: 0, items: [] } };
   }
   const result = await claimEverythingFor(user.id);
   revalidatePath("/profil");

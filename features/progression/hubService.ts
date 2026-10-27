@@ -573,6 +573,42 @@ export async function claimAudienceMilestone(userId: string, accountLevel: numbe
 }
 
 /**
+ * Le reste du HUB qui attend, pour « Tout réclamer » : le coffre de la
+ * semaine s'il est ouvrable, les paliers d'audience franchis, les colis des
+ * mécènes. Chaque versement est sa propre transaction ; un refus n'arrête
+ * pas les autres familles (le premier est rendu dans `error`).
+ */
+export async function claimAllHubRewards(userId: string, accountLevel: number): Promise<ClaimAllMasteriesResult> {
+  const items: LoginRewardItem[] = [];
+  let count = 0;
+  let error: string | undefined;
+  const take = (result: HubClaimResult) => {
+    if (!result.ok) {
+      error ??= result.error;
+      return;
+    }
+    items.push(...(result.items ?? []));
+    count += 1;
+  };
+  try {
+    const hub = await readProgressionHub(userId, accountLevel);
+    if (hub.weeklyChest.claimable) take(await claimWeeklyChest(userId, accountLevel));
+    for (const milestone of hub.audienceMilestones) {
+      if (milestone.claimable) take(await claimAudienceMilestone(userId, accountLevel, milestone.threshold));
+    }
+    if (accountLevel >= SPONSORS_UNLOCK_LEVEL) {
+      for (const sponsor of hub.sponsors) {
+        for (const stage of sponsor.giftStages) take(await claimSponsorGift(userId, accountLevel, sponsor.id, stage));
+      }
+    }
+    return { ok: error === undefined, error, items, count };
+  } catch (failure) {
+    console.error("[claimAllHubRewards] Échec :", failure);
+    return { ok: false, error: "Réclamation impossible pour le moment.", items, count };
+  }
+}
+
+/**
  * Fin de partie, pour UN joueur : le public juge la partie (spectacle,
  * audience — ouverte à tous, dès le premier jour), puis les mécènes qui la
  * regardaient y puisent leur intérêt — à partir du niveau d'ouverture, et

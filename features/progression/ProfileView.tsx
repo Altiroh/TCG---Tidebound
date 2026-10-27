@@ -7,6 +7,7 @@ import {
   LOGIN_CYCLE_LENGTH,
   LOGIN_STREAK_MILESTONE,
   MAX_REWARDED_LEVEL,
+  SPONSORS_UNLOCK_LEVEL,
   isMilestoneLevel,
   levelRewardItems,
   levelRewardLabel,
@@ -69,7 +70,13 @@ export function waitingCounts(profile: ProfileSummary) {
   const quests = profile.quests.filter((quest) => quest.completed && !quest.claimed).length;
   const achievements = profile.achievements.filter((achievement) => achievement.claimable).length;
   const login = profile.login.claimable ? 1 : 0;
-  return { levels, quests, achievements, login, total: levels + quests + achievements + login };
+  // Coffre de la semaine, paliers d'audience, colis des mécènes : « Tout réclamer » les prend aussi.
+  const hub = profile.hub
+    ? (profile.hub.weeklyChest.claimable ? 1 : 0) +
+      profile.hub.audienceMilestones.filter((milestone) => milestone.claimable).length +
+      (profile.view.level >= SPONSORS_UNLOCK_LEVEL ? profile.hub.sponsors.reduce((sum, sponsor) => sum + sponsor.giftStages.length, 0) : 0)
+    : 0;
+  return { levels, quests, achievements, login, hub, total: levels + quests + achievements + login + hub };
 }
 
 interface ProfileViewProps {
@@ -252,9 +259,10 @@ export function ProfileView({
       for (const boosterId of result.quests.boosterIds) extra.push({ kind: "booster", boosterId, count: 1 });
       if (result.achievements.tides > 0) extra.push({ kind: "tides", amount: result.achievements.tides });
       extra.push(...result.masteries.items);
+      extra.push(...result.hub.items);
       if (!result.ok) setClaimError(result.error ?? "Une partie des récompenses n'a pas pu être réclamée.");
       if (levels.length > 0 || choices.length > 0 || extra.length > 0) {
-        const parts = result.levels.length + result.quests.count + result.achievements.count + result.masteries.count + (extra.length > 0 && profile.login.claimable ? 1 : 0);
+        const parts = result.levels.length + result.quests.count + result.achievements.count + result.masteries.count + result.hub.count + (extra.length > 0 && profile.login.claimable ? 1 : 0);
         setReveal({ levels, choices, extraItems: extra, title: parts > 1 ? "Tout est réclamé !" : undefined });
       }
       // `claimEverything` revalide toujours `/profil` : le profil relu arrive avec la réponse.
