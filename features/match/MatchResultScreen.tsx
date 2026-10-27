@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 
 import Link from "next/link";
 import { getCardDefinition, isAbyssalVariant, type ShipDefinition } from "@/game";
 import { audienceMood } from "@/game/audience";
-import { QUEST_CATEGORY_META } from "@/game/quests";
+import { QUEST_CATEGORY_META, questByCode, questLabel } from "@/game/quests";
 import type { MatchAudienceSummary } from "@/features/audience/actions";
 import { RollingNumber } from "@/features/audience/RollingNumber";
 import { useMatchAudience } from "@/features/audience/useMatchAudience";
@@ -112,6 +112,8 @@ interface QuestSlot {
   mark: ReactNode;
   name: string;
   secondary?: string;
+  /** L'objectif en toutes lettres (« Jouer 3 parties »), montré au survol ou au toucher. */
+  objective?: string;
   before: number;
   after: number;
   target: number;
@@ -188,6 +190,10 @@ export function MatchResultScreen({ outcome, player, matchId, preview, audience,
         <img src={QUEST_CATEGORY_META[entry.category].icon} alt="" draggable={false} />
       ),
       name: entry.name,
+      objective: (() => {
+        const quest = questByCode(entry.code);
+        return quest ? questLabel(quest) : undefined;
+      })(),
       before: entry.before,
       after: entry.after,
       target: entry.target,
@@ -200,6 +206,7 @@ export function MatchResultScreen({ outcome, player, matchId, preview, audience,
             mark: <span className={styles.questNumeral}>{voyage.numeral}</span>,
             name: voyage.stepName,
             secondary: `Traversée ${voyage.numeral}`,
+            objective: voyage.stepLabel,
             before: voyage.before,
             after: voyage.after,
             target: voyage.target,
@@ -326,7 +333,19 @@ export function MatchResultScreen({ outcome, player, matchId, preview, audience,
               {slots.map((slot, index) => {
                 const ratio = Math.min(1, (filled ? slot.after : slot.before) / slot.target);
                 return (
-                  <li key={slot.key} className={styles.quest} data-done={slot.completed || undefined}>
+                  // L'objectif au survol, ou au toucher (le focus) : le nom seul ne dit pas quoi faire — retour du 27/10/2026.
+                  <li
+                    key={slot.key}
+                    className={styles.quest}
+                    data-done={slot.completed || undefined}
+                    tabIndex={slot.objective ? 0 : undefined}
+                    aria-description={slot.objective}
+                  >
+                    {slot.objective && (
+                      <span role="tooltip" className={styles.questTip}>
+                        {slot.objective}
+                      </span>
+                    )}
                     <span className={styles.questMark}>{slot.mark}</span>
                     <span className={styles.questBody}>
                       <span className={styles.questName}>{slot.name}</span>

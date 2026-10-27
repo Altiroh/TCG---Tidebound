@@ -152,6 +152,20 @@
   color: #fff;
 }
 
+/* Nom porteur d'une infobulle (l'objectif) : souligné en pointillés, comme un terme défini. */
+.nameHint {
+  max-width: 100%;
+  cursor: help;
+  text-decoration: underline dotted rgba(255, 255, 255, 0.45);
+  text-underline-offset: 3px;
+  outline: none;
+}
+
+.nameHint:focus-visible {
+  border-radius: 3px;
+  box-shadow: 0 0 0 2px rgba(246, 210, 138, 0.6);
+}
+
 .track {
   height: 5px;
   border-radius: 999px;

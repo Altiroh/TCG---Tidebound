@@ -1,12 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { QUEST_CATEGORY_META } from "@/game/quests";
+import { QUEST_CATEGORY_META, questByCode, questLabel } from "@/game/quests";
+import { Tooltip } from "@/components/game-ui/Tooltip";
 import type { QuestRecapEntry } from "@/features/quests/actions";
 import type { VoyageRecap } from "@/features/quests/voyageActions";
 import { useMatchQuestRecap } from "@/features/quests/useMatchQuestRecap";
 import styles from "@/features/quests/MatchQuestRecap.module.css";
 import { playQuestCompleted } from "@/lib/sound";
+
+/** L'objectif d'une quête, en toutes lettres (« Jouer 3 Objets ») — `undefined` si le code a quitté le catalogue. */
+function objectiveOf(code: string): string | undefined {
+  const quest = questByCode(code);
+  return quest ? questLabel(quest) : undefined;
+}
 
 interface MatchQuestRecapProps {
   /** Partie arbitrée dont on montre le relevé. Absent : rien à montrer (partie locale non persistée). */
@@ -102,7 +109,16 @@ export function MatchQuestRecap({ matchId, preview, voyagePreview }: MatchQuestR
               <img src={meta.icon} alt="" aria-hidden draggable={false} className={styles.icon} />
 
               <div className={styles.body}>
-                <span className={styles.name}>{entry.name}</span>
+                {/* L'objectif au survol (ou au toucher, par le focus) : le nom seul ne dit pas quoi faire — retour du 27/10/2026. */}
+                {objectiveOf(entry.code) ? (
+                  <Tooltip content={objectiveOf(entry.code)}>
+                    <span tabIndex={0} className={`${styles.name} ${styles.nameHint}`} aria-label={`${entry.name} : ${objectiveOf(entry.code)}`}>
+                      {entry.name}
+                    </span>
+                  </Tooltip>
+                ) : (
+                  <span className={styles.name}>{entry.name}</span>
+                )}
                 <div className={styles.track} role="progressbar" aria-valuenow={entry.after} aria-valuemin={0} aria-valuemax={entry.target}>
                   <div
                     className={entry.completed ? styles.fillDone : styles.fill}

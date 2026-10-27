@@ -366,6 +366,44 @@
   border-right: 1px solid var(--ink-faint);
 }
 
+/* L'objectif, en bulle au-dessus de la quête : au survol, ou au toucher (focus). */
+.quest {
+  position: relative;
+}
+
+.quest[tabindex] {
+  cursor: help;
+  outline: none;
+}
+
+.questTip {
+  position: absolute;
+  bottom: calc(100% + 0.6cqw * var(--z, 1));
+  left: 0;
+  z-index: 3;
+  width: max-content;
+  max-width: calc(22cqw * var(--z, 1));
+  padding: 0.5em 0.8em;
+  border: 1px solid rgba(234, 198, 98, 0.55);
+  border-radius: 6px;
+  background: rgba(23, 16, 10, 0.92);
+  color: #f4ecda;
+  font-size: max(11px, var(--tb-fs-floor, 0px), calc(0.9cqw * var(--z, 1)));
+  line-height: 1.3;
+  text-shadow: none;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 140ms ease, transform 140ms ease;
+  pointer-events: none;
+}
+
+.quest:hover .questTip,
+.quest:focus-visible .questTip,
+.quest:focus .questTip {
+  opacity: 1;
+  transform: none;
+}
+
 .quest + .quest {
   padding-left: calc(1cqw * var(--z, 1));
 }

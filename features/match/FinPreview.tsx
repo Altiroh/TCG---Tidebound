@@ -8,9 +8,9 @@ import type { QuestRecapEntry } from "@/features/quests/actions";
 
 /** Relevé fabriqué : une quête qui avance, une qui se termine, une longue. */
 const QUETES: QuestRecapEntry[] = [
-  quete("prendre-le-large", "Prendre le large", "parties", 0, 1, 3),
-  quete("main-sure", "Main sûre", "cartes", 1, 3, 3, true),
-  quete("une-longue-semaine", "Une longue semaine", "parties", 6, 7, 20),
+  quete("daily_play_matches_3", "Prendre le large", "parties", 0, 1, 3),
+  quete("weekly_exact_lethal_3", "Main sûre", "stats", 1, 3, 3, true),
+  quete("weekly_play_matches_20", "Une longue semaine", "parties", 6, 7, 20),
 ];
 
 function quete(
