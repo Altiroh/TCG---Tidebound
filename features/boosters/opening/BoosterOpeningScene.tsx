@@ -285,6 +285,17 @@ export function BoosterOpeningScene({ cards: tirage, visual, origin = null, clos
     const rare = tirees.find((card) => card.artwork && card.artwork !== "classique") ?? tirees.find((card) => card.finish);
     return rare ? { artwork: rare.artwork ?? ("classique" as const), finish: rare.finish ?? ("classique" as const) } : undefined;
   }, [detailCardId, cards]);
+  /**
+   * Parcours de la fiche (retour joueur du 27/10/2026) : de carte RÉVÉLÉE
+   * en carte révélée, dans l'ordre du tirage, sans repasser par la grille.
+   * Une carte tirée deux fois n'y figure qu'une fois.
+   */
+  const revealedIds = [...new Set(cards.filter((_, index) => state.cards[index] === "revealed").map((card) => card.cardId))];
+  const detailIndex = detailCardId ? revealedIds.indexOf(detailCardId) : -1;
+  const detailStep =
+    detailIndex >= 0 && revealedIds.length > 1
+      ? (delta: number) => () => setDetailCardId(revealedIds[(detailIndex + delta + revealedIds.length) % revealedIds.length]!)
+      : undefined;
   const detailOpenRef = useRef(detailOpen);
   detailOpenRef.current = detailOpen;
   // Le dos équipé est celui qu'on voit pendant toute la sortie du sachet :
@@ -757,6 +768,8 @@ export function BoosterOpeningScene({ cards: tirage, visual, origin = null, clos
           // La fiche montre l'exemplaire TIRÉ, variante comprise (illustration, finition) — et nette : il vient d'être obtenu.
           initialEdition={detailEdition}
           artworkOwned
+          onPrevious={detailStep?.(-1)}
+          onNext={detailStep?.(1)}
           onClose={() => setDetailCardId(null)}
         />
       )}

@@ -4,7 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { getCardDefinition, type CardInstance } from "@/game";
 import { levelRewardLabel, loginRewardLabel, type LevelRewardItem, type LoginRewardItem } from "@/game/progression";
+import { CardDetailModal } from "@/features/collection/card-detail/CardDetailModal";
 import { CardTile } from "@/features/match/CardTile";
+import { useLongPress } from "@/features/match/useLongPress";
 import { chooseRewardCard, type PendingCardChoice } from "@/features/progression/profileActions";
 import { RewardIcon, type RewardItem } from "@/features/progression/RewardIcon";
 import styles from "@/features/progression/RewardReveal.module.css";
@@ -92,6 +94,9 @@ export function RewardReveal({ levels, choices, extraItems = [], title: forcedTi
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [kept, setKept] = useState<string[]>([]);
+  /** Fiche d'une carte proposée — clic droit ou appui long, comme partout ailleurs (retour du 27/10/2026). */
+  const [detailCardId, setDetailCardId] = useState<string | null>(null);
+  const longPress = useLongPress<string>(setDetailCardId);
   // Les récompenses d'abord ; s'il n'y en a pas (on vient seulement choisir), directement le choix.
   const [phase, setPhase] = useState<"items" | "choice">(levels.length > 0 || extraItems.length > 0 ? "items" : "choice");
 
@@ -133,7 +138,7 @@ export function RewardReveal({ levels, choices, extraItems = [], title: forcedTi
    */
   const [readyAt] = useState(() => Date.now() + ITEMS_MIN_MS);
   function finishItems() {
-    if (Date.now() < readyAt) return;
+    if (Date.now() < readyAt || detailCardId || longPress.consumeClick()) return;
     playButtonClick();
     if (choices.length > 0) setPhase("choice");
     else onDone();
@@ -198,7 +203,7 @@ export function RewardReveal({ levels, choices, extraItems = [], title: forcedTi
               <li key={index} className={styles.item} style={{ ["--i" as string]: index }} data-card={wonCardId(item) ? "" : undefined}>
                 {wonCardId(item) ? (
                   // Une carte gagnée se montre elle-même, pas une icône de carte.
-                  <span className={styles.wonCard}>
+                  <span className={styles.wonCard} {...longPress.bind(wonCardId(item)!)}>
                     <CardTile instance={choiceInstance("won", wonCardId(item)!)} tideState="calme" widthClassName="w-full" scaleOnHover={false} />
                   </span>
                 ) : (
@@ -241,9 +246,14 @@ export function RewardReveal({ levels, choices, extraItems = [], title: forcedTi
                 className={styles.choice}
                 data-picked={picked === cardId ? "true" : undefined}
                 style={{ ["--i" as string]: index }}
-                onClick={() => void keepCard(cardId)}
+                {...longPress.bind(cardId)}
+                onClick={() => {
+                  if (longPress.consumeClick()) return;
+                  void keepCard(cardId);
+                }}
                 disabled={busy || picked !== null}
                 aria-label={`Garder ${getCardDefinition(cardId).name}`}
+                title="Clic droit : voir la fiche"
               >
                 <span className={styles.choiceCard}>
                   <CardTile instance={choiceInstance(choice.id, cardId)} tideState="calme" widthClassName="w-full" scaleOnHover={false} />
@@ -257,12 +267,18 @@ export function RewardReveal({ levels, choices, extraItems = [], title: forcedTi
               Fermer
             </button>
           ) : (
-            <p className={styles.tapHint} data-static="">{picked ? `${getCardDefinition(picked).name} rejoint ta collection` : "Touche la carte que tu gardes"}</p>
+            <p className={styles.tapHint} data-static="">{picked ? `${getCardDefinition(picked).name} rejoint ta collection` : "Touche la carte que tu gardes · appui long ou clic droit : sa fiche"}</p>
           )}
           {kept.length > 0 && <p className={styles.kept}>Déjà gardée{kept.length > 1 ? "s" : ""} : {kept.map((id) => getCardDefinition(id).name).join(", ")}</p>}
         </div>
       ) : null}
       </div>
+      {detailCardId && (() => {
+        const offered = phase === "choice" ? (choice?.offeredCardIds.filter(knownCard) ?? []) : [];
+        const index = offered.indexOf(detailCardId);
+        const step = index >= 0 && offered.length > 1 ? (delta: number) => () => setDetailCardId(offered[(index + delta + offered.length) % offered.length]!) : undefined;
+        return <CardDetailModal cardId={detailCardId} onPrevious={step?.(-1)} onNext={step?.(1)} onClose={() => setDetailCardId(null)} />;
+      })()}
     </div>,
     document.body
   );
