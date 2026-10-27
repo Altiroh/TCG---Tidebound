@@ -167,8 +167,9 @@ describe("cadres de Navire", () => {
   });
 
   it("couvre les paliers annoncés, jusqu'au-delà du dernier niveau récompensé", () => {
-    const levels = SHIP_FRAMES.flatMap((frame) => (frame.unlock.kind === "level" ? [frame.unlock.level] : []));
-    expect(levels).toEqual([10, 25, 40, 50, 100]);
+    const levels = SHIP_FRAMES.flatMap((frame) => (frame.unlock.kind === "level" ? [frame.unlock.level] : [])).sort((a, b) => a - b);
+    // 5, 35 et 50 (Mousse, Vieux Loup de Mer, Prestige) : les cadres des paliers du 27/10/2026.
+    expect(levels).toEqual([5, 10, 25, 35, 40, 50, 50, 100]);
   });
 });
 

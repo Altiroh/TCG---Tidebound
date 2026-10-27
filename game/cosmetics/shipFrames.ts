@@ -57,6 +57,29 @@ export const SHIP_FRAMES: readonly ShipFrameSkin[] = [
     src: "/assets/ships/frames/niveau-25.webp",
     unlock: { kind: "level", level: 25 },
   },
+  // Cadres des paliers 5, 35 et 50 (27/10/2026), au nom des cadres de profil
+  // de ces mêmes paliers. Par niveau : accordés d'office à qui l'a déjà.
+  {
+    id: "ship-skin-mousse",
+    label: "Mousse",
+    description: "Bois verdi, mousse et coquillages : le premier cadre du bord, gagné au niveau 5.",
+    src: "/assets/ships/frames/mousse.webp",
+    unlock: { kind: "level", level: 5 },
+  },
+  {
+    id: "ship-skin-vieux-loup-de-mer",
+    label: "Vieux Loup de Mer",
+    description: "Phares rayés, cordages et pipe fumante. Trente-cinq niveaux de mer.",
+    src: "/assets/ships/frames/vieux-loup-de-mer.webp",
+    unlock: { kind: "level", level: 35 },
+  },
+  {
+    id: "ship-skin-prestige-50",
+    label: "Prestige",
+    description: "Or massif, chaînes et pavois bleu nuit — le prestige du niveau 50.",
+    src: "/assets/ships/frames/prestige-50.webp",
+    unlock: { kind: "level", level: 50 },
+  },
   {
     id: "ship-skin-abyssal",
     label: "Coque abyssale",

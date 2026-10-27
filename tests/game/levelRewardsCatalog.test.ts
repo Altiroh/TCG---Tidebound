@@ -39,6 +39,10 @@ describe("récompenses de palier", () => {
         const frame = PROFILE_FRAMES.find((entry) => entry.id === reward.id)!;
         expect(frame.unlock, reward.id).toEqual({ kind: "level", level: reward.level });
       }
+      if (reward.cosmetic === "shipSkin") {
+        const frame = SHIP_FRAMES.find((entry) => entry.id === reward.id)!;
+        if (frame.unlock.kind === "level") expect(frame.unlock.level, reward.id).toBeLessThanOrEqual(reward.level);
+      }
       if (reward.cosmetic === "title") {
         const level = titleUnlockLevel(TITLE_CATALOG.find((entry) => entry.id === reward.id)!);
         // Capitaine (exploit « Niveau 40 ») est déjà acquis avant son palier 45.
