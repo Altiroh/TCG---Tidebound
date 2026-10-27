@@ -1301,6 +1301,11 @@ export interface Database {
         Args: { p_user_id: string; p_cosmetic_kind: string; p_cosmetic_id: string; p_label: string; p_price: number };
         Returns: { ok: boolean; error?: string; balance?: number; cosmetic_id?: string };
       };
+      /** Achat de Jetons de Préconstruit en Tides, rayon Monnaie (`20261114120000_jeton_contre_tides.sql`). */
+      purchase_precon_tokens: {
+        Args: { p_user_id: string; p_quantity: number; p_unit_price: number };
+        Returns: { ok: boolean; error?: string; balance?: number; tokens?: number; spent?: number };
+      };
       /** Achat d'un Collectable en Jetons de Préconstruit (`20261020120000_statistiques_a_vie.sql`). */
       purchase_cosmetic_tokens: {
         Args: { p_user_id: string; p_cosmetic_kind: string; p_cosmetic_id: string; p_label: string; p_price_tokens: number };

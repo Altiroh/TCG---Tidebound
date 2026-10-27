@@ -23,6 +23,7 @@ import { BoosterContentsDialog } from "@/features/market/BoosterContentsDialog";
 import { MicroLoader } from "@/features/shell/MicroLoader";
 import { StatusTag } from "@/features/shell/StatusTag";
 import { useOpaqueBox } from "@/features/shell/useOpaqueBox";
+import { MAX_PRECON_TOKENS_PER_PURCHASE, PRECON_TOKEN_PRICE_TIDES } from "@/game/economy/constants";
 
 interface MarketScreenProps {
   inventory: BoosterInventory;
@@ -48,12 +49,14 @@ interface MarketScreenProps {
  */
 interface Cart {
   boosters: Record<string, number>;
+  /** Jetons de Préconstruit achetés en Tides (rayon Monnaie). */
+  tokens: number;
   decks: string[];
   /** Clés `famille:id`. */
   cosmetics: string[];
 }
 
-const EMPTY_CART: Cart = { boosters: {}, decks: [], cosmetics: [] };
+const EMPTY_CART: Cart = { boosters: {}, tokens: 0, decks: [], cosmetics: [] };
 
 /** Trois socles par ponton (`market/pedestals.webp`) : au-delà, les articles attendent dehors et la vitrine défile en boucle. */
 const PACKS_PER_PLATE = 3;
@@ -72,7 +75,7 @@ function shelfRank(boosterId: string): number {
   return rank === -1 ? SHELF_BOOSTER_IDS.length : rank;
 }
 
-type SectionId = "boosters" | "decks" | "cosmetics";
+type SectionId = "boosters" | "decks" | "cosmetics" | "monnaie";
 
 /*
  * Rayons de la boutique, en onglets du bandeau.
@@ -81,12 +84,14 @@ type SectionId = "boosters" | "decks" | "cosmetics";
  * à Jeton, cosmétiques à Tides — et le panier reste le même. Les écrans
  * Decks et Collectables restent les vitrines complètes (fiches,
  * équipement, possession) : un lien discret sous le ponton y mène.
- * Monnaie et Offres spéciales viendront ici quand elles ouvriront.
+ * Monnaie (27/10/2026) : des Tides contre des Jetons de Préconstruit.
+ * Les Offres spéciales viendront ici quand elles ouvriront.
  */
 const SECTIONS: ReadonlyArray<{ id: SectionId; label: string }> = [
   { id: "boosters", label: "Boosters" },
   { id: "decks", label: "Decks" },
   { id: "cosmetics", label: "Cosmétiques" },
+  { id: "monnaie", label: "Monnaie" },
 ];
 
 const cosmeticKey = (family: string, id: string) => `${family}:${id}`;
@@ -163,15 +168,17 @@ export function MarketScreen({ inventory, catalog, collectables, sandbox = false
   const cosmeticLines = cosmeticsOnSale.filter((row) => cart.cosmetics.includes(row.key) && !row.option.owned);
 
   const boosterCount = boosterLines.reduce((sum, booster) => sum + (cart.boosters[booster.boosterId] ?? 0), 0);
-  const itemCount = boosterCount + deckLines.length + cosmeticLines.length;
+  const itemCount = boosterCount + cart.tokens + deckLines.length + cosmeticLines.length;
   const tidesTotal =
     boosterLines.reduce((sum, booster) => sum + (booster.price ?? 0) * (cart.boosters[booster.boosterId] ?? 0), 0) +
+    cart.tokens * PRECON_TOKEN_PRICE_TIDES +
     cosmeticLines.reduce((sum, row) => sum + (row.option.priceTides ?? 0), 0);
   // Un cosmétique peut aussi se payer en Jetons (« La Consigne ») : il
   // rejoint alors le sous-total des decks, pas celui des Tides.
   const tokensTotal = deckLines.length + cosmeticLines.reduce((sum, row) => sum + (row.option.priceTokens ?? 0), 0);
   const shortTides = Math.max(0, tidesTotal - inventory.balance);
-  const shortTokens = Math.max(0, tokensTotal - catalog.preconTokens);
+  // Les Jetons achetés dans le même panier passent avant les decks : ils comptent.
+  const shortTokens = Math.max(0, tokensTotal - catalog.preconTokens - cart.tokens);
   /** Exemplaires en réserve, tous types confondus — offerts compris (Bienvenue). */
   const ownedCount = inventory.boosters.reduce((sum, booster) => sum + booster.owned, 0);
 
@@ -192,6 +199,11 @@ export function MarketScreen({ inventory, catalog, collectables, sandbox = false
     const current = cart.boosters[boosterId] ?? 0;
     cartSound(delta > 0 && current < MAX_PURCHASE_QUANTITY);
     setQuantity(boosterId, current + delta);
+  }
+
+  function stepTokens(delta: number) {
+    cartSound(delta > 0 && cart.tokens < MAX_PRECON_TOKENS_PER_PURCHASE);
+    setCart((current) => ({ ...current, tokens: Math.min(MAX_PRECON_TOKENS_PER_PURCHASE, Math.max(0, current.tokens + delta)) }));
   }
 
   function toggleDeck(deckId: string) {
@@ -235,6 +247,7 @@ export function MarketScreen({ inventory, catalog, collectables, sandbox = false
     // seule revalidation et un seul rendu de /market en retour.
     const lines: CheckoutCart = {
       boosters: boosterLines.map((booster) => ({ boosterId: booster.boosterId, quantity: cart.boosters[booster.boosterId] ?? 0 })),
+      ...(cart.tokens > 0 ? { tokens: cart.tokens } : {}),
       decks: deckLines.map((entry) => entry.deck.id),
       cosmetics: cosmeticLines.map((row) => ({ kind: row.family, id: row.option.id })),
     };
@@ -242,7 +255,7 @@ export function MarketScreen({ inventory, catalog, collectables, sandbox = false
       ? // Laboratoire : tout réussit, rien n'est écrit — le récapitulatif vient des prix affichés.
         {
           ok: true,
-          bought: { boosters: boosterCount, decks: deckLines.length, cosmetics: cosmeticLines.length, tides: tidesTotal, tokens: tokensTotal },
+          bought: { boosters: boosterCount, tokensBought: cart.tokens, decks: deckLines.length, cosmetics: cosmeticLines.length, tides: tidesTotal, tokens: tokensTotal },
           purchased: lines,
           remaining: { boosters: [], decks: [], cosmetics: [] },
         }
@@ -251,7 +264,7 @@ export function MarketScreen({ inventory, catalog, collectables, sandbox = false
     const failure = outcome.ok ? null : (outcome.error ?? "Achat impossible.");
 
     // Ce qui est parti quitte le panier ; le reste (refusé, ou pas tenté) y demeure.
-    const remaining: Cart = { boosters: { ...cart.boosters }, decks: [...cart.decks], cosmetics: [...cart.cosmetics] };
+    const remaining: Cart = { boosters: { ...cart.boosters }, tokens: outcome.purchased.tokens ? 0 : cart.tokens, decks: [...cart.decks], cosmetics: [...cart.cosmetics] };
     for (const line of outcome.purchased.boosters) remaining.boosters[line.boosterId] = 0;
     remaining.decks = remaining.decks.filter((id) => !outcome.purchased.decks.includes(id));
     remaining.cosmetics = remaining.cosmetics.filter((key) => !outcome.purchased.cosmetics.some((line) => cosmeticKey(line.kind, line.id) === key));
@@ -259,7 +272,7 @@ export function MarketScreen({ inventory, catalog, collectables, sandbox = false
     setIsBuying(false);
     setCart(remaining);
 
-    const boughtCount = bought.boosters + bought.decks + bought.cosmetics;
+    const boughtCount = bought.boosters + bought.tokensBought + bought.decks + bought.cosmetics;
     if (boughtCount > 0) {
       // Même partiel, un achat a eu lieu : il s'entend.
       playMarketBuy();
@@ -270,6 +283,7 @@ export function MarketScreen({ inventory, catalog, collectables, sandbox = false
 
     const recap = [
       bought.boosters > 0 ? plural(bought.boosters, "booster") : "",
+      bought.tokensBought > 0 ? plural(bought.tokensBought, "Jeton de Préconstruit", "Jetons de Préconstruit") : "",
       bought.decks > 0 ? plural(bought.decks, "deck") : "",
       bought.cosmetics > 0 ? plural(bought.cosmetics, "cosmétique") : "",
     ]
@@ -291,7 +305,7 @@ export function MarketScreen({ inventory, catalog, collectables, sandbox = false
         <Link href="/boosters" onClick={() => playButtonClick()}>
           Ouvrir →
         </Link>
-      ) : bought.decks > 0 ? (
+      ) : bought.decks > 0 || bought.tokensBought > 0 ? (
         <Link href="/partie" onClick={() => playButtonClick()}>
           Jouer →
         </Link>
@@ -303,7 +317,8 @@ export function MarketScreen({ inventory, catalog, collectables, sandbox = false
     );
   }
 
-  const stageLabel = section === "boosters" ? "Boosters en vente" : section === "decks" ? "Decks à Jeton" : "Cosmétiques en vente";
+  const stageLabel =
+    section === "boosters" ? "Boosters en vente" : section === "decks" ? "Decks à Jeton" : section === "monnaie" ? "Change de monnaie" : "Cosmétiques en vente";
   const shortage = [shortTokens > 0 ? plural(shortTokens, "Jeton") : "", shortTides > 0 ? `${shortTides} Tides` : ""].filter(Boolean).join(" et ");
 
   return (
@@ -402,6 +417,36 @@ export function MarketScreen({ inventory, catalog, collectables, sandbox = false
                 <Link href="/decks" className={game.link} onClick={() => playButtonClick()}>
                   Fiches complètes et préconstruits dans Decks →
                 </Link>
+              }
+            />
+          ) : section === "monnaie" ? (
+            /* Le rayon Monnaie : des Tides contre un Jeton de Préconstruit. */
+            <Showcase
+              key="monnaie"
+              label="change"
+              count={1}
+              render={() => (
+                <GoodsItem
+                  // « Jeton » seul : sur téléphone, la plaque ne tient pas « Jeton de Préconstruit ».
+                  name="Jeton"
+                  subtitle="de Préconstruit, deck au choix"
+                  art="/assets/ui/icons/precon-token.webp"
+                  fit="contain"
+                  price={
+                    <>
+                      <TideCoin size={16} />
+                      {PRECON_TOKEN_PRICE_TIDES}
+                    </>
+                  }
+                  owned={false}
+                  ownedLabel=""
+                  inCart={cart.tokens > 0}
+                  disabled={isBuying || cart.tokens >= MAX_PRECON_TOKENS_PER_PURCHASE}
+                  onToggle={() => stepTokens(1)}
+                />
+              )}
+              footer={
+                <span className={game.muted}>Tu as {plural(catalog.preconTokens, "Jeton")}.</span>
               }
             />
           ) : (
@@ -505,6 +550,34 @@ export function MarketScreen({ inventory, catalog, collectables, sandbox = false
                     </li>
                   );
                 })}
+                {cart.tokens > 0 && (
+                  <li key="tokens" className={`${game.cabinPanel} ${styles.cartLine}`}>
+                    <span className={`${styles.cartThumb} ${styles.cartThumbContain}`} style={{ "--art": `url("/assets/ui/icons/precon-token.webp")` } as React.CSSProperties} aria-hidden />
+                    <span className={styles.cartInfo}>
+                      <span className={styles.cartName}>Jeton de Préconstruit</span>
+                      <span className={styles.cartPrice}>
+                        <TideCoin size={14} />
+                        {PRECON_TOKEN_PRICE_TIDES}
+                      </span>
+                    </span>
+                    <span className={styles.stepper} role="group" aria-label="Quantité de Jetons de Préconstruit">
+                      <button type="button" className={styles.stepperButton} onClick={() => stepTokens(-1)} disabled={isBuying || cart.tokens <= 0} aria-label="Un de moins">
+                        <svg viewBox="0 0 24 24" fill="none" width="12" height="12" aria-hidden>
+                          <path d="M6 12h12" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" />
+                        </svg>
+                      </button>
+                      <span className={styles.stepperValue} aria-live="polite">
+                        {cart.tokens}
+                      </span>
+                      <button type="button" className={styles.stepperButton} onClick={() => stepTokens(1)} disabled={isBuying || cart.tokens >= MAX_PRECON_TOKENS_PER_PURCHASE} aria-label="Un de plus">
+                        <svg viewBox="0 0 24 24" fill="none" width="12" height="12" aria-hidden>
+                          <path d="M12 6v12M6 12h12" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" />
+                        </svg>
+                      </button>
+                    </span>
+                    <RemoveButton label="Retirer les Jetons du panier" disabled={isBuying} onClick={() => setCart((current) => ({ ...current, tokens: 0 }))} />
+                  </li>
+                )}
                 {deckLines.map((entry) => (
                   <li key={`deck:${entry.deck.id}`} className={`${game.cabinPanel} ${styles.cartLine}`}>
                     <span
@@ -590,6 +663,7 @@ function sampleCart(inventory: BoosterInventory, catalog: DeckCatalogSummary, co
     .at(0);
   return {
     boosters: Object.fromEntries(boosters.map((booster, index) => [booster.boosterId, index === 0 ? 3 : 1])),
+    tokens: 1,
     decks: deck ? [deck.deck.id] : [],
     cosmetics: cosmetic ? [cosmetic] : [],
   };

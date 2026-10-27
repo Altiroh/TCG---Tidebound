@@ -32,6 +32,22 @@ export const CURRENCY_NAME = "Tides";
 /** Prix du booster d'entrée, et unité de compte de toute la progression. */
 export const BOOSTER_STANDARD_PRICE = 100;
 
+/**
+ * Prix d'un JETON DE PRÉCONSTRUIT au Market, rayon Monnaie (27/10/2026).
+ *
+ * Calibrage : le niveau 10 demande 2 250 XP, soit environ 3 jours de jeu
+ * régulier (~700 XP/jour). Sur ces 10 niveaux, un joueur gagne de l'ordre
+ * de 750 à 900 Tides (paliers 145, quêtes du jour ~105/jour, connexion,
+ * premiers exploits), hors crédit d'accueil. Le jeton coûte la MOITIÉ
+ * environ : atteignable avant le niveau 10 sans tout y sacrifier, et cher
+ * face à 4 boosters Standard (un préconstruit, c'est 40 cartes jouables
+ * d'emblée). Valeur provisoire, à confirmer en jeu.
+ */
+export const PRECON_TOKEN_PRICE_TIDES = 400;
+
+/** Jetons achetables en un passage de caisse. */
+export const MAX_PRECON_TOKENS_PER_PURCHASE = 5;
+
 /** Supplément des boosters spécialisés par rapport au Défaut. */
 export const SPECIALIZED_BOOSTER_SURCHARGE = 50;
 

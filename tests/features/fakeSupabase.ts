@@ -904,6 +904,21 @@ function runRpc(db: FakeDatabase, fn: string, args: Row): any {
       return { ok: true, balance: wallet!.balance, cosmetic_id: args.p_cosmetic_id };
     }
 
+    // Transcription de `20261114120000_jeton_contre_tides.sql`.
+    case "purchase_precon_tokens": {
+      if (!args.p_quantity || args.p_quantity < 1 || args.p_quantity > 5) return { ok: false, error: "Quantité invalide." };
+      if (!args.p_unit_price || args.p_unit_price < 1) return { ok: false, error: "Prix invalide." };
+      const cost = args.p_quantity * args.p_unit_price;
+      const wallet = db.one("player_currency", { user_id: args.p_user_id });
+      if ((wallet?.balance ?? 0) < cost) return { ok: false, error: "insufficient_funds" };
+      wallet!.balance -= cost;
+      db.table("currency_transactions").push({ user_id: args.p_user_id, amount: -cost, reason: "precon_token_purchase" });
+      db.insertIfAbsent("player_progression", { user_id: args.p_user_id, xp_total: 0, level: 1, precon_tokens: 0 });
+      const progression = db.one("player_progression", { user_id: args.p_user_id })!;
+      progression.precon_tokens = (progression.precon_tokens ?? 0) + args.p_quantity;
+      return { ok: true, balance: wallet!.balance, tokens: progression.precon_tokens, spent: cost };
+    }
+
     case "purchase_cosmetic_tokens": {
       if (!args.p_price_tokens || args.p_price_tokens < 1) return { ok: false, error: "Prix invalide." };
       const progression = db.one("player_progression", { user_id: args.p_user_id });

@@ -28,13 +28,13 @@ export const metadata: Metadata = {
  * `sandbox` : le bouton Acheter ne doit JAMAIS appeler les vraies Server
  * Actions depuis une page publique — un visiteur connecté y dépenserait
  * ses propres Tides sur un écran dont tous les chiffres sont inventés.
- * `?rayon=decks|cosmetics` ouvre directement un autre rayon ;
+ * `?rayon=decks|cosmetics|monnaie` ouvre directement un autre rayon ;
  * `?panier=1` remplit le panier ; `?possede=1` marque tous les cosmétiques
  * comme possédés.
  */
 export default async function MarketPreviewRoute({ searchParams = {} }: { searchParams?: Record<string, string | string[] | undefined> }) {
   const [catalog, collectables] = await Promise.all([readDeckCatalog(null), loadCollectables(null)]);
-  const rayon = searchParams.rayon === "decks" || searchParams.rayon === "cosmetics" ? searchParams.rayon : "boosters";
+  const rayon = searchParams.rayon === "decks" || searchParams.rayon === "cosmetics" || searchParams.rayon === "monnaie" ? searchParams.rayon : "boosters";
 
   return (
     <MarketScreen

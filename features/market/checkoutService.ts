@@ -1,6 +1,7 @@
 import { purchaseBoosterFor } from "@/features/boosters/purchaseService";
 import { purchaseCollectableFor } from "@/features/cosmetics/collectablesService";
 import { unlockPreconDeck } from "@/features/decks/catalogService";
+import { purchasePreconTokensFor } from "@/features/market/tokenExchangeService";
 
 /**
  * Le PANIER du Market, réglé côté serveur — opération SERVEUR (pas de
@@ -24,10 +25,18 @@ export interface CheckoutCart {
   decks: string[];
   /** Cosmétiques, prix et monnaie relus au catalogue. */
   cosmetics: Array<{ kind: string; id: string }>;
+  /**
+   * Jetons de Préconstruit achetés en Tides (rayon Monnaie). Passés AVANT
+   * les decks : un panier peut acheter un Jeton et le deck qu'il ouvre.
+   * Absent : aucun (paniers d'avant le rayon).
+   */
+  tokens?: number;
 }
 
 export interface CheckoutSummary {
   boosters: number;
+  /** Jetons achetés en Tides. */
+  tokensBought: number;
   decks: number;
   cosmetics: number;
   /** Tides débitées, telles que la base / le catalogue les comptent. */
@@ -51,7 +60,7 @@ export interface CheckoutCartResult {
 /** Au-delà, le panier n'a pas été composé par l'écran du Market. */
 const MAX_CART_LINES = 200;
 
-const EMPTY_SUMMARY: CheckoutSummary = { boosters: 0, decks: 0, cosmetics: 0, tides: 0, tokens: 0 };
+const EMPTY_SUMMARY: CheckoutSummary = { boosters: 0, tokensBought: 0, decks: 0, cosmetics: 0, tides: 0, tokens: 0 };
 
 function emptyCart(): CheckoutCart {
   return { boosters: [], decks: [], cosmetics: [] };
@@ -65,7 +74,7 @@ function emptyCart(): CheckoutCart {
  */
 export function parseCheckoutCart(input: unknown): CheckoutCart | null {
   if (!input || typeof input !== "object") return null;
-  const { boosters, decks, cosmetics } = input as Record<string, unknown>;
+  const { boosters, decks, cosmetics, tokens } = input as Record<string, unknown>;
   if (!Array.isArray(boosters) || !Array.isArray(decks) || !Array.isArray(cosmetics)) return null;
   if (boosters.length + decks.length + cosmetics.length > MAX_CART_LINES) return null;
 
@@ -75,6 +84,10 @@ export function parseCheckoutCart(input: unknown): CheckoutCart | null {
     const { boosterId, quantity } = line as Record<string, unknown>;
     if (typeof boosterId !== "string" || typeof quantity !== "number") return null;
     cart.boosters.push({ boosterId, quantity });
+  }
+  if (tokens !== undefined) {
+    if (typeof tokens !== "number" || !Number.isInteger(tokens) || tokens < 0) return null;
+    if (tokens > 0) cart.tokens = tokens;
   }
   for (const deckId of decks) {
     if (typeof deckId !== "string") return null;
@@ -98,11 +111,21 @@ export async function checkoutCartFor(userId: string, cart: CheckoutCart): Promi
   for (const [index, line] of cart.boosters.entries()) {
     const result = await purchaseBoosterFor(userId, line.boosterId, line.quantity);
     if (!result.ok) {
-      return stop(result.error ?? "Achat impossible.", { boosters: cart.boosters.slice(index), decks: [...cart.decks], cosmetics: [...cart.cosmetics] });
+      return stop(result.error ?? "Achat impossible.", { boosters: cart.boosters.slice(index), tokens: cart.tokens, decks: [...cart.decks], cosmetics: [...cart.cosmetics] });
     }
     bought.boosters += line.quantity;
     bought.tides += result.spent ?? 0;
     purchased.boosters.push(line);
+  }
+
+  if (cart.tokens) {
+    const result = await purchasePreconTokensFor(userId, cart.tokens);
+    if (!result.ok) {
+      return stop(result.error ?? "Échange impossible.", { boosters: [], tokens: cart.tokens, decks: [...cart.decks], cosmetics: [...cart.cosmetics] });
+    }
+    bought.tokensBought += cart.tokens;
+    bought.tides += result.spent ?? 0;
+    purchased.tokens = cart.tokens;
   }
 
   for (const [index, deckId] of cart.decks.entries()) {
@@ -134,7 +157,12 @@ export function pathsToRevalidate(result: CheckoutCartResult): string[] {
   const paths = new Set<string>();
   const { bought } = result;
   // Le Market lui-même dès qu'un article est parti : c'est la page qui l'affiche.
-  if (bought.boosters + bought.decks + bought.cosmetics > 0) paths.add("/market");
+  if (bought.boosters + bought.tokensBought + bought.decks + bought.cosmetics > 0) paths.add("/market");
+  // Des Jetons achetés : l'écran Decks (et le profil) les affichent.
+  if (bought.tokensBought > 0) {
+    paths.add("/decks");
+    paths.add("/profil");
+  }
   if (bought.boosters > 0) paths.add("/boosters");
   if (bought.decks > 0) {
     paths.add("/decks");

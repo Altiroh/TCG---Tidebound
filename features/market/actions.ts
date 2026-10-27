@@ -34,7 +34,7 @@ function signedOutError(cart: CheckoutCart): string {
  * de la page au lieu d'une par article.
  */
 export async function checkoutCart(input: CheckoutCart): Promise<CheckoutCartResult> {
-  const empty = { boosters: 0, decks: 0, cosmetics: 0, tides: 0, tokens: 0 };
+  const empty = { boosters: 0, tokensBought: 0, decks: 0, cosmetics: 0, tides: 0, tokens: 0 };
   const nothing: CheckoutCart = { boosters: [], decks: [], cosmetics: [] };
   const cart = parseCheckoutCart(input);
   if (!cart) return { ok: false, error: "Panier invalide.", bought: empty, purchased: nothing, remaining: nothing };

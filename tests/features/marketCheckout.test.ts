@@ -62,7 +62,7 @@ describe("checkoutCart", () => {
 
     expect(result.error).toBeUndefined();
     expect(result.ok).toBe(true);
-    expect(result.bought).toEqual({ boosters: 3, decks: 2, cosmetics: 1, tides: 300 + COSMETIC.priceTides, tokens: 2 });
+    expect(result.bought).toEqual({ boosters: 3, tokensBought: 0, decks: 2, cosmetics: 1, tides: 300 + COSMETIC.priceTides, tokens: 2 });
     expect(result.remaining).toEqual({ boosters: [], decks: [], cosmetics: [] });
     expect(result.purchased.decks).toEqual([DECK_A, DECK_B]);
 
@@ -98,7 +98,7 @@ describe("checkoutCart", () => {
 
     expect(result.ok).toBe(false);
     expect(result.error).toBe("Aucun Jeton de Préconstruit disponible.");
-    expect(result.bought).toEqual({ boosters: 2, decks: 1, cosmetics: 0, tides: 200, tokens: 1 });
+    expect(result.bought).toEqual({ boosters: 2, tokensBought: 0, decks: 1, cosmetics: 0, tides: 200, tokens: 1 });
     expect(result.purchased).toEqual({ boosters: [{ boosterId: "standard", quantity: 2 }], decks: [DECK_A], cosmetics: [] });
     // Le deck refusé ET tout ce qui suit restent à acheter.
     expect(result.remaining).toEqual({ boosters: [], decks: [DECK_B], cosmetics });
@@ -119,9 +119,33 @@ describe("checkoutCart", () => {
     const result = await checkoutCart(cart);
 
     expect(result).toMatchObject({ ok: false, error: "Solde de Tides insuffisant.", remaining: cart });
-    expect(result.bought).toEqual({ boosters: 0, decks: 0, cosmetics: 0, tides: 0, tokens: 0 });
+    expect(result.bought).toEqual({ boosters: 0, tokensBought: 0, decks: 0, cosmetics: 0, tides: 0, tokens: 0 });
     expect(db.rpcCalls.some((call) => call.fn === "unlock_precon_deck")).toBe(false);
     expect(revalidated).toEqual([]);
+  });
+
+  it("rayon Monnaie : des Tides contre des Jetons, achetés AVANT les decks du même panier", async () => {
+    const { PRECON_TOKEN_PRICE_TIDES } = await import("@/game/economy/constants");
+    db.table("player_currency").push({ user_id: USER, balance: 2 * PRECON_TOKEN_PRICE_TIDES + 30 });
+    db.table("player_progression").push({ user_id: USER, xp_total: 0, level: 1, precon_tokens: 0 });
+
+    const result = await checkoutCart({ boosters: [], tokens: 2, decks: [DECK_A], cosmetics: [] });
+
+    expect(result.error).toBeUndefined();
+    expect(result.bought).toMatchObject({ tokensBought: 2, decks: 1, tides: 2 * PRECON_TOKEN_PRICE_TIDES, tokens: 1 });
+    expect(db.one("player_currency", { user_id: USER })!.balance).toBe(30);
+    // Deux Jetons achetés, un dépensé pour le deck.
+    expect(db.one("player_progression", { user_id: USER })!.precon_tokens).toBe(1);
+    // Le prix vient du serveur, jamais du navigateur.
+    expect(db.rpcCalls.find((call) => call.fn === "purchase_precon_tokens")?.args.p_unit_price).toBe(PRECON_TOKEN_PRICE_TIDES);
+    expect(revalidated).toContain("/decks");
+  });
+
+  it("rayon Monnaie : sans assez de Tides, aucun Jeton et rien de débité", async () => {
+    db.table("player_currency").push({ user_id: USER, balance: 10 });
+    const result = await checkoutCart({ boosters: [], tokens: 1, decks: [], cosmetics: [] });
+    expect(result).toMatchObject({ ok: false, error: "Pas assez de Tides pour ce Jeton." });
+    expect(db.one("player_currency", { user_id: USER })!.balance).toBe(10);
   });
 
   it("refuse un panier mal formé et un joueur sans session, sans rien appeler", async () => {
