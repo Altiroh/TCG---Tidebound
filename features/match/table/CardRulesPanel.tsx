@@ -25,3 +25,24 @@ export function CardRulesPanel({ cardId }: { cardId: string }) {
     </section>
   );
 }
+
+/**
+ * Les ÉTATS d'une carte posée (Garde, Malade, Immobilisée, Pied marin…), en
+ * toutes lettres : le badge au-dessus de la carte dit qu'il y a un état, pas
+ * ce qu'il fait. Même verre que l'effet, posé sous lui ; rien sans état.
+ */
+export function CardStatesPanel({ legend }: { legend: ReadonlyArray<{ label: string; description: string }> }) {
+  if (legend.length === 0) return null;
+  return (
+    <section className={`${styles.rulesPanel} ${styles.statesPanel}`} aria-label="États de la carte">
+      <dl className={styles.statesList}>
+        {legend.map((item) => (
+          <div key={item.label}>
+            <dt>{item.label}</dt>
+            <dd>{item.description}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
+  );
+}

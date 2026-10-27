@@ -71,7 +71,7 @@ import { landeAsset, landeScene } from "@/features/match/landes/landeScenes";
 import { DragLayer, type AimTone } from "@/features/match/table/DragLayer";
 import { GameStage } from "@/features/match/table/GameStage";
 import { GameViewport } from "@/features/match/table/GameViewport";
-import { CardRulesPanel } from "@/features/match/table/CardRulesPanel";
+import { CardRulesPanel, CardStatesPanel } from "@/features/match/table/CardRulesPanel";
 import { HoverCardPreview } from "@/features/match/table/HoverCardPreview";
 import { MotionLayer } from "@/features/match/table/MotionLayer";
 import { OpponentZone } from "@/features/match/table/OpponentZone";
@@ -404,14 +404,20 @@ export function TableBoard(props: TableBoardProps) {
     : null;
   const landeOwner = lande ? state.players.find((player) => player.id === lande.ownerId) : undefined;
 
-  function renderFace(instance: CardInstance, owner?: PlayerState) {
+  /**
+   * La carte en GRAND (aperçu au survol, carte posée au doigt). `withStates` :
+   * ses badges d'état restent au-dessus d'elle, à la taille de la carte —
+   * retour de joueur du 27/10/2026, la carte agrandie les perdait.
+   */
+  function renderFace(instance: CardInstance, owner?: PlayerState, withStates = false) {
     return (
       <CardTile
         instance={instance}
         tideState={tideState}
         widthClassName="w-full"
         scaleOnHover={false}
-        showStatusBadges={false}
+        showStatusBadges={withStates}
+        badgeSize={52}
         auraContext={owner ? auraContextFor(owner) : undefined}
       />
     );
@@ -1525,9 +1531,19 @@ export function TableBoard(props: TableBoardProps) {
         {preview && !gesture && (() => {
           const found =
             byId.get(preview.id) ?? (landeInstance && preview.id === landeInstance.instanceId ? { instance: landeInstance, owner: landeOwner } : undefined);
+          const onBoard = Boolean(found?.owner?.board.some((unit) => unit.instanceId === found.instance.instanceId));
           return found ? (
-            <HoverCardPreview anchor={preview.rect} aside={<CardRulesPanel cardId={found.instance.cardId} />}>
-              {renderFace(found.instance, found.owner)}
+            <HoverCardPreview
+              anchor={preview.rect}
+              aside={
+                <div className={styles.previewAside}>
+                  <CardRulesPanel cardId={found.instance.cardId} />
+                  {/* Les états, en toutes lettres : un badge seul ne dit pas ce qu'il fait. */}
+                  {onBoard && found.owner && <CardStatesPanel legend={cardStatusLegend(found.instance, tideState, auraContextFor(found.owner), state.turnNumber)} />}
+                </div>
+              }
+            >
+              {renderFace(found.instance, found.owner, onBoard)}
             </HoverCardPreview>
           ) : null;
         })()}
@@ -1595,7 +1611,7 @@ export function TableBoard(props: TableBoardProps) {
               props.onInspect(found.instance);
             }}
           >
-            {renderFace(found.instance, found.owner)}
+            {renderFace(found.instance, found.owner, !inHand)}
           </TableCardZoom>
         );
       })()}

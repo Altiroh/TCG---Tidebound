@@ -2894,9 +2894,45 @@
 }
 
 /* L'effet n'est repris que s'il est devenu PETIT sur la face. */
-.hoverPreviewRow:not(:has([data-fit-small])) .rulesPanel,
-.cardZoom:not(:has([data-fit-small])) .rulesPanel {
+.hoverPreviewRow:not(:has([data-fit-small])) .rulesPanel:not(.statesPanel),
+.cardZoom:not(:has([data-fit-small])) .rulesPanel:not(.statesPanel) {
   display: none;
+}
+
+/* L'encart à côté de l'aperçu : l'effet (s'il a dû rétrécir), puis les états. */
+.previewAside {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.previewAside .rulesPanel {
+  margin-bottom: 0;
+}
+
+.previewAside > :last-child {
+  margin-bottom: calc(var(--preview-h, 70vh) * 0.07);
+}
+
+.statesList {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.statesList dt {
+  font-family: var(--tb-font-display);
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #f6d28a;
+}
+
+.statesList dd {
+  margin: 2px 0 0;
+  font-size: 0.85rem;
+  line-height: 1.35;
 }
 
 /*
