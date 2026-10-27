@@ -33,8 +33,13 @@ function makeCards(prefix: string, cardIds: CardId[]): TableCardModel[] {
 
 export const PREVIEW_FIXTURES = {
   // Un jeton de chaque sorte (avec et sans Puissance) : la tuile ovale se règle ici.
-  opponentBoard: makeCards("opp-board", ["chevalier-cra-poiscail", "bat-marin-abyssal", "crabe-de-fer", "peon-cra-poiscail"]),
-  playerBoard: makeCards("own-board", ["murene-aveugle", "harpon-de-pont", "eclat-chromatique-bleu"]),
+  opponentBoard: makeCards("opp-board", ["chevalier-cra-poiscail", "bat-marin-abyssal", "crabe-de-fer", "peon-cra-poiscail"]).map((card, i) =>
+    i === 2 ? { ...card, edition: { artwork: "classique" as const, finish: "prismatic" as const } } : i === 1 ? { ...card, edition: { artwork: "classique" as const, finish: "negative" as const } } : card
+  ),
+  // Éditions variées sur le plateau : la tuile montre la finition de l'exemplaire (Foil, Monochrome).
+  playerBoard: makeCards("own-board", ["murene-aveugle", "harpon-de-pont", "eclat-chromatique-bleu"]).map((card, i) =>
+    i === 0 ? { ...card, edition: { artwork: "classique" as const, finish: "foil" as const } } : i === 1 ? { ...card, edition: { artwork: "classique" as const, finish: "monochrome" as const } } : card
+  ),
   /** Le Harpon de pont (2e carte) équipe déjà la Murène (1re) : le lien se voit dès l'ouverture. */
   playerAttachments: { "own-board-2": "own-board-1" } as Record<string, string>,
   /** 7 cartes : la taille de main de référence du cahier des charges (7 ou 8). */

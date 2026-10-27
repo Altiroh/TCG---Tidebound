@@ -17,6 +17,8 @@ export interface TableCardModel {
   id: string;
   /** Carte du catalogue (`game/cards/sets/core.ts`). */
   cardId: string;
+  /** Édition de l'exemplaire (labs) : la tuile la montre comme en partie. */
+  edition?: import("@/game/cosmetics/editions").CardEdition;
 }
 
 /** Emplacements d'un plateau, côté joueur comme côté adversaire. */

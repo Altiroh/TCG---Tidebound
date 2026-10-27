@@ -31,7 +31,7 @@ import { useCardBackSrcFor, useCardEditionFor } from "@/features/cosmetics/Match
 import { StatusBadge } from "@/features/match/StatusBadge";
 import { useDecreaseFlash } from "@/features/match/useDecreaseFlash";
 import { useImageOk } from "@/features/match/useImageOk";
-import { NouveauCadreFace } from "@/features/cadre-preview/NouveauCadreCard";
+import { FILTRE_FINITION, NouveauCadreFace, RefletsFinition } from "@/features/cadre-preview/NouveauCadreCard";
 import { QualificationBadge } from "@/features/match/QualificationBadge";
 import { effectLead, effectLine, qualificationChips } from "@/features/match/qualificationDisplay";
 import { useDebordPleinCadre } from "@/features/match/useDebordPleinCadre";
@@ -831,9 +831,16 @@ function CardTileView({
                   src={illustrationUrl}
                   alt=""
                   onError={() => setIllustrationFailed(illustrationUrl)}
-                  className="h-full w-full object-cover"
+                  // L'édition de l'exemplaire se voit AUSSI posée (27/10/2026) : Monochrome en
+                  // gris, Negative inversée, Foil et Prisma avivés sous leurs reflets.
+                  className={`h-full w-full object-cover ${finish ? FILTRE_FINITION[finish] : ""}`}
                   style={illustrationStyle}
                 />
+              )}
+              {finish && !illustrationCachee && (
+                <div className="pointer-events-none absolute inset-0" style={{ containerType: "inline-size" }}>
+                  <RefletsFinition finition={finish} />
+                </div>
               )}
               {/* Couche 1.5 : le débord Abyssal. Pour une Abyssale, l'illustration n'est que le DÉCOR ;
                   le sujet (Bat-marin encapuchonné…) vit dans ce calque. Sans lui, la tuile montrait un
@@ -845,7 +852,7 @@ function CardTileView({
                   alt=""
                   loading="lazy"
                   decoding="async"
-                  className={`pointer-events-none absolute ${debordPlein ? "h-full w-full object-cover" : "object-contain object-bottom"}`}
+                  className={`pointer-events-none absolute ${debordPlein ? "h-full w-full object-cover" : "object-contain object-bottom"} ${finish ? FILTRE_FINITION[finish] : ""}`}
                   style={debordPlein ? { inset: 0 } : zoneStyle(BOARD_DEBORD_ZONE)}
                 />
               )}
@@ -1026,7 +1033,8 @@ function CardTileView({
             className={`absolute overflow-hidden ${
               frameOk ? (isToken ? "bg-black/30" : "rounded-sm bg-black/30") : (TYPE_BG_CLASSES[def.type] ?? "bg-board-surface")
             }`}
-            style={frameOk ? zoneStyle(illustrationZone) : { position: "absolute", inset: 0 }}
+            // Conteneur : les reflets d'une finition (éclats de Star Foil) se mesurent sur l'illustration.
+            style={{ ...(frameOk ? zoneStyle(illustrationZone) : { position: "absolute", inset: 0 }), containerType: "inline-size" }}
           >
             {illustrationOk && (
               // Vignette tant que la carte est petite (main, plateau, grille), original en gros
@@ -1042,10 +1050,13 @@ function CardTileView({
                 src={illustrationUrl}
                 alt=""
                 onError={() => setIllustrationFailed(illustrationUrl)}
-                className="h-full w-full object-cover"
+                // L'édition de l'exemplaire se voit AUSSI posée sur le plateau (27/10/2026) :
+                // Monochrome en gris, Negative inversée, reflets des Foil et du Prisma.
+                className={`h-full w-full object-cover ${finish ? FILTRE_FINITION[finish] : ""}`}
                 style={illustrationStyle}
               />
             )}
+            {finish && !illustrationCachee && <RefletsFinition finition={finish} />}
           </div>
         </div>
 
@@ -1071,7 +1082,7 @@ function CardTileView({
             alt=""
             loading="lazy"
             decoding="async"
-            className="pointer-events-none absolute object-cover"
+            className={`pointer-events-none absolute object-cover ${finish ? FILTRE_FINITION[finish] : ""}`}
             style={zoneStyle(illustrationZone)}
           />
         )}
@@ -1082,7 +1093,7 @@ function CardTileView({
             alt=""
             loading="lazy"
             decoding="async"
-            className="pointer-events-none absolute object-contain object-top"
+            className={`pointer-events-none absolute object-contain object-top ${finish ? FILTRE_FINITION[finish] : ""}`}
             style={zoneStyle(DEBORD_ZONE)}
           />
         )}

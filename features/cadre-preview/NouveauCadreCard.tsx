@@ -163,9 +163,7 @@ export function NouveauCadreFace({
           <div className={`h-full w-full bg-gradient-to-b from-slate-700 to-slate-950 ${FILTRE_FINITION[finition]}`} />
         )}
         {/* Finitions à reflets : leur lumière reste DANS l'illustration, sous le liseré. */}
-        {finition === "foil" && <div className={styles.foilReflet} aria-hidden />}
-        {finition === "star-foil" && <EffetStarFoil />}
-        {finition === "prismatic" && <EffetPrismatic />}
+        <RefletsFinition finition={finition} />
         </div>
         {/* Pas de voile continu (maquette du 04/10/2026) : chaque texte porte sa
             propre ombre floue (`HALO`), l'illustration reste lisible partout ailleurs. */}
@@ -457,8 +455,12 @@ function EffetLegendaire() {
   );
 }
 
-/** Filtre de l'illustration par finition — le sujet d'une Abyssale (débord) le reçoit aussi. */
-const FILTRE_FINITION: Record<CardFinish, string> = {
+/**
+ * Filtre de l'illustration par finition — le sujet d'une Abyssale (débord)
+ * le reçoit aussi. Exporté : la tuile du plateau (`CardTile`, ancien cadre)
+ * pose la même finition sur son illustration.
+ */
+export const FILTRE_FINITION: Record<CardFinish, string> = {
   classique: "",
   monochrome: styles.finitionMonochrome!,
   foil: styles.finitionFoil!,
@@ -486,6 +488,19 @@ const ECLATS_STAR_FOIL = [
   { top: 18, left: 6, teinte: 200, delai: 2.8 },
   { top: 70, left: 14, teinte: 60, delai: 1.6 },
 ];
+
+/**
+ * Les REFLETS d'une finition (Foil, Star Foil, Prisma), posés au-dessus de
+ * l'illustration, dans sa découpe. Le parent doit être un conteneur
+ * (`container-type: inline-size`) : les éclats de la Star Foil se mesurent
+ * en `cqw`. Partagé avec la tuile du plateau.
+ */
+export function RefletsFinition({ finition }: { finition: CardFinish }) {
+  if (finition === "foil") return <div className={styles.foilReflet} aria-hidden />;
+  if (finition === "star-foil") return <EffetStarFoil />;
+  if (finition === "prismatic") return <EffetPrismatic />;
+  return null;
+}
 
 function EffetStarFoil() {
   return (
