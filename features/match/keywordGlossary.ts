@@ -50,6 +50,21 @@ export const KEYWORD_GLOSSARY: readonly GlossaryEntry[] = [
   { label: "Éveil", description: "Son effet « Éveil » se résout à son arrivée, et chaque fois qu'un effet déclenche son Éveil.", forms: ["Éveil", "Éveillé", "Éveillée"] },
   { label: "Durée", description: "Se compte en tours de table : un de moins à l'entame de chaque tour de son contrôleur. À zéro, la carte quitte le jeu.", forms: ["Durée"] },
   { label: "Malade", description: "Perd 1 Résistance à chaque tour tant que ce statut reste actif.", forms: ["Malade", "MALADE"] },
+  {
+    label: "Bénie",
+    description: "État d'une Créature (Lot 20). Sans effet propre : ce sont les cartes qui le lisent. Il reste jusqu'à ce qu'un effet le retire, et se lit encore au Cimetière.",
+    forms: ["bénie", "bénies", "béni", "bénis", "Bénédiction"],
+  },
+  {
+    label: "Souillure",
+    description: "Marqueur cumulable (Lot 20). Une Créature qui en porte au moins un est « souillée ». Sans effet propre : ce sont les cartes qui le comptent.",
+    forms: ["Souillure", "souillée", "souillées", "souillé"],
+  },
+  {
+    label: "Marqueur +1/+1",
+    description: "Marqueur cumulable (Lot 21) : +1 Puissance et +1 Résistance par marqueur, tant que la carte reste en jeu.",
+    forms: ["+1/+1"],
+  },
   ...QUALIFICATION_ENTRIES,
 ];
 

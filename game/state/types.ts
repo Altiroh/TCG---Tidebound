@@ -949,6 +949,13 @@ export interface PickUnitsChoice {
   distinctChromaticColors?: boolean;
   /** Couleur capturée à la question, transmise aux effets (`captureChromaticColorFrom`). */
   chosenColor?: ChromaticColor;
+  /**
+   * Suite de la séquence, résolue APRÈS la désignation (`restAfterPick` —
+   * « jusqu'à deux Créatures deviennent bénies. Récupérez 1 Ancrage pour
+   * chaque Créature bénie », La Communion du Sel) : sans elle, la suite se
+   * résolvait avant la réponse, sur un plateau pas encore changé.
+   */
+  continuation?: { effects: EffectDefinition[]; context: import("@/game/effects/resolveEffect").EffectContext };
   turnNumber: number;
 }
 

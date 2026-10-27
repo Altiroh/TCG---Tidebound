@@ -8,6 +8,7 @@ import { LANDES_SET } from "@/game/cards/sets/landes";
 import { LOT17_SET } from "@/game/cards/sets/lot17";
 import { LOT18_PLATEAU_SET, LOT18_SET } from "@/game/cards/sets/lot18";
 import { LOT19_SET } from "@/game/cards/sets/lot19";
+import { LA_MAREE_BENIE_SET } from "@/game/cards/sets/mareeBenie";
 import { EQUIPPABLE_CARD_TYPES, type CardDefinition, type CardInstance } from "@/game/cards/types";
 
 /**
@@ -5185,6 +5186,8 @@ const WRITTEN_SET: CardDefinition[] = [
   ...LOT18_PLATEAU_SET,
   // Lot 19 — Les Chairs Dévoyées : Insectes, Mutants, Homoncules (`game/cards/sets/lot19.ts`).
   ...LOT19_SET,
+  // Lots 20 et 21 — La Marée Bénie : Bienfaits du Fond et Équipage Félin (`game/cards/sets/mareeBenie.ts`).
+  ...LA_MAREE_BENIE_SET,
 ];
 
 export const CORE_SET: CardDefinition[] = WRITTEN_SET.map(withOptionalArrival);

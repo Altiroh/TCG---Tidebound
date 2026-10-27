@@ -65,6 +65,13 @@ export const SUBTYPE_LABELS = {
   insecte: "Insecte",
   mutant: "Mutant",
   homoncule: "Homoncule",
+  // 27/10/2026 : Lots 20 et 21 — La Marée Bénie (Notion, catalogues des lots).
+  felin: "Félin",
+  marin: "Marin",
+  habitant: "Habitant",
+  cultiste: "Cultiste",
+  entite: "Entité",
+  abyssal: "Abyssal",
 
   // --- Rôles ------------------------------------------------------------
   pirate: "Pirate",
@@ -76,6 +83,8 @@ export const SUBTYPE_LABELS = {
   hero: "Héros",
   voleur: "Voleur",
   necromancien: "Nécromancien",
+  // 27/10/2026 : Lot 21 — Amiral Griffenoire.
+  amiral: "Amiral",
 
   // --- Natures ----------------------------------------------------------
   mecanique: "Mécanique",
@@ -92,10 +101,10 @@ export const SUBTYPE_FAMILIES: Readonly<Record<string, readonly SubtypeId[]>> = 
   especes: [
     "volatile", "humain", "poisson", "amphibien", "squelette", "crustace", "bete", "reptile", "monstre",
     "metahumain", "homme-poisson", "homme-bete", "gobelin", "gnome", "nain", "troll", "geant", "dragon", "fantome", "mort-vivant", "grenouille",
-    "insecte", "mutant", "homoncule",
+    "insecte", "mutant", "homoncule", "felin", "entite",
   ],
-  roles: ["pirate", "chevalier", "gardien", "soigneur", "mage", "hero", "voleur", "necromancien"],
-  natures: ["mecanique", "maudit", "sauvage", "mythique"],
+  roles: ["pirate", "chevalier", "gardien", "soigneur", "mage", "hero", "voleur", "necromancien", "amiral", "marin", "habitant", "cultiste"],
+  natures: ["mecanique", "maudit", "sauvage", "mythique", "abyssal"],
 };
 
 /** Au plus trois sous-types par carte (Notion : « deux visibles, sauf exception »). */

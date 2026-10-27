@@ -236,6 +236,12 @@ export function resolveChoice(state: GameState, action: ResolveChoiceAction): Ac
       nextState = applique.state;
       events.push(...applique.events);
     }
+    // La suite de la séquence, désignation faite (ou refusée) : `restAfterPick`.
+    if (choice.continuation) {
+      const suite = resolveEffectSequence(nextState, choice.continuation.effects, choice.continuation.context);
+      nextState = suite.state;
+      events.push(...suite.events);
+    }
     return { ok: true, state: nextState, events };
   }
 

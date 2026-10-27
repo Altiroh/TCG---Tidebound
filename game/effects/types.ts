@@ -878,6 +878,13 @@ export interface EffectDefinition {
    */
   thenEffects?: EffectDefinition[];
   /**
+   * Pour `pickUnits` : les effets QUI SUIVENT dans la même séquence attendent
+   * la désignation (`PickUnitsChoice.continuation`), au lieu de se résoudre
+   * avant la réponse — pour un texte dont la suite lit ce que la désignation
+   * a changé (La Communion du Sel, La Chapelle des Bienheureux).
+   */
+  restAfterPick?: boolean;
+  /**
    * Pour `lookAtDeckTop` : où retournent les cartes regardées et non prises
    * (`DeckLookChoice.restTo`). Défaut : sous la pioche.
    */

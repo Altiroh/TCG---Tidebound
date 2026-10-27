@@ -185,7 +185,13 @@ function check(def: CardDefinition): Violation[] {
   // --- Fréquence -----------------------------------------------------------
   if (/(une (seule )?fois par tour|(la )?premi[èe]re fois ([àa] chaque|par) tour|\b1 fois par tour|\b1re fois par tour|maximum 1 fois par tour|1x par tour)/i.test(text)) {
     const inherent = abilities.some((a) => a.trigger === "startOfTurn" || a.trigger === "endOfTurn");
-    const ok = abilities.some((a) => a.oncePerTurnKey) || hasOncePerTurnField(def) || Boolean(def.activatableOncePerTurn) || inherent;
+    const ok =
+      abilities.some((a) => a.oncePerTurnKey) ||
+      hasOncePerTurnField(def) ||
+      Boolean(def.activatableOncePerTurn) ||
+      // Capacité activable d'une Lande (Brumesel) : une fois par tour et par joueur, par construction.
+      Boolean(def.lande?.activatableOncePerTurn) ||
+      inherent;
     if (!ok) push("once-per-turn", "le texte limite l'effet à une fois par tour, mais aucune capacité n'a `oncePerTurnKey` (ni champ *PerTurn*)");
   }
   if (/la premi[èe]re fois qu/i.test(text) && !/([àa] chaque tour|pendant (son|votre) tour|chacun de (vos|ses) tours|par tour)/i.test(text)) {
@@ -203,6 +209,7 @@ function check(def: CardDefinition): Violation[] {
     const optional =
       abilities.some((a) => a.mode === "optional") ||
       Boolean(def.activatableOncePerTurn) ||
+      Boolean(def.lande?.activatableOncePerTurn) ||
       Boolean(def.chromaticAssemblage) ||
       effects.some((e) => e.refusable === true);
     if (!optional) push("optional", "« vous pouvez » sans capacité `mode: \"optional\"` ni effet refusable : l'effet se résout d'office");

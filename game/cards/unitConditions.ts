@@ -1,6 +1,6 @@
 import { hasMarker, markerCount, type MarkerId } from "@/game/cards/markers";
 import { getCardDefinition } from "@/game/cards/sets/core";
-import { STATUS_BENIE, STATUS_VOILE, UNIT_CARD_TYPES, type CardInstance } from "@/game/cards/types";
+import { STATUS_BENIE, STATUS_VOILE, UNIT_CARD_TYPES, type CardInstance, type CardType } from "@/game/cards/types";
 import type { TideStateName } from "@/game/environment/types";
 
 /**
@@ -29,6 +29,8 @@ export interface UnitCondition {
   withoutMarker?: MarkerId;
   /** La Marée courante est l'un de ces états (« pendant Houle ou Tempête »). */
   tideStateIn?: TideStateName[];
+  /** Est de l'un de ces types de carte (« une Créature adverse attaque », Gros Bisou !). */
+  cardTypes?: CardType[];
   /** Son contrôleur contrôle au moins N AUTRES unités (« tant que vous contrôlez une autre Créature »). */
   controllerOtherUnitsAtLeast?: number;
 }
@@ -68,6 +70,7 @@ export function unitHasVeil(unit: CardInstance, controllerBoard: readonly CardIn
 /** La condition est-elle remplie par cette unité, dans ce contexte ? Sans condition, oui. */
 export function unitMeetsCondition(unit: CardInstance, condition: UnitCondition | undefined, context: UnitConditionContext): boolean {
   if (!condition) return true;
+  if (condition.cardTypes && !condition.cardTypes.includes(getCardDefinition(unit.cardId).type)) return false;
   if (condition.blessed !== undefined && isBlessed(unit) !== condition.blessed) return false;
   if (condition.hasVeil !== undefined && unitHasVeil(unit, context.controllerBoard) !== condition.hasVeil) return false;
   if (condition.withMarker && !hasMarker(unit, condition.withMarker)) return false;

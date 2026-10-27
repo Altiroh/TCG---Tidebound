@@ -9,6 +9,7 @@ import {
   BOOSTER_DUNGEON_ET_LADALLE,
   BOOSTER_ECLATS_EN_SELLE,
   BOOSTER_ETRANGETE_SOUS_MARINE,
+  BOOSTER_LA_MAREE_BENIE,
   BOOSTER_LA_MUTATION_MONDIALE,
   BOOSTER_POISSONS_PAS_FRAIS,
   BOOSTER_NECESSAIRE_DU_MARIN,
@@ -235,6 +236,24 @@ const EXTENSIONS: readonly BoosterExtension[] = [
       "Le ciel s'est ouvert au-dessus de la jungle, et il en tombe des aventuriers qui jurent connaître le chemin, " +
       "lancent les dés à chaque porte et rentrent à l'auberge plus souvent qu'au trésor. En bas, les Opalins les " +
       "regardent tomber : ils veillent depuis toujours, s'éveillent niveau après niveau, et ne laissent rien passer.",
+  },
+  {
+    // Lots 20 et 21 (27/10/2026) : nom choisi le 27/10/2026. Deux familles à
+    // parts proches (36 et 30 cartes) : le rayon annonce le LOT, pas l'une
+    // des deux. Accroche et lore : BROUILLON à valider, puis à reporter dans
+    // « Boosters & économie » § Lore & extension.
+    boosterId: BOOSTER_LA_MAREE_BENIE,
+    name: "La Marée Bénie",
+    code: "MB",
+    kind: "extension",
+    archetype: null,
+    familyLabel: "Bienfaits du Fond · Équipage Félin",
+    tagline: "Bénis, souillés, retombés",
+    lore:
+      "Au port, on bénit ceux qui partent et on fait boire l'eau du Fond à ceux qui restent : certains en reviennent " +
+      "meilleurs, d'autres pas tout à fait eux-mêmes. Sur le quai d'en face, un équipage de chats qui retombe " +
+      "toujours sur ses pattes tient la barre entre le Calme et la Houle. La Marée Bénie, c'est la même eau pour " +
+      "les deux — et chacun jure qu'elle lui a porté chance.",
   },
 ];
 

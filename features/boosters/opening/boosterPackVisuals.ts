@@ -108,6 +108,21 @@ export const DEFAULT_PACK_VISUAL: BoosterPackVisual = {
   cardBacks: PACK_CARD_BACKS,
 };
 
+/**
+ * La Marée Bénie — SACHET PROVISOIRE (27/10/2026) : les planches du Défaut
+ * reteintées en vert d'eau, même calage. Les vraies planches se déposeront
+ * sous les mêmes noms, sans toucher au code tant que leur gabarit est celui-ci.
+ */
+export const LA_MAREE_BENIE_PACK_VISUAL: BoosterPackVisual = {
+  ...DEFAULT_PACK_VISUAL,
+  id: "la-maree-benie",
+  assets: {
+    closed: "/assets/boosters/la-maree-benie/la-maree-benie.webp",
+    openTop: "/assets/boosters/la-maree-benie/la-maree-benie-open-top.webp",
+    openBottom: "/assets/boosters/la-maree-benie/la-maree-benie-open-bottom.webp",
+  },
+};
+
 export const WELCOME_PACK_VISUAL: BoosterPackVisual = {
   id: "welcome",
   assets: {
@@ -271,6 +286,7 @@ const BOOSTER_VISUAL_BY_ID: Record<string, BoosterPackVisual> = {
   "la-mutation-mondiale": LA_MUTATION_MONDIALE_PACK_VISUAL,
   // Le booster du Lot 17 garde son identifiant de lancement ; son nom et ses planches sont « Perturbation dimensionnelle ».
   "dungeon-et-ladalle": PERTURBATION_DIMENSIONNELLE_PACK_VISUAL,
+  "la-maree-benie": LA_MAREE_BENIE_PACK_VISUAL,
 };
 
 export const BOOSTER_PACK_VISUALS: readonly BoosterPackVisual[] = [
@@ -282,6 +298,7 @@ export const BOOSTER_PACK_VISUALS: readonly BoosterPackVisual[] = [
   ECLATS_EN_SELLE_PACK_VISUAL,
   LA_MUTATION_MONDIALE_PACK_VISUAL,
   PERTURBATION_DIMENSIONNELLE_PACK_VISUAL,
+  LA_MAREE_BENIE_PACK_VISUAL,
   WELCOME_PACK_VISUAL,
 ];
 
@@ -340,6 +357,7 @@ const SHELF_GLOW_BY_ID: Readonly<Record<string, string>> = {
   "etrangete-sous-marine": "#ff4f5f",
   "la-veillee-des-disparus": "#b4a4ff",
   "eclats-en-selle": "#c67cff",
+  "la-maree-benie": "#4fd1a0",
 };
 
 export function getBoosterShelfGlow(boosterId: string): string {

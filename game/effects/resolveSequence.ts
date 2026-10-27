@@ -97,6 +97,15 @@ export function resolveEffectSequence(
       break;
     }
 
+    // `restAfterPick` : la suite attend la désignation de ce `pickUnits`.
+    if (effect.type === "pickUnits" && effect.restAfterPick && nextState.pendingChoice?.kind === "pickUnits" && nextState.pendingChoice !== questionAvant && !nextState.pendingChoice.continuation) {
+      const rest = effects.slice(i + 1);
+      if (rest.length > 0) {
+        nextState = { ...nextState, pendingChoice: { ...nextState.pendingChoice, continuation: { effects: [...rest], context: { ...context } } } };
+        break;
+      }
+    }
+
     let choice = nextState.pendingChoice;
     // La défausse qui suit la pioche : les cartes piochées sont hors d'atteinte.
     const exclues = choice?.kind === "handDiscard" && !choice.continuation ? piochees.get(choice.playerId) : undefined;

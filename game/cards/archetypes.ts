@@ -27,7 +27,9 @@ export type ArchetypeId =
   | "alteres"
   | "opalin"
   | "dungeon-et-ladalle"
-  | "theatre-englouti";
+  | "theatre-englouti"
+  | "bienfaits-du-fond"
+  | "equipage-felin";
 
 /** Libellé humain — outils de design, journaux, tests. Jamais rendu sur une carte. */
 export const ARCHETYPE_LABELS: Record<ArchetypeId, string> = {
@@ -66,6 +68,11 @@ export const ARCHETYPE_LABELS: Record<ArchetypeId, string> = {
   // famille s'affiche en bas de la carte comme les autres ; « Marionnette »
   // reste le sous-type que ses effets visent.
   "theatre-englouti": "Théâtre Englouti",
+  // Lots 20 et 21 (Notion, 27/10/2026) — le booster La Marée Bénie. Les
+  // Bienfaits du Fond bénissent et souillent (`STATUS_BENIE`, marqueur
+  // Souillure) ; l'Équipage Félin vit de Voile et de marqueurs +1/+1.
+  "bienfaits-du-fond": "Les Bienfaits du Fond",
+  "equipage-felin": "L'Équipage Félin",
 };
 
 /**

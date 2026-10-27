@@ -655,6 +655,80 @@ const LOT19_RARITY: Record<string, CardRarity> = {
 };
 
 /**
+ * Lots 20 et 21 — La Marée Bénie (Notion, catalogue commun du 27/10/2026) :
+ * raretés reprises telles quelles. Les variantes Abyssales du Grand-Bienfaiteur
+ * et d'Amiral Griffenoire se déduisent de leur suffixe.
+ */
+const LA_MAREE_BENIE_RARITY: Record<string, CardRarity> = {
+  "le-pecheur-en-deuil": "rare",
+  "le-fils-du-pecheur": "uncommon",
+  "le-vieux-pecheur": "common",
+  "le-bapteme-du-fond": "uncommon",
+  "pere-goulven-grand-benisseur": "rare",
+  "leau-est-excellente": "common",
+  "fievre-salee": "uncommon",
+  "la-fontaine-du-port": "rare",
+  "la-cloche-des-absents": "uncommon",
+  "le-puits-sale": "common",
+  "la-procession-des-marees": "rare",
+  "gros-bisou": "common",
+  "le-dernier-refractaire": "rare",
+  "le-poisson-sans-yeux": "common",
+  "le-marin-aux-branchies": "uncommon",
+  "la-prise-du-siecle": "common",
+  "refus-de-benediction": "uncommon",
+  "le-filet-qui-respire": "rare",
+  "maree-de-fievre": "rare",
+  "les-offrandes-du-quai": "common",
+  "le-noye-revenu": "rare",
+  "le-gardien-des-benis": "uncommon",
+  "la-communion-du-sel": "rare",
+  "le-berceau-du-fond": "legendary",
+  "ceux-qui-ont-bu": "common",
+  "le-grand-bienfaiteur": "legendary",
+  "la-mer-rend-les-siens": "rare",
+  "le-vent-tourne": "common",
+  "la-colere-des-profondeurs": "uncommon",
+  "lancre-des-marees": "rare",
+  "brumesel": "legendary",
+  "le-fidele-du-bienfaiteur": "common",
+  "lapotre-des-profondeurs": "rare",
+  "la-chapelle-des-bienheureux": "uncommon",
+  "lencensoir-des-abysses": "uncommon",
+  "la-carte-des-brumes": "uncommon",
+  "capitaine-moustache": "rare",
+  "mousse-patapouf": "common",
+  "le-chat-de-vigie": "uncommon",
+  "le-matelot-aux-neuf-vies": "common",
+  "la-timoniere-ecume": "uncommon",
+  "le-gros-bosco": "rare",
+  "le-quartier-maitre-griffacier": "uncommon",
+  "sir-ronron-chevalier-du-pont": "rare",
+  "la-guerisseuse-aux-coussinets": "uncommon",
+  "le-petit-porte-bouclier": "common",
+  "une-vie-de-plus": "common",
+  "ration-de-poisson-frais": "common",
+  "le-bastion-des-coussinets": "rare",
+  "la-cabine-du-capitaine": "rare",
+  "griffe-rousse-labordeur": "uncommon",
+  "la-duelliste-aux-sept-griffes": "rare",
+  "le-canonnier-ronchon": "uncommon",
+  "amiral-griffenoire": "legendary",
+  "a-labordage": "uncommon",
+  "on-retombe-sur-nos-pattes": "rare",
+  "la-mer-aux-coussinets": "rare",
+  "le-gouvernail-des-marees": "rare",
+  "la-derniere-sardine": "common",
+  "lappat-a-moustaches": "rare",
+  "la-vigie-aux-pattes-seches": "uncommon",
+  "le-medecin-de-bord": "rare",
+  "toutes-voiles-dehors": "uncommon",
+  "la-patte-du-destin": "rare",
+  "la-cloche-du-rassemblement": "uncommon",
+  "les-neuf-vies-de-lequipage": "legendary",
+};
+
+/**
  * Rareté d'une carte. Les variantes Abyssales sont déduites de leur slug
  * plutôt que listées une par une : c'est une règle de design, pas une
  * décision carte par carte, et ça évite d'oublier une variante ajoutée
@@ -674,6 +748,7 @@ export function rarityForCardId(cardId: string): CardRarity | null {
     LOT17_RARITY[cardId] ??
     LOT18_RARITY[cardId] ??
     LOT19_RARITY[cardId] ??
+    LA_MAREE_BENIE_RARITY[cardId] ??
     PROVISIONAL_RARITY[cardId] ??
     null
   );

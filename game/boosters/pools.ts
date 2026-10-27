@@ -41,6 +41,8 @@ export const BOOSTER_ECLATS_EN_SELLE = "eclats-en-selle";
 export const BOOSTER_LA_MUTATION_MONDIALE = "la-mutation-mondiale";
 /** B8 — Perturbation dimensionnelle (Lot 17 : Dungeon et Ladalle / Opalins). L'identifiant de lancement est resté. */
 export const BOOSTER_DUNGEON_ET_LADALLE = "dungeon-et-ladalle";
+/** B9 — La Marée Bénie : Lots 20 et 21, Bienfaits du Fond × Équipage Félin (27/10/2026). */
+export const BOOSTER_LA_MAREE_BENIE = "la-maree-benie";
 
 /**
  * B1 — Défaut. 63 entrées (61 + les deux anti-swarm du 21/09/2026, qui
@@ -548,6 +550,14 @@ const DUNGEON_ET_LADALLE_POOL: readonly string[] = CORE_SET.filter((card) => car
   (card) => card.id
 );
 
+/**
+ * B9 — La Marée Bénie (Lots 20 et 21, 27/10/2026). Même règle que B7 et B8 :
+ * les cartes des deux lots et elles seules — 66, plus les Abyssales du
+ * Grand-Bienfaiteur et d'Amiral Griffenoire, tirées au seul slot Profondeur
+ * (migration `20261117120000_booster_la_maree_benie.sql`).
+ */
+const LA_MAREE_BENIE_POOL: readonly string[] = CORE_SET.filter((card) => card.setCode === BOOSTER_LA_MAREE_BENIE).map((card) => card.id);
+
 const BIENVENUE: readonly string[] = DEFAUT.filter((cardId) => {
   const def = CORE_SET.find((card) => card.id === cardId);
   if (!def) return false;
@@ -579,6 +589,7 @@ export const BOOSTER_POOLS: Readonly<Record<string, readonly string[]>> = {
   [BOOSTER_ECLATS_EN_SELLE]: ECLATS_EN_SELLE_POOL,
   [BOOSTER_LA_MUTATION_MONDIALE]: LA_MUTATION_MONDIALE_POOL,
   [BOOSTER_DUNGEON_ET_LADALLE]: DUNGEON_ET_LADALLE_POOL,
+  [BOOSTER_LA_MAREE_BENIE]: LA_MAREE_BENIE_POOL,
   [BOOSTER_BIENVENUE]: BIENVENUE,
 };
 
@@ -596,6 +607,7 @@ export const PURCHASABLE_BOOSTER_IDS: readonly string[] = [
   BOOSTER_ECLATS_EN_SELLE,
   BOOSTER_LA_MUTATION_MONDIALE,
   BOOSTER_DUNGEON_ET_LADALLE,
+  BOOSTER_LA_MAREE_BENIE,
 ];
 
 /**

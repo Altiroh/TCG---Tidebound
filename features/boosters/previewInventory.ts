@@ -33,6 +33,7 @@ const OWNED: Readonly<Record<string, number>> = {
   "eclats-en-selle": 3,
   "la-mutation-mondiale": 2,
   "dungeon-et-ladalle": 1,
+  "la-maree-benie": 4,
 };
 
 /** Boosters ouverts depuis la dernière Abyssale, pour voir le compteur de pity. */

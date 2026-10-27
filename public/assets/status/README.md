@@ -17,7 +17,8 @@ Posées par `features/match/StatusBadge.tsx`, superposées au cadre par
 | `pied-marin.webp` | Pied marin — peut attaquer dès son arrivée |
 | `eveil.webp` | Éveil (Lot 16) — la carte a un effet « Éveil — » ; le nombre d'Éveils du tour s'y inscrit |
 | `tour.webp` | Médaillon du compteur de tours restants (Structures à durée) |
-| `voile.webp` | Voile — conféré par un Équipement : la première destruction du porteur est évitée, l'Équipement est détruit à sa place |
+| `voile.webp` | Voile — conféré par un Équipement (l'Équipement est détruit à la place du porteur) ou INTRINSÈQUE (Lot 21, consommé à la destruction empêchée, le porteur reste à 1 Résistance). Ne se cumule pas |
+| `benie.webp` | Bénie (Lot 20) — provisoire (27/10/2026), à repeindre sous le même nom |
 
 `tour.webp` porte un médaillon CLAIR : le texte superposé y est sombre, là
 où il est clair sur les autres. C'est `StatusBadge` qui en décide, pas
