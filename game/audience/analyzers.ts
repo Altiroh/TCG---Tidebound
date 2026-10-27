@@ -14,9 +14,40 @@ import type { AudienceSignal, MatchFacts } from "@/game/audience/types";
  */
 export type Analyzer = (facts: MatchFacts) => AudienceSignal[];
 
-/** Le rythme d'une partie de `tableTurns` tours de table, une fois finie. */
-function tempoSignal(tableTurns: number): AudienceSignal {
-  if (tableTurns <= 3) return { id: "tempo.expedited", family: "rythme", label: "Trop vite expédiée", weight: -20, salience: 6 };
+/**
+ * Ce que le joueur a JOUÉ, gestes comptés : cartes, réactions, capacités de
+ * Navire, manipulations de Marée. Sert à juger une partie courte : courte
+ * et vide, elle ennuie ; courte et pleine, c'est une charge.
+ */
+function gestesJoues(facts: MatchFacts): number {
+  return facts.cardsPlayed + facts.reactions + facts.shipAbilities + facts.tideManipulations;
+}
+
+/**
+ * Une partie BRÈVE (3 tours de table ou moins), jugée sur ce qui s'y est
+ * joué (27/10/2026). Avant, elle coûtait toujours −20 : un double plateau
+ * d'Éveil monté en trois tours, avec tous ses effets et une prise de risque,
+ * perdait presque autant que ce qu'il avait gagné. Désormais :
+ *  - pleine (8 gestes ou plus, ou des moments forts à 20 points) : une
+ *    charge éclair, que le public salue ;
+ *  - bien jouée (5 gestes, ou 10 points de moments) : à peine un regret ;
+ *  - vide : « Trop vite expédiée », comme avant.
+ */
+function briefSignal(facts: MatchFacts): AudienceSignal {
+  const gestes = gestesJoues(facts);
+  if (gestes >= 8 || facts.momentsTotal >= 20) {
+    return { id: "tempo.blitz", family: "rythme", label: "Une charge éclair, pleine d'éclats", weight: 3, salience: 3 };
+  }
+  if (gestes >= 5 || facts.momentsTotal >= 10) {
+    return { id: "tempo.hurried", family: "rythme", label: "Vite expédiée, mais bien jouée", weight: -6, salience: 4 };
+  }
+  return { id: "tempo.expedited", family: "rythme", label: "Trop vite expédiée", weight: -20, salience: 6 };
+}
+
+/** Le rythme d'une partie finie (`facts.tableTurns` tours de table). */
+function tempoSignal(facts: MatchFacts): AudienceSignal {
+  const tableTurns = facts.tableTurns;
+  if (tableTurns <= 3) return briefSignal(facts);
   // Une partie éclair a son nerf (08/10/2026) : elle ne valait rien, et une victoire rapide finissait sous la barre.
   if (tableTurns <= 5) return { id: "tempo.short", family: "rythme", label: "Une partie éclair", weight: 4, salience: 1 };
   if (tableTurns <= 14) return { id: "tempo.full", family: "rythme", label: "Une vraie traversée", weight: 12, salience: 2 };
@@ -36,8 +67,8 @@ function tempoSignal(tableTurns: number): AudienceSignal {
  *   27/09/2026 : il perdait jusqu'à 17 points de spectacle).
  */
 const tempo: Analyzer = (facts) => {
-  if (!facts.finished) return facts.tableTurns >= 6 ? [tempoSignal(facts.tableTurns)] : [];
-  const signal = tempoSignal(facts.tableTurns);
+  if (!facts.finished) return facts.tableTurns >= 6 ? [tempoSignal(facts)] : [];
+  const signal = tempoSignal(facts);
   if (facts.opponentLeft && signal.weight <= 0) {
     return [{ id: "tempo.forfeit", family: "rythme", label: "L'adversaire a quitté la table", weight: 0, salience: 2 }];
   }

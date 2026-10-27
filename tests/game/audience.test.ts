@@ -60,6 +60,19 @@ describe("moteur d'audience — le verdict de fin", () => {
     expect(quick.highlights).toContain("Trop vite expédiée");
   });
 
+  it("une partie courte mais PLEINE d'effets n'est pas punie comme une partie vide", () => {
+    const vide = analyzeMatch(game([play("chope"), endTurn()], { turnNumber: 5, winnerId: "p1" }), "p1");
+    const huit = Array.from({ length: 8 }, (_, i) => play(`carte-${i}`));
+    const pleine = analyzeMatch(game([...huit, endTurn()], { turnNumber: 5, winnerId: "p1" }), "p1");
+    const cinq = analyzeMatch(game([...huit.slice(0, 5), endTurn()], { turnNumber: 5, winnerId: "p1" }), "p1");
+    const ids = (verdict: typeof vide) => verdict.signals.map((signal) => signal.id);
+    expect(ids(vide)).toContain("tempo.expedited");
+    expect(ids(cinq)).toContain("tempo.hurried");
+    expect(ids(pleine)).toContain("tempo.blitz");
+    expect(ids(pleine)).not.toContain("tempo.expedited");
+    expect(pleine.spectacle).toBeGreaterThan(vide.spectacle);
+  });
+
   it("un adversaire qui quitte tôt la table ne vaut pas « trop vite expédiée » au gagnant", () => {
     const forfeit = analyzeMatch(game([{ ...base, type: "GAME_ENDED", winnerId: "p1", reason: "concede" }], { turnNumber: 4, winnerId: "p1" }), "p1");
     expect(forfeit.signals.map((signal) => signal.id)).not.toContain("tempo.expedited");
