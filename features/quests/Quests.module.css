@@ -177,7 +177,7 @@
   --u: calc(100cqw / 1250);
   position: relative;
   width: min(100cqw, 100cqh * 1250 / 878);
-  container-type: inline-size;
+  container: colonne / inline-size;
   pointer-events: auto;
   color: #2b1c10;
 }

@@ -248,8 +248,21 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: calc(6 * var(--u));
-  padding: 0;
+  /*
+   * La plaque a la taille du bois peint : ce qu'elle porte s'y BORNE (`cqh`).
+   * Deux gains et le tampon débordaient sur un petit téléphone ou avec le
+   * texte agrandi — « +25 Tides » mordait le haut, le tampon le bas.
+   *
+   * `--u` est une expression en `cqw` : résolue DANS la plaque, elle se
+   * mesurerait sur la plaque. La taille de base est donc posée ici (sur la
+   * plaque elle-même, ses unités se lisent encore sur la colonne), et tout
+   * ce qu'elle porte s'exprime en `em`, plafonné en `cqh`.
+   */
+  container: plaque / size;
+  font-size: max(11px, calc(21 * var(--u) * var(--tb-text-scale, 1)));
+  gap: min(0.29em, 4cqh);
+  /* Le bois peint commence un peu sous le haut de la boîte. */
+  padding: 0.45em 0 0.15em;
   border: 0;
   border-radius: calc(4 * var(--u));
   background: none;
@@ -274,9 +287,9 @@ button.plaque:focus-visible {
 .plaqueLine {
   display: flex;
   align-items: center;
-  gap: calc(10 * var(--u));
+  gap: 0.48em;
   font-family: var(--tb-font-display);
-  font-size: max(11px, calc(21 * var(--u) * var(--tb-text-scale, 1)));
+  font-size: min(1em, 19cqh, 13cqw);
   font-weight: 700;
   letter-spacing: 0.02em;
   line-height: 1;
@@ -289,7 +302,7 @@ button.plaque:focus-visible {
   display: grid;
   flex: 0 0 auto;
   place-items: center;
-  width: calc(34 * var(--u));
+  width: min(1.62em, 24cqh);
   aspect-ratio: 1;
 }
 
@@ -303,7 +316,7 @@ button.plaque:focus-visible {
 
 .plaqueState {
   font-family: var(--tb-font-body);
-  font-size: max(9.5px, var(--tb-fs-floor, 0px), calc(12 * var(--u) * var(--tb-text-scale, 1)));
+  font-size: min(max(9.5px, var(--tb-fs-floor, 0px), 0.571em), 12cqh);
   font-style: italic;
   color: #5a4330;
 }
@@ -311,12 +324,12 @@ button.plaque:focus-visible {
 /* « Réclamer » : un tampon rouge sur la plaque. */
 .plaqueClaim {
   align-self: flex-start;
-  margin-left: calc(44 * var(--u));
-  padding: calc(2 * var(--u)) calc(9 * var(--u));
-  border: calc(2.5 * var(--u)) solid currentColor;
-  border-radius: calc(4 * var(--u));
+  margin-left: min(3.14em, 22cqh);
+  padding: min(0.14em, 1.5cqh) 0.64em;
+  border: min(0.18em, 2cqh) solid currentColor;
+  border-radius: 0.29em;
   font-family: var(--tb-font-display);
-  font-size: max(10px, var(--tb-fs-floor, 0px), calc(14 * var(--u) * var(--tb-text-scale, 1)));
+  font-size: min(max(10px, var(--tb-fs-floor, 0px), 0.667em), 13cqh, 10cqw);
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -410,15 +423,15 @@ button.plaque:focus-visible {
 /*
  * Colonne étroite (iPhone SE couché, ~560 px) : la devise n'a plus la
  * place dans le papier vierge — elle mordait sur la route —, et le tampon
- * « Réclamer » se resserre pour rester sur sa plaque.
+ * « Réclamer » se resserre (sa marge, elle, reste : sans elle, penché, il
+ * sortait du bois à gauche).
  */
-@container (max-width: 640px) {
+@container colonne (max-width: 640px) {
   .tagline {
     display: none;
   }
 
   .plaqueClaim {
-    margin-left: 0;
     letter-spacing: 0.01em;
   }
 }

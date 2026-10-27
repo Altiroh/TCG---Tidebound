@@ -54,7 +54,8 @@ export function previewQuestBoard(): QuestBoard {
 /** Traversée I bouclée (deux paliers à réclamer), II en cours à l'escale 3, III verrouillée. */
 export function previewVoyageBoard(): VoyageBoard {
   const plan: Record<string, { status: VoyageStatus; tier: number; claimed: number; progress: number }> = {
-    "premier-quart": { status: "done", tier: 5, claimed: 3, progress: 0 },
+    // Palier 3 à réclamer : deux gains ET le tampon, le cas le plus chargé de la plaque.
+    "premier-quart": { status: "done", tier: 5, claimed: 2, progress: 0 },
     "eaux-troubles": { status: "current", tier: 2, claimed: 2, progress: 1 },
     "grand-fond": { status: "locked", tier: 0, claimed: 0, progress: 0 },
   };
