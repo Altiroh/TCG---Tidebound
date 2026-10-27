@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, type ReactNode } from "react";
-import { CardRulesPanel } from "@/features/match/table/CardRulesPanel";
+import { CardKeywordsPanel, CardRulesPanel } from "@/features/match/table/CardRulesPanel";
 import styles from "@/features/match/table/Table.module.css";
 import game from "@/features/shell/GameScreen.module.css";
 
@@ -175,6 +175,7 @@ export function TableCardZoom({ children, onDetail, onClose, actions = [], legen
             ))}
           </dl>
         )}
+        {rulesCardId && <CardKeywordsPanel cardId={rulesCardId} exclude={legend.map((item) => item.label)} />}
 
         <div className={styles.cardZoomFooter}>
           {position && position.count > 1 && (

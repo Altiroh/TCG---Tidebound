@@ -71,7 +71,7 @@ import { landeAsset, landeScene } from "@/features/match/landes/landeScenes";
 import { DragLayer, type AimTone } from "@/features/match/table/DragLayer";
 import { GameStage } from "@/features/match/table/GameStage";
 import { GameViewport } from "@/features/match/table/GameViewport";
-import { CardRulesPanel, CardStatesPanel } from "@/features/match/table/CardRulesPanel";
+import { CardKeywordsPanel, CardRulesPanel, CardStatesPanel } from "@/features/match/table/CardRulesPanel";
 import { HoverCardPreview } from "@/features/match/table/HoverCardPreview";
 import { MotionLayer } from "@/features/match/table/MotionLayer";
 import { OpponentZone } from "@/features/match/table/OpponentZone";
@@ -1532,6 +1532,8 @@ export function TableBoard(props: TableBoardProps) {
           const found =
             byId.get(preview.id) ?? (landeInstance && preview.id === landeInstance.instanceId ? { instance: landeInstance, owner: landeOwner } : undefined);
           const onBoard = Boolean(found?.owner?.board.some((unit) => unit.instanceId === found.instance.instanceId));
+          const legend =
+            onBoard && found?.owner ? cardStatusLegend(found.instance, tideState, auraContextFor(found.owner), state.turnNumber) : [];
           return found ? (
             <HoverCardPreview
               anchor={preview.rect}
@@ -1539,7 +1541,8 @@ export function TableBoard(props: TableBoardProps) {
                 <div className={styles.previewAside}>
                   <CardRulesPanel cardId={found.instance.cardId} />
                   {/* Les états, en toutes lettres : un badge seul ne dit pas ce qu'il fait. */}
-                  {onBoard && found.owner && <CardStatesPanel legend={cardStatusLegend(found.instance, tideState, auraContextFor(found.owner), state.turnNumber)} />}
+                  <CardStatesPanel legend={legend} />
+                  <CardKeywordsPanel cardId={found.instance.cardId} exclude={legend.map((item) => item.label)} />
                 </div>
               }
             >

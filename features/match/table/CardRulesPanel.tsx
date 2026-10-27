@@ -1,6 +1,7 @@
 "use client";
 
 import { getCardDefinition } from "@/game";
+import { glossaryTermsIn } from "@/features/match/keywordGlossary";
 import styles from "@/features/match/table/Table.module.css";
 
 /**
@@ -40,6 +41,29 @@ export function CardStatesPanel({ legend }: { legend: ReadonlyArray<{ label: str
           <div key={item.label}>
             <dt>{item.label}</dt>
             <dd>{item.description}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
+  );
+}
+
+/**
+ * Les MOTS-CLÉS cités par le texte de la carte (Garde, Sabordage, Chaîne,
+ * Pied marin, qualifications…), chacun avec sa règle (`KEYWORD_GLOSSARY`).
+ * `exclude` : libellés déjà expliqués ailleurs (ex. les états de la carte
+ * posée), pour ne pas les dire deux fois. Rien sans mot-clé reconnu.
+ */
+export function CardKeywordsPanel({ cardId, exclude = [] }: { cardId: string; exclude?: readonly string[] }) {
+  const terms = glossaryTermsIn(getCardDefinition(cardId).text).filter((term) => !exclude.includes(term.label));
+  if (terms.length === 0) return null;
+  return (
+    <section className={`${styles.rulesPanel} ${styles.statesPanel}`} aria-label="Mots-clés de la carte">
+      <dl className={styles.statesList}>
+        {terms.map((term) => (
+          <div key={term.label}>
+            <dt>{term.label}</dt>
+            <dd>{term.description}</dd>
           </div>
         ))}
       </dl>

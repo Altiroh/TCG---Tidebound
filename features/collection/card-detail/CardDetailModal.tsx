@@ -226,7 +226,7 @@ export function CardDetailModal({
           <CardDetailStats stats={stats} />
           {(ligne.lead || ligne.text) && <CardDetailEffect text={ligne.text} lead={ligne.lead} />}
           {qualifications.length > 0 && <CardDetailQualifications chips={qualifications} />}
-          {keywords.length > 0 && <CardDetailKeywords keywords={keywords} />}
+          <CardDetailKeywords keywords={keywords} text={ligne.text} />
           <CardDetailMeta model={model} onShowCounterpart={onShowCard} />
           {showEditionControls && (
             <>
