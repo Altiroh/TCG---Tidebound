@@ -29,6 +29,7 @@ import {
   processForcedTideTransitions,
   processLoneCreatureChanges,
   processPowerGains,
+  processDamagedTriggers,
   processPlayerFacts,
   processReasonGained,
   processSurvivedDamage,
@@ -265,12 +266,15 @@ export function dispatch(state: GameState, action: PlayerAction): ActionResult {
     // « Quand un effet adverse cible une autre unité que vous contrôlez »
     // (L'Intangible, Lot 16) : même événement que le Signal Violet.
     const ciblees = processUnitTargetedTriggers(signaux.state, [...result.events, ...deaths.events], tour);
-    const survies = processSurvivedDamage(ciblees.state, [...coupsReportes, ...result.events, ...deaths.events], tour);
-    const raison = processReasonGained(survies.state, [...result.events, ...signaux.events, ...ciblees.events, ...survies.events], tour);
+    // « Subit des dégâts » (hors combat) avant « survit à des dégâts » : une
+    // perte de Résistance (Capitano) peut changer qui a survécu.
+    const blessees = processDamagedTriggers(ciblees.state, [...coupsReportes, ...result.events, ...deaths.events], tour);
+    const survies = processSurvivedDamage(blessees.state, [...coupsReportes, ...result.events, ...deaths.events], tour);
+    const raison = processReasonGained(survies.state, [...result.events, ...signaux.events, ...ciblees.events, ...blessees.events, ...survies.events], tour);
     // Lot 17 : Armure gagnée, jet résolu, carte sous la pioche, pioche hors
     // tour, carte sortie du Cimetière, Lande posée, dégâts infligés.
-    const faits = processPlayerFacts(raison.state, [...result.events, ...deaths.events, ...signaux.events, ...ciblees.events, ...survies.events, ...raison.events], tour);
-    const produits = [...signaux.events, ...ciblees.events, ...survies.events, ...raison.events, ...faits.events];
+    const faits = processPlayerFacts(raison.state, [...result.events, ...deaths.events, ...signaux.events, ...ciblees.events, ...blessees.events, ...survies.events, ...raison.events], tour);
+    const produits = [...signaux.events, ...ciblees.events, ...blessees.events, ...survies.events, ...raison.events, ...faits.events];
     if (produits.length > 0) {
       const encore = processDeaths(faits.state, state.turnNumber);
       deaths = { state: encore.state, events: [...deaths.events, ...produits, ...encore.events] };

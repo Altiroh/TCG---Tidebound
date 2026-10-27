@@ -1711,6 +1711,42 @@ export function aSurvecuAuxDegats(state: GameState, instanceId: string): boolean
 }
 
 /**
+ * SUBIR DES DÉGÂTS hors combat (« La première fois qu'il subit des dégâts »,
+ * Il Capitano Naufragé) : pour chaque unité touchée par un EFFET ou par la
+ * Marée pendant l'action, et encore en jeu, déclenche `onDamaged`.
+ *
+ * Le combat déclenche le sien lui-même, au coup (`attack.ts`) : les dégâts
+ * `cause: "combat"` sont donc écartés ici, sinon ils compteraient deux fois.
+ * Jusqu'au 27/10/2026, rien ne le faisait pour un effet : un Objet, ou le
+ * tir d'arrivée du Canonnier Fêlé, blessait le Capitano sans qu'il perde
+ * ses 3 Puissance et 2 Résistance (retour de joueur).
+ *
+ * Un seul déclenchement par unité et par action, comme `onSurvivedDamage`.
+ */
+export function processDamagedTriggers(
+  state: GameState,
+  events: readonly GameEvent[],
+  turnNumber: number
+): { state: GameState; events: GameEvent[] } {
+  const touchees = new Set<string>();
+  for (const event of events) {
+    if (event.type !== "DAMAGE" || !event.targetInstanceId || event.amount <= 0 || event.cause === "combat") continue;
+    touchees.add(event.targetInstanceId);
+  }
+
+  let nextState = state;
+  const produced: GameEvent[] = [];
+  for (const instanceId of touchees) {
+    const found = findBoardUnit(nextState, instanceId);
+    if (!found || found.unit.pendingRemoval) continue;
+    const result = processTrigger(nextState, { trigger: "onDamaged", playerId: found.playerId, cardId: found.unit.cardId, sourceInstanceId: instanceId }, turnNumber, 1);
+    nextState = result.state;
+    produced.push(...result.events);
+  }
+  return { state: nextState, events: produced };
+}
+
+/**
  * SURVIVRE AUX DÉGÂTS (Lot 15 — Équipage de Verre) : pour chaque unité qui a
  * encaissé des dégâts pendant l'action et qui est ENCORE EN JEU une fois les
  * morts réglées, déclenche `onSurvivedDamage`.
