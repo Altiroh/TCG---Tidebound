@@ -1,0 +1,63 @@
+/* La barre des scénarios : en bas, au-dessus de tout, repliée sur une ligne qui défile. */
+.scene {
+  min-height: 100dvh;
+}
+
+.bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px max(var(--tb-safe-right, 0px), 10px) max(var(--tb-safe-bottom, 0px), 6px) max(var(--tb-safe-left, 0px), 10px);
+  overflow-x: auto;
+  background: rgba(8, 10, 12, 0.92);
+  border-top: 1px solid rgba(230, 190, 110, 0.4);
+  scrollbar-width: thin;
+}
+
+.title {
+  flex: none;
+  margin-right: 6px;
+  font-size: 0.75rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #e9c06e;
+}
+
+.chip {
+  flex: none;
+  padding: 4px 10px;
+  border: 1px solid rgba(236, 240, 244, 0.25);
+  border-radius: 999px;
+  background: transparent;
+  color: #dfe5ea;
+  font: inherit;
+  font-size: 0.8rem;
+  white-space: nowrap;
+  cursor: var(--tb-cursor-pointer);
+}
+
+.chip[aria-pressed="true"] {
+  border-color: #e9c06e;
+  background: rgba(233, 192, 110, 0.18);
+  color: #fff3d4;
+}
+
+.sep {
+  flex: none;
+  width: 1px;
+  height: 18px;
+  background: rgba(236, 240, 244, 0.25);
+}
+
+.log {
+  flex: none;
+  margin-left: 8px;
+  font-size: 0.75rem;
+  color: rgba(223, 229, 234, 0.7);
+  white-space: nowrap;
+}

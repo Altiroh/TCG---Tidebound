@@ -1,0 +1,150 @@
+/*
+ * La bande de défi : un voile léger sur tout l'écran, et une bande NOIRE qui
+ * le traverse à mi-hauteur, liserée d'or. Au-dessus de tout (sauf du plateau,
+ * où elle n'apparaît jamais).
+ */
+.veil {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.45);
+  animation: veilIn 200ms ease-out;
+}
+
+.band {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(12px, 2.5vw, 32px);
+  padding: clamp(14px, 3dvh, 28px) max(var(--tb-safe-right, 0px), 16px) clamp(14px, 3dvh, 28px) max(var(--tb-safe-left, 0px), 16px);
+  border-block: 2px solid rgba(230, 190, 110, 0.7);
+  background: linear-gradient(180deg, rgba(6, 7, 8, 0.97), rgba(14, 12, 9, 0.97));
+  box-shadow: 0 0 60px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 230, 170, 0.12);
+  color: #ecf0f4;
+  animation: bandIn 320ms cubic-bezier(0.2, 0.9, 0.3, 1.1);
+}
+
+.crest {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: clamp(40px, 6vw, 64px);
+  aspect-ratio: 1;
+  border: 2px solid rgba(230, 190, 110, 0.75);
+  border-radius: 50%;
+  color: #f0c56e;
+  background: radial-gradient(circle, rgba(120, 30, 20, 0.6), rgba(30, 10, 6, 0.9));
+}
+
+.crest svg {
+  width: 62%;
+  height: 62%;
+}
+
+.text {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.eyebrow {
+  margin: 0;
+  font-size: 0.75rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(240, 197, 110, 0.85);
+}
+
+.title {
+  margin: 0;
+  font-family: var(--tb-font-display);
+  font-size: clamp(1.1rem, 2.4vw, 1.7rem);
+  font-weight: 600;
+  line-height: 1.15;
+}
+
+.title strong {
+  color: #f6d28a;
+}
+
+.caption {
+  margin: 0;
+  font-size: 0.9rem;
+  color: rgba(236, 240, 244, 0.7);
+}
+
+.error {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #ff9b8a;
+}
+
+.actions {
+  flex: none;
+  display: flex;
+  gap: 10px;
+}
+
+.accept,
+.decline {
+  min-height: 44px;
+  padding: 0 clamp(14px, 2vw, 24px);
+  border-radius: 999px;
+  font: inherit;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: var(--tb-cursor-pointer);
+}
+
+.accept {
+  border: 0;
+  background: linear-gradient(180deg, #e9c06e, #b98a3a);
+  color: #1a1206;
+  box-shadow: 0 0 18px rgba(233, 192, 110, 0.35);
+}
+
+.decline {
+  border: 1px solid rgba(236, 240, 244, 0.35);
+  background: transparent;
+  color: #ecf0f4;
+}
+
+.accept:disabled,
+.decline:disabled {
+  opacity: 0.55;
+  cursor: progress;
+}
+
+.accept:focus-visible,
+.decline:focus-visible {
+  outline: 2px solid var(--tb-accent);
+  outline-offset: 2px;
+}
+
+/* Téléphone en portrait étroit : les boutons passent sous le texte. */
+@media (max-width: 560px) {
+  .band {
+    flex-wrap: wrap;
+  }
+  .actions {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@keyframes veilIn {
+  from { opacity: 0; }
+}
+
+@keyframes bandIn {
+  from { transform: scaleY(0.2); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .veil,
+  .band {
+    animation: none;
+  }
+}

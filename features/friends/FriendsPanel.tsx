@@ -13,7 +13,14 @@ import { TradeComposer } from "@/features/friends/TradeComposer";
 import { SidePanel } from "@/features/shell/SidePanel";
 import game from "@/features/shell/GameScreen.module.css";
 
-type BoardData = Pick<FriendsBoardProps, "social" | "trades" | "recentOpponents">;
+type BoardData = NonNullable<FriendsBoardProps["data"]>;
+
+/**
+ * Dernier tableau lu, gardé d'une ouverture à l'autre : le panneau s'ouvre
+ * sur lui tout de suite, et la nouvelle lecture le remplace quand elle
+ * arrive. Sans lui, chaque ouverture repartait d'un écran de chargement.
+ */
+let lastBoard: BoardData | null = null;
 
 /**
  * Ce que montre le panneau : le tableau, une fiche (la sienne ou celle d'un
@@ -36,7 +43,7 @@ type View =
 export function FriendsPanel({ onClose, onChanged }: { onClose: () => void; onChanged?: () => void }) {
   const router = useRouter();
   const [view, setView] = useState<View>({ kind: "board" });
-  const [board, setBoard] = useState<BoardData | null>(null);
+  const [board, setBoard] = useState<BoardData | null>(lastBoard);
   const [player, setPlayer] = useState<PlayerCardView | null>(null);
   const [table, setTable] = useState<{ mine: TradeableCard[]; theirs: TradeableCard[] } | null>(null);
   const [failed, setFailed] = useState(false);
@@ -45,6 +52,7 @@ export function FriendsPanel({ onClose, onChanged }: { onClose: () => void; onCh
   const loadBoard = useCallback(() => {
     fetchFriendsBoard()
       .then((data) => {
+        lastBoard = data;
         setBoard(data);
         setFailed(data === null);
       })
@@ -99,11 +107,11 @@ export function FriendsPanel({ onClose, onChanged }: { onClose: () => void; onCh
     router.push(`/en-ligne/salon/${result.lobbyId}`);
   }
 
-  const loading = <p className={game.muted}>Chargement de l&apos;équipage…</p>;
+  const loading = <p className={game.muted}>Chargement…</p>;
   const backToBoard = () => setView({ kind: "board" });
 
   let content;
-  if (failed) {
+  if (failed && !(view.kind === "board" && board)) {
     content = (
       <>
         <p className={game.error}>Amis indisponibles pour le moment.</p>
@@ -115,11 +123,12 @@ export function FriendsPanel({ onClose, onChanged }: { onClose: () => void; onCh
       </>
     );
   } else if (view.kind === "board") {
-    content = board ? (
+    // Le tableau s'affiche TOUT DE SUITE : seule la liste attend sa lecture.
+    content = (
       <>
         {challengeError && <p className={game.error}>{challengeError}</p>}
         <FriendsBoard
-          {...board}
+          data={board}
           onChanged={changed}
           onLeave={onClose}
           onOpenPlayer={(id) => setView({ kind: "player", userId: id })}
@@ -128,8 +137,6 @@ export function FriendsPanel({ onClose, onChanged }: { onClose: () => void; onCh
           onChallenge={(id) => void challenge(id)}
         />
       </>
-    ) : (
-      loading
     );
   } else if (view.kind === "player" || view.kind === "me") {
     content = player ? (
@@ -144,7 +151,12 @@ export function FriendsPanel({ onClose, onChanged }: { onClose: () => void; onCh
         onLeave={onClose}
       />
     ) : (
-      loading
+      <>
+        <button type="button" className={game.secondary} onClick={backToBoard}>
+          ← Mes amis
+        </button>
+        {loading}
+      </>
     );
   } else {
     content =

@@ -9,6 +9,7 @@ import { chooseLobbyDeck, fetchLobby, leaveLobby, setLobbyReady } from "@/featur
 import type { LobbySide, LobbyView } from "@/features/friends/lobbyService";
 import { LOBBY_POLL_MS } from "@/features/friends/lobbyRules";
 import { PlayerIdentity } from "@/features/friends/PlayerIdentity";
+import { NoticeBand } from "@/features/friends/ChallengeBand";
 import { ShowcaseShelf } from "@/features/friends/ShowcaseShelf";
 import { GameScreen } from "@/features/shell/GameScreen";
 import game from "@/features/shell/GameScreen.module.css";
@@ -19,15 +20,22 @@ interface BattleLobbyProps {
   initialLobby: LobbyView;
   personalDecks: DeckList[];
   unlockedDeckIds: string[];
+  /**
+   * LAB (`/game/amis-preview`) : aucun appel au serveur. Le sondage est
+   * coupé, et les gestes (deck, « Lancer la partie », quitter) modifient le
+   * salon sur place — le lab pilote l'autre capitaine en changeant
+   * `initialLobby`.
+   */
+  preview?: boolean;
 }
 
 /** Ce que dit la plaque d'un capitaine : il attend, il choisit, il est prêt. */
 function sideStatus(side: LobbySide, lobby: LobbyView, mine: boolean): string {
-  if (!mine && lobby.status === "invited") return "Invitation envoyée…";
+  if (!mine && lobby.status === "invited") return "Défi envoyé…";
   if (!mine && !side.present) return "Absent du salon";
-  if (side.ready) return "Prêt !";
+  if (side.ready) return mine ? "Prêt — partie lancée" : "Prêt — attend que tu lances";
   if (!side.hasDeck) return mine ? "Choisis ton deck" : "Choisit son deck…";
-  return mine ? "Déclare-toi prêt" : "Pas encore prêt";
+  return mine ? "Lance la partie quand tu veux" : "Pas encore prêt";
 }
 
 /**
@@ -38,10 +46,12 @@ function sideStatus(side: LobbySide, lobby: LobbyView, mine: boolean): string {
  * écrans y entrent. L'écran sonde le salon en boucle : c'est aussi son
  * signe de vie (un capitaine muet passe « absent »).
  */
-export function BattleLobby({ initialLobby, personalDecks, unlockedDeckIds }: BattleLobbyProps) {
+export function BattleLobby({ initialLobby, personalDecks, unlockedDeckIds, preview = false }: BattleLobbyProps) {
   const router = useRouter();
   const [lobby, setLobby] = useState<LobbyView>(initialLobby);
   const [picking, setPicking] = useState(false);
+  /** « Lancer la partie » sans deck : le choix s'ouvre, et la partie se lance dès qu'il est fait. */
+  const [launchAfterPick, setLaunchAfterPick] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   /** Échéance locale du compte à rebours, recalée à chaque lecture du serveur. */
@@ -80,6 +90,7 @@ export function BattleLobby({ initialLobby, personalDecks, unlockedDeckIds }: Ba
 
   // Le sondage : présence, prêt de l'autre, compte à rebours, départ.
   useEffect(() => {
+    if (preview) return;
     let cancelled = false;
     let inFlight = false;
     const id = setInterval(async () => {
@@ -93,7 +104,7 @@ export function BattleLobby({ initialLobby, personalDecks, unlockedDeckIds }: Ba
       cancelled = true;
       clearInterval(id);
     };
-  }, [lobby.id, apply]);
+  }, [lobby.id, apply, preview]);
 
   // Le compte à rebours s'égrène entre deux lectures.
   useEffect(() => {
@@ -105,7 +116,7 @@ export function BattleLobby({ initialLobby, personalDecks, unlockedDeckIds }: Ba
   // La partie est créée : les deux écrans y entrent. La présentation des
   // capitaines vient d'avoir lieu ici — elle n'est pas rejouée en partie.
   useEffect(() => {
-    if (!lobby.matchId || leaving.current) return;
+    if (preview || !lobby.matchId || leaving.current) return;
     leaving.current = true;
     try {
       window.sessionStorage.setItem(`tb-versus:${lobby.matchId}`, "1");
@@ -114,9 +125,17 @@ export function BattleLobby({ initialLobby, personalDecks, unlockedDeckIds }: Ba
     }
     playGameStart();
     router.push(`/en-ligne/${lobby.matchId}`);
-  }, [lobby.matchId, router]);
+  }, [lobby.matchId, router, preview]);
+
+  // Lab : le scénario choisi remplace le salon affiché.
+  useEffect(() => {
+    if (!preview) return;
+    setLobby(initialLobby);
+    setDeadline(initialLobby.countdownMs === null ? null : Date.now() + initialLobby.countdownMs);
+  }, [preview, initialLobby]);
 
   async function act(action: () => Promise<{ ok: boolean; error?: string }>) {
+    if (preview) return;
     setBusy(true);
     setError(null);
     const result = await action().catch(() => ({ ok: false, error: "Le serveur est injoignable." }));
@@ -127,9 +146,47 @@ export function BattleLobby({ initialLobby, personalDecks, unlockedDeckIds }: Ba
 
   async function leave() {
     playButtonClick();
+    if (preview) {
+      setLobby((current) => ({ ...current, status: "cancelled" }));
+      return;
+    }
     leaving.current = true;
     await leaveLobby(lobby.id).catch(() => undefined);
     router.push("/");
+  }
+
+  /** Lab : ce que le serveur aurait répondu, appliqué sur place. */
+  function simulate(patch: (current: LobbyView) => LobbyView) {
+    const next = patch(lobby);
+    const both = next.me.ready && next.other.ready;
+    setLobby({ ...next, countdownMs: both ? 5000 : null });
+    setDeadline(both ? Date.now() + 5000 : null);
+  }
+
+  function chooseDeck(deckId: string, thenLaunch: boolean) {
+    if (preview) {
+      simulate((current) => ({ ...current, me: { ...current.me, deckId, hasDeck: true, ready: thenLaunch } }));
+      return;
+    }
+    void act(async () => {
+      const chosen = await chooseLobbyDeck(lobby.id, deckId);
+      return chosen.ok && thenLaunch ? setLobbyReady(lobby.id, true) : chosen;
+    });
+  }
+
+  /** « Lancer la partie » : se déclarer prêt (ou se dédire). Sans deck, le choix s'ouvre d'abord. */
+  function toggleLaunch() {
+    playButtonClick();
+    if (!lobby.me.hasDeck) {
+      setLaunchAfterPick(true);
+      setPicking(true);
+      return;
+    }
+    if (preview) {
+      simulate((current) => ({ ...current, me: { ...current.me, ready: !current.me.ready } }));
+      return;
+    }
+    void act(() => setLobbyReady(lobby.id, !lobby.me.ready));
   }
 
   const closed = lobby.status === "cancelled" || lobby.status === "declined";
@@ -171,6 +228,14 @@ export function BattleLobby({ initialLobby, personalDecks, unlockedDeckIds }: Ba
           <Side side={lobby.other} status={sideStatus(lobby.other, lobby, false)} />
         </div>
 
+        {lobby.status === "declined" && (
+          <NoticeBand
+            title={`${lobby.other.player.name} a refusé ton défi`}
+            caption="Ce sera pour une autre fois."
+            actionLabel="Retour au port"
+            onAction={() => (preview ? setLobby((current) => ({ ...current, status: "cancelled" })) : router.push("/"))}
+          />
+        )}
         {closed ? (
           <div className={styles.dock}>
             <p className={game.muted}>
@@ -190,6 +255,7 @@ export function BattleLobby({ initialLobby, personalDecks, unlockedDeckIds }: Ba
                 disabled={busy || starting}
                 onClick={() => {
                   playButtonClick();
+                  setLaunchAfterPick(false);
                   setPicking(true);
                 }}
               >
@@ -200,15 +266,22 @@ export function BattleLobby({ initialLobby, personalDecks, unlockedDeckIds }: Ba
               type="button"
               className={lobby.me.ready ? styles.readyOn : styles.ready}
               aria-pressed={lobby.me.ready}
-              disabled={busy || starting || lobby.status !== "open" || !lobby.me.hasDeck}
-              onClick={() => {
-                playButtonClick();
-                void act(() => setLobbyReady(lobby.id, !lobby.me.ready));
-              }}
+              disabled={busy || starting || lobby.status !== "open"}
+              onClick={toggleLaunch}
             >
-              {lobby.me.ready ? (bothReady ? "Prêt ✓ — annuler" : "Prêt ✓") : "Prêt"}
+              {lobby.me.ready ? (bothReady ? "C'est parti — annuler" : "Prêt ✓ — annuler") : "Lancer la partie"}
             </button>
-            {lobby.status === "invited" && <p className={game.caption}>{lobby.other.player.name} doit accepter l&apos;invitation, depuis son Courrier.</p>}
+            {lobby.status === "invited" && <p className={game.caption}>{lobby.other.player.name} n&apos;a pas encore répondu à ton défi…</p>}
+            {lobby.status === "open" && lobby.me.ready && !lobby.other.ready && (
+              <p className={game.caption} aria-live="polite">
+                Tu es prêt : on attend que {lobby.other.player.name} lance la partie à son tour.
+              </p>
+            )}
+            {lobby.status === "open" && !lobby.me.ready && lobby.other.ready && (
+              <p className={game.caption} aria-live="polite">
+                {lobby.other.player.name} est prêt : lance la partie pour commencer.
+              </p>
+            )}
             {(error ?? lobby.error) && <p className={game.error}>{error ?? lobby.error}</p>}
             <button type="button" className={game.ghost} onClick={() => void leave()} disabled={starting}>
               Quitter le salon
@@ -223,7 +296,8 @@ export function BattleLobby({ initialLobby, personalDecks, unlockedDeckIds }: Ba
             onClose={() => setPicking(false)}
             onPick={(deck) => {
               setPicking(false);
-              void act(() => chooseLobbyDeck(lobby.id, deck.id));
+              chooseDeck(deck.id, launchAfterPick);
+              setLaunchAfterPick(false);
             }}
           />
         )}

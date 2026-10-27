@@ -28,9 +28,8 @@ function remaining(expiresAt: string): string {
 }
 
 export interface FriendsBoardProps {
-  social: SocialView;
-  trades: TradesView;
-  recentOpponents: RecentOpponent[];
+  /** Le tableau lu ; `null` tant que la première lecture n'est pas arrivée (seule la liste attend). */
+  data: { social: SocialView; trades: TradesView; recentOpponents: RecentOpponent[] } | null;
   /** Relit les données après une action (page : `router.refresh` ; panneau : nouvelle lecture). */
   onChanged: () => void;
   /** Un lien quitte le tableau (défi : le panneau se referme). */
@@ -54,7 +53,10 @@ export interface FriendsBoardProps {
  * « Combat » invite l'ami dans un salon (`BattleLobby`) : l'invitation
  * arrive dans son Courrier.
  */
-export function FriendsBoard({ social, trades, recentOpponents, onChanged, onLeave, onOpenPlayer, onOpenTrade, onOpenMe, onChallenge }: FriendsBoardProps) {
+export function FriendsBoard({ data, onChanged, onLeave, onOpenPlayer, onOpenTrade, onOpenMe, onChallenge }: FriendsBoardProps) {
+  const social = data?.social ?? null;
+  const trades = data?.trades ?? { incoming: [], outgoing: [] };
+  const recentOpponents = data?.recentOpponents ?? [];
   const [code, setCode] = useState("");
   const [message, setMessage] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
   const [copied, setCopied] = useState(false);
@@ -87,6 +89,7 @@ export function FriendsBoard({ social, trades, recentOpponents, onChanged, onLea
 
   async function copyCode() {
     playButtonClick();
+    if (!social) return;
     try {
       await navigator.clipboard.writeText(social.friendCode);
       setCopied(true);
@@ -98,11 +101,9 @@ export function FriendsBoard({ social, trades, recentOpponents, onChanged, onLea
 
   return (
     <div className={styles.column}>
-      <span className={game.bannerActions}>
-        <button type="button" className={game.secondary} onClick={() => open(onOpenMe)}>
-          Mon profil et ma vitrine →
-        </button>
-      </span>
+      <button type="button" className={`${game.secondary} ${styles.wide}`} onClick={() => open(onOpenMe)}>
+        Mon profil et ma vitrine →
+      </button>
 
       {trades.incoming.length > 0 && (
         <section className={`${game.panel} ${styles.section}`} aria-label="Échanges proposés">
@@ -126,7 +127,7 @@ export function FriendsBoard({ social, trades, recentOpponents, onChanged, onLea
         </section>
       )}
 
-      {!amicalLocked && social.challenges.length > 0 && (
+      {!amicalLocked && social && social.challenges.length > 0 && (
         <section className={`${game.panel} ${styles.section}`} aria-label="Défis reçus">
           <h2 className={game.sectionTitle}>Défis reçus</h2>
           {social.challenges.map((challenge) => (
@@ -154,15 +155,15 @@ export function FriendsBoard({ social, trades, recentOpponents, onChanged, onLea
         <p className={game.muted}>
           Ton code ami :{" "}
           <strong className={`${game.statValueGold} ${styles.code}`}>
-            {social.friendCode}
+            {social?.friendCode ?? "········"}
           </strong>{" "}
-          <button type="button" className={game.link} onClick={copyCode}>
+          <button type="button" className={game.link} onClick={copyCode} disabled={!social}>
             {copied ? "Copié !" : "Copier"}
           </button>
         </p>
         <p className={game.caption}>Donne-le à un ami : il l&apos;entre ici, et tu acceptes sa demande.</p>
         <form
-          className={game.controlRow}
+          className={`${game.controlRow} ${styles.addRow}`}
           onSubmit={(event) => {
             event.preventDefault();
             if (code.length !== 8) return;
@@ -184,14 +185,17 @@ export function FriendsBoard({ social, trades, recentOpponents, onChanged, onLea
             maxLength={8}
             style={{ letterSpacing: "0.2em", textTransform: "uppercase" }}
           />
-          <button type="submit" className={game.primary} disabled={pending || code.length !== 8}>
-            Envoyer la demande
+          {/* Une flèche plutôt qu'« Envoyer la demande » : le champ garde la place. */}
+          <button type="submit" className={`${game.primary} ${styles.sendButton}`} disabled={pending || code.length !== 8} aria-label="Envoyer la demande" title="Envoyer la demande">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" aria-hidden>
+              <path d="M4 12h14M13 6l6 6-6 6" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
           </button>
         </form>
         {message && <p className={message.tone === "ok" ? game.success : game.error}>{message.text}</p>}
       </section>
 
-      {social.incoming.length > 0 && (
+      {social && social.incoming.length > 0 && (
         <section className={`${game.panel} ${styles.section}`} aria-label="Demandes reçues">
           <h2 className={game.sectionTitle}>Demandes reçues</h2>
           {social.incoming.map((request) => (
@@ -213,8 +217,12 @@ export function FriendsBoard({ social, trades, recentOpponents, onChanged, onLea
       )}
 
       <section className={`${game.panel} ${styles.section}`} aria-label="Amis">
-        <h2 className={game.sectionTitle}>Amis ({social.friends.length})</h2>
-        {social.friends.length === 0 ? (
+        <h2 className={game.sectionTitle}>Amis{social ? ` (${social.friends.length})` : ""}</h2>
+        {!social ? (
+          <p className={game.muted} aria-busy>
+            Chargement de l&apos;équipage…
+          </p>
+        ) : social.friends.length === 0 ? (
           <p className={game.muted}>Pas encore d&apos;ami à bord. Échange ton code ami pour en ajouter.</p>
         ) : (
           social.friends.map((friend) => (
@@ -226,6 +234,9 @@ export function FriendsBoard({ social, trades, recentOpponents, onChanged, onLea
                 <span className={PRESENCE_TAG[friend.presence]}>{PRESENCE_LABEL[friend.presence]}</span>
               </span>
               <span className={game.bannerActions}>
+                <button type="button" className={game.secondary} onClick={() => open(() => onOpenPlayer(friend.userId))}>
+                  Profil
+                </button>
                 <button type="button" className={game.secondary} onClick={() => open(() => onOpenTrade(friend.userId))}>
                   Échanger
                 </button>
@@ -284,7 +295,7 @@ export function FriendsBoard({ social, trades, recentOpponents, onChanged, onLea
         </section>
       )}
 
-      {social.outgoing.length > 0 && (
+      {social && social.outgoing.length > 0 && (
         <section className={`${game.panel} ${styles.section}`} aria-label="Demandes envoyées">
           <h2 className={game.sectionTitle}>Demandes envoyées</h2>
           {social.outgoing.map((request) => (

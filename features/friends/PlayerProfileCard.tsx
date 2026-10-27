@@ -283,9 +283,7 @@ export function PlayerProfileCard({ player, onAddCard, actions, badge, onShowcas
                   </button>
                 </span>
               </>
-            ) : (
-              <span className={styles.showcaseHint}>Glisse une carte, ou touche-la puis touche sa nouvelle place.</span>
-            )}
+            ) : null}
             {saveStatus === "saving" && (
               <span className={styles.saveStatus} data-status="saving">
                 <span className={styles.spinner} aria-hidden /> Enregistrement…

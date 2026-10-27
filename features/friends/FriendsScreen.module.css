@@ -1,6 +1,8 @@
 /* Colonne des sections, et respiration intérieure des panneaux de la charte (`.panel` n'en porte pas). */
 .column {
   display: grid;
+  /* Une colonne qui rétrécit : sans `minmax(0, …)`, le champ du code ami la poussait sous la barre de défilement. */
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--tb-space-4);
 }
 
@@ -20,4 +22,31 @@
 
 .code {
   letter-spacing: 0.2em;
+}
+
+/* « Mon profil et ma vitrine » : toute la largeur du panneau. */
+.wide {
+  width: 100%;
+  box-sizing: border-box;
+  justify-content: center;
+}
+
+/* Envoyer la demande : une flèche carrée, le champ garde la place. */
+.sendButton {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  min-width: 44px;
+  padding-inline: 0;
+}
+
+/* Le champ du code prend la place restante, et peut rétrécir. */
+.addRow {
+  box-sizing: border-box;
+  min-width: 0;
+}
+
+.addRow input {
+  flex: 1 1 auto;
+  min-width: 0;
 }

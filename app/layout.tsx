@@ -11,6 +11,7 @@ import { PinchZoomGuard } from "@/features/shell/PinchZoomGuard";
 import { CardBackProvider } from "@/features/cosmetics/CardBackProvider";
 import { ShipFrameProvider } from "@/features/cosmetics/ShipFrameProvider";
 import { SocialPulse } from "@/features/friends/SocialPulse";
+import { ChallengeAlert } from "@/features/friends/ChallengeAlert";
 import "./tokens.css";
 import "./globals.css";
 
@@ -117,6 +118,7 @@ export default function RootLayout({
             {/* Présence en ligne et défis d'amis, sondés côté client : la
                 mise en page reste statique. */}
             <SocialPulse />
+            <ChallengeAlert />
           </ShipFrameProvider>
         </CardBackProvider>
       </body>
