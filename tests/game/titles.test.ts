@@ -32,16 +32,30 @@ describe("catalogue des titres", () => {
     expect(new Set(names).size).toBe(names.length);
   });
 
-  it("accroche chaque titre à un exploit réel du catalogue — rien ne s'achète", () => {
+  it("accroche chaque titre à un exploit réel du catalogue ou à un palier de niveau — rien ne s'achète", () => {
     for (const title of TITLE_CATALOG) {
-      expect(title.unlock.kind).toBe("achievement");
-      expect(achievementByCode(titleRequiredAchievement(title)), `${title.id} → exploit inconnu`).toBeDefined();
+      if (title.unlock.kind === "level") {
+        expect(title.unlock.level, title.id).toBeGreaterThan(1);
+        continue;
+      }
+      expect(achievementByCode(titleRequiredAchievement(title)!), `${title.id} → exploit inconnu`).toBeDefined();
     }
   });
 
   it("ne fait jamais gagner deux titres par le même exploit", () => {
-    const codes = TITLE_CATALOG.map(titleRequiredAchievement);
+    const codes = TITLE_CATALOG.map(titleRequiredAchievement).filter((code) => code !== null);
     expect(new Set(codes).size).toBe(codes.length);
+  });
+
+  it("titres de palier : Marin d'eau douce au niveau 15, Timonier au 20 OU par la Traversée I", () => {
+    const marin = titleById("marin-d-eau-douce")!;
+    expect(isTitleUnlocked(marin, new Set(), 14)).toBe(false);
+    expect(isTitleUnlocked(marin, new Set(), 15)).toBe(true);
+    const timonier = titleById("timonier")!;
+    expect(isTitleUnlocked(timonier, new Set(), 19)).toBe(false);
+    expect(isTitleUnlocked(timonier, new Set(), 20)).toBe(true);
+    expect(isTitleUnlocked(timonier, new Set(["voyage_premier_quart"]), 1)).toBe(true);
+    expect(titleUnlockLabel(timonier)).toContain("niveau 20");
   });
 
   it("dit la condition en clair : l'exploit et ce qu'il demande", () => {
@@ -77,9 +91,11 @@ describe("déblocage", () => {
     expect(titleById("")).toBeUndefined();
   });
 
-  it("tous les exploits obtenus débloquent tout le catalogue", () => {
+  it("tous les exploits obtenus, au niveau 50, débloquent tout le catalogue", () => {
     const all = new Set(ACHIEVEMENT_CATALOG.map((achievement) => achievement.code));
-    expect(unlockedTitles(all).length).toBe(TITLE_CATALOG.length);
+    expect(unlockedTitles(all, 50).length).toBe(TITLE_CATALOG.length);
+    // Sans le niveau, seuls les titres de palier manquent.
+    expect(unlockedTitles(all).length).toBe(TITLE_CATALOG.filter((title) => title.unlock.kind === "achievement").length);
   });
 });
 

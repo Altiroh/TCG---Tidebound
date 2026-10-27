@@ -54,7 +54,7 @@ describe("catalogue des Traversées", () => {
   it("chaque Traversée bouclée a son exploit, et son titre", () => {
     for (const voyage of VOYAGE_CATALOG) {
       expect(ACHIEVEMENT_CATALOG.some((achievement) => achievement.code === voyage.achievementCode), voyage.id).toBe(true);
-      expect(TITLE_CATALOG.some((title) => title.unlock.code === voyage.achievementCode), voyage.id).toBe(true);
+      expect(TITLE_CATALOG.some((title) => title.unlock.kind === "achievement" && title.unlock.code === voyage.achievementCode), voyage.id).toBe(true);
     }
   });
 

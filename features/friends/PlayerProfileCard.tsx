@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { getCardDefinition } from "@/game";
+import { getCardDefinition, profileFrameSrc } from "@/game";
 import { cardArtworkThumbUrl } from "@/features/decks/cardArtUrl";
 import { useCardBackSrc } from "@/features/cosmetics/CardBackProvider";
 import type { PlayerCardView } from "@/features/friends/playerCardService";
@@ -108,7 +108,7 @@ export function PlayerProfileCard({ player, onAddCard, actions, badge, onShowcas
             choisie inclinée dans sa fenêtre, le nom et le titre sur le papier. */}
         <div className={styles.photo}>
           {/* eslint-disable-next-line @next/next/no-img-element -- cadre local */}
-          <img className={styles.photoFrame} src="/assets/profile/photo-frame.webp" alt="" draggable={false} />
+          <img className={styles.photoFrame} src={profileFrameSrc(player.profileFrameId)} alt="" draggable={false} />
           <span
             className={styles.photoWindow}
             style={player.avatarCardId ? { backgroundImage: `url("${cardArtworkThumbUrl(player.avatarCardId, player.avatarArtwork)}")` } : undefined}

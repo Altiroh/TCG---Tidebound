@@ -33,6 +33,7 @@ import { readAchievementStats, syncAchievements } from "@/features/achievements/
 import type { PlayerStatsInput } from "@/features/progression/playerStatsSheet";
 import { equipTitleFor, loadTitles, type EquipTitleResult, type ProfileTitles } from "@/features/progression/titleService";
 import { titleForAchievement } from "@/game/titles";
+import { PROFILE_FRAME_COSMETIC_KIND, profileFrameById } from "@/game/cosmetics/profileFrames";
 import { equipCardBackFor, loadCardBacks, type CardBackCollection } from "@/features/cosmetics/cardBackService";
 import { getSessionUser } from "@/lib/supabase/sessionUser";
 import { fetchQuestBoard, type QuestEntry } from "@/features/quests/actions";
@@ -105,6 +106,8 @@ export interface ProfileSummary {
   avatarCardId: string | null;
   /** Illustration de l'avatar : Classique, ou Styled si le joueur l'a débloquée. */
   avatarArtwork: ChosenArtwork;
+  /** Cadre de profil porté (`PROFILE_FRAMES`) ; `null` : le cadre d'origine. */
+  profileFrameId?: string | null;
   /** Cartes dont la Styled est débloquée (Styled ou Full-Art obtenue) : proposées en plus au choix. */
   styledCardIds: string[];
   /**
@@ -256,7 +259,11 @@ export async function fetchProfile(): Promise<ProfileSummary> {
     // appliquée à la main — sans elle, la colonne manque et l'avatar reste Classique).
     const avatarArtworkPromise = Promise.resolve(service.from("profiles").select("avatar_artwork").eq("id", user.id).maybeSingle());
     const styledPromise = readStyledUnlockedCardIds(user.id, service).catch(() => [] as string[]);
-    const [stats, progression, currency, profile, claimed, unlocked, login, cardBacks, ownedCards, choices, questBoard, titles, hub, , avatarArtworkRow, styledCardIds] = await Promise.all([
+    const framePromise = Promise.resolve(
+      service.from("player_cosmetics").select("cosmetic_id").eq("user_id", user.id).eq("cosmetic_kind", PROFILE_FRAME_COSMETIC_KIND).eq("equipped", true).maybeSingle()
+    );
+    const levelPromise = progressionPromise.then((row) => progressionView(row.data?.xp_total ?? 0).level);
+    const [stats, progression, currency, profile, claimed, unlocked, login, cardBacks, ownedCards, choices, questBoard, titles, hub, , avatarArtworkRow, styledCardIds, frameRow] = await Promise.all([
       statsPromise,
       progressionPromise,
       service.from("player_currency").select("balance").eq("user_id", user.id).maybeSingle(),
@@ -272,13 +279,14 @@ export async function fetchProfile(): Promise<ProfileSummary> {
         service.from("player_card_choices").select("id, source, source_ref, rarity, offered_card_ids").eq("user_id", user.id).is("resolved_at", null)
       ).then((rows) => repairCardChoices(user.id, rows.data ?? [])),
       fetchQuestBoard().catch(() => null),
-      loadTitles(user.id, unlockedPromise.then((rows) => new Set(rows.map((row) => row.code)))),
-      readProgressionHub(user.id, progressionPromise.then((row) => progressionView(row.data?.xp_total ?? 0).level)),
+      loadTitles(user.id, unlockedPromise.then((rows) => new Set(rows.map((row) => row.code))), levelPromise),
+      readProgressionHub(user.id, levelPromise),
       // L'octroi n'a rien à rendre à l'écran (il est déjà dans `unlocked`) :
       // attendu ici seulement pour qu'il soit terminé avant de répondre.
       grantedPromise,
       avatarArtworkPromise,
       styledPromise,
+      framePromise,
     ]);
 
     const view = progressionView(progression.data?.xp_total ?? 0);
@@ -292,6 +300,7 @@ export async function fetchProfile(): Promise<ProfileSummary> {
       avatarArtwork: profile.data?.avatar_card_id
         ? shownChosenArtwork(profile.data.avatar_card_id, avatarArtworkRow.error ? null : avatarArtworkRow.data?.avatar_artwork, new Set(styledCardIds))
         : "classique",
+      profileFrameId: profileFrameById(frameRow.data?.cosmetic_id) ? frameRow.data!.cosmetic_id : null,
       styledCardIds,
       ownedCardIds: (ownedCards.data ?? []).map((row) => row.card_id),
       view,

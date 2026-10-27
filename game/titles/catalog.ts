@@ -26,7 +26,13 @@ import { achievementByCode } from "@/game/achievements/catalog";
 
 export type TitleUnlock =
   /** Débloqué dès que cet exploit figure dans `player_achievements`. */
-  { kind: "achievement"; code: string };
+  | { kind: "achievement"; code: string }
+  /**
+   * Récompense de PALIER (27/10/2026) : débloqué au niveau atteint, comme
+   * le palier qui le promet (`LEVEL_REWARDS`). Lu sur le niveau, donc
+   * acquis d'office par quiconque a déjà ce niveau.
+   */
+  | { kind: "level"; level: number };
 
 export interface TitleDefinition {
   /** Identifiant stable, en kebab-case — stocké dans `player_titles.title_id`. */
@@ -34,6 +40,11 @@ export interface TitleDefinition {
   /** Ce qui s'affiche sous le nom du joueur. */
   name: string;
   unlock: TitleUnlock;
+  /**
+   * Second chemin : un titre d'exploit AUSSI offert par un palier (Timonier,
+   * Traversée I ou niveau 20). L'un ou l'autre suffit.
+   */
+  alsoAtLevel?: number;
 }
 
 /**
@@ -42,6 +53,8 @@ export interface TitleDefinition {
  */
 export const TITLE_CATALOG: readonly TitleDefinition[] = [
   { id: "mousse", name: "Mousse", unlock: { kind: "achievement", code: "tutorial_completed" } },
+  // Récompenses de palier (27/10/2026) : la route des niveaux les promettait sans qu'ils existent.
+  { id: "marin-d-eau-douce", name: "Marin d'eau douce", unlock: { kind: "level", level: 15 } },
   { id: "flibustier", name: "Flibustier", unlock: { kind: "achievement", code: "first_win" } },
   { id: "matelot", name: "Matelot", unlock: { kind: "achievement", code: "ten_matches" } },
   { id: "ecumeur-d-epaves", name: "Écumeur d'épaves", unlock: { kind: "achievement", code: "collection_60" } },
@@ -54,7 +67,8 @@ export const TITLE_CATALOG: readonly TitleDefinition[] = [
   { id: "capitaine", name: "Capitaine", unlock: { kind: "achievement", code: "level_40" } },
   { id: "amiral-des-marees", name: "Amiral des marées", unlock: { kind: "achievement", code: "level_50" } },
   // Traversées bouclées (audit du 24/09/2026).
-  { id: "timonier", name: "Timonier", unlock: { kind: "achievement", code: "voyage_premier_quart" } },
+  // Aussi offert par le palier 20 (27/10/2026 : il y remplace l'avatar « Timonier », qui n'existait pas).
+  { id: "timonier", name: "Timonier", unlock: { kind: "achievement", code: "voyage_premier_quart" }, alsoAtLevel: 20 },
   { id: "revenant-des-brumes", name: "Revenant des brumes", unlock: { kind: "achievement", code: "voyage_eaux_troubles" } },
   { id: "maitre-de-manoeuvre", name: "Maître de manœuvre", unlock: { kind: "achievement", code: "voyage_grand_fond" } },
 ];
@@ -69,21 +83,26 @@ export function titleForAchievement(code: string): TitleDefinition | undefined {
   return TITLE_CATALOG.find((title) => title.unlock.kind === "achievement" && title.unlock.code === code);
 }
 
+/** Niveau qui débloque ce titre, s'il en a un (palier, ou second chemin). */
+export function titleUnlockLevel(title: TitleDefinition): number | null {
+  if (title.unlock.kind === "level") return title.unlock.level;
+  return title.alsoAtLevel ?? null;
+}
+
 /**
  * Le titre est-il débloqué ? `unlockedAchievementCodes` : les codes lus
  * dans `player_achievements` — c'est la ligne en base qui fait foi, jamais
  * un compteur recalculé côté client.
  */
-export function isTitleUnlocked(title: TitleDefinition, unlockedAchievementCodes: ReadonlySet<string>): boolean {
-  switch (title.unlock.kind) {
-    case "achievement":
-      return unlockedAchievementCodes.has(title.unlock.code);
-  }
+export function isTitleUnlocked(title: TitleDefinition, unlockedAchievementCodes: ReadonlySet<string>, level = 0): boolean {
+  const atLevel = titleUnlockLevel(title);
+  if (atLevel !== null && level >= atLevel) return true;
+  return title.unlock.kind === "achievement" && unlockedAchievementCodes.has(title.unlock.code);
 }
 
-/** Tous les titres que ces exploits débloquent, dans l'ordre du catalogue. */
-export function unlockedTitles(unlockedAchievementCodes: ReadonlySet<string>): TitleDefinition[] {
-  return TITLE_CATALOG.filter((title) => isTitleUnlocked(title, unlockedAchievementCodes));
+/** Tous les titres que ces exploits (et ce niveau) débloquent, dans l'ordre du catalogue. */
+export function unlockedTitles(unlockedAchievementCodes: ReadonlySet<string>, level = 0): TitleDefinition[] {
+  return TITLE_CATALOG.filter((title) => isTitleUnlocked(title, unlockedAchievementCodes, level));
 }
 
 /**
@@ -92,12 +111,10 @@ export function unlockedTitles(unlockedAchievementCodes: ReadonlySet<string>): T
  * donne envie de rien.
  */
 export function titleUnlockLabel(title: TitleDefinition): string {
-  switch (title.unlock.kind) {
-    case "achievement": {
-      const achievement = achievementByCode(title.unlock.code);
-      return achievement ? `Exploit « ${achievement.name} » : ${achievement.description}` : "Exploit à obtenir";
-    }
-  }
+  if (title.unlock.kind === "level") return `Atteindre le niveau ${title.unlock.level}.`;
+  const achievement = achievementByCode(title.unlock.code);
+  const viaExploit = achievement ? `Exploit « ${achievement.name} » : ${achievement.description}` : "Exploit à obtenir";
+  return title.alsoAtLevel ? `${viaExploit} Ou atteindre le niveau ${title.alsoAtLevel}.` : viaExploit;
 }
 
 /**
@@ -105,6 +122,6 @@ export function titleUnlockLabel(title: TitleDefinition): string {
  * à part pour que la fonction Postgres (`set_player_title`) reçoive la
  * condition du catalogue, et non une valeur venue du navigateur.
  */
-export function titleRequiredAchievement(title: TitleDefinition): string {
-  return title.unlock.code;
+export function titleRequiredAchievement(title: TitleDefinition): string | null {
+  return title.unlock.kind === "achievement" ? title.unlock.code : null;
 }

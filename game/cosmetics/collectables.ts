@@ -1,10 +1,11 @@
 import type { AchievementStats } from "@/game/achievements/catalog";
 import { CARD_BACKS, CARD_BACK_COSMETIC_KIND } from "@/game/cosmetics/cardBacks";
 import { SHIP_FRAMES, SHIP_FRAME_COSMETIC_KIND } from "@/game/cosmetics/shipFrames";
+import { PROFILE_FRAMES, PROFILE_FRAME_COSMETIC_KIND } from "@/game/cosmetics/profileFrames";
 import { isCosmeticUnlocked, isFree, isPurchasable, type CosmeticSecret, type CosmeticSkin } from "@/game/cosmetics/unlock";
 
 /**
- * Les deux familles de Collectables vues ENSEMBLE — c'est ce que le
+ * Les familles de Collectables vues ENSEMBLE — c'est ce que le
  * serveur synchronise, et ce que l'écran Collectables affiche.
  *
  * Volontairement à part des deux catalogues : eux décrivent des objets,
@@ -24,6 +25,7 @@ export interface CollectableFamily {
 export const COLLECTABLE_FAMILIES: readonly CollectableFamily[] = [
   { kind: CARD_BACK_COSMETIC_KIND, label: "Dos de carte", items: CARD_BACKS },
   { kind: SHIP_FRAME_COSMETIC_KIND, label: "Cadres de navire", items: SHIP_FRAMES },
+  { kind: PROFILE_FRAME_COSMETIC_KIND, label: "Cadres de profil", items: PROFILE_FRAMES },
 ];
 
 /** Un Collectable à créditer en base. */

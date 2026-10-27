@@ -1,5 +1,6 @@
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
-import { TITLE_CATALOG, isTitleUnlocked, titleById, titleRequiredAchievement, titleUnlockLabel } from "@/game/titles";
+import { TITLE_CATALOG, isTitleUnlocked, titleById, titleRequiredAchievement, titleUnlockLabel, titleUnlockLevel } from "@/game/titles";
+import { progressionView } from "@/game/progression";
 
 /**
  * Titres — lecture et équipement côté SERVEUR. Pas de `"use server"` : ces
@@ -8,7 +9,8 @@ import { TITLE_CATALOG, isTitleUnlocked, titleById, titleRequiredAchievement, ti
  * (`equipTitle`, `profileActions.ts`) déduit le joueur de sa session.
  *
  * Le déblocage n'est pas stocké : il se DÉDUIT des exploits obtenus
- * (`player_achievements`). Seul le titre CHOISI l'est (`player_titles`).
+ * (`player_achievements`) et du niveau (titres de palier, 27/10/2026).
+ * Seul le titre CHOISI l'est (`player_titles`).
  */
 
 export interface TitleOption {
@@ -18,8 +20,8 @@ export interface TitleOption {
   unlocked: boolean;
   /** Ce qu'il faut faire pour l'obtenir, en toutes lettres. */
   condition: string;
-  /** Exploit qui le débloque — l'écran des exploits l'affiche à côté. */
-  achievementCode: string;
+  /** Exploit qui le débloque — l'écran des exploits l'affiche à côté ; `null` pour un titre de palier. */
+  achievementCode: string | null;
 }
 
 export interface ProfileTitles {
@@ -34,11 +36,11 @@ export interface ProfileTitles {
   available: boolean;
 }
 
-function options(unlockedCodes: ReadonlySet<string>): TitleOption[] {
+function options(unlockedCodes: ReadonlySet<string>, level: number): TitleOption[] {
   return TITLE_CATALOG.map((title) => ({
     id: title.id,
     name: title.name,
-    unlocked: isTitleUnlocked(title, unlockedCodes),
+    unlocked: isTitleUnlocked(title, unlockedCodes, level),
     condition: titleUnlockLabel(title),
     achievementCode: titleRequiredAchievement(title),
   }));
@@ -54,18 +56,19 @@ function options(unlockedCodes: ReadonlySet<string>): TitleOption[] {
  */
 export async function loadTitles(
   userId: string | null,
-  unlockedCodesInput: ReadonlySet<string> | PromiseLike<ReadonlySet<string>>
+  unlockedCodesInput: ReadonlySet<string> | PromiseLike<ReadonlySet<string>>,
+  levelInput: number | PromiseLike<number> = 0
 ): Promise<ProfileTitles> {
   // Les exploits peuvent arriver en PROMESSE : le profil lance la lecture du
   // titre porté sans attendre l'octroi des exploits, et les deux se
   // rejoignent ici (un étage d'attente de moins).
-  if (!userId) return { options: options(await unlockedCodesInput), equipped: null, available: false };
+  if (!userId) return { options: options(await unlockedCodesInput, await levelInput), equipped: null, available: false };
 
-  const [stored, unlockedCodes] = await Promise.all([readStoredTitle(userId), unlockedCodesInput]);
-  const base = options(unlockedCodes);
+  const [stored, unlockedCodes, level] = await Promise.all([readStoredTitle(userId), unlockedCodesInput, levelInput]);
+  const base = options(unlockedCodes, level);
   if (!stored.available) return { options: base, equipped: null, available: false };
   const title = titleById(stored.titleId);
-  const equipped = title && isTitleUnlocked(title, unlockedCodes) ? title.id : null;
+  const equipped = title && isTitleUnlocked(title, unlockedCodes, level) ? title.id : null;
   return { options: base, equipped, available: true };
 }
 
@@ -104,6 +107,10 @@ const UNAVAILABLE = "Les titres ne sont pas encore disponibles — réessaie plu
  * relu dans `player_achievements` ; puis `set_player_title` le revérifie
  * en base avant d'écrire. Le navigateur ne fournit que l'identifiant du
  * titre — jamais la condition.
+ *
+ * Titre de PALIER (ou second chemin par le niveau, Timonier) : c'est le
+ * niveau qui est relu, puis revérifié par `set_player_title_by_level`
+ * (migration `20261115120000_titres_de_palier.sql`).
  */
 export async function equipTitleFor(userId: string, titleId: string | null): Promise<EquipTitleResult> {
   const title = titleId === null ? null : titleById(titleId);
@@ -112,23 +119,39 @@ export async function equipTitleFor(userId: string, titleId: string | null): Pro
   try {
     const service = createSupabaseServiceRoleClient();
 
+    // Par l'exploit d'abord ; à défaut, par le niveau si le titre en a un.
+    let byLevel: number | null = null;
     if (title) {
       const required = titleRequiredAchievement(title);
-      const { data: proof, error: proofError } = await service
-        .from("player_achievements")
-        .select("code")
-        .eq("user_id", userId)
-        .eq("code", required)
-        .maybeSingle();
-      if (proofError) return { ok: false, error: "Vérification impossible pour l'instant — réessaie dans un instant." };
-      if (!proof) return { ok: false, error: "Ce titre n'est pas encore débloqué." };
+      let proven = false;
+      if (required) {
+        const { data: proof, error: proofError } = await service
+          .from("player_achievements")
+          .select("code")
+          .eq("user_id", userId)
+          .eq("code", required)
+          .maybeSingle();
+        if (proofError) return { ok: false, error: "Vérification impossible pour l'instant — réessaie dans un instant." };
+        proven = Boolean(proof);
+      }
+      const atLevel = titleUnlockLevel(title);
+      if (!proven && atLevel !== null) {
+        const { data: progression, error: levelError } = await service.from("player_progression").select("xp_total").eq("user_id", userId).maybeSingle();
+        if (levelError) return { ok: false, error: "Vérification impossible pour l'instant — réessaie dans un instant." };
+        proven = progressionView(progression?.xp_total ?? 0).level >= atLevel;
+        if (proven) byLevel = atLevel;
+      }
+      if (!proven) return { ok: false, error: "Ce titre n'est pas encore débloqué." };
     }
 
-    const { data, error } = await service.rpc("set_player_title", {
-      p_user_id: userId,
-      p_title_id: title ? title.id : null,
-      p_required_achievement: title ? titleRequiredAchievement(title) : null,
-    });
+    const { data, error } =
+      title && byLevel !== null
+        ? await service.rpc("set_player_title_by_level", { p_user_id: userId, p_title_id: title.id, p_required_level: byLevel })
+        : await service.rpc("set_player_title", {
+            p_user_id: userId,
+            p_title_id: title ? title.id : null,
+            p_required_achievement: title ? titleRequiredAchievement(title) : null,
+          });
     if (error) {
       console.error("[equipTitleFor] Écriture refusée :", error.message);
       return { ok: false, error: UNAVAILABLE };

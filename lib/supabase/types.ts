@@ -1301,6 +1301,11 @@ export interface Database {
         Args: { p_user_id: string; p_cosmetic_kind: string; p_cosmetic_id: string; p_label: string; p_price: number };
         Returns: { ok: boolean; error?: string; balance?: number; cosmetic_id?: string };
       };
+      /** Équipe un titre de PALIER, vérifié sur le niveau (`20261115120000_titres_de_palier.sql`). */
+      set_player_title_by_level: {
+        Args: { p_user_id: string; p_title_id: string; p_required_level: number };
+        Returns: { ok: boolean; error?: string; title_id?: string | null };
+      };
       /** Achat de Jetons de Préconstruit en Tides, rayon Monnaie (`20261114120000_jeton_contre_tides.sql`). */
       purchase_precon_tokens: {
         Args: { p_user_id: string; p_quantity: number; p_unit_price: number };

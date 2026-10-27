@@ -260,6 +260,14 @@ export {
   type ShipFrameSkin,
 } from "@/game/cosmetics/shipFrames";
 export {
+  DEFAULT_PROFILE_FRAME_ID,
+  PROFILE_FRAMES,
+  PROFILE_FRAME_COSMETIC_KIND,
+  profileFrameById,
+  profileFrameSrc,
+  type ProfileFrameSkin,
+} from "@/game/cosmetics/profileFrames";
+export {
   COLLECTABLE_FAMILIES,
   collectablePrice,
   collectableTokenPrice,

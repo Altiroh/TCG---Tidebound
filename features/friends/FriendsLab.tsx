@@ -31,6 +31,7 @@ const MOI: PlayerCardView = {
   relation: "self",
   stats: { matchesPlayed: 36, wins: 21, preconsOwned: 4, cardsCollected: 182 },
   friendCode: "K7RQ2MXA",
+  profileFrameId: null,
 };
 
 const AMI: PlayerCardView = {
@@ -51,6 +52,7 @@ const AMI: PlayerCardView = {
   relation: "friend",
   stats: { matchesPlayed: 112, wins: 64, preconsOwned: 7, cardsCollected: 341 },
   friendCode: null,
+  profileFrameId: "frame-mousse",
 };
 
 const TABLEAU: NonNullable<FriendsBoardProps["data"]> = {

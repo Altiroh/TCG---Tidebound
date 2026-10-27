@@ -103,6 +103,9 @@ export const LEVEL_REWARDS: Readonly<Record<number, readonly LevelRewardItem[]>>
   2: [cardChoice("common")],
   3: [tides(30)],
   4: [booster()],
+  // Cadres de profil (`game/cosmetics/profileFrames.ts`) et titres de palier
+  // (`game/titles/catalog.ts`) : chaque identifiant pointe sur un objet RÉEL
+  // (`tests/game/levelRewardsCatalog.test.ts`), débloqué au même niveau.
   5: [cosmetic("frame", "frame-mousse", "Cadre de profil — Mousse")],
   6: [necessaireDuMarin()],
   7: [cardChoice("uncommon")],
@@ -113,12 +116,13 @@ export const LEVEL_REWARDS: Readonly<Record<number, readonly LevelRewardItem[]>>
   12: [cardChoice("common")],
   13: [tides(45)],
   14: [booster()],
-  15: [cosmetic("title", "title-marin-eau-douce", "Titre — Marin d'eau douce")],
+  15: [cosmetic("title", "marin-d-eau-douce", "Titre — Marin d'eau douce")],
   16: [tides(50)],
   17: [cardChoice("uncommon")],
   18: [necessaireDuMarin()],
   19: [tides(TIDE_REWARD.big)],
-  20: [preconToken(), cosmetic("avatar", "avatar-timonier", "Avatar — Timonier")],
+  // Le titre Timonier remplace l'avatar « Timonier », qui n'a jamais existé (27/10/2026).
+  20: [preconToken(), cosmetic("title", "timonier", "Titre — Timonier")],
   21: [tides(50)],
   22: [cardChoice("common")],
   23: [tides(55)],
@@ -147,7 +151,7 @@ export const LEVEL_REWARDS: Readonly<Record<number, readonly LevelRewardItem[]>>
   42: [cardChoice("uncommon")],
   43: [necessaireDuMarin(2)],
   44: [booster()],
-  45: [cosmetic("title", "title-capitaine", "Titre — Capitaine")],
+  45: [cosmetic("title", "capitaine", "Titre — Capitaine")],
   46: [tides(100)],
   47: [cardChoice("rare")],
   48: [tides(100)],
