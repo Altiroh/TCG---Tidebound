@@ -103,10 +103,12 @@ export const LEVEL_REWARDS: Readonly<Record<number, readonly LevelRewardItem[]>>
   2: [cardChoice("common")],
   3: [tides(30)],
   4: [booster()],
-  // Cadres de profil (`game/cosmetics/profileFrames.ts`) et titres de palier
+  // Cadres de navire (`game/cosmetics/shipFrames.ts`) et titres de palier
   // (`game/titles/catalog.ts`) : chaque identifiant pointe sur un objet RÉEL
   // (`tests/game/levelRewardsCatalog.test.ts`), débloqué au même niveau.
-  5: [cosmetic("frame", "frame-mousse", "Cadre de profil — Mousse"), cosmetic("shipSkin", "ship-skin-mousse", "Cadre de Navire — Mousse")],
+  // Pas de cadre de profil (27/10/2026) : Mousse, Vieux Loup et Prestige
+  // sont des cadres de NAVIRE.
+  5: [cosmetic("shipSkin", "ship-skin-mousse", "Cadre de Navire — Mousse")],
   6: [necessaireDuMarin()],
   7: [cardChoice("uncommon")],
   8: [tides(40)],
@@ -139,10 +141,7 @@ export const LEVEL_REWARDS: Readonly<Record<number, readonly LevelRewardItem[]>>
   32: [cardChoice("uncommon")],
   33: [necessaireDuMarin()],
   34: [booster()],
-  35: [
-    cosmetic("frame", "frame-vieux-loup", "Cadre de profil — Vieux Loup de Mer"),
-    cosmetic("shipSkin", "ship-skin-vieux-loup-de-mer", "Cadre de Navire — Vieux Loup de Mer"),
-  ],
+  35: [cosmetic("shipSkin", "ship-skin-vieux-loup-de-mer", "Cadre de Navire — Vieux Loup de Mer")],
   36: [tides(70)],
   // « Carte rare aléatoire ou choix limité » : on retient le choix, cohérent
   // avec tous les autres paliers de carte, et plus lisible côté joueur.
@@ -162,7 +161,6 @@ export const LEVEL_REWARDS: Readonly<Record<number, readonly LevelRewardItem[]>>
   50: [
     preconToken(),
     cosmetic("cardBack", "back-prestige-50", "Dos exclusif niveau 50"),
-    cosmetic("frame", "frame-prestige-50", "Cadre prestige niveau 50"),
     cosmetic("shipSkin", "ship-skin-prestige-50", "Cadre de Navire — Prestige"),
   ],
 };

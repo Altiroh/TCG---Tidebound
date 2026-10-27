@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition, type ReactNode } from "react";
-import { getCardDefinition, profileFrameSrc } from "@/game";
+import { getCardDefinition } from "@/game";
 import { LOGIN_STREAK_MILESTONE, MAX_REWARDED_LEVEL, levelRewardItems } from "@/game/progression";
 import { cardArtworkThumbUrl } from "@/features/decks/cardArtUrl";
 import { updateProfileIdentity, type ProfileSummary } from "@/features/progression/profileActions";
@@ -241,7 +241,7 @@ function Polaroid({
   return (
     <section className={styles.photo} aria-label="Identité">
       {/* eslint-disable-next-line @next/next/no-img-element -- cadre local */}
-      <img className={styles.photoFrame} src={profileFrameSrc(profile.profileFrameId)} alt="" draggable={false} />
+      <img className={styles.photoFrame} src="/assets/profile/photo-frame.webp" alt="" draggable={false} />
       {/* La fenêtre de la photo : l'illustration choisie, inclinée comme le cadre. Sans choix, le portrait peint reste. */}
       <button
         type="button"

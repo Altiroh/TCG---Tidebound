@@ -1,7 +1,6 @@
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import { shownChosenArtwork, type ChosenArtwork } from "@/game/cosmetics/artworks";
 import { titleById } from "@/game/titles/catalog";
-import { PROFILE_FRAME_COSMETIC_KIND, profileFrameById } from "@/game/cosmetics/profileFrames";
 import { readShowcases } from "@/features/friends/showcaseService";
 import type { Showcase } from "@/features/friends/showcaseRules";
 
@@ -30,8 +29,6 @@ export interface PlayerCardView {
   stats: PlayerCardStats;
   /** Son propre code ami, sur SA fiche seulement (« #CODE ») ; `null` pour les autres. */
   friendCode: string | null;
-  /** Cadre de profil porté (`PROFILE_FRAMES`) ; `null` : le cadre d'origine. */
-  profileFrameId: string | null;
 }
 
 export interface PlayerCardStats {
@@ -81,7 +78,7 @@ export async function readPlayerCards(userIds: string[], relations: Record<strin
   const ids = [...new Set(userIds)];
   if (ids.length === 0) return {};
   const db = service();
-  const [profiles, artworks, progression, titles, showcases, unlocks, cards, frames] = await Promise.all([
+  const [profiles, artworks, progression, titles, showcases, unlocks, cards] = await Promise.all([
     db.from("profiles").select("id, display_name, avatar_card_id, friend_code").in("id", ids),
     // À part : colonne de la migration `20261110120000`, peut-être absente (l'avatar reste alors Classique).
     Promise.resolve(db.from("profiles").select("id, avatar_artwork").in("id", ids)),
@@ -90,8 +87,6 @@ export async function readPlayerCards(userIds: string[], relations: Record<strin
     readShowcases(ids),
     db.from("player_deck_unlocks").select("user_id").in("user_id", ids),
     db.from("player_cards").select("user_id").in("user_id", ids).gt("quantity", 0),
-    // Le cadre de profil porté : un cadre se montre, comme un titre.
-    db.from("player_cosmetics").select("user_id, cosmetic_id").in("user_id", ids).eq("cosmetic_kind", PROFILE_FRAME_COSMETIC_KIND).eq("equipped", true),
   ]);
   const countBy = (rows: { user_id: string }[] | null) => {
     const counts = new Map<string, number>();
@@ -103,7 +98,6 @@ export async function readPlayerCards(userIds: string[], relations: Record<strin
   const artworkOf = new Map((artworks.error ? [] : (artworks.data ?? [])).map((row) => [row.id, row.avatar_artwork]));
   const progressionOf = new Map((progression.data ?? []).map((row) => [row.user_id, row]));
   const titleOf = new Map((titles.data ?? []).map((row) => [row.user_id, row.title_id]));
-  const frameOf = new Map((frames.data ?? []).map((row) => [row.user_id, row.cosmetic_id]));
 
   const result: Record<string, PlayerCardView> = {};
   for (const profile of profiles.data ?? []) {
@@ -124,7 +118,6 @@ export async function readPlayerCards(userIds: string[], relations: Record<strin
         cardsCollected: cardsOf.get(profile.id) ?? 0,
       },
       friendCode: relations[profile.id] === "self" ? (profile.friend_code ?? null) : null,
-      profileFrameId: profileFrameById(frameOf.get(profile.id)) ? frameOf.get(profile.id)! : null,
     };
   }
   return result;

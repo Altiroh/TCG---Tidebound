@@ -81,8 +81,6 @@ export interface CollectablesView {
 const VEILED_ART: Record<string, string> = {
   cardBack: "/assets/cards/card-back/dispo-bientot.webp",
   shipSkin: "/assets/ships/frames/dispo-bientot.webp",
-  // Pas encore de voile peint pour les cadres de profil : le cadre d'origine, éteint par l'écran.
-  frame: "/assets/profile/photo-frame.webp",
 };
 
 /** Compteurs d'un compte neuf (ou non connecté) : tout est à zéro. */
