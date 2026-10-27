@@ -838,7 +838,10 @@ export function TableBoard(props: TableBoardProps) {
       ? activePolarity === "hostile"
         ? "effect"
         : "boon"
-      : hover === "graveyard"
+      : // Une unité qui ne peut pas attaquer (phase principale…) ne se glisse
+        // que vers le Cimetière, pour la Saborder : jamais la flèche rouge
+        // d'une attaque (retour de joueur du 27/10/2026).
+        hover === "graveyard" || (aiming !== null && !aimAttacks)
         ? "sabotage"
         : "attack";
   // Le tir du canon désigne exactement les mêmes cibles qu'une attaque —
@@ -1365,6 +1368,11 @@ export function TableBoard(props: TableBoardProps) {
                       Annuler
                     </button>
                   )}
+                </div>
+              ) : aiming && !aimAttacks ? (
+                // Glisser une unité hors combat : ce n'est pas une attaque, le dire.
+                <div className={styles.centerHint} role="status">
+                  <span>{canPlayCards ? "Lâche-la sur le Cimetière pour la Saborder — on attaque en phase de combat." : "Elle ne peut pas attaquer maintenant."}</span>
                 </div>
               ) : gesture?.armed ? (
                 // Unité armée d'un toucher : rien ne disait qu'elle attendait sa cible.
