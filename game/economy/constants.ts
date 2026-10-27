@@ -33,20 +33,24 @@ export const CURRENCY_NAME = "Tides";
 export const BOOSTER_STANDARD_PRICE = 100;
 
 /**
- * Prix d'un JETON DE PRÉCONSTRUIT au Market, rayon Monnaie (27/10/2026).
+ * Prix d'un JETON DE PRÉCONSTRUIT au Market, rayon Monnaie.
  *
- * Calibrage : le niveau 10 demande 2 250 XP, soit environ 3 jours de jeu
- * régulier (~700 XP/jour). Sur ces 10 niveaux, un joueur gagne de l'ordre
- * de 750 à 900 Tides (paliers 145, quêtes du jour ~105/jour, connexion,
- * premiers exploits), hors crédit d'accueil. Le jeton coûte la MOITIÉ
- * environ : atteignable avant le niveau 10 sans tout y sacrifier, et cher
- * face à 4 boosters Standard (un préconstruit, c'est 40 cartes jouables
- * d'emblée). Valeur provisoire, à confirmer en jeu.
+ * 1 000 Tides (décision du 27/10/2026, au lieu de 400) : un achat
+ * d'économie, pas un raccourci — le Jeton reste d'abord une récompense de
+ * palier (niveaux 10, 20, 30…). Plafonné à `PRECON_TOKENS_WEEKLY_LIMIT` par
+ * semaine.
  */
-export const PRECON_TOKEN_PRICE_TIDES = 400;
+export const PRECON_TOKEN_PRICE_TIDES = 1000;
 
-/** Jetons achetables en un passage de caisse. */
-export const MAX_PRECON_TOKENS_PER_PURCHASE = 5;
+/**
+ * Jetons achetables par semaine (lundi 00:00 UTC, comme les quêtes
+ * hebdomadaires). Compté en base (`purchase_precon_tokens`, migration
+ * `20261116120000`) : le navigateur ne peut pas le contourner.
+ */
+export const PRECON_TOKENS_WEEKLY_LIMIT = 3;
+
+/** Jetons achetables en un passage de caisse : jamais plus que la limite de la semaine. */
+export const MAX_PRECON_TOKENS_PER_PURCHASE = PRECON_TOKENS_WEEKLY_LIMIT;
 
 /** Supplément des boosters spécialisés par rapport au Défaut. */
 export const SPECIALIZED_BOOSTER_SURCHARGE = 50;

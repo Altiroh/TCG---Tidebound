@@ -23,7 +23,7 @@ import { BoosterContentsDialog } from "@/features/market/BoosterContentsDialog";
 import { MicroLoader } from "@/features/shell/MicroLoader";
 import { StatusTag } from "@/features/shell/StatusTag";
 import { useOpaqueBox } from "@/features/shell/useOpaqueBox";
-import { MAX_PRECON_TOKENS_PER_PURCHASE, PRECON_TOKEN_PRICE_TIDES } from "@/game/economy/constants";
+import { MAX_PRECON_TOKENS_PER_PURCHASE, PRECON_TOKEN_PRICE_TIDES, PRECON_TOKENS_WEEKLY_LIMIT } from "@/game/economy/constants";
 
 interface MarketScreenProps {
   inventory: BoosterInventory;
@@ -31,6 +31,8 @@ interface MarketScreenProps {
   catalog: DeckCatalogSummary;
   /** Les Collectables, dont ceux en vente — le rayon Cosmétiques. */
   collectables: CollectablesView;
+  /** Jetons de Préconstruit encore achetables cette semaine (`readPreconTokenAllowance`). Absent : la limite entière. */
+  tokenAllowance?: number;
   /**
    * Laboratoire (`/game/market-preview`) : l'achat est SIMULÉ, aucune Server
    * Action n'est appelée — la page est publique et ses chiffres inventés.
@@ -121,7 +123,7 @@ function plural(count: number, singular: string, pluralForm = `${singular}s`): s
  * Action autoritaire (`purchase_booster`, `unlockPreconDeck`,
  * `purchase_cosmetic`) qui revérifie prix, disponibilité et solde.
  */
-export function MarketScreen({ inventory, catalog, collectables, sandbox = false, initialSection = "boosters", initialCartFilled = false }: MarketScreenProps) {
+export function MarketScreen({ inventory, catalog, collectables, sandbox = false, initialSection = "boosters", initialCartFilled = false, tokenAllowance = PRECON_TOKENS_WEEKLY_LIMIT }: MarketScreenProps) {
   const [section, setSection] = useState<SectionId>(initialSection);
   const [cart, setCart] = useState<Cart>(() => (initialCartFilled ? sampleCart(inventory, catalog, collectables) : EMPTY_CART));
   const [isBuying, setIsBuying] = useState(false);
@@ -201,9 +203,12 @@ export function MarketScreen({ inventory, catalog, collectables, sandbox = false
     setQuantity(boosterId, current + delta);
   }
 
+  /** Jetons que le panier peut encore prendre : la limite de la semaine, moins ce qui est déjà acheté. */
+  const tokenCap = Math.max(0, Math.min(MAX_PRECON_TOKENS_PER_PURCHASE, tokenAllowance));
+
   function stepTokens(delta: number) {
-    cartSound(delta > 0 && cart.tokens < MAX_PRECON_TOKENS_PER_PURCHASE);
-    setCart((current) => ({ ...current, tokens: Math.min(MAX_PRECON_TOKENS_PER_PURCHASE, Math.max(0, current.tokens + delta)) }));
+    cartSound(delta > 0 && cart.tokens < tokenCap);
+    setCart((current) => ({ ...current, tokens: Math.min(tokenCap, Math.max(0, current.tokens + delta)) }));
   }
 
   function toggleDeck(deckId: string) {
@@ -441,12 +446,18 @@ export function MarketScreen({ inventory, catalog, collectables, sandbox = false
                   owned={false}
                   ownedLabel=""
                   inCart={cart.tokens > 0}
-                  disabled={isBuying || cart.tokens >= MAX_PRECON_TOKENS_PER_PURCHASE}
+                  disabled={isBuying || cart.tokens >= tokenCap}
                   onToggle={() => stepTokens(1)}
                 />
               )}
               footer={
-                <span className={game.muted}>Tu as {plural(catalog.preconTokens, "Jeton")}.</span>
+                <span className={game.muted}>
+                  Tu as {plural(catalog.preconTokens, "Jeton")}. Cette semaine :{" "}
+                  {tokenAllowance > 0
+                    ? `encore ${tokenAllowance} sur ${PRECON_TOKENS_WEEKLY_LIMIT}`
+                    : `limite de ${PRECON_TOKENS_WEEKLY_LIMIT} atteinte, retour lundi`}
+                  .
+                </span>
               }
             />
           ) : (

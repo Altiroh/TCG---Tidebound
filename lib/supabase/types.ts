@@ -82,6 +82,13 @@ export interface Database {
         Update: { last_seen_at?: string };
         Relationships: [];
       };
+      /** Jetons de Préconstruit achetés en Tides — compte de la limite hebdomadaire (`20261116120000_jetons_limite_hebdo.sql`). */
+      precon_token_purchases: {
+        Row: { id: string; user_id: string; quantity: number; unit_price: number; created_at: string };
+        Insert: { id?: string; user_id: string; quantity: number; unit_price: number; created_at?: string };
+        Update: { quantity?: number; unit_price?: number };
+        Relationships: [];
+      };
       /** Vitrine : six emplacements (0 à 5), une carte possédée dans l'édition choisie. Serveur seul (aucune policy). */
       player_showcase: {
         Row: { user_id: string; slot: number; card_id: string; artwork: string; finish: string; updated_at: string };
@@ -1306,10 +1313,10 @@ export interface Database {
         Args: { p_user_id: string; p_title_id: string; p_required_level: number };
         Returns: { ok: boolean; error?: string; title_id?: string | null };
       };
-      /** Achat de Jetons de Préconstruit en Tides, rayon Monnaie (`20261114120000_jeton_contre_tides.sql`). */
+      /** Achat de Jetons de Préconstruit en Tides, rayon Monnaie, limité par semaine (`20261116120000_jetons_limite_hebdo.sql`). */
       purchase_precon_tokens: {
-        Args: { p_user_id: string; p_quantity: number; p_unit_price: number };
-        Returns: { ok: boolean; error?: string; balance?: number; tokens?: number; spent?: number };
+        Args: { p_user_id: string; p_quantity: number; p_unit_price: number; p_weekly_limit: number };
+        Returns: { ok: boolean; error?: string; balance?: number; tokens?: number; spent?: number; remaining?: number };
       };
       /** Achat d'un Collectable en Jetons de Préconstruit (`20261020120000_statistiques_a_vie.sql`). */
       purchase_cosmetic_tokens: {

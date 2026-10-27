@@ -904,19 +904,28 @@ function runRpc(db: FakeDatabase, fn: string, args: Row): any {
       return { ok: true, balance: wallet!.balance, cosmetic_id: args.p_cosmetic_id };
     }
 
-    // Transcription de `20261114120000_jeton_contre_tides.sql`.
+    // Transcription de `20261116120000_jetons_limite_hebdo.sql`.
     case "purchase_precon_tokens": {
-      if (!args.p_quantity || args.p_quantity < 1 || args.p_quantity > 5) return { ok: false, error: "Quantité invalide." };
-      if (!args.p_unit_price || args.p_unit_price < 1) return { ok: false, error: "Prix invalide." };
+      if (!args.p_quantity || args.p_quantity < 1) return { ok: false, error: "Quantité invalide." };
+      if (!args.p_unit_price || args.p_unit_price < 1 || !args.p_weekly_limit || args.p_weekly_limit < 1) return { ok: false, error: "Prix invalide." };
       const cost = args.p_quantity * args.p_unit_price;
       const wallet = db.one("player_currency", { user_id: args.p_user_id });
+      const now = new Date();
+      const midnight = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+      const weekStart = new Date(midnight - ((new Date(midnight).getUTCDay() + 6) % 7) * 86_400_000).toISOString();
+      const bought = db
+        .table("precon_token_purchases")
+        .filter((row) => row.user_id === args.p_user_id && row.created_at >= weekStart)
+        .reduce((sum, row) => sum + row.quantity, 0);
+      if (bought + args.p_quantity > args.p_weekly_limit) return { ok: false, error: "weekly_limit", remaining: Math.max(args.p_weekly_limit - bought, 0) };
       if ((wallet?.balance ?? 0) < cost) return { ok: false, error: "insufficient_funds" };
       wallet!.balance -= cost;
       db.table("currency_transactions").push({ user_id: args.p_user_id, amount: -cost, reason: "precon_token_purchase" });
+      db.table("precon_token_purchases").push({ user_id: args.p_user_id, quantity: args.p_quantity, unit_price: args.p_unit_price, created_at: now.toISOString() });
       db.insertIfAbsent("player_progression", { user_id: args.p_user_id, xp_total: 0, level: 1, precon_tokens: 0 });
       const progression = db.one("player_progression", { user_id: args.p_user_id })!;
       progression.precon_tokens = (progression.precon_tokens ?? 0) + args.p_quantity;
-      return { ok: true, balance: wallet!.balance, tokens: progression.precon_tokens, spent: cost };
+      return { ok: true, balance: wallet!.balance, tokens: progression.precon_tokens, spent: cost, remaining: args.p_weekly_limit - bought - args.p_quantity };
     }
 
     case "purchase_cosmetic_tokens": {

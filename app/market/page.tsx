@@ -2,6 +2,7 @@ import { MarketScreen } from "@/features/market/MarketScreen";
 import { fetchBoosterInventory } from "@/features/boosters/actions";
 import { loadCollectables } from "@/features/cosmetics/collectablesService";
 import { fetchDeckCatalog } from "@/features/decks/catalogActions";
+import { readPreconTokenAllowance } from "@/features/market/tokenExchangeService";
 import { getSessionUser } from "@/lib/supabase/sessionUser";
 
 /**
@@ -17,14 +18,15 @@ import { getSessionUser } from "@/lib/supabase/sessionUser";
  */
 export default async function MarketPage() {
   const user = await getSessionUser().catch(() => null);
-  const [inventory, catalog, collectables] = await Promise.all([
+  const [inventory, catalog, collectables, tokenAllowance] = await Promise.all([
     fetchBoosterInventory(),
     fetchDeckCatalog(),
     loadCollectables(user?.id ?? null).catch((error) => {
       console.error("[MarketPage] Collectables illisibles :", error);
       return loadCollectables(null);
     }),
+    readPreconTokenAllowance(user?.id ?? null),
   ]);
 
-  return <MarketScreen inventory={inventory} catalog={catalog} collectables={collectables} />;
+  return <MarketScreen inventory={inventory} catalog={catalog} collectables={collectables} tokenAllowance={tokenAllowance} />;
 }

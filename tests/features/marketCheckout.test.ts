@@ -148,6 +148,25 @@ describe("checkoutCart", () => {
     expect(db.one("player_currency", { user_id: USER })!.balance).toBe(10);
   });
 
+  it("rayon Monnaie : 3 Jetons par semaine au plus, refus sans rien débiter au-delà", async () => {
+    const { PRECON_TOKEN_PRICE_TIDES, PRECON_TOKENS_WEEKLY_LIMIT } = await import("@/game/economy/constants");
+    expect(PRECON_TOKEN_PRICE_TIDES).toBe(1000);
+    expect(PRECON_TOKENS_WEEKLY_LIMIT).toBe(3);
+    db.table("player_currency").push({ user_id: USER, balance: 10 * PRECON_TOKEN_PRICE_TIDES });
+
+    expect((await checkoutCart({ boosters: [], tokens: 2, decks: [], cosmetics: [] })).error).toBeUndefined();
+    const refused = await checkoutCart({ boosters: [], tokens: 2, decks: [], cosmetics: [] });
+    expect(refused).toMatchObject({ ok: false, error: "Limite de la semaine : encore 1 Jeton au plus." });
+    expect(db.one("player_currency", { user_id: USER })!.balance).toBe(8 * PRECON_TOKEN_PRICE_TIDES);
+
+    expect((await checkoutCart({ boosters: [], tokens: 1, decks: [], cosmetics: [] })).error).toBeUndefined();
+    expect(await checkoutCart({ boosters: [], tokens: 1, decks: [], cosmetics: [] })).toMatchObject({
+      ok: false,
+      error: "Limite atteinte : 3 Jetons par semaine. Retour lundi.",
+    });
+    expect(db.rpcCalls.find((call) => call.fn === "purchase_precon_tokens")?.args.p_weekly_limit).toBe(PRECON_TOKENS_WEEKLY_LIMIT);
+  });
+
   it("refuse un panier mal formé et un joueur sans session, sans rien appeler", async () => {
     expect(await checkoutCart({ boosters: "tout", decks: [], cosmetics: [] } as never)).toMatchObject({ ok: false, error: "Panier invalide." });
 
