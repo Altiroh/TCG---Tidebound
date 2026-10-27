@@ -1254,3 +1254,17 @@ export const EQUIPAGE_FELIN_SET: CardDefinition[] = [
 
 /** Les 66 cartes du booster et les deux variantes Abyssales. */
 export const LA_MAREE_BENIE_SET: CardDefinition[] = [...BIENFAITS_DU_FOND_SET, ...EQUIPAGE_FELIN_SET];
+
+/**
+ * EN ATTENTE DE LEUR ILLUSTRATION (décision du 27/10/2026) : écrites et
+ * testées, mais ni au catalogue, ni en collection, ni dans le pool du
+ * booster tant que leur visuel n'est pas livré. Une carte en sort quand son
+ * illustration arrive — retirer son id de cette liste suffit.
+ */
+const EN_ATTENTE_D_ILLUSTRATION: ReadonlySet<string> = new Set([...EQUIPAGE_FELIN_SET.map((def) => def.id), "lancre-des-marees"]);
+
+/** Les cartes du booster distribuées aujourd'hui. */
+export const LA_MAREE_BENIE_PUBLIEES: CardDefinition[] = LA_MAREE_BENIE_SET.filter((def) => !EN_ATTENTE_D_ILLUSTRATION.has(def.id));
+
+/** Les cartes du booster retenues jusqu'à leur illustration. */
+export const LA_MAREE_BENIE_EN_ATTENTE: CardDefinition[] = LA_MAREE_BENIE_SET.filter((def) => EN_ATTENTE_D_ILLUSTRATION.has(def.id));

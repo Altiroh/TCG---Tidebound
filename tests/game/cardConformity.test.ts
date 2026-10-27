@@ -15,7 +15,10 @@
  * Ajouter une exception sans motif est refusé par le test lui-même.
  */
 import { describe, expect, it } from "vitest";
-import { CORE_SET } from "@/game/cards/sets/core";
+import { CORE_SET as CATALOGUE, HELD_BACK_SET } from "@/game/cards/sets/core";
+
+/** Le catalogue ET les cartes retenues jusqu'à leur illustration : toutes sont relues. */
+const CORE_SET = [...CATALOGUE, ...HELD_BACK_SET];
 import type { CardDefinition, TriggeredAbility } from "@/game/cards/types";
 import type { EffectDefinition } from "@/game/effects/types";
 import type { TriggerType } from "@/game/triggers/types";

@@ -21,7 +21,10 @@ Un Dead / Mort-vivant — EN PRÉPARATION ».
 | --- | --- | --- |
 | `mort.webp` | **Mort** — deck Un Dead / Mort-vivant | Réservé : aucune règle ne le pose encore, il attend sa mécanique |
 | `souillure.webp` | **Souillure** — Les Bienfaits du Fond (Lot 20), cumulable | Jeton définitif (27/10/2026) |
-| `plus-un.webp` | **+1/+1** — L'Équipage Félin (Lot 21), cumulable, compté dans les stats | Provisoire (27/10/2026), à repeindre sous le même nom |
+
+Le marqueur **+1/+1** (L'Équipage Félin) n'a PAS de jeton (décision du
+27/10/2026) : il se lit dans la Puissance et la Résistance de la carte
+(`MarkerRule.sansJeton`).
 
 Format : 256 px de côté, détouré (fond transparent), WebP. Nommé d'après
 le marqueur, en kebab-case.

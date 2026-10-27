@@ -28,6 +28,11 @@ export interface MarkerRule {
   /** Combien une même carte peut en porter. */
   max: number;
   /**
+   * Aucun jeton posé sur l'illustration : le marqueur ne se lit que dans les
+   * stats de la carte (+1/+1, décision du 27/10/2026).
+   */
+  sansJeton?: true;
+  /**
    * Une carte qui le porte compte AUSSI comme ce sous-type, pour tous les
    * effets (« une unité marquée Mort est Mort-vivant ») — lu par
    * `unitHasSubtype`, jamais par `hasSubtype` seul.
@@ -68,9 +73,10 @@ export const MARKER_RULES: Readonly<Record<MarkerId, MarkerRule>> = {
   /**
    * +1/+1 (Lot 21 — L'Équipage Félin) : chaque marqueur ajoute 1 Puissance
    * et 1 Résistance, tant qu'il reste sur la carte (`computeEffectiveStats`).
-   * Cumulable ; il part avec la carte.
+   * Cumulable ; il part avec la carte. Pas de jeton : il se voit dans la
+   * Puissance et la Résistance affichées.
    */
-  "plus-un": { label: "+1/+1", max: MARKER_STACK_MAX },
+  "plus-un": { label: "+1/+1", max: MARKER_STACK_MAX, sansJeton: true },
 };
 
 export type CardMarkers = Partial<Record<MarkerId, number>>;

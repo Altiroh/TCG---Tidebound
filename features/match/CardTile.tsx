@@ -1365,7 +1365,7 @@ function CardTileView({
  * au-dessus du nom. Un jeton par genre, la pile chiffrée au-delà d'un.
  */
 function BoardTileMarkers({ markers }: { markers: CardInstance["markers"] }) {
-  const poses = (Object.entries(markers ?? {}) as Array<[MarkerId, number]>).filter(([, count]) => count > 0);
+  const poses = (Object.entries(markers ?? {}) as Array<[MarkerId, number]>).filter(([marker, count]) => count > 0 && !MARKER_RULES[marker].sansJeton);
   if (poses.length === 0) return null;
   return (
     <div className="pointer-events-none absolute inset-x-0 top-[24%] flex justify-center gap-[4%]">

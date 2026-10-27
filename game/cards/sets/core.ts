@@ -8,7 +8,7 @@ import { LANDES_SET } from "@/game/cards/sets/landes";
 import { LOT17_SET } from "@/game/cards/sets/lot17";
 import { LOT18_PLATEAU_SET, LOT18_SET } from "@/game/cards/sets/lot18";
 import { LOT19_SET } from "@/game/cards/sets/lot19";
-import { LA_MAREE_BENIE_SET } from "@/game/cards/sets/mareeBenie";
+import { LA_MAREE_BENIE_EN_ATTENTE, LA_MAREE_BENIE_PUBLIEES } from "@/game/cards/sets/mareeBenie";
 import { EQUIPPABLE_CARD_TYPES, type CardDefinition, type CardInstance } from "@/game/cards/types";
 
 /**
@@ -5186,11 +5186,20 @@ const WRITTEN_SET: CardDefinition[] = [
   ...LOT18_PLATEAU_SET,
   // Lot 19 — Les Chairs Dévoyées : Insectes, Mutants, Homoncules (`game/cards/sets/lot19.ts`).
   ...LOT19_SET,
-  // Lots 20 et 21 — La Marée Bénie : Bienfaits du Fond et Équipage Félin (`game/cards/sets/mareeBenie.ts`).
-  ...LA_MAREE_BENIE_SET,
+  // Lots 20 et 21 — La Marée Bénie : Bienfaits du Fond et Équipage Félin (`game/cards/sets/mareeBenie.ts`),
+  // sans les cartes qui attendent leur illustration (`HELD_BACK_SET`).
+  ...LA_MAREE_BENIE_PUBLIEES,
 ];
 
 export const CORE_SET: CardDefinition[] = WRITTEN_SET.map(withOptionalArrival);
+
+/**
+ * Cartes ÉCRITES mais RETENUES jusqu'à leur illustration (27/10/2026) : hors
+ * de `CORE_SET` — donc hors catalogue, collection, pools de booster et seed —
+ * mais résolues par `getCardDefinition`, comme les jetons : le moteur et les
+ * tests les jouent déjà.
+ */
+export const HELD_BACK_SET: CardDefinition[] = LA_MAREE_BENIE_EN_ATTENTE.map(withOptionalArrival);
 
 /**
  * Index de résolution : le catalogue collectionnable PLUS les jetons
@@ -5200,7 +5209,7 @@ export const CORE_SET: CardDefinition[] = WRITTEN_SET.map(withOptionalArrival);
  * résoudre : un Péon invoqué est une carte comme une autre sur le plateau.
  */
 export const CARD_DATABASE: ReadonlyMap<string, CardDefinition> = new Map(
-  [...CORE_SET, ...TOKEN_SET].map((card) => [card.id, card])
+  [...CORE_SET, ...HELD_BACK_SET, ...TOKEN_SET].map((card) => [card.id, card])
 );
 
 export function getCardDefinition(cardId: string): CardDefinition {
