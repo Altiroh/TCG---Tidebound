@@ -39,6 +39,8 @@ function fabriquer(): GameState {
       {
         ...p1,
         reason: 8,
+        // Une carte à effet d'arrivée ciblé, pour voir l'ouverture automatique à la pose.
+        hand: [pose("canonnier-fele", p1.id, { instanceId: "lab_canonnier_main" }), ...p1.hand.slice(0, 3)],
         board: [
           pose("il-capitano-naufrage", p1.id, { damageMarked: 1 }),
           pose("le-dernier-rempart", p1.id, { statuses: [STATUS_MALADE] }),

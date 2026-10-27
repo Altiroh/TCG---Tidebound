@@ -15,7 +15,8 @@ export function FocusedCardHost({ board, tideState }: { board: BoardInteraction;
   if (!focus) return null;
   const { request, stage } = focus;
   const def = getCardDefinition(request.card.cardId);
-  const cancel: FocusedCardAction = { label: "Annuler", tone: "neutral", onClick: board.cancelFocus };
+  // Ouverte d'elle-même à la pose : refuser, c'est remettre à plus tard — la carte reste lumineuse jusqu'à la fin du tour.
+  const cancel: FocusedCardAction = { label: focus.auto ? "Plus tard" : "Annuler", tone: "neutral", onClick: board.cancelFocus };
 
   const { options } = request;
   const single = options.length === 1 ? options[0]! : null;
@@ -50,7 +51,8 @@ export function FocusedCardHost({ board, tideState }: { board: BoardInteraction;
       card={request.card}
       tideState={tideState}
       eyebrow={byTarget ? "Effet d'arrivée — touche ta cible" : "Effet d'arrivée"}
-      detail={stage === "choose" ? reminder : undefined}
+      // L'effet reste rappelé pendant la désignation : la cible se choisit en le lisant.
+      detail={stage !== "resolving" ? reminder : undefined}
       hint={
         stage === "targeting"
           ? byTarget

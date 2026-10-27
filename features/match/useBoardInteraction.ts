@@ -176,7 +176,17 @@ export interface FocusState {
   request: FocusRequest;
   stage: "choose" | "targeting" | "resolving";
   leaving: boolean;
+  /**
+   * Ouverte d'elle-même à la POSE de la carte (retour du 27/10/2026), pas
+   * par un toucher : rien ne part sans un geste du joueur — il touche la
+   * cible, ou « Activer » pour un effet sans cible —, et « Plus tard » la
+   * renvoie luire à sa place, activable jusqu'à la fin du tour.
+   */
+  auto?: boolean;
 }
+
+/** Délai avant l'ouverture automatique : le temps que la carte se pose sur le plateau. */
+const AUTO_FOCUS_DELAY_MS = 550;
 
 /** Temps que la carte reste à droite une fois l'action partie : l'effet s'envole d'elle. */
 const FOCUS_RESOLVE_HOLD_MS = 1100;
@@ -233,8 +243,12 @@ export interface BoardInteraction {
   focus: FocusState | null;
   /** Cartes du joueur dont l'effet d'arrivée attend en réserve : elles luisent. */
   arrivalReadyIds: string[];
-  /** Carte lumineuse touchée : elle vole à droite et son effet part aussitôt (cible à désigner, ou résolution). */
-  openArrivalFocus: (instanceId: string) => void;
+  /**
+   * Carte lumineuse touchée : elle vole à droite et son effet part aussitôt
+   * (cible à désigner, ou résolution). `auto` : ouverte d'elle-même à la
+   * pose — un effet sans cible attend alors « Activer ».
+   */
+  openArrivalFocus: (instanceId: string, auto?: boolean) => void;
   /** « Activer » (une option si la carte en a plusieurs — « choisissez : A ou B »). */
   activateFocusedArrival: (option: ActivatableArrival) => void;
   /**
@@ -275,6 +289,32 @@ export function useBoardInteraction({
   const arrivals = canAct ? activatableArrivals(liveState, actorId) : [];
   const arrivalReadyIds = Array.from(new Set(arrivals.map(({ entry }) => entry.sourceInstanceId)));
 
+  // OUVERTURE AUTOMATIQUE À LA POSE (retour du 27/10/2026) : une carte qui
+  // vient d'arriver avec un effet d'arrivée en réserve se lève d'elle-même
+  // et vole à droite. Seules les NOUVELLES réserves comptent : celles déjà là
+  // au montage (partie reprise) ou renvoyées par « Plus tard » restent à
+  // luire. Rien ne s'ouvre par-dessus une fenêtre, un choix ou un geste.
+  const seenArrivals = useRef<Set<string> | null>(null);
+  const arrivalKey = arrivalReadyIds.join("|");
+  const openRef = useRef(openArrivalFocus);
+  openRef.current = openArrivalFocus;
+  const busyRef = useRef(false);
+  busyRef.current = Boolean(focus || selection || liveState.pendingReaction || liveState.pendingChoice || graveyardPick || assemblagePick);
+  useEffect(() => {
+    if (seenArrivals.current === null) {
+      seenArrivals.current = new Set(arrivalReadyIds);
+      return;
+    }
+    const fresh = arrivalReadyIds.filter((id) => !seenArrivals.current!.has(id));
+    for (const id of arrivalReadyIds) seenArrivals.current.add(id);
+    if (fresh.length === 0) return;
+    const timer = window.setTimeout(() => {
+      if (!busyRef.current) openRef.current(fresh[0]!, true);
+    }, AUTO_FOCUS_DELAY_MS);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [arrivalKey]);
+
   /** L'action de la carte à droite vient de partir : elle reste le temps que l'effet s'envole d'elle, puis rentre. */
   function focusResolving() {
     setFocus((current) => (current ? { ...current, stage: "resolving" } : current));
@@ -292,14 +332,16 @@ export function useBoardInteraction({
     setFocus(null);
   }
 
-  function openArrivalFocus(instanceId: string) {
+  function openArrivalFocus(instanceId: string, auto = false) {
     const card = viewer.board.find((c) => c.instanceId === instanceId);
     const options = arrivals.filter(({ entry }) => entry.sourceInstanceId === instanceId);
     if (!card || options.length === 0 || focus) return;
     onGestureStart?.();
     clearSelection();
-    const focusState: FocusState = { request: { kind: "arrival", card, options }, stage: "choose", leaving: false };
+    const focusState: FocusState = { request: { kind: "arrival", card, options }, stage: "choose", leaving: false, ...(auto ? { auto } : {}) };
     setFocus(focusState);
+    // Ouverte d'elle-même : un effet sans cible ne part pas sans « Activer ».
+    if (auto && options.length === 1 && !options[0]!.candidate.needsTarget) return;
     // PAS DE SECONDE VALIDATION (16/10/2026) : toucher la carte lance son
     // effet. Un seul effet : il part (cible à désigner, « Annuler » possible,
     // ou résolution aussitôt). Plusieurs modes qui visent tous une unité : la
