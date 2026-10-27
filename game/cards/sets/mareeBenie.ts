@@ -32,15 +32,11 @@ const FELINS = "equipage-felin" as const;
 const flat = (value: number): EffectAmount => ({ kind: "flat", value });
 
 /**
- * RÉSISTANCE PROVISOIRE d'une Structure : le catalogue Notion n'en donne pas
- * (« P/R — »), alors qu'une Structure en a toujours une (règle de design,
- * `tests/game/designDecisions.test.ts`). Valeur de remplacement : la
- * MÉDIANE des Structures de même coût du catalogue au 27/10/2026 — écart
- * signalé, à trancher dans Notion (CLAUDE.md, règle 9).
+ * RÉSISTANCE DES STRUCTURES : le catalogue Notion n'en donnait pas (« P/R — »),
+ * alors qu'une Structure en a toujours une. Valeurs validées le 27/10/2026 :
+ * un moteur qui rapporte à chaque tour reste facile à abattre, une
+ * Structure défensive tient.
  */
-function resistanceProvisoire(cost: number): number {
-  return ({ 2: 3, 3: 4, 4: 5, 5: 6 } as Record<number, number>)[cost] ?? cost + 1;
-}
 
 function bienfait(def: Omit<CardDefinition, "archetype" | "setCode">): CardDefinition {
   return { ...def, archetype: BIENFAITS, setCode: BOOSTER_LA_MAREE_BENIE_SET };
@@ -284,7 +280,7 @@ export const BIENFAITS_DU_FOND_SET: CardDefinition[] = [
     name: "La Fontaine du Port",
     type: "structure",
     cost: 3,
-    health: resistanceProvisoire(3),
+    health: 3,
     maxCopies: 2,
     text:
       "À votre début de tour — Si la mer est en Houle, placez un marqueur Souillure sur une Créature de votre choix. Si " +
@@ -326,7 +322,7 @@ export const BIENFAITS_DU_FOND_SET: CardDefinition[] = [
     name: "Le Puits Salé",
     type: "structure",
     cost: 2,
-    health: resistanceProvisoire(2),
+    health: 2,
     maxCopies: 3,
     durationTurns: 4,
     text: "Durée : 4 tours de table. Chaque fois que vous brisez un Objet allié, infligez 1 dégât à toutes les Créatures souillées.",
@@ -441,7 +437,7 @@ export const BIENFAITS_DU_FOND_SET: CardDefinition[] = [
     name: "Le Filet qui Respire",
     type: "structure",
     cost: 3,
-    health: resistanceProvisoire(3),
+    health: 4,
     maxCopies: 2,
     text: "Une fois par tour, lorsqu'une Créature souillée attaque votre Navire, vous pouvez lui infliger 2 dégâts avant la résolution de l'attaque.",
     abilities: [
@@ -544,7 +540,7 @@ export const BIENFAITS_DU_FOND_SET: CardDefinition[] = [
     name: "Le Berceau du Fond",
     type: "structure",
     cost: 5,
-    health: resistanceProvisoire(5),
+    health: 5,
     maxCopies: 1,
     text:
       "À votre début de tour — Placez un marqueur Souillure sur une Créature adverse. Une fois par tour, lorsqu'une " +
@@ -631,7 +627,7 @@ export const BIENFAITS_DU_FOND_SET: CardDefinition[] = [
     name: "L'Ancre des Marées",
     type: "structure",
     cost: 3,
-    health: resistanceProvisoire(3),
+    health: 3,
     maxCopies: 2,
     durationTurns: 3,
     text: "Durée : 3 tours de table. Tant que cette Structure est en jeu, la mer ne peut pas redescendre sous Houle.",
@@ -705,7 +701,7 @@ export const BIENFAITS_DU_FOND_SET: CardDefinition[] = [
     name: "La Chapelle des Bienheureux",
     type: "structure",
     cost: 3,
-    health: resistanceProvisoire(3),
+    health: 4,
     maxCopies: 3,
     text:
       "À votre début de tour — Vous pouvez choisir une Créature alliée non bénie. Elle devient bénie. Si vous contrôlez " +
@@ -966,7 +962,7 @@ export const EQUIPAGE_FELIN_SET: CardDefinition[] = [
     name: "Le Bastion des Coussinets",
     type: "structure",
     cost: 4,
-    health: resistanceProvisoire(4),
+    health: 5,
     maxCopies: 2,
     text: "Une fois par tour, lorsqu'une Créature alliée perd Voile, une autre Créature alliée qui n'en bénéficie pas gagne Voile.",
     abilities: [
@@ -982,7 +978,7 @@ export const EQUIPAGE_FELIN_SET: CardDefinition[] = [
     name: "La Cabine du Capitaine",
     type: "structure",
     cost: 3,
-    health: resistanceProvisoire(3),
+    health: 3,
     maxCopies: 2,
     text: "À votre début de tour — Choisissez une Créature alliée. Placez un marqueur +1/+1 sur elle.",
     abilities: [
@@ -1083,7 +1079,7 @@ export const EQUIPAGE_FELIN_SET: CardDefinition[] = [
     name: "La Mer aux Coussinets",
     type: "structure",
     cost: 4,
-    health: resistanceProvisoire(4),
+    health: 4,
     maxCopies: 2,
     durationTurns: 3,
     text:
@@ -1105,7 +1101,7 @@ export const EQUIPAGE_FELIN_SET: CardDefinition[] = [
     name: "Le Gouvernail des Marées",
     type: "structure",
     cost: 3,
-    health: resistanceProvisoire(3),
+    health: 4,
     maxCopies: 2,
     text: "Une fois par tour, à votre début de tour — Vous pouvez faire passer la mer du Calme à la Houle ou de la Houle au Calme.",
     abilities: [
@@ -1222,7 +1218,7 @@ export const EQUIPAGE_FELIN_SET: CardDefinition[] = [
     name: "La Cloche du Rassemblement",
     type: "structure",
     cost: 3,
-    health: resistanceProvisoire(3),
+    health: 3,
     maxCopies: 3,
     text: "Une fois par tour, lorsqu'une Créature alliée gagne Voile, vous pouvez placer un marqueur +1/+1 sur une autre Créature alliée.",
     abilities: [

@@ -4,6 +4,7 @@ import { auraContextOf, computeEffectiveStats } from "@/game/cards/stats";
 import { markerCount } from "@/game/cards/markers";
 import { isBlessed, unitHasVeil } from "@/game/cards/unitConditions";
 import { STATUS_BENIE, STATUS_VOILE, type CardInstance } from "@/game/cards/types";
+import { LA_MAREE_BENIE_SET } from "@/game/cards/sets/mareeBenie";
 import type { GameState } from "@/game/state/types";
 import type { TideStateName } from "@/game/environment/types";
 import { activateReactionFor, enFinDeTour, instance, pendingCandidates, testEnvironment, testGameState, testPlayer } from "./testHelpers";
@@ -582,5 +583,25 @@ describe("fenêtres de réaction et cascades", () => {
     const fin = designer(s, mousse.instanceId);
     ok(fin);
     expect(plusUns(fin.state, mousse.instanceId)).toBe(1);
+  });
+});
+
+describe("Résistance des Structures (validée le 27/10/2026)", () => {
+  it("chaque Structure du booster a la Résistance arrêtée", () => {
+    const attendues: Record<string, number> = {
+      "le-puits-sale": 2,
+      "la-fontaine-du-port": 3,
+      "le-filet-qui-respire": 4,
+      "lancre-des-marees": 3,
+      "la-chapelle-des-bienheureux": 4,
+      "le-berceau-du-fond": 5,
+      "le-bastion-des-coussinets": 5,
+      "la-cabine-du-capitaine": 3,
+      "la-mer-aux-coussinets": 4,
+      "le-gouvernail-des-marees": 4,
+      "la-cloche-du-rassemblement": 3,
+    };
+    const structures = LA_MAREE_BENIE_SET.filter((def) => def.type === "structure");
+    expect(Object.fromEntries(structures.map((def) => [def.id, def.health]))).toEqual(attendues);
   });
 });
