@@ -826,6 +826,13 @@ export interface DeckLookChoice {
    * celui qui choisit, comme invoquée, avec `withMarker` le cas échéant.
    */
   takeTo?: "hand" | "deckTop" | "deckBottom" | "board";
+  /**
+   * Destination de remplacement pour les cartes prises qui remplissent la
+   * condition (« si elle était bénie, placez-la sur votre plateau à la
+   * place », La Mer rend les siens — `EffectDefinition.takeToIf`). Seul le
+   * plateau est pris en charge comme destination de remplacement.
+   */
+  takeToIf?: { condition: import("@/game/cards/unitConditions").UnitCondition; takeTo: "hand" | "deckTop" | "deckBottom" | "board" };
   /** `takeTo: "board"` : le marqueur avec lequel la carte arrive (« avec un marqueur Mort »). */
   withMarker?: import("@/game/cards/markers").MarkerId;
   /**

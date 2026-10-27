@@ -22,6 +22,51 @@ import type { ActivateAbilityAction, ActionResult } from "@/game/actions/types";
 /** Clé de suivi "1ère fois par tour" partagée par toute capacité activable — chaque instance de carte suit la sienne (`CardInstance.oncePerTurnFlags`), donc aucun risque de collision entre deux cartes différentes. */
 const ONCE_PER_TURN_KEY = "activatableAbility";
 
+/**
+ * LANDE à capacité activable (Brumesel, Lot 20 — « Une fois par tour, vous
+ * pouvez … ») : la Lande vaut pour les deux camps, donc CHAQUE joueur peut
+ * l'activer, une fois par tour, pendant sa Phase principale. Le suivi vit sur
+ * la Lande elle-même (`ActiveLande.activatedTurnBy`), par joueur.
+ */
+function validateLande(state: GameState, action: ActivateAbilityAction) {
+  const lande = state.environment.lande;
+  if (!lande || lande.instanceId !== action.sourceInstanceId) return { ok: false as const, error: "Aucune Lande de ce nom en jeu." };
+  const generalChecks = combine(
+    assertGameActive(state),
+    assertPlayerInGame(state, action.playerId),
+    assertIsActivePlayer(state, action.playerId),
+    assertInMainPhase(state, action.playerId)
+  );
+  if (!generalChecks.ok) return generalChecks;
+  const spec = getCardDefinition(lande.cardId).lande?.activatableOncePerTurn;
+  if (!spec) return { ok: false as const, error: "Cette Lande n'a pas de capacité activable." };
+  if (lande.activatedTurnBy?.[action.playerId] === state.turnNumber) {
+    return { ok: false as const, error: "Vous avez déjà utilisé cette Lande ce tour-ci." };
+  }
+  if (spec.effects.some((e) => e.target.kind === "chosenUnit") && !action.targetInstanceId) {
+    return { ok: false as const, error: "Cette capacité nécessite une cible." };
+  }
+  return { ok: true as const };
+}
+
+function activateLande(state: GameState, action: ActivateAbilityAction): ActionResult {
+  const validation = validateLande(state, action);
+  if (!validation.ok) return { ok: false, error: validation.error };
+  const lande = state.environment.lande!;
+  const spec = getCardDefinition(lande.cardId).lande!.activatableOncePerTurn!;
+  const marque: GameState = {
+    ...state,
+    environment: { ...state.environment, lande: { ...lande, activatedTurnBy: { ...lande.activatedTurnBy, [action.playerId]: state.turnNumber } } },
+  };
+  const activated = resolveEffectSequence(marque, spec.effects, {
+    controllerId: action.playerId,
+    sourceInstanceId: lande.instanceId,
+    chosenTargetInstanceId: action.targetInstanceId,
+    turnNumber: state.turnNumber,
+  });
+  return { ok: true, state: activated.state, events: activated.events };
+}
+
 function validate(state: GameState, action: ActivateAbilityAction) {
   const generalChecks = combine(
     assertGameActive(state),
@@ -65,6 +110,13 @@ function validate(state: GameState, action: ActivateAbilityAction) {
  * l'interface pour offrir le bouton « Activer ».
  */
 export function canActivateAbility(state: GameState, playerId: PlayerId, sourceInstanceId: string): boolean {
+  if (state.environment.lande?.instanceId === sourceInstanceId) {
+    const spec = getCardDefinition(state.environment.lande.cardId).lande?.activatableOncePerTurn;
+    if (!spec) return false;
+    const targeted = spec.effects.find((e) => e.target.kind === "chosenUnit");
+    if (targeted && eligibleChosenUnits(state, targeted.target, playerId, sourceInstanceId).length === 0) return false;
+    return validateLande(state, { type: "activateAbility", playerId, sourceInstanceId, targetInstanceId: targeted ? "__cible__" : undefined }).ok;
+  }
   const unit = state.players.find((p) => p.id === playerId)?.board.find((u) => u.instanceId === sourceInstanceId);
   const spec = unit ? getCardDefinition(unit.cardId).activatableOncePerTurn : undefined;
   if (!spec) return false;
@@ -82,6 +134,7 @@ export function canActivateAbility(state: GameState, playerId: PlayerId, sourceI
  * ni consommer l'action principale du tour.
  */
 export function activateAbility(state: GameState, action: ActivateAbilityAction): ActionResult {
+  if (state.environment.lande?.instanceId === action.sourceInstanceId) return activateLande(state, action);
   const validation = validate(state, action);
   if (!validation.ok) return { ok: false, error: validation.error };
 

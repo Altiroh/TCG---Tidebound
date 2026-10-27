@@ -50,6 +50,10 @@ export type TriggerType =
   | "onChosenOption" // Lot 17 — JAMAIS déclenché par un événement : la capacité n'est qu'une OPTION, proposée par l'effet `chooseAbilityOption` de sa carte (« Choisissez : … »)
   | "onAbilityResolved" // Lot 17 — une carte EN JEU (`sourceInstanceId`) vient de résoudre une capacité déclenchée (`ABILITY_RESOLVED`) : observateur avec `triggeredBy` (Eidolon Opalin LVX)
   | "onDealtDamage" // Lot 17 — une carte EN JEU (`sourceInstanceId`) vient d'INFLIGER des dégâts — combat ou effet : personnel, ou observateur avec `triggeredBy` (Dhar, Opalin du Premier Coup)
+  | "onVeilLost" // Lot 21 — le Voile d'une carte EN JEU (`sourceInstanceId`) vient d'être consommé (une destruction empêchée) : « lorsqu'une Créature alliée perd Voile », « lorsqu'un Voile allié est consommé ». Personnel, ou observateur avec `triggeredBy`
+  | "onVeilGained" // Lot 21 — une carte EN JEU vient de gagner un Voile intrinsèque (`grantVeil`) : « lorsqu'une Créature alliée gagne Voile »
+  | "onMarkerAdded" // Lots 20-21 — des marqueurs viennent d'être posés sur une carte en jeu ; `TriggerEvent.marker` dit lesquels, filtré par `triggeredBy.markerAdded`
+  | "onDestructionPrevented" // Lot 21 — la carte (`sourceInstanceId`) vient d'échapper à sa destruction par son propre texte (« elle ne l'est pas et placez un marqueur +1/+1 sur elle »)
   | "onCondition"; // condition arbitraire évaluée par un `ConditionExpression`
 
 /** Issue d'un jet de dé (Lot 17) — une Réussite critique est AUSSI une Réussite. */
@@ -59,6 +63,13 @@ export interface TriggerEvent {
   trigger: TriggerType;
   /** instanceId de l'unité concernée par l'événement, si applicable. */
   sourceInstanceId?: string;
+  /** `onMarkerAdded` : le marqueur posé (Lots 20-21). */
+  marker?: import("@/game/cards/markers").MarkerId;
+  /**
+   * `onDeath` : statuts que la carte portait en quittant le plateau
+   * (« si cette Créature était bénie », Le Pêcheur en deuil — Lot 20).
+   */
+  statuses?: string[];
   /** cardId de la carte jouée, pour onPlay / onCardPlayed. */
   cardId?: string;
   playerId?: string;

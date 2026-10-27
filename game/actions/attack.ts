@@ -24,6 +24,7 @@ import {
   consumeDirectShipDamageShield,
   restoreStructureResistanceAfterLoss,
   loseReason,
+  consumeAllyDamageReduction,
 } from "@/game/state/shields";
 import { getOpponent, getPlayer, type GameState, type PlayerState } from "@/game/state/types";
 import { recordGraveyardArrival } from "@/game/state/discard";
@@ -219,11 +220,17 @@ function applyCombatDamageToUnit(
   turnNumber: number
 ): { state: GameState; amountApplied: number } {
   if (amount <= 0) return { state, amountApplied: 0 };
-  const nextState = state;
+  let nextState = state;
   let reduction = 0;
   // Vieille-Selle : un coup de 3 ou plus, d'une seule source, perd 1.
   const peau = getCardDefinition(unit.cardId).reduceLargeDamageTaken;
   if (peau && amount >= peau.atLeast) reduction += peau.amount;
+  // Père Goulven (Lot 20) : une fois par tour, une alliée bénie touchée encaisse 1 de moins.
+  if (amount - reduction > 0) {
+    const beni = consumeAllyDamageReduction(nextState, ownerId, unit, turnNumber);
+    nextState = beni.state;
+    reduction += beni.reduction;
+  }
   const finalAmount = Math.max(0, amount - reduction);
   if (finalAmount <= 0) return { state: nextState, amountApplied: 0 };
   const marked: GameState = {

@@ -17,7 +17,10 @@ import { hasSubtype, type SubtypeId } from "@/game/cards/subtypes";
  * Les marqueurs Niveau de la lignée LV (Lot 17) ont précédé cette primitive
  * et vivent encore à part (`CardInstance.levelMarkers`).
  */
-export type MarkerId = "mort";
+export type MarkerId = "mort" | "souillure" | "plus-un";
+
+/** Plafond d'un marqueur CUMULABLE : assez haut pour ne jamais se voir en partie. */
+export const MARKER_STACK_MAX = 99;
 
 export interface MarkerRule {
   /** Nom imprimé (« un marqueur Mort »). */
@@ -55,6 +58,19 @@ export interface MarkerRule {
  */
 export const MARKER_RULES: Readonly<Record<MarkerId, MarkerRule>> = {
   mort: { label: "Mort", max: 1, grantsSubtype: "mort-vivant", insteadOfGraveyard: "deckBottom", refusedOnSubtype: "mort-vivant" },
+  /**
+   * SOUILLURE (Lot 20 — Les Bienfaits du Fond) : cumulable, sans effet par
+   * lui-même — « souillée » veut dire « porte au moins un marqueur
+   * Souillure », et ce sont les textes qui le lisent (Fièvre salée, Ceux qui
+   * ont bu, Brumesel…). Il part avec la carte quand elle quitte le plateau.
+   */
+  souillure: { label: "Souillure", max: MARKER_STACK_MAX },
+  /**
+   * +1/+1 (Lot 21 — L'Équipage Félin) : chaque marqueur ajoute 1 Puissance
+   * et 1 Résistance, tant qu'il reste sur la carte (`computeEffectiveStats`).
+   * Cumulable ; il part avec la carte.
+   */
+  "plus-un": { label: "+1/+1", max: MARKER_STACK_MAX },
 };
 
 export type CardMarkers = Partial<Record<MarkerId, number>>;
@@ -81,6 +97,13 @@ export function canReceiveMarker(card: Pick<CardInstance, "markers">, marker: Ma
 export function withMarker<T extends CardInstance>(card: T, marker: MarkerId, amount = 1): T {
   const next = Math.min(MARKER_RULES[marker].max, markerCount(card, marker) + amount);
   return { ...card, markers: { ...card.markers, [marker]: next } };
+}
+
+/** La carte sans aucun marqueur `marker` (« retirez tous les marqueurs Souillure », Brumesel). */
+export function withoutMarker<T extends CardInstance>(card: T, marker: MarkerId): T {
+  if (markerCount(card, marker) === 0) return card;
+  const { [marker]: _retire, ...rest } = card.markers ?? {};
+  return { ...card, markers: Object.keys(rest).length > 0 ? rest : undefined };
 }
 
 /** La carte sans aucun marqueur : ce qu'elle devient en quittant le plateau. */

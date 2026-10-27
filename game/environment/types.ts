@@ -117,6 +117,11 @@ export interface ActiveLande {
    * soit le joueur qui l'a posée.
    */
   remainingPlayerTurns: number;
+  /**
+   * Capacité activable de la Lande (`LandeRules.activatableOncePerTurn`) :
+   * tour de table où CHAQUE joueur l'a utilisée pour la dernière fois.
+   */
+  activatedTurnBy?: Record<string, number>;
 }
 
 /**

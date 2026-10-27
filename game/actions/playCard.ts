@@ -477,6 +477,8 @@ export function playCard(state: GameState, requested: PlayCardAction): ActionRes
       // Un marqueur part avec la carte qui quitte le plateau : celle qui y
       // revient depuis la main n'en porte aucun (Lot 18).
       ...stripMarkers(instance),
+      // Ni ses statuts : une carte bénie revenue en main repart sans (Lot 20).
+      statuses: undefined,
       summoningSick: isUnitCard(def.type),
       hasAttackedThisTurn: false,
       damageMarked: 0,

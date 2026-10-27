@@ -434,7 +434,36 @@ export type EffectType =
    * `thenEffects` ce qui se résout ensuite sur la carte prise
    * (`chosenGraveyardInstanceId`). Sans carte prenable, pas de question.
    */
-  | "pickFromGraveyard";
+  | "pickFromGraveyard"
+  // --- Lots 20-21 — La Marée Bénie ---------------------------------------
+  /**
+   * « Elle devient bénie » (Lot 20) : pose `STATUS_BENIE` sur chaque cible
+   * qui ne l'est pas déjà. Sans effet par lui-même — ce sont les textes qui
+   * lisent l'état (`UnitCondition.blessed`).
+   */
+  | "bless"
+  /** « Une Créature perd sa Bénédiction » (Refus de Bénédiction) : retire `STATUS_BENIE`. */
+  | "unbless"
+  /**
+   * « Elle gagne Voile » (Lot 21) : Voile INTRINSÈQUE (`STATUS_VOILE`) sur
+   * chaque cible qui n'en bénéficie pas déjà, d'aucune source — un seul
+   * Voile par permanent. Émet `VEIL_GAINED`, que lit `onVeilGained`.
+   */
+  | "grantVeil"
+  /**
+   * « Retirez tous les marqueurs Souillure du plateau » (Brumesel) : retire
+   * tous les marqueurs `marker` des cibles. Le nombre retiré est relu par le
+   * montant `markersRemoved` des effets qui suivent.
+   */
+  | "removeMarkers"
+  /**
+   * « La mer passe en Houle / au Calme / en Tempête » (Lots 20-21) : la
+   * Marée passe IMMÉDIATEMENT à l'état `tideState`, avec la durée d'entrée
+   * de cet état. Déjà dans cet état : rien ne change (ni durée, ni
+   * orientation). Transition forcée comme `tideForceAdvance` : ses
+   * déclencheurs (entrée, sortie, visibilité) partent de `dispatch`.
+   */
+  | "tideSetState";
 
 /** Une valeur numérique d'effet, pour l'instant une constante — prête à
  * être étendue vers des formules (ex: "= nombre d'unités contrôlées"). */
@@ -553,7 +582,30 @@ export type EffectAmount =
    */
   | { kind: "triggerDamage" }
   /** « autant de cartes que vous voulez » : la taille de la main du joueur visé, au moment de la résolution. */
-  | { kind: "handSize" };
+  | { kind: "handSize" }
+  /**
+   * « pour chaque marqueur Souillure présent sur le plateau » (Le Fidèle du
+   * Bienfaiteur, Lot 20) : marqueurs `marker` comptés sur les plateaux de
+   * `scope` au moment de la résolution.
+   */
+  | { kind: "markersOnBoard"; marker: import("@/game/cards/markers").MarkerId; scope: "all" | "controller" | "opponent" }
+  /**
+   * « autant de dégâts que de marqueurs retirés de cette façon » (Brumesel) :
+   * ce que le `removeMarkers` précédent de la même suite a retiré
+   * (`EffectContext.markersRemoved`). 0 sans retrait.
+   */
+  | { kind: "markersRemoved" }
+  /**
+   * « 1 Ancrage pour chaque Créature bénie que vous contrôlez » (Lot 20) :
+   * cartes en jeu sur les plateaux de `scope`, de ces types, qui remplissent
+   * `unitCondition`.
+   */
+  | {
+      kind: "unitsMatching";
+      scope: "all" | "controller" | "opponent";
+      cardTypes?: import("@/game/cards/types").CardType[];
+      unitCondition?: import("@/game/cards/unitConditions").UnitCondition;
+    };
 
 /**
  * Restriction d'une cible `chosenUnit` : le joueur désigne, mais seulement
@@ -642,6 +694,8 @@ export interface ChosenUnitFilter {
    * Verre : l'unité qui vient de survivre n'est pas « une autre »).
    */
   excludeTriggerSource?: boolean;
+  /** La cible remplit cette condition d'état (« une Créature non bénie », « souillée », « qui ne bénéficie pas de Voile »). */
+  unitCondition?: import("@/game/cards/unitConditions").UnitCondition;
 }
 
 export type TargetSelector =
@@ -962,6 +1016,12 @@ export interface EffectDefinition {
      * « l'un d'eux », L'Anomalie Première — Lot 16).
      */
     eveilledThisTurn?: boolean;
+    /**
+     * La cible remplit cette condition d'état (Lots 20-21) : « toutes les
+     * Créatures non bénies », « toutes les Créatures souillées », « celles
+     * qui bénéficient déjà de Voile ».
+     */
+    unitCondition?: import("@/game/cards/unitConditions").UnitCondition;
   };
   /**
    * Lot 15 — « Si elle survit, … » : ne résout CET effet que si la cible
@@ -1335,4 +1395,42 @@ export interface EffectDefinition {
    * condition.
    */
   conditionSourceRemainingResistanceAtMost?: number;
+
+  /**
+   * « Si elle est souillée », « si elle était déjà bénie », « si elle est
+   * alliée » (Lots 20-21) : ne résout CET effet que si la cible DÉSIGNÉE
+   * (`chosenTargetInstanceId`) remplit la condition. `side` : `"ally"` — du
+   * camp du contrôleur de l'effet ; `"enemy"` — du camp adverse. À placer
+   * AVANT l'effet qui change l'état lu (« si elle était déjà bénie » se lit
+   * avant de la bénir).
+   */
+  conditionChosenTarget?: import("@/game/cards/unitConditions").UnitCondition & { side?: "ally" | "enemy" };
+
+  /**
+   * « Si cette Créature était bénie » (Le Pêcheur en deuil) : la carte
+   * DÉCLENCHEUSE remplit la condition — lue où qu'elle soit, au Cimetière
+   * compris (une carte morte y garde ses statuts).
+   */
+  conditionTriggerSource?: import("@/game/cards/unitConditions").UnitCondition;
+
+  /**
+   * « Si vous contrôlez au moins trois Créatures bénies » (La Chapelle des
+   * Bienheureux) : le montant `count` atteint `atLeast`.
+   */
+  conditionCountAtLeast?: { count: EffectAmount; atLeast: number };
+
+  /**
+   * « Si votre Navire a récupéré de l'Ancrage ce tour » (La Dernière
+   * Sardine, Lot 21) : un `HEAL` sur le Navire du contrôleur a été consigné
+   * pendant ce tour de table.
+   */
+  conditionControllerShipHealedThisTurn?: boolean;
+
+  /**
+   * `pickFromGraveyard` : « si elle était bénie lorsqu'elle a quitté le
+   * plateau, placez-la directement sur votre plateau à la place » (La Mer
+   * rend les siens) — la carte prise va vers `takeTo` de cette entrée si
+   * elle remplit `condition` (lue au Cimetière), vers `takeTo` sinon.
+   */
+  takeToIf?: { condition: import("@/game/cards/unitConditions").UnitCondition; takeTo: "hand" | "deckTop" | "deckBottom" | "board" };
 }

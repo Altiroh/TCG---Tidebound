@@ -101,6 +101,18 @@ export function describeReactionCause(state: GameState, event: TriggerEvent | un
       return qui ? `${qui} ${mine ? "piochez" : "pioche"} une carte` : "Une carte est piochée";
     case "onAbilityResolved":
       return `${carte}${sienne} résout sa capacité`;
+    case "onVeilLost":
+      return `${carte}${sienne} perd son Voile`;
+    case "onVeilGained":
+      return `${carte}${sienne} gagne Voile`;
+    case "onMarkerAdded":
+      return event.marker === "souillure"
+        ? `${carte}${sienne} reçoit un marqueur Souillure`
+        : event.marker === "plus-un"
+          ? `${carte}${sienne} reçoit un marqueur +1/+1`
+          : `${carte}${sienne} reçoit un marqueur`;
+    case "onDestructionPrevented":
+      return `${carte}${sienne} échappe à sa destruction`;
     case "onChosenOption":
     case "onCondition":
       return null;

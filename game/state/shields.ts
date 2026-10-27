@@ -6,6 +6,7 @@ import { markOncePerTurnUsed, oncePerTurnAvailable } from "@/game/state/oncePerT
 import { reasonAfterLoss } from "@/game/state/reason";
 import { getPlayer, type GameState, type PlayerId, type PlayerState } from "@/game/state/types";
 import { recordGraveyardArrival } from "@/game/state/discard";
+import { unitMeetsCondition } from "@/game/cards/unitConditions";
 
 /**
  * Boucliers "la première fois PAR TOUR que..." (cf. `CardInstance.oncePerTurnFlags`).
@@ -343,4 +344,33 @@ export function applyOpponentRemovalShield(
       { turnNumber, timestamp: Date.now(), type: "DEBUFF_APPLIED", targetInstanceId: instanceId, attack: 0, health: -shield.healthLoss },
     ],
   };
+}
+
+/**
+ * « Une fois par tour, lorsqu'une Créature alliée bénie subit des dégâts,
+ * réduisez ces dégâts de 1 » (Père Goulven, Lot 20 —
+ * `reduceAllyDamageOncePerTurn`). Cherche sur le plateau du PROPRIÉTAIRE de
+ * l'unité touchée un bouclier encore disponible ce tour dont la condition
+ * (type, `UnitCondition`) est remplie par cette unité, et le consomme.
+ * Appelé là où les dégâts se marquent : effet (`resolveEffect`) et combat
+ * (`attack.ts`). Réduction 0 si rien ne s'applique.
+ */
+export function consumeAllyDamageReduction(
+  state: GameState,
+  ownerId: PlayerId,
+  unit: CardInstance,
+  turnNumber: number
+): { state: GameState; reduction: number } {
+  const owner = state.players.find((p) => p.id === ownerId);
+  if (!owner) return { state, reduction: 0 };
+  const type = getCardDefinition(unit.cardId).type;
+  const shield = findAvailableShield(state, ownerId, turnNumber, "allyDamageShield", (def) => {
+    const spec = def.reduceAllyDamageOncePerTurn;
+    if (!spec) return undefined;
+    if (!(spec.allyTypes ?? ["creature"]).includes(type)) return undefined;
+    if (!unitMeetsCondition(unit, spec.allyCondition, { controllerBoard: owner.board, tideState: state.environment.tideState })) return undefined;
+    return spec;
+  });
+  if (!shield) return { state, reduction: 0 };
+  return { state: consumeShield(state, ownerId, shield.unit, "allyDamageShield", turnNumber), reduction: shield.spec.amount };
 }

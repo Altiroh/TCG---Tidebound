@@ -1,6 +1,8 @@
 import { addSlotEffect, canAddSlot, canCondemnSlot, condemnedSlots, freeBoardSlots, freeCondemnedSlot } from "@/game/rules/slotEffects";
 import { boardRoomFor } from "@/game/rules/graveyardReturn";
-import { canReceiveMarker, unitHasSubtype, withMarker } from "@/game/cards/markers";
+import { canReceiveMarker, markerCount, unitHasSubtype, withMarker, withoutMarker } from "@/game/cards/markers";
+import { countMarkers, hasIntrinsicVeil, isBlessed, unitHasVeil, unitMeetsCondition } from "@/game/cards/unitConditions";
+import { applyTideFloor, tideFloorOf } from "@/game/rules/tideFloor";
 import { hasSubtype } from "@/game/cards/subtypes";
 import { addLevelMarkers } from "@/game/rules/levels";
 import { addNextRollModifier, pendingDieRoll, rerollPending, rollDie, shiftPending } from "@/game/rules/dice";
@@ -12,6 +14,8 @@ import {
   CHROMATIC_COLORS,
   hasResistance,
   isVisibleDuringTide,
+  STATUS_BENIE,
+  STATUS_VOILE,
   UNIT_CARD_TYPES,
   type CardDefinition,
   type CardInstance,
@@ -21,12 +25,13 @@ import {
 } from "@/game/cards/types";
 import { canBeEquipTarget, getCardDefinition } from "@/game/cards/sets/core";
 import { countArchetypeUnits } from "@/game/cards/archetypes";
-import { auraContextOf, computeEffectiveStats } from "@/game/cards/stats";
+import { auraContextOf, computeEffectiveStats, opposingBoard } from "@/game/cards/stats";
 import { getShipDefinition } from "@/game/environment/shipData";
-import { endCurrentTideState, forceTideJumpToAbysses, forceTideTransition } from "@/game/environment/tide";
+import { endCurrentTideState, forceTideJumpToAbysses, forceTideTransition, tideDurationFor } from "@/game/environment/tide";
 import { applyForcedTideTransition } from "@/game/environment/tideTransition";
 import { recordGraveyardArrival } from "@/game/state/discard";
-import type { TideStateName } from "@/game/environment/types";
+import { naturalOrientationFor, type TideStateName } from "@/game/environment/types";
+import { RULES } from "@/game/rules/constants";
 import { isEligibleChosenUnit, isUntargetableBy } from "@/game/effects/chosenTargets";
 import type { EffectAmount, EffectDefinition } from "@/game/effects/types";
 import type { EffectOrigin, GameEvent } from "@/game/events/types";
@@ -41,6 +46,7 @@ import {
   consumeEquippedEffectDamageShield,
   consumeReasonLossShield,
   restoreStructureResistanceAfterLoss,
+  consumeAllyDamageReduction,
 } from "@/game/state/shields";
 import {
   findCardInstance,
@@ -245,6 +251,11 @@ export interface EffectContext {
    * (posé par `resolveEffectSequence`) : lu par le montant `attackRemoved`.
    */
   attackRemoved?: number;
+  /**
+   * Marqueurs retirés par le dernier `removeMarkers` de la suite (posé par
+   * `resolveEffectSequence`) : lu par le montant `markersRemoved` (Brumesel).
+   */
+  markersRemoved?: number;
   turnNumber: number;
 }
 
@@ -312,9 +323,27 @@ function amountValue(
   amount: EffectAmount | undefined,
   state: GameState,
   controllerId: PlayerId,
-  context?: Pick<EffectContext, "dieResult" | "discardedCount" | "triggerDamageAmount" | "attackRemoved">
+  context?: Pick<EffectContext, "dieResult" | "discardedCount" | "triggerDamageAmount" | "attackRemoved" | "markersRemoved">
 ): number {
   if (amount === undefined) return 0;
+  if (amount.kind === "markersRemoved") return context?.markersRemoved ?? 0;
+  if (amount.kind === "markersOnBoard" || amount.kind === "unitsMatching") {
+    const plateaux =
+      amount.scope === "all"
+        ? state.players
+        : [amount.scope === "opponent" ? getOpponent(state, controllerId) : getPlayer(state, controllerId)];
+    if (amount.kind === "markersOnBoard") return plateaux.reduce((sum, p) => sum + countMarkers(p.board, amount.marker), 0);
+    return plateaux.reduce(
+      (sum, p) =>
+        sum +
+        p.board.filter(
+          (u) =>
+            (!amount.cardTypes || amount.cardTypes.includes(getCardDefinition(u.cardId).type)) &&
+            unitMeetsCondition(u, amount.unitCondition, { controllerBoard: p.board, tideState: state.environment.tideState })
+        ).length,
+      0
+    );
+  }
   if (amount.kind === "discardedCount") return (context?.discardedCount ?? 0) * (amount.per ?? 1);
   if (amount.kind === "triggerDamage") return Math.max(0, context?.triggerDamageAmount ?? 0);
   if (amount.kind === "handSize") return getPlayer(state, controllerId).hand.length;
@@ -446,6 +475,9 @@ function passesTargetFilter(
   if (filter.excludeChosenTarget && unit.instanceId === context.chosenTargetInstanceId) return false;
   if (filter.excludeTriggerSource && unit.instanceId === context.triggerSourceInstanceId) return false;
   if (filter.eveilledThisTurn && eveilsThisTurn(unit, context.turnNumber) === 0) return false;
+  if (filter.unitCondition && !unitMeetsCondition(unit, filter.unitCondition, { controllerBoard: getPlayer(state, ownerId).board, tideState: state.environment.tideState })) {
+    return false;
+  }
 
   const def = getCardDefinition(unit.cardId);
   if (filter.archetype && (def.archetype !== filter.archetype || !UNIT_CARD_TYPES.includes(def.type))) return false;
@@ -468,6 +500,7 @@ function passesTargetFilter(
       controllerReason: owner.reason,
       tideOrientation: state.environment.tideOrientation,
       controllerIsActive: state.activePlayerId === owner.id,
+      opponentBoard: opposingBoard(state, owner.id),
     });
     if (stats.attack > filter.maxPower) return false;
   }
@@ -924,6 +957,33 @@ export function effectConditionsMet(
     const stats = computeEffectiveStats(lue.unit, state.environment.tideState, auraContextOf(state, lue.owner.id));
     if (stats.health - lue.unit.damageMarked > effect.conditionSourceRemainingResistanceAtMost) return false;
   }
+  // « Si elle est souillée / déjà bénie / alliée » (Lots 20-21) : la cible désignée.
+  if (effect.conditionChosenTarget && !options.ignoreChosenTarget) {
+    const lue = boardUnit(state, context.chosenTargetInstanceId);
+    if (!lue) return false;
+    const { side, ...condition } = effect.conditionChosenTarget;
+    if (side === "ally" && lue.owner.id !== context.controllerId) return false;
+    if (side === "enemy" && lue.owner.id === context.controllerId) return false;
+    if (!unitMeetsCondition(lue.unit, condition, { controllerBoard: lue.owner.board, tideState: state.environment.tideState })) return false;
+  }
+  // « Si cette Créature était bénie » : la carte déclencheuse, où qu'elle soit (au Cimetière, elle garde ses statuts).
+  if (effect.conditionTriggerSource) {
+    const trouvee = context.triggerSourceInstanceId ? findCardInstance(state, context.triggerSourceInstanceId) : undefined;
+    if (!trouvee) return false;
+    if (!unitMeetsCondition(trouvee.card, effect.conditionTriggerSource, { controllerBoard: trouvee.owner.board, tideState: state.environment.tideState })) {
+      return false;
+    }
+  }
+  if (effect.conditionCountAtLeast) {
+    if (amountValue(effect.conditionCountAtLeast.count, state, context.controllerId, context) < effect.conditionCountAtLeast.atLeast) return false;
+  }
+  // « Si votre Navire a récupéré de l'Ancrage ce tour » (La Dernière Sardine).
+  if (effect.conditionControllerShipHealedThisTurn) {
+    const soigne = state.eventLog.some(
+      (e) => e.type === "HEAL" && e.targetPlayerId === context.controllerId && e.amount > 0 && e.turnNumber === context.turnNumber
+    );
+    if (!soigne) return false;
+  }
   return true;
 }
 
@@ -1055,6 +1115,12 @@ function resolveEffectBody(
         // le coup tel qu'il arrive, avant toute autre réduction.
         const peau = getCardDefinition(unit.cardId).reduceLargeDamageTaken;
         if (peau && amount >= peau.atLeast) reduction += peau.amount;
+        // Père Goulven (Lot 20) : une fois par tour, une alliée bénie touchée encaisse 1 de moins.
+        if (amount - reduction > 0) {
+          const beni = consumeAllyDamageReduction(nextState, ownerId, unit, context.turnNumber);
+          nextState = beni.state;
+          reduction += beni.reduction;
+        }
         const finalAmount = Math.max(0, amount - reduction);
         if (finalAmount <= 0) continue;
 
@@ -1639,11 +1705,68 @@ function resolveEffectBody(
       // cible qui peut encore en recevoir un (un seul marqueur Mort par unité).
       const marker = effect.marker;
       if (!marker) return { state, events };
+      // « Placez N marqueurs » : `amount`, 1 par défaut.
+      const combien = effect.amount ? amountValue(effect.amount, state, context.controllerId, context) : 1;
+      if (combien <= 0) return { state, events };
       const { targets, rngState } = resolveUnitTargets(state, effect, context);
       let nextState: GameState = { ...state, rngState };
       for (const { unit, ownerId } of targets) {
         if (!canReceiveMarker(unit, marker, getCardDefinition(unit.cardId))) continue;
-        nextState = replaceUnit(nextState, ownerId, unit.instanceId, (u) => withMarker(u, marker));
+        const avant = markerCount(unit, marker);
+        nextState = replaceUnit(nextState, ownerId, unit.instanceId, (u) => withMarker(u, marker, combien));
+        const pose = markerCount(getPlayer(nextState, ownerId).board.find((u) => u.instanceId === unit.instanceId)!, marker) - avant;
+        // Lu par `onMarkerAdded` (« lorsqu'une Créature alliée gagne un marqueur +1/+1 »).
+        if (pose > 0) {
+          events.push({ ...base, type: "MARKER_ADDED", playerId: ownerId, instanceId: unit.instanceId, cardId: unit.cardId, marker, count: pose });
+        }
+      }
+      return { state: nextState, events };
+    }
+
+    case "removeMarkers": {
+      const marker = effect.marker;
+      if (!marker) return { state, events };
+      const { targets, rngState } = resolveUnitTargets(state, effect, context);
+      let nextState: GameState = { ...state, rngState };
+      let retires = 0;
+      for (const { unit, ownerId } of targets) {
+        const n = markerCount(unit, marker);
+        if (n === 0) continue;
+        retires += n;
+        nextState = replaceUnit(nextState, ownerId, unit.instanceId, (u) => withoutMarker(u, marker));
+      }
+      if (retires > 0) events.push({ ...base, type: "MARKERS_REMOVED", marker, count: retires });
+      return { state: nextState, events };
+    }
+
+    case "bless":
+    case "unbless": {
+      // « Elle devient bénie » / « perd sa Bénédiction » (Lot 20) : un statut, sans effet propre.
+      const { targets, rngState } = resolveUnitTargets(state, effect, context);
+      let nextState: GameState = { ...state, rngState };
+      const benir = effect.type === "bless";
+      for (const { unit, ownerId } of targets) {
+        if (!UNIT_CARD_TYPES.includes(getCardDefinition(unit.cardId).type)) continue;
+        if (isBlessed(unit) === benir) continue;
+        nextState = replaceUnit(nextState, ownerId, unit.instanceId, (u) => ({
+          ...u,
+          statuses: benir ? [...(u.statuses ?? []), STATUS_BENIE] : (u.statuses ?? []).filter((s) => s !== STATUS_BENIE),
+        }));
+        events.push({ ...base, type: "STATUS_CHANGED", targetInstanceId: unit.instanceId, status: STATUS_BENIE, applied: benir, origin: originOf(context) });
+      }
+      return { state: nextState, events };
+    }
+
+    case "grantVeil": {
+      // « Elle gagne Voile » (Lot 21) : un seul Voile par permanent, d'où qu'il vienne.
+      const { targets, rngState } = resolveUnitTargets(state, effect, context);
+      let nextState: GameState = { ...state, rngState };
+      for (const { unit, ownerId } of targets) {
+        if (!UNIT_CARD_TYPES.includes(getCardDefinition(unit.cardId).type)) continue;
+        const actuelle = getPlayer(nextState, ownerId).board.find((u) => u.instanceId === unit.instanceId);
+        if (!actuelle || unitHasVeil(actuelle, getPlayer(nextState, ownerId).board) || hasIntrinsicVeil(actuelle)) continue;
+        nextState = replaceUnit(nextState, ownerId, unit.instanceId, (u) => ({ ...u, statuses: [...(u.statuses ?? []), STATUS_VOILE] }));
+        events.push({ ...base, type: "VEIL_GAINED", playerId: ownerId, instanceId: unit.instanceId, cardId: unit.cardId });
       }
       return { state: nextState, events };
     }
@@ -1887,7 +2010,7 @@ function resolveEffectBody(
       if (effect.type === "tideReduceDuration" && effect.advanceTideOnZero && rawRemaining <= 0) {
         // La Marée prend fin : on passe à la suivante même si un « Maintien »
         // attend le prochain décompte (`endCurrentTideState`).
-        const tick = endCurrentTideState(nextState.environment);
+        const tick = applyTideFloor(endCurrentTideState(nextState.environment), nextState.environment, tideFloorOf(nextState));
         events.push({
           ...base,
           type: "TIDE_ADVANCED",
@@ -1927,6 +2050,51 @@ function resolveEffectBody(
         state: { ...nextState, environment: { ...nextState.environment, tideRemainingTurns } },
         events,
       };
+    }
+
+    case "tideSetState": {
+      // « La mer passe en Houle » (Lots 20-21) : transition IMMÉDIATE vers
+      // l'état nommé, avec sa durée d'entrée ; déjà dans cet état, rien.
+      const cible = effect.tideState;
+      if (!cible || cible === state.environment.tideState) return { state, events };
+      const tick = applyTideFloor(
+        {
+          tideState: cible,
+          tideRemainingTurns: tideDurationFor(state.environment, cible),
+          tideOrientation: naturalOrientationFor(cible, state.environment.tideOrientation),
+          tideIntensity: RULES.TIDE_BASE_INTENSITY,
+          pendingTideModifiers: state.environment.pendingTideModifiers,
+          stateChanged: true,
+        },
+        state.environment,
+        tideFloorOf(state)
+      );
+      if (!tick.stateChanged) return { state, events };
+      events.push({
+        ...base,
+        type: "TIDE_ADVANCED",
+        remainingTurns: tick.tideRemainingTurns,
+        tideState: tick.tideState,
+        tideOrientation: tick.tideOrientation,
+        stateChanged: true,
+        forced: true,
+        previousTideState: state.environment.tideState,
+      });
+      return withForcedTransition(
+        {
+          ...state,
+          environment: {
+            ...state.environment,
+            tideState: tick.tideState,
+            tideRemainingTurns: tick.tideRemainingTurns,
+            tideOrientation: tick.tideOrientation,
+            tideIntensity: tick.tideIntensity,
+          },
+        },
+        state.environment.tideState,
+        events,
+        context.turnNumber
+      );
     }
 
     case "tideSetIntensity": {
@@ -1973,7 +2141,11 @@ function resolveEffectBody(
       // visibles) ne peuvent pas partir d'ici (`resolveEffect` n'appelle pas
       // le bus) : l'événement est marqué `forced` et `dispatch` les réveille
       // (`processForcedTideTransitions`), comme au tick de début de tour.
-      const tick = forceTideTransition(state.environment, effect.type === "tideForceAdvance" ? "avancer" : "reculer");
+      const tick = applyTideFloor(
+        forceTideTransition(state.environment, effect.type === "tideForceAdvance" ? "avancer" : "reculer"),
+        state.environment,
+        tideFloorOf(state)
+      );
       events.push({
         ...base,
         type: "TIDE_ADVANCED",
@@ -2430,6 +2602,7 @@ function resolveEffectBody(
           controllerBoard: owner.board,
           controllerReason: owner.reason,
           tideOrientation: nextState.environment.tideOrientation,
+          opponentBoard: opposingBoard(nextState, owner.id),
         });
         // Une carte que la Marée emporte directement ne se sauve pas comme
         // ça, et une destruction déjà décidée par un effet (`pendingRemoval`)
@@ -2555,6 +2728,7 @@ function resolveEffectBody(
           ...(effect.takeTo ? { takeTo: effect.takeTo } : {}),
           ...(vers === "board" && effect.marker ? { withMarker: effect.marker } : {}),
           ...(effect.graveyards === "both" ? { graveyardOrigins: origines } : {}),
+          ...(effect.takeToIf ? { takeToIf: effect.takeToIf } : {}),
           refusable: effect.refusable === true,
           ...(effect.thenEffects?.length
             ? {

@@ -1296,7 +1296,7 @@ export function TableBoard(props: TableBoardProps) {
                 <PontLandeSlot
                   card={
                     landeInstance ? (
-                      <div key={landeInstance.instanceId} {...previewHandlers(landeInstance.instanceId)}>
+                      <div key={landeInstance.instanceId} className="relative" {...previewHandlers(landeInstance.instanceId)}>
                         <CardTile
                           instance={landeInstance}
                           tideState={tideState}
@@ -1305,6 +1305,19 @@ export function TableBoard(props: TableBoardProps) {
                           showStatusBadges={false}
                           variant="board"
                         />
+                        {/* Lande à capacité activable (Brumesel, Lot 20) : chaque joueur peut l'utiliser, une fois par tour. */}
+                        {canPlayCards && !targeting && props.onActivateAbility && canActivateAbility(state, viewerId, landeInstance.instanceId) && (
+                          <button
+                            type="button"
+                            className={styles.landeActivate}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              props.onActivateAbility?.(landeInstance.instanceId);
+                            }}
+                          >
+                            Activer
+                          </button>
+                        )}
                       </div>
                     ) : undefined
                   }

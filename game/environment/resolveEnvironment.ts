@@ -1,3 +1,4 @@
+import { applyTideFloor, tideFloorOf } from "@/game/rules/tideFloor";
 import { absorbShipDamage, armorEvents, armorOf } from "@/game/state/armor";
 import { canRenverse, consumeAmplify, tickTide } from "@/game/environment/tide";
 import { getShipDefinition } from "@/game/environment/shipData";
@@ -404,8 +405,9 @@ export function annoncerMaree(
   // tour individuel (inchangé, cf. commentaire de fonction ci-dessus).
   const isNewRound = turnNumber % 2 === 1;
   const renverse = isNewRound ? rollRenverse(state) : { hit: false, rngState: state.rngState };
+  // L'Ancre des Marées (Lot 20) : la mer ne redescend pas sous son plancher.
   const tick = isNewRound
-    ? tickTide(state.environment, { renverse: renverse.hit })
+    ? applyTideFloor(tickTide(state.environment, { renverse: renverse.hit }), state.environment, tideFloorOf(state))
     : {
         tideState: state.environment.tideState,
         tideRemainingTurns: state.environment.tideRemainingTurns,

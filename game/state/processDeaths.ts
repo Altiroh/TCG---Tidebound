@@ -1,7 +1,8 @@
 import { createLoopGuard } from "@/game/rules/loopGuard";
-import { computeEffectiveStats } from "@/game/cards/stats";
+import { computeEffectiveStats, opposingBoard } from "@/game/cards/stats";
 import { getCardDefinition } from "@/game/cards/sets/core";
-import { hasResistance, type CardInstance } from "@/game/cards/types";
+import { hasResistance, STATUS_VOILE, type CardInstance } from "@/game/cards/types";
+import { hasIntrinsicVeil } from "@/game/cards/unitConditions";
 import type { TideStateName } from "@/game/environment/types";
 import type { GameEvent } from "@/game/events/types";
 import { collectReactionCandidates, processTrigger } from "@/game/triggers/triggerBus";
@@ -42,12 +43,14 @@ function shouldDie(
   tideState: TideStateName,
   controller: PlayerState,
   tideOrientation: "montante" | "descendante",
-  turnNumber: number
+  turnNumber: number,
+  opponentBoard: readonly CardInstance[]
 ): boolean {
   const stats = computeEffectiveStats(unit, tideState, {
     controllerBoard: controller.board,
     controllerReason: controller.reason,
     tideOrientation,
+    opponentBoard,
   });
   // Une protection en cours écarte le départ AVANT toute autre
   // considération : « ne peut pas être détruite » se lit au pied de la
@@ -107,6 +110,7 @@ function applyVoile(
     controllerBoard: boardSansEquipement,
     controllerReason: player.reason,
     tideOrientation: state.environment.tideOrientation,
+    opponentBoard: opposingBoard(state, ownerId),
   }).health;
   const sauve: CardInstance = {
     ...unit,
@@ -142,6 +146,40 @@ function applyVoile(
   return { state: next, events };
 }
 
+/**
+ * VOILE INTRINSÈQUE (Lot 21 — « elle gagne Voile ») : même remplacement que
+ * le Voile d'un Équipement (décision du 27/10/2026), sans rien sacrifier —
+ * la destruction n'a pas lieu, le Voile est consommé (le statut tombe), et
+ * l'unité reste en jeu avec 1 Résistance. `onVeilLost` le voit
+ * (`VEIL_CONSUMED`, lu dans `playerFactTriggerEvents`).
+ */
+function applyIntrinsicVeil(state: GameState, turnNumber: number, ownerId: string, unit: CardInstance): { state: GameState; events: GameEvent[] } {
+  const player = state.players.find((p) => p.id === ownerId)!;
+  const sansVoile: CardInstance = { ...unit, statuses: (unit.statuses ?? []).filter((s) => s !== STATUS_VOILE) };
+  const maximum = computeEffectiveStats(sansVoile, state.environment.tideState, {
+    controllerBoard: player.board,
+    controllerReason: player.reason,
+    tideOrientation: state.environment.tideOrientation,
+    opponentBoard: opposingBoard(state, ownerId),
+  }).health;
+  const sauve: CardInstance = {
+    ...sansVoile,
+    damageMarked: Math.max(0, maximum - 1),
+    pendingRemoval: undefined,
+    pendingRemovalBy: undefined,
+    rescueWindowOffered: undefined,
+  };
+  return {
+    state: {
+      ...state,
+      players: state.players.map((p) =>
+        p.id === ownerId ? { ...p, board: p.board.map((u) => (u.instanceId === unit.instanceId ? sauve : u)) } : p
+      ) as [PlayerState, PlayerState],
+    },
+    events: [{ type: "VEIL_CONSUMED", turnNumber, timestamp: Date.now(), playerId: ownerId, carrierInstanceId: unit.instanceId, cardId: unit.cardId }],
+  };
+}
+
 /** Le porteur devrait-il être détruit par des dégâts mortels ou une destruction DIRECTE (ce que Voile prévient) ? */
 function lethalOrDirectlyDestroyed(state: GameState, player: PlayerState, unit: CardInstance): boolean {
   if (unit.pendingRemoval === "scuttled") return false;
@@ -151,6 +189,7 @@ function lethalOrDirectlyDestroyed(state: GameState, player: PlayerState, unit: 
     controllerBoard: player.board,
     controllerReason: player.reason,
     tideOrientation: state.environment.tideOrientation,
+    opponentBoard: opposingBoard(state, player.id),
   });
   return unit.damageMarked >= stats.health;
 }
@@ -202,6 +241,7 @@ function remplacementParBeteDeHalage(
     controllerBoard: owner.board,
     controllerReason: owner.reason,
     tideOrientation: state.environment.tideOrientation,
+    opponentBoard: opposingBoard(state, owner.id),
   };
   const avant = computeEffectiveStats(unit, state.environment.tideState, contexte);
   if (destructionCauseOf(unit, avant.destroyedByTide) !== "effect") return undefined;
@@ -250,6 +290,7 @@ function applySelfSurvival(
       controllerBoard: owner.board,
       controllerReason: owner.reason,
       tideOrientation: state.environment.tideOrientation,
+      opponentBoard: opposingBoard(state, owner.id),
     });
     if (!survival.from.includes(destructionCauseOf(unit, stats.destroyedByTide))) return undefined;
   }
@@ -258,6 +299,7 @@ function applySelfSurvival(
     controllerBoard: owner.board,
     controllerReason: owner.reason,
     tideOrientation: state.environment.tideOrientation,
+    opponentBoard: opposingBoard(state, owner.id),
   });
   if (stats.destroyedByTide || stats.health < 1) return undefined;
   const saved = markOncePerTurnUsed({ ...unit, damageMarked: stats.health - 1, pendingRemoval: undefined }, SURVIVES_LETHAL_KEY, turnNumber, survival.onceEver);
@@ -427,7 +469,7 @@ export function processDeaths(
     const lethalPairs: Array<{ playerId: string; unitInstanceId: string }> = [];
     for (const player of current.players) {
       for (const unit of player.board) {
-        if (shouldDie(unit, current.environment.tideState, player, current.environment.tideOrientation, turnNumber)) {
+        if (shouldDie(unit, current.environment.tideState, player, current.environment.tideOrientation, turnNumber, opposingBoard(current, player.id))) {
           lethalPairs.push({ playerId: player.id, unitInstanceId: unit.instanceId });
         }
       }
@@ -435,12 +477,19 @@ export function processDeaths(
     for (const { playerId, unitInstanceId } of lethalPairs) {
       const player = current.players.find((p) => p.id === playerId);
       const unit = player?.board.find((u) => u.instanceId === unitInstanceId);
-      if (!player || !unit || !shouldDie(unit, current.environment.tideState, player, current.environment.tideOrientation, turnNumber)) continue;
+      if (!player || !unit || !shouldDie(unit, current.environment.tideState, player, current.environment.tideOrientation, turnNumber, opposingBoard(current, player.id))) continue;
       // Un Sabordage est un coût consenti : ni substitution ni survie.
       if (unit.pendingRemoval === "scuttled") continue;
       // VOILE (refonte du 13/10/2026) : dégâts mortels ou destruction
       // directe — ni Sabordage (écarté plus haut), ni expiration (qui ne
       // passe pas par ici), ni la seule Marée.
+      // Le Voile INTRINSÈQUE passe avant celui d'un Équipement : l'Équipement reste.
+      if (hasIntrinsicVeil(unit) && lethalOrDirectlyDestroyed(current, player, unit)) {
+        const result = applyIntrinsicVeil(current, turnNumber, player.id, unit);
+        current = result.state;
+        events.push(...result.events);
+        continue;
+      }
       const voile = findVoileEquipment(player.board, unit.instanceId);
       if (voile && lethalOrDirectlyDestroyed(current, player, unit)) {
         const result = applyVoile(current, turnNumber, player.id, unit, voile);
@@ -461,7 +510,11 @@ export function processDeaths(
       }
       // "Il reste à 1 Résistance à la place" (Revenante de la Fosse).
       const survived = applySelfSurvival(current, turnNumber, player, unit);
-      if (survived) current = survived;
+      if (survived) {
+        current = survived;
+        // « Elle ne l'est pas et placez un marqueur +1/+1 sur elle » (Le Matelot aux Neuf Vies, Lot 21).
+        events.push({ type: "DESTRUCTION_PREVENTED", turnNumber, timestamp: Date.now(), playerId: player.id, instanceId: unit.instanceId, cardId: unit.cardId });
+      }
     }
 
     const tideState = current.environment.tideState;
@@ -469,7 +522,7 @@ export function processDeaths(
 
     for (const player of current.players) {
       for (const unit of player.board) {
-        if (shouldDie(unit, tideState, player, current.environment.tideOrientation, turnNumber)) deaths.push({ unit, owner: player });
+        if (shouldDie(unit, tideState, player, current.environment.tideOrientation, turnNumber, opposingBoard(current, player.id))) deaths.push({ unit, owner: player });
       }
     }
 
@@ -638,6 +691,8 @@ export function processDeaths(
           playerId: owner.id,
           destructionCause: cause,
           ...(unit.markers ? { markers: unit.markers } : {}),
+          // « Si cette Créature était bénie » (Lot 20) : ses statuts au départ.
+          ...(unit.statuses?.length ? { statuses: unit.statuses } : {}),
         },
         turnNumber
       );

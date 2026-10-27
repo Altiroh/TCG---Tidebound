@@ -1,7 +1,7 @@
 import { getShipDefinition } from "@/game/environment/shipData";
 import { advanceTideState } from "@/game/environment/types";
 import { canRenverse } from "@/game/environment/tide";
-import { computeEffectiveStats } from "@/game/cards/stats";
+import { computeEffectiveStats, opposingBoard } from "@/game/cards/stats";
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { hasResistance, isPermanentCard, UNIT_CARD_TYPES, type CardInstance } from "@/game/cards/types";
 import { isOngoingEffect, slotsUsed } from "@/game/rules/ongoing";
@@ -111,6 +111,7 @@ function permanentValue(state: GameState, unit: CardInstance, controller: Player
   const stats = computeEffectiveStats(unit, state.environment.tideState, {
     controllerBoard: controller.board,
     controllerReason: controller.reason,
+    opponentBoard: opposingBoard(state, controller.id),
   });
 
   // Emportée par cette Marée (affinité `destroyed`) : elle ne vaut plus
@@ -427,7 +428,7 @@ function landeOutlook(state: GameState, me: PlayerState, opponent: PlayerState):
       player.board.reduce((sum, unit) => {
         if (!hasResistance(getCardDefinition(unit.cardId))) return sum + permanentValue(state, unit, player);
         const hurt = { ...unit, damageMarked: unit.damageMarked + hit };
-        const stats = computeEffectiveStats(hurt, state.environment.tideState, { controllerBoard: player.board, controllerReason: player.reason });
+        const stats = computeEffectiveStats(hurt, state.environment.tideState, { controllerBoard: player.board, controllerReason: player.reason, opponentBoard: opposingBoard(state, player.id) });
         return sum + (stats.health > hurt.damageMarked ? permanentValue(state, hurt, player) : 0);
       }, 0);
     const loss = (player: PlayerState) => boardValue(state, player) - after(player);

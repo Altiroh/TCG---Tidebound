@@ -1,6 +1,7 @@
-import { hasMarker, unitHasSubtype } from "@/game/cards/markers";
+import { hasMarker, markerCount, unitHasSubtype } from "@/game/cards/markers";
 import { hasSubtype } from "@/game/cards/subtypes";
 import { isTextIgnored } from "@/game/cards/types";
+import { unitMeetsCondition } from "@/game/cards/unitConditions";
 import { countArchetypeUnits } from "@/game/cards/archetypes";
 import { getCardDefinition } from "@/game/cards/sets/core";
 import { isVisibleDuringTide, UNIT_CARD_TYPES, type CardDefinition, type CardInstance } from "@/game/cards/types";
@@ -53,6 +54,18 @@ export interface AuraContext {
    * mots-clés (`hasKeywordInContext`) ; le moteur les relit sur l'état.
    */
   removedKeywords?: readonly string[];
+  /**
+   * Plateau de l'ADVERSAIRE du contrôleur. Seules les auras GLOBALES
+   * (`auraBuffAllUnits`, « Toutes les Créatures bénies gagnent… » — Le
+   * Gardien des Bénis, Lot 20) le lisent : une carte adverse peut alors
+   * renforcer celle-ci. Absent : on ignore ce que le camp d'en face prête.
+   */
+  opponentBoard?: readonly CardInstance[];
+}
+
+/** Plateau de l'adversaire de `controllerId` (pour `AuraContext.opponentBoard`). */
+export function opposingBoard(state: Pick<GameState, "players">, controllerId: string): readonly CardInstance[] {
+  return state.players.find((p) => p.id !== controllerId)?.board ?? [];
 }
 
 /**
@@ -72,6 +85,7 @@ export function auraContextOf(state: Pick<GameState, "players" | "activePlayerId
     controllerIsActive: state.activePlayerId === controllerId,
     landeActive: state.environment.lande !== undefined,
     removedKeywords: state.environment.lande ? (getCardDefinition(state.environment.lande.cardId).lande?.removesKeywords ?? []) : [],
+    opponentBoard: opposingBoard(state, controllerId),
   };
 }
 
@@ -213,6 +227,26 @@ export function collectAuraContributions(
     addSelf(onlyUnitBuff);
   }
 
+  // Bonus conditionnels sur soi (Lots 20-21) : bénie ou non, souillée,
+  // Voile, Marée, autre unité contrôlée — et « pour chaque marqueur ».
+  for (const spec of def.selfBuffWhenConditions ?? []) {
+    if (!unitMeetsCondition(unit, spec.when, { controllerBoard, tideState })) continue;
+    const fois = spec.perSelfMarker ? markerCount(unit, spec.perSelfMarker) : 1;
+    if (fois > 0) addSelf({ attackAmount: (spec.attackAmount ?? 0) * fois, healthAmount: (spec.healthAmount ?? 0) * fois });
+  }
+
+  // Auras GLOBALES (Le Gardien des Bénis) : toute carte EN JEU, des deux
+  // camps, la source comprise si elle remplit la condition.
+  for (const board of [controllerBoard, aura.opponentBoard ?? []]) {
+    for (const source of board) {
+      const globale = getCardDefinition(source.cardId).auraBuffAllUnits;
+      if (!globale || !globale.targetTypes.includes(def.type)) continue;
+      // La condition se lit sur la CIBLE, avec son propre plateau.
+      if (!unitMeetsCondition(unit, globale.targetCondition, { controllerBoard, tideState })) continue;
+      contributions.push({ sourceCardId: source.cardId, sourceInstanceId: source.instanceId, attack: globale.attackAmount ?? 0, health: globale.healthAmount ?? 0 });
+    }
+  }
+
   // Signaux Chromatiques (Lot 15) : chaque Rouge prête +1 Puissance pendant
   // le tour de son contrôleur, chaque Jaune +1 Résistance maximale, à toutes
   // les AUTRES Sentinelles — même couleur comprise, et en cumul. Une
@@ -270,7 +304,9 @@ export function collectAuraContributions(
       typeAura &&
       typeAura.targetTypes.includes(def.type) &&
       (typeAura.targetSubtype === undefined || unitHasSubtype(def, unit, typeAura.targetSubtype)) &&
-      (!typeAura.whileSelfVisible || isVisibleDuringTide(sourceDef, tideState))
+      (!typeAura.whileSelfVisible || isVisibleDuringTide(sourceDef, tideState)) &&
+      unitMeetsCondition(unit, typeAura.targetCondition, { controllerBoard, tideState }) &&
+      unitMeetsCondition(source, typeAura.whileSelf, { controllerBoard, tideState })
     ) {
       add(typeAura);
     }
@@ -335,6 +371,9 @@ function auraContextKey(tideState: TideStateName, aura: AuraContext): number {
 }
 
 function auraTotals(unit: CardInstance, tideState: TideStateName, aura: AuraContext): { attack: number; health: number } {
+  // Une aura GLOBALE du camp d'en face dépend d'un plateau que la clé du
+  // cache ne connaît pas : on calcule sans mémoriser (cas rare).
+  if (aura.opponentBoard && boardGrantsGlobalAura(aura.opponentBoard)) return sumContributions(unit, tideState, aura);
   let byUnit = auraTotalsCache.get(aura.controllerBoard);
   if (!byUnit) {
     byUnit = new WeakMap();
@@ -348,7 +387,12 @@ function auraTotals(unit: CardInstance, tideState: TideStateName, aura: AuraCont
   const key = auraContextKey(tideState, aura);
   const cached = byContext.get(key);
   if (cached) return cached;
+  const totals = sumContributions(unit, tideState, aura);
+  byContext.set(key, totals);
+  return totals;
+}
 
+function sumContributions(unit: CardInstance, tideState: TideStateName, aura: AuraContext): { attack: number; health: number } {
   // « Son texte est ignoré » (Lot 17) : ni ses bonus sur elle-même, ni ceux
   // qu'elle donne aux autres.
   let muettes: Set<string> | null = null;
@@ -363,7 +407,6 @@ function auraTotals(unit: CardInstance, tideState: TideStateName, aura: AuraCont
     totals.attack += c.attack;
     totals.health += c.health;
   }
-  byContext.set(key, totals);
   return totals;
 }
 
@@ -407,8 +450,20 @@ function boardGrantsAura(board: readonly CardInstance[]): boolean {
   return grants;
 }
 
-function mayReceiveAura(def: CardDefinition, board: readonly CardInstance[]): boolean {
-  return auraProfile(def).receivesOwn || boardGrantsAura(board);
+const boardGlobalCache = new WeakMap<readonly CardInstance[], boolean>();
+
+/** Le plateau porte-t-il une aura GLOBALE (`auraBuffAllUnits`), qui touche aussi l'autre camp ? */
+function boardGrantsGlobalAura(board: readonly CardInstance[]): boolean {
+  let grants = boardGlobalCache.get(board);
+  if (grants === undefined) {
+    grants = board.some((card) => getCardDefinition(card.cardId).auraBuffAllUnits !== undefined);
+    boardGlobalCache.set(board, grants);
+  }
+  return grants;
+}
+
+function mayReceiveAura(def: CardDefinition, aura: AuraContext): boolean {
+  return auraProfile(def).receivesOwn || boardGrantsAura(aura.controllerBoard) || (aura.opponentBoard !== undefined && boardGrantsGlobalAura(aura.opponentBoard));
 }
 
 /**
@@ -429,13 +484,15 @@ export function computeEffectiveStats(unit: CardInstance, tideState: TideStateNa
 
   const modifierAttack = unit.modifiers.reduce((sum, m) => sum + m.attack, 0);
   const modifierHealth = unit.modifiers.reduce((sum, m) => sum + m.health, 0);
+  // Marqueurs +1/+1 (Lot 21) : un point de chaque par marqueur posé, tant qu'il reste sur la carte.
+  const plusUn = markerCount(unit, "plus-un");
 
   const { attack: auraAttack, health: auraHealth } =
-    aura && mayReceiveAura(def, aura.controllerBoard) ? auraTotals(unit, tideState, aura) : NO_AURA;
+    aura && mayReceiveAura(def, aura) ? auraTotals(unit, tideState, aura) : NO_AURA;
 
   return {
-    attack: baseAttack + modifierAttack + auraAttack,
-    health: baseHealth + modifierHealth + auraHealth,
+    attack: baseAttack + modifierAttack + plusUn + auraAttack,
+    health: baseHealth + modifierHealth + plusUn + auraHealth,
     // Inactive par la Marée OU entravée par un modificateur (Chaîne de
     // Travers) : les deux disent la même chose au reste du moteur — cette
     // carte ne peut ni attaquer ni activer ses effets.
@@ -453,8 +510,10 @@ export function computeEffectiveStats(unit: CardInstance, tideState: TideStateNa
  * inchangée par un buff/debuff actif.
  */
 export function computeStatModifierDelta(unit: CardInstance): { attack: number; health: number } {
+  // Les marqueurs +1/+1 sont un bonus posé sur la carte, comme un modificateur.
+  const plusUn = markerCount(unit, "plus-un");
   return {
-    attack: unit.modifiers.reduce((sum, m) => sum + m.attack, 0),
-    health: unit.modifiers.reduce((sum, m) => sum + m.health, 0),
+    attack: unit.modifiers.reduce((sum, m) => sum + m.attack, 0) + plusUn,
+    health: unit.modifiers.reduce((sum, m) => sum + m.health, 0) + plusUn,
   };
 }

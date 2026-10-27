@@ -1,10 +1,11 @@
+import { unitMeetsCondition } from "@/game/cards/unitConditions";
 import { hasSubtype } from "@/game/cards/subtypes";
 import { unitHasSubtype } from "@/game/cards/markers";
 import { applyShipArrivalPassives } from "@/game/rules/shipPassives";
 import { isTextIgnored } from "@/game/cards/types";
 import { playerFactTriggerEvents } from "@/game/triggers/playerFacts";
 import { getCardDefinition } from "@/game/cards/sets/core";
-import { computeEffectiveStats } from "@/game/cards/stats";
+import { computeEffectiveStats, opposingBoard } from "@/game/cards/stats";
 import { isVisibleDuringTide, UNIT_CARD_TYPES, type CardInstance, type TriggeredAbility, type TriggerSourceFilter } from "@/game/cards/types";
 import type { EffectDefinition } from "@/game/effects/types";
 import type { EffectContext } from "@/game/effects/resolveEffect";
@@ -319,6 +320,7 @@ function matchesLot15Condition(
       controllerReason: proprietaire.reason,
       tideOrientation: state.environment.tideOrientation,
       controllerIsActive: state.activePlayerId === proprietaire.id,
+      opponentBoard: opposingBoard(state, proprietaire.id),
     });
     if (stats.destroyedByTide || condamnee.unit.damageMarked < stats.health) return false;
   }
@@ -411,6 +413,8 @@ function matchesTriggerSource(
   // Un marqueur qui donne un sous-type compte (Lot 18 : une unité marquée Mort est Mort-vivant).
   if (filter.subtype && !(event.cardId && unitHasSubtype(getCardDefinition(event.cardId), { markers: event.markers }, filter.subtype))) return false;
   if (filter.withMarker && !((event.markers?.[filter.withMarker] ?? 0) > 0)) return false;
+  // `onMarkerAdded` : le marqueur qui vient d'être posé (Lots 20-21).
+  if (filter.markerAdded && event.marker !== filter.markerAdded) return false;
   if (filter.minCost !== undefined && !(event.cardId && getCardDefinition(event.cardId).cost >= filter.minCost)) return false;
   // « quand une Structure... » : type de la carte déclencheuse.
   if (filter.cardTypes && !(event.cardId && filter.cardTypes.includes(getCardDefinition(event.cardId).type))) return false;
@@ -576,6 +580,14 @@ function collectTriggeredWorkRaw(
         if (blocqueParMasquage(state, unit, ability)) return;
         // « lorsqu'une UNITÉ adverse attaque » : un tir de Navire n'en est pas une.
         if (ability.condition?.attackFromUnit && event.fromShipShot) return;
+        // « lorsqu'une Créature SOUILLÉE attaque » (Le Filet qui Respire, Lot 20).
+        if (ability.condition?.pendingAttackerCondition) {
+          const attaque = state.pendingAttack;
+          const attaquant = attaque && attaque.kind !== "tirDeNavire" ? findBoardUnit(state, attaque.attackerInstanceId) : undefined;
+          if (!attaquant) return;
+          const plateau = state.players.find((p) => p.id === attaquant.playerId)!.board;
+          if (!unitMeetsCondition(attaquant.unit, ability.condition.pendingAttackerCondition, { controllerBoard: plateau, tideState: state.environment.tideState })) return;
+        }
         if (ability.oncePerTurnKey && !oncePerTurnAvailable(unit, ability.oncePerTurnKey, turnNumber)) return;
         result.push(work(ability, abilityIndex, def.id, defenseur.id, unit.instanceId, turnNumber, event.sourceInstanceId));
       });
@@ -761,6 +773,7 @@ export function snapshotEffectivePower(state: GameState): Map<string, number> {
           controllerReason: player.reason,
           tideOrientation: state.environment.tideOrientation,
           controllerIsActive: state.activePlayerId === player.id,
+          opponentBoard: opposingBoard(state, player.id),
         }).attack
       );
     }
@@ -1707,6 +1720,7 @@ export function aSurvecuAuxDegats(state: GameState, instanceId: string): boolean
     controllerReason: owner.reason,
     tideOrientation: state.environment.tideOrientation,
     controllerIsActive: state.activePlayerId === owner.id,
+    opponentBoard: opposingBoard(state, owner.id),
   });
   return !stats.destroyedByTide && found.unit.damageMarked < stats.health;
 }
@@ -1815,13 +1829,27 @@ export function processPlayerFacts(
   const navire = applyShipArrivalPassives(state, events, turnNumber);
   let nextState = navire.state;
   const produced: GameEvent[] = [...navire.events];
-  for (const fait of playerFactTriggerEvents(nextState, [...events, ...navire.events])) {
-    const result = processTrigger(nextState, fait, turnNumber, 1);
-    nextState = result.state;
-    produced.push(...result.events);
+  let aLire: readonly GameEvent[] = [...events, ...navire.events];
+  // Les faits de CARTE des Lots 20-21 s'enchaînent (un Voile perdu pose un
+  // marqueur +1/+1, que la Guérisseuse voit et qui la fait soigner) : ceux
+  // que la passe vient de produire sont relus, jusqu'à épuisement — borné,
+  // une boucle de faits ne doit pas geler la partie.
+  for (let passe = 0; passe < CASCADE_FAITS_MAX && aLire.length > 0; passe += 1) {
+    const nouveaux: GameEvent[] = [];
+    for (const fait of playerFactTriggerEvents(nextState, aLire)) {
+      const result = processTrigger(nextState, fait, turnNumber, 1);
+      nextState = result.state;
+      produced.push(...result.events);
+      nouveaux.push(...result.events);
+    }
+    aLire = nouveaux.filter((event) => FAITS_EN_CASCADE.has(event.type));
   }
   return { state: nextState, events: produced };
 }
+
+/** Faits de carte relus quand une passe en produit (Lots 20-21). */
+const FAITS_EN_CASCADE = new Set<GameEvent["type"]>(["VEIL_CONSUMED", "VEIL_GAINED", "MARKER_ADDED", "DESTRUCTION_PREVENTED"]);
+const CASCADE_FAITS_MAX = 8;
 
 export function processReasonGained(
   state: GameState,

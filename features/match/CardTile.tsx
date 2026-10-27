@@ -14,6 +14,7 @@ import {
   hasEveil,
   STATUS_IMMOBILISE,
   STATUS_MALADE,
+  STATUS_BENIE,
   STATUS_SILENCE,
   UNIT_CARD_TYPES,
   type AuraContext,
@@ -155,6 +156,11 @@ const STATUS_ICON_INFO: Record<string, { icon: string; label: string; descriptio
     label: "Silence",
     description: "Ses capacités déclenchées et effets d'arrivée sont désactivés tant que ce statut reste actif.",
   },
+  [STATUS_BENIE]: {
+    icon: "/assets/status/benie.webp",
+    label: "Bénie",
+    description: "Cette Créature est bénie. L'état n'a pas d'effet par lui-même : certaines cartes le récompensent, d'autres le punissent.",
+  },
 };
 
 /** Mot-clé Garde (`def.keywords`, permanent — pas un statut à durée) : même registre d'icône que les statuts. */
@@ -169,7 +175,7 @@ const VOILE_ICON_INFO = {
   icon: "/assets/status/voile.webp",
   label: "Voile",
   description:
-    "Conféré par son Équipement : la première fois qu'elle devrait être détruite, l'Équipement est détruit à sa place et elle reste en jeu avec 1 Résistance.",
+    "La prochaine fois qu'elle devrait être détruite, elle ne l'est pas : le Voile est consommé (l'Équipement qui le confère est détruit à sa place, s'il vient de lui) et elle reste en jeu avec 1 Résistance. Un seul Voile à la fois.",
 };
 
 /**
@@ -669,7 +675,7 @@ function CardTileView({
         removedKeywords: auraContext.removedKeywords,
       })
     : hasKeyword(def, "garde");
-  // Voile : seulement en jeu, conféré par un Équipement attaché.
+  // Voile : seulement en jeu — intrinsèque, ou conféré par un Équipement attaché.
   const hasVoile = auraContext
     ? hasKeywordInContext(instance, "voile", {
         tideState,

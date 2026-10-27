@@ -5050,3 +5050,26 @@
     transition: none;
   }
 }
+
+/* « Activer » sous une Lande à capacité (Brumesel, Lot 20) : la Lande vaut pour les deux camps. */
+.landeActivate {
+  position: absolute;
+  left: 50%;
+  bottom: -0.6em;
+  transform: translateX(-50%);
+  z-index: 3;
+  padding: 0.25em 0.9em;
+  border: 1px solid rgba(246, 210, 138, 0.7);
+  border-radius: 999px;
+  background: rgba(20, 14, 8, 0.92);
+  color: #f6d28a;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.landeActivate:hover {
+  background: rgba(60, 40, 18, 0.95);
+}

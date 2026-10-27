@@ -34,6 +34,21 @@ export function playerFactTriggerEvents(state: GameState, events: readonly GameE
         }
         if (event.toZone === "lande" && event.ownerId) derived.push({ trigger: "onLandePlaced", playerId: event.ownerId, cardId: event.cardId });
         break;
+      // Lots 20-21 : faits d'une CARTE en jeu (personnels ou d'observateur, via `triggeredBy`).
+      case "VEIL_CONSUMED": {
+        const porteur = findCardInstance(state, event.carrierInstanceId);
+        if (porteur) derived.push({ trigger: "onVeilLost", playerId: event.playerId, cardId: porteur.card.cardId, sourceInstanceId: event.carrierInstanceId });
+        break;
+      }
+      case "VEIL_GAINED":
+        derived.push({ trigger: "onVeilGained", playerId: event.playerId, cardId: event.cardId, sourceInstanceId: event.instanceId });
+        break;
+      case "MARKER_ADDED":
+        derived.push({ trigger: "onMarkerAdded", playerId: event.playerId, cardId: event.cardId, sourceInstanceId: event.instanceId, marker: event.marker });
+        break;
+      case "DESTRUCTION_PREVENTED":
+        derived.push({ trigger: "onDestructionPrevented", playerId: event.playerId, cardId: event.cardId, sourceInstanceId: event.instanceId });
+        break;
       case "ABILITY_RESOLVED":
         derived.push({ trigger: "onAbilityResolved", playerId: event.playerId, cardId: event.cardId, sourceInstanceId: event.instanceId });
         break;

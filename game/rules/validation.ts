@@ -2,7 +2,7 @@ import { boardCapacity } from "@/game/rules/slotEffects";
 import { computeEffectiveStats } from "@/game/cards/stats";
 import { slotsUsed } from "@/game/rules/ongoing";
 import { getCardDefinition } from "@/game/cards/sets/core";
-import { hasKeyword, hasResistance, UNIT_CARD_TYPES, type CardDefinition, type CardInstance } from "@/game/cards/types";
+import { hasKeyword, hasResistance, STATUS_VOILE, UNIT_CARD_TYPES, type CardDefinition, type CardInstance } from "@/game/cards/types";
 import { getShipDefinition } from "@/game/environment/shipData";
 import type { TideStateName } from "@/game/environment/types";
 import { PHASE_LABELS, phaseRefusal } from "@/game/rules/phaseLabels";
@@ -86,6 +86,8 @@ export function hasKeywordInContext(unit: CardInstance, keyword: string, context
   if (context.removedKeywords?.includes(keyword) && !unit.modifiers.some((m) => m.ignoresLande)) return false;
   if ((def.conditionalKeywordSuppressions ?? []).some(matches)) return false;
   if (hasKeyword(def, keyword)) return true;
+  // Voile INTRINSÈQUE (Lot 21) : « elle gagne Voile », un statut posé sur la carte.
+  if (keyword === "voile" && unit.statuses?.includes(STATUS_VOILE)) return true;
   if ((def.conditionalKeywords ?? []).some(matches)) return true;
   // Mot-clé accordé temporairement par un modificateur (ex: "Pied marin jusqu'à la fin du tour").
   if (unit.modifiers.some((m) => m.keywords?.includes(keyword))) return true;

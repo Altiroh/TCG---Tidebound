@@ -97,6 +97,12 @@ export interface TriggerSourceFilter {
    * `TriggerEvent.markers`.
    */
   withMarker?: import("@/game/cards/markers").MarkerId;
+  /**
+   * `onMarkerAdded` seulement : le marqueur qui vient d'être POSÉ est de ce
+   * genre (« lorsqu'une Créature alliée gagne un marqueur +1/+1 », « lorsqu'une
+   * Créature adverse reçoit un marqueur Souillure » — Lots 20 et 21).
+   */
+  markerAdded?: import("@/game/cards/markers").MarkerId;
   /** Ou est de l'un de ces TYPES de carte (ex: "quand une Structure est détruite" — Mécanicien aux Mains Noires). */
   cardTypes?: CardType[];
   /** Le déclencheur doit être contrôlé par le contrôleur de la capacité. Défaut : `true`. */
@@ -514,6 +520,13 @@ export interface TriggeredAbility {
      * sous un effet de destruction, un Sabordage ou la Marée.
      */
     triggerSourceDoomedByDamage?: boolean;
+    /**
+     * Fenêtre d'interception : l'ATTAQUANT de l'attaque en cours
+     * (`pendingAttack.attackerInstanceId`) remplit cette condition —
+     * « lorsqu'une Créature SOUILLÉE attaque votre Navire » (Le Filet qui
+     * Respire, Lot 20). Un tir de Navire n'a pas d'attaquant : jamais rempli.
+     */
+    pendingAttackerCondition?: import("@/game/cards/unitConditions").UnitCondition;
   };
 
   /**
@@ -1294,6 +1307,10 @@ export interface CardDefinition {
      * trahit donc pas sa présence en gonflant le plateau.
      */
     whileSelfVisible?: boolean;
+    /** La cible remplit cette condition (« vos Créatures bénies », Le Grand-Bienfaiteur). */
+    targetCondition?: import("@/game/cards/unitConditions").UnitCondition;
+    /** La SOURCE remplit cette condition (« tant que cette Créature bénéficie de Voile », Le Gros Bosco). */
+    whileSelf?: import("@/game/cards/unitConditions").UnitCondition;
   };
 
   /**
@@ -1428,6 +1445,55 @@ export interface CardDefinition {
   selfBuffWhileLandeActive?: { attackAmount?: number; healthAmount?: number };
 
   /**
+   * Bonus CONDITIONNELS sur soi, relus en direct (Lots 20-21) : « Tant que
+   * cette Créature n'est pas bénie, elle gagne +1 Puissance », « Si elle est
+   * souillée, elle gagne +2 Puissance pendant Houle ou Tempête », « Tant que
+   * la mer est au Calme, +1 Puissance ».
+   *
+   * Chaque entrée s'applique quand sa condition (`UnitCondition`, lue sur la
+   * carte elle-même) est remplie ; les entrées se cumulent. `perSelfMarker`
+   * multiplie le bonus par le nombre de marqueurs de ce genre qu'elle porte
+   * (« +1/+1 pour chaque marqueur Souillure », Ceux qui ont bu).
+   */
+  selfBuffWhenConditions?: Array<{
+    when?: import("@/game/cards/unitConditions").UnitCondition;
+    attackAmount?: number;
+    healthAmount?: number;
+    perSelfMarker?: import("@/game/cards/markers").MarkerId;
+  }>;
+
+  /**
+   * Aura sur TOUTES les unités EN JEU, des deux camps, qui remplissent
+   * `targetCondition` — la source comprise si elle la remplit (« Toutes les
+   * Créatures bénies gagnent +1 Résistance », Le Gardien des Bénis : alliées
+   * et adverses, Notion Lot 20). À distinguer de `auraBuffControllerCardTypes`,
+   * qui ne porte que sur le plateau de son contrôleur.
+   */
+  auraBuffAllUnits?: {
+    targetTypes: CardType[];
+    targetCondition?: import("@/game/cards/unitConditions").UnitCondition;
+    attackAmount?: number;
+    healthAmount?: number;
+  };
+
+  /**
+   * « Une fois par tour, lorsqu'une Créature alliée bénie subit des dégâts,
+   * réduisez ces dégâts de 1 » (Père Goulven, Lot 20) : la PREMIÈRE unité de
+   * son contrôleur qui remplit `allyCondition` et subit des dégâts (combat ou
+   * effet) chaque tour voit ce coup réduit de `amount`. Le « une fois par
+   * tour » se suit sur la carte qui porte le bouclier.
+   */
+  reduceAllyDamageOncePerTurn?: { amount: number; allyCondition?: import("@/game/cards/unitConditions").UnitCondition; allyTypes?: CardType[] };
+
+  /**
+   * « Tant que cette Structure est en jeu, la mer ne peut pas redescendre
+   * sous Houle » (L'Ancre des Marées, Lot 20) : plancher de Marée. Toute
+   * transition — décompte, renverse, effet de carte — qui la ferait passer
+   * sous cet état la laisse sur lui (`game/rules/tideFloor.ts`).
+   */
+  tideFloorWhileInPlay?: TideStateName;
+
+  /**
    * Nombre maximum d'exemplaires de cette carte dans un deck personnel —
    * donnée propre à chaque carte, jamais dérivée de la rareté (cadrage
    * `TCG_DATABASE.md` "max_copies canonique"). Défaut : 3.
@@ -1489,6 +1555,13 @@ export interface LandeRules {
    * Lot 17) — pour les deux joueurs.
    */
   replayedCardDiscount?: number;
+  /**
+   * « Une fois par tour, vous pouvez … » porté par la Lande (Brumesel,
+   * Lot 20) : capacité ACTIVABLE par chaque joueur, pendant sa Phase
+   * principale, une fois par tour pour chacun — la Lande vaut pour les deux
+   * camps. `effects` se résout au nom de celui qui l'active.
+   */
+  activatableOncePerTurn?: { effects: EffectDefinition[] };
 }
 
 /** La carte est-elle une Lande ? */
@@ -1519,6 +1592,32 @@ export const STATUS_IMMOBILISE = "immobilise";
  * `STATUS_IMMOBILISE`.
  */
 export const STATUS_SILENCE = "silence";
+
+/**
+ * Statut « BÉNIE » (Lot 20 — Les Bienfaits du Fond) : posé par un effet
+ * (`bless`), retiré par un autre (`unbless`, « perd sa Bénédiction »). Il
+ * n'a aucun effet par lui-même : ce sont les textes qui le lisent (« une
+ * Créature non bénie », « Toutes les Créatures bénies gagnent… »,
+ * `UnitCondition.blessed`).
+ *
+ * Il suit la carte au Cimetière (les statuts n'y sont pas effacés) : « si
+ * elle était bénie lorsqu'elle a quitté le plateau » se lit donc sur la
+ * carte du Cimetière, et la carte qui revient en jeu repart sans.
+ */
+export const STATUS_BENIE = "benie";
+
+/**
+ * VOILE INTRINSÈQUE (Lot 21 — L'Équipage Félin) : « elle gagne Voile ».
+ * Même protection que le Voile d'un Équipement (décision du 27/10/2026) :
+ * la première fois qu'elle devrait être détruite (dégâts mortels ou
+ * destruction directe), elle ne l'est pas, le Voile est consommé et elle
+ * reste en jeu avec 1 Résistance (`game/state/processDeaths.ts`).
+ *
+ * Un seul Voile par permanent, d'où qu'il vienne : une unité qui en
+ * bénéficie déjà (intrinsèque ou par Équipement) n'en gagne pas un second
+ * (`grantVeil`). Si elle porte les deux, l'intrinsèque est consommé d'abord.
+ */
+export const STATUS_VOILE = "voile";
 
 /**
  * Cause de sortie vers le cimetière (Notion "Moteur de partie", section

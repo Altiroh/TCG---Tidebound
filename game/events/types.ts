@@ -40,6 +40,10 @@ export type GameEventType =
   | "OBJECT_BROKEN"
   | "OBJECT_PLAYED"
   | "VEIL_CONSUMED"
+  | "VEIL_GAINED"
+  | "MARKER_ADDED"
+  | "MARKERS_REMOVED"
+  | "DESTRUCTION_PREVENTED"
   | "OBJECT_FIZZLED"
   | "CHAIN_LINK_ADDED"
   | "CHAIN_LINK_RESOLVED"
@@ -594,8 +598,49 @@ export interface VeilConsumedEvent extends BaseGameEvent {
   type: "VEIL_CONSUMED";
   playerId: PlayerId;
   carrierInstanceId: string;
-  equipmentInstanceId: string;
-  /** L'Équipement sacrifié. */
+  /** L'Équipement sacrifié — absent pour un Voile INTRINSÈQUE (Lot 21), qui ne sacrifie rien. */
+  equipmentInstanceId?: string;
+  /** L'Équipement sacrifié, ou la carte porteuse pour un Voile intrinsèque. */
+  cardId: string;
+}
+
+/** Une unité vient de GAGNER un Voile intrinsèque (`grantVeil`, Lot 21) — lu par `onVeilGained`. */
+export interface VeilGainedEvent extends BaseGameEvent {
+  type: "VEIL_GAINED";
+  playerId: PlayerId;
+  instanceId: string;
+  cardId: string;
+}
+
+/**
+ * Des marqueurs viennent d'être POSÉS sur une carte (`addMarker`) — lu par
+ * `onMarkerAdded` (« lorsqu'une Créature alliée gagne un marqueur +1/+1 »).
+ */
+export interface MarkerAddedEvent extends BaseGameEvent {
+  type: "MARKER_ADDED";
+  playerId: PlayerId;
+  instanceId: string;
+  cardId: string;
+  marker: import("@/game/cards/markers").MarkerId;
+  count: number;
+}
+
+/** Des marqueurs viennent d'être RETIRÉS (`removeMarkers`) — `count` au total, relu par `markersRemoved`. */
+export interface MarkersRemovedEvent extends BaseGameEvent {
+  type: "MARKERS_REMOVED";
+  marker: import("@/game/cards/markers").MarkerId;
+  count: number;
+}
+
+/**
+ * Une destruction vient d'être EMPÊCHÉE par la carte elle-même (« la première
+ * fois qu'elle devrait être détruite, elle ne l'est pas » —
+ * `survivesLethalOncePerTurn`) : lu par `onDestructionPrevented`.
+ */
+export interface DestructionPreventedEvent extends BaseGameEvent {
+  type: "DESTRUCTION_PREVENTED";
+  playerId: PlayerId;
+  instanceId: string;
   cardId: string;
 }
 
@@ -783,6 +828,10 @@ export type GameEvent =
   | ObjectBrokenEvent
   | ObjectPlayedEvent
   | VeilConsumedEvent
+  | VeilGainedEvent
+  | MarkerAddedEvent
+  | MarkersRemovedEvent
+  | DestructionPreventedEvent
   | ObjectFizzledEvent
   | ChainLinkAddedEvent
   | ChainLinkResolvedEvent

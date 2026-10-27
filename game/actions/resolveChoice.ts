@@ -1,3 +1,4 @@
+import { unitMeetsCondition } from "@/game/cards/unitConditions";
 import { getShipDefinition } from "@/game/environment/shipData";
 import { shuffle } from "@/game/rng";
 import { getCardDefinition } from "@/game/cards/sets/core";
@@ -393,7 +394,14 @@ export function resolveChoice(state: GameState, action: ResolveChoiceAction): Ac
 
     const player = getPlayer(nextState, choice.playerId);
     // Dans l'ordre de la RÉPONSE : « placez-les sous votre pioche dans l'ordre de votre choix ».
-    const gardees = prises.map((id) => regardees.find((c) => c.instanceId === id)!);
+    const toutesPrises = prises.map((id) => regardees.find((c) => c.instanceId === id)!);
+    // « Si elle était bénie lorsqu'elle a quitté le plateau, placez-la
+    // directement sur votre plateau à la place » (La Mer rend les siens,
+    // Lot 20) : la condition se lit sur la carte telle qu'au Cimetière.
+    const deviees = choice.takeToIf
+      ? toutesPrises.filter((c) => unitMeetsCondition(c, choice.takeToIf!.condition, { controllerBoard: player.board, tideState: nextState.environment.tideState }))
+      : [];
+    const gardees = toutesPrises.filter((c) => !deviees.includes(c));
     const versMain = (choice.takeTo ?? "hand") === "hand";
     // « Placez les autres SOUS votre pioche », dans l'ordre où elles
     // étaient : le joueur a vu cet ordre, il doit le retrouver.
@@ -445,6 +453,27 @@ export function resolveChoice(state: GameState, action: ResolveChoiceAction): Ac
             : p
       ) as [PlayerState, PlayerState],
     };
+    // Les cartes DÉVIÉES vers le plateau (`takeToIf`) y arrivent comme
+    // invoquées ; sans place, elles vont là où vont les autres — la main.
+    if (deviees.length > 0) {
+      const arrivees: GameEvent[] = [];
+      for (const carte of deviees) {
+        const place = placeFromGraveyard(nextState, carte, origineDe(carte), choice.playerId, undefined, choice.turnNumber);
+        if (place.placed) {
+          nextState = place.state;
+          arrivees.push(...place.events);
+          continue;
+        }
+        nextState = {
+          ...nextState,
+          players: nextState.players.map((p) => (p.id === choice.playerId ? { ...p, hand: [...p.hand, carte] } : p)) as [PlayerState, PlayerState],
+        };
+      }
+      events.push(...arrivees);
+      const entrees = processSummonEnterTriggers(nextState, arrivees, choice.turnNumber);
+      nextState = entrees.state;
+      events.push(...entrees.events);
+    }
     // SUR LE PLATEAU (Lot 18) : la carte prise ARRIVE, comme invoquée, avec
     // le marqueur que le texte nomme ; sans place, elle retourne à son Cimetière.
     if (versPlateau) {

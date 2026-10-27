@@ -8,6 +8,7 @@
  * Séparé de `resolveEffect.ts` pour que `triggerBus.ts` puisse s'en
  * servir sans dépendre de la résolution d'effets elle-même.
  */
+import { unitMeetsCondition } from "@/game/cards/unitConditions";
 import { hasMarker, unitHasSubtype } from "@/game/cards/markers";
 import { hasSubtype } from "@/game/cards/subtypes";
 import { isOngoingEffect } from "@/game/rules/ongoing";
@@ -113,6 +114,11 @@ export function eligibleChosenUnits(
     if (filter.otherChromaticColorThanSource) {
       const board = state.players.find((p) => p.id === ownerId)?.board ?? [];
       if (!isOtherColorSentinel(unit, sourceColors, board)) return false;
+    }
+    // « une Créature non bénie », « souillée », « qui ne bénéficie pas de Voile » (Lots 20-21).
+    if (filter.unitCondition) {
+      const board = state.players.find((p) => p.id === ownerId)?.board ?? [];
+      if (!unitMeetsCondition(unit, filter.unitCondition, { controllerBoard: board, tideState: state.environment.tideState })) return false;
     }
     return true;
   });

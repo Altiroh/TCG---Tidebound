@@ -549,6 +549,12 @@ export function useBoardInteraction({
    */
   function requestAbility(instanceId: string) {
     if (!canAct) return;
+    // La Lande (Brumesel) : elle n'est sur aucun plateau, et sa capacité ne vise personne.
+    if (liveState.environment.lande?.instanceId === instanceId) {
+      onGestureStart?.();
+      act({ type: "activateAbility", playerId: actorId, sourceInstanceId: instanceId });
+      return;
+    }
     const card = viewer.board.find((c) => c.instanceId === instanceId);
     if (!card) return;
     onGestureStart?.();
