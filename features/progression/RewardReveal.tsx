@@ -179,9 +179,17 @@ export function RewardReveal({ levels, choices, extraItems = [], title: forcedTi
 
   if (!mounted) return null;
 
+  // « Choisis ta carte » n'annonce QUE des choix de carte : une récompense de Tides, de quête ou de
+  // connexion réclamée seule n'a rien à choisir (retour joueur du 27/10/2026).
   const title =
     forcedTitle ??
-    (levels.length === 1 ? `Palier ${levels[0]!.level} réclamé !` : levels.length > 1 ? `${levels.length} paliers réclamés !` : "Choisis ta carte");
+    (levels.length === 1
+      ? `Palier ${levels[0]!.level} réclamé !`
+      : levels.length > 1
+        ? `${levels.length} paliers réclamés !`
+        : shown.length > 0
+          ? "Récompense réclamée !"
+          : "Choisis ta carte");
 
   return createPortal(
     <div className={`${banner.veil} ${styles.scene}`} role="dialog" aria-modal aria-label={title} onClick={phase === "items" ? finishItems : undefined} data-tap={phase === "items" ? "" : undefined}>
