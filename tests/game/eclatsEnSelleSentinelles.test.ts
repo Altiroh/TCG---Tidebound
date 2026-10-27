@@ -158,7 +158,7 @@ describe("Signaux Bleu, Vert et Violet : une fois par tour", () => {
     expect(joueur(r.state, "p1").reason).toBe(5);
   });
 
-  it("Violet : une Sentinelle d'une autre couleur ciblée par un effet adverse fait piocher puis défausser", () => {
+  it("Violet : une Sentinelle d'une autre couleur ciblée par un effet adverse fait piocher, sans défausse", () => {
     const veilleuse = instance("veilleuse-de-lombre", "p2");
     const heros = instance("heros-de-la-flamme", "p2");
     const eclat = instance("eclat-de-bouteille", "p1");
@@ -167,8 +167,8 @@ describe("Signaux Bleu, Vert et Violet : une fois par tour", () => {
     const r = jouerObjet(state, { playerId: "p1", instanceId: eclat.instanceId, targetInstanceId: heros.instanceId }, dispatch);
     ok(r);
     expect(joueur(r.state, "p2").hand.some((c) => c.instanceId === pioche.instanceId)).toBe(true);
-    expect(r.state.pendingChoice?.kind).toBe("handDiscard");
-    expect(r.state.pendingChoice?.playerId).toBe("p2");
+    expect(joueur(r.state, "p2").hand).toHaveLength(2);
+    expect(r.state.pendingChoice).toBeUndefined();
   });
 });
 
@@ -435,9 +435,17 @@ describe("jouer les couleurs ensemble", () => {
     const poste = instance("poste-chromatique", "p1", { turnsRemaining: 4 });
     const rouge = instance("heros-de-la-flamme", "p1");
     const nouveau = instance("tacticien-de-lecume", "p1");
-    const r = dispatch(table({ board: [poste, rouge], hand: [nouveau] }), { type: "playCard", playerId: "p1", instanceId: nouveau.instanceId });
+    const base = table({ board: [poste, rouge], hand: [nouveau], deck: [instance("matelot-fele", "p1")] });
+    const avecPioches = { ...base, players: [base.players[0], { ...base.players[1], deck: [instance("matelot-fele", "p2")] }] as typeof base.players };
+    const r = dispatch(avecPioches, { type: "playCard", playerId: "p1", instanceId: nouveau.instanceId });
     ok(r);
     expect(stats(r.state, nouveau.instanceId).health).toBe(4);
+    // Le gain est CONSERVÉ : il survit au tour adverse et au retour de son contrôleur.
+    const finP1 = dispatch({ ...r.state, phase: "mainPhase2" }, { type: "endTurn", playerId: "p1" });
+    ok(finP1);
+    const finP2 = dispatch({ ...finP1.state, phase: "mainPhase2" }, { type: "endTurn", playerId: "p2" });
+    ok(finP2);
+    expect(stats(finP2.state, nouveau.instanceId).health).toBe(4);
   });
 
   it("Oracle d'Améthyste : une défausse d'effet pendant votre tour lui donne +2 Puissance", () => {

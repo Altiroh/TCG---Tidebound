@@ -435,8 +435,8 @@ export interface GameState {
 
   /**
    * Signaux VIOLETS déclenchés pendant qu'une question attendait sa réponse
-   * (Lot 15 — « piochez 1 carte puis défaussez-en 1 »). La défausse du
-   * Signal aurait écrasé la question posée ; l'occurrence n'est pas perdue
+   * (Lot 15 — « piochez 1 carte », sans défausse depuis le 27/10/2026). La
+   * file reste : l'occurrence n'est pas perdue
    * pour autant : ses émetteurs sont marqués (c'était bien « la première
    * fois ce tour »), et la pioche-défausse se résout dès que la table se
    * libère (`processChromaticSignals`).
@@ -693,8 +693,7 @@ export interface HandDiscardChoice {
   playerId: PlayerId;
   /**
    * Ce même joueur vient de PIOCHER par un effet de la même suite :
-   * « piochez 1 carte puis défaussez-en 1 » (Signal Violet, Rations du
-   * Matin Gris). Posé par `resolveEffectSequence`, relayé jusqu'aux
+   * « piochez 1 carte puis défaussez-en 1 » (Rations du Matin Gris). Posé par `resolveEffectSequence`, relayé jusqu'aux
    * déclencheurs de défausse (`TriggerSourceFilter.discardAfterDraw`).
    */
   afterDraw?: boolean;

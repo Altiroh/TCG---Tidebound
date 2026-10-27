@@ -209,8 +209,8 @@ describe("Veilleuse de l'Ombre : Signal Violet", () => {
     const choix = dispatch(r.state, { type: "resolveChoice", playerId: "p1", choice: { pickInstanceIds: [heros.instanceId] } });
     ok(choix);
     expect(joueur(choix.state, "p2").hand.some((c) => c.instanceId === carte.instanceId)).toBe(true);
-    expect(choix.state.pendingChoice?.kind).toBe("handDiscard");
-    expect(choix.state.pendingChoice?.playerId).toBe("p2");
+    expect(joueur(choix.state, "p2").hand).toHaveLength(2);
+    expect(choix.state.pendingChoice).toBeUndefined();
   });
 
   it("une occurrence survenue pendant une question n'est pas perdue : elle se résout dès que la table se libère", () => {
@@ -273,6 +273,23 @@ describe("Oracle d'Améthyste : « piochez PUIS défaussez »", () => {
 });
 
 describe("Poste Chromatique", () => {
+  it("CHAQUE Sentinelle d'une couleur nouvelle est renforcée, pas seulement la première du tour", () => {
+    const poste = instance("poste-chromatique", "p1", { turnsRemaining: 4 });
+    const rouge = instance("heros-de-la-flamme", "p1");
+    const bleu = instance("tacticien-de-lecume", "p1");
+    const jaune = instance("gardienne-de-leclat", "p1");
+    const r1 = dispatch(table({ board: [poste, rouge], hand: [bleu, jaune], reason: 10 }), { type: "playCard", playerId: "p1", instanceId: bleu.instanceId });
+    ok(r1);
+    const r2 = dispatch(r1.state, { type: "playCard", playerId: "p1", instanceId: jaune.instanceId });
+    ok(r2);
+    const sans = dispatch(table({ board: [rouge], hand: [bleu, jaune], reason: 10 }), { type: "playCard", playerId: "p1", instanceId: bleu.instanceId });
+    ok(sans);
+    const sans2 = dispatch(sans.state, { type: "playCard", playerId: "p1", instanceId: jaune.instanceId });
+    ok(sans2);
+    expect(stats(r2.state, bleu.instanceId).health).toBe(stats(sans2.state, bleu.instanceId).health + 1);
+    expect(stats(r2.state, jaune.instanceId).health).toBe(stats(sans2.state, jaune.instanceId).health + 1);
+  });
+
   it("la couleur CHOISIE à l'arrivée (Émissaire de Quartz) compte, une fois le choix fait", () => {
     const poste = instance("poste-chromatique", "p1", { turnsRemaining: 4 });
     const rouge = instance("heros-de-la-flamme", "p1");

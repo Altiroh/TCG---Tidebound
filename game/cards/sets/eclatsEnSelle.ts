@@ -1119,7 +1119,7 @@ const SENTINELLES: CardDefinition[] = [
     chromatic: { colors: ["violet"], emitsSignal: true },
     text:
       "Signal Violet — La première fois à chaque tour qu'une autre Sentinelle que vous contrôlez est ciblée par " +
-      "un effet adverse, piochez 1 carte puis défaussez-en 1.",
+      "un effet adverse, piochez 1 carte.",
   },
   {
     id: "oracle-damethyste",
@@ -1140,7 +1140,7 @@ const SENTINELLES: CardDefinition[] = [
       {
         trigger: "onCardDiscardedFromHand",
         // « piochez PUIS défaussez par un effet de carte » : une défausse
-        // d'effet qui suit une pioche du même effet (Signal Violet, Rations…),
+        // d'effet qui suit une pioche du même effet (Rations du Matin Gris…),
         // jamais la limite de main ni une défausse seule.
         triggeredBy: { discardByEffect: true, discardAfterDraw: true },
         condition: { duringOwnTurn: true },
@@ -1374,11 +1374,13 @@ const SENTINELLES: CardDefinition[] = [
     health: 3,
     durationTurns: 4,
     text:
-      "Durée : 4 tours de table. 1re Sentinelle d'une couleur encore absente chez vous jouée pendant votre tour " +
-      ": +1 Résistance jusqu'à votre prochain tour.",
+      "Durée : 4 tours de table. Chaque Sentinelle d'une couleur encore absente chez vous jouée pendant votre tour " +
+      ": elle gagne +1 Résistance.",
     // Deux moments pour un seul texte : la couleur d'une Sentinelle JOUÉE
     // se lit à son arrivée — ou, si elle la choisit en arrivant (Émissaire
-    // de Quartz), une fois ce choix fait. Même clé « une fois par tour ».
+    // de Quartz), une fois ce choix fait. « Chaque » Sentinelle (27/10/2026) :
+    // plus de limite par tour — la couleur nouvelle suffit, et une couleur
+    // choisie à l'arrivée n'est lue qu'une fois (au choix, pas à la pose).
     // « que vous JOUEZ » : une Sentinelle invoquée n'en est pas une. Les
     // couleurs « que vous ne contrôliez pas encore » se comparent à la
     // photo prise avant la pose (`couleursAvantArrivee`) : un Géant
@@ -1387,15 +1389,14 @@ const SENTINELLES: CardDefinition[] = [
       trigger,
       triggeredBy: { archetype: "sentinelle-chromatique" as const, cardTypes: [...UNITES], onlyPlayed: true },
       condition: { duringOwnTurn: true, triggerSourceBringsNewChromaticColor: true },
-      oncePerTurnKey: "posteChromatique",
-      description: "Une couleur nouvelle : +1 Résistance jusqu'à votre prochain tour.",
+      description: "Une couleur nouvelle : elle gagne +1 Résistance, conservée.",
       effects: [
         {
           type: "buff" as const,
           target: { kind: "triggerSource" as const },
           attackAmount: { kind: "flat" as const, value: 0 },
           healthAmount: { kind: "flat" as const, value: 1 },
-          duration: "untilYourNextTurn" as const,
+          permanent: true,
         },
       ],
     })),

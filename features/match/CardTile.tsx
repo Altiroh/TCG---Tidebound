@@ -250,7 +250,7 @@ const CHROMATIC_SIGNAL_TEXT: Record<ChromaticColor, string> = {
   jaune: "Vos autres Sentinelles ont +1 Résistance maximale.",
   bleu: "La première fois à chaque tour qu'une autre Sentinelle que vous contrôlez attaque une unité adverse, cette unité adverse perd 1 Puissance jusqu'à votre prochain tour.",
   vert: "La première fois pendant chacun de vos tours que vous jouez une autre Sentinelle, récupérez 1 Raison.",
-  violet: "La première fois à chaque tour qu'une autre Sentinelle que vous contrôlez est ciblée par un effet adverse, piochez 1 carte puis défaussez-en 1.",
+  violet: "La première fois à chaque tour qu'une autre Sentinelle que vous contrôlez est ciblée par un effet adverse, piochez 1 carte.",
 };
 
 /** Icône du badge "Durée" (Structure/Objet à durée limitée, `instance.turnsRemaining`) — le nombre de tours restants est superposé au centre. */

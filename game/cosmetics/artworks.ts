@@ -224,6 +224,7 @@ const ALTERNATE_ARTS: Record<string, CardAlternateArt> = {
     // Repeinte le 20/10/2026 : « survit à des dégâts » rétabli.
     fullArt: {
       textePeint: "La première fois à chaque tour qu'une autre unité que vous contrôlez survit à des dégâts, piochez 1 carte puis défaussez-en 1.",
+      aRepeindre: "Défausse retirée le 27/10/2026 : le texte peint dit encore « puis défaussez-en 1 ».",
     },
   },
 };

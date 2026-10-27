@@ -22,13 +22,13 @@ import type { GameState, PlayerId, PlayerState } from "@/game/state/types";
  *  - Vert — « la première fois pendant chacun de vos tours que vous jouez une
  *    autre Sentinelle, récupérez 1 Raison ».
  *  - Violet — « la première fois à chaque tour qu'une autre Sentinelle est
- *    ciblée par un effet adverse, piochez 1 carte puis défaussez-en 1 ».
+ *    ciblée par un effet adverse, piochez 1 carte » (sans défausse depuis le
+ *    27/10/2026).
  *
  * Vert et Violet se lisent dans le journal de l'action qui vient de se
  * résoudre (`processChromaticSignals`, appelée par `dispatch`) : la carte
  * jouée est alors posée, la cible désignée connue. Plusieurs émetteurs d'un
- * coup se résolvent en UN geste (« récupérez 2 Raison », « piochez 2 puis
- * défaussez-en 2 ») : deux défausses successives se marcheraient dessus.
+ * coup se résolvent en UN geste (« récupérez 2 Raison », « piochez 2 »).
  */
 
 /** Inscrit « ce Signal a servi ce tour » sur chacun de ces émetteurs. */
@@ -47,10 +47,7 @@ const vert = (n: number): EffectDefinition[] => [
   { type: "reasonGain", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: n } },
 ];
 
-const violet = (n: number): EffectDefinition[] => [
-  { type: "draw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: n } },
-  { type: "discard", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: n } },
-];
+const violet = (n: number): EffectDefinition[] => [{ type: "draw", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: n } }];
 
 /** Signaux Vert et Violet, lus dans les événements d'une action. */
 export function processChromaticSignals(
