@@ -1,6 +1,38 @@
 import { RULES } from "@/game/rules/constants";
-import { advanceTideState, naturalOrientationFor } from "@/game/environment/types";
+import { nextInt, type RngState } from "@/game/rng";
+import { TIDE_STATES_ORDER, advanceTideState, naturalOrientationFor } from "@/game/environment/types";
 import type { EnvironmentState, PendingTideModifier, TideOrientation, TideStateName } from "@/game/environment/types";
+
+/** Durée d'entrée dans `state` pour CETTE partie : sa carte des marées, ou la durée fixe par défaut. */
+export function tideDurationFor(env: Pick<EnvironmentState, "tideDurations">, state: TideStateName): number {
+  return env.tideDurations?.[state] ?? RULES.TIDE_STATE_DURATION[state];
+}
+
+/**
+ * Tire la carte des marées d'une partie : pour chaque état, une durée
+ * uniforme entre `RULES.TIDE_DURATION_MIN` et `RULES.TIDE_DURATION_MAX`
+ * tours de table. Pure : retourne le nouvel état du générateur.
+ */
+export function drawTideChart(rng: RngState): { value: Record<TideStateName, number>; nextState: RngState } {
+  const span = RULES.TIDE_DURATION_MAX - RULES.TIDE_DURATION_MIN + 1;
+  const chart = {} as Record<TideStateName, number>;
+  let current = rng;
+  for (const state of TIDE_STATES_ORDER) {
+    const draw = nextInt(current, span);
+    chart[state] = RULES.TIDE_DURATION_MIN + draw.value;
+    current = draw.nextState;
+  }
+  return { value: chart, nextState: current };
+}
+
+/**
+ * La renverse peut-elle frapper l'état que le tick vient d'arrêter ? Seuls
+ * les états intermédiaires ont un sens à inverser : en Calme et en Abysses,
+ * l'orientation est imposée (`naturalOrientationFor`).
+ */
+export function canRenverse(state: TideStateName): boolean {
+  return state === "houle" || state === "tempete";
+}
 
 export interface TickTideResult {
   tideState: TideStateName;
@@ -9,6 +41,8 @@ export interface TickTideResult {
   tideIntensity: number;
   pendingTideModifiers: PendingTideModifier[];
   stateChanged: boolean;
+  /** Le courant s'est inversé de lui-même pendant ce tick (`renverse` demandée et applicable). */
+  renverse?: boolean;
 }
 
 /**
@@ -16,14 +50,17 @@ export interface TickTideResult {
  * tour verrouillée) : décompte la durée restante (sauf modificateur
  * "maintain" actif), et si elle atteint 0, passe à l'état suivant SELON
  * L'ORIENTATION courante (Montante vers les Abysses, Descendante vers le
- * Calme) avec une nouvelle durée et une Intensité remise à sa base.
+ * Calme) avec la durée que lui donne la carte des marées de la partie
+ * (`tideDurationFor`) et une Intensité remise à sa base.
  * L'orientation elle-même se réinitialise naturellement à Calme/Abysses
- * (`naturalOrientationFor`), sinon elle est conservée telle quelle — seul
- * un effet de carte peut l'inverser ailleurs (`tideInvertOrientation`).
+ * (`naturalOrientationFor`), sinon elle est conservée telle quelle — sauf
+ * RENVERSE (`options.renverse`, tirée par `annoncerMaree`) en Houle ou en
+ * Tempête, ou effet de carte ailleurs (`tideInvertOrientation`).
  * Fonction pure : ne modifie rien, retourne le nouvel état calculé.
  */
 export function tickTide(
-  env: Pick<EnvironmentState, "tideState" | "tideRemainingTurns" | "tideOrientation" | "tideIntensity" | "pendingTideModifiers">
+  env: Pick<EnvironmentState, "tideState" | "tideRemainingTurns" | "tideOrientation" | "tideIntensity" | "pendingTideModifiers" | "tideDurations">,
+  options?: { renverse?: boolean }
 ): TickTideResult {
   const maintainActive = env.pendingTideModifiers.some((m) => m.kind === "maintain" && m.remainingTriggers > 0);
 
@@ -43,27 +80,37 @@ export function tickTide(
   }
 
   const remaining = env.tideRemainingTurns - 1;
-  if (remaining > 0) {
+  const newState = remaining > 0 ? env.tideState : advanceTideState(env.tideState, env.tideOrientation);
+  const ticked: TickTideResult =
+    remaining > 0
+      ? {
+          tideState: env.tideState,
+          tideRemainingTurns: remaining,
+          tideOrientation: env.tideOrientation,
+          tideIntensity: env.tideIntensity,
+          pendingTideModifiers: consumedModifiers,
+          stateChanged: false,
+        }
+      : {
+          tideState: newState,
+          tideRemainingTurns: tideDurationFor(env, newState),
+          tideOrientation: naturalOrientationFor(newState, env.tideOrientation),
+          tideIntensity: RULES.TIDE_BASE_INTENSITY,
+          pendingTideModifiers: consumedModifiers,
+          stateChanged: true,
+        };
+
+  // RENVERSE : le tirage est fait par l'appelant (le moteur porte la
+  // graine) ; elle ne frappe que l'état ARRÊTÉ par ce tick, s'il est
+  // intermédiaire. Le décompte n'en est pas touché.
+  if (options?.renverse && canRenverse(ticked.tideState)) {
     return {
-      tideState: env.tideState,
-      tideRemainingTurns: remaining,
-      tideOrientation: env.tideOrientation,
-      tideIntensity: env.tideIntensity,
-      pendingTideModifiers: consumedModifiers,
-      stateChanged: false,
+      ...ticked,
+      tideOrientation: ticked.tideOrientation === "montante" ? "descendante" : "montante",
+      renverse: true,
     };
   }
-
-  const newState = advanceTideState(env.tideState, env.tideOrientation);
-  const newOrientation = naturalOrientationFor(newState, env.tideOrientation);
-  return {
-    tideState: newState,
-    tideRemainingTurns: RULES.TIDE_STATE_DURATION[newState],
-    tideOrientation: newOrientation,
-    tideIntensity: RULES.TIDE_BASE_INTENSITY,
-    pendingTideModifiers: consumedModifiers,
-    stateChanged: true,
-  };
+  return ticked;
 }
 
 /**
@@ -78,7 +125,7 @@ export function tickTide(
  * l'orientation affichée dit l'inverse à ce moment précis.
  */
 export function forceTideTransition(
-  env: Pick<EnvironmentState, "tideState" | "tideRemainingTurns" | "tideOrientation" | "tideIntensity" | "pendingTideModifiers">,
+  env: Pick<EnvironmentState, "tideState" | "tideRemainingTurns" | "tideOrientation" | "tideIntensity" | "pendingTideModifiers" | "tideDurations">,
   direction: "avancer" | "reculer"
 ): TickTideResult {
   const forcedOrientation: TideOrientation = direction === "avancer" ? "montante" : "descendante";
@@ -99,7 +146,7 @@ export function forceTideTransition(
   const newOrientation = naturalOrientationFor(newState, env.tideOrientation);
   return {
     tideState: newState,
-    tideRemainingTurns: RULES.TIDE_STATE_DURATION[newState],
+    tideRemainingTurns: tideDurationFor(env, newState),
     tideOrientation: newOrientation,
     tideIntensity: RULES.TIDE_BASE_INTENSITY,
     pendingTideModifiers: env.pendingTideModifiers,
@@ -116,12 +163,12 @@ export function forceTideTransition(
  * de tour et non sur une fin imposée par une carte.
  */
 export function endCurrentTideState(
-  env: Pick<EnvironmentState, "tideState" | "tideOrientation" | "pendingTideModifiers">
+  env: Pick<EnvironmentState, "tideState" | "tideOrientation" | "pendingTideModifiers" | "tideDurations">
 ): TickTideResult {
   const newState = advanceTideState(env.tideState, env.tideOrientation);
   return {
     tideState: newState,
-    tideRemainingTurns: RULES.TIDE_STATE_DURATION[newState],
+    tideRemainingTurns: tideDurationFor(env, newState),
     tideOrientation: naturalOrientationFor(newState, env.tideOrientation),
     tideIntensity: RULES.TIDE_BASE_INTENSITY,
     pendingTideModifiers: env.pendingTideModifiers,
@@ -145,14 +192,14 @@ export function endCurrentTideState(
  * (`processForcedTideTransitions`).
  */
 export function forceTideJumpToAbysses(
-  env: Pick<EnvironmentState, "tideState" | "tideRemainingTurns" | "tideOrientation" | "pendingTideModifiers">,
+  env: Pick<EnvironmentState, "tideState" | "tideRemainingTurns" | "tideOrientation" | "pendingTideModifiers" | "tideDurations">,
   options?: { extraDurationTurns?: number; forceOrientation?: TideOrientation }
 ): TickTideResult {
   const orientation = options?.forceOrientation ?? naturalOrientationFor("abysses", env.tideOrientation);
   // Déjà en Abysses : « forcez la Marée en Abysses » ne remet pas la durée à
   // neuf, et « augmentez de 1 tour sa durée RESTANTE » part de ce qui reste
   // (Sept Brasses Plus Bas).
-  const base = env.tideState === "abysses" ? env.tideRemainingTurns : RULES.TIDE_STATE_DURATION.abysses;
+  const base = env.tideState === "abysses" ? env.tideRemainingTurns : tideDurationFor(env, "abysses");
   return {
     tideState: "abysses",
     tideRemainingTurns: base + (options?.extraDurationTurns ?? 0),

@@ -82,6 +82,20 @@ export interface EnvironmentState {
   tideIntensity: number;
   pendingTideModifiers: PendingTideModifier[];
   /**
+   * CARTE DES MARÉES de la partie : durée (en tours de table) de chaque
+   * état, tirée à la création (`drawTideChart`) et publique — les deux
+   * joueurs la connaissent dès le début. Toute entrée dans un état (tick,
+   * transition forcée) part de cette durée. Absente : les durées fixes de
+   * `RULES.TIDE_STATE_DURATION` (tutoriel, tests, anciennes parties).
+   */
+  tideDurations?: Record<TideStateName, number>;
+  /**
+   * Chance (sur 100) d'une RENVERSE naturelle du courant à chaque tour de
+   * table en Houle ou en Tempête (`RULES.TIDE_RENVERSE_CHANCE_PERCENT` à
+   * la création). Absente ou 0 : la Marée ne change jamais de sens d'elle-même.
+   */
+  tideRenverseChancePercent?: number;
+  /**
    * La Lande en jeu — emplacement PARTAGÉ, un seul pour les deux joueurs
    * (`game/rules/lande.ts`). Absent : aucune Lande. Optionnel pour que les
    * états déjà sérialisés (parties en cours) restent valides.

@@ -1,4 +1,4 @@
-import { getCardDefinition, type GameEvent, type GameState } from "@/game";
+import { getCardDefinition, TIDE_STATES_ORDER, type GameEvent, type GameState } from "@/game";
 import { TIDE_STATE_LABELS } from "@/features/match/cardDisplay";
 
 function cardName(state: GameState, cardId?: string): string {
@@ -44,7 +44,9 @@ export function formatStatDelta(attack: number, health: number): string {
 export function formatEvent(state: GameState, event: GameEvent, playerLabel: (playerId?: string) => string = playerName): string {
   switch (event.type) {
     case "GAME_STARTED":
-      return "La partie commence.";
+      return event.tideDurations
+        ? `La partie commence. Carte des marées : ${TIDE_STATES_ORDER.map((id) => `${TIDE_STATE_LABELS[id]} ${event.tideDurations![id]}`).join(", ")}.`
+        : "La partie commence.";
     case "TURN_STARTED":
       return `Tour ${event.turnNumber} — ${playerLabel(event.playerId)}.`;
     case "DRAW_CARD":
@@ -106,10 +108,12 @@ export function formatEvent(state: GameState, event: GameEvent, playerLabel: (pl
     }
     case "REASON_CHANGED":
       return `${playerLabel(event.playerId)} : ${event.delta >= 0 ? "+" : ""}${event.delta} Raison.`;
-    case "TIDE_ADVANCED":
-      return event.stateChanged
+    case "TIDE_ADVANCED": {
+      const line = event.stateChanged
         ? `La Marée entre en ${TIDE_STATE_LABELS[event.tideState]} (${event.tideOrientation}).`
         : `Marée : ${TIDE_STATE_LABELS[event.tideState]} (${event.remainingTurns} tour(s) restant(s)).`;
+      return event.renverse ? `${line} Renverse : le courant tourne, la Marée devient ${event.tideOrientation}.` : line;
+    }
     case "TIDE_MODIFIED":
       return event.change === "duration"
         ? `La Marée est retenue : ${event.value} tour(s) restant(s).`

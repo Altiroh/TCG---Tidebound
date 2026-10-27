@@ -424,6 +424,12 @@ function analyserPartie({
     deraisonJustSettled = null;
 
     switch (event.type) {
+      case "GAME_STARTED":
+        // La carte des marées de la partie : le premier Calme n'a pas
+        // forcément la durée par défaut.
+        if (event.tideDurations) tideRemaining = event.tideDurations.calme;
+        break;
+
       case "TURN_STARTED":
         if (firstPlayer === null && event.playerId) firstPlayer = event.playerId;
         closeRecordTurn();

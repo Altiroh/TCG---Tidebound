@@ -3,6 +3,8 @@ import type { CardInstance } from "@/game/cards/types";
 import { getShipDefinition } from "@/game/environment/shipData";
 import { RULES } from "@/game/rules/constants";
 import { createSeed, nextInt, shuffle } from "@/game/rng";
+import { drawTideChart } from "@/game/environment/tide";
+import type { TideStateName } from "@/game/environment/types";
 import { startingReasonCap } from "@/game/state/reason";
 import type { GameState, PlayerId, PlayerState } from "@/game/state/types";
 import type { DeckList } from "@/game/cards/decks/types";
@@ -62,13 +64,20 @@ export interface CreateGameStateInput {
    * (`SECOND_PLAYER_EXTRA_CARD`), quel que soit son siège.
    */
   firstPlayer?: "player1" | "player2" | "coin";
+  /**
+   * Carte des marées imposée (durée de chaque état, en tours de table).
+   * Absente : tirée au hasard sur la graine de la partie (`drawTideChart`),
+   * après les mélanges et la pièce — les decks d'une graine ne bougent pas.
+   */
+  tideDurations?: Record<TideStateName, number>;
 }
 
 /**
  * Construit l'état initial d'une partie : mélange les deux decks,
  * distribue les mains de départ, installe le Navire et l'Ancrage de
  * chaque joueur, initialise la Marée (Calme, orientation Montante — cadrage
- * 2026-09-10), et place le premier joueur en priorité. Aucune mutation
+ * 2026-09-10 — avec la carte des marées propre à la partie et la chance de
+ * renverse), et place le premier joueur en priorité. Aucune mutation
  * d'état externe — retourne un `GameState` entièrement neuf.
  */
 /**
@@ -122,7 +131,9 @@ export function createGameState(input: CreateGameStateInput): GameState {
   // Pile ou face APRÈS les mélanges : les decks d'une graine donnée restent
   // les mêmes, que la pièce soit lancée ou non.
   const toss = input.firstPlayer === "coin" ? nextInt(shuffled2.nextState, 2) : null;
-  const rngAfterSetup = toss ? toss.nextState : shuffled2.nextState;
+  const rngAfterToss = toss ? toss.nextState : shuffled2.nextState;
+  const chart = input.tideDurations ? { value: { ...input.tideDurations }, nextState: rngAfterToss } : drawTideChart(rngAfterToss);
+  const rngAfterSetup = chart.nextState;
   const player2First = toss ? toss.value === 1 : input.firstPlayer === "player2";
   const firstId = player2First ? input.player2.id : input.player1.id;
 
@@ -185,10 +196,12 @@ export function createGameState(input: CreateGameStateInput): GameState {
     rngState: rngAfterSetup,
     environment: {
       tideState: "calme",
-      tideRemainingTurns: RULES.TIDE_STATE_DURATION.calme,
+      tideRemainingTurns: chart.value.calme,
       tideOrientation: "montante",
       tideIntensity: RULES.TIDE_BASE_INTENSITY,
       pendingTideModifiers: [],
+      tideDurations: chart.value,
+      tideRenverseChancePercent: RULES.TIDE_RENVERSE_CHANCE_PERCENT,
     },
     eventLog: [
       {
@@ -197,6 +210,7 @@ export function createGameState(input: CreateGameStateInput): GameState {
         timestamp: Date.now(),
         firstPlayerId: firstId,
         ...(toss ? { coinToss: true as const } : {}),
+        tideDurations: chart.value,
       },
       {
         type: "TURN_STARTED",

@@ -39,10 +39,11 @@ describe("createGameState", () => {
     expect(state.players[1].reasonCap).toBe(2);
   });
 
-  it("initialise la Marée en Calme, orientation Montante, avec sa durée et son Intensité de base", () => {
+  it("initialise la Marée en Calme, orientation Montante, avec la durée de Calme de SA carte des marées et son Intensité de base", () => {
     const state = newTestGame();
     expect(state.environment.tideState).toBe("calme");
-    expect(state.environment.tideRemainingTurns).toBe(RULES.TIDE_STATE_DURATION.calme);
+    expect(state.environment.tideDurations).toBeDefined();
+    expect(state.environment.tideRemainingTurns).toBe(state.environment.tideDurations!.calme);
     expect(state.environment.tideOrientation).toBe("montante");
     expect(state.environment.tideIntensity).toBe(RULES.TIDE_BASE_INTENSITY);
   });

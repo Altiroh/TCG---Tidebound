@@ -27,7 +27,7 @@ export interface TableTideModel {
   /** Tuile de sens, entre les deux navires. */
   orientation: "rising" | "falling";
   /** Piste de progression, au centre du plateau. */
-  states: { id: TideStateName; label: string }[];
+  states: { id: TideStateName; label: string; /** Durée de cet état dans CETTE partie (carte des marées), en tours de table. */ duration?: number }[];
   /** Repère courant sur la piste Calme → Houle → Tempête → Abysses. */
   current: number;
   /** Tours restants dans l'état courant. */

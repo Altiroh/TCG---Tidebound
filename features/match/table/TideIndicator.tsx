@@ -156,6 +156,12 @@ export function TideIndicator({ tide }: TideIndicatorProps) {
             {current.label} · {tide.remainingTurns} tour{tide.remainingTurns > 1 ? "s" : ""} restant{tide.remainingTurns > 1 ? "s" : ""}
           </p>
           <p className={styles.tideTooltipText}>{TIDE_EFFECT[current.id]}</p>
+          {tide.states.every((state) => state.duration !== undefined) && (
+            <p className={styles.tideTooltipText}>
+              Carte des marées : {tide.states.map((state) => `${state.label} ${state.duration}`).join(" · ")} (tours de table).
+              En Houle et en Tempête, le courant peut se renverser.
+            </p>
+          )}
         </div>
       )}
     </div>

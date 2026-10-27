@@ -111,6 +111,10 @@ export function applyTutorialScenario(state: GameState): GameState {
       tideOrientation: "montante",
       // Un tour : elle change pendant le tour adverse, que le joueur observe.
       tideRemainingTurns: Math.min(1, RULES.TIDE_STATE_DURATION.calme),
+      // Le tutoriel garde une mer réglée d'avance : chaque leçon tombe au
+      // même tour, quelle que soit la graine — ni carte tirée, ni renverse.
+      tideDurations: { ...RULES.TIDE_STATE_DURATION },
+      tideRenverseChancePercent: 0,
     },
   };
 }

@@ -138,8 +138,30 @@ export const RULES = {
   // Notion "Moteur de partie — déroulement, Raison & chaînes d'effets",
   // section "Malus globaux des Marées", verrouillage du 2026-09-10)
   // -------------------------------------------------------------------
-  /** Durée (en tours JOUÉS, tous joueurs confondus) de chaque état avant progression. */
+  /**
+   * Durée (en tours de table) de chaque état avant progression, quand la
+   * partie n'a pas de carte des marées (`EnvironmentState.tideDurations`) :
+   * tutoriel, états de test, parties sérialisées avant le 27/10/2026.
+   */
   TIDE_STATE_DURATION: { calme: 2, houle: 2, tempete: 1, abysses: 1 } as Record<TideStateName, number>,
+  /**
+   * CARTE DES MARÉES (27/10/2026) : chaque partie tire, à sa création, la
+   * durée de chacun des quatre états entre ces deux bornes (en tours de
+   * table), indépendamment l'un de l'autre. Une partie peut ainsi offrir
+   * un long Calme et des Abysses brèves, la suivante une Tempête qui
+   * s'éternise : la mer n'a plus le même rythme d'une partie à l'autre.
+   */
+  TIDE_DURATION_MIN: 1,
+  TIDE_DURATION_MAX: 3,
+  /**
+   * RENVERSE (27/10/2026) : chance (sur 100), à chaque tour de table où la
+   * Marée est en Houle ou en Tempête, que le courant s'inverse de lui-même
+   * — une Marée montante redescend, une descendante remonte. Le décompte de
+   * l'état n'est pas touché : seul le sens de la prochaine transition
+   * change, annoncé aux deux joueurs. Ni en Calme ni en Abysses, dont
+   * l'orientation est imposée ; jamais pendant un « Maintien ».
+   */
+  TIDE_RENVERSE_CHANCE_PERCENT: 15,
   /** Intensité de départ à l'entrée dans un nouvel état de Marée. */
   TIDE_BASE_INTENSITY: 1,
   /**

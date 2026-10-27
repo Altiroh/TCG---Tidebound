@@ -202,7 +202,7 @@ export type {
   PendingTideModifier,
 } from "@/game/environment/types";
 export { TIDE_STATES_ORDER, advanceTideState, naturalOrientationFor } from "@/game/environment/types";
-export { tickTide, consumeAmplify } from "@/game/environment/tide";
+export { tickTide, consumeAmplify, tideDurationFor, drawTideChart } from "@/game/environment/tide";
 export { resolveTideTurnStep, grantIgnoreNextTideDamage } from "@/game/environment/resolveEnvironment";
 export { SHIP_DATABASE, SHIP_SET, getShipDefinition } from "@/game/environment/shipData";
 

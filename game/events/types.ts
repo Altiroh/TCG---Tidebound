@@ -437,6 +437,8 @@ export interface EndTurnEvent extends BaseGameEvent {
 
 export interface GameStartedEvent extends BaseGameEvent {
   type: "GAME_STARTED";
+  /** Carte des marées tirée pour la partie (absente : durées fixes de `RULES.TIDE_STATE_DURATION`). */
+  tideDurations?: Record<"calme" | "houle" | "tempete" | "abysses", number>;
   /** Joueur du premier tour (absent sur les états d'avant le tirage : le joueur 1). */
   firstPlayerId?: PlayerId;
   /** Le premier joueur a été tiré à pile ou face : l'écran lance la pièce. */
@@ -499,6 +501,12 @@ export interface TideAdvancedEvent extends BaseGameEvent {
   forced?: boolean;
   /** État quitté — renseigné pour une transition forcée. */
   previousTideState?: "calme" | "houle" | "tempete" | "abysses";
+  /**
+   * RENVERSE naturelle : le courant s'est inversé de lui-même pendant ce
+   * tick (`RULES.TIDE_RENVERSE_CHANCE_PERCENT`) — `tideOrientation` porte
+   * déjà le nouveau sens. Aucun joueur n'en est l'auteur.
+   */
+  renverse?: true;
 }
 
 /**

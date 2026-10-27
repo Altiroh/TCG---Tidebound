@@ -29,9 +29,9 @@ import {
   landeRemainingTableTurns,
   needsFreeSlot,
   reasonCeiling,
-  RULES,
   STATUS_SILENCE,
   TIDE_STATES_ORDER,
+  tideDurationFor,
   type CardInstance,
   type GameState,
   type PlayerId,
@@ -1160,10 +1160,10 @@ export function TableBoard(props: TableBoardProps) {
 
   // ── Marée ───────────────────────────────────────────────────────────
   const tideIndex = TIDE_STATES_ORDER.indexOf(tideState);
-  const duration = RULES.TIDE_STATE_DURATION[tideState];
+  const duration = tideDurationFor(state.environment, tideState);
   const tide = {
     orientation: state.environment.tideOrientation === "montante" ? ("rising" as const) : ("falling" as const),
-    states: TIDE_STATES_ORDER.map((id) => ({ id, label: TIDE_STATE_LABELS[id] })),
+    states: TIDE_STATES_ORDER.map((id) => ({ id, label: TIDE_STATE_LABELS[id], duration: tideDurationFor(state.environment, id) })),
     current: tideIndex,
     remainingTurns: state.environment.tideRemainingTurns,
     stageProgress: duration > 0 ? Math.max(0, Math.min(1, (duration - state.environment.tideRemainingTurns) / duration)) : 0,

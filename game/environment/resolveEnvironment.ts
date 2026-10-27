@@ -1,5 +1,5 @@
 import { absorbShipDamage, armorEvents, armorOf } from "@/game/state/armor";
-import { consumeAmplify, tickTide } from "@/game/environment/tide";
+import { canRenverse, consumeAmplify, tickTide } from "@/game/environment/tide";
 import { getShipDefinition } from "@/game/environment/shipData";
 import { reasonAfterLoss } from "@/game/state/reason";
 import type { TideStateName } from "@/game/environment/types";
@@ -361,6 +361,23 @@ export interface AnnonceDeMaree {
 }
 
 /**
+ * Tirage de la RENVERSE pour le tick de table à venir : seulement si la
+ * partie en a une (`tideRenverseChancePercent`), si l'état que le tick va
+ * arrêter est intermédiaire, et hors « Maintien » (la Marée est figée).
+ * Sans tirage, la graine n'avance pas : une partie sans renverse rejoue
+ * exactement les mêmes tirages qu'avant.
+ */
+function rollRenverse(state: GameState): { hit: boolean; rngState: GameState["rngState"] } {
+  const chance = state.environment.tideRenverseChancePercent ?? 0;
+  if (chance <= 0) return { hit: false, rngState: state.rngState };
+  const plain = tickTide(state.environment);
+  const maintained = state.environment.pendingTideModifiers.some((m) => m.kind === "maintain" && m.remainingTriggers > 0);
+  if (maintained || !canRenverse(plain.tideState)) return { hit: false, rngState: state.rngState };
+  const roll = nextInt(state.rngState, 100);
+  return { hit: roll.value < chance, rngState: roll.nextState };
+}
+
+/**
  * PREMIÈRE moitié de l'étape de Marée : l'ANNONCE (étapes 4-5 de la
  * structure de tour). Décompte la durée restante, avance éventuellement
  * vers l'état suivant — et s'arrête là. L'état de Marée est committé et
@@ -386,8 +403,9 @@ export function annoncerMaree(
   // effets DE la Marée courante, eux, continuent de s'appliquer à chaque
   // tour individuel (inchangé, cf. commentaire de fonction ci-dessus).
   const isNewRound = turnNumber % 2 === 1;
+  const renverse = isNewRound ? rollRenverse(state) : { hit: false, rngState: state.rngState };
   const tick = isNewRound
-    ? tickTide(state.environment)
+    ? tickTide(state.environment, { renverse: renverse.hit })
     : {
         tideState: state.environment.tideState,
         tideRemainingTurns: state.environment.tideRemainingTurns,
@@ -401,6 +419,7 @@ export function annoncerMaree(
 
   let nextState: GameState = {
     ...state,
+    rngState: renverse.rngState,
     environment: {
       ...state.environment,
       tideState: tick.tideState,
@@ -419,6 +438,7 @@ export function annoncerMaree(
     tideState: tick.tideState,
     tideOrientation: tick.tideOrientation,
     stateChanged: tick.stateChanged,
+    ...(tick.renverse ? { renverse: true as const } : {}),
   });
 
   return {
