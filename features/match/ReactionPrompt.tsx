@@ -46,6 +46,11 @@ interface ReactionPromptProps {
   chain?: readonly ChainLink[];
   /** Joueur qui regarde : « vous » ou « l'adversaire » sur chaque maillon. */
   viewerId?: string;
+  /**
+   * Ce à quoi chaque candidat répond, en une phrase (`describeReactionCause`)
+   * — « L'adversaire joue Harpon à Ressort ». Absent : pas de bandeau.
+   */
+  causeOf?: (candidate: PendingReactionCandidate) => string | null;
 }
 
 /**
@@ -73,7 +78,9 @@ interface ReactionPromptProps {
  * fenêtre automatiquement — jamais bloquer la partie indéfiniment en
  * attente d'une décision facultative.
  */
-export function ReactionPrompt({ candidates, onActivateMany, onPass, warningFor, chain, viewerId }: ReactionPromptProps) {
+export function ReactionPrompt({ candidates, onActivateMany, onPass, warningFor, chain, viewerId, causeOf }: ReactionPromptProps) {
+  // Ce qui ouvre la fenêtre, sans doublon : le plus souvent une seule phrase pour tous les candidats.
+  const causes = causeOf ? [...new Set(candidates.map(causeOf).filter((cause): cause is string => Boolean(cause)))] : [];
   /**
    * Panneau replié en pastille, le temps de REGARDER le plateau : sur un
    * téléphone couché, sa bande couvre l'emplacement de droite des deux
@@ -141,6 +148,18 @@ export function ReactionPrompt({ candidates, onActivateMany, onPass, warningFor,
               <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth={2} strokeLinecap="round" />
             </svg>
           </button>
+
+          {/* À QUOI l'on réagit, avant tout le reste — la Chaîne, puis la question (retour du 27/10/2026). */}
+          {causes.length > 0 && (
+            <div className="mb-3 shrink-0 rounded-xl border border-amber-200/25 bg-amber-300/10 px-3 py-2 pr-8 text-left [@media(max-height:520px)]:mb-2">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-100/70">En réponse à</p>
+              {causes.map((cause) => (
+                <p key={cause} className="text-sm font-semibold leading-snug text-amber-50">
+                  {cause}
+                </p>
+              ))}
+            </div>
+          )}
 
           {chain && chain.length > 0 && <ChainStackStrip chain={chain} viewerId={viewerId} />}
 

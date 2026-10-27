@@ -1459,6 +1459,7 @@ function collectReactionCandidatesOnBoard(
         anchorCost,
         needsTarget,
         needsGraveyardTarget,
+        cause: event,
       });
     }
   }

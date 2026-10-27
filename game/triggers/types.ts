@@ -165,4 +165,10 @@ export interface PendingReactionCandidate {
    * carte pourrait un jour poser les deux.
    */
   needsGraveyardTarget: boolean;
+  /**
+   * L'événement de la fenêtre qui rend cette capacité éligible — ce à quoi
+   * elle RÉPOND. Purement informatif (l'interface dit « en réponse à… ») :
+   * jamais relu pour résoudre quoi que ce soit.
+   */
+  cause?: TriggerEvent;
 }

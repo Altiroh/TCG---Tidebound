@@ -52,6 +52,7 @@ import { useHeldTarget } from "@/features/match/useHeldTarget";
 import { PhaseBanner } from "@/features/match/PhaseBanner";
 import { MicroLoader } from "@/features/shell/MicroLoader";
 import { ReactionPrompt } from "@/features/match/ReactionPrompt";
+import { describeReactionCause } from "@/features/match/reactionCause";
 import { ShipWindowHint } from "@/features/match/ShipWindowHint";
 import { reactionTargetHint } from "@/features/match/reactionTargetHint";
 import { TableBoard } from "@/features/match/table/TableBoard";
@@ -730,6 +731,7 @@ export function MatchBoard({
             warningFor={(candidate) => reactionWarning(liveState, viewerPlayerId, candidate)}
             chain={liveState.chainStack}
             viewerId={viewerPlayerId}
+            causeOf={(candidate) => describeReactionCause(liveState, candidate.cause, viewerPlayerId)}
           />
         )}
       {/* Le NAVIRE seul à pouvoir répondre : son panneau s'allume, et ce
@@ -747,6 +749,10 @@ export function MatchBoard({
       {pending?.kind === "reaction" && pending.needsTarget && (() => {
         // Un Objet Chaîne répond depuis la MAIN (règle du 13/10/2026).
         const sourceCardId = [...viewerPlayer.board, ...viewerPlayer.hand, ...otherPlayer.board].find((u) => u.instanceId === pending.sourceInstanceId)?.cardId;
+        // Ce à quoi l'on répond, en tête du bandeau (retour du 27/10/2026).
+        const cause = myReactionCandidates.find((c) => c.sourceInstanceId === pending.sourceInstanceId && c.abilityIndex === pending.abilityIndex)?.cause;
+        const causeText = describeReactionCause(liveState, cause, viewerPlayerId);
+        const causeLine = causeText ? `En réponse à : ${causeText}. ` : "";
         const decline = () => {
           board.clearSelection();
           runReactionAction({ type: "passReaction", playerId: viewerPlayerId });
@@ -756,7 +762,7 @@ export function MatchBoard({
             choiceKey={`${pending.sourceInstanceId}:${pending.abilityIndex}`}
             source={sourceCardId ? getCardDefinition(sourceCardId).name : null}
             title={reactionTargetHint(sourceCardId, pending.abilityIndex)}
-            detail="Touche l'unité sur le plateau. Sans réponse, l'effet ne s'applique pas."
+            detail={`${causeLine}Touche l'unité sur le plateau. Sans réponse, l'effet ne s'applique pas.`}
             actions={[{ label: "Ne rien faire", onClick: decline }]}
             onExpire={decline}
           />
