@@ -68,7 +68,7 @@ function buffSoi(attack: number, health: number, duration: "endOfTurn" | "untilY
     : { type: "buff", target: { kind: "self" }, attackAmount: flat(attack), healthAmount: flat(health), duration };
 }
 
-/** « une unité Opaline que vous contrôlez gagne … » : la question qui la désigne. */
+/** « une unité Opalin que vous contrôlez gagne … » : la question qui la désigne. */
 function uneOpalineGagne(attack: number, health: number): EffectDefinition {
   return {
     type: "pickUnits",
@@ -828,7 +828,7 @@ const OPALINS: CardDefinition[] = [
     maxCopies: 2,
     text:
       "À l'arrivée : déplacez immédiatement la Marée d'un état dans le sens de votre choix. Une fois par tour, " +
-      "lorsque la Marée change, une unité Opaline que vous contrôlez gagne +1 Puissance et +1 Résistance jusqu'à " +
+      "lorsque la Marée change, une unité Opalin que vous contrôlez gagne +1 Puissance et +1 Résistance jusqu'à " +
       "votre prochain tour.",
     onPlayEffects: [{ type: "chooseAbilityOption", target: { kind: "controllerPlayer" }, optionGroup: "nerhalSens" }],
     abilities: [
@@ -836,7 +836,7 @@ const OPALINS: CardDefinition[] = [
       {
         trigger: "onTideStateEntered",
         oncePerTurnKey: "nerhalMaree",
-        description: "La Marée change : une unité Opaline que vous contrôlez gagne +1 Puissance et +1 Résistance.",
+        description: "La Marée change : une unité Opalin que vous contrôlez gagne +1 Puissance et +1 Résistance.",
         effects: [uneOpalineGagne(1, 1)],
       },
     ],
@@ -903,7 +903,7 @@ const OPALINS: CardDefinition[] = [
       {
         trigger: "onArmorGained",
         oncePerTurnKey: "velmArmure",
-        description: "Votre Navire gagne de l'Armure : une unité Opaline que vous contrôlez gagne +1 Résistance.",
+        description: "Votre Navire gagne de l'Armure : une unité Opalin que vous contrôlez gagne +1 Résistance.",
         effects: [uneOpalineGagne(0, 1)],
       },
     ],
@@ -1135,7 +1135,7 @@ const OPALINS: CardDefinition[] = [
     maxCopies: 1,
     text:
       "À l'arrivée : choisissez un Équipement, une Structure ou une Créature adverse. Son texte est ignoré " +
-      "jusqu'au début de votre prochain tour. La première carte adverse qui cible une unité Opaline que vous " +
+      "jusqu'au début de votre prochain tour. La première carte adverse qui cible une unité Opalin que vous " +
       "contrôlez à chaque tour coûte 1 Raison supplémentaire.",
     onPlayEffects: [
       {
@@ -1149,14 +1149,14 @@ const OPALINS: CardDefinition[] = [
       },
     ],
     // « coûte 1 Raison supplémentaire » : l'adversaire perd 1 Raison quand sa
-    // carte désigne une de vos unités Opalines (`onUnitTargeted`), la
+    // carte désigne une de vos unités Opalin (`onUnitTargeted`), la
     // première fois de chaque tour.
     abilities: [
       {
         trigger: "onUnitTargeted",
         triggeredBy: { archetype: OPALIN, cardTypes: [...UNITES] },
         oncePerTurnKey: "astelVeille",
-        description: "Une carte adverse cible une unité Opaline que vous contrôlez : elle coûte 1 Raison de plus à l'adversaire.",
+        description: "Une carte adverse cible une unité Opalin que vous contrôlez : elle coûte 1 Raison de plus à l'adversaire.",
         effects: [{ type: "reasonLoss", target: { kind: "opponentPlayer" }, amount: flat(1) }],
       },
     ],
@@ -1194,7 +1194,7 @@ const OPALINS: CardDefinition[] = [
     health: 7,
     maxCopies: 2,
     text:
-      "Ne peut être joué normalement que si vous contrôlez une unité Opaline. S'il entre en jeu par l'effet d'Eidolon " +
+      "Ne peut être joué normalement que si vous contrôlez une unité Opalin. S'il entre en jeu par l'effet d'Eidolon " +
       "Opalin LV1, gagnez 2 Armure. Au début de votre tour, s'il est toujours en jeu, placez 1 marqueur Niveau sur lui. À " +
       "1 marqueur Niveau, remplacez-le par Eidolon Opalin LVX depuis votre main ou votre pioche.",
     playableOnlyIf: { controlsArchetypeUnit: OPALIN },
@@ -1242,7 +1242,7 @@ const OPALINS: CardDefinition[] = [
     type: "objet",
     cost: 2,
     maxCopies: 2,
-    text: "Donnez 1 marqueur Niveau à une carte Opaline LV. Une seule utilisation de Fragment d'Éveil par tour.",
+    text: "Donnez 1 marqueur Niveau à une carte Opalin LV. Une seule utilisation de Fragment d'Éveil par tour.",
     playOncePerTurnByName: true,
     onBreakEffects: [{ type: "addLevelMarker", target: { kind: "chosenUnit", among: { tag: "lv", unitsOnly: true } }, amount: flat(1) }],
   }),
@@ -1256,9 +1256,9 @@ const OPALINS: CardDefinition[] = [
     // réaction depuis la main quand une unité attaque ou que l'adversaire joue
     // un Objet — une protection qui se sort au moment du coup.
     text:
-      "Chaîne — Une unité Opaline gagne +0/+2 jusqu'à votre prochain tour. Si elle est LV, elle ne peut pas être " +
+      "Chaîne — Une unité Opalin gagne +0/+2 jusqu'à votre prochain tour. Si elle est LV, elle ne peut pas être " +
       "renvoyée en main ce tour.",
-    ...chaineLibre("Sommeil de Pierre : une unité Opaline gagne +0/+2 jusqu'à votre prochain tour (LV : ne peut pas être renvoyée en main ce tour).", [
+    ...chaineLibre("Sommeil de Pierre : une unité Opalin gagne +0/+2 jusqu'à votre prochain tour (LV : ne peut pas être renvoyée en main ce tour).", [
       {
         type: "buff",
         target: { kind: "chosenUnit", among: { archetype: OPALIN, unitsOnly: true } },

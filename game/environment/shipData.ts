@@ -264,7 +264,7 @@ export const SHIP_SET: ShipDefinition[] = [
     illustration: "ile-tortue-opaline.webp",
     text: "Profil : lourd / Opalins / valeur récurrente.",
     passiveText:
-      "La première carte Opaline coûtant 5 ou plus que vous jouez à chacun de vos tours coûte 1 de moins. " +
+      "La première carte Opalin coûtant 5 ou plus que vous jouez à chacun de vos tours coûte 1 de moins. " +
       "La première fois qu'un Opalin arrive en jeu à chacun de vos tours, gagnez 1 Armure.",
     firstArchetypeCardDiscountEachTurn: { archetype: "opalin", minCost: 5, amount: 1 },
     armorOnFirstArchetypeArrivalEachTurn: { archetype: "opalin", amount: 1 },
