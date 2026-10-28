@@ -59,16 +59,27 @@ export async function listInbox(userId: string): Promise<InboxMail[]> {
   });
 }
 
-/** Courriers pas encore ouverts — l'enveloppe du bandeau. Zéro si les tables manquent encore. */
+/**
+ * Courriers EN ATTENTE — l'enveloppe du bandeau : pas encore ouverts, ou
+ * ouverts mais dont le cadeau n'est pas réclamé (28/10/2026 : un courrier lu
+ * et laissé de côté avec ses Tides ne se signalait plus). Zéro si les
+ * tables manquent encore.
+ */
 export async function countUnreadMail(userId: string): Promise<number> {
   try {
-    const mails = await addressedMails(userId, "id");
+    const mails = await addressedMails(userId, "id, gift_tides, gift_xp, gift_boosters");
     if (mails.error || mails.data.length === 0) return 0;
     const service = createSupabaseServiceRoleClient();
     const ids = mails.data.map((row) => row.id as string);
-    const { data, error } = await service.from("mail_receipts").select("mail_id").eq("user_id", userId).not("read_at", "is", null).in("mail_id", ids);
+    const { data, error } = await service.from("mail_receipts").select("mail_id, read_at, claimed_at").eq("user_id", userId).in("mail_id", ids);
     if (error) return 0;
-    return ids.length - (data ?? []).length;
+    const receipts = new Map((data ?? []).map((row) => [row.mail_id as string, row]));
+    return mails.data.filter((row) => {
+      const receipt = receipts.get(row.id as string);
+      if (!receipt?.read_at) return true;
+      const gift = (row.gift_tides as number) > 0 || (row.gift_xp as number) > 0 || parseBoosterGifts(row.gift_boosters).length > 0;
+      return gift && !receipt.claimed_at;
+    }).length;
   } catch {
     return 0;
   }

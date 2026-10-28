@@ -2,7 +2,7 @@
 
 import { isAdmin } from "@/features/admin/roles";
 import { normalizeMailDraft, type InboxMail, type MailDraft } from "@/features/mail/mailDraft";
-import { claimMailGift as claimGiftFor, listInbox, markMailRead, sendMail } from "@/features/mail/mailService";
+import { claimMailGift as claimGiftFor, countUnreadMail, listInbox, markMailRead, sendMail } from "@/features/mail/mailService";
 import { getSessionUser } from "@/lib/supabase/sessionUser";
 
 /**
@@ -19,6 +19,13 @@ export async function fetchInbox(): Promise<{ ok: true; mails: InboxMail[] } | {
     console.error("[fetchInbox] Lecture impossible :", error);
     return { ok: false, error: "Courrier indisponible pour le moment." };
   }
+}
+
+/** Courriers en attente, pour l'enveloppe du bandeau — relu régulièrement, sans toute la progression. `null` hors session. */
+export async function fetchMailBadge(): Promise<number | null> {
+  const user = await getSessionUser();
+  if (!user) return null;
+  return countUnreadMail(user.id);
 }
 
 export async function openMail(mailId: string): Promise<{ ok: boolean }> {

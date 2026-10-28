@@ -19,6 +19,7 @@ import { SettingsDialog } from "@/features/settings/SettingsDialog";
 import styles from "@/features/shell/ScreenShell.module.css";
 import { playButtonClick } from "@/lib/sound";
 import { fetchFriendsBadge } from "@/features/friends/actions";
+import { fetchMailBadge } from "@/features/mail/actions";
 import { socialLocked } from "@/features/friends/socialLock";
 import { onFriendsPanelRequest } from "@/features/friends/friendsPanelBus";
 
@@ -396,7 +397,62 @@ export function HeaderPlayer() {
       window.clearInterval(id);
     };
   }, [signedIn, socialOpen, refreshFriendsBadge]);
-  const mailWaiting = (summary?.unreadMail ?? 0) + (socialOpen ? socialMail : 0);
+  /**
+   * L'enveloppe RELUE pour elle-même (28/10/2026) : la progression ne se lit
+   * qu'au changement d'écran, et un courrier envoyé pendant qu'on joue ne se
+   * signalait pas. Relue à l'arrivée, à chaque changement signalé, au retour
+   * sur l'onglet et toutes les 30 s ; un courrier de PLUS s'annonce.
+   */
+  const [mailCount, setMailCount] = useState<number | null>(null);
+  const lastMail = useRef<number | null>(null);
+  const refreshMail = useCallback(() => {
+    fetchMailBadge()
+      .then((count) => {
+        if (count === null) return;
+        const previous = lastMail.current;
+        lastMail.current = count;
+        setMailCount(count);
+        // Première lecture : on prend le compte sans rien dire.
+        if (previous === null || count <= previous) return;
+        setToast((current) =>
+          current
+            ? current
+            : {
+                id: ++toastId.current,
+                tone: "notice",
+                text: count - previous > 1 ? `${count - previous} nouveaux courriers à bord.` : "Un nouveau courrier est arrivé à bord.",
+                action: (
+                  <button
+                    type="button"
+                    className={styles.toastAction}
+                    onClick={() => {
+                      playButtonClick();
+                      setToast(null);
+                      setMailOpen(true);
+                    }}
+                  >
+                    Ouvrir →
+                  </button>
+                ),
+              }
+        );
+      })
+      .catch(() => undefined);
+  }, []);
+  useEffect(() => {
+    if (!signedIn) return;
+    refreshMail();
+    const unsubscribe = onProgressionChanged(refreshMail);
+    const onVisible = () => document.visibilityState === "visible" && refreshMail();
+    document.addEventListener("visibilitychange", onVisible);
+    const id = window.setInterval(() => document.visibilityState === "visible" && refreshMail(), 30_000);
+    return () => {
+      unsubscribe();
+      document.removeEventListener("visibilitychange", onVisible);
+      window.clearInterval(id);
+    };
+  }, [signedIn, refreshMail]);
+  const mailWaiting = (mailCount ?? summary?.unreadMail ?? 0) + (socialOpen ? socialMail : 0);
   // Ouverture demandée d'ailleurs (alerte d'échange, profil, écran Partie).
   useEffect(() => onFriendsPanelRequest(() => setFriendsOpen(true)), []);
 
@@ -597,7 +653,15 @@ export function HeaderPlayer() {
         />
       )}
       {/* En vue joueur, l'Admin voit le courrier comme un joueur : pas d'onglet d'écriture. */}
-      {mailOpen && <MailPanel isAdmin={(summary?.isAdmin ?? false) && !summary?.vueJoueur} onClose={() => setMailOpen(false)} />}
+      {mailOpen && (
+        <MailPanel
+          isAdmin={(summary?.isAdmin ?? false) && !summary?.vueJoueur}
+          onClose={() => {
+            setMailOpen(false);
+            refreshMail();
+          }}
+        />
+      )}
       {friendsOpen && socialOpen && (
         <FriendsPanel
           onClose={() => {
