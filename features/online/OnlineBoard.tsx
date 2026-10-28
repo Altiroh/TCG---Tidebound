@@ -43,7 +43,7 @@ import { useBoardPick } from "@/features/match/useBoardPick";
 import { useHeldTarget } from "@/features/match/useHeldTarget";
 import { PhaseBanner } from "@/features/match/PhaseBanner";
 import { ReactionPrompt } from "@/features/match/ReactionPrompt";
-import { describeReactionCause } from "@/features/match/reactionCause";
+import { describeReactionCause, reactionCauseVisual } from "@/features/match/reactionCause";
 import { ShipWindowHint } from "@/features/match/ShipWindowHint";
 import { TurnTimerBadge } from "@/features/match/TurnTimerBadge";
 import { ConnectionBadge } from "@/features/online/ConnectionBadge";
@@ -372,6 +372,7 @@ export function OnlineBoard({
             chain={liveState.chainStack}
             viewerId={myUserId}
             causeOf={(candidate) => describeReactionCause(liveState, candidate.cause, myUserId)}
+            causeVisualOf={(candidate) => reactionCauseVisual(liveState, candidate.cause, myUserId)}
           />
         )}
       {/* Cf. `MatchBoard` : le Navire seul à répondre s'annonce par son

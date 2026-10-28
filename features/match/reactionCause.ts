@@ -153,3 +153,58 @@ function safeName(cardId: string): string | null {
     return null;
   }
 }
+
+/** Un côté du visuel de la cause : une carte (son illustration) ou un Navire. */
+export type CauseSide = { kind: "card"; cardId: string } | { kind: "ship"; shipId: string; mine: boolean };
+
+/**
+ * LE VISUEL de la cause (28/10/2026) : qui agit, comment, sur qui — pour une
+ * attaque (« ⚔ ») ou un sort joué (Objet, Anomalie). `null` pour le reste :
+ * le bandeau garde alors sa seule phrase.
+ */
+export interface CauseVisual {
+  action: "attack" | "spell";
+  source: CauseSide;
+  /** Absente : un sort sans cible désignée. */
+  target: CauseSide | null;
+}
+
+const ATTACK_TRIGGERS = new Set<TriggerEvent["trigger"]>(["onAttack", "onOwnAttackDeclared", "onUnitAttackDeclared", "onIncomingDirectAttack", "onCombatVsGarde"]);
+const PLAY_TRIGGERS = new Set<TriggerEvent["trigger"]>(["onPlay", "onCardPlayed", "onObjectPlayed"]);
+
+export function reactionCauseVisual(state: GameState, event: TriggerEvent | undefined, viewerId: string): CauseVisual | null {
+  if (!event) return null;
+  const shipOf = (playerId: string): CauseSide | null => {
+    const player = state.players.find((p) => p.id === playerId);
+    return player ? { kind: "ship", shipId: player.shipId, mine: playerId === viewerId } : null;
+  };
+  const cardSide = (instanceId: string | undefined): CauseSide | null => {
+    const cardId = instanceId ? findCardInstance(state, instanceId)?.card.cardId : undefined;
+    return cardId && cardId !== HIDDEN_CARD_ID ? { kind: "card", cardId } : null;
+  };
+
+  if (ATTACK_TRIGGERS.has(event.trigger)) {
+    const attack = state.pendingAttack;
+    if (!attack) return null;
+    const source = attack.kind === "tirDeNavire" ? shipOf(attack.playerId) : cardSide(attack.attackerInstanceId);
+    const defenderId = state.players.find((p) => p.id !== attack.playerId)?.id;
+    const target = attack.defenderInstanceId ? cardSide(attack.defenderInstanceId) : defenderId ? shipOf(defenderId) : null;
+    return source ? { action: "attack", source, target } : null;
+  }
+
+  if (PLAY_TRIGGERS.has(event.trigger)) {
+    const link = event.sourceInstanceId ? state.chainStack?.find((entry) => entry.card.instanceId === event.sourceInstanceId) : undefined;
+    const cardId = event.cardId ?? link?.card.cardId ?? (event.sourceInstanceId ? findCardInstance(state, event.sourceInstanceId)?.card.cardId : undefined);
+    if (!cardId || cardId === HIDDEN_CARD_ID) return null;
+    let type: string;
+    try {
+      type = getCardDefinition(cardId).type;
+    } catch {
+      return null;
+    }
+    // Un sort : ce qui se lance plutôt que ce qui se pose.
+    if (type !== "objet" && type !== "anomalie") return null;
+    return { action: "spell", source: { kind: "card", cardId }, target: cardSide(link?.targetInstanceId) };
+  }
+  return null;
+}

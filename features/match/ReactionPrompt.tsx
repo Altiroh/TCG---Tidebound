@@ -1,10 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { getCardDefinition, isAbyssalVariant, type ChainLink, type PendingReactionCandidate } from "@/game";
+import { getCardDefinition, getShipDefinition, isAbyssalVariant, type ChainLink, type PendingReactionCandidate } from "@/game";
 import { useImageOk } from "@/features/match/useImageOk";
 import { playButtonClick, playReactionWindow } from "@/lib/sound";
 import glass from "@/features/match/LiquidGlass.module.css";
+import { cardArtworkThumbUrl } from "@/features/decks/cardArtUrl";
+import { shipIllustrationUrl } from "@/features/ships/shipFrame";
+import type { CauseSide, CauseVisual } from "@/features/match/reactionCause";
 
 /** Le joueur a ce temps pour répondre avant que la fenêtre se referme d'elle-même (équivaut à "Non"). */
 const TIMEOUT_MS = 60_000;
@@ -51,6 +54,8 @@ interface ReactionPromptProps {
    * — « L'adversaire joue Harpon à Ressort ». Absent : pas de bandeau.
    */
   causeOf?: (candidate: PendingReactionCandidate) => string | null;
+  /** Le visuel de la cause (`reactionCauseVisual`) : qui agit, comment, sur qui. Absent : la phrase seule. */
+  causeVisualOf?: (candidate: PendingReactionCandidate) => CauseVisual | null;
 }
 
 /**
@@ -78,9 +83,12 @@ interface ReactionPromptProps {
  * fenêtre automatiquement — jamais bloquer la partie indéfiniment en
  * attente d'une décision facultative.
  */
-export function ReactionPrompt({ candidates, onActivateMany, onPass, warningFor, chain, viewerId, causeOf }: ReactionPromptProps) {
+export function ReactionPrompt({ candidates, onActivateMany, onPass, warningFor, chain, viewerId, causeOf, causeVisualOf }: ReactionPromptProps) {
   // Ce qui ouvre la fenêtre, sans doublon : le plus souvent une seule phrase pour tous les candidats.
   const causes = causeOf ? [...new Set(candidates.map(causeOf).filter((cause): cause is string => Boolean(cause)))] : [];
+  // Le visuel n'a de sens que pour UNE cause : plusieurs, et la phrase seule les dit mieux.
+  const visuals = causeVisualOf ? candidates.map(causeVisualOf).filter((visual): visual is CauseVisual => Boolean(visual)) : [];
+  const visual = causes.length === 1 && visuals.length > 0 ? visuals[0]! : null;
   /**
    * Panneau replié en pastille, le temps de REGARDER le plateau : sur un
    * téléphone couché, sa bande couvre l'emplacement de droite des deux
@@ -153,6 +161,7 @@ export function ReactionPrompt({ candidates, onActivateMany, onPass, warningFor,
           {causes.length > 0 && (
             <div className="mb-3 shrink-0 rounded-xl border border-amber-200/25 bg-amber-300/10 px-3 py-2 pr-8 text-left [@media(max-height:520px)]:mb-2">
               <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-100/70">En réponse à</p>
+              {visual && <CauseVisualRow visual={visual} />}
               {causes.map((cause) => (
                 <p key={cause} className="text-sm font-semibold leading-snug text-amber-50">
                   {cause}
@@ -418,5 +427,75 @@ function MultipleCandidates({
 
       <CountdownBar />
     </div>
+  );
+}
+
+/**
+ * QUI AGIT, COMMENT, SUR QUI (28/10/2026) : l'illustration de l'attaquant ou
+ * du lanceur, deux épées qui s'entrechoquent (attaque) ou une étincelle de
+ * sort, puis celle de la cible — une unité ou un Navire. Un coup d'œil
+ * suffit avant de lire la phrase.
+ */
+function CauseVisualRow({ visual }: { visual: CauseVisual }) {
+  const label = visual.action === "attack" ? "attaque" : "lance un sort sur";
+  return (
+    <div className="my-1.5 flex items-center justify-center gap-2" aria-hidden>
+      <CauseThumb side={visual.source} />
+      <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${visual.action === "attack" ? "bg-rose-500/20 text-rose-100" : "bg-violet-500/25 text-violet-100"}`} title={label}>
+        {visual.action === "attack" ? <CrossedSwordsIcon /> : <SpellIcon />}
+      </span>
+      {visual.target && <CauseThumb side={visual.target} />}
+    </div>
+  );
+}
+
+function CauseThumb({ side }: { side: CauseSide }) {
+  if (side.kind === "ship") {
+    let src: string | null = null;
+    try {
+      src = getShipDefinition(side.shipId).illustration ? shipIllustrationUrl(getShipDefinition(side.shipId).illustration!) : null;
+    } catch {
+      src = null;
+    }
+    return (
+      <span className="relative h-12 w-12 shrink-0 overflow-hidden rounded-full border border-amber-200/50 bg-slate-900/70">
+        {src && (
+          // eslint-disable-next-line @next/next/no-img-element -- illustration locale de Navire
+          <img src={src} alt="" draggable={false} className="h-full w-full object-cover" />
+        )}
+        <span className="absolute inset-x-0 bottom-0 bg-black/60 text-[9px] font-bold uppercase leading-tight text-amber-50">{side.mine ? "Vous" : "Navire"}</span>
+      </span>
+    );
+  }
+  return (
+    // eslint-disable-next-line @next/next/no-img-element -- vignette locale de carte
+    <img
+      src={cardArtworkThumbUrl(side.cardId)}
+      alt=""
+      draggable={false}
+      className="h-12 w-12 shrink-0 rounded-lg border border-amber-200/50 object-cover shadow-[0_4px_10px_rgba(0,0,0,0.5)]"
+    />
+  );
+}
+
+/** Deux épées croisées, lames en haut, et l'étincelle du choc. */
+function CrossedSwordsIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6">
+      <path d="M4 3l9.5 9.5M20 3l-9.5 9.5" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" />
+      <path d="M8.5 14.5l-3 3M15.5 14.5l3 3M6.8 13.2l4 4M17.2 13.2l-4 4" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" />
+      <path d="M4.5 19.5l1-1M19.5 19.5l-1-1" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" />
+      <path d="M12 6.2V4.6M14.2 7.1l1-1.1M9.8 7.1l-1-1.1" stroke="#fde68a" strokeWidth={1.4} strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/** L'étincelle d'un sort : une étoile à quatre branches et deux éclats. */
+function SpellIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6">
+      <path d="M12 3c.6 4.2 1.8 5.4 6 6-4.2.6-5.4 1.8-6 6-.6-4.2-1.8-5.4-6-6 4.2-.6 5.4-1.8 6-6z" fill="currentColor" />
+      <path d="M18.5 15.5c.3 1.6.8 2.1 2.5 2.5-1.7.4-2.2.9-2.5 2.5-.3-1.6-.8-2.1-2.5-2.5 1.7-.4 2.2-.9 2.5-2.5zM5.5 16c.2 1 .5 1.3 1.5 1.5-1 .2-1.3.5-1.5 1.5-.2-1-.5-1.3-1.5-1.5 1-.2 1.3-.5 1.5-1.5z" fill="currentColor" opacity={0.7} />
+    </svg>
   );
 }

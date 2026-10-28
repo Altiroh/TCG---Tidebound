@@ -52,7 +52,7 @@ import { useHeldTarget } from "@/features/match/useHeldTarget";
 import { PhaseBanner } from "@/features/match/PhaseBanner";
 import { MicroLoader } from "@/features/shell/MicroLoader";
 import { ReactionPrompt } from "@/features/match/ReactionPrompt";
-import { describeReactionCause } from "@/features/match/reactionCause";
+import { describeReactionCause, reactionCauseVisual } from "@/features/match/reactionCause";
 import { ShipWindowHint } from "@/features/match/ShipWindowHint";
 import { reactionTargetHint } from "@/features/match/reactionTargetHint";
 import { TableBoard } from "@/features/match/table/TableBoard";
@@ -732,6 +732,7 @@ export function MatchBoard({
             chain={liveState.chainStack}
             viewerId={viewerPlayerId}
             causeOf={(candidate) => describeReactionCause(liveState, candidate.cause, viewerPlayerId)}
+            causeVisualOf={(candidate) => reactionCauseVisual(liveState, candidate.cause, viewerPlayerId)}
           />
         )}
       {/* Le NAVIRE seul à pouvoir répondre : son panneau s'allume, et ce
