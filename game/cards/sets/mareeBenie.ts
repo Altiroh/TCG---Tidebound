@@ -88,7 +88,7 @@ const voile = (target: TargetSelector, extra: Partial<EffectDefinition> = {}): E
 /**
  * « Jusqu'à N unités [alliées / de votre choix] » : une question
  * (`pickUnits`), où le joueur désigne — au plus N, ou aucune. Les effets
- * appliqués visent la unité désignée (`triggerSource`).
+ * appliqués visent l'unité désignée (`triggerSource`).
  */
 function choisirCreatures(
   where: "allies" | "toutes" | "adverses",
@@ -361,7 +361,7 @@ export const BIENFAITS_DU_FOND_SET: CardDefinition[] = [
         trigger: "onUnitAttackDeclared",
         mode: "optional",
         condition: { attackFromUnit: true, pendingAttackerCondition: { cardTypes: ["marin", "creature"] } },
-        description: "Gros Bisou ! : la unité qui attaque perd 2 Puissance pour cette attaque.",
+        description: "Gros Bisou ! : l'unité qui attaque perd 2 Puissance pour cette attaque.",
         effects: [{ type: "modifyAttackerPower", target: { kind: "pendingAttacker" }, amount: flat(2) }],
       },
     ],
@@ -446,7 +446,7 @@ export const BIENFAITS_DU_FOND_SET: CardDefinition[] = [
         mode: "optional",
         oncePerTurnKey: "filetQuiRespire",
         condition: { attackFromUnit: true, pendingAttackerCondition: { cardTypes: ["marin", "creature"], ...SOUILLEE } },
-        description: "Le Filet qui Respire : 2 dégâts à la unité souillée qui attaque, avant la résolution.",
+        description: "Le Filet qui Respire : 2 dégâts à l'unité souillée qui attaque, avant la résolution.",
         effects: [{ type: "damage", target: { kind: "pendingAttacker" }, amount: flat(2) }],
       },
     ],
