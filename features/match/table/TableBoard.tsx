@@ -41,6 +41,7 @@ import { AttackImpactLayer } from "@/features/match/AttackImpactLayer";
 import { FocusedCard } from "@/features/match/FocusedCard";
 import { useCardBackSrcFor } from "@/features/cosmetics/MatchCosmeticsProvider";
 import { CardTile, cardStatusLegend } from "@/features/match/CardTile";
+import { legendTerm } from "@/features/match/boardTokens";
 import { TIDE_STATE_LABELS } from "@/features/match/cardDisplay";
 import { arrivalTargetsByMode, legalTargetsFor, type TableTargeting } from "@/features/match/table/legalTargets";
 import { sourcePolarity, type TargetPolarity } from "@/features/match/table/targetPolarity";
@@ -1555,7 +1556,7 @@ export function TableBoard(props: TableBoardProps) {
                   <CardRulesPanel cardId={found.instance.cardId} />
                   {/* Les états, en toutes lettres : un badge seul ne dit pas ce qu'il fait. */}
                   <CardStatesPanel legend={legend} />
-                  <CardKeywordsPanel cardId={found.instance.cardId} exclude={legend.map((item) => item.label)} />
+                  <CardKeywordsPanel cardId={found.instance.cardId} exclude={legend.map((item) => legendTerm(item.label))} />
                 </div>
               }
             >

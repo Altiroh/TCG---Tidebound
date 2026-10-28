@@ -52,17 +52,17 @@ export const KEYWORD_GLOSSARY: readonly GlossaryEntry[] = [
   { label: "Malade", description: "Perd 1 Résistance à chaque tour tant que ce statut reste actif.", forms: ["Malade", "MALADE"] },
   {
     label: "Bénie",
-    description: "État d'une Créature (Lot 20). Sans effet propre : ce sont les cartes qui le lisent. Il reste jusqu'à ce qu'un effet le retire, et se lit encore au Cimetière.",
+    description: "Une Créature bénie l'est une seule fois, jusqu'à ce qu'un effet le lui retire ; elle le reste au Cimetière. Sans effet propre : certaines cartes le récompensent, d'autres le punissent.",
     forms: ["bénie", "bénies", "béni", "bénis", "Bénédiction"],
   },
   {
     label: "Souillure",
-    description: "Marqueur cumulable (Lot 20). Une Créature qui en porte au moins un est « souillée ». Sans effet propre : ce sont les cartes qui le comptent.",
+    description: "Marqueur cumulable posé sur une Créature : elle est « souillée » tant qu'elle en porte au moins un. Sans effet propre : certaines cartes les comptent.",
     forms: ["Souillure", "souillée", "souillées", "souillé"],
   },
   {
     label: "Marqueur +1/+1",
-    description: "Marqueur cumulable (Lot 21) : +1 Puissance et +1 Résistance par marqueur, tant que la carte reste en jeu.",
+    description: "Marqueur cumulable : +1 Puissance et +1 Résistance par marqueur, tant que la carte reste en jeu.",
     forms: ["+1/+1"],
   },
   ...QUALIFICATION_ENTRIES,

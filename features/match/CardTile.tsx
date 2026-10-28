@@ -28,6 +28,7 @@ import {
   type MarkerId,
 } from "@/game";
 import { CARD_TYPE_LABELS, THICK_TEXT_OUTLINE } from "@/features/match/cardDisplay";
+import { markerLegend, tokenPiles } from "@/features/match/boardTokens";
 import { useCardBackSrcFor, useCardEditionFor } from "@/features/cosmetics/MatchCosmeticsProvider";
 import { StatusBadge } from "@/features/match/StatusBadge";
 import { useDecreaseFlash } from "@/features/match/useDecreaseFlash";
@@ -159,9 +160,13 @@ const STATUS_ICON_INFO: Record<string, { icon: string; label: string; descriptio
   [STATUS_BENIE]: {
     icon: "/assets/status/benie.webp",
     label: "Bénie",
-    description: "Cette Créature est bénie. L'état n'a pas d'effet par lui-même : certaines cartes le récompensent, d'autres le punissent.",
+    description: "Bénie une seule fois, jusqu'à ce qu'un effet le lui retire. Sans effet propre : certaines cartes le récompensent, d'autres le punissent.",
   },
 };
+
+/** Statuts montrés en JETON sur l'illustration (`BoardTileTokens`) plutôt qu'en médaillon. */
+const TOKEN_STATUSES: ReadonlySet<string> = new Set([STATUS_BENIE]);
+
 
 /** Mot-clé Garde (`def.keywords`, permanent — pas un statut à durée) : même registre d'icône que les statuts. */
 const GARDE_ICON_INFO = {
@@ -210,6 +215,8 @@ export function cardStatusLegend(
     const info = STATUS_ICON_INFO[status];
     if (info) legend.push(info);
   }
+  // Les marqueurs : le plateau les empile, le détail dit combien.
+  legend.push(...markerLegend(instance.markers));
   if (instance.turnsRemaining !== undefined) {
     const n = instance.turnsRemaining;
     legend.push({ label: "Durée", description: `${n} tour${n > 1 ? "s" : ""} restant${n > 1 ? "s" : ""} avant expiration.` });
@@ -874,10 +881,10 @@ function CardTileView({
             </div>
             {!isToken && <div className="pointer-events-none absolute inset-0 rounded-xl ring-1 ring-inset ring-black/60" />}
 
-            {/* Couche 2.5 : les MARQUEURS (Lot 18), posés à même l'illustration comme un jeton de carton sur
-                une vraie table — ce ne sont pas des états, qui restent des médaillons sur le cadre. Plusieurs
-                du même genre s'empilent : le nombre se lit sur la pile. */}
-            <BoardTileMarkers markers={instance.markers} />
+            {/* Couche 2.5 : les JETONS, posés à même l'illustration comme un jeton de carton sur une vraie
+                table — marqueurs (Mort, Souillure) et Bénédiction. Les marqueurs cumulés s'empilent par
+                trois ; le nombre exact se lit dans le détail de la carte (`cardStatusLegend`). */}
+            <BoardTileTokens instanceId={instance.instanceId} markers={instance.markers} blessed={instance.statuses?.includes(STATUS_BENIE) ?? false} />
 
             {/* Couche 3 : habillage. */}
             <div className="absolute inset-0">
@@ -1232,7 +1239,7 @@ function CardTileView({
         couleursChromatiques.length > 0 ||
         qualifications.length > 0 ||
         (attacksLeft !== undefined && attacksLeft > 0) ||
-        (instance.statuses && instance.statuses.length > 0)) && (
+        (instance.statuses ?? []).some((status) => !TOKEN_STATUSES.has(status))) && (
         <div
           // Une seule ligne, toujours au-dessus de la carte : en passant à la
           // ligne (trois médaillons ou plus), le dernier badge tombait
@@ -1300,7 +1307,8 @@ function CardTileView({
           )}
           {instance.statuses?.map((status) => {
             const info = STATUS_ICON_INFO[status];
-            if (!info) return null;
+            // La Bénédiction est un jeton posé sur l'illustration, pas un médaillon.
+            if (!info || TOKEN_STATUSES.has(status)) return null;
             return <StatusBadge key={status} icon={info.icon} label={info.label} description={info.description} size={badgeSize} />;
           })}
           {couleursChromatiques.length > 0 && (
@@ -1359,35 +1367,81 @@ function CardTileView({
   );
 }
 
+/** Hasard FIGÉ d'un jeton : le même à chaque rendu pour une même carte (graine = instance + rang). */
+function tokenJitter(seed: string, index: number): number {
+  let hash = 2166136261;
+  for (const char of `${seed}#${index}`) hash = Math.imul(hash ^ char.charCodeAt(0), 16777619);
+  return ((hash >>> 0) % 1000) / 1000;
+}
+
 /**
- * Jetons posés sur une carte EN JEU (`CardInstance.markers`, Lot 18) :
- * `public/assets/markers/<marqueur>.webp`, au milieu de l'illustration,
- * au-dessus du nom. Un jeton par genre, la pile chiffrée au-delà d'un.
+ * Emplacements des piles sur l'illustration (centre de la pile, en % de la
+ * tuile), selon leur nombre : une pile au milieu, deux côte à côte, trois en
+ * triangle… sous le bandeau de coût, au-dessus du nom.
  */
-function BoardTileMarkers({ markers }: { markers: CardInstance["markers"] }) {
-  const poses = (Object.entries(markers ?? {}) as Array<[MarkerId, number]>).filter(([marker, count]) => count > 0 && !MARKER_RULES[marker].sansJeton);
-  if (poses.length === 0) return null;
+const PILE_LAYOUTS: ReadonlyArray<ReadonlyArray<{ x: number; y: number }>> = [
+  [{ x: 50, y: 52 }],
+  [{ x: 32, y: 52 }, { x: 68, y: 52 }],
+  [{ x: 30, y: 46 }, { x: 70, y: 46 }, { x: 50, y: 66 }],
+  [{ x: 30, y: 44 }, { x: 70, y: 44 }, { x: 30, y: 66 }, { x: 70, y: 66 }],
+];
+
+
+/**
+ * Jetons posés sur une carte EN JEU : les marqueurs (`CardInstance.markers`
+ * — Mort, Souillure) et la Bénédiction (`STATUS_BENIE`, un seul jeton : on
+ * n'est béni qu'une fois). Comme sur une vraie table, les marqueurs cumulés
+ * s'EMPILENT par trois, chaque jeton un peu décalé et tourné au hasard, puis
+ * une nouvelle pile commence. Le hasard est figé par carte : rien ne bouge
+ * d'un rendu à l'autre. Pas de chiffre ici — le nombre exact se lit dans le
+ * détail (`cardStatusLegend`).
+ */
+function BoardTileTokens({ instanceId, markers, blessed }: { instanceId: string; markers: CardInstance["markers"]; blessed: boolean }) {
+  const kinds: Array<{ key: string; src: string; label: string; count: number }> = [];
+  if (blessed) kinds.push({ key: "benie", src: STATUS_ICON_INFO[STATUS_BENIE]!.icon, label: "Bénie", count: 1 });
+  for (const [marker, count] of Object.entries(markers ?? {}) as Array<[MarkerId, number]>) {
+    if (count > 0 && !MARKER_RULES[marker].sansJeton) kinds.push({ key: marker, src: `/assets/markers/${marker}.webp`, label: `Marqueur ${MARKER_RULES[marker].label}`, count });
+  }
+  // Une pile = un genre, trois jetons au plus.
+  const piles = kinds.flatMap((kind) => tokenPiles(kind.count).map((size, i) => ({ ...kind, pileKey: `${kind.key}-${i}`, size })));
+  if (piles.length === 0) return null;
+  const layout = PILE_LAYOUTS[Math.min(piles.length, PILE_LAYOUTS.length) - 1]!;
+  const visible = piles.slice(0, layout.length);
+  const width = visible.length <= 2 ? 34 : 28;
   return (
-    <div className="pointer-events-none absolute inset-x-0 top-[24%] flex justify-center gap-[4%]">
-      {poses.map(([marker, count]) => (
-        <div key={marker} className="relative w-[42%]" title={`Marqueur ${MARKER_RULES[marker].label}${count > 1 ? ` ×${count}` : ""}`}>
-          {/* eslint-disable-next-line @next/next/no-img-element -- jeton local, un par genre de marqueur */}
-          <img
-            src={`/assets/markers/${marker}.webp`}
-            alt={`Marqueur ${MARKER_RULES[marker].label}`}
-            draggable={false}
-            className="h-auto w-full -rotate-6 drop-shadow-[0_1.5cqw_2cqw_rgba(0,0,0,0.7)]"
-          />
-          {count > 1 && (
-            <span
-              className="absolute -bottom-[6%] -right-[6%] rounded-full bg-black/80 px-[12%] font-bold leading-tight text-white"
-              style={{ fontSize: "9cqw" }}
-            >
-              {count}
-            </span>
-          )}
-        </div>
-      ))}
+    <div className="pointer-events-none absolute inset-0" aria-hidden>
+      {visible.map((pile, p) => {
+        const slot = layout[p]!;
+        const jx = (tokenJitter(instanceId, p * 7) - 0.5) * 8;
+        const jy = (tokenJitter(instanceId, p * 7 + 1) - 0.5) * 6;
+        return (
+          <div
+            key={pile.pileKey}
+            className="absolute"
+            style={{ left: `${slot.x + jx}%`, top: `${slot.y + jy}%`, width: `${width}%`, transform: "translate(-50%, -50%)" }}
+            title={pile.label}
+          >
+            {Array.from({ length: pile.size }, (_, t) => {
+              const seed = p * 7 + 2 + t * 3;
+              // Chaque jeton posé un peu à côté du précédent, et plus haut : la pile se compte à l'œil.
+              const dx = t === 0 ? 0 : (tokenJitter(instanceId, seed) - 0.5) * 50;
+              const dy = (tokenJitter(instanceId, seed + 1) - 0.5) * 8 - t * 34;
+              const rot = (tokenJitter(instanceId, seed + 2) - 0.5) * 60;
+              return (
+                // eslint-disable-next-line @next/next/no-img-element -- jeton local, empilé
+                <img
+                  key={t}
+                  src={pile.src}
+                  alt=""
+                  draggable={false}
+                  className={`${t === 0 ? "relative" : "absolute inset-0"} h-auto w-full drop-shadow-[0_1.5cqw_2cqw_rgba(0,0,0,0.7)]`}
+                  style={{ transform: `translate(${dx}%, ${dy}%) rotate(${rot}deg)` }}
+                />
+              );
+            })}
+          </div>
+        );
+      })}
     </div>
   );
 }

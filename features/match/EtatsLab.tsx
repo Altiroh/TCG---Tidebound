@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { PRECON_DECKS, STATUS_MALADE, type CardInstance, type GameState } from "@/game";
+import { PRECON_DECKS, STATUS_BENIE, STATUS_MALADE, type CardInstance, type GameState } from "@/game";
 import { createLocalMatch } from "@/features/match/createLocalMatch";
 import { MatchBoard } from "@/features/match/MatchBoard";
 
@@ -45,11 +45,16 @@ function fabriquer(): GameState {
           pose("il-capitano-naufrage", p1.id, { damageMarked: 1 }),
           pose("le-dernier-rempart", p1.id, { statuses: [STATUS_MALADE] }),
           pose("caisses-arrimees", p1.id, { turnsRemaining: 2 }),
+          // Jetons sur l'illustration : la Bénédiction (un seul) et une Souillure.
+          pose("le-fils-du-pecheur", p1.id, { statuses: [STATUS_BENIE], markers: { souillure: 1 } }),
         ],
       },
       {
         ...p2,
-        board: [pose("murene-aveugle", p2.id, { statuses: [STATUS_MALADE] }), pose("le-dernier-rempart", p2.id), pose("canonnier-fele", p2.id, { damageMarked: 1 })],
+        board: [pose("murene-aveugle", p2.id, { statuses: [STATUS_MALADE] }), pose("le-dernier-rempart", p2.id), pose("canonnier-fele", p2.id, { damageMarked: 1 }),
+          // Quatre Souillures : une pile pleine de trois, et le début d'une seconde.
+          pose("ceux-qui-ont-bu", p2.id, { markers: { souillure: 4 } }),
+        ],
       },
     ],
   };

@@ -16,4 +16,8 @@ describe("glossaire des mots-clés", () => {
     const found = [...CARD_DATABASE.values()].filter((card) => glossaryTermsIn(card.text).length > 0).length;
     expect(found).toBeGreaterThan(20);
   });
+
+  it("dit ce que fait le mot-clé, sans renvoyer à un lot", () => {
+    for (const entry of KEYWORD_GLOSSARY) expect(entry.description, entry.label).not.toMatch(/\bLots?\s+\d/);
+  });
 });

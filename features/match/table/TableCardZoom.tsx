@@ -4,6 +4,7 @@ import { useEffect, useRef, type ReactNode } from "react";
 import { CardKeywordsPanel, CardRulesPanel } from "@/features/match/table/CardRulesPanel";
 import styles from "@/features/match/table/Table.module.css";
 import game from "@/features/shell/GameScreen.module.css";
+import { legendTerm } from "@/features/match/boardTokens";
 
 /** Le bouton du design system selon le ton de l'action : engager, perdre la carte, le reste. */
 const TONE_CLASSES: Record<NonNullable<ZoomAction["tone"]>, string | undefined> = {
@@ -175,7 +176,7 @@ export function TableCardZoom({ children, onDetail, onClose, actions = [], legen
             ))}
           </dl>
         )}
-        {rulesCardId && <CardKeywordsPanel cardId={rulesCardId} exclude={legend.map((item) => item.label)} />}
+        {rulesCardId && <CardKeywordsPanel cardId={rulesCardId} exclude={legend.map((item) => legendTerm(item.label))} />}
 
         <div className={styles.cardZoomFooter}>
           {position && position.count > 1 && (
