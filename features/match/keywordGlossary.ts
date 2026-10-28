@@ -52,12 +52,12 @@ export const KEYWORD_GLOSSARY: readonly GlossaryEntry[] = [
   { label: "Malade", description: "Perd 1 Résistance à chaque tour tant que ce statut reste actif.", forms: ["Malade", "MALADE"] },
   {
     label: "Bénie",
-    description: "Une Créature bénie l'est une seule fois, jusqu'à ce qu'un effet le lui retire ; elle le reste au Cimetière. Sans effet propre : certaines cartes le récompensent, d'autres le punissent.",
+    description: "Une unité bénie l'est une seule fois, jusqu'à ce qu'un effet le lui retire ; elle le reste au Cimetière. Sans effet propre : certaines cartes le récompensent, d'autres le punissent.",
     forms: ["bénie", "bénies", "béni", "bénis", "Bénédiction"],
   },
   {
     label: "Souillure",
-    description: "Marqueur cumulable posé sur une Créature : elle est « souillée » tant qu'elle en porte au moins un. Sans effet propre : certaines cartes les comptent.",
+    description: "Marqueur cumulable posé sur une unité : elle est « souillée » tant qu'elle en porte au moins un. Sans effet propre : certaines cartes les comptent.",
     forms: ["Souillure", "souillée", "souillées", "souillé"],
   },
   {

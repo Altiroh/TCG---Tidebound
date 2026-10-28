@@ -131,7 +131,7 @@ describe("Bénédiction et Souillure (Lot 20)", () => {
     expect(stats(state, nonBenie.instanceId).health).toBe(4);
   });
 
-  it("Le Grand-Bienfaiteur souille à son arrivée toutes les autres Créatures non bénies, et renforce vos bénies", () => {
+  it("Le Grand-Bienfaiteur souille à son arrivée toutes les autres unités non bénies, et renforce vos bénies", () => {
     const gb = instance("le-grand-bienfaiteur", "p1");
     const alliee = beni("le-fils-du-pecheur", "p1");
     const alliee2 = instance("le-vieux-pecheur", "p1");
@@ -143,6 +143,22 @@ describe("Bénédiction et Souillure (Lot 20)", () => {
     expect(souillures(r.state, adverse.instanceId)).toBe(1);
     expect(souillures(r.state, gb.instanceId)).toBe(0);
     expect(stats(r.state, alliee.instanceId).health).toBe(5); // 3 +1 (autre Créature) +1 (Grand-Bienfaiteur)
+  });
+
+  it("« unité » = Marin OU Créature (décision du 28/10/2026) : le Grand-Bienfaiteur souille les Marins, L'Encensoir en vise un", () => {
+    const gb = instance("le-grand-bienfaiteur", "p1");
+    const matelot = instance("matelot-du-sans-nom", "p2"); // un Marin
+    const structure = instance("cloche-dalerte", "p2");
+    const r = jouer(table({ hand: [gb] }, { board: [matelot, structure] }), gb);
+    ok(r);
+    expect(souillures(r.state, matelot.instanceId)).toBe(1);
+    expect(unite(r.state, structure.instanceId)!.markers?.souillure ?? 0).toBe(0);
+
+    const encensoir = instance("lencensoir-des-abysses", "p1");
+    const autre = instance("le-dernier-rempart", "p2"); // un Marin aussi
+    const r2 = jouer(table({ hand: [encensoir] }, { board: [autre] }), encensoir, autre.instanceId);
+    ok(r2);
+    expect(souillures(r2.state, autre.instanceId)).toBe(1);
   });
 
   it("Refus de Bénédiction retire la Bénédiction, et inflige 2 dégâts si la cible est souillée", () => {

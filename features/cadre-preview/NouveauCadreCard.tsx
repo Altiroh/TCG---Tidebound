@@ -122,7 +122,7 @@ export function NouveauCadreFace({
   const debordPlein = useDebordPleinCadre(debordOk ? debord : null);
   const nomRef = useRef<HTMLHeadingElement>(null);
   const effetRef = useRef<HTMLParagraphElement>(null);
-  useFitText(nomRef, def.name, nameSizeCqw(def.name), 6.5);
+  useFitText(nomRef, def.name, nameSizeCqw(def.name), 6.5, undefined, undefined, true);
   // « Spé. » : mots-clés de tête (Garde, Pied marin) et qualifications, en gras devant le reste du texte.
   const { lead: spe, text: reste } = effectLead(def.text, qualifications ?? []);
   // Le texte mesuré inclut la spé. : c'est lui qui occupe la zone d'effet.
@@ -561,7 +561,15 @@ const NOM_HAUTEUR_CQW = 30;
  * pas de la taille de la carte : on ne le recalcule qu'au changement de
  * texte et une fois les polices chargées.
  */
-function useFitText(ref: React.RefObject<HTMLElement | null>, text: string, baseCqw: number, minCqw: number, smallCqw?: number, floor?: string) {
+function useFitText(
+  ref: React.RefObject<HTMLElement | null>,
+  text: string,
+  baseCqw: number,
+  minCqw: number,
+  smallCqw?: number,
+  floor?: string,
+  measureChild = false
+) {
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el || !text) return;
@@ -570,8 +578,12 @@ function useFitText(ref: React.RefObject<HTMLElement | null>, text: string, base
       let size = baseCqw;
       el.style.fontSize = sized(size);
       // Le nom est calé en BAS : ce qui déborde part vers le haut, où
-      // `scrollHeight` ne le voit pas. On mesure donc son contenu (premier enfant).
-      const contenu = (el.firstElementChild as HTMLElement | null) ?? el;
+      // `scrollHeight` ne le voit pas. On mesure donc son contenu (premier
+      // enfant, `measureChild`). PAS l'effet : son premier enfant peut être
+      // la seule ligne de qualifications (« Garde · Contournement »), et le
+      // mesurer, lui, faisait croire qu'un long effet tenait (Le
+      // Grand-Bienfaiteur, 28/10/2026) — il défilait sans encart de lecture.
+      const contenu = measureChild ? ((el.firstElementChild as HTMLElement | null) ?? el) : el;
       const deborde = () =>
         (contenu === el ? el.scrollHeight : contenu.offsetHeight) > el.clientHeight + 1 || contenu.scrollWidth > el.clientWidth + 1;
       while (size > minCqw && deborde()) {

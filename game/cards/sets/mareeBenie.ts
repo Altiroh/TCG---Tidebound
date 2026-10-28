@@ -21,7 +21,7 @@ import { chaineLibre } from "@/game/cards/chaineLibre";
  * lecture assumés, tous documentés sur la carte concernée :
  *  - « meurt » (Le Pêcheur en deuil, La Cloche des Absents, Le Berceau du
  *    Fond) : toute mort, Sabordage compris — le texte ne dit pas « détruite » ;
- *  - un effet de début de tour qui fait choisir une ou plusieurs Créatures
+ *  - un effet de début de tour qui fait choisir une ou plusieurs unités
  *    passe par une question (`pickUnits`), où le joueur désigne — ou refuse.
  */
 export const BOOSTER_LA_MAREE_BENIE_SET = "la-maree-benie";
@@ -51,12 +51,12 @@ function felin(def: Omit<CardDefinition, "archetype" | "setCode">): CardDefiniti
 const SOUILLEE: UnitCondition = { withMarker: "souillure" };
 const NON_BENIE: UnitCondition = { blessed: false };
 
-/** « Une Créature » : n'importe laquelle, des deux camps. */
-const UNE_CREATURE: TargetSelector = { kind: "chosenUnit", among: { cardTypes: ["creature"], sameController: false } };
-/** « Une Créature alliée ». */
-const CREATURE_ALLIEE: TargetSelector = { kind: "chosenUnit", among: { cardTypes: ["creature"] } };
-/** « Une AUTRE Créature alliée » (la source exclue). */
-const AUTRE_CREATURE_ALLIEE: TargetSelector = { kind: "chosenUnit", among: { cardTypes: ["creature"], excludeSource: true } };
+/** « Une unité » : n'importe laquelle, des deux camps. */
+const UNE_CREATURE: TargetSelector = { kind: "chosenUnit", among: { cardTypes: ["marin", "creature"], sameController: false } };
+/** « Une unité alliée ». */
+const CREATURE_ALLIEE: TargetSelector = { kind: "chosenUnit", among: { cardTypes: ["marin", "creature"] } };
+/** « Une AUTRE unité alliée » (la source exclue). */
+const AUTRE_CREATURE_ALLIEE: TargetSelector = { kind: "chosenUnit", among: { cardTypes: ["marin", "creature"], excludeSource: true } };
 
 const soinNavire = (value: number, extra: Partial<EffectDefinition> = {}): EffectDefinition => ({
   type: "heal",
@@ -86,9 +86,9 @@ const benir = (target: TargetSelector, extra: Partial<EffectDefinition> = {}): E
 const voile = (target: TargetSelector, extra: Partial<EffectDefinition> = {}): EffectDefinition => ({ type: "grantVeil", target, ...extra });
 
 /**
- * « Jusqu'à N Créatures [alliées / de votre choix] » : une question
+ * « Jusqu'à N unités [alliées / de votre choix] » : une question
  * (`pickUnits`), où le joueur désigne — au plus N, ou aucune. Les effets
- * appliqués visent la Créature désignée (`triggerSource`).
+ * appliqués visent la unité désignée (`triggerSource`).
  */
 function choisirCreatures(
   where: "allies" | "toutes" | "adverses",
@@ -101,7 +101,7 @@ function choisirCreatures(
     type: "pickUnits",
     target: { kind: where === "allies" ? "allAllyUnits" : where === "adverses" ? "allEnemyUnits" : "allUnits" },
     filter: {
-      cardTypes: ["creature"],
+      cardTypes: ["marin", "creature"],
       ...(unitCondition ? { unitCondition } : {}),
       ...(excludeSelf ? { excludeSelf: true } : {}),
       ...(excludeTriggerSource ? { excludeTriggerSource: true } : {}),
@@ -114,22 +114,22 @@ function choisirCreatures(
 
 const LA_CIBLE: TargetSelector = { kind: "triggerSource" };
 
-/** « Lorsqu'une Créature alliée perd Voile » : son Voile vient d'être consommé (Notion, Lot 21). */
+/** « Lorsqu'une unité alliée perd Voile » : son Voile vient d'être consommé (Notion, Lot 21). */
 function auVoilePerdu(description: string, effects: EffectDefinition[], extra: Partial<TriggeredAbility> = {}, autre = false): TriggeredAbility {
   return {
     trigger: "onVeilLost",
-    triggeredBy: { cardTypes: ["creature"], excludeSelf: autre },
+    triggeredBy: { cardTypes: ["marin", "creature"], excludeSelf: autre },
     description,
     effects,
     ...extra,
   };
 }
 
-/** « Lorsqu'une Créature alliée gagne un marqueur +1/+1 ». */
+/** « Lorsqu'une unité alliée gagne un marqueur +1/+1 ». */
 function auPlusUn(description: string, effects: EffectDefinition[], extra: Partial<TriggeredAbility> = {}): TriggeredAbility {
   return {
     trigger: "onMarkerAdded",
-    triggeredBy: { cardTypes: ["creature"], markerAdded: "plus-un", excludeSelf: false },
+    triggeredBy: { cardTypes: ["marin", "creature"], markerAdded: "plus-un", excludeSelf: false },
     description,
     effects,
     ...extra,
@@ -155,15 +155,15 @@ function grandBienfaiteur(id: string, abyssale: boolean): CardDefinition {
     keywords: ["garde"],
     qualifications: [{ id: "contournement" }],
     text:
-      "Garde. Contournement. À son arrivée — Placez un marqueur Souillure sur toutes les autres Créatures non bénies. " +
-      "Les Créatures alliées bénies gagnent +1 Résistance. À votre début de tour — Infligez 2 dégâts à une Créature " +
+      "Garde. Contournement. À son arrivée — Placez un marqueur Souillure sur toutes les autres unités non bénies. " +
+      "Les unités alliées bénies gagnent +1 Résistance. À votre début de tour — Infligez 2 dégâts à une unité " +
       "adverse souillée de votre choix.",
-    onPlayEffects: [souiller({ kind: "allUnits" }, { filter: { cardTypes: ["creature"], excludeSelf: true, unitCondition: NON_BENIE } })],
-    auraBuffControllerCardTypes: { targetTypes: ["creature"], targetCondition: { blessed: true }, healthAmount: 1 },
+    onPlayEffects: [souiller({ kind: "allUnits" }, { filter: { cardTypes: ["marin", "creature"], excludeSelf: true, unitCondition: NON_BENIE } })],
+    auraBuffControllerCardTypes: { targetTypes: ["marin", "creature"], targetCondition: { blessed: true }, healthAmount: 1 },
     abilities: [
       {
         trigger: "startOfTurn",
-        description: "Le Grand-Bienfaiteur : 2 dégâts à une Créature adverse souillée de votre choix.",
+        description: "Le Grand-Bienfaiteur : 2 dégâts à une unité adverse souillée de votre choix.",
         effects: [choisirCreatures("adverses", 1, [{ type: "damage", target: LA_CIBLE, amount: flat(2) }], { unitCondition: SOUILLEE })],
       },
     ],
@@ -181,14 +181,14 @@ export const BIENFAITS_DU_FOND_SET: CardDefinition[] = [
     health: 4,
     maxCopies: 2,
     text:
-      "Une fois par tour, lorsqu'une autre Créature alliée meurt, votre Navire récupère 1 Ancrage. Si cette Créature " +
+      "Une fois par tour, lorsqu'une autre unité alliée meurt, votre Navire récupère 1 Ancrage. Si cette unité " +
       "était bénie, piochez 1 carte.",
     abilities: [
       {
         trigger: "onDeath",
-        triggeredBy: { cardTypes: ["creature"] },
+        triggeredBy: { cardTypes: ["marin", "creature"] },
         oncePerTurnKey: "pecheurEnDeuil",
-        description: "Une autre Créature alliée meurt : votre Navire récupère 1 Ancrage (et piochez 1 carte si elle était bénie).",
+        description: "Une autre unité alliée meurt : votre Navire récupère 1 Ancrage (et piochez 1 carte si elle était bénie).",
         effects: [soinNavire(1), pioche(1, { conditionTriggerSource: { blessed: true } })],
       },
     ],
@@ -203,10 +203,10 @@ export const BIENFAITS_DU_FOND_SET: CardDefinition[] = [
     health: 3,
     maxCopies: 3,
     text:
-      "Tant que vous contrôlez une autre Créature, cette Créature gagne +1 Résistance. Si vous contrôlez Le Pêcheur en " +
+      "Tant que vous contrôlez une autre unité, cette unité gagne +1 Résistance. Si vous contrôlez Le Pêcheur en " +
       "deuil, elle gagne également +1 Puissance.",
     selfBuffWhenConditions: [{ when: { controllerOtherUnitsAtLeast: 1 }, healthAmount: 1 }],
-    // Le Pêcheur en deuil est lui-même « une autre Créature » : la seconde phrase ne dépend que de lui.
+    // Le Pêcheur en deuil est lui-même « une autre unité » : la seconde phrase ne dépend que de lui.
     selfBuffWhileControllingCardIds: { cardIds: ["le-pecheur-en-deuil"], attackAmount: 1 },
   }),
   bienfait({
@@ -227,8 +227,8 @@ export const BIENFAITS_DU_FOND_SET: CardDefinition[] = [
     type: "objet",
     cost: 2,
     maxCopies: 3,
-    text: "Chaîne — Choisissez une Créature alliée. Elle devient bénie et récupère jusqu'à 2 Résistance.",
-    ...chaineLibre("Le Baptême du Fond : une Créature alliée devient bénie et récupère jusqu'à 2 Résistance.", [
+    text: "Chaîne — Choisissez une unité alliée. Elle devient bénie et récupère jusqu'à 2 Résistance.",
+    ...chaineLibre("Le Baptême du Fond : une unité alliée devient bénie et récupère jusqu'à 2 Résistance.", [
       benir(CREATURE_ALLIEE),
       { type: "heal", target: CREATURE_ALLIEE, amount: flat(2) },
     ]),
@@ -243,10 +243,10 @@ export const BIENFAITS_DU_FOND_SET: CardDefinition[] = [
     health: 5,
     maxCopies: 2,
     text:
-      "À son arrivée — Une autre Créature alliée devient bénie. Une fois par tour, lorsqu'une Créature alliée bénie " +
+      "À son arrivée — Une autre unité alliée devient bénie. Une fois par tour, lorsqu'une unité alliée bénie " +
       "subit des dégâts, réduisez ces dégâts de 1.",
     onPlayEffects: [benir(AUTRE_CREATURE_ALLIEE)],
-    reduceAllyDamageOncePerTurn: { amount: 1, allyCondition: { blessed: true } },
+    reduceAllyDamageOncePerTurn: { amount: 1, allyCondition: { blessed: true }, allyTypes: ["marin", "creature"] },
   }),
   bienfait({
     id: "leau-est-excellente",
@@ -254,8 +254,8 @@ export const BIENFAITS_DU_FOND_SET: CardDefinition[] = [
     type: "objet",
     cost: 1,
     maxCopies: 3,
-    text: "Chaîne — Une Créature gagne +2 Puissance jusqu'à la fin du tour. Placez un marqueur Souillure sur elle.",
-    ...chaineLibre("L'Eau est Excellente ! : une Créature gagne +2 Puissance jusqu'à la fin du tour, et un marqueur Souillure.", [
+    text: "Chaîne — Une unité gagne +2 Puissance jusqu'à la fin du tour. Placez un marqueur Souillure sur elle.",
+    ...chaineLibre("L'Eau est Excellente ! : une unité gagne +2 Puissance jusqu'à la fin du tour, et un marqueur Souillure.", [
       { type: "buff", target: UNE_CREATURE, attackAmount: flat(2), healthAmount: flat(0), duration: "endOfTurn" },
       souiller(UNE_CREATURE),
     ]),
@@ -266,10 +266,10 @@ export const BIENFAITS_DU_FOND_SET: CardDefinition[] = [
     type: "objet",
     cost: 2,
     maxCopies: 3,
-    text: "Chaîne — Infligez 2 dégâts à une Créature non bénie. Si elle possède un marqueur Souillure, infligez-lui 3 dégâts à la place.",
+    text: "Chaîne — Infligez 2 dégâts à une unité non bénie. Si elle possède un marqueur Souillure, infligez-lui 3 dégâts à la place.",
     ...(() => {
-      const cible: TargetSelector = { kind: "chosenUnit", among: { cardTypes: ["creature"], sameController: false, unitCondition: NON_BENIE } };
-      return chaineLibre("Fièvre salée : 2 dégâts à une Créature non bénie (3 si elle est souillée).", [
+      const cible: TargetSelector = { kind: "chosenUnit", among: { cardTypes: ["marin", "creature"], sameController: false, unitCondition: NON_BENIE } };
+      return chaineLibre("Fièvre salée : 2 dégâts à une unité non bénie (3 si elle est souillée).", [
         { type: "damage", target: cible, amount: flat(3), conditionChosenTarget: SOUILLEE },
         { type: "damage", target: cible, amount: flat(2), conditionChosenTarget: { withoutMarker: "souillure" } },
       ]);
@@ -283,12 +283,12 @@ export const BIENFAITS_DU_FOND_SET: CardDefinition[] = [
     health: 3,
     maxCopies: 2,
     text:
-      "À votre début de tour — Si la mer est en Houle, placez un marqueur Souillure sur une Créature de votre choix. Si " +
-      "elle est en Tempête, placez-en un sur jusqu'à deux Créatures différentes.",
+      "À votre début de tour — Si la mer est en Houle, placez un marqueur Souillure sur une unité de votre choix. Si " +
+      "elle est en Tempête, placez-en un sur jusqu'à deux unités différentes.",
     abilities: [
       {
         trigger: "startOfTurn",
-        description: "La Fontaine du Port : un marqueur Souillure (Houle), ou sur jusqu'à deux Créatures (Tempête).",
+        description: "La Fontaine du Port : un marqueur Souillure (Houle), ou sur jusqu'à deux unités (Tempête).",
         effects: [
           choisirCreatures("toutes", 1, [souiller(LA_CIBLE)], { conditionTideStateIn: ["houle"] }),
           choisirCreatures("toutes", 2, [souiller(LA_CIBLE)], { conditionTideStateIn: ["tempete"] }),
@@ -305,14 +305,14 @@ export const BIENFAITS_DU_FOND_SET: CardDefinition[] = [
     // Un Objet ne se pose plus (règle du 13/10/2026) : « vous pouvez briser cet
     // Objet » se joue depuis la main, en réaction à la mort, comme un Objet Chaîne.
     chaine: true,
-    text: "Une fois par tour, lorsqu'une Créature alliée meurt, vous pouvez briser cet Objet pour piocher 2 cartes.",
+    text: "Une fois par tour, lorsqu'une unité alliée meurt, vous pouvez briser cet Objet pour piocher 2 cartes.",
     abilities: [
       {
         trigger: "onDeath",
-        triggeredBy: { cardTypes: ["creature"] },
+        triggeredBy: { cardTypes: ["marin", "creature"] },
         mode: "optional",
         oncePerTurnKey: "clocheDesAbsents",
-        description: "La Cloche des Absents : une Créature alliée meurt — brisez-la pour piocher 2 cartes.",
+        description: "La Cloche des Absents : une unité alliée meurt — brisez-la pour piocher 2 cartes.",
         effects: [pioche(2)],
       },
     ],
@@ -325,13 +325,13 @@ export const BIENFAITS_DU_FOND_SET: CardDefinition[] = [
     health: 2,
     maxCopies: 3,
     durationTurns: 4,
-    text: "Durée : 4 tours de table. Chaque fois que vous brisez un Objet allié, infligez 1 dégât à toutes les Créatures souillées.",
+    text: "Durée : 4 tours de table. Chaque fois que vous brisez un Objet allié, infligez 1 dégât à toutes les unités souillées.",
     abilities: [
       {
         trigger: "onObjectBroken",
         triggeredBy: {},
-        description: "Le Puits Salé : 1 dégât à toutes les Créatures souillées.",
-        effects: [{ type: "damage", target: { kind: "allUnits" }, filter: { cardTypes: ["creature"], unitCondition: SOUILLEE }, amount: flat(1) }],
+        description: "Le Puits Salé : 1 dégât à toutes les unités souillées.",
+        effects: [{ type: "damage", target: { kind: "allUnits" }, filter: { cardTypes: ["marin", "creature"], unitCondition: SOUILLEE }, amount: flat(1) }],
       },
     ],
   }),
@@ -342,9 +342,9 @@ export const BIENFAITS_DU_FOND_SET: CardDefinition[] = [
     permanent: false,
     cost: 4,
     maxCopies: 2,
-    text: "Toutes vos Créatures deviennent bénies. Si la mer est en Houle ou en Tempête, votre Navire récupère également 2 Ancrage.",
+    text: "Toutes vos unités deviennent bénies. Si la mer est en Houle ou en Tempête, votre Navire récupère également 2 Ancrage.",
     onPlayEffects: [
-      benir({ kind: "allAllyUnits" }, { filter: { cardTypes: ["creature"] } }),
+      benir({ kind: "allAllyUnits" }, { filter: { cardTypes: ["marin", "creature"] } }),
       soinNavire(2, { conditionTideStateIn: ["houle", "tempete"] }),
     ],
   }),
@@ -355,13 +355,13 @@ export const BIENFAITS_DU_FOND_SET: CardDefinition[] = [
     cost: 2,
     maxCopies: 3,
     chaine: true,
-    text: "Chaîne — Lorsqu'une Créature adverse attaque, elle perd 2 Puissance pour cette attaque.",
+    text: "Chaîne — Lorsqu'une unité adverse attaque, elle perd 2 Puissance pour cette attaque.",
     abilities: [
       {
         trigger: "onUnitAttackDeclared",
         mode: "optional",
-        condition: { attackFromUnit: true, pendingAttackerCondition: { cardTypes: ["creature"] } },
-        description: "Gros Bisou ! : la Créature qui attaque perd 2 Puissance pour cette attaque.",
+        condition: { attackFromUnit: true, pendingAttackerCondition: { cardTypes: ["marin", "creature"] } },
+        description: "Gros Bisou ! : la unité qui attaque perd 2 Puissance pour cette attaque.",
         effects: [{ type: "modifyAttackerPower", target: { kind: "pendingAttacker" }, amount: flat(2) }],
       },
     ],
@@ -375,7 +375,7 @@ export const BIENFAITS_DU_FOND_SET: CardDefinition[] = [
     attack: 3,
     health: 3,
     maxCopies: 2,
-    text: "Tant que cette Créature n'est pas bénie, elle gagne +1 Puissance. Si elle est souillée, elle gagne également +1 Résistance.",
+    text: "Tant que cette unité n'est pas bénie, elle gagne +1 Puissance. Si elle est souillée, elle gagne également +1 Résistance.",
     selfBuffWhenConditions: [
       { when: NON_BENIE, attackAmount: 1 },
       { when: { ...NON_BENIE, ...SOUILLEE }, healthAmount: 1 },
@@ -390,11 +390,11 @@ export const BIENFAITS_DU_FOND_SET: CardDefinition[] = [
     attack: 1,
     health: 2,
     maxCopies: 3,
-    text: "À sa mort — Placez un marqueur Souillure sur une Créature de votre choix.",
+    text: "À sa mort — Placez un marqueur Souillure sur une unité de votre choix.",
     abilities: [
       {
         trigger: "onDeath",
-        description: "Le Poisson sans Yeux : un marqueur Souillure sur une Créature de votre choix.",
+        description: "Le Poisson sans Yeux : un marqueur Souillure sur une unité de votre choix.",
         effects: [choisirCreatures("toutes", 1, [souiller(LA_CIBLE)])],
       },
     ],
@@ -408,7 +408,7 @@ export const BIENFAITS_DU_FOND_SET: CardDefinition[] = [
     attack: 2,
     health: 3,
     maxCopies: 3,
-    text: "Si cette Créature est souillée, elle gagne +2 Puissance pendant Houle ou Tempête.",
+    text: "Si cette unité est souillée, elle gagne +2 Puissance pendant Houle ou Tempête.",
     selfBuffWhenConditions: [{ when: { ...SOUILLEE, tideStateIn: ["houle", "tempete"] }, attackAmount: 2 }],
   }),
   bienfait({
@@ -426,8 +426,8 @@ export const BIENFAITS_DU_FOND_SET: CardDefinition[] = [
     type: "objet",
     cost: 2,
     maxCopies: 3,
-    text: "Chaîne — Une Créature perd sa Bénédiction. Si elle est souillée, infligez-lui 2 dégâts.",
-    ...chaineLibre("Refus de Bénédiction : une Créature perd sa Bénédiction (2 dégâts si elle est souillée).", [
+    text: "Chaîne — Une unité perd sa Bénédiction. Si elle est souillée, infligez-lui 2 dégâts.",
+    ...chaineLibre("Refus de Bénédiction : une unité perd sa Bénédiction (2 dégâts si elle est souillée).", [
       { type: "unbless", target: UNE_CREATURE },
       { type: "damage", target: UNE_CREATURE, amount: flat(2), conditionChosenTarget: SOUILLEE },
     ]),
@@ -439,14 +439,14 @@ export const BIENFAITS_DU_FOND_SET: CardDefinition[] = [
     cost: 3,
     health: 4,
     maxCopies: 2,
-    text: "Une fois par tour, lorsqu'une Créature souillée attaque votre Navire, vous pouvez lui infliger 2 dégâts avant la résolution de l'attaque.",
+    text: "Une fois par tour, lorsqu'une unité souillée attaque votre Navire, vous pouvez lui infliger 2 dégâts avant la résolution de l'attaque.",
     abilities: [
       {
         trigger: "onIncomingDirectAttack",
         mode: "optional",
         oncePerTurnKey: "filetQuiRespire",
-        condition: { attackFromUnit: true, pendingAttackerCondition: { cardTypes: ["creature"], ...SOUILLEE } },
-        description: "Le Filet qui Respire : 2 dégâts à la Créature souillée qui attaque, avant la résolution.",
+        condition: { attackFromUnit: true, pendingAttackerCondition: { cardTypes: ["marin", "creature"], ...SOUILLEE } },
+        description: "Le Filet qui Respire : 2 dégâts à la unité souillée qui attaque, avant la résolution.",
         effects: [{ type: "damage", target: { kind: "pendingAttacker" }, amount: flat(2) }],
       },
     ],
@@ -458,13 +458,13 @@ export const BIENFAITS_DU_FOND_SET: CardDefinition[] = [
     permanent: false,
     cost: 4,
     maxCopies: 2,
-    text: "Infligez 1 dégât à toutes les Créatures non bénies. Si la mer est en Tempête, infligez 2 dégâts à la place.",
+    text: "Infligez 1 dégât à toutes les unités non bénies. Si la mer est en Tempête, infligez 2 dégâts à la place.",
     onPlayEffects: [
-      { type: "damage", target: { kind: "allUnits" }, filter: { cardTypes: ["creature"], unitCondition: NON_BENIE }, amount: flat(2), conditionTideStateIn: ["tempete"] },
+      { type: "damage", target: { kind: "allUnits" }, filter: { cardTypes: ["marin", "creature"], unitCondition: NON_BENIE }, amount: flat(2), conditionTideStateIn: ["tempete"] },
       {
         type: "damage",
         target: { kind: "allUnits" },
-        filter: { cardTypes: ["creature"], unitCondition: NON_BENIE },
+        filter: { cardTypes: ["marin", "creature"], unitCondition: NON_BENIE },
         amount: flat(1),
         conditionTideStateIn: ["calme", "houle", "abysses"],
       },
@@ -477,10 +477,10 @@ export const BIENFAITS_DU_FOND_SET: CardDefinition[] = [
     cost: 1,
     maxCopies: 3,
     text:
-      "Chaîne — Choisissez une Créature alliée. Elle devient bénie et gagne +1 Résistance jusqu'à la fin du tour. Si " +
+      "Chaîne — Choisissez une unité alliée. Elle devient bénie et gagne +1 Résistance jusqu'à la fin du tour. Si " +
       "elle était déjà bénie, elle gagne +2 Résistance à la place.",
     // « Déjà bénie » se lit AVANT de la bénir : les deux bonus d'abord, la Bénédiction ensuite.
-    ...chaineLibre("Les Offrandes du Quai : une Créature alliée devient bénie et gagne +1 Résistance (+2 si elle l'était déjà).", [
+    ...chaineLibre("Les Offrandes du Quai : une unité alliée devient bénie et gagne +1 Résistance (+2 si elle l'était déjà).", [
       { type: "buff", target: CREATURE_ALLIEE, attackAmount: flat(0), healthAmount: flat(2), duration: "endOfTurn", conditionChosenTarget: { blessed: true } },
       { type: "buff", target: CREATURE_ALLIEE, attackAmount: flat(0), healthAmount: flat(1), duration: "endOfTurn", conditionChosenTarget: NON_BENIE },
       benir(CREATURE_ALLIEE),
@@ -497,8 +497,8 @@ export const BIENFAITS_DU_FOND_SET: CardDefinition[] = [
     maxCopies: 2,
     keywords: ["garde"],
     text:
-      "Garde. À son arrivée — Placez un marqueur Souillure sur jusqu'à deux autres Créatures. Si la mer est en Tempête, " +
-      "cette Créature gagne +1/+1 permanent.",
+      "Garde. À son arrivée — Placez un marqueur Souillure sur jusqu'à deux autres unités. Si la mer est en Tempête, " +
+      "cette unité gagne +1/+1 permanent.",
     onPlayEffects: [
       choisirCreatures("toutes", 2, [souiller(LA_CIBLE)], { excludeSelf: true }),
       { type: "buff", target: { kind: "self" }, amount: flat(1), permanent: true, conditionTideStateIn: ["tempete"] },
@@ -514,9 +514,9 @@ export const BIENFAITS_DU_FOND_SET: CardDefinition[] = [
     health: 4,
     maxCopies: 3,
     keywords: ["garde"],
-    text: "Garde. Toutes les Créatures bénies gagnent +1 Résistance.",
-    // Alliées ET adverses (Notion, Lot 20 : « accorde son bonus à toutes les Créatures bénies »).
-    auraBuffAllUnits: { targetTypes: ["creature"], targetCondition: { blessed: true }, healthAmount: 1 },
+    text: "Garde. Toutes les unités bénies gagnent +1 Résistance.",
+    // Alliées ET adverses (Notion, Lot 20 : « accorde son bonus à toutes les unités bénies »).
+    auraBuffAllUnits: { targetTypes: ["marin", "creature"], targetCondition: { blessed: true }, healthAmount: 1 },
   }),
   bienfait({
     id: "la-communion-du-sel",
@@ -524,14 +524,14 @@ export const BIENFAITS_DU_FOND_SET: CardDefinition[] = [
     type: "objet",
     cost: 3,
     maxCopies: 2,
-    text: "Chaîne — Jusqu'à deux Créatures alliées deviennent bénies. Votre Navire récupère 1 Ancrage pour chaque Créature bénie.",
-    // « Pour chaque Créature bénie » : celles que vous contrôlez, comptées APRÈS la désignation.
-    ...chaineLibre("La Communion du Sel : jusqu'à deux Créatures alliées deviennent bénies ; 1 Ancrage par Créature bénie.", [
+    text: "Chaîne — Jusqu'à deux unités alliées deviennent bénies. Votre Navire récupère 1 Ancrage pour chaque unité bénie.",
+    // « Pour chaque unité bénie » : celles que vous contrôlez, comptées APRÈS la désignation.
+    ...chaineLibre("La Communion du Sel : jusqu'à deux unités alliées deviennent bénies ; 1 Ancrage par unité bénie.", [
       choisirCreatures("allies", 2, [benir(LA_CIBLE)], { restAfterPick: true }),
       {
         type: "heal",
         target: { kind: "controllerPlayer" },
-        amount: { kind: "unitsMatching", scope: "controller", cardTypes: ["creature"], unitCondition: { blessed: true } },
+        amount: { kind: "unitsMatching", scope: "controller", cardTypes: ["marin", "creature"], unitCondition: { blessed: true } },
       },
     ]),
   }),
@@ -543,19 +543,19 @@ export const BIENFAITS_DU_FOND_SET: CardDefinition[] = [
     health: 5,
     maxCopies: 1,
     text:
-      "À votre début de tour — Placez un marqueur Souillure sur une Créature adverse. Une fois par tour, lorsqu'une " +
-      "Créature adverse souillée meurt, votre Navire récupère 2 Ancrage.",
+      "À votre début de tour — Placez un marqueur Souillure sur une unité adverse. Une fois par tour, lorsqu'une " +
+      "unité adverse souillée meurt, votre Navire récupère 2 Ancrage.",
     abilities: [
       {
         trigger: "startOfTurn",
-        description: "Le Berceau du Fond : un marqueur Souillure sur une Créature adverse.",
+        description: "Le Berceau du Fond : un marqueur Souillure sur une unité adverse.",
         effects: [choisirCreatures("adverses", 1, [souiller(LA_CIBLE)])],
       },
       {
         trigger: "onDeath",
-        triggeredBy: { opponentOnly: true, cardTypes: ["creature"], withMarker: "souillure" },
+        triggeredBy: { opponentOnly: true, cardTypes: ["marin", "creature"], withMarker: "souillure" },
         oncePerTurnKey: "berceauDuFond",
-        description: "Une Créature adverse souillée meurt : votre Navire récupère 2 Ancrage.",
+        description: "Une unité adverse souillée meurt : votre Navire récupère 2 Ancrage.",
         effects: [soinNavire(2)],
       },
     ],
@@ -569,7 +569,7 @@ export const BIENFAITS_DU_FOND_SET: CardDefinition[] = [
     attack: 1,
     health: 1,
     maxCopies: 3,
-    text: "À son arrivée — Placez un marqueur Souillure sur cette Créature. Elle gagne +1/+1 pour chaque marqueur Souillure.",
+    text: "À son arrivée — Placez un marqueur Souillure sur cette unité. Elle gagne +1/+1 pour chaque marqueur Souillure.",
     onPlayEffects: [souiller({ kind: "self" })],
     selfBuffWhenConditions: [{ perSelfMarker: "souillure", attackAmount: 1, healthAmount: 1 }],
   }),
@@ -584,13 +584,13 @@ export const BIENFAITS_DU_FOND_SET: CardDefinition[] = [
     // Notion : Rare, 3 exemplaires par deck — écart signalé, pas corrigé (CLAUDE.md, règle 9).
     maxCopies: 3,
     text:
-      "Choisissez une Créature de votre Cimetière et ajoutez-la à votre main. Si elle était bénie lorsqu'elle a quitté " +
+      "Choisissez une unité de votre Cimetière et ajoutez-la à votre main. Si elle était bénie lorsqu'elle a quitté " +
       "le plateau, placez-la directement sur votre plateau à la place.",
     onPlayEffects: [
       {
         type: "pickFromGraveyard",
         target: { kind: "controllerPlayer" },
-        filter: { cardTypes: ["creature"] },
+        filter: { cardTypes: ["marin", "creature"] },
         uses: 1,
         takeTo: "hand",
         takeToIf: { condition: { blessed: true }, takeTo: "board" },
@@ -616,8 +616,8 @@ export const BIENFAITS_DU_FOND_SET: CardDefinition[] = [
     type: "objet",
     cost: 3,
     maxCopies: 3,
-    text: "Chaîne — La mer passe en Tempête. Placez un marqueur Souillure sur une Créature de votre choix.",
-    ...chaineLibre("La Colère des Profondeurs : la mer passe en Tempête, et un marqueur Souillure sur une Créature.", [
+    text: "Chaîne — La mer passe en Tempête. Placez un marqueur Souillure sur une unité de votre choix.",
+    ...chaineLibre("La Colère des Profondeurs : la mer passe en Tempête, et un marqueur Souillure sur une unité.", [
       { type: "tideSetState", target: { kind: "allPlayers" }, tideState: "tempete" },
       souiller(UNE_CREATURE),
     ]),
@@ -661,7 +661,7 @@ export const BIENFAITS_DU_FOND_SET: CardDefinition[] = [
     attack: 1,
     health: 3,
     maxCopies: 3,
-    text: "À son arrivée — Cette Créature gagne +1 Puissance pour chaque marqueur Souillure présent sur le plateau.",
+    text: "À son arrivée — Cette unité gagne +1 Puissance pour chaque marqueur Souillure présent sur le plateau.",
     // Compté à l'arrivée, gardé tant qu'elle est en jeu.
     onPlayEffects: [
       {
@@ -683,15 +683,15 @@ export const BIENFAITS_DU_FOND_SET: CardDefinition[] = [
     health: 5,
     maxCopies: 2,
     text:
-      "À son arrivée — Jusqu'à deux autres Créatures alliées deviennent bénies. Une fois par tour, lorsqu'une Créature " +
+      "À son arrivée — Jusqu'à deux autres unités alliées deviennent bénies. Une fois par tour, lorsqu'une unité " +
       "adverse reçoit un marqueur Souillure, votre Navire récupère 1 Ancrage.",
     onPlayEffects: [choisirCreatures("allies", 2, [benir(LA_CIBLE)], { excludeSelf: true })],
     abilities: [
       {
         trigger: "onMarkerAdded",
-        triggeredBy: { opponentOnly: true, cardTypes: ["creature"], markerAdded: "souillure" },
+        triggeredBy: { opponentOnly: true, cardTypes: ["marin", "creature"], markerAdded: "souillure" },
         oncePerTurnKey: "apotreSouillure",
-        description: "Une Créature adverse reçoit un marqueur Souillure : votre Navire récupère 1 Ancrage.",
+        description: "Une unité adverse reçoit un marqueur Souillure : votre Navire récupère 1 Ancrage.",
         effects: [soinNavire(1)],
       },
     ],
@@ -704,14 +704,14 @@ export const BIENFAITS_DU_FOND_SET: CardDefinition[] = [
     health: 4,
     maxCopies: 3,
     text:
-      "À votre début de tour — Vous pouvez choisir une Créature alliée non bénie. Elle devient bénie. Si vous contrôlez " +
-      "au moins trois Créatures bénies, votre Navire récupère 1 Ancrage pour chaque Créature bénie que vous contrôlez.",
+      "À votre début de tour — Vous pouvez choisir une unité alliée non bénie. Elle devient bénie. Si vous contrôlez " +
+      "au moins trois unités bénies, votre Navire récupère 1 Ancrage pour chaque unité bénie que vous contrôlez.",
     abilities: [
       {
         trigger: "startOfTurn",
-        description: "La Chapelle des Bienheureux : une Créature alliée non bénie devient bénie ; 3 bénies ou plus, 1 Ancrage par bénie.",
+        description: "La Chapelle des Bienheureux : une unité alliée non bénie devient bénie ; 3 bénies ou plus, 1 Ancrage par bénie.",
         effects: (() => {
-          const benies: EffectAmount = { kind: "unitsMatching", scope: "controller", cardTypes: ["creature"], unitCondition: { blessed: true } };
+          const benies: EffectAmount = { kind: "unitsMatching", scope: "controller", cardTypes: ["marin", "creature"], unitCondition: { blessed: true } };
           return [
             // « Vous pouvez » : la question se refuse (aucune désignation).
             choisirCreatures("allies", 1, [benir(LA_CIBLE)], { unitCondition: NON_BENIE, restAfterPick: true, refusable: true }),
@@ -727,8 +727,8 @@ export const BIENFAITS_DU_FOND_SET: CardDefinition[] = [
     type: "objet",
     cost: 2,
     maxCopies: 3,
-    text: "Chaîne — Choisissez une Créature. Si elle est alliée, elle devient bénie. Si elle est adverse, placez un marqueur Souillure sur elle.",
-    ...chaineLibre("L'Encensoir des Abysses : une Créature alliée devient bénie, ou une Créature adverse reçoit un marqueur Souillure.", [
+    text: "Chaîne — Choisissez une unité. Si elle est alliée, elle devient bénie. Si elle est adverse, placez un marqueur Souillure sur elle.",
+    ...chaineLibre("L'Encensoir des Abysses : une unité alliée devient bénie, ou une unité adverse reçoit un marqueur Souillure.", [
       benir(UNE_CREATURE, { conditionChosenTarget: { side: "ally" } }),
       souiller(UNE_CREATURE, { conditionChosenTarget: { side: "enemy" } }),
     ]),
@@ -773,13 +773,13 @@ function amiralGriffenoire(id: string, abyssale: boolean): CardDefinition {
     keywords: ["garde"],
     qualifications: [{ id: "contournement" }],
     text:
-      "Garde. Contournement. À son arrivée — Jusqu'à deux autres Créatures alliées gagnent Voile. Une fois par tour, " +
-      "lorsqu'une Créature alliée perd Voile, placez un marqueur +1/+1 sur toutes vos Créatures.",
+      "Garde. Contournement. À son arrivée — Jusqu'à deux autres unités alliées gagnent Voile. Une fois par tour, " +
+      "lorsqu'une unité alliée perd Voile, placez un marqueur +1/+1 sur toutes vos unités.",
     onPlayEffects: [choisirCreatures("allies", 2, [voile(LA_CIBLE)], { excludeSelf: true })],
     abilities: [
       auVoilePerdu(
-        "Une Créature alliée perd Voile : un marqueur +1/+1 sur toutes vos Créatures.",
-        [plusUn({ kind: "allAllyUnits" }, { filter: { cardTypes: ["creature"] } })],
+        "Une unité alliée perd Voile : un marqueur +1/+1 sur toutes vos unités.",
+        [plusUn({ kind: "allAllyUnits" }, { filter: { cardTypes: ["marin", "creature"] } })],
         { oncePerTurnKey: "griffenoireVoile" }
       ),
     ],
@@ -798,7 +798,7 @@ export const EQUIPAGE_FELIN_SET: CardDefinition[] = [
     maxCopies: 2,
     keywords: ["garde"],
     text:
-      "Garde. À son arrivée — Une autre Créature alliée gagne Voile. Une fois par tour, lorsqu'un Voile allié est " +
+      "Garde. À son arrivée — Une autre unité alliée gagne Voile. Une fois par tour, lorsqu'un Voile allié est " +
       "consommé, votre Navire récupère 1 Ancrage.",
     onPlayEffects: [voile(AUTRE_CREATURE_ALLIEE)],
     abilities: [
@@ -821,7 +821,7 @@ export const EQUIPAGE_FELIN_SET: CardDefinition[] = [
     attack: 1,
     health: 2,
     maxCopies: 3,
-    text: "À son arrivée — Si la mer est au Calme, cette Créature gagne Voile.",
+    text: "À son arrivée — Si la mer est au Calme, cette unité gagne Voile.",
     onPlayEffects: [voile({ kind: "self" }, { conditionTideStateIn: ["calme"] })],
   }),
   felin({
@@ -834,8 +834,8 @@ export const EQUIPAGE_FELIN_SET: CardDefinition[] = [
     health: 3,
     maxCopies: 3,
     keywords: ["garde"],
-    text: "Garde. Lorsqu'une Créature alliée perd Voile, placez un marqueur +1/+1 sur cette Créature.",
-    abilities: [auVoilePerdu("Une Créature alliée perd Voile : un marqueur +1/+1 sur Le Chat de Vigie.", [plusUn({ kind: "self" })])],
+    text: "Garde. Lorsqu'une unité alliée perd Voile, placez un marqueur +1/+1 sur cette unité.",
+    abilities: [auVoilePerdu("Une unité alliée perd Voile : un marqueur +1/+1 sur Le Chat de Vigie.", [plusUn({ kind: "self" })])],
   }),
   felin({
     id: "le-matelot-aux-neuf-vies",
@@ -846,7 +846,7 @@ export const EQUIPAGE_FELIN_SET: CardDefinition[] = [
     attack: 2,
     health: 2,
     maxCopies: 3,
-    text: "La première fois que cette Créature devrait être détruite, elle ne l'est pas et placez un marqueur +1/+1 sur elle.",
+    text: "La première fois que cette unité devrait être détruite, elle ne l'est pas et placez un marqueur +1/+1 sur elle.",
     // Un seul sauvetage pour la partie ; elle reste en jeu avec 1 Résistance, puis reçoit son marqueur.
     survivesLethalOncePerTurn: { onceEver: true },
     abilities: [
@@ -879,8 +879,8 @@ export const EQUIPAGE_FELIN_SET: CardDefinition[] = [
     health: 4,
     maxCopies: 2,
     keywords: ["garde"],
-    text: "Garde. Tant que cette Créature bénéficie de Voile, les autres Créatures alliées gagnent +1 Résistance.",
-    auraBuffControllerCardTypes: { targetTypes: ["creature"], whileSelf: { hasVeil: true }, healthAmount: 1 },
+    text: "Garde. Tant que cette unité bénéficie de Voile, les autres unités alliées gagnent +1 Résistance.",
+    auraBuffControllerCardTypes: { targetTypes: ["marin", "creature"], whileSelf: { hasVeil: true }, healthAmount: 1 },
   }),
   felin({
     id: "le-quartier-maitre-griffacier",
@@ -891,7 +891,7 @@ export const EQUIPAGE_FELIN_SET: CardDefinition[] = [
     attack: 2,
     health: 3,
     maxCopies: 3,
-    text: "À son arrivée — Une autre Créature alliée gagne Voile.",
+    text: "À son arrivée — Une autre unité alliée gagne Voile.",
     onPlayEffects: [voile(AUTRE_CREATURE_ALLIEE)],
   }),
   felin({
@@ -904,8 +904,8 @@ export const EQUIPAGE_FELIN_SET: CardDefinition[] = [
     health: 4,
     maxCopies: 2,
     keywords: ["garde"],
-    text: "Garde. Chaque fois qu'une autre Créature alliée perd Voile, placez un marqueur +1/+1 sur cette Créature.",
-    abilities: [auVoilePerdu("Une autre Créature alliée perd Voile : un marqueur +1/+1 sur Sir Ronron.", [plusUn({ kind: "self" })], {}, true)],
+    text: "Garde. Chaque fois qu'une autre unité alliée perd Voile, placez un marqueur +1/+1 sur cette unité.",
+    abilities: [auVoilePerdu("Une autre unité alliée perd Voile : un marqueur +1/+1 sur Sir Ronron.", [plusUn({ kind: "self" })], {}, true)],
   }),
   felin({
     id: "la-guerisseuse-aux-coussinets",
@@ -916,8 +916,8 @@ export const EQUIPAGE_FELIN_SET: CardDefinition[] = [
     attack: 1,
     health: 4,
     maxCopies: 3,
-    text: "Lorsqu'une Créature alliée gagne un marqueur +1/+1, votre Navire récupère 1 Ancrage.",
-    abilities: [auPlusUn("Une Créature alliée gagne un marqueur +1/+1 : votre Navire récupère 1 Ancrage.", [soinNavire(1)])],
+    text: "Lorsqu'une unité alliée gagne un marqueur +1/+1, votre Navire récupère 1 Ancrage.",
+    abilities: [auPlusUn("Une unité alliée gagne un marqueur +1/+1 : votre Navire récupère 1 Ancrage.", [soinNavire(1)])],
   }),
   felin({
     id: "le-petit-porte-bouclier",
@@ -929,7 +929,7 @@ export const EQUIPAGE_FELIN_SET: CardDefinition[] = [
     health: 3,
     maxCopies: 3,
     keywords: ["garde"],
-    text: "Garde. À son arrivée — Si la mer est au Calme, cette Créature gagne Voile.",
+    text: "Garde. À son arrivée — Si la mer est au Calme, cette unité gagne Voile.",
     onPlayEffects: [voile({ kind: "self" }, { conditionTideStateIn: ["calme"] })],
   }),
   felin({
@@ -938,9 +938,9 @@ export const EQUIPAGE_FELIN_SET: CardDefinition[] = [
     type: "objet",
     cost: 2,
     maxCopies: 3,
-    text: "Chaîne — Une Créature alliée gagne Voile. Si elle bénéficie déjà de Voile, placez un marqueur +1/+1 sur elle à la place.",
+    text: "Chaîne — Une unité alliée gagne Voile. Si elle bénéficie déjà de Voile, placez un marqueur +1/+1 sur elle à la place.",
     // Le marqueur d'abord, lu sur son état d'avant : le Voile qui suit ne s'ajoute pas à un Voile existant.
-    ...chaineLibre("Une Vie de Plus ! : une Créature alliée gagne Voile (ou un marqueur +1/+1 si elle en a déjà un).", [
+    ...chaineLibre("Une Vie de Plus ! : une unité alliée gagne Voile (ou un marqueur +1/+1 si elle en a déjà un).", [
       plusUn(CREATURE_ALLIEE, { conditionChosenTarget: { hasVeil: true } }),
       voile(CREATURE_ALLIEE),
     ]),
@@ -951,7 +951,7 @@ export const EQUIPAGE_FELIN_SET: CardDefinition[] = [
     type: "objet",
     cost: 1,
     maxCopies: 3,
-    text: "Chaîne — Votre Navire récupère 2 Ancrage. Si la mer est au Calme, placez également un marqueur +1/+1 sur une Créature alliée.",
+    text: "Chaîne — Votre Navire récupère 2 Ancrage. Si la mer est au Calme, placez également un marqueur +1/+1 sur une unité alliée.",
     ...chaineLibre("Ration de Poisson Frais : votre Navire récupère 2 Ancrage (et un marqueur +1/+1 au Calme).", [
       soinNavire(2),
       choisirCreatures("allies", 1, [plusUn(LA_CIBLE)], { conditionTideStateIn: ["calme"] }),
@@ -964,10 +964,10 @@ export const EQUIPAGE_FELIN_SET: CardDefinition[] = [
     cost: 4,
     health: 5,
     maxCopies: 2,
-    text: "Une fois par tour, lorsqu'une Créature alliée perd Voile, une autre Créature alliée qui n'en bénéficie pas gagne Voile.",
+    text: "Une fois par tour, lorsqu'une unité alliée perd Voile, une autre unité alliée qui n'en bénéficie pas gagne Voile.",
     abilities: [
       auVoilePerdu(
-        "Une Créature alliée perd Voile : une autre Créature alliée sans Voile gagne Voile.",
+        "Une unité alliée perd Voile : une autre unité alliée sans Voile gagne Voile.",
         [choisirCreatures("allies", 1, [voile(LA_CIBLE)], { unitCondition: { hasVeil: false }, excludeTriggerSource: true })],
         { oncePerTurnKey: "bastionVoile" }
       ),
@@ -980,11 +980,11 @@ export const EQUIPAGE_FELIN_SET: CardDefinition[] = [
     cost: 3,
     health: 3,
     maxCopies: 2,
-    text: "À votre début de tour — Choisissez une Créature alliée. Placez un marqueur +1/+1 sur elle.",
+    text: "À votre début de tour — Choisissez une unité alliée. Placez un marqueur +1/+1 sur elle.",
     abilities: [
       {
         trigger: "startOfTurn",
-        description: "La Cabine du Capitaine : un marqueur +1/+1 sur une Créature alliée.",
+        description: "La Cabine du Capitaine : un marqueur +1/+1 sur une unité alliée.",
         effects: [choisirCreatures("allies", 1, [plusUn(LA_CIBLE)])],
       },
     ],
@@ -998,11 +998,11 @@ export const EQUIPAGE_FELIN_SET: CardDefinition[] = [
     attack: 3,
     health: 2,
     maxCopies: 3,
-    text: "Lorsqu'une autre Créature alliée perd Voile, cette Créature gagne +1 Puissance.",
+    text: "Lorsqu'une autre unité alliée perd Voile, cette unité gagne +1 Puissance.",
     // Sans durée dans le texte : le bonus reste tant qu'elle est en jeu (même lecture que On joue aux morts).
     abilities: [
       auVoilePerdu(
-        "Une autre Créature alliée perd Voile : Griffe-Rousse gagne +1 Puissance.",
+        "Une autre unité alliée perd Voile : Griffe-Rousse gagne +1 Puissance.",
         [{ type: "buff", target: { kind: "self" }, attackAmount: flat(1), healthAmount: flat(0), permanent: true }],
         {},
         true
@@ -1030,12 +1030,12 @@ export const EQUIPAGE_FELIN_SET: CardDefinition[] = [
     attack: 2,
     health: 4,
     maxCopies: 3,
-    text: "Lorsqu'une Créature alliée gagne un marqueur +1/+1, infligez 1 dégât à une Créature adverse de votre choix.",
-    // Une Créature désignée : le joueur la pointe dans une fenêtre (CLAUDE.md, règle 3).
+    text: "Lorsqu'une unité alliée gagne un marqueur +1/+1, infligez 1 dégât à une unité adverse de votre choix.",
+    // Une unité désignée : le joueur la pointe dans une fenêtre (CLAUDE.md, règle 3).
     abilities: [
       auPlusUn(
-        "Une Créature alliée gagne un marqueur +1/+1 : 1 dégât à une Créature adverse de votre choix.",
-        [{ type: "damage", target: { kind: "chosenUnit", among: { cardTypes: ["creature"], opponentOnly: true } }, amount: flat(1) }],
+        "Une unité alliée gagne un marqueur +1/+1 : 1 dégât à une unité adverse de votre choix.",
+        [{ type: "damage", target: { kind: "chosenUnit", among: { cardTypes: ["marin", "creature"], opponentOnly: true } }, amount: flat(1) }],
         { mode: "optional" }
       ),
     ],
@@ -1048,8 +1048,8 @@ export const EQUIPAGE_FELIN_SET: CardDefinition[] = [
     type: "objet",
     cost: 3,
     maxCopies: 3,
-    text: "Chaîne — Jusqu'à trois Créatures alliées gagnent +1 Puissance jusqu'à la fin du tour.",
-    ...chaineLibre("À l'Abordage ! : jusqu'à trois Créatures alliées gagnent +1 Puissance jusqu'à la fin du tour.", [
+    text: "Chaîne — Jusqu'à trois unités alliées gagnent +1 Puissance jusqu'à la fin du tour.",
+    ...chaineLibre("À l'Abordage ! : jusqu'à trois unités alliées gagnent +1 Puissance jusqu'à la fin du tour.", [
       choisirCreatures("allies", 3, [{ type: "buff", target: LA_CIBLE, attackAmount: flat(1), healthAmount: flat(0), duration: "endOfTurn" }]),
     ]),
   }),
@@ -1060,13 +1060,13 @@ export const EQUIPAGE_FELIN_SET: CardDefinition[] = [
     cost: 2,
     maxCopies: 2,
     chaine: true,
-    text: "Chaîne — Lorsqu'une Créature alliée devrait être détruite, elle ne l'est pas. Placez un marqueur +1/+1 sur elle.",
+    text: "Chaîne — Lorsqu'une unité alliée devrait être détruite, elle ne l'est pas. Placez un marqueur +1/+1 sur elle.",
     abilities: [
       {
         trigger: "onPermanentWouldBeDestroyed",
-        triggeredBy: { cardTypes: ["creature"] },
+        triggeredBy: { cardTypes: ["marin", "creature"] },
         mode: "optional",
-        description: "On Retombe sur Nos Pattes ! : votre Créature n'est pas détruite et reçoit un marqueur +1/+1.",
+        description: "On Retombe sur Nos Pattes ! : votre unité n'est pas détruite et reçoit un marqueur +1/+1.",
         effects: [
           { type: "surviveWithHealth", target: { kind: "triggerSource" }, amount: flat(1) },
           plusUn({ kind: "triggerSource" }),
@@ -1083,12 +1083,12 @@ export const EQUIPAGE_FELIN_SET: CardDefinition[] = [
     maxCopies: 2,
     durationTurns: 3,
     text:
-      "Durée : 3 tours de table. À votre début de tour — Si la mer est au Calme, une Créature alliée qui ne bénéficie " +
-      "pas de Voile gagne Voile. Si elle est en Houle, placez un marqueur +1/+1 sur une Créature alliée.",
+      "Durée : 3 tours de table. À votre début de tour — Si la mer est au Calme, une unité alliée qui ne bénéficie " +
+      "pas de Voile gagne Voile. Si elle est en Houle, placez un marqueur +1/+1 sur une unité alliée.",
     abilities: [
       {
         trigger: "startOfTurn",
-        description: "La Mer aux Coussinets : Voile à une Créature alliée (Calme), ou un marqueur +1/+1 (Houle).",
+        description: "La Mer aux Coussinets : Voile à une unité alliée (Calme), ou un marqueur +1/+1 (Houle).",
         effects: [
           choisirCreatures("allies", 1, [voile(LA_CIBLE)], { unitCondition: { hasVeil: false }, conditionTideStateIn: ["calme"] }),
           choisirCreatures("allies", 1, [plusUn(LA_CIBLE)], { conditionTideStateIn: ["houle"] }),
@@ -1129,7 +1129,7 @@ export const EQUIPAGE_FELIN_SET: CardDefinition[] = [
     type: "objet",
     cost: 1,
     maxCopies: 3,
-    text: "Chaîne — Piochez 1 carte. Si votre Navire a récupéré de l'Ancrage ce tour, placez également un marqueur +1/+1 sur une Créature alliée.",
+    text: "Chaîne — Piochez 1 carte. Si votre Navire a récupéré de l'Ancrage ce tour, placez également un marqueur +1/+1 sur une unité alliée.",
     ...chaineLibre("La Dernière Sardine : piochez 1 carte (et un marqueur +1/+1 si votre Navire a récupéré de l'Ancrage ce tour).", [
       pioche(1),
       choisirCreatures("allies", 1, [plusUn(LA_CIBLE)], { conditionControllerShipHealedThisTurn: true }),
@@ -1145,9 +1145,9 @@ export const EQUIPAGE_FELIN_SET: CardDefinition[] = [
     health: 1,
     // Notion : Rare, 3 exemplaires par deck — écart signalé, pas corrigé (CLAUDE.md, règle 9).
     maxCopies: 3,
-    text: "Les autres Créatures Félines alliées gagnent +2/+2.",
+    text: "Les autres unités Félines alliées gagnent +2/+2.",
     // Une aura ne s'applique jamais à sa source : « les autres ». Plusieurs Appâts s'additionnent.
-    auraBuffControllerCardTypes: { targetTypes: ["creature"], targetSubtype: "felin", attackAmount: 2, healthAmount: 2 },
+    auraBuffControllerCardTypes: { targetTypes: ["marin", "creature"], targetSubtype: "felin", attackAmount: 2, healthAmount: 2 },
   }),
   felin({
     id: "la-vigie-aux-pattes-seches",
@@ -1159,7 +1159,7 @@ export const EQUIPAGE_FELIN_SET: CardDefinition[] = [
     health: 3,
     maxCopies: 3,
     keywords: ["pied-marin"],
-    text: "Pied marin. Tant que la mer est au Calme, cette Créature gagne +1 Puissance. Tant qu'elle est en Houle, elle gagne +1 Résistance.",
+    text: "Pied marin. Tant que la mer est au Calme, cette unité gagne +1 Puissance. Tant qu'elle est en Houle, elle gagne +1 Résistance.",
     selfBuffWhenConditions: [
       { when: { tideStateIn: ["calme"] }, attackAmount: 1 },
       { when: { tideStateIn: ["houle"] }, healthAmount: 1 },
@@ -1174,11 +1174,11 @@ export const EQUIPAGE_FELIN_SET: CardDefinition[] = [
     attack: 2,
     health: 4,
     maxCopies: 2,
-    text: "À son arrivée — Votre Navire récupère 3 Ancrage. Si vous contrôlez une Créature bénéficiant de Voile, piochez 1 carte.",
+    text: "À son arrivée — Votre Navire récupère 3 Ancrage. Si vous contrôlez une unité bénéficiant de Voile, piochez 1 carte.",
     onPlayEffects: [
       soinNavire(3),
       pioche(1, {
-        conditionCountAtLeast: { count: { kind: "unitsMatching", scope: "controller", cardTypes: ["creature"], unitCondition: { hasVeil: true } }, atLeast: 1 },
+        conditionCountAtLeast: { count: { kind: "unitsMatching", scope: "controller", cardTypes: ["marin", "creature"], unitCondition: { hasVeil: true } }, atLeast: 1 },
       }),
     ],
   }),
@@ -1210,8 +1210,8 @@ export const EQUIPAGE_FELIN_SET: CardDefinition[] = [
     type: "objet",
     cost: 3,
     maxCopies: 2,
-    text: "Chaîne — Choisissez une Créature alliée. Elle gagne Voile et un marqueur +1/+1.",
-    ...chaineLibre("La Patte du Destin : une Créature alliée gagne Voile et un marqueur +1/+1.", [voile(CREATURE_ALLIEE), plusUn(CREATURE_ALLIEE)]),
+    text: "Chaîne — Choisissez une unité alliée. Elle gagne Voile et un marqueur +1/+1.",
+    ...chaineLibre("La Patte du Destin : une unité alliée gagne Voile et un marqueur +1/+1.", [voile(CREATURE_ALLIEE), plusUn(CREATURE_ALLIEE)]),
   }),
   felin({
     id: "la-cloche-du-rassemblement",
@@ -1220,15 +1220,15 @@ export const EQUIPAGE_FELIN_SET: CardDefinition[] = [
     cost: 3,
     health: 3,
     maxCopies: 3,
-    text: "Une fois par tour, lorsqu'une Créature alliée gagne Voile, vous pouvez placer un marqueur +1/+1 sur une autre Créature alliée.",
+    text: "Une fois par tour, lorsqu'une unité alliée gagne Voile, vous pouvez placer un marqueur +1/+1 sur une autre unité alliée.",
     abilities: [
       {
         trigger: "onVeilGained",
-        triggeredBy: { cardTypes: ["creature"] },
+        triggeredBy: { cardTypes: ["marin", "creature"] },
         mode: "optional",
         oncePerTurnKey: "clocheRassemblement",
-        description: "Une Créature alliée gagne Voile : un marqueur +1/+1 sur une autre Créature alliée.",
-        effects: [plusUn({ kind: "chosenUnit", among: { cardTypes: ["creature"], excludeTriggerSource: true } })],
+        description: "Une unité alliée gagne Voile : un marqueur +1/+1 sur une autre unité alliée.",
+        effects: [plusUn({ kind: "chosenUnit", among: { cardTypes: ["marin", "creature"], excludeTriggerSource: true } })],
       },
     ],
   }),
@@ -1241,13 +1241,13 @@ export const EQUIPAGE_FELIN_SET: CardDefinition[] = [
     // Notion : Légendaire, 2 exemplaires par deck — écart signalé, pas corrigé (CLAUDE.md, règle 9).
     maxCopies: 2,
     text:
-      "Toutes vos Créatures récupèrent toute leur Résistance. Celles qui ne bénéficient pas de Voile gagnent Voile. " +
+      "Toutes vos unités récupèrent toute leur Résistance. Celles qui ne bénéficient pas de Voile gagnent Voile. " +
       "Celles qui en bénéficient déjà reçoivent un marqueur +1/+1 à la place.",
     // Le marqueur d'abord, sur celles qui avaient DÉJÀ Voile ; puis Voile aux autres.
     onPlayEffects: [
-      { type: "heal", target: { kind: "allAllyUnits" }, filter: { cardTypes: ["creature"] }, healFully: true, amount: flat(0) },
-      plusUn({ kind: "allAllyUnits" }, { filter: { cardTypes: ["creature"], unitCondition: { hasVeil: true } } }),
-      voile({ kind: "allAllyUnits" }, { filter: { cardTypes: ["creature"] } }),
+      { type: "heal", target: { kind: "allAllyUnits" }, filter: { cardTypes: ["marin", "creature"] }, healFully: true, amount: flat(0) },
+      plusUn({ kind: "allAllyUnits" }, { filter: { cardTypes: ["marin", "creature"], unitCondition: { hasVeil: true } } }),
+      voile({ kind: "allAllyUnits" }, { filter: { cardTypes: ["marin", "creature"] } }),
     ],
   }),
 ];
