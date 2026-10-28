@@ -1939,9 +1939,20 @@
  * `cardRaise` : une animation posée APRÈS celle de sortie du sachet, qui
  * l'emporte sur elle pour `transform` et `z-index`.
  */
-.card {
-  /* × 1.34 d'agrandissement de retournement = ~1.95 au total. */
+.scene {
+  /* × 1.34 d'agrandissement de retournement = ~1.95 au total. Posée sur la
+     scène, pas sur la carte : la légende du gros plan (`.showcaseCaption`)
+     se cale dessous avec la même valeur. */
   --showcase-scale: 1.45;
+}
+
+/*
+ * ILLUSTRATION SECRÈTE : la légende gagne un titre (« Félicitations ! »),
+ * et sous une carte agrandie à 1,45 elle sortait de l'écran (28/10/2026).
+ * La carte se fait un peu plus petite le temps de la fête.
+ */
+.scene:has(.showcase[data-celebration]) {
+  --showcase-scale: 1.2;
 }
 
 /*
@@ -2050,8 +2061,9 @@
   position: absolute;
   left: 0;
   right: 0;
-  /* Sous la carte en gros plan : demi-hauteur × échelle totale (~1.95). */
-  top: calc(50% + var(--card-h) * 0.975);
+  /* Sous la carte en gros plan : sa demi-hauteur × l'échelle totale
+     (retournement 1,34 × gros plan), moins sa montée de 2 u, plus un écart. */
+  top: calc(50% + var(--card-h) * 0.67 * var(--showcase-scale) - var(--u) * 0.5);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -2091,8 +2103,12 @@
 }
 
 @media (orientation: portrait) {
-  .card {
+  .scene {
     --showcase-scale: 1.3;
+  }
+
+  .scene:has(.showcase[data-celebration]) {
+    --showcase-scale: 1.1;
   }
 }
 

@@ -13,7 +13,7 @@ export {
   STANDARD_BOOSTER_PRICE,
 } from "@/game/boosters/constants";
 
-export { abyssalChanceWithPity, drawBooster } from "@/game/boosters/draw";
+export { abyssalChanceWithPity, cardChancePerBooster, drawBooster } from "@/game/boosters/draw";
 export { BOOSTER_ARTWORKS, boosterArtworkEntries, boosterArtworksFor, obtainableArtworksOf } from "@/game/boosters/boosterArtworks";
 // La rareté d'une carte est une donnée de CODE : les écritures en base en
 // découlent (`scripts/seedCards.ts`), jamais l'inverse.

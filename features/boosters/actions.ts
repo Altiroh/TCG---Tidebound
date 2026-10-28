@@ -58,6 +58,8 @@ export interface BoosterInventoryEntry {
   packsSinceAbyssal: number;
   /** Cartes qui peuvent tomber dans ce booster (`booster_pool_cards`), avec leur rareté. */
   pool: Array<{ cardId: string; rarity: CardRarity }>;
+  /** Format du booster (`booster_slots`) : sert à dire les chances « 1 sur N boosters ». Vide si illisible. */
+  slots?: BoosterSlotRule[];
 }
 
 export interface BoosterInventory {
@@ -162,7 +164,7 @@ export async function fetchBoosterInventory(): Promise<BoosterInventory> {
     if (!session) return empty;
     const { supabase, userId } = session;
 
-    const [definitions, owned, pity, currency, pools, ownedCards, ownedEditions] = await Promise.all([
+    const [definitions, owned, pity, currency, pools, ownedCards, ownedEditions, slots] = await Promise.all([
       supabase.from("booster_definitions").select("*").eq("is_enabled", true).order("id"),
       supabase.from("player_boosters").select("booster_definition_id, quantity, updated_at").eq("user_id", userId),
       supabase.from("player_pity").select("booster_definition_id, packs_since_abyssal").eq("user_id", userId),
@@ -177,7 +179,14 @@ export async function fetchBoosterInventory(): Promise<BoosterInventory> {
         .eq("cards.is_enabled", true),
       supabase.from("player_cards").select("card_id").eq("user_id", userId).gt("quantity", 0),
       readOwnedEditions(userId),
+      supabase.from("booster_slots").select("booster_definition_id, slot_index, guaranteed_rarity, weighted_rarities").order("slot_index"),
     ]);
+    const slotsByBooster = new Map<string, BoosterSlotRule[]>();
+    for (const row of slots.data ?? []) {
+      const list = slotsByBooster.get(row.booster_definition_id) ?? [];
+      list.push({ slotIndex: row.slot_index, guaranteedRarity: row.guaranteed_rarity, weightedRarities: row.weighted_rarities });
+      slotsByBooster.set(row.booster_definition_id, list);
+    }
 
     if (pools.error) console.error("[fetchBoosterInventory] Pools illisibles :", pools.error.message);
     const poolByBooster = new Map<string, Array<{ cardId: string; rarity: CardRarity }>>();
@@ -207,6 +216,7 @@ export async function fetchBoosterInventory(): Promise<BoosterInventory> {
         obtainedAt: obtainedByBooster.get(def.id) ?? null,
         packsSinceAbyssal: pityByBooster.get(def.id) ?? 0,
         pool: poolByBooster.get(def.id) ?? [],
+        slots: slotsByBooster.get(def.id) ?? [],
       })),
       ownedCardIds: (ownedCards.data ?? []).map((row) => row.card_id),
       ownedArtworks: Array.from(

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { getCardDefinition } from "@/game";
 import { RARITY_ORDER, type CardRarity } from "@/game/boosters/types";
 import { boosterArtworkEntries } from "@/game/boosters/boosterArtworks";
+import { cardChancePerBooster } from "@/game/boosters";
 import { CARD_ARTWORK_LABELS } from "@/game/cosmetics/artworks";
 import { CARD_ARTWORK_ODDS, type CardEdition } from "@/game/cosmetics/editions";
 import { cardArtworkThumbUrl } from "@/features/decks/cardArtUrl";
@@ -93,6 +94,22 @@ export function BoosterContentsDialog({ booster, owned, ownedArtworks, onClose }
         .sort((a, b) => (a.artwork === b.artwork ? a.name.localeCompare(b.name, "fr") : a.artwork === "styled" ? -1 : 1)),
     [booster.boosterId, unique, ownedArtworks]
   );
+  /**
+   * « 1 / N » d'une illustration : N BOOSTERS en moyenne (28/10/2026). Sa
+   * chance propre (Styled 4 %, Full-Art 0,8 %) ne joue que si la carte sort :
+   * elle se multiplie par la chance de la carte dans CE booster — l'Abyssale
+   * est bien plus dure à trouver en Full-Art qu'une Commune. Sans le format
+   * du booster, on retombe sur la chance par carte tirée.
+   */
+  const boostersPer = useMemo(() => {
+    const pool = unique.map((card) => ({ id: card.cardId, rarity: card.rarity }));
+    const slots = booster.slots ?? [];
+    return (cardId: string, artwork: keyof typeof CARD_ARTWORK_ODDS) => {
+      const carte = slots.length > 0 ? cardChancePerBooster(slots, pool, cardId) : 1;
+      const chance = carte * CARD_ARTWORK_ODDS[artwork];
+      return { perBooster: slots.length > 0, n: chance > 0 ? Math.round(1 / chance) : Infinity };
+    };
+  }, [unique, booster.slots]);
   // « Manquantes seulement » vaut aussi pour elles : une illustration jamais tirée est à chercher.
   const shownIllustrations = illustrations.filter((entry) => (!rarity || entry.rarity === rarity) && (!missingOnly || !entry.owned));
 
@@ -194,7 +211,12 @@ export function BoosterContentsDialog({ booster, owned, ownedArtworks, onClose }
                     playButtonClick();
                     setDetail({ cardId: entry.cardId, edition: { artwork: entry.artwork, finish: "classique" }, owned: entry.owned });
                   }}
-                  title={`${entry.name} — ${CARD_ARTWORK_LABELS[entry.artwork]} : 1 tirage de cette carte sur ${Math.round(1 / CARD_ARTWORK_ODDS[entry.artwork])}`}
+                  title={(() => {
+                    const { perBooster, n } = boostersPer(entry.cardId, entry.artwork);
+                    return perBooster
+                      ? `${entry.name} — ${CARD_ARTWORK_LABELS[entry.artwork]} : environ 1 booster sur ${n.toLocaleString("fr-FR")}`
+                      : `${entry.name} — ${CARD_ARTWORK_LABELS[entry.artwork]} : 1 tirage de cette carte sur ${n}`;
+                  })()}
                 >
                   {isArtworkHidden(entry.artwork, devMode, entry.owned) ? (
                     // Pas encore sortie ni obtenue : vignette floutée (le flou reste dedans), son sigle par-dessus.
@@ -209,7 +231,7 @@ export function BoosterContentsDialog({ booster, owned, ownedArtworks, onClose }
                   <span className={styles.rarity}>{CARD_ARTWORK_LABELS[entry.artwork]}</span>
                 </button>
                 <span className={styles.status}>
-                  {entry.owned ? <StatusTag tone="owned">Possédée</StatusTag> : <span className={styles.artworkTag}>1 / {Math.round(1 / CARD_ARTWORK_ODDS[entry.artwork])}</span>}
+                  {entry.owned ? <StatusTag tone="owned">Possédée</StatusTag> : <span className={styles.artworkTag}>1 / {boostersPer(entry.cardId, entry.artwork).n.toLocaleString("fr-FR")}</span>}
                 </span>
               </li>
             ))}

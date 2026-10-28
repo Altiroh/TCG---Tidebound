@@ -139,6 +139,52 @@ function pickCardOfRarity(
   return { card: eligible[draw.value] ?? null, nextSeed: draw.nextState };
 }
 
+/**
+ * Probabilité de chaque palier pour un slot, SANS pity (un booster ouvert à
+ * froid) et après repli sur les paliers peuplés — la même lecture que le
+ * tirage, en forme analytique.
+ */
+function slotRarityOdds(slot: BoosterSlotRule, pool: readonly BoosterPoolCard[]): Map<CardRarity, number> {
+  const odds = new Map<CardRarity, number>();
+  const add = (wanted: CardRarity, p: number) => {
+    const rarity = resolveAvailableRarity(pool, wanted);
+    if (rarity && p > 0) odds.set(rarity, (odds.get(rarity) ?? 0) + p);
+  };
+  if (slot.guaranteedRarity) {
+    add(slot.guaranteedRarity, 1);
+    return odds;
+  }
+  const weights = slot.weightedRarities;
+  if (!weights) return odds;
+  const entries = RARITY_ORDER.map((rarity) => ({ rarity, weight: weights[rarity] ?? 0 })).filter((e) => e.weight > 0);
+  const total = entries.reduce((sum, e) => sum + e.weight, 0);
+  if (total === 0) return odds;
+  const abyssal = (weights.abyssal ?? 0) > 0 ? abyssalChanceWithPity(0, (weights.abyssal ?? 0) / total || DEPTH_SLOT_BASE_ABYSSAL_CHANCE) : 0;
+  if (abyssal > 0) add("abyssal", abyssal);
+  const others = entries.filter((e) => e.rarity !== "abyssal");
+  const othersTotal = others.reduce((sum, e) => sum + e.weight, 0);
+  for (const entry of others) add(entry.rarity, ((1 - abyssal) * entry.weight) / othersTotal);
+  return odds;
+}
+
+/**
+ * Chance qu'UNE carte précise sorte dans un booster ouvert à froid (sans
+ * pity ni garantie de nouveauté) : chaque slot la propose au prorata de sa
+ * rareté, uniformément parmi les cartes de ce palier. Sert à dire « 1 sur
+ * N boosters » d'une illustration rare : sa chance propre × celle-ci.
+ */
+export function cardChancePerBooster(slots: readonly BoosterSlotRule[], pool: readonly BoosterPoolCard[], cardId: string): number {
+  const card = pool.find((entry) => entry.id === cardId);
+  if (!card) return 0;
+  const sameRarity = cardsOfRarity(pool, card.rarity).length;
+  let absent = 1;
+  for (const slot of slots) {
+    const p = (slotRarityOdds(slot, pool).get(card.rarity) ?? 0) / sameRarity;
+    absent *= 1 - p;
+  }
+  return 1 - absent;
+}
+
 /** Rareté visée par un slot, avant repli sur les paliers réellement peuplés. */
 function wantedRarityFor(
   slot: BoosterSlotRule,

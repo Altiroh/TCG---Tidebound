@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { BOOSTER_POOLS, PURCHASABLE_BOOSTER_IDS, BOOSTER_NECESSAIRE_DU_MARIN } from "@/game/boosters/pools";
-import { boosterArtworksFor, drawBooster, rarityForCardId } from "@/game/boosters";
+import { boosterArtworksFor, cardChancePerBooster, drawBooster, rarityForCardId } from "@/game/boosters";
 import type { BoosterPoolCard, BoosterSlotRule, CardRarity } from "@/game/boosters/types";
 import { BOOSTER_SPECIALIZED_PRICE, BOOSTER_STANDARD_PRICE } from "@/game/economy/constants";
 import { BOOSTER_DEFAUT } from "@/game/boosters/pools";
@@ -122,6 +122,19 @@ const arrondi = (n: number) => (n >= 100 ? Math.round(n) : Math.round(n * 10) / 
 const MESURES = PURCHASABLE_BOOSTER_IDS.map(mesurer);
 
 describe("chances d'obtention des cartes et des éditions", () => {
+  it("la chance analytique d'une carte par booster (`cardChancePerBooster`) suit le tirage réel", () => {
+    for (const m of MESURES) {
+      const pool: BoosterPoolCard[] = (BOOSTER_POOLS[m.boosterId] ?? []).map((id) => ({ id, rarity: rarityForCardId(id) ?? "common" }));
+      const slots = m.boosterId === BOOSTER_NECESSAIRE_DU_MARIN ? SIX_CARTES : HUIT_CARTES;
+      for (const [cardId, mesuree] of m.parCarte) {
+        const calculee = cardChancePerBooster(slots, pool, cardId);
+        // Bruit d'échantillonnage : 4 écarts-types de la mesure sur TIRAGES boosters.
+        const tolerance = 4 * Math.sqrt((calculee * (1 - calculee)) / TIRAGES) + 0.002;
+        expect(Math.abs(calculee - mesuree), `${m.boosterId} / ${cardId}`).toBeLessThan(tolerance);
+      }
+    }
+  });
+
   it("affiche le tableau des chances, booster par booster", () => {
     const lignes = MESURES.map((m) => {
       const ligne: Record<string, string | number> = { booster: m.boosterId };
