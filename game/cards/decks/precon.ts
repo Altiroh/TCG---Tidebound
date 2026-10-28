@@ -1161,6 +1161,102 @@ export const DECK_LA_QUETE_ETAIT_POURTANT_SIMPLE: DeckList = {
   ],
 };
 
+/**
+ * 19 — La Communion des Profondeurs (Lot 20, La Marée Bénie, 28/10/2026).
+ * Bénir ses Créatures pour qu'elles tiennent, souiller celles d'en face
+ * pour les achever, et faire monter la mer jusqu'au Grand-Bienfaiteur.
+ *
+ * Composée au labo, sans liste Notion préalable (demande du 28/10/2026) ;
+ * reportée depuis sur la page « Préconstruits de La Marée Bénie ». Le lot
+ * seul ne tenait pas le rayon (25–32 % au premier jet) : ses petits corps
+ * cèdent la place aux Gardiens, au Réfractaire et aux Branchies, et deux
+ * Coups de Harpon complètent le removal. Le Grand-Bienfaiteur y figure
+ * DEUX fois, sous ses deux illustrations (carte de base + variante
+ * Abyssale, une seule de chaque) : sans le second, le deck plafonnait à
+ * 42 %. Mesuré (bot moyen, 30 parties par paire, contre le rayon hors
+ * retirés) : 53,5 % sous Le Brise-Lames, 44,3 % sous Le Courlis.
+ * L'Ancre des Marées en est absente : elle attend son illustration.
+ */
+export const DECK_LA_COMMUNION_DES_PROFONDEURS: DeckList = {
+  id: "la-communion-des-profondeurs",
+  name: "La Communion des Profondeurs",
+  shipId: "le-brise-lames",
+  description: "Un village qui bénit les siens, souille les autres — et prie pour que la mer se lève.",
+  cardIds: [
+    ...repeat("le-poisson-sans-yeux", 3),
+    ...repeat("ceux-qui-ont-bu", 2),
+    ...repeat("le-vieux-pecheur", 2),
+    ...repeat("le-fils-du-pecheur", 3),
+    ...repeat("le-pecheur-en-deuil", 2),
+    ...repeat("le-dernier-refractaire", 2),
+    ...repeat("le-gardien-des-benis", 3),
+    ...repeat("le-marin-aux-branchies", 3),
+    ...repeat("pere-goulven-grand-benisseur", 2),
+    ...repeat("le-noye-revenu", 2),
+    ...repeat("lapotre-des-profondeurs", 1),
+    ...repeat("le-grand-bienfaiteur", 1),
+    ...repeat("le-grand-bienfaiteur-abyssal", 1),
+    ...repeat("fievre-salee", 2),
+    ...repeat("coup-de-harpon", 2),
+    ...repeat("lencensoir-des-abysses", 2),
+    ...repeat("les-offrandes-du-quai", 2),
+    ...repeat("la-communion-du-sel", 2),
+    ...repeat("maree-de-fievre", 1),
+    ...repeat("la-mer-rend-les-siens", 1),
+    ...repeat("brumesel", 1),
+  ],
+};
+
+/**
+ * 20 — L'Équipage Félin (Lot 21, La Marée Bénie, 28/10/2026). Des chats
+ * qui retombent sur leurs pattes : chaque Voile consommé nourrit les
+ * marqueurs +1/+1 du reste de l'équipage.
+ *
+ * Composé au labo, comme La Communion (même page Notion). VERROUILLÉ tant
+ * que l'Équipage Félin attend ses illustrations (`HELD_BACK_SET`) : visible
+ * au rayon, mais ni achetable ni tiré par le bot (`offer: "locked"`, déduit
+ * dans `catalog.ts`). Il s'ouvre seul quand la dernière de ses cartes
+ * quitte la liste d'attente.
+ *
+ * Trois Appâts à Moustaches (+2/+2 à tous les Félins) le portaient à 65 % :
+ * un seul reste. Mesuré (bot moyen, 30 parties par paire) : 55,7 % sous Le
+ * Courlis, 61,7 % sous Le Brise-Lames.
+ */
+export const DECK_L_EQUIPAGE_FELIN: DeckList = {
+  id: "l-equipage-felin",
+  name: "L'Équipage Félin",
+  shipId: "le-courlis",
+  description: "Un équipage de chats qui encaisse tout, retombe sur ses pattes, et grossit à chaque chute.",
+  cardIds: [
+    ...repeat("mousse-patapouf", 3),
+    ...repeat("le-petit-porte-bouclier", 2),
+    ...repeat("le-matelot-aux-neuf-vies", 3),
+    ...repeat("lappat-a-moustaches", 1),
+    ...repeat("le-quartier-maitre-griffacier", 2),
+    ...repeat("la-timoniere-ecume", 2),
+    ...repeat("la-guerisseuse-aux-coussinets", 1),
+    ...repeat("le-chat-de-vigie", 2),
+    ...repeat("griffe-rousse-labordeur", 2),
+    ...repeat("la-vigie-aux-pattes-seches", 1),
+    ...repeat("sir-ronron-chevalier-du-pont", 2),
+    ...repeat("le-gros-bosco", 1),
+    ...repeat("le-canonnier-ronchon", 1),
+    ...repeat("le-medecin-de-bord", 1),
+    ...repeat("la-duelliste-aux-sept-griffes", 1),
+    ...repeat("amiral-griffenoire", 1),
+    ...repeat("une-vie-de-plus", 2),
+    ...repeat("ration-de-poisson-frais", 2),
+    ...repeat("on-retombe-sur-nos-pattes", 2),
+    ...repeat("la-patte-du-destin", 1),
+    ...repeat("la-cabine-du-capitaine", 1),
+    ...repeat("la-derniere-sardine", 2),
+    ...repeat("a-labordage", 1),
+    ...repeat("les-neuf-vies-de-lequipage", 1),
+    ...repeat("toutes-voiles-dehors", 1),
+    ...repeat("la-cloche-du-rassemblement", 1),
+  ],
+};
+
 export const PRECON_DECK_LISTS: readonly DeckList[] = [
   DECK_LE_GRAND_BANC,
   DECK_CHEVALIERS_DU_GRAND_ETANG,
@@ -1183,6 +1279,10 @@ export const PRECON_DECK_LISTS: readonly DeckList[] = [
   // Lot 17 — Dungeon et Ladalle / Opalins (05/10/2026).
   DECK_LES_VEILLEURS_D_OPALE,
   DECK_LA_QUETE_ETAIT_POURTANT_SIMPLE,
+  // Lots 20 et 21 — La Marée Bénie (28/10/2026). L'Équipage Félin est
+  // verrouillé tant que ses cartes attendent leur illustration.
+  DECK_LA_COMMUNION_DES_PROFONDEURS,
+  DECK_L_EQUIPAGE_FELIN,
   // Les trois starters de la première mission (15/10/2026) — EN FIN de
   // liste : des tests et des écrans indexent [0], [1], [2].
   ...STARTER_DECK_LISTS,

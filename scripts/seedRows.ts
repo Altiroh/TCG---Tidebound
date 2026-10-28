@@ -82,9 +82,17 @@ export function boosterPoolCardRows(): SeedRow[] {
   );
 }
 
-/** Les préconstruits — tout le rayon fourni — dans la forme de la table `system_decks`. */
+/**
+ * Les decks semés : tout le rayon fourni SAUF les verrouillés. Un deck
+ * verrouillé joue des cartes retenues jusqu'à leur illustration, absentes
+ * de la table `cards` — `system_deck_cards` les refuserait (clé étrangère).
+ * Il sera semé le jour où il s'ouvre.
+ */
+const SEEDED_DECKS = CATALOG_DECKS.filter((deck) => deck.offer !== "locked");
+
+/** Les préconstruits — tout le rayon fourni, hors verrouillés — dans la forme de la table `system_decks`. */
 export function systemDeckRows(): SeedRow[] {
-  return CATALOG_DECKS.map((deck) => ({
+  return SEEDED_DECKS.map((deck) => ({
     id: deck.id,
     ship_id: deck.shipId,
     name: deck.name,
@@ -95,7 +103,7 @@ export function systemDeckRows(): SeedRow[] {
 
 /** La composition de ces mêmes decks, regroupée par carte (`system_deck_cards`). */
 export function systemDeckCardRows(): SeedRow[] {
-  return CATALOG_DECKS.flatMap((deck) => {
+  return SEEDED_DECKS.flatMap((deck) => {
     const quantities = new Map<string, number>();
     for (const cardId of deck.cardIds) quantities.set(cardId, (quantities.get(cardId) ?? 0) + 1);
     return Array.from(quantities.entries()).map(([card_id, quantity]) => ({

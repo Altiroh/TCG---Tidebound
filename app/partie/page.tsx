@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { PRECON_DECKS } from "@/game";
+import { PRECON_DECKS, isOpenDeck } from "@/game";
 import { listPlayerDeckLists } from "@/app/decks/actions";
 import { fetchDeckCatalog } from "@/features/decks/catalogActions";
 import { PartieScreen } from "@/features/match/PartieScreen";
@@ -43,11 +43,12 @@ export default async function PartiePage() {
    * Avec un compte, seuls les préconstruits réellement débloqués sont
    * jouables — starters de la première mission, ancien choix gratuit ou
    * Jeton. Les decks retirés du rayon (15/10/2026) restent jouables pour
-   * qui les a débloqués, et ne s'ouvrent plus hors connexion.
+   * qui les a débloqués, et ne s'ouvrent plus hors connexion — pas plus que
+   * les verrouillés.
    */
   const unlockedDeckIds = isSignedIn
     ? catalog.decks.filter((entry) => entry.unlocked).map((entry) => entry.deck.id)
-    : PRECON_DECKS.filter((deck) => deck.offer !== "retired").map((deck) => deck.id);
+    : PRECON_DECKS.filter(isOpenDeck).map((deck) => deck.id);
 
   // `useSearchParams` (mode en ligne, code d'invitation, défi) impose une frontière de
   // suspense : sans elle, Next rend toute la page en client au build.

@@ -130,7 +130,8 @@ export interface UnlockResult {
  * Débloque un préconstruit en dépensant un Jeton — atomique côté base.
  *
  * Seul le rayon au Jeton (`offer: "shop"`) s'achète : un starter vient de
- * la première mission, un deck retiré ne se vend plus. Refusé ICI, donc
+ * la première mission, un deck retiré ne se vend plus, un deck verrouillé
+ * pas encore. Refusé ICI, donc
  * aussi pour le panier du Market (`checkoutCartFor`), et refusé encore par
  * la base (`unlock_precon_deck`, migration 20261104120000).
  */
@@ -139,6 +140,7 @@ export async function unlockPreconDeck(userId: string, deckId: string): Promise<
   if (!deck || !isPreconDeckId(deckId)) return { ok: false, error: "Ce deck n'est pas un préconstruit." };
   if (deck.offer === "starter") return { ok: false, error: "Ce deck est offert par la première mission : il ne s'achète pas." };
   if (deck.offer === "retired") return { ok: false, error: "Ce préconstruit a quitté le rayon." };
+  if (deck.offer === "locked") return { ok: false, error: "Ce préconstruit n'est pas encore disponible : ses illustrations sont en cours." };
   try {
     const service = createSupabaseServiceRoleClient();
     const { data, error } = await service.rpc("unlock_precon_deck", { p_user_id: userId, p_deck_id: deckId });

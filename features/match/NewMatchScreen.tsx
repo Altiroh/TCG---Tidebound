@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   PRECON_DECKS,
   RULES,
+  isOpenDeck,
   shelfOrder,
   validateDeckList,
   deckProfile,
@@ -95,12 +96,13 @@ interface NewMatchScreenProps {
  * Tiré parmi les decks fournis du rayon ET les starters, y compris ceux que
  * le joueur n'a pas débloqués : l'adversaire n'est pas limité par la
  * collection du joueur. Les decks RETIRÉS du rayon (15/10/2026) n'en font
- * plus partie.
+ * plus partie, ni les VERROUILLÉS (28/10/2026) : leurs cartes attendent
+ * leur illustration.
  *
  * `Math.random` est ici un choix d'INTERFACE, pas un aléa de moteur : il
  * ne touche pas `GameState.rngState`, qui doit rester déterministe.
  */
-const BOT_DECK_POOL: readonly DeckList[] = PRECON_DECKS.filter((deck) => deck.offer !== "retired");
+const BOT_DECK_POOL: readonly DeckList[] = PRECON_DECKS.filter(isOpenDeck);
 
 function pickRandomDeck(): DeckList {
   return BOT_DECK_POOL[Math.floor(Math.random() * BOT_DECK_POOL.length)]!;

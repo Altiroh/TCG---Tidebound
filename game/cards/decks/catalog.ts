@@ -1,6 +1,7 @@
 import { PRECON_DECK_LISTS } from "@/game/cards/decks/precon";
 import { STARTER_DECK_IDS } from "@/game/cards/decks/starters";
 import type { DeckList } from "@/game/cards/decks/types";
+import { HELD_BACK_SET } from "@/game/cards/sets/core";
 
 /**
  * Catalogue des decks FOURNIS PAR LE JEU — les préconstruits.
@@ -43,8 +44,13 @@ export type DeckDifficulty = 1 | 2 | 3 | 4 | 5;
  *   - `retired` : retiré du rayon. Plus achetable, masqué pour qui ne l'a
  *                 pas ; qui l'a débloqué le garde, jouable. La liste reste
  *                 dans `PRECON_DECKS` (résolution des parties, tests).
+ *   - `locked`  : VERROUILLÉ (28/10/2026) — au rayon, visible, mais ni
+ *                 achetable ni tiré par le bot. Jamais écrit à la main :
+ *                 c'est l'état d'un deck qui joue au moins une carte
+ *                 retenue jusqu'à son illustration (`HELD_BACK_SET`). Le
+ *                 deck s'ouvre seul quand sa dernière carte en sort.
  */
-export type DeckOffer = "shop" | "starter" | "retired";
+export type DeckOffer = "shop" | "starter" | "retired" | "locked";
 
 /** Un deck du catalogue système, enrichi de quoi le présenter au joueur. */
 export interface CatalogDeck extends DeckList {
@@ -57,7 +63,7 @@ export interface CatalogDeck extends DeckList {
   offer: DeckOffer;
 }
 
-type DeckMeta = Omit<CatalogDeck, keyof DeckList | "offer"> & { offer?: DeckOffer };
+type DeckMeta = Omit<CatalogDeck, keyof DeckList | "offer"> & { offer?: Exclude<DeckOffer, "locked"> };
 
 /**
  * Métadonnées par identifiant de deck. Séparées des listes de cartes pour
@@ -177,6 +183,17 @@ const DECK_META: Record<string, DeckMeta> = {
     difficulty: 3,
     mechanics: ["Jets de dé", "Chaîne", "Retour en main"],
   },
+  // Lots 20 et 21 — La Marée Bénie (28/10/2026), composés au labo.
+  "la-communion-des-profondeurs": {
+    style: "Midrange / Bénédiction et Souillure",
+    difficulty: 3,
+    mechanics: ["Bénir ses Créatures", "Souiller l'adversaire", "Houle et Tempête"],
+  },
+  "l-equipage-felin": {
+    style: "Agressif / Voile et marqueurs +1/+1",
+    difficulty: 2,
+    mechanics: ["Voile qui protège", "Marqueurs +1/+1", "Calme et Houle"],
+  },
   // Les trois starters de la PREMIÈRE MISSION (15/10/2026) : offerts au
   // tutoriel terminé ou passé, jamais au Jeton. Difficulté 1–2 : ce sont les
   // premiers decks qu'un joueur pilote.
@@ -202,11 +219,18 @@ const DECK_META: Record<string, DeckMeta> = {
 
 const FALLBACK_META: DeckMeta = { style: "Polyvalent", difficulty: 3, mechanics: [] };
 
+const HELD_BACK_IDS: ReadonlySet<string> = new Set(HELD_BACK_SET.map((card) => card.id));
+
 function withMeta(deck: DeckList): CatalogDeck {
   const meta = DECK_META[deck.id] ?? FALLBACK_META;
   // Un starter l'est par son identifiant (`starters.ts`), même si sa méta
-  // l'oubliait : il ne doit jamais devenir achetable par omission.
-  const offer: DeckOffer = STARTER_DECK_IDS.includes(deck.id) ? "starter" : (meta.offer ?? "shop");
+  // l'oubliait : il ne doit jamais devenir achetable par omission. Un deck
+  // qui joue une carte retenue reste verrouillé, quoi que dise sa méta.
+  const offer: DeckOffer = STARTER_DECK_IDS.includes(deck.id)
+    ? "starter"
+    : deck.cardIds.some((cardId) => HELD_BACK_IDS.has(cardId))
+      ? "locked"
+      : (meta.offer ?? "shop");
   return { ...deck, ...meta, offer };
 }
 
@@ -238,7 +262,7 @@ export function isPreconDeckId(deckId: string): boolean {
 /** Les starters de la première mission, dans l'ordre d'affichage. */
 export const STARTER_DECKS: readonly CatalogDeck[] = PRECON_DECKS.filter((deck) => deck.offer === "starter");
 
-/** Le rayon au Jeton : ni starters, ni decks retirés. */
+/** Le rayon au Jeton : ni starters, ni decks retirés, ni verrouillés. */
 export const SHOP_DECKS: readonly CatalogDeck[] = PRECON_DECKS.filter((deck) => deck.offer === "shop");
 
 /** `true` si le deck s'achète au Jeton aujourd'hui. */
@@ -255,9 +279,18 @@ export function isDeckOnShelf(deck: CatalogDeck, unlocked: boolean): boolean {
 }
 
 /**
+ * `true` si le deck est OUVERT : achetable ou offert, et donc aussi tiré
+ * comme adversaire par le bot. Ni retiré, ni verrouillé.
+ */
+export function isOpenDeck(deck: CatalogDeck): boolean {
+  return deck.offer === "shop" || deck.offer === "starter";
+}
+
+/**
  * Ordre du rayon : les starters en tête, puis le rayon au Jeton, puis les
- * retirés (seulement chez qui les possède, voir `isDeckOnShelf`).
+ * verrouillés (à venir), puis les retirés (seulement chez qui les possède,
+ * voir `isDeckOnShelf`).
  */
 export function shelfOrder(deck: CatalogDeck): number {
-  return deck.offer === "starter" ? 0 : deck.offer === "shop" ? 1 : 2;
+  return deck.offer === "starter" ? 0 : deck.offer === "shop" ? 1 : deck.offer === "locked" ? 2 : 3;
 }

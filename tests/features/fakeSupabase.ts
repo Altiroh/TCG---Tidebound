@@ -797,6 +797,8 @@ function runRpc(db: FakeDatabase, fn: string, args: Row): any {
         return { ok: false, error: "Ce deck est offert par la première mission : il ne s'achète pas." };
       }
       if (["la-forteresse", "epavistes", "a-bout-de-raison"].includes(args.p_deck_id)) return { ok: false, error: "Ce préconstruit a quitté le rayon." };
+      // 20261118120000 : verrouillé tant que ses cartes attendent leur illustration.
+      if (["l-equipage-felin"].includes(args.p_deck_id)) return { ok: false, error: "Ce préconstruit n'est pas encore disponible : ses illustrations sont en cours." };
       const progression = db.one("player_progression", { user_id: args.p_user_id });
       if (db.one("player_deck_unlocks", { user_id: args.p_user_id, deck_id: args.p_deck_id })) return { ok: false, error: "Ce préconstruit est déjà débloqué." };
       if (!progression || (progression.precon_tokens ?? 0) < 1) return { ok: false, error: "Aucun Jeton de Préconstruit disponible." };

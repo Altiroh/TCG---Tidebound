@@ -496,6 +496,10 @@ function DeckFiche(props: DeckTableProps & { deck: BrowserDeck | null }) {
               {deck.kind === "precon" && !catalog?.unlocked && catalog?.deck.offer === "starter" && (
                 <span className={styles.chip}>Offert par la première mission</span>
               )}
+              {/* Verrouillé : ses cartes attendent leur illustration. */}
+              {deck.kind === "precon" && !catalog?.unlocked && catalog?.deck.offer === "locked" && (
+                <span className={styles.chip}>Bientôt disponible</span>
+              )}
             </>
           )}
         </div>

@@ -127,6 +127,7 @@ export {
   isPreconDeckId,
   isShopDeckId,
   isDeckOnShelf,
+  isOpenDeck,
   shelfOrder,
   PLAYABLE_DECKS,
   SHOP_DECKS,

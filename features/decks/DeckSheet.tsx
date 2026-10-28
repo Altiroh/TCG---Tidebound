@@ -79,6 +79,8 @@ export function DeckSheet({
       "Offert par la première mission : termine ou passe le tutoriel pour recevoir les trois starters."
     ) : deck.offer === "retired" ? (
       "Ce préconstruit a quitté le rayon."
+    ) : deck.offer === "locked" ? (
+      "Bientôt disponible : les illustrations de ses cartes sont en cours."
     ) : (
       <>
         <PreconToken size={14} />{" "}
