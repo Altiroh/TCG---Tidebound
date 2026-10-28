@@ -554,7 +554,17 @@
    (plus bas) et non plus 780 px : à 852 px (iPhone 15), le logo couvrait
    encore « Stats » (20/10/2026). Sans logo, les onglets prennent ce qu'il
    leur faut et le compte le reste, comme sur `collection`. */
-@media (max-width: 1000px), (max-height: 620px) {
+/* Un écran à onglets propres porte aussi, à droite, ses actions (Market :
+   la réserve de boosters) devant le compte. Quand ce côté demandait plus
+   que sa moitié, il débordait vers la GAUCHE (`justify-self: end`) et
+   passait SOUS le logo (28/10/2026, 1844 px). Les deux côtés réclament
+   désormais au moins leur contenu : le logo se décale au lieu d'être
+   recouvert, et reste centré tant que les deux moitiés suffisent. */
+.header[data-tabs] { grid-template-columns: minmax(max-content, 1fr) auto minmax(max-content, 1fr); }
+
+/* Sous 1520 px, onglets + logo + actions + compte ne tiennent plus sur la
+   ligne : le logo s'efface (seuil mesuré sur le Market, réserve repliée). */
+@media (max-width: 1520px), (max-height: 620px) {
   .header[data-tabs] .headerBrand { display: none; }
   .header[data-tabs] { grid-template-columns: auto auto minmax(0, 1fr); }
 }

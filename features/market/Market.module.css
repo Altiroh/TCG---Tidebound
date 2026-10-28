@@ -96,6 +96,15 @@
   text-transform: uppercase;
 }
 
+/* Bandeau trop court pour le libellé à côté des onglets, du logo et du
+   compte : la pastille garde l'icône et le compte, le nom passe en
+   infobulle (`title`) et reste lu par `aria-label`. */
+@media (max-width: 1800px) {
+  .reserveTitle {
+    display: none;
+  }
+}
+
 .reserveCount {
   color: rgba(239, 230, 210, 0.6);
   font-family: var(--tb-font-body, Georgia, serif);

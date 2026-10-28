@@ -344,7 +344,7 @@ export function MarketScreen({ inventory, catalog, collectables, sandbox = false
       }))}
       actions={
         inventory.isSignedIn ? (
-          <Link href="/boosters" className={styles.reserveLink} data-waiting={ownedCount > 0 ? "true" : "false"} onClick={() => playButtonClick()}>
+          <Link href="/boosters" className={styles.reserveLink} title="Mes boosters" aria-label={`Mes boosters : ${ownedCount}`} data-waiting={ownedCount > 0 ? "true" : "false"} onClick={() => playButtonClick()}>
             <span className={styles.reserveIcon} style={closedPackVariables(getBoosterPackVisual("standard"))} aria-hidden />
             <span className={styles.reserveTitle}>Mes boosters</span>
             <span className={styles.reserveCount}>{ownedCount > 0 ? ownedCount : "0"}</span>
