@@ -52,9 +52,9 @@ export const CARD_FINISH_DESCRIPTIONS: Record<CardFinish, string> = {
 /**
  * Chance qu'UNE carte tirée sorte dans chaque finition rare (barème du
  * 18/10/2026, provisoire jusqu'à la simulation économique). TRÈS rare par
- * construction : environ 1 carte sur 200 a une finition rare, soit un
- * booster de huit cartes sur douze (doublées le 28/10/2026) ; une Star Foil, la plus rare, un
- * booster sur 375. À ajuster ici seulement.
+ * construction : environ 1 carte sur 100 a une finition rare (doublées le
+ * 28/10/2026), soit un booster de huit cartes sur douze ; une Star Foil, la
+ * plus rare, un booster sur ~190. À ajuster ici seulement.
  */
 export const CARD_FINISH_ODDS: Record<RareCardFinish, number> = {
   // Doublées le 28/10/2026 (de 1/500 … 1/3000) : une finition rare tous les
