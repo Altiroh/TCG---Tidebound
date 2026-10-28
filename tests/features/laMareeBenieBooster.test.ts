@@ -77,22 +77,20 @@ beforeEach(() => {
 });
 
 const ABYSSALES = ["amiral-griffenoire-abyssal", "le-grand-bienfaiteur-abyssal"];
-/** Celles que le pool distribue aujourd'hui (Amiral Griffenoire attend son illustration). */
-const ABYSSALES_DISTRIBUEES = ["le-grand-bienfaiteur-abyssal"];
+/** Les deux sont distribuées depuis l'arrivée des illustrations de l'Équipage Félin (28/10/2026). */
+const ABYSSALES_DISTRIBUEES = ABYSSALES;
 
 describe("La Marée Bénie — le pool", () => {
   it("compte 66 cartes et deux Abyssales, dont il distribue celles qui ont leur illustration", () => {
     expect(LA_MAREE_BENIE_SET.filter((def) => def.archetype === "bienfaits-du-fond" && !def.id.endsWith("-abyssal"))).toHaveLength(36);
     expect(LA_MAREE_BENIE_SET.filter((def) => def.archetype === "equipage-felin" && !def.id.endsWith("-abyssal"))).toHaveLength(30);
     expect([...BOOSTER_POOLS[MAREE]!].sort()).toEqual(LA_MAREE_BENIE_PUBLIEES.map((def) => def.id).sort());
-    expect(BOOSTER_POOLS[MAREE]!.filter((id) => id.endsWith("-abyssal"))).toEqual(["le-grand-bienfaiteur-abyssal"]);
+    expect(BOOSTER_POOLS[MAREE]!.filter((id) => id.endsWith("-abyssal")).sort()).toEqual(ABYSSALES);
   });
 
-  it("l'Équipage Félin et L'Ancre des Marées attendent leur illustration : hors catalogue et hors pool, mais jouables", () => {
+  it("La Patte du Destin et L'Ancre des Marées attendent leur illustration : hors catalogue et hors pool, mais jouables", () => {
     const retenues = LA_MAREE_BENIE_EN_ATTENTE.map((def) => def.id);
-    expect(retenues).toHaveLength(32);
-    expect(retenues).toContain("lancre-des-marees");
-    expect(retenues).toContain("amiral-griffenoire-abyssal");
+    expect(retenues.sort()).toEqual(["la-patte-du-destin", "lancre-des-marees"]);
     for (const id of retenues) {
       expect(CORE_SET.some((def) => def.id === id), id).toBe(false);
       expect(BOOSTER_POOLS[MAREE]).not.toContain(id);
@@ -156,7 +154,7 @@ describe("La Marée Bénie — achat, ouverture, collection", () => {
     for (const [cardId, n] of tirees) expect(db.one("player_cards", { user_id: USER, card_id: cardId })?.quantity, cardId).toBe(n);
   });
 
-  it("au 20e booster sans Abyssale, le pity rend la variante Abyssale du Grand-Bienfaiteur", async () => {
+  it("au 20e booster sans Abyssale, le pity rend l'une des deux variantes Abyssales", async () => {
     crediterBoosters(1);
     db.upsert("player_pity", { user_id: USER, booster_definition_id: MAREE, packs_since_abyssal: 19, packs_since_new_card: 0 }, (row) => {
       row.packs_since_abyssal = 19;
