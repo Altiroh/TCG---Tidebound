@@ -1287,7 +1287,7 @@ const OPALINS: CardDefinition[] = [
     permanent: false,
     text:
       "Regardez les 4 cartes du dessus de votre pioche. Vous pouvez révéler un Opalin parmi elles et l'ajouter à votre " +
-      "main. Si vous contrôlez au moins 2 Opalins, vous pouvez également ajouter un Objet parmi ces cartes à votre main. " +
+      "main. Si vous contrôlez au moins 2 unités Opalin, vous pouvez également ajouter un Objet parmi ces cartes à votre main. " +
       "Placez le reste sous votre pioche dans l'ordre de votre choix.",
     onPlayEffects: [
       {
@@ -1311,7 +1311,7 @@ const OPALINS: CardDefinition[] = [
     maxCopies: 3,
     text:
       "Cherchez un Opalin dans votre pioche, révélez-le et ajoutez-le à votre main. Si vous contrôlez au moins 2 " +
-      "Opalins, réduisez son coût de 1 ce tour.",
+      "unités Opalin, réduisez son coût de 1 ce tour.",
     onBreakEffects: [
       {
         type: "lookAtDeckTop",

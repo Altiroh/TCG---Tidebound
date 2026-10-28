@@ -4,6 +4,7 @@ import {
   BOOSTER_DUNGEON_ET_LADALLE,
   BOOSTER_ECLATS_EN_SELLE,
   BOOSTER_ETRANGETE_SOUS_MARINE,
+  BOOSTER_LA_MAREE_BENIE,
   BOOSTER_LA_MUTATION_MONDIALE,
   BOOSTER_NECESSAIRE_DU_MARIN,
   BOOSTER_POISSONS_PAS_FRAIS,
@@ -66,6 +67,15 @@ export const BOOSTER_ARTWORKS: Readonly<Record<string, Readonly<Record<string, r
     "la-revenante": STYLED_ET_FULL_ART,
     lentendant: STYLED_ET_FULL_ART,
     "reine-des-charognes": STYLED_ET_FULL_ART,
+  },
+  // Livrées le 28/10/2026. Gros Bisou !, L'Appât et le Grand-Bienfaiteur
+  // n'offrent que leur Styled tant que leur Full-Art est à repeindre.
+  [BOOSTER_LA_MAREE_BENIE]: {
+    "amiral-griffenoire": STYLED_ET_FULL_ART,
+    "gros-bisou": STYLED_ET_FULL_ART,
+    "lappat-a-moustaches": STYLED_ET_FULL_ART,
+    "le-grand-bienfaiteur-abyssal": STYLED_ET_FULL_ART,
+    "mousse-patapouf": STYLED_ET_FULL_ART,
   },
   [BOOSTER_DUNGEON_ET_LADALLE]: {
     "eidolon-opalin-lv1": STYLED_ET_FULL_ART,

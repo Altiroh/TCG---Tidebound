@@ -561,13 +561,13 @@ const MARINS_ALTERES: CardDefinition[] = [
     maxCopies: 1,
     attack: 8,
     health: 8,
-    text: "À son arrivée, déclenchez l'Éveil de tous vos autres Altérés. Puis répétez l'Éveil de l'un d'eux.",
+    text: "À son arrivée, déclenchez l'Éveil de toutes vos autres unités Altéré. Puis répétez l'Éveil de l'une d'elles.",
     // Rareté Abyssale (`cardRarity.ts`), mais une carte à part entière : pas
     // une variante, donc ni suffixe `-abyssal` ni `variant`.
     abilities: [
       {
         trigger: "onEnterPlay",
-        description: "Éveille tous vos autres Altérés, puis l'un d'eux une seconde fois.",
+        description: "Éveille toutes vos autres unités Altéré, puis l'une d'elles une seconde fois.",
         effects: [
           {
             type: "triggerEveil",
@@ -632,10 +632,10 @@ const ABYSSALES: CardDefinition[] = [
     attack: 7,
     health: 6,
     text:
-      "Éveil — Vous perdez 1 Ancrage. Puis choisissez jusqu'à deux autres Altérés que vous contrôlez : pour chacun qui " +
-      "s'est déjà Éveillé ce tour, déclenchez de nouveau son Éveil.",
+      "Éveil — Vous perdez 1 Ancrage. Puis choisissez jusqu'à deux autres unités Altéré que vous contrôlez : pour chacune qui " +
+      "s'est déjà Éveillée ce tour, déclenchez de nouveau son Éveil.",
     abilities: [
-      eveil("Perd 1 Ancrage, rejoue l'Éveil de deux Altérés déjà Éveillés.", [
+      eveil("Perd 1 Ancrage, rejoue l'Éveil de deux unités Altéré déjà Éveillées.", [
         { type: "damage", target: { kind: "controllerPlayer" }, amount: { kind: "flat", value: 1 } },
         eveilDUnAltere({ dejaEveille: true, uses: 2 }),
       ]),

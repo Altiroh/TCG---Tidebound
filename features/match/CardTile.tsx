@@ -259,8 +259,8 @@ function chromaticFill(colors: readonly ChromaticColor[]): string {
 
 /** Ce que fait le Signal de chaque couleur (texte des émetteurs du Lot 15), pour l'info-bulle du médaillon. */
 const CHROMATIC_SIGNAL_TEXT: Record<ChromaticColor, string> = {
-  rouge: "Vos autres Sentinelles ont +1 Puissance pendant votre tour.",
-  jaune: "Vos autres Sentinelles ont +1 Résistance maximale.",
+  rouge: "Vos autres unités Sentinelle ont +1 Puissance pendant votre tour.",
+  jaune: "Vos autres unités Sentinelle ont +1 Résistance maximale.",
   bleu: "La première fois à chaque tour qu'une autre Sentinelle que vous contrôlez attaque une unité adverse, cette unité adverse perd 1 Puissance jusqu'à votre prochain tour.",
   vert: "La première fois pendant chacun de vos tours que vous jouez une autre Sentinelle, récupérez 1 Raison.",
   violet: "La première fois à chaque tour qu'une autre Sentinelle que vous contrôlez est ciblée par un effet adverse, piochez 1 carte.",

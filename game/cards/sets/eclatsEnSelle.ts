@@ -948,7 +948,7 @@ const SENTINELLES: CardDefinition[] = [
     attack: 3,
     health: 2,
     chromatic: { colors: ["rouge"], emitsSignal: true },
-    text: "Signal Rouge — Vos autres Sentinelles ont +1 Puissance pendant votre tour.",
+    text: "Signal Rouge — Vos autres unités Sentinelle ont +1 Puissance pendant votre tour.",
   },
   {
     id: "briseur-du-brasier",
@@ -997,7 +997,7 @@ const SENTINELLES: CardDefinition[] = [
     attack: 1,
     health: 4,
     chromatic: { colors: ["jaune"], emitsSignal: true },
-    text: "Signal Jaune — Vos autres Sentinelles ont +1 Résistance maximale.",
+    text: "Signal Jaune — Vos autres unités Sentinelle ont +1 Résistance maximale.",
   },
   {
     id: "rempart-du-soleil",
@@ -1434,7 +1434,7 @@ const SENTINELLES: CardDefinition[] = [
     cost: 4,
     maxCopies: 2,
     text:
-      "Choisissez jusqu'à 3 Sentinelles Chromatiques de couleurs différentes. Elles gagnent +1 Puissance et " +
+      "Choisissez jusqu'à 3 unités Sentinelle Chromatique de couleurs différentes. Elles gagnent +1 Puissance et " +
       "+1 Résistance jusqu'à votre prochain tour.",
     onPlayEffects: [
       {
@@ -1470,8 +1470,8 @@ const SENTINELLES: CardDefinition[] = [
     cost: 6,
     maxCopies: 1,
     text:
-      "Jouable uniquement si vous contrôlez au moins 3 couleurs différentes. Ce tour, toutes vos Sentinelles " +
-      "Chromatiques bénéficient également de leur propre Signal.",
+      "Jouable uniquement si vous contrôlez au moins 3 couleurs différentes. Ce tour, toutes vos unités Sentinelle " +
+      "Chromatique bénéficient également de leur propre Signal.",
     playableOnlyIf: { controllerChromaticColorsAtLeast: 3 },
     onPlayEffects: [
       {
@@ -1525,7 +1525,7 @@ const SENTINELLES: CardDefinition[] = [
     chromatic: { emitsSignal: true, benefitsFromOwnSignals: true },
     chromaticAssemblage: { sentinels: 4, reasonCost: 2 },
     text:
-      "Assemblage Chromatique — Avec 4 couleurs de Sentinelles alliées : mettez-en 4 différentes au Cimetière " +
+      "Assemblage Chromatique — Avec 4 couleurs d'unités Sentinelle alliées : mettez-en 4 différentes au Cimetière " +
       "(sans destruction) pour jouer ce Géant depuis votre main pour 2 Raison. Il acquiert leurs 4 couleurs et " +
       "Signaux.",
   },
@@ -1544,7 +1544,7 @@ const SENTINELLES: CardDefinition[] = [
     chromatic: { emitsSignal: true, benefitsFromOwnSignals: true },
     chromaticAssemblage: { sentinels: 4, reasonCost: 2 },
     text:
-      "Assemblage Chromatique — Avec 4 couleurs de Sentinelles alliées : mettez-en 4 différentes au Cimetière " +
+      "Assemblage Chromatique — Avec 4 couleurs d'unités Sentinelle alliées : mettez-en 4 différentes au Cimetière " +
       "(sans destruction) pour jouer ce Géant depuis votre main pour 2 Raison. Il acquiert leurs 4 couleurs et " +
       "Signaux. Arrivé par Assemblage : ajoutez la 5e couleur et son Signal.",
     abilities: [

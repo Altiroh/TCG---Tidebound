@@ -73,6 +73,15 @@ interface CardAlternateArt {
 /** Cartes qui ont une illustration alternative. Ordre alphabétique des ids. */
 const ALTERNATE_ARTS: Record<string, CardAlternateArt> = {
   "aberration-vorace": { styled: true, fullArt: { textePeint: "À son arrivée — Sabordez une Créature alliée : gagne +2/+2 permanent." } },
+  // Styled et Full-Art livrées le 28/10/2026.
+  "amiral-griffenoire": {
+    styled: true,
+    fullArt: {
+      textePeint:
+        "Garde · Contournement — À son arrivée — Jusqu'à deux autres unités alliées gagnent Voile. Une fois par tour, lorsqu'une unité alliée perd Voile, placez un marqueur +1/+1 sur toutes vos unités.",
+      ecartMineur: "Mots-clés de tête liés par « · » et un tiret, comme la face de carte, au lieu de « Garde. Contournement. ».",
+    },
+  },
   "bretteuse-au-bord": {
     styled: true,
     fullArt: { textePeint: "Après qu'elle attaque, elle subit 1 dégât. La première fois à chaque tour qu'elle survit à des dégâts, elle gagne +1 Puissance." },
@@ -122,6 +131,13 @@ const ALTERNATE_ARTS: Record<string, CardAlternateArt> = {
     styled: true,
     fullArt: { textePeint: "À l'arrivée : gagne +?/+0 tant qu'il reste en jeu. Réussite critique : gagne Pied marin ce tour. Échec critique : subit 1 dégât." },
   },
+  "gros-bisou": {
+    styled: true,
+    fullArt: {
+      textePeint: "Chaîne — Lorsqu'une Créature adverse attaque, elle perd 2 Puissance pour cette attaque.",
+      aRepeindre: "« une Créature adverse » au lieu de « une unité adverse » (28/10/2026), et la ligne de type peinte dit « Créature — Poisson » pour un Objet.",
+    },
+  },
   "il-capitano-naufrage": { styled: true, fullArt: { textePeint: "La première fois qu'il subit des dégâts, il perd définitivement 3 Puissance et 2 Résistance." } },
   "jugement-du-phare": {
     styled: true,
@@ -137,6 +153,13 @@ const ALTERNATE_ARTS: Record<string, CardAlternateArt> = {
   },
   "la-taverne-avant-le-donjon": { styled: true, fullArt: { textePeint: "Première unité alliée renvoyée en main pendant votre tour : récupérez 1 Ancrage." } },
   "lampe-de-pont-rouge": { styled: true, fullArt: { textePeint: "Équipez un Marin. Tant que vous êtes en Houle ou Tempête, il gagne +1 Puissance." } },
+  "lappat-a-moustaches": {
+    styled: true,
+    fullArt: {
+      textePeint: "Les autres unités Félin gagnent +2/+2.",
+      aRepeindre: "« alliées » manque : la carte dit « Les autres unités Félin alliées gagnent +2/+2. ».",
+    },
+  },
   "le-brise-ligne": {
     styled: true,
     // Repeinte le 18/10/2026 : « au moins » rétabli.
@@ -158,6 +181,14 @@ const ALTERNATE_ARTS: Record<string, CardAlternateArt> = {
     fullArt: {
       textePeint:
         "À l'arrivée : sur 4+, gagne Pied marin ce tour. Réussite critique : lorsqu'il attaque ce tour, infligez aussi 2 dégâts au Navire adverse.",
+    },
+  },
+  "le-grand-bienfaiteur-abyssal": {
+    styled: true,
+    fullArt: {
+      textePeint:
+        "Garde · Contournement — À son arrivée — Placez un marqueur Souillure sur toutes les autres Créatures non bénies. Les Créatures alliées bénies gagnent +1 Résistance. À votre début de tour — Infligez 2 dégâts à une Créature adverse souillée de votre choix.",
+      aRepeindre: "« Créature(s) » au lieu de « unité(s) » (décision du 28/10/2026).",
     },
   },
   "le-nain-qui-connait-un-raccourci": {
@@ -184,6 +215,7 @@ const ALTERNATE_ARTS: Record<string, CardAlternateArt> = {
     // Repeinte le 18/10/2026 : « À » accentué.
     fullArt: { textePeint: "À son arrivée, piochez 1 carte puis défaussez 1 carte." },
   },
+  "mousse-patapouf": { styled: true, fullArt: { textePeint: "À son arrivée — Si la mer est au Calme, cette unité gagne Voile." } },
   "on-avait-dit-tous-ensemble": {
     styled: true,
     // Repeinte le 20/10/2026 : « qu'une carte Mort-vivant » rétabli.

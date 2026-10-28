@@ -273,9 +273,9 @@ export const LOT18_SET: CardDefinition[] = [
     durationTurns: 4,
     text:
       "Durée : 4 tours de table. Une fois par tour, lorsqu'un Mort-vivant allié est détruit ou Sabordé, ou " +
-      "qu'une carte Mort-vivant est défaussée : vos Mort-vivants gagnent +1/+1 tant que cette Structure est en " +
+      "qu'une carte Mort-vivant est défaussée : vos unités Mort-vivant gagnent +1/+1 tant que cette Structure est en " +
       "jeu.",
-    abilities: meuteQuiTombe("ceuxDenBas", "vos Mort-vivants gagnent +1 / +1 tant que Ceux d'en bas est en jeu.", [
+    abilities: meuteQuiTombe("ceuxDenBas", "vos unités Mort-vivant gagnent +1 / +1 tant que Ceux d'en bas est en jeu.", [
       {
         type: "buff",
         target: { kind: "allAllyUnitsWithSubtype", subtype: MORT_VIVANT },
