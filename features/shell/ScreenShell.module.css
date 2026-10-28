@@ -892,6 +892,27 @@
 }
 
 /*
+ * PORTABLE ÉTROIT, ÉCRAN À ONGLETS PROPRES (1001–1240 px) — le Market
+ * porte quatre rayons à gauche, la réserve de boosters et le compte à
+ * droite : même sans logo (masqué sous 1520 px), il manquait ~100 px, et
+ * le compte repassait SOUS le dernier onglet. Resserrer le compte n'en
+ * rendait qu'une quarantaine. Comme sur le téléphone étroit (plus bas), on
+ * CHOISIT ce qui part : le pseudo, le niveau et la jauge d'XP, à un clic de
+ * là dans le carnet de bord qu'ouvre l'avatar. Restent l'avatar, les
+ * soldes et la réserve.
+ */
+@media (max-width: 1240px) {
+  .header[data-tabs] .headerRight {
+    min-width: 0;
+    gap: 8px;
+  }
+
+  .header[data-tabs] .accountIdentity {
+    display: none;
+  }
+}
+
+/*
  * TÉLÉPHONE ÉTROIT EN PAYSAGE — l'aveu qu'une ligne peut être pleine.
  *
  * Sous ~780 px, tout comprimer ne suffit plus : un iPhone 8 couché offre
