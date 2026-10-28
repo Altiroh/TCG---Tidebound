@@ -68,8 +68,7 @@ export const BOOSTER_ARTWORKS: Readonly<Record<string, Readonly<Record<string, r
     lentendant: STYLED_ET_FULL_ART,
     "reine-des-charognes": STYLED_ET_FULL_ART,
   },
-  // Livrées le 28/10/2026. Gros Bisou !, L'Appât et le Grand-Bienfaiteur
-  // n'offrent que leur Styled tant que leur Full-Art est à repeindre.
+  // Livrées le 28/10/2026 (trois Full-Art repeintes le même jour).
   [BOOSTER_LA_MAREE_BENIE]: {
     "amiral-griffenoire": STYLED_ET_FULL_ART,
     "gros-bisou": STYLED_ET_FULL_ART,

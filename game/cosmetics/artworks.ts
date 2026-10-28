@@ -131,13 +131,8 @@ const ALTERNATE_ARTS: Record<string, CardAlternateArt> = {
     styled: true,
     fullArt: { textePeint: "À l'arrivée : gagne +?/+0 tant qu'il reste en jeu. Réussite critique : gagne Pied marin ce tour. Échec critique : subit 1 dégât." },
   },
-  "gros-bisou": {
-    styled: true,
-    fullArt: {
-      textePeint: "Chaîne — Lorsqu'une Créature adverse attaque, elle perd 2 Puissance pour cette attaque.",
-      aRepeindre: "« une Créature adverse » au lieu de « une unité adverse » (28/10/2026), et la ligne de type peinte dit « Créature — Poisson » pour un Objet.",
-    },
-  },
+  // Repeinte le 28/10/2026 : « une unité adverse », ligne de type « Objet ».
+  "gros-bisou": { styled: true, fullArt: { textePeint: "Chaîne — Lorsqu'une unité adverse attaque, elle perd 2 Puissance pour cette attaque." } },
   "il-capitano-naufrage": { styled: true, fullArt: { textePeint: "La première fois qu'il subit des dégâts, il perd définitivement 3 Puissance et 2 Résistance." } },
   "jugement-du-phare": {
     styled: true,
@@ -153,13 +148,8 @@ const ALTERNATE_ARTS: Record<string, CardAlternateArt> = {
   },
   "la-taverne-avant-le-donjon": { styled: true, fullArt: { textePeint: "Première unité alliée renvoyée en main pendant votre tour : récupérez 1 Ancrage." } },
   "lampe-de-pont-rouge": { styled: true, fullArt: { textePeint: "Équipez un Marin. Tant que vous êtes en Houle ou Tempête, il gagne +1 Puissance." } },
-  "lappat-a-moustaches": {
-    styled: true,
-    fullArt: {
-      textePeint: "Les autres unités Félin gagnent +2/+2.",
-      aRepeindre: "« alliées » manque : la carte dit « Les autres unités Félin alliées gagnent +2/+2. ».",
-    },
-  },
+  // Repeinte le 28/10/2026 : « alliées » rétabli.
+  "lappat-a-moustaches": { styled: true, fullArt: { textePeint: "Les autres unités Félin alliées gagnent +2/+2." } },
   "le-brise-ligne": {
     styled: true,
     // Repeinte le 18/10/2026 : « au moins » rétabli.
@@ -183,12 +173,13 @@ const ALTERNATE_ARTS: Record<string, CardAlternateArt> = {
         "À l'arrivée : sur 4+, gagne Pied marin ce tour. Réussite critique : lorsqu'il attaque ce tour, infligez aussi 2 dégâts au Navire adverse.",
     },
   },
+  // Repeinte le 28/10/2026 : « unités ».
   "le-grand-bienfaiteur-abyssal": {
     styled: true,
     fullArt: {
       textePeint:
-        "Garde · Contournement — À son arrivée — Placez un marqueur Souillure sur toutes les autres Créatures non bénies. Les Créatures alliées bénies gagnent +1 Résistance. À votre début de tour — Infligez 2 dégâts à une Créature adverse souillée de votre choix.",
-      aRepeindre: "« Créature(s) » au lieu de « unité(s) » (décision du 28/10/2026).",
+        "Garde · Contournement — À son arrivée — Placez un marqueur Souillure sur toutes les autres unités non bénies. Les unités alliées bénies gagnent +1 Résistance. À votre début de tour — Infligez 2 dégâts à une unité adverse souillée de votre choix.",
+      ecartMineur: "Mots-clés de tête liés par « · » et un tiret, comme la face de carte, au lieu de « Garde. Contournement. ».",
     },
   },
   "le-nain-qui-connait-un-raccourci": {
@@ -253,11 +244,8 @@ const ALTERNATE_ARTS: Record<string, CardAlternateArt> = {
   },
   "vigie-aux-fissures": {
     styled: true,
-    // Repeinte le 20/10/2026 : « survit à des dégâts » rétabli.
-    fullArt: {
-      textePeint: "La première fois à chaque tour qu'une autre unité que vous contrôlez survit à des dégâts, piochez 1 carte puis défaussez-en 1.",
-      aRepeindre: "Défausse retirée le 27/10/2026 : le texte peint dit encore « puis défaussez-en 1 ».",
-    },
+    // Repeinte le 28/10/2026 : la défausse retirée le 27/10 n'y est plus.
+    fullArt: { textePeint: "La première fois à chaque tour qu'une autre unité que vous contrôlez survit à des dégâts, piochez 1 carte." },
   },
 };
 
