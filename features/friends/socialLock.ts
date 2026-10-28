@@ -9,7 +9,8 @@
  * alerte d'échange, présentation `VersusIntro`). Même modèle que
  * `features/online/friendlyMatchLock.ts`.
  */
-export const SOCIAL_BLOQUE_HORS_DEV = true;
+// OUVERT À TOUS le 28/10/2026 (décision du propriétaire).
+export const SOCIAL_BLOQUE_HORS_DEV = false;
 
 export const SOCIAL_INDISPONIBLE = "Cette fonctionnalité n'est pas encore ouverte.";
 

@@ -182,9 +182,8 @@ describe("salon : deck, prêt, compte à rebours, départ", () => {
     expect(await lobby.setLobbyReady(id, true)).toMatchObject({ ok: false });
   });
 
-  it("hors mode Dev, le salon est fermé", async () => {
+  it("hors mode Dev aussi, le salon est ouvert (volet social ouvert à tous, 28/10/2026)", async () => {
     devMode = false;
-    expect(await lobby.inviteToBattle(BOB)).toMatchObject({ ok: false });
-    expect(await friends.fetchSocialMail()).toBeNull();
+    expect(await friends.fetchSocialMail()).not.toBeNull();
   });
 });

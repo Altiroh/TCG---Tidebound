@@ -266,25 +266,23 @@ describe("icône Amis du bandeau", () => {
     expect(board!.social.incoming).toEqual([{ userId: CAROL, name: "Carol" }]);
     expect(board!.trades.incoming).toHaveLength(1);
 
+    // Ouvert à tous (28/10/2026) : hors mode Dev, la même pastille.
     devMode = false;
-    expect(await friends.fetchFriendsBadge()).toBeNull();
-    expect(await friends.fetchFriendsBoard()).toBeNull();
+    expect(await friends.fetchFriendsBadge()).toEqual({ waiting: 2, invitations: 0 });
   });
 });
 
 describe("hors mode Dev", () => {
-  it("le volet social est fermé : rien ne se lit ni ne s'écrit", async () => {
+  it("le volet social est ouvert à tous (28/10/2026) : échanges, vitrine et fiches répondent", async () => {
     befriend(ALICE, BOB);
     owns(ALICE, X!, 1);
     owns(BOB, Y!, 1);
     devMode = false;
-    expect(await trades.proposeTrade(BOB, [{ cardId: X, quantity: 1 }], [{ cardId: Y, quantity: 1 }])).toMatchObject({ ok: false });
-    expect(await trades.fetchTrades()).toBeNull();
-    expect(await showcaseActions.updateShowcase([{ cardId: X, artwork: "classique", finish: "classique" }])).toMatchObject({ ok: false });
-    expect(await friends.fetchPlayerCard(BOB)).toBeNull();
-    expect(await friends.addFriendByCode("CAROL234")).toMatchObject({ ok: false });
-    expect(db.table("card_trades")).toHaveLength(0);
-    expect(db.table("player_showcase")).toHaveLength(0);
+    expect(await trades.proposeTrade(BOB, [{ cardId: X, quantity: 1 }], [{ cardId: Y, quantity: 1 }])).toMatchObject({ ok: true });
+    expect(await trades.fetchTrades()).not.toBeNull();
+    expect(await showcaseActions.updateShowcase([{ cardId: X, artwork: "classique", finish: "classique" }])).toMatchObject({ ok: true });
+    expect(await friends.fetchPlayerCard(BOB)).not.toBeNull();
+    expect(db.table("card_trades")).toHaveLength(1);
   });
 });
 
