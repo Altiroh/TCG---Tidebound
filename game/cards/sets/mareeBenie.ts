@@ -1145,7 +1145,7 @@ export const EQUIPAGE_FELIN_SET: CardDefinition[] = [
     health: 1,
     // Notion : Rare, 3 exemplaires par deck — écart signalé, pas corrigé (CLAUDE.md, règle 9).
     maxCopies: 3,
-    text: "Les autres unités Félines alliées gagnent +2/+2.",
+    text: "Les autres unités Félin alliées gagnent +2/+2.",
     // Une aura ne s'applique jamais à sa source : « les autres ». Plusieurs Appâts s'additionnent.
     auraBuffControllerCardTypes: { targetTypes: ["marin", "creature"], targetSubtype: "felin", attackAmount: 2, healthAmount: 2 },
   }),
