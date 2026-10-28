@@ -69,11 +69,21 @@ export interface LandeFloorProps {
    * déborder du fond : la pièce est alors coupée par le bord de l'écran).
    * `flip` : la pièce en miroir, tournée vers l'autre côté. `fx` : la pièce
    * se clique, et joue son effet (`fumeeVerte` : des volutes vertes et
-   * puantes s'en échappent). `hang` : la pièce est PENDUE (une enseigne sous
+   * puantes s'en échappent ; `fondre` : une seule fois, la pièce fond et
+   * laisse à sa place `melted`, l'image de ce qu'elle devient — le bloc de
+   * glace de Brumesel et sa flaque). `hang` : la pièce est PENDUE (une enseigne sous
    * sa poutre) ; au-dessus de cette fraction de sa hauteur elle reste fixe,
    * dessous elle se balance au vent autour de ce point d'attache.
    */
-  frame: { src: string; box: readonly [number, number, number, number]; flip?: boolean; fx?: "fumeeVerte"; label?: string; hang?: number }[];
+  frame: {
+    src: string;
+    box: readonly [number, number, number, number];
+    flip?: boolean;
+    fx?: "fumeeVerte" | "fondre";
+    melted?: string;
+    label?: string;
+    hang?: number;
+  }[];
   /** Flammes du décor peint (bougies, torches) : une lueur chaude vacille sur chacune. [x, y, taille], en fractions du fond. */
   glows?: readonly (readonly [number, number, number])[];
   /** Zone du sol faite pour le plateau (`LandeScene.fit`) ; à défaut, celle de la table. */
@@ -240,6 +250,8 @@ function FloorScene({ floor, box, className }: { floor: LandeFloorProps; box: CS
   // Bouffées en cours : chaque clic sur une pièce à effet en relance une.
   const [puffs, setPuffs] = useState<Puff[]>([]);
   const nextPuff = useRef(0);
+  // Pièces déjà fondues (`fx: "fondre"`) : la transition ne se joue qu'une fois.
+  const [melted, setMelted] = useState<ReadonlySet<string>>(new Set());
   function puff(target: HTMLElement) {
     const r = target.getBoundingClientRect();
     const id = nextPuff.current++;
@@ -277,6 +289,29 @@ function FloorScene({ floor, box, className }: { floor: LandeFloorProps; box: CS
           scale: wall.flip ? "-1 1" : undefined,
           animationDelay: `${floor.delayMs + WALLS_AFTER_MS + i * WALL_STAGGER_MS}ms`,
         } as CSSProperties;
+        if (wall.fx === "fondre") {
+          const fondu = melted.has(wall.src);
+          return (
+            <button
+              key={wall.src}
+              type="button"
+              className={`${styles.landeWall} ${styles.landeProp} ${styles.landeGlace}`}
+              data-fondu={fondu ? "" : undefined}
+              style={style}
+              disabled={fondu}
+              onClick={() => setMelted((set) => new Set(set).add(wall.src))}
+              aria-label={fondu ? undefined : wall.label}
+              title={fondu ? undefined : wall.label}
+            >
+              {wall.melted && (
+                // eslint-disable-next-line @next/next/no-img-element -- décor local
+                <img src={wall.melted} alt="" draggable={false} className={styles.landeGlaceFlaque} />
+              )}
+              {/* eslint-disable-next-line @next/next/no-img-element -- décor local */}
+              <img src={wall.src} alt="" draggable={false} className={styles.landeGlaceBloc} />
+            </button>
+          );
+        }
         return wall.fx ? (
           <button
             key={wall.src}

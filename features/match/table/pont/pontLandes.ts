@@ -32,6 +32,23 @@ export const PONT_LANDE_FLOORS: Record<string, LandeFloorProps> = {
       [0.966, 0.733, 0.1],
     ],
   },
+  // Brumesel (28/10/2026) : des pavés givrés, et un gros bloc de glace à
+  // gauche (calé sur la maquette) qui, cliqué, fond une fois en flaque.
+  brumesel: {
+    key: "pont-brumesel",
+    src: "/assets/landes/brumesel/pont-sol.webp",
+    delayMs: 480,
+    origin: [0.19, 0.49],
+    frame: [
+      {
+        src: "/assets/landes/brumesel/glace.webp",
+        melted: "/assets/landes/brumesel/glace-fondue.webp",
+        box: [-0.006, 0.159, 0.1317, 0.173],
+        fx: "fondre",
+        label: "Bloc de glace",
+      },
+    ],
+  },
   "pluie-corrosive": pontSol("pluie-corrosive"),
   "calme-trompeur": pontSol("calme-trompeur"),
   // Les feux derrière les vitres, aux quatre coins.
