@@ -4,11 +4,10 @@ import { FakeDatabase, createFakeClient } from "./fakeSupabase";
 /**
  * PRÉCONSTRUITS DE LA MARÉE BÉNIE (28/10/2026).
  *
- * La Communion des Profondeurs (Lot 20) s'achète au Jeton. L'Équipage
- * Félin (Lot 21) est VERROUILLÉ : ses cartes attendent leur illustration
- * (`HELD_BACK_SET`), il se montre au rayon mais ne s'achète pas, n'est pas
- * tiré par le bot et n'est pas semé en base. Le verrou se DÉDUIT des
- * cartes : il n'est écrit nulle part à la main.
+ * La Communion des Profondeurs (Lot 20) et L'Équipage Félin (Lot 21)
+ * s'achètent au Jeton. Le second a d'abord été VERROUILLÉ tant que ses
+ * cartes attendaient leur illustration : le verrou se DÉDUIT des cartes
+ * (`deckOfferFor`), il n'est écrit nulle part à la main.
  */
 
 const USER = "11111111-1111-1111-1111-111111111111";
@@ -23,9 +22,10 @@ vi.mock("@/lib/supabase/server", () => ({
 }));
 vi.mock("next/cache", () => ({ revalidatePath: () => {} }));
 
-const { readDeckCatalog, unlockPreconDeck } = await import("@/features/decks/catalogService");
+const { unlockPreconDeck } = await import("@/features/decks/catalogService");
 const { resolveMatchDeck } = await import("@/features/decks/matchDeck");
 const { PRECON_DECKS, SHOP_DECKS, catalogDeckById, isOpenDeck, shelfOrder, validateDeckList } = await import("@/game");
+const { deckOfferFor } = await import("@/game/cards/decks/catalog");
 const { HELD_BACK_SET, CORE_SET } = await import("@/game/cards/sets/core");
 const { systemDeckRows, systemDeckCardRows } = await import("@/scripts/seedRows");
 
@@ -52,60 +52,47 @@ describe("La Marée Bénie — les deux préconstruits", () => {
     expect(PRECON_DECKS.slice(-3).every((deck) => deck.offer === "starter")).toBe(true);
   });
 
-  it("La Communion est au rayon au Jeton, ouverte, et ne joue aucune carte retenue", () => {
-    const deck = catalogDeckById(COMMUNION)!;
-    expect(deck.offer).toBe("shop");
-    expect(isOpenDeck(deck)).toBe(true);
-    expect(SHOP_DECKS.some((entry) => entry.id === COMMUNION)).toBe(true);
+  it("sont au rayon au Jeton, ouverts, et ne jouent que des cartes du catalogue", () => {
+    expect(HELD_BACK_SET).toEqual([]);
     const catalogue = new Set(CORE_SET.map((card) => card.id));
-    for (const cardId of deck.cardIds) expect(catalogue.has(cardId), cardId).toBe(true);
+    for (const id of [COMMUNION, FELINS]) {
+      const deck = catalogDeckById(id)!;
+      expect(deck.offer, id).toBe("shop");
+      expect(isOpenDeck(deck), id).toBe(true);
+      expect(SHOP_DECKS.some((entry) => entry.id === id), id).toBe(true);
+      for (const cardId of deck.cardIds) expect(catalogue.has(cardId), cardId).toBe(true);
+    }
   });
 
-  it("L'Équipage Félin est verrouillé PARCE QU'il joue des cartes retenues", () => {
+  it("le verrou se DÉDUIT des cartes : une carte retenue suffit, et il s'en va avec elle", () => {
     const deck = catalogDeckById(FELINS)!;
-    const retenues = new Set(HELD_BACK_SET.map((card) => card.id));
-    expect(deck.cardIds.some((cardId) => retenues.has(cardId))).toBe(true);
-    expect(deck.offer).toBe("locked");
-    expect(isOpenDeck(deck)).toBe(false);
-    expect(SHOP_DECKS.some((entry) => entry.id === FELINS)).toBe(false);
-    // Après le rayon au Jeton, avant les retirés.
-    expect(shelfOrder(deck)).toBeGreaterThan(shelfOrder(catalogDeckById(COMMUNION)!));
-    expect(shelfOrder(deck)).toBeLessThan(shelfOrder(catalogDeckById("la-forteresse")!));
+    expect(deckOfferFor(deck, new Set(["mousse-patapouf"]))).toBe("locked");
+    expect(deckOfferFor(deck, new Set())).toBe("shop");
+    // Un starter reste un starter, un retiré reste retiré.
+    const starter = catalogDeckById("le-rempart-vivant")!;
+    expect(deckOfferFor(starter, new Set([starter.cardIds[0]!]))).toBe("starter");
+    expect(deckOfferFor(catalogDeckById("la-forteresse")!, new Set())).toBe("retired");
+    // Un verrouillé reste au rayon, entre le Jeton et les retirés, et n'est pas ouvert.
+    const verrouille = { ...deck, offer: "locked" as const };
+    expect(shelfOrder(verrouille)).toBeGreaterThan(shelfOrder(catalogDeckById(COMMUNION)!));
+    expect(shelfOrder(verrouille)).toBeLessThan(shelfOrder(catalogDeckById("la-forteresse")!));
+    expect(isOpenDeck(verrouille)).toBe(false);
   });
 
-  it("le rayon MONTRE l'Équipage Félin, non débloqué", async () => {
-    const view = await readDeckCatalog(USER);
-    const felins = view.decks.find((entry) => entry.deck.id === FELINS);
-    expect(felins).toBeDefined();
-    expect(felins!.unlocked).toBe(false);
-  });
-
-  it("le serveur refuse de le vendre, sans toucher au Jeton ni appeler la base", async () => {
-    const result = await unlockPreconDeck(USER, FELINS);
-    expect(result.ok).toBe(false);
-    expect(result.error).toMatch(/pas encore disponible/);
-    expect(db.one("player_progression", { user_id: USER })?.precon_tokens).toBe(3);
-    expect(db.rpcCalls.some((call) => call.fn === "unlock_precon_deck")).toBe(false);
-  });
-
-  it("la base le refuse aussi (migration 20261118120000)", async () => {
-    const { data } = await createFakeClient(db).rpc("unlock_precon_deck", { p_user_id: USER, p_deck_id: FELINS });
-    expect(data.ok).toBe(false);
-  });
-
-  it("La Communion se débloque au Jeton et devient jouable", async () => {
-    const result = await unlockPreconDeck(USER, COMMUNION);
-    expect(result.ok).toBe(true);
-    expect(result.tokens).toBe(2);
+  it("chacun se débloque au Jeton et devient jouable", async () => {
+    expect(await unlockPreconDeck(USER, COMMUNION)).toMatchObject({ ok: true, tokens: 2 });
+    expect(await unlockPreconDeck(USER, FELINS)).toMatchObject({ ok: true, tokens: 1 });
     expect((await resolveMatchDeck(USER, COMMUNION)).ok).toBe(true);
-    // Le Félin, lui, n'entre pas en partie : personne ne l'a débloqué.
-    expect(await resolveMatchDeck(USER, FELINS)).toMatchObject({ ok: false, reason: "locked" });
+    expect((await resolveMatchDeck(USER, FELINS)).ok).toBe(true);
   });
 
-  it("le seed n'écrit pas le deck verrouillé (ses cartes ne sont pas dans `cards`)", () => {
-    expect(systemDeckRows().some((row) => row.id === FELINS)).toBe(false);
-    expect(systemDeckCardRows().some((row) => row.system_deck_id === FELINS)).toBe(false);
-    expect(systemDeckRows().some((row) => row.id === COMMUNION)).toBe(true);
+  it("la base vend aussi L'Équipage Félin (migration 20261119120000)", async () => {
+    const { data } = await createFakeClient(db).rpc("unlock_precon_deck", { p_user_id: USER, p_deck_id: FELINS });
+    expect(data.ok).toBe(true);
+  });
+
+  it("le seed écrit les deux decks, et seulement des cartes de la table `cards`", () => {
+    for (const id of [COMMUNION, FELINS]) expect(systemDeckRows().some((row) => row.id === id), id).toBe(true);
     const catalogue = new Set(CORE_SET.map((card) => card.id));
     for (const row of systemDeckCardRows()) expect(catalogue.has(row.card_id as string), String(row.card_id)).toBe(true);
   });

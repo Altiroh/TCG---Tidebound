@@ -221,17 +221,21 @@ const FALLBACK_META: DeckMeta = { style: "Polyvalent", difficulty: 3, mechanics:
 
 const HELD_BACK_IDS: ReadonlySet<string> = new Set(HELD_BACK_SET.map((card) => card.id));
 
+/**
+ * Comment ce deck s'obtient. Un starter l'est par son identifiant
+ * (`starters.ts`), même si sa méta l'oubliait : il ne doit jamais devenir
+ * achetable par omission. Un deck qui joue une carte retenue (`heldBack`)
+ * reste verrouillé, quoi que dise sa méta.
+ */
+export function deckOfferFor(deck: DeckList, heldBack: ReadonlySet<string> = HELD_BACK_IDS): DeckOffer {
+  if (STARTER_DECK_IDS.includes(deck.id)) return "starter";
+  if (deck.cardIds.some((cardId) => heldBack.has(cardId))) return "locked";
+  return DECK_META[deck.id]?.offer ?? "shop";
+}
+
 function withMeta(deck: DeckList): CatalogDeck {
   const meta = DECK_META[deck.id] ?? FALLBACK_META;
-  // Un starter l'est par son identifiant (`starters.ts`), même si sa méta
-  // l'oubliait : il ne doit jamais devenir achetable par omission. Un deck
-  // qui joue une carte retenue reste verrouillé, quoi que dise sa méta.
-  const offer: DeckOffer = STARTER_DECK_IDS.includes(deck.id)
-    ? "starter"
-    : deck.cardIds.some((cardId) => HELD_BACK_IDS.has(cardId))
-      ? "locked"
-      : (meta.offer ?? "shop");
-  return { ...deck, ...meta, offer };
+  return { ...deck, ...meta, offer: deckOfferFor(deck) };
 }
 
 /**

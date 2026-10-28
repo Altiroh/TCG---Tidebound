@@ -1261,9 +1261,9 @@ export const LA_MAREE_BENIE_SET: CardDefinition[] = [...BIENFAITS_DU_FOND_SET, .
  * booster tant que leur visuel n'est pas livré. Une carte en sort quand son
  * illustration arrive — retirer son id de cette liste suffit.
  */
-// 28/10/2026 : l'Équipage Félin a reçu ses illustrations — toutes sauf La
-// Patte du Destin, qui reste en attente avec L'Ancre des Marées.
-const EN_ATTENTE_D_ILLUSTRATION: ReadonlySet<string> = new Set(["la-patte-du-destin", "lancre-des-marees"]);
+// 28/10/2026 : toutes les illustrations sont livrées (Équipage Félin, La
+// Patte du Destin, L'Ancre des Marées) — plus rien n'attend.
+const EN_ATTENTE_D_ILLUSTRATION: ReadonlySet<string> = new Set<string>([]);
 
 /** Les cartes du booster distribuées aujourd'hui. */
 export const LA_MAREE_BENIE_PUBLIEES: CardDefinition[] = LA_MAREE_BENIE_SET.filter((def) => !EN_ATTENTE_D_ILLUSTRATION.has(def.id));

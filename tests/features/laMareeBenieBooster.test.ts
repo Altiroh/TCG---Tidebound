@@ -88,13 +88,13 @@ describe("La Marée Bénie — le pool", () => {
     expect(BOOSTER_POOLS[MAREE]!.filter((id) => id.endsWith("-abyssal")).sort()).toEqual(ABYSSALES);
   });
 
-  it("La Patte du Destin et L'Ancre des Marées attendent leur illustration : hors catalogue et hors pool, mais jouables", () => {
+  it("plus aucune carte n'attend son illustration : toutes au catalogue et au pool", () => {
     const retenues = LA_MAREE_BENIE_EN_ATTENTE.map((def) => def.id);
-    expect(retenues.sort()).toEqual(["la-patte-du-destin", "lancre-des-marees"]);
-    for (const id of retenues) {
-      expect(CORE_SET.some((def) => def.id === id), id).toBe(false);
-      expect(BOOSTER_POOLS[MAREE]).not.toContain(id);
-      expect(getCardDefinition(id).id).toBe(id);
+    expect(retenues).toEqual([]);
+    for (const def of LA_MAREE_BENIE_SET) {
+      expect(CORE_SET.some((card) => card.id === def.id), def.id).toBe(true);
+      expect(BOOSTER_POOLS[MAREE], def.id).toContain(def.id);
+      expect(getCardDefinition(def.id).id).toBe(def.id);
     }
   });
 

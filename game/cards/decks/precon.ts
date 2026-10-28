@@ -1212,11 +1212,10 @@ export const DECK_LA_COMMUNION_DES_PROFONDEURS: DeckList = {
  * qui retombent sur leurs pattes : chaque Voile consommé nourrit les
  * marqueurs +1/+1 du reste de l'équipage.
  *
- * Composé au labo, comme La Communion (même page Notion). VERROUILLÉ tant
- * que l'Équipage Félin attend ses illustrations (`HELD_BACK_SET`) : visible
- * au rayon, mais ni achetable ni tiré par le bot (`offer: "locked"`, déduit
- * dans `catalog.ts`). Il s'ouvre seul quand la dernière de ses cartes
- * quitte la liste d'attente.
+ * Composé au labo, comme La Communion (même page Notion). Verrouillé tant
+ * que l'Équipage Félin attendait ses illustrations (`offer: "locked"`,
+ * déduit dans `catalog.ts`) ; ouvert au Jeton depuis leur arrivée
+ * (28/10/2026).
  *
  * Trois Appâts à Moustaches (+2/+2 à tous les Félins) le portaient à 65 % :
  * un seul reste. Mesuré (bot moyen, 30 parties par paire) : 55,7 % sous Le
