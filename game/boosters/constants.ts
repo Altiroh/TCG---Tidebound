@@ -79,18 +79,23 @@ export const RECYCLE_VALUE: Record<CardRarity, number> = Object.fromEntries(
 ) as Record<CardRarity, number>;
 
 /**
- * Pity Abyssal — VERROUILLÉ : « Après 10 boosters sans Abyssale, la chance
- * du slot Profondeur d'être Abyssale augmente progressivement. Au 20e
- * booster maximum, une Abyssale est garantie. »
+ * Pity Abyssal : « après N boosters sans Abyssale, la chance du slot
+ * Profondeur d'être Abyssale augmente progressivement ; au booster M, une
+ * Abyssale est garantie ».
+ *
+ * RELEVÉ le 28/10/2026 (décision du propriétaire : l'Abyssale doit être
+ * plus rare que la Légendaire) : 10 → 50 et 20 → 80, avec un slot
+ * Profondeur à 1 % d'Abyssale (10 % avant). Une Abyssale sort désormais
+ * tous les ~43 boosters en moyenne, une Légendaire tous les ~33.
  *
  * `packsSinceAbyssal` compte les boosters ouverts SANS Abyssale ; le
  * booster en cours d'ouverture est donc le n° `packsSinceAbyssal + 1`.
  */
 export const PITY = {
-  /** Le renforcement commence au booster suivant les 10 premiers sans Abyssale. */
-  rampStartsAfterPacks: 10,
+  /** Le renforcement commence au booster suivant les 50 premiers sans Abyssale. */
+  rampStartsAfterPacks: 50,
   /** Numéro du booster où l'Abyssale est garantie. */
-  guaranteeAtPack: 20,
+  guaranteeAtPack: 80,
   /**
    * Boosters d'affilée sans la moindre carte NOUVELLE au bout desquels le
    * suivant en garantit une (décision du 2026-09-17).
@@ -104,13 +109,14 @@ export const PITY = {
 } as const;
 
 /**
- * Chance de base du slot Profondeur d'être Abyssale, avant pity —
- * VERROUILLÉ (slot Profondeur : 55% Peu commune / 35% Rare / 10% Abyssale).
+ * Chance de base du slot Profondeur d'être Abyssale, avant pity (slot
+ * Profondeur depuis le 28/10/2026 : 60,5 % Peu commune / 38,5 % Rare /
+ * 1 % Abyssale — poids 121 / 77 / 2, migration 20261120120000).
  * Dérivée de `weighted_rarities` en base plutôt que codée en dur ; cette
  * constante ne sert que de repli si un slot pondéré n'exprime aucun poids
  * Abyssal alors que le pity doit s'appliquer.
  */
-export const DEPTH_SLOT_BASE_ABYSSAL_CHANCE = 0.1;
+export const DEPTH_SLOT_BASE_ABYSSAL_CHANCE = 0.01;
 
 /**
  * Prix du booster d'entrée — RÉEXPORT de `game/economy/constants.ts`.

@@ -36,9 +36,9 @@ export function abyssalChanceWithPity(packsSinceAbyssal: number, baseChance: num
   if (packNumber >= PITY.guaranteeAtPack) return 1;
   if (packNumber <= PITY.rampStartsAfterPacks) return baseChance;
 
-  // Montée linéaire du booster (rampStartsAfterPacks + 1) — le 11e — jusqu'au
-  // booster garanti exclu. Au 11e la chance est déjà strictement supérieure
-  // à la base ("augmente progressivement"), au 20e elle vaut 1 (branche
+  // Montée linéaire du booster (rampStartsAfterPacks + 1) — le 51e — jusqu'au
+  // booster garanti exclu. Au 51e la chance est déjà strictement supérieure
+  // à la base ("augmente progressivement"), au 80e elle vaut 1 (branche
   // ci-dessus).
   const span = PITY.guaranteeAtPack - PITY.rampStartsAfterPacks;
   const step = packNumber - PITY.rampStartsAfterPacks;

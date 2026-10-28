@@ -104,7 +104,7 @@ function seedReferenceData(): void {
     { slot_index: 5, guaranteed_rarity: "uncommon", weighted_rarities: null },
     { slot_index: 6, guaranteed_rarity: "uncommon", weighted_rarities: null },
     { slot_index: 7, guaranteed_rarity: null, weighted_rarities: { rare: 85, epic: 12, legendary: 3 } },
-    { slot_index: 8, guaranteed_rarity: null, weighted_rarities: { uncommon: 55, rare: 35, abyssal: 10 } },
+    { slot_index: 8, guaranteed_rarity: null, weighted_rarities: { uncommon: 121, rare: 77, abyssal: 2 } },
   ];
   for (const slot of slots) db.table("booster_slots").push({ booster_definition_id: "standard", ...slot });
 }

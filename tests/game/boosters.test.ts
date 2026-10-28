@@ -20,7 +20,7 @@ const STANDARD_SLOTS: BoosterSlotRule[] = [
   { slotIndex: 5, guaranteedRarity: "uncommon" },
   { slotIndex: 6, guaranteedRarity: "uncommon" },
   { slotIndex: 7, guaranteedRarity: "rare" },
-  { slotIndex: 8, weightedRarities: { uncommon: 55, rare: 35, abyssal: 10 } },
+  { slotIndex: 8, weightedRarities: { uncommon: 121, rare: 77, abyssal: 2 } },
 ];
 
 function makePool(counts = { common: 20, uncommon: 12, rare: 8, abyssal: 4 }): BoosterPoolCard[] {

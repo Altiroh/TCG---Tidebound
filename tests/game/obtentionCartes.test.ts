@@ -32,7 +32,7 @@ const HUIT_CARTES: BoosterSlotRule[] = [
   { slotIndex: 5, guaranteedRarity: "uncommon" },
   { slotIndex: 6, guaranteedRarity: "uncommon" },
   { slotIndex: 7, weightedRarities: { rare: 85, epic: 12, legendary: 3 } },
-  { slotIndex: 8, weightedRarities: { uncommon: 55, rare: 35, abyssal: 10 } },
+  { slotIndex: 8, weightedRarities: { uncommon: 121, rare: 77, abyssal: 2 } },
 ];
 
 /** Nécessaire du Marin : six cartes (migration 20261002120000). */
@@ -42,7 +42,7 @@ const SIX_CARTES: BoosterSlotRule[] = [
   { slotIndex: 3, guaranteedRarity: "uncommon" },
   { slotIndex: 4, guaranteedRarity: "uncommon" },
   { slotIndex: 5, weightedRarities: { rare: 85, epic: 12, legendary: 3 } },
-  { slotIndex: 6, weightedRarities: { uncommon: 55, rare: 35, abyssal: 10 } },
+  { slotIndex: 6, weightedRarities: { uncommon: 121, rare: 77, abyssal: 2 } },
 ];
 
 const TIRAGES = 12_000;
@@ -128,8 +128,9 @@ describe("chances d'obtention des cartes et des éditions", () => {
       const slots = m.boosterId === BOOSTER_NECESSAIRE_DU_MARIN ? SIX_CARTES : HUIT_CARTES;
       for (const [cardId, mesuree] of m.parCarte) {
         const calculee = cardChancePerBooster(slots, pool, cardId);
-        // Bruit d'échantillonnage : 4 écarts-types de la mesure sur TIRAGES boosters.
-        const tolerance = 4 * Math.sqrt((calculee * (1 - calculee)) / TIRAGES) + 0.002;
+        // Bruit d'échantillonnage : 5 écarts-types de la mesure sur TIRAGES
+        // boosters — quelque 400 cartes comparées à la fois.
+        const tolerance = 5 * Math.sqrt((calculee * (1 - calculee)) / TIRAGES) + 0.002;
         expect(Math.abs(calculee - mesuree), `${m.boosterId} / ${cardId}`).toBeLessThan(tolerance);
       }
     }

@@ -76,7 +76,7 @@ function seedReferenceData(): void {
     { slot_index: 5, guaranteed_rarity: "uncommon", weighted_rarities: null },
     { slot_index: 6, guaranteed_rarity: "uncommon", weighted_rarities: null },
     { slot_index: 7, guaranteed_rarity: null, weighted_rarities: { rare: 85, epic: 12, legendary: 3 } },
-    { slot_index: 8, guaranteed_rarity: null, weighted_rarities: { uncommon: 55, rare: 35, abyssal: 10 } },
+    { slot_index: 8, guaranteed_rarity: null, weighted_rarities: { uncommon: 121, rare: 77, abyssal: 2 } },
   ];
   for (const slot of standardSlots) db.table("booster_slots").push({ booster_definition_id: STANDARD, ...slot });
 
@@ -87,7 +87,7 @@ function seedReferenceData(): void {
     { slot_index: 3, guaranteed_rarity: "uncommon", weighted_rarities: null },
     { slot_index: 4, guaranteed_rarity: "uncommon", weighted_rarities: null },
     { slot_index: 5, guaranteed_rarity: null, weighted_rarities: { rare: 85, epic: 12, legendary: 3 } },
-    { slot_index: 6, guaranteed_rarity: null, weighted_rarities: { uncommon: 55, rare: 35, abyssal: 10 } },
+    { slot_index: 6, guaranteed_rarity: null, weighted_rarities: { uncommon: 121, rare: 77, abyssal: 2 } },
   ];
   for (const slot of necessaireSlots) db.table("booster_slots").push({ booster_definition_id: NECESSAIRE, ...slot });
 }
@@ -203,9 +203,9 @@ describe("Nécessaire du Marin — ouverture", () => {
     // 19 boosters déjà ouverts sans Abyssale : le 20e la garantit.
     db.upsert(
       "player_pity",
-      { user_id: USER, booster_definition_id: NECESSAIRE, packs_since_abyssal: 19, packs_since_new_card: 0 },
+      { user_id: USER, booster_definition_id: NECESSAIRE, packs_since_abyssal: 79, packs_since_new_card: 0 },
       (row) => {
-        row.packs_since_abyssal = 19;
+        row.packs_since_abyssal = 79;
       }
     );
 
@@ -220,9 +220,9 @@ describe("Nécessaire du Marin — ouverture", () => {
     await purchaseBooster(NECESSAIRE, 2);
     db.upsert(
       "player_pity",
-      { user_id: USER, booster_definition_id: NECESSAIRE, packs_since_abyssal: 19, packs_since_new_card: 0 },
+      { user_id: USER, booster_definition_id: NECESSAIRE, packs_since_abyssal: 79, packs_since_new_card: 0 },
       (row) => {
-        row.packs_since_abyssal = 19;
+        row.packs_since_abyssal = 79;
       }
     );
 
@@ -279,9 +279,9 @@ describe("ouverture en lot", () => {
     await purchaseBooster(NECESSAIRE, 3);
     db.upsert(
       "player_pity",
-      { user_id: USER, booster_definition_id: NECESSAIRE, packs_since_abyssal: 19, packs_since_new_card: 0 },
+      { user_id: USER, booster_definition_id: NECESSAIRE, packs_since_abyssal: 79, packs_since_new_card: 0 },
       (row) => {
-        row.packs_since_abyssal = 19;
+        row.packs_since_abyssal = 79;
       }
     );
 
