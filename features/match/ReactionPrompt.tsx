@@ -432,18 +432,23 @@ function MultipleCandidates({
 
 /**
  * QUI AGIT, COMMENT, SUR QUI (28/10/2026) : l'illustration de l'attaquant ou
- * du lanceur, deux épées qui s'entrechoquent (attaque) ou une étincelle de
- * sort, puis celle de la cible — une unité ou un Navire. Un coup d'œil
- * suffit avant de lire la phrase.
+ * du lanceur, deux épées qui s'entrechoquent (attaque) ou le grimoire d'un
+ * sort (icônes peintes, `ui/icons/reaction/`), puis celle de la cible — une
+ * unité ou un Navire. Un coup d'œil suffit avant de lire la phrase.
  */
 function CauseVisualRow({ visual }: { visual: CauseVisual }) {
   const label = visual.action === "attack" ? "attaque" : "lance un sort sur";
   return (
     <div className="my-1.5 flex items-center justify-center gap-2" aria-hidden>
       <CauseThumb side={visual.source} />
-      <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${visual.action === "attack" ? "bg-rose-500/20 text-rose-100" : "bg-violet-500/25 text-violet-100"}`} title={label}>
-        {visual.action === "attack" ? <CrossedSwordsIcon /> : <SpellIcon />}
-      </span>
+      {/* eslint-disable-next-line @next/next/no-img-element -- icône locale */}
+      <img
+        src={visual.action === "attack" ? "/assets/ui/icons/reaction/combat.webp" : "/assets/ui/icons/reaction/sort.webp"}
+        alt=""
+        title={label}
+        draggable={false}
+        className="h-11 w-11 shrink-0 object-contain drop-shadow-[0_3px_6px_rgba(0,0,0,0.6)]"
+      />
       {visual.target && <CauseThumb side={visual.target} />}
     </div>
   );
@@ -475,27 +480,5 @@ function CauseThumb({ side }: { side: CauseSide }) {
       draggable={false}
       className="h-12 w-12 shrink-0 rounded-lg border border-amber-200/50 object-cover shadow-[0_4px_10px_rgba(0,0,0,0.5)]"
     />
-  );
-}
-
-/** Deux épées croisées, lames en haut, et l'étincelle du choc. */
-function CrossedSwordsIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6">
-      <path d="M4 3l9.5 9.5M20 3l-9.5 9.5" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" />
-      <path d="M8.5 14.5l-3 3M15.5 14.5l3 3M6.8 13.2l4 4M17.2 13.2l-4 4" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" />
-      <path d="M4.5 19.5l1-1M19.5 19.5l-1-1" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" />
-      <path d="M12 6.2V4.6M14.2 7.1l1-1.1M9.8 7.1l-1-1.1" stroke="#fde68a" strokeWidth={1.4} strokeLinecap="round" />
-    </svg>
-  );
-}
-
-/** L'étincelle d'un sort : une étoile à quatre branches et deux éclats. */
-function SpellIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6">
-      <path d="M12 3c.6 4.2 1.8 5.4 6 6-4.2.6-5.4 1.8-6 6-.6-4.2-1.8-5.4-6-6 4.2-.6 5.4-1.8 6-6z" fill="currentColor" />
-      <path d="M18.5 15.5c.3 1.6.8 2.1 2.5 2.5-1.7.4-2.2.9-2.5 2.5-.3-1.6-.8-2.1-2.5-2.5 1.7-.4 2.2-.9 2.5-2.5zM5.5 16c.2 1 .5 1.3 1.5 1.5-1 .2-1.3.5-1.5 1.5-.2-1-.5-1.3-1.5-1.5 1-.2 1.3-.5 1.5-1.5z" fill="currentColor" opacity={0.7} />
-    </svg>
   );
 }
