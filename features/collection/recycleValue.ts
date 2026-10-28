@@ -41,20 +41,27 @@ export function recycleValueOf(cardId: string): number | null {
  * la revente MOYENNE d'un booster reste infime. Le garde-fou est là, pas
  * dans le plafond : `tests/game/obtentionCartes.test.ts` vérifie qu'un
  * booster entièrement revendu rapporte en moyenne moins que son prix.
+ *
+ * AJUSTÉ le 28/10/2026 avec les taux de tirage : Styled et Full-Art sortent
+ * 1,5 et 2 fois plus souvent, les finitions 2 fois plus — leurs
+ * multiplicateurs baissent d'autant (Styled 10 → 7, Full-Art 100 → 50,
+ * finitions divisées par 2), pour que la revente MOYENNE d'un booster reste
+ * celle d'avant et sous son prix. La Styled Full-Art Star Foil vaut encore
+ * 5 000 fois sa Classique.
  */
 export const ARTWORK_RESALE_MULTIPLIER: Record<CardArtwork, number> = {
   classique: 1,
-  styled: 10,
-  "styled-fa": 100,
+  styled: 7,
+  "styled-fa": 50,
 };
 
 export const FINISH_RESALE_MULTIPLIER: Record<CardFinish, number> = {
   classique: 1,
-  monochrome: 2,
-  foil: 4,
-  negative: 8,
-  prismatic: 25,
-  "star-foil": 200,
+  monochrome: 1.5,
+  foil: 2,
+  negative: 4,
+  prismatic: 12,
+  "star-foil": 100,
 };
 
 /** À l'unité sous 100, à la dizaine jusqu'à 999, à la cinquantaine au-delà. */

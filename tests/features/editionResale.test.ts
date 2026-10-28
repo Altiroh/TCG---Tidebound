@@ -9,11 +9,12 @@ import { CARD_FINISHES } from "@/game/cosmetics/finishes";
  * les repères changent avec lui, sur décision seulement.
  */
 describe("revente par édition", () => {
-  it("tient les repères : Aberration Vorace 11 en Classique, 220 000 en Styled Full-Art Star Foil", () => {
+  it("tient les repères : Aberration Vorace 11 en Classique, 55 000 en Styled Full-Art Star Foil", () => {
+    // Multiplicateurs ajustés le 28/10/2026 avec les taux de tirage (×50 et ×100 au lieu de ×100 et ×200).
     expect(editionRecycleValueOf("aberration-vorace", { artwork: "classique", finish: "classique" })).toBe(11);
-    expect(editionRecycleValueOf("aberration-vorace", { artwork: "styled-fa", finish: "star-foil" })).toBe(220_000);
+    expect(editionRecycleValueOf("aberration-vorace", { artwork: "styled-fa", finish: "star-foil" })).toBe(55_000);
     // Une Épique (Jugement du Phare) : le sommet actuel du catalogue.
-    expect(editionRecycleValueOf("jugement-du-phare", { artwork: "styled-fa", finish: "star-foil" })).toBe(640_000);
+    expect(editionRecycleValueOf("jugement-du-phare", { artwork: "styled-fa", finish: "star-foil" })).toBe(160_000);
   });
 
   it("la Classique vaut exactement l'ancienne revente à la rareté", () => {

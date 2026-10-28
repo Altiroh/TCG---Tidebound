@@ -58,13 +58,14 @@ export function editionRank(edition: CardEdition): number {
 /**
  * Chance qu'une carte tirée sorte dans chaque illustration ALTERNATIVE,
  * quand le booster la propose pour cette carte (barème du 18/10/2026,
- * provisoire jusqu'à la simulation économique). Tirée APRÈS la carte et sa
+ * relevé le 28/10/2026 : Styled 4 → 6 %, Full-Art 0,8 → 1,6 % — en 120
+ * boosters de La Marée Bénie, une fois sur deux aucune Full-Art). Tirée APRÈS la carte et sa
  * finition, sur un nombre à part : la composition du booster, la garantie
  * de carte nouvelle et la protection Abyssale n'en dépendent jamais.
  */
 export const CARD_ARTWORK_ODDS: Record<RareCardArtwork, number> = {
-  styled: 0.04,
-  "styled-fa": 0.008,
+  styled: 0.06,
+  "styled-fa": 0.016,
 };
 
 /**

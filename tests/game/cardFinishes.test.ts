@@ -14,8 +14,8 @@ import {
  * effet de jeu.
  */
 describe("finitions de carte", () => {
-  it("sont TRÈS rares : environ une carte sur 200, et la Star Foil la plus rare", () => {
-    expect(rareFinishChance()).toBeLessThan(1 / 180);
+  it("sont TRÈS rares : environ une carte sur 100 (doublées le 28/10/2026), et la Star Foil la plus rare", () => {
+    expect(rareFinishChance()).toBeLessThan(1 / 90);
     expect(RARE_CARD_FINISHES[RARE_CARD_FINISHES.length - 1]).toBe("star-foil");
     expect(rareFinishChance()).toBeGreaterThan(0);
     const odds = RARE_CARD_FINISHES.map((f) => CARD_FINISH_ODDS[f]);
@@ -52,7 +52,8 @@ describe("finitions de carte", () => {
       avecFinition += result.cards.filter((c) => c.finish).length;
     }
     expect(avecFinition).toBeGreaterThan(0);
-    expect(avecFinition).toBeLessThan(9000 / 100);
+    // 9 000 cartes à ~1 % : une centaine attendue, jamais le double.
+    expect(avecFinition).toBeLessThan(9000 / 50);
   });
 
   it("la collection montre la finition la plus rare possédée", () => {

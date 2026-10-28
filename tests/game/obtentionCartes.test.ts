@@ -180,9 +180,10 @@ describe("chances d'obtention des cartes et des éditions", () => {
           full_art: fullArt ? `1/${arrondi(1 / fullArt)}` : "—",
           full_art_star_foil: ultra ? `1/${Math.round(1 / ultra).toLocaleString("fr-FR")}` : "—",
         });
-        // Ultra ultra rare : moins d'une chance sur 500 000 par booster, même
-        // pour une Commune d'un petit pool (Gaston, ≈ 1 sur 900 000).
-        if (ultra) expect(ultra, cardId).toBeLessThan(2e-6);
+        // Ultra ultra rare : moins d'une chance sur 100 000 par booster, même
+        // pour une Commune d'un petit pool (taux relevés le 28/10/2026 :
+        // Gaston ≈ 1 sur 220 000).
+        if (ultra) expect(ultra, cardId).toBeLessThan(1e-5);
         if (fullArt) expect(fullArt, cardId).toBeLessThan(styled || 1);
       }
     }

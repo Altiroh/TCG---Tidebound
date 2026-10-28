@@ -57,11 +57,13 @@ export const CARD_FINISH_DESCRIPTIONS: Record<CardFinish, string> = {
  * booster sur 375. À ajuster ici seulement.
  */
 export const CARD_FINISH_ODDS: Record<RareCardFinish, number> = {
-  monochrome: 1 / 500,
-  foil: 1 / 800,
-  negative: 1 / 1100,
-  prismatic: 1 / 1800,
-  "star-foil": 1 / 3000,
+  // Doublées le 28/10/2026 (de 1/500 … 1/3000) : une finition rare tous les
+  // ~12 boosters au lieu de ~24.
+  monochrome: 1 / 250,
+  foil: 1 / 400,
+  negative: 1 / 550,
+  prismatic: 1 / 900,
+  "star-foil": 1 / 1500,
 };
 
 /** Chance totale qu'une carte tirée ait une finition rare. */
